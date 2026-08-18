@@ -1,8 +1,8 @@
 import SwiftUI
 
 enum TopologyMutation {
-  static let defaultLat = 41.2995
-  static let defaultLng = 69.2401
+  static var defaultLat: Double { packMapCoordinate().lat }
+  static var defaultLng: Double { packMapCoordinate().lng }
 
   static func warehouseInput(
     from node: SupplierTopologyWarehouse? = nil,
@@ -210,7 +210,7 @@ struct AddFactorySheet: View {
   var onSaved: () -> Void
 
   @State private var name = ""
-  @State private var location = AddressLocationValue(lat: 41.3111, lng: 69.2797)
+  @State private var location = AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng)
   @State private var saving = false
   @State private var error: String?
 

@@ -53,6 +53,20 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+func requirePayoutBatchScope(w http.ResponseWriter, r *http.Request) (supplierID, batchID string, ok bool) {
+	supplierID = payoutSupplierID(r)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return "", "", false
+	}
+	batchID = strings.TrimSpace(chi.URLParam(r, "batchID"))
+	if batchID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "batch_id_required"})
+		return "", "", false
+	}
+	return supplierID, batchID, true
+}
+
 func payoutSupplierID(r *http.Request) string {
 	id := auth.PreferTenantSupplierID(r.Context(), "")
 	if id != "" {
@@ -170,8 +184,11 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) HandleExport(w http.ResponseWriter, r *http.Request) {
-	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
-	raw, b, err := h.Svc.ExportBankFile(r.Context(), batchID)
+	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
+	if !ok {
+		return
+	}
+	raw, b, err := h.Svc.ExportBankFile(r.Context(), supplierID, batchID)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch {
@@ -190,8 +207,11 @@ func (h *Handlers) HandleExport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
-	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
-	if err := h.Svc.MarkPaid(r.Context(), batchID); err != nil {
+	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
+	if !ok {
+		return
+	}
+	if err := h.Svc.MarkPaid(r.Context(), supplierID, batchID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, ErrBatchNotFound) {
 			status = http.StatusNotFound
@@ -216,12 +236,15 @@ func (h *Handlers) HandleMarkPaid(w http.ResponseWriter, r *http.Request) {
 // HandleDispatch submits a batch to the configured rail. Default is the
 // bank-file dry-run; a live rail requires live=true and dispatches funds.
 func (h *Handlers) HandleDispatch(w http.ResponseWriter, r *http.Request) {
-	batchID := strings.TrimSpace(chi.URLParam(r, "batchID"))
+	supplierID, batchID, ok := requirePayoutBatchScope(w, r)
+	if !ok {
+		return
+	}
 	var body struct {
 		Live bool `json:"live"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body) // empty body => dry-run
-	b, err := h.Svc.SubmitForDispatch(r.Context(), batchID, body.Live)
+	b, err := h.Svc.SubmitForDispatch(r.Context(), supplierID, batchID, body.Live)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch {

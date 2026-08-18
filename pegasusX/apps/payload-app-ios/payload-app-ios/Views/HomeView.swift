@@ -22,7 +22,7 @@ struct HomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading)
+            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading, error: viewModel.pulseError)
             navigationRoot
         }
         .overlay {

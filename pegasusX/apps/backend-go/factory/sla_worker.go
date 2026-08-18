@@ -160,9 +160,9 @@ func (s *Service) emitSLABreach(ctx context.Context, requestID, supplierID, ware
 		muts := buf.muts
 		if markNotified {
 			muts = append(muts, spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
-				"RequestId":            requestID,
-				"SlaBreachNotifiedAt":  spanner.CommitTimestamp,
-				"UpdatedAt":            spanner.CommitTimestamp,
+				"RequestId":           requestID,
+				"SlaBreachNotifiedAt": spanner.CommitTimestamp,
+				"UpdatedAt":           spanner.CommitTimestamp,
 			}))
 		}
 		return txn.BufferWrite(muts)
@@ -175,23 +175,9 @@ type slaTxnBuf struct {
 }
 
 func (b *slaTxnBuf) BufferOutbox(_ context.Context, e outbox.Event) error {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
 	if e.EventID == "" {
 		e.EventID = uuid.NewString()
 	}
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-	}
-	b.muts = append(b.muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	b.muts = append(b.muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	return nil
 }
-

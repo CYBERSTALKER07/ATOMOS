@@ -24,7 +24,7 @@ fun ReconciliationScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var netMinor by remember { mutableLongStateOf(0L) }
-    var currency by remember { mutableStateOf("UZS") }
+    var currency by remember { mutableStateOf(com.pegasus.design.sessionPackCurrency()) }
     var mismatchCount by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }

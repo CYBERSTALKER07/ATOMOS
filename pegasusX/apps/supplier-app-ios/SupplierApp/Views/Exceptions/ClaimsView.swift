@@ -76,7 +76,7 @@ struct ClaimsView: View {
                                 .foregroundStyle(.tint)
                             Text(L10n.format("mobile_supplier.ui.order_orderid_retailer_retailerid", "\(claim.orderId)", "\(claim.retailerId)"))
                                 .font(.caption)
-                            Text("\(claim.amountMinor ?? 0) \(claim.currency ?? "UZS")")
+                            Text("\(claim.amountMinor ?? 0) \(displayPackCurrency(claim.currency))")
                                 .font(.subheadline.weight(.medium))
                             if let description = claim.description, !description.isEmpty {
                                 Text(description).font(.caption).foregroundStyle(.secondary)

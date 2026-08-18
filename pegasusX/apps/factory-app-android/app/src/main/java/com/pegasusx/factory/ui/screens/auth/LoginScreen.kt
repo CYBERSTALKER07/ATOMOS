@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.pegasusx.factory.data.model.LoginRequest
+import com.pegasusx.factory.data.push.DeviceTokenRegistrar
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FirebaseAuthHelper
 import com.pegasusx.factory.data.remote.TokenHolder
@@ -88,6 +89,7 @@ fun LoginScreen(
         TokenHolder.token = token
         TokenHolder.refreshToken = refreshToken
         TokenHolder.factoryId = factoryId
+        DeviceTokenRegistrar.uploadBestEffort(api)
         onLoginSuccess()
     }
 

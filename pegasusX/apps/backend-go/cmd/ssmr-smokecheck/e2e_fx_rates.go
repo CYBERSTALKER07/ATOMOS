@@ -48,21 +48,22 @@ func runFxRatesE2E(
 			} `json:"rates"`
 		}
 		_ = json.Unmarshal(body, &payload)
-		op := strings.ToUpper(strings.TrimSpace(cfg.SeedSupplierCurrency))
+		op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
 		if op == "" {
-			op = "UZS"
-		}
-		found := false
-		for _, r := range payload.Rates {
-			if strings.EqualFold(r.BaseCurrency, op) && strings.EqualFold(r.QuoteCurrency, op) && r.RateScaled > 0 {
-				found = true
-				break
-			}
-		}
-		if found {
-			fmt.Println("PX_E2E_FX_RATE_SEEDED_OK")
-		} else {
 			fmt.Println("PX_E2E_FX_RATE_SEEDED_SKIPPED")
+		} else {
+			found := false
+			for _, r := range payload.Rates {
+				if strings.EqualFold(r.BaseCurrency, op) && strings.EqualFold(r.QuoteCurrency, op) && r.RateScaled > 0 {
+					found = true
+					break
+				}
+			}
+			if found {
+				fmt.Println("PX_E2E_FX_RATE_SEEDED_OK")
+			} else {
+				fmt.Println("PX_E2E_FX_RATE_SEEDED_SKIPPED")
+			}
 		}
 	}
 
@@ -86,10 +87,9 @@ func runFxRatesE2E(
 		wrongCur = "EUR"
 	}
 	mismatchBody, _ := json.Marshal(map[string]any{
-		"order_id":     orderID,
-		"amount_minor": int64(100000),
-		"currency":     wrongCur,
-		"gateway":      "GLOBAL_PAY",
+		"order_id": orderID,
+		"currency": wrongCur,
+		"gateway":  "GLOBAL_PAY",
 	})
 	st, resp, _, err := clientPost(ctx, client, base+"/v1/order/card-checkout", mismatchBody, retailerToken, "ssmr-fx-mismatch-"+orderID)
 	if err != nil {

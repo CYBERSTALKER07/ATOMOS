@@ -3,12 +3,13 @@
 **Set:** 2026-08-16  
 **Product tree:** `pegasusX/` (`pegasus/` = legacy port source)
 
-## Canonical program — these two files ARE the destination
+## Canonical program — these files ARE the destination
 
 | File | What it is |
 |------|------------|
 | [`pegasusX/docs/GLOBAL_SCALE_PROGRAM.md`](../../pegasusX/docs/GLOBAL_SCALE_PROGRAM.md) | Global multi-supplier program: register + home cell + MarketPack + Class A. Phases **GS-A → T → M → C**, then I / R / P. |
 | [`pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](../../pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | Local-first same-market topology + pack-owned PSP. Phases **GS-L0–L4** + **GS-K1–K3** (W1–W26). Extends A/T/M/C; does not replace them. |
+| [`pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md`](../../pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md) | Client visualization: command dashboards + Plan & Brain tabs (GS-U0–U9) on web, desktop, iOS (phone+iPad), Android (phone+tablet). Extends GS-R. Not status. |
 
 `PROD_ECOSYSTEM_GOAL.md` is the **Class A coverage rule** (outbox + consumer + role-row client). It is not a competing destination.
 
@@ -54,9 +55,10 @@ GS-I / R / P                         (bind claimed; leftovers continuous)
 
 GS-L  Local matching                 L0 → L1 → L2 → L3 → L4
 GS-K  Pack PSP catalog               K1 → K2 → K3
+GS-U  Client visualization           U0 → U9 (dashboards + Plan & Brain)
 ```
 
-**Next claimed slices:** **L0** (fail-closed country cover) **+ K1** (pack PSP catalog) in parallel. Not terraform apply. Not Stripe keys. Not flipping `checkout_reads_this`.
+**Next claimed slice:** leftovers (GS-M flag, cells apply, live PSP) — Layer B, do not execute. Named + continuous empty-currency invent train closed. Not Layer B. GS-U0–U9 shipped 2026-08-16. `checkout_reads_this` still false. Not terraform apply. Not Stripe keys. Not flipping the flag. Not swapping MapLibre for Google Maps. Factory planning / auto-order **place** stay off.
 
 A slice is not done until every W-item it owns has a live-path test.
 

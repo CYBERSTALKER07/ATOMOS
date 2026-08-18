@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BentoCard, BentoGrid } from "@/components/BentoGrid";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
 import PlanningOutcomesPanel from "@/components/PlanningOutcomesPanel";
@@ -10,27 +11,35 @@ import StatusBadge from "@/components/StatusBadge";
 import { FormAlert } from "@/components/portal";
 import { usePortalT } from "@/lib/i18n";
 import { useDashboardData } from "./use-dashboard-data";
+import { useDashboardHistory } from "./use-dashboard-history";
+import { formatPackMoney, readCachedAuthSession } from "@pegasusx/api-client";
+import { MANIFEST_STATES, ORDER_STATUS_FUNNEL, guardHistorySeries } from "@pegasusx/types";
+import { HealthStrip, KpiStat, RangeToggle, SourceChip, StatusStack } from "@pegasusx/ui-kit/portal";
 
 export default function DashboardPage() {
   const t = usePortalT();
+  const router = useRouter();
   const { metrics, recentManifests, recentEvents, isPaymentConfigured, loading, error } = useDashboardData();
+  const history = useDashboardHistory();
 
   const formatCurrency = (minor: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "UZS",
-      maximumFractionDigits: 0,
-    }).format(minor / 100);
+    formatPackMoney(minor, readCachedAuthSession()?.pack);
 
-  const liveOrderStats = [
-    { label: t("supplier_portal.residual.text.pending"), count: metrics.ordersByStatus.PENDING ?? 0, color: "var(--desk-text-secondary)" },
-    { label: t("supplier_portal.residual.text.loaded"), count: metrics.ordersByStatus.LOADED ?? 0, color: "var(--desk-warning)" },
-    { label: t("supplier_portal.residual.text.in_transit"), count: metrics.ordersByStatus.IN_TRANSIT ?? 0, color: "var(--desk-info)" },
-    { label: t("supplier_portal.residual.text.arrived"), count: metrics.ordersByStatus.ARRIVED ?? 0, color: "var(--desk-success)" },
-  ];
-  const maxLive = Math.max(1, ...liveOrderStats.map((s) => s.count));
+  const openStatus = (status: string) => {
+    router.push(`/orders?status=${encodeURIComponent(status)}`);
+  };
+
   const driverPct = metrics.totalDrivers > 0 ? metrics.activeDrivers / metrics.totalDrivers : 0;
-  const vuPct = metrics.fleetVuTotal > 0 ? (metrics.fleetVuUsed / metrics.fleetVuTotal) * 100 : 0;
+  const vuPct = metrics.fleetVuAvailable && metrics.fleetVuTotal > 0
+    ? (metrics.fleetVuUsed / metrics.fleetVuTotal) * 100
+    : 0;
+  const revenueSpark = guardHistorySeries(history.revenue);
+  const velocitySpark = guardHistorySeries(history.velocity);
+  const historyLive = Boolean(revenueSpark || velocitySpark);
+  const deltaLabel =
+    history.revenueDeltaPct == null
+      ? null
+      : `${history.revenueDeltaPct >= 0 ? "+" : ""}${history.revenueDeltaPct.toFixed(0)}% vs yesterday`;
 
   return (
     <PageChrome
@@ -55,48 +64,40 @@ export default function DashboardPage() {
           </FormAlert>
         ) : null}
 
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
+            {metrics.asOf ? `as-of ${metrics.asOf}` : "as-of —"}
+          </p>
+          <RangeToggle value={history.range} onChange={history.setRange} />
+        </div>
+
         <BentoGrid theme="apple">
           <BentoCard size="stat" className="p-5 flex flex-col justify-between">
-            <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
-              Revenue today
-            </h2>
-            <div>
-              <div className="md-kpi-value">{formatCurrency(metrics.revenueToday)}</div>
-              <div
-                className="md-typescale-label-medium mt-1"
-                style={{
-                  color: metrics.revenueChangePct >= 0 ? "var(--desk-success)" : "var(--desk-danger)",
-                }}
-              >
-                {metrics.revenueChangePct >= 0 ? "+" : ""}
-                {metrics.revenueChangePct}% vs yesterday
-              </div>
-            </div>
+            <KpiStat
+              label="Revenue today"
+              value={formatCurrency(metrics.revenueToday)}
+              delta={deltaLabel}
+              spark={history.revenue}
+              source="live"
+            />
           </BentoCard>
 
           <BentoCard size="stat" className="p-5 flex flex-col justify-between">
-            <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
-              Completion rate
-            </h2>
-            <div className="md-kpi-value">{metrics.deliveryCompletionRate}%</div>
-            <p className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
-              Successful deliveries today
-            </p>
+            <KpiStat
+              label="Completion rate"
+              value={`${metrics.deliveryCompletionRate}%`}
+              delta={`${metrics.completedToday} / ${metrics.attemptedToday} today`}
+              source="live"
+            />
           </BentoCard>
 
           <BentoCard size="stat" className="p-5 flex flex-col justify-between">
-            <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
-              Retailer activity
-            </h2>
-            <div className="flex items-baseline gap-2">
-              <span className="md-kpi-value">{metrics.retailersOrderedToday}</span>
-              <span className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
-                / {metrics.totalRetailers}
-              </span>
-            </div>
-            <p className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
-              Ordered today
-            </p>
+            <KpiStat
+              label="Retailer activity"
+              value={`${metrics.retailersOrderedToday} / ${metrics.totalRetailers}`}
+              delta="Ordered today"
+              source="live"
+            />
           </BentoCard>
 
           <BentoCard size="stat" className="p-5 flex flex-col items-center justify-between text-center">
@@ -145,28 +146,59 @@ export default function DashboardPage() {
             <h2 className="md-typescale-title-medium mb-4" style={{ color: "var(--desk-text-secondary)" }}>
               Live orders
             </h2>
-            <div className="flex-1 grid grid-cols-4 gap-3 items-end">
-              {liveOrderStats.map((stat) => (
-                <div key={stat.label} className="flex flex-col items-center h-full justify-end">
-                  <div className="md-typescale-title-medium mb-2">{stat.count}</div>
-                  <div
-                    className="w-full rounded-t-sm"
-                    style={{
-                      height: `${Math.max(10, (stat.count / maxLive) * 100)}%`,
-                      backgroundColor: stat.color,
-                      opacity: 0.85,
-                      minHeight: 8,
-                    }}
-                  />
-                  <div
-                    className="md-typescale-label-small mt-2 text-center truncate w-full"
-                    style={{ color: "var(--desk-text-secondary)" }}
-                  >
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <StatusStack
+              dictionary={ORDER_STATUS_FUNNEL}
+              counts={metrics.ordersByStatus as Record<string, number>}
+              source="live"
+              onSelect={openStatus}
+            />
+          </BentoCard>
+
+          <BentoCard size="list" className="p-5 flex flex-col">
+            <h2 className="md-typescale-title-medium mb-4" style={{ color: "var(--desk-text-secondary)" }}>
+              Health
+            </h2>
+            <HealthStrip
+              items={[
+                {
+                  key: "FISCAL_FAILED",
+                  label: "Fiscal failed",
+                  count: metrics.ordersByStatus.FISCAL_FAILED ?? 0,
+                },
+                {
+                  key: "ARRIVED_SHOP_CLOSED",
+                  label: "Shop closed",
+                  count: metrics.ordersByStatus.ARRIVED_SHOP_CLOSED ?? 0,
+                },
+                {
+                  key: "RECONCILIATION_REQUIRED",
+                  label: "Reconciliation",
+                  count: metrics.ordersByStatus.RECONCILIATION_REQUIRED ?? 0,
+                },
+              ]}
+              onSelect={openStatus}
+            />
+          </BentoCard>
+
+          <BentoCard size="list" className="p-5 flex flex-col">
+            <h2 className="md-typescale-title-medium mb-4" style={{ color: "var(--desk-text-secondary)" }}>
+              Manifests
+            </h2>
+            <StatusStack
+              dictionary={MANIFEST_STATES}
+              counts={metrics.manifestsByState}
+              source="live"
+            />
+          </BentoCard>
+
+          <BentoCard size="list" className="p-5 flex flex-col">
+            <h2 className="md-typescale-title-medium mb-2" style={{ color: "var(--desk-text-secondary)" }}>
+              Truck duty
+            </h2>
+            <SourceChip source="unavailable" />
+            <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
+              Duty rollup unavailable
+            </p>
           </BentoCard>
 
           <BentoCard size="list" className="p-0 flex flex-col overflow-hidden max-h-[320px]">
@@ -223,9 +255,13 @@ export default function DashboardPage() {
               <Link href="/exceptions" className="portal-btn portal-btn--outline">
                 Exception queue
               </Link>
+              <Link href="/planning" className="portal-btn portal-btn--outline">
+                Open Plan
+              </Link>
             </div>
           </BentoCard>
 
+          {metrics.fleetVuAvailable ? (
           <BentoCard size="wide" className="p-5 flex flex-col justify-center">
             <div className="flex justify-between items-end mb-2">
               <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
@@ -239,8 +275,45 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="h-4 w-full rounded-full overflow-hidden" style={{ background: "var(--desk-surface-raised)" }}>
-              <div className="h-full transition-all duration-500" style={{ width: `${vuPct}%`, background: "var(--desk-accent)" }} />
+              <div className="h-full" style={{ width: `${vuPct}%`, background: "var(--desk-accent)" }} />
             </div>
+          </BentoCard>
+          ) : (
+          <BentoCard size="wide" className="p-5 flex flex-col justify-center">
+            <h2 className="md-typescale-title-medium" style={{ color: "var(--desk-text-secondary)" }}>
+              Fleet volume utilization
+            </h2>
+            <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+              unavailable
+            </p>
+          </BentoCard>
+          )}
+
+          <BentoCard size="full" className="p-5">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="md-typescale-title-medium">History</h2>
+              <SourceChip source={historyLive ? "live" : history.velocity.source} />
+            </div>
+            {historyLive ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <KpiStat
+                  label="Completed"
+                  value={velocitySpark ? String(velocitySpark.points[velocitySpark.points.length - 1]) : "—"}
+                  spark={history.velocity}
+                  source={history.velocity.source}
+                />
+                <KpiStat
+                  label="Revenue"
+                  value={revenueSpark ? formatCurrency(revenueSpark.points[revenueSpark.points.length - 1]) : "—"}
+                  spark={history.revenue}
+                  source={history.revenue.source}
+                />
+              </div>
+            ) : (
+              <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+                {history.loading ? "Loading history" : "History unavailable"}
+              </p>
+            )}
           </BentoCard>
 
           <BentoCard size="full" className="p-0 overflow-hidden min-h-[200px]">

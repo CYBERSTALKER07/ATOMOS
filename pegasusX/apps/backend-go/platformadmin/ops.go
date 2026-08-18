@@ -34,11 +34,11 @@ func (h *Handlers) HandleOutboxSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	ops := h.Ops
 	if ops == nil || ops.Outbox == nil {
-		writeJSON(w, http.StatusOK, map[string]any{
-			"unpublished_count": 0,
-			"available":         false,
-			"note":              "outbox store not wired on this process",
-		})
+		deadN, deadOK := int64(0), false
+		if ops != nil {
+			deadN, deadOK = countOutboxDeadLetters(r.Context(), ops.Spanner)
+		}
+		writeJSON(w, http.StatusOK, outboxSummaryWire(0, false, deadN, deadOK, 0, ""))
 		return
 	}
 	n, err := ops.Outbox.CountUnpublished(r.Context())
@@ -47,14 +47,8 @@ func (h *Handlers) HandleOutboxSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	oldestAge, oldestAt := oldestUnpublishedAge(r.Context(), ops.Spanner)
-	writeJSON(w, http.StatusOK, map[string]any{
-		"unpublished_count":   n,
-		"oldest_age_seconds":  oldestAge,
-		"oldest_created_at":   oldestAt,
-		"available":           true,
-		"lag_alert_threshold": 120,
-		"lagging":             oldestAge > 120,
-	})
+	deadN, deadOK := countOutboxDeadLetters(r.Context(), ops.Spanner)
+	writeJSON(w, http.StatusOK, outboxSummaryWire(n, true, deadN, deadOK, oldestAge, oldestAt))
 }
 
 func oldestUnpublishedAge(ctx context.Context, client *spanner.Client) (seconds int64, createdAt string) {
@@ -145,7 +139,7 @@ func (h *Handlers) HandleOutboxEvents(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) HandleOutboxDeadLetters(w http.ResponseWriter, r *http.Request) {
 	ops := h.Ops
 	if ops == nil || ops.Spanner == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "available": false})
+		writeJSON(w, http.StatusOK, deadLettersListWire(nil, 0, 0, false, "spanner not wired on this process"))
 		return
 	}
 	lim := 25
@@ -183,11 +177,7 @@ func (h *Handlers) HandleOutboxDeadLetters(w http.ResponseWriter, r *http.Reques
 		if err != nil {
 			// Table absent in older envs.
 			if strings.Contains(err.Error(), "OutboxDeadLetters") {
-				writeJSON(w, http.StatusOK, map[string]any{
-					"items":     []any{},
-					"available": false,
-					"note":      "OutboxDeadLetters table not applied",
-				})
+				writeJSON(w, http.StatusOK, deadLettersListWire(nil, 0, 0, false, "OutboxDeadLetters table not applied"))
 				return
 			}
 			writeErr(w, http.StatusInternalServerError, err.Error())
@@ -206,12 +196,8 @@ func (h *Handlers) HandleOutboxDeadLetters(w http.ResponseWriter, r *http.Reques
 			Attempts: attempts, LastError: lastErr,
 		})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"items":     out,
-		"count":     len(out),
-		"available": true,
-		"note":      "Spanner outbox dead letters; Kafka topic DLQ still via cmd/replay-dlq",
-	})
+	total, totalOK := countOutboxDeadLetters(r.Context(), ops.Spanner)
+	writeJSON(w, http.StatusOK, deadLettersListWire(out, len(out), total, totalOK, "Spanner outbox dead letters; Kafka topic DLQ still via cmd/replay-dlq"))
 }
 
 // HandleRuntime GET /v1/platform-admin/ops/runtime
@@ -256,4 +242,65 @@ func workerLive(ctx context.Context, client *redis.Client) bool {
 	defer cancel()
 	n, err := client.Exists(c, workerHeartbeatKey).Result()
 	return err == nil && n > 0
+}
+
+// countOutboxDeadLetters is SELECT COUNT(*) FROM OutboxDeadLetters.
+// available=false means the table/client is missing — not an empty (zero) queue.
+func countOutboxDeadLetters(ctx context.Context, client *spanner.Client) (int64, bool) {
+	if client == nil {
+		return 0, false
+	}
+	iter := client.Single().Query(ctx, spanner.Statement{SQL: `SELECT COUNT(*) FROM OutboxDeadLetters`})
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, false
+	}
+	var n int64
+	if err := row.Columns(&n); err != nil {
+		return 0, false
+	}
+	return n, true
+}
+
+// outboxSummaryWire never uses page length as dead_letter_count.
+// When deadOK is false the count key is omitted so UI cannot treat 0 as empty.
+func outboxSummaryWire(unpublished int64, unpublishedOK bool, dead int64, deadOK bool, oldestAge int64, oldestAt string) map[string]any {
+	out := map[string]any{
+		"unpublished_available": unpublishedOK,
+		"dead_letter_available": deadOK,
+		"oldest_age_seconds":    oldestAge,
+		"oldest_created_at":     oldestAt,
+		"lag_alert_threshold":   120,
+		"lagging":               unpublishedOK && oldestAge > 120,
+		"available":             unpublishedOK,
+	}
+	if unpublishedOK {
+		out["unpublished_count"] = unpublished
+	} else {
+		out["note"] = "outbox store not wired on this process"
+	}
+	if deadOK {
+		out["dead_letter_count"] = dead
+	}
+	return out
+}
+
+// deadLettersListWire keeps page_count (this response) distinct from dead_letter_count (table).
+func deadLettersListWire(items any, pageCount int, total int64, available bool, note string) map[string]any {
+	if items == nil {
+		items = []any{}
+	}
+	out := map[string]any{
+		"items":      items,
+		"page_count": pageCount,
+		"available":  available,
+	}
+	if note != "" {
+		out["note"] = note
+	}
+	if available {
+		out["dead_letter_count"] = total
+	}
+	return out
 }

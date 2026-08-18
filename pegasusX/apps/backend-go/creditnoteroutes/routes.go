@@ -7,10 +7,8 @@ import (
 )
 
 type Deps struct {
-	Handlers            *creditnote.Handlers
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Handlers        *creditnote.Handlers
+	AllowAuthBypass bool
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
@@ -19,9 +17,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 	h := d.Handlers
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/supplier/credit-notes", h.HandleList)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/credit-notes", h.HandleCreateManual)

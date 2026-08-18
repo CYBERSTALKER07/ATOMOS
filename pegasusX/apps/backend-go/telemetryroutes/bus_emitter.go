@@ -52,7 +52,7 @@ func (e *SpannerLocationBusEmitter) EmitDriverLocation(ctx context.Context, supp
 }
 
 func newLocationEventID(driverID string) string {
-	return "loc_" + driverID + "_" + time.Now().UTC().Format("20060102150405.000000000")
+	return outbox.ClampEventID("loc_" + driverID + "_" + time.Now().UTC().Format("20060102150405.000000000"))
 }
 
 // injectRouteID adds route_id (and data.route_id) to the location envelope so

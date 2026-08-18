@@ -12,17 +12,11 @@ import (
 )
 
 type Deps struct {
-	Service             *order.Service
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service *order.Service
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.Route("/v1/delivery", func(r chi.Router) {
-		if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-			r.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-		}
 		r.Use(auth.RequireRole(auth.RoleDriver))
 
 		r.Post("/verify-handshake", handleVerifyHandshake(d.Service))

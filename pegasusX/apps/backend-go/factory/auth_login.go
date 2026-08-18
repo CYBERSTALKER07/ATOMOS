@@ -53,6 +53,10 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 	var verified bool
 
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 	if idToken != "" && s.firebaseVerifier != nil {
 		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {

@@ -1,8 +1,8 @@
 package order
 
 import (
-	"context"
 	"cloud.google.com/go/spanner"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"testing"
@@ -140,10 +140,10 @@ func TestEventConsumer_PaymentClearedOnCancelledOrderGoesToReconciliation(t *tes
 
 func TestEventConsumer_PaymentClearedAwaitingKeepsReadVersion(t *testing.T) {
 	repo := &consumerRepoStub{orders: map[string]Order{
-		"ord-1": {OrderID: "ord-1", RetailerID: "ret-1", SupplierID: "sup-1", Status: StatusAwaitingPayment, Version: 7},
+		"ord-1": {OrderID: "ord-1", RetailerID: "ret-1", SupplierID: "sup-1", Status: StatusAwaitingPayment, Version: 7, TotalMinor: 1500},
 	}}
 	svc := &Service{repo: repo, log: slog.Default(), now: time.Now}
-	if err := svc.SettleExternalPayment(context.Background(), "ord-1", "GLOBALPAY"); err != nil {
+	if err := svc.SettleExternalPayment(context.Background(), "ord-1", "GLOBALPAY", 1500); err != nil {
 		t.Fatalf("SettleExternalPayment: %v", err)
 	}
 	if len(repo.updated) != 1 {

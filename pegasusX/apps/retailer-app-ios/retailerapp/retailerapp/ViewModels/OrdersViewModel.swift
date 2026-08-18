@@ -8,8 +8,32 @@ final class OrdersViewModel {
     var isLoading = false
     var loadError: String?
     var orderActionPending = false
+    var commandStatus: String?
+    var commandSupplierId: String?
 
     private let api = APIClient.shared
+
+    var commandFilteredOrders: [Order] {
+        guard let commandStatus else { return allOrders }
+        return allOrders.filter {
+            retailerOrderMatchesCommand(
+                statusRaw: $0.status.rawValue,
+                supplierId: $0.supplierId,
+                commandStatus: commandStatus,
+                commandSupplierId: commandSupplierId
+            )
+        }
+    }
+
+    func applyCommandFilter(status: String, supplierId: String? = nil) {
+        commandStatus = canonicalizeOrderStatus(status)
+        commandSupplierId = supplierId
+    }
+
+    func clearCommandFilter() {
+        commandStatus = nil
+        commandSupplierId = nil
+    }
 
     var activeOrders: [Order] {
         allOrders.filter {

@@ -3,6 +3,7 @@ import { Package } from "lucide-react";
 import { Skeleton } from "../Skeleton";
 import EmptyState from "../EmptyState";
 import { isCatalogBlocked } from "../../lib/stock-policy";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import { productDisplayPrice, productListPrice, productSalePrice } from "../../lib/types";
 import type { Product } from "../../lib/types";
 
@@ -134,7 +135,7 @@ export function ProductGrid({
                               <span className="md-typescale-title-medium font-light tabular-nums text-[var(--desk-accent)]">
                                 {productDisplayPrice(product).toLocaleString()}{" "}
                                 <small className="text-[var(--desk-text-tertiary)] ml-0.5">
-                                  UZS
+                                  {packCurrency(readCachedAuthSession()?.pack)}
                                 </small>
                               </span>
                             </div>
@@ -142,7 +143,7 @@ export function ProductGrid({
                             <span className="md-typescale-title-medium font-light tabular-nums text-[var(--desk-text-primary)]">
                               {productDisplayPrice(product).toLocaleString()}{" "}
                               <small className="text-[var(--desk-text-tertiary)] ml-0.5">
-                                UZS
+                                {packCurrency(readCachedAuthSession()?.pack)}
                               </small>
                             </span>
                           )}

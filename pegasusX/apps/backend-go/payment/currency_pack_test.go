@@ -7,6 +7,16 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
+func TestAssertSameMarket_L4Defense(t *testing.T) {
+	t.Parallel()
+	if err := auth.AssertSameMarket("UZ", "PK"); err != auth.ErrCrossMarketDeferred {
+		t.Fatalf("credit/payout/fiscal must refuse mixed markets: %v", err)
+	}
+	if err := auth.AssertSameMarket("UZ", "UZ"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNewService_EmptyCurrencyUsesPack(t *testing.T) {
 	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	svc := NewService(ServiceConfig{})

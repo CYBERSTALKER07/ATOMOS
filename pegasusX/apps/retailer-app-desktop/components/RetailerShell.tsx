@@ -10,25 +10,9 @@ import {
   Menu,
   Bell,
   Search,
-  LayoutDashboard,
-  ShoppingCart,
-  PackageSearch,
-  Activity,
-  BarChart3,
-  Settings,
   LogOut,
   Store,
   X,
-  MapPin,
-  Container,
-  RefreshCcw,
-  Clock,
-  LayoutGrid,
-  HandHelping,
-  FileBarChart,
-  Box,
-  Building2,
-  Radar,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -41,50 +25,9 @@ import { SessionPackChip } from "./SessionPackChip";
 import { OrgSwitcher } from "./OrgSwitcher";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { usePortalT } from "@/lib/i18n";
+import { NAV, navSectionIsActive, type NavSection } from "@/lib/nav";
 
-/* ────────── Navigation Config ────────── */
-
-type NavEntry = {
-  href: string;
-  icon: React.ElementType;
-  labelKey: string;
-  /** If set, entry requires this retailer permission (from /v1/retailer/me). */
-  perm?: string;
-  /** Optional capability pack required (client-side progressive disclosure). */
-  pack?: string;
-};
-type NavSection = { labelKey?: string; items: NavEntry[] };
 type RetailerIdentity = { name: string; company: string; initials: string };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: "/dashboard", icon: LayoutDashboard, labelKey: "portal.nav.dashboard" },
-      { href: "/orders", icon: ShoppingCart, labelKey: "portal.nav.orders", perm: "order.place" },
-      { href: "/tracking", icon: MapPin, labelKey: "portal.nav.tracking", perm: "dock.receive" },
-      { href: "/dock", icon: Container, labelKey: "portal.nav.dock", perm: "dock.receive" },
-      { href: "/catalog", icon: PackageSearch, labelKey: "portal.nav.catalog", perm: "order.place" },
-      { href: "/procurement", icon: Activity, labelKey: "portal.nav.procurement", perm: "order.place" },
-      { href: "/my-suppliers", icon: Store, labelKey: "portal.nav.my_suppliers", perm: "order.place" },
-      { href: "/credit", icon: Store, labelKey: "portal.nav.credit_partners", perm: "order.place" },
-      { href: "/auto-order", icon: RefreshCcw, labelKey: "portal.nav.auto_order", perm: "order.place" },
-      { href: "/stock", icon: PackageSearch, labelKey: "portal.nav.store_stock", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/stock/local-skus", icon: Box, labelKey: "portal.nav.local_skus", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/pos", icon: ShoppingCart, labelKey: "portal.nav.pos", perm: "pos.sell", pack: "POS" },
-      { href: "/shifts", icon: Clock, labelKey: "portal.nav.shifts", perm: "shift.open", pack: "SHIFTS" },
-      { href: "/sections", icon: LayoutGrid, labelKey: "portal.nav.sections", perm: "stock.view", pack: "SECTIONS" },
-      { href: "/assist", icon: HandHelping, labelKey: "portal.nav.assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
-      { href: "/insights", icon: BarChart3, labelKey: "portal.nav.insights", perm: "reports.view" },
-      { href: "/control-tower", icon: Radar, labelKey: "portal.nav.control_tower" },
-      { href: "/reports", icon: FileBarChart, labelKey: "portal.nav.reports_pro", perm: "reports.view", pack: "REPORTS_PRO" },
-      { href: "/hq", icon: Building2, labelKey: "portal.nav.franchise_hq", perm: "reports.view", pack: "REPORTS_PRO" },
-    ],
-  },
-  {
-    labelKey: "portal.nav.section.system",
-    items: [{ href: "/settings", icon: Settings, labelKey: "portal.nav.settings" }],
-  },
-];
 
 function filterNavByPerms(
   sections: NavSection[],
@@ -307,34 +250,12 @@ const DrawerContent = memo(function DrawerContent({
         {/* Navigation */}
         <nav
           className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? "px-1.5" : "px-2.5"}`}
+          data-testid="gs-un-nav"
         >
-          {navSections.map((section, si) => (
-            <div key={si}>
-              {si > 0 && (
-                <div
-                  style={{
-                    height: 1,
-                    background: "var(--desk-border)",
-                    margin: isRail ? "8px 4px" : "8px 12px",
-                  }}
-                />
-              )}
-              {section.labelKey && !isRail && (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="desk-sidebar-section-label"
-                  style={{
-                    color: "var(--desk-text-tertiary)",
-                    paddingLeft: "12px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {t(section.labelKey)}
-                </motion.div>
-              )}
-              {section.items.map((item) => {
+          {navSections.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
                 const ItemIcon = item.icon;
                 const label = t(item.labelKey);
@@ -374,9 +295,36 @@ const DrawerContent = memo(function DrawerContent({
                     )}
                   </Link>
                 );
-              })}
-            </div>
-          ))}
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && (
+                  <div
+                    style={{
+                      height: 1,
+                      background: "var(--desk-border)",
+                      margin: isRail ? "8px 4px" : "8px 12px",
+                    }}
+                  />
+                )}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 

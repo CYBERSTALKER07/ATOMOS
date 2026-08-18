@@ -31,6 +31,8 @@ python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<top
 
 Memory when CLI workspace is `$HOME`: `$HOME/Desktop/V.O.I.D/.agents/memory/{GOAL,WORKSPACE}.md`.
 
+Cursor CLI `sessionStart` injects a **bounded** GOAL + latest WORKSPACE excerpt (`scripts/cursor_cli_memory.py`). That excerpt is not status. Open the files.
+
 Then **open the returned paths**. Graph hits are not evidence.
 
 ## Persist

@@ -17,7 +17,7 @@ import (
 type Role string
 
 const (
-	RoleAdmin          Role = "ADMIN" // Supplier portal session (single-tenant)
+	RoleAdmin          Role = "ADMIN"          // Supplier portal session (single-tenant)
 	RolePlatformAdmin  Role = "PLATFORM_ADMIN" // Break-glass platform governance
 	RoleRetailer       Role = "RETAILER"
 	RoleDriver         Role = "DRIVER"
@@ -180,6 +180,12 @@ func RequireRole(allowed ...Role) func(http.Handler) http.Handler {
 				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ORG_SELECT_REQUIRED"}`))
 				return
 			}
+			if IsWSTicket(c) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ws_ticket_not_allowed"}`))
+				return
+			}
 			if _, allowed := allow[c.Role]; !allowed {
 				http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 				return
@@ -197,6 +203,12 @@ func RequireAnyAuthenticated() func(http.Handler) http.Handler {
 			c, ok := FromContext(r.Context())
 			if !ok || strings.TrimSpace(c.Subject) == "" {
 				http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+				return
+			}
+			if IsWSTicket(c) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"forbidden","code":"ws_ticket_not_allowed"}`))
 				return
 			}
 			next.ServeHTTP(w, r)

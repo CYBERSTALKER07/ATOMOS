@@ -16,7 +16,7 @@ func (s *Service) apply(
 		var err error
 		var manifests []ManifestRow
 		var transfers []TransferRow
-		
+
 		manifests, err = tx.ListManifests(ctx)
 		if err != nil {
 			return err
@@ -25,7 +25,7 @@ func (s *Service) apply(
 		if err != nil {
 			return err
 		}
-		
+
 		s.mu.Lock()
 		s.manifests = manifests
 		s.transfers = transfers
@@ -45,6 +45,11 @@ func (s *Service) apply(
 		}
 		for _, t := range s.transfers {
 			if err := tx.SaveTransfer(ctx, t); err != nil {
+				return err
+			}
+		}
+		for _, ex := range s.manifestExceptions {
+			if err := tx.SaveException(ctx, ex); err != nil {
 				return err
 			}
 		}

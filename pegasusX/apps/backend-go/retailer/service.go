@@ -24,6 +24,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
@@ -395,6 +396,20 @@ type Service struct {
 	firebaseVerifier      auth.FirebaseVerifier
 	spannerClient         *spanner.Client
 	paymentSessionByOrder PaymentSessionByOrder
+	dashboardOrders       RetailerDashboardOrdersQuery
+	stockBalancesQuery    func(context.Context, string, string) ([]StockBalanceDTO, error)
+	shiftsQuery           func(context.Context, string, string, int) ([]ShiftDTO, error)
+	stockMovementsQuery   func(context.Context, string, string, string, int) ([]StockMovementDTO, error)
+	enabledPacksQuery     func(context.Context, string) (EnabledSet, error)
+	setPackEnabledFn      func(context.Context, string, string, string, bool, map[string]any) error
+	posSalesQuery         func(context.Context, string, string, time.Time, time.Time) ([]PosSaleDTO, error)
+	localSKUsQuery        func(context.Context, string, string, bool) ([]LocalSKU, error)
+	sectionSkusQuery      func(context.Context, string) ([]string, error)
+	sectionStaffQuery     func(context.Context, string) ([]string, error)
+	replaceSectionSkusFn  func(context.Context, SectionDTO, []string) error
+	addSectionSkusFn      func(context.Context, SectionDTO, []string) error
+	removeSectionSkusFn   func(context.Context, string, []string) error
+	replaceSectionStaffFn func(context.Context, SectionDTO, []string) error
 }
 
 // ServiceConfig is the constructor input.
@@ -433,6 +448,8 @@ type ServiceConfig struct {
 	AssistSLAEnabled *bool
 	// PaymentSessionByOrder looks up a real PaymentSessions row by order id.
 	PaymentSessionByOrder PaymentSessionByOrder
+	// DashboardOrders injects child-order status counts for tests (Spanner-shaped).
+	DashboardOrders RetailerDashboardOrdersQuery
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -507,7 +524,13 @@ func NewService(c ServiceConfig) *Service {
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
 		paymentSessionByOrder: c.PaymentSessionByOrder,
+		dashboardOrders:       c.DashboardOrders,
 	}
+}
+
+// HasFirebaseVerifier reports whether OTP id_token login can verify tokens.
+func (s *Service) HasFirebaseVerifier() bool {
+	return s != nil && s.firebaseVerifier != nil
 }
 
 // PaymentSessionByOrder resolves a durable checkout session for an order.
@@ -585,6 +608,7 @@ type RegisterRequest struct {
 	Name                 string  `json:"name,omitempty"`
 	SupplierID           string  `json:"supplier_id,omitempty"`
 	InviteToken          string  `json:"invite_token,omitempty"`
+	CountryCode          string  `json:"country_code,omitempty"`
 	Lat                  float64 `json:"lat"`
 	Lng                  float64 `json:"lng"`
 	DeliveryAddress      string  `json:"delivery_address,omitempty"`
@@ -625,8 +649,15 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	if err := req.Validate(); err != nil {
 		return RegisterResponse{}, err
 	}
-	partnerID, err := s.resolveTradingPartner(ctx, req.SupplierID, req.InviteToken)
+	partnerID, inviteMarket, err := s.resolveTradingPartnerPack(ctx, req.SupplierID, req.InviteToken)
 	if err != nil {
+		return RegisterResponse{}, err
+	}
+	pack, err := auth.FiscalPackForSupplier(partnerID)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
+	if err := assertAttachMarket(pack, req.CountryCode, inviteMarket); err != nil {
 		return RegisterResponse{}, err
 	}
 
@@ -644,16 +675,17 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		}, nil
 	}
 
-	h3Cell := strings.TrimSpace(req.H3Cell)
-	if s.proximity != nil {
-		cell, err := s.proximity.CellForCoordinate(req.Lat, req.Lng)
-		if err != nil {
-			return RegisterResponse{}, fmt.Errorf("derive retailer h3_cell: %w", err)
-		}
-		h3Cell = cell
+	requestedCountry := strings.TrimSpace(req.CountryCode)
+	if requestedCountry == "" {
+		requestedCountry = s.countryCode
 	}
+	geo, err := proximity.StampNodeGeography(pack, req.Lat, req.Lng, requestedCountry)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
+	h3Cell := geo.H3Cell
 	if h3Cell == "" {
-		return RegisterResponse{}, errors.New("h3_cell required")
+		return RegisterResponse{}, auth.ErrGeographyIncomplete
 	}
 
 	windowOpen, err := validateReceivingWindowField(req.ReceivingWindowOpen)
@@ -670,7 +702,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		SupplierID:           partnerID,
 		Phone:                req.Phone,
 		Name:                 req.Name,
-		CountryCode:          s.countryCode,
+		CountryCode:          geo.CountryCode,
 		Lat:                  req.Lat,
 		Lng:                  req.Lng,
 		DeliveryAddress:      strings.TrimSpace(req.DeliveryAddress),

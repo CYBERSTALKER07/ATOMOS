@@ -78,6 +78,8 @@ export default function TenantsPanel({ token, refreshKey = 0 }: { token: string;
               <th className="py-2 pr-4 font-medium">ID</th>
               <th className="py-2 pr-4 font-medium">Name</th>
               <th className="py-2 pr-4 font-medium">Status</th>
+              <th className="py-2 pr-4 font-medium">Pack</th>
+              <th className="py-2 pr-4 font-medium">Cell</th>
               <th className="py-2 pr-4 font-medium">Updated</th>
               <th className="py-2 font-medium">Actions</th>
             </tr>
@@ -93,6 +95,8 @@ export default function TenantsPanel({ token, refreshKey = 0 }: { token: string;
                   <td className="py-2 pr-4">
                     <StatusBadge status={t.Status} />
                   </td>
+                  <td className="py-2 pr-4">{t.market_code || "empty"}</td>
+                  <td className="py-2 pr-4">{t.home_cell || "empty"}</td>
                   <td className="py-2 pr-4 text-gray-500">{t.UpdatedAt ? new Date(t.UpdatedAt).toLocaleDateString() : "—"}</td>
                   <td className="py-2">
                     <div className="flex gap-2">

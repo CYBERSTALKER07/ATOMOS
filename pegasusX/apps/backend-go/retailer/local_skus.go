@@ -72,11 +72,14 @@ func (s *Service) HandleLocalSKUs(w http.ResponseWriter, r *http.Request) {
 		activeOnly := r.URL.Query().Get("active") != "0" && r.URL.Query().Get("active") != "false"
 		items, err := s.listLocalSKUs(r.Context(), orgID, q, activeOnly)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_failed", "detail": err.Error()})
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "local_skus_failed"})
 			return
 		}
 		if items == nil {
 			items = []LocalSKU{}
+		}
+		for i := range items {
+			items[i].Currency = coalescePackCurrency(r.Context(), items[i].Currency)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	case http.MethodPost:
@@ -112,9 +115,11 @@ func (s *Service) HandleLocalSKUs(w http.ResponseWriter, r *http.Request) {
 		if req.IsActive != nil {
 			active = *req.IsActive
 		}
-		cur := strings.TrimSpace(req.Currency)
-		if cur == "" {
-			cur = "UZS"
+		cur, err := stampPackCurrency(r.Context(), req.Currency)
+		if err != nil {
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
+			return
 		}
 		row := LocalSKU{
 			LocalSkuID:        id,
@@ -134,6 +139,7 @@ func (s *Service) HandleLocalSKUs(w http.ResponseWriter, r *http.Request) {
 		if got, ok, _ := s.getLocalSKU(r.Context(), orgID, id); ok {
 			row = got
 		}
+		row.Currency = coalescePackCurrency(r.Context(), row.Currency)
 		writeJSON(w, http.StatusCreated, row)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -206,7 +212,15 @@ func (s *Service) HandleLocalSKUByID(w http.ResponseWriter, r *http.Request) {
 		cur.DefaultPriceMinor = *req.DefaultPriceMinor
 	}
 	if req.Currency != nil {
-		cur.Currency = strings.TrimSpace(*req.Currency)
+		stamped, err := stampPackCurrency(r.Context(), *req.Currency)
+		if err != nil {
+			st, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, st, map[string]string{"error": code})
+			return
+		}
+		cur.Currency = stamped
+	} else if strings.TrimSpace(cur.Currency) == "" {
+		cur.Currency = coalescePackCurrency(r.Context(), "")
 	}
 	if req.SectionID != nil {
 		cur.SectionID = strings.TrimSpace(*req.SectionID)
@@ -221,6 +235,7 @@ func (s *Service) HandleLocalSKUByID(w http.ResponseWriter, r *http.Request) {
 	if got, ok, _ := s.getLocalSKU(r.Context(), orgID, id); ok {
 		cur = got
 	}
+	cur.Currency = coalescePackCurrency(r.Context(), cur.Currency)
 	writeJSON(w, http.StatusOK, cur)
 }
 
@@ -264,11 +279,18 @@ func (s *Service) HandlePOSScan(w http.ResponseWriter, r *http.Request) {
 	}
 	price := int64(0)
 	hintName := ""
-	if row, ok := s.findLocalByBarcode(r.Context(), orgID, code); ok && row.IsActive {
+	if row, ok, err := s.findLocalByBarcode(r.Context(), orgID, code); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "local_skus_failed"})
+		return
+	} else if ok && row.IsActive {
 		price = row.DefaultPriceMinor
 		hintName = row.Name
 	}
 	sku, name, errMsg := s.validatePosSaleSKU(r.Context(), orgID, code, hintName, price)
+	if errMsg == "local_skus_failed" {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "local_skus_failed"})
+		return
+	}
 	if errMsg != "" {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "sku_not_found", "detail": errMsg, "barcode": code})
 		return
@@ -306,7 +328,11 @@ func (s *Service) HandlePOSCatalogSearch(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	locals, _ := s.listLocalSKUs(r.Context(), orgID, q, true)
+	locals, err := s.listLocalSKUs(r.Context(), orgID, q, true)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pos_catalog_failed"})
+		return
+	}
 	type hit struct {
 		SKU               string `json:"sku"`
 		Name              string `json:"name"`
@@ -322,28 +348,35 @@ func (s *Service) HandlePOSCatalogSearch(w http.ResponseWriter, r *http.Request)
 		})
 	}
 	// Union: store stock SKUs matching query (Pegasus-received)
-	if loc, e := s.EnsurePrimaryLocation(r.Context(), orgID); e == nil {
-		balances, _ := s.listStockBalances(r.Context(), orgID, loc.LocationID)
-		ql := strings.ToLower(q)
-		seen := map[string]bool{}
-		for _, h := range out {
-			seen[h.SKU] = true
+	loc, err := s.EnsurePrimaryLocation(r.Context(), orgID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pos_catalog_failed"})
+		return
+	}
+	balances, err := s.listStockBalances(r.Context(), orgID, loc.LocationID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pos_catalog_failed"})
+		return
+	}
+	ql := strings.ToLower(q)
+	seen := map[string]bool{}
+	for _, h := range out {
+		seen[h.SKU] = true
+	}
+	for _, b := range balances {
+		if b.OnHand <= 0 || IsLocalSKU(b.Sku) {
+			continue
 		}
-		for _, b := range balances {
-			if b.OnHand <= 0 || IsLocalSKU(b.Sku) {
-				continue
-			}
-			if ql != "" && !strings.Contains(strings.ToLower(b.Sku), ql) {
-				continue
-			}
-			if seen[b.Sku] {
-				continue
-			}
-			seen[b.Sku] = true
-			out = append(out, hit{SKU: b.Sku, Name: b.Sku, Source: "store_stock"})
-			if len(out) >= 50 {
-				break
-			}
+		if ql != "" && !strings.Contains(strings.ToLower(b.Sku), ql) {
+			continue
+		}
+		if seen[b.Sku] {
+			continue
+		}
+		seen[b.Sku] = true
+		out = append(out, hit{SKU: b.Sku, Name: b.Sku, Source: "store_stock"})
+		if len(out) >= 50 {
+			break
 		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
@@ -358,7 +391,10 @@ func (s *Service) validatePosSaleSKU(ctx context.Context, orgID, sku, name strin
 	}
 	// Explicit local catalog match by id or barcode
 	if IsLocalSKU(sku) {
-		row, ok, _ := s.getLocalSKU(ctx, orgID, NormalizeLocalSKUID(sku))
+		row, ok, err := s.getLocalSKU(ctx, orgID, NormalizeLocalSKUID(sku))
+		if err != nil {
+			return "", "", "local_skus_failed"
+		}
 		if ok && row.IsActive {
 			n := row.Name
 			if strings.TrimSpace(name) != "" {
@@ -374,7 +410,9 @@ func (s *Service) validatePosSaleSKU(ctx context.Context, orgID, sku, name strin
 		return NormalizeLocalSKUID(sku), n, ""
 	}
 	// Barcode lookup in local catalog
-	if row, ok := s.findLocalByBarcode(ctx, orgID, sku); ok && row.IsActive {
+	if row, ok, err := s.findLocalByBarcode(ctx, orgID, sku); err != nil {
+		return "", "", "local_skus_failed"
+	} else if ok && row.IsActive {
 		n := row.Name
 		if strings.TrimSpace(name) != "" {
 			n = strings.TrimSpace(name)
@@ -390,11 +428,14 @@ func (s *Service) validatePosSaleSKU(ctx context.Context, orgID, sku, name strin
 }
 
 func (s *Service) listLocalSKUs(ctx context.Context, orgID, q string, activeOnly bool) ([]LocalSKU, error) {
+	if s != nil && s.localSKUsQuery != nil {
+		return s.localSKUsQuery(ctx, orgID, q, activeOnly)
+	}
 	if s.spannerClient == nil {
 		return s.listLocalSKUsMem(orgID, q, activeOnly), nil
 	}
 	sql := `SELECT LocalSkuId, COALESCE(Barcode, ''), Name, COALESCE(Unit, ''), DefaultPriceMinor,
-		COALESCE(Currency, 'UZS'), COALESCE(SectionId, ''), IsActive,
+		COALESCE(Currency, ''), COALESCE(SectionId, ''), IsActive,
 		CAST(CreatedAt AS STRING), CAST(UpdatedAt AS STRING)
 		FROM RetailerLocalCatalog WHERE RetailerId = @rid`
 	params := map[string]any{"rid": orgID}
@@ -412,8 +453,7 @@ func (s *Service) listLocalSKUs(ctx context.Context, orgID, q string, activeOnly
 			break
 		}
 		if err != nil {
-			// Pre-migration
-			return s.listLocalSKUsMem(orgID, q, activeOnly), nil
+			return nil, err
 		}
 		var item LocalSKU
 		if err := row.Columns(
@@ -511,18 +551,21 @@ func (s *Service) getLocalSKU(ctx context.Context, orgID, id string) (LocalSKU, 
 	return item, true, nil
 }
 
-func (s *Service) findLocalByBarcode(ctx context.Context, orgID, barcode string) (LocalSKU, bool) {
+func (s *Service) findLocalByBarcode(ctx context.Context, orgID, barcode string) (LocalSKU, bool, error) {
 	barcode = strings.TrimSpace(barcode)
 	if barcode == "" {
-		return LocalSKU{}, false
+		return LocalSKU{}, false, nil
 	}
-	items, _ := s.listLocalSKUs(ctx, orgID, barcode, true)
+	items, err := s.listLocalSKUs(ctx, orgID, barcode, true)
+	if err != nil {
+		return LocalSKU{}, false, err
+	}
 	for _, it := range items {
 		if strings.EqualFold(it.Barcode, barcode) {
-			return it, true
+			return it, true, nil
 		}
 	}
-	return LocalSKU{}, false
+	return LocalSKU{}, false, nil
 }
 
 func (s *Service) saveLocalSKU(ctx context.Context, orgID string, row LocalSKU) error {

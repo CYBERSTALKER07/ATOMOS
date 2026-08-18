@@ -14,7 +14,7 @@ export default function ReconciliationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mismatchCount, setMismatchCount] = useState(0);
-  const [currency, setCurrency] = useState("UZS");
+  const [currency, setCurrency] = useState("");
   const [netMinor, setNetMinor] = useState(0);
 
   useEffect(() => {

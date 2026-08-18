@@ -40,17 +40,24 @@ func runGlobalProductsSmokeCheck(ctx context.Context, cfg *bootstrap.Config) err
 	suffix := uuid.NewString()[:8]
 	s1, s2 := "gp-sup-a-"+suffix, "gp-sup-b-"+suffix
 	p1, p2 := "gp-prod-a-"+suffix, "gp-prod-b-"+suffix
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_SKIPPED")
+		fmt.Println("PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_SKIPPED")
+		fmt.Println("PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_SKIPPED")
+		return nil
+	}
 
 	res1, err := svc.MatchAndLink(ctx, globalproducts.ProductInput{
 		ProductID: p1, SupplierID: s1, Name: "Cola 0.5L", Brand: "ColaBrand",
-		Barcode: gtin, PriceMinor: 5000, Currency: "UZS", UnitsPerPack: 1,
+		Barcode: gtin, PriceMinor: 5000, Currency: op, UnitsPerPack: 1,
 	})
 	if err != nil {
 		return fmt.Errorf("gtin link a: %w", err)
 	}
 	res2, err := svc.MatchAndLink(ctx, globalproducts.ProductInput{
 		ProductID: p2, SupplierID: s2, Name: "Cola Half Liter", Brand: "Other",
-		Barcode: gtin, PriceMinor: 4800, Currency: "UZS", UnitsPerPack: 1,
+		Barcode: gtin, PriceMinor: 4800, Currency: op, UnitsPerPack: 1,
 	})
 	if err != nil {
 		return fmt.Errorf("gtin link b: %w", err)
@@ -82,7 +89,7 @@ func runGlobalProductsSmokeCheck(ctx context.Context, cfg *bootstrap.Config) err
 	})
 	fres, err := svc.MatchAndLink(ctx, globalproducts.ProductInput{
 		ProductID: "gp-prod-fz-" + suffix, SupplierID: s1,
-		Name: "Widget Blue", Brand: keyBrand, PriceMinor: 1000, Currency: "UZS",
+		Name: "Widget Blue", Brand: keyBrand, PriceMinor: 1000, Currency: op,
 		UnitsPerPack: 12, UomCode: "EACH",
 	})
 	if err != nil {

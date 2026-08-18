@@ -33,6 +33,7 @@ fun LocationSettingsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var saveMessage by remember { mutableStateOf<String?>(null) }
     var warehouseName by remember { mutableStateOf("") }
+    var packCountry by remember { mutableStateOf("") }
     var location by remember { mutableStateOf(AddressLocationValue()) }
     val scope = rememberCoroutineScope()
 
@@ -45,6 +46,7 @@ fun LocationSettingsScreen(
                 if (resp.isSuccessful && resp.body() != null) {
                     val body = resp.body()!!
                     warehouseName = body.name
+                    packCountry = body.packCountryCode.ifBlank { body.countryCode }
                     location = AddressLocationValue(
                         address = body.address,
                         lat = body.lat,
@@ -126,6 +128,15 @@ fun LocationSettingsScreen(
             ) {
                 if (warehouseName.isNotBlank()) {
                     Text(warehouseName, style = MaterialTheme.typography.titleMedium)
+                }
+                if (packCountry.isNotBlank()) {
+                    OutlinedTextField(
+                        value = packCountry,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Pack country") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 Text(
                     "Dispatch routing uses this address. Coordinates stay hidden from daily ops screens.",

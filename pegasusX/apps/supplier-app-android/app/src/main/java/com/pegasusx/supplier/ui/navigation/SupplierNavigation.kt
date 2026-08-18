@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -113,7 +114,11 @@ object SupplierRoutes {
     const val BILLING = "billing"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDERS_ROUTE = "orders?status={status}"
     const val ORDER_DETAIL = "orders/{orderId}"
+
+    fun orders(status: String? = null): String =
+        if (status.isNullOrBlank()) ORDERS else "$ORDERS?status=${android.net.Uri.encode(status)}"
     const val FLEET = "fleet"
     const val MORE = "more"
     const val INVENTORY = "inventory"
@@ -230,7 +235,8 @@ fun SupplierNavigation(
     val tabs = listOf(
         SupplierTab(SupplierRoutes.DASHBOARD, "Dashboard", Icons.Default.Dashboard),
         SupplierTab(SupplierRoutes.ORDERS, "Orders", Icons.AutoMirrored.Filled.List),
-        SupplierTab(SupplierRoutes.FLEET, "Fleet", Icons.Default.LocalShipping),
+        SupplierTab(SupplierRoutes.DISPATCH_PREVIEW, "Dispatch", Icons.Default.LocalShipping),
+        SupplierTab(SupplierRoutes.PLANNING_BRAIN, "Plan", Icons.Default.ShowChart),
         SupplierTab(SupplierRoutes.MORE, "More", Icons.Default.MoreHoriz),
     )
     val backStack by navController.currentBackStackEntryAsState()
@@ -340,14 +346,29 @@ fun SupplierNavigation(
                         showBillingBanner = !TokenHolder.isConfigured,
                         onOpenBilling = { navController.navigate(SupplierRoutes.BILLING) },
                         onOpenNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
+                        onOpenOrderStatus = { status ->
+                            navController.navigate(SupplierRoutes.orders(status)) {
+                                launchSingleTop = true
+                            }
+                        },
                     )
                 
             }
-            composable(SupplierRoutes.ORDERS) {
+            composable(
+                route = SupplierRoutes.ORDERS_ROUTE,
+                arguments = listOf(
+                    navArgument("status") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val status = entry.arguments?.getString("status").orEmpty()
                 OrdersHubScreen(
                     ops = ops,
                     realtimeSignals = realtimeSignals,
                     onOrderClick = { order -> navController.navigate(SupplierRoutes.orderDetail(order.orderId)) },
+                    initialStatus = status.takeIf { it.isNotBlank() },
                 )
             }
 
@@ -378,6 +399,7 @@ fun SupplierNavigation(
                     onDispatch = { navController.navigate(SupplierRoutes.DISPATCH_PREVIEW) },
                     onActivity = { navController.navigate(SupplierRoutes.ACTIVITY) },
                     onFleetOrders = { navController.navigate(SupplierRoutes.FLEET_ORDERS) },
+                    onFleet = { navController.navigate(SupplierRoutes.FLEET) },
                     onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                     onOperations = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onReplenishmentPolicies = { navController.navigate(SupplierRoutes.REPLENISHMENT_POLICIES) },

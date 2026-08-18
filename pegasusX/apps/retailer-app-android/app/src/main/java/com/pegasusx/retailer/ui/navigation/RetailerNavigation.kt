@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -75,6 +76,8 @@ import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
 import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
+import com.pegasusx.retailer.ui.CommandFilterState
+import com.pegasusx.retailer.ui.LocalCommandFilter
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.retailer.ui.screens.orders.OrdersScreen
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementScreen
@@ -124,7 +127,9 @@ fun RetailerNavigation(
     val showFloatingBar = currentTab in listOf(PegasusTab.HOME, PegasusTab.CATALOG, PegasusTab.ORDERS, PegasusTab.MAP)
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
     val topBarTitle = if (currentTab in PegasusTab.PrimaryTabs) currentTab.label else "Retailer"
+    val commandFilter = remember { CommandFilterState() }
 
+    CompositionLocalProvider(LocalCommandFilter provides commandFilter) {
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
             if (!isCompact) {
@@ -337,6 +342,16 @@ fun RetailerNavigation(
                                 }
                             },
                             onOpenOrders = {
+                                commandFilter.clear()
+                                currentTab = PegasusTab.ORDERS
+                                navController.navigate(PegasusTab.ORDERS.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenOrderStatus = { status, supplierId ->
+                                commandFilter.jump(status, supplierId)
                                 currentTab = PegasusTab.ORDERS
                                 navController.navigate(PegasusTab.ORDERS.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -819,6 +834,7 @@ fun RetailerNavigation(
                 phase = paymentPhase,
                 errorMessage = paymentError,
                 isCompact = isCompact,
+                allowedCardGateways = navState.allowedCardGateways,
                 onSelectCash = {
                     paymentError = null
                     paymentPhase = PaymentPhase.CASH_CONFIRM
@@ -882,6 +898,7 @@ fun RetailerNavigation(
                 },
             )
         }
+    }
     }
 }
 

@@ -9,6 +9,8 @@ struct DeliveryPaymentSheetView: View {
     @State private var phase: PaymentPhase = .choose
     @State private var errorMessage: String?
     @State private var showSavedCards = false
+    @State private var catalogCodes: [String] = []
+    @State private var packDisplayCurrency = packCurrency(MarketPackStore.pack)
 
     private let api = APIClient.shared
     private let ws = RetailerWebSocket.shared
@@ -80,6 +82,7 @@ struct DeliveryPaymentSheetView: View {
             .presentationDragIndicator(.visible)
         }
         .task { await listenForCompletion() }
+        .task { await fetchPaymentCatalog() }
     }
 
     // MARK: - Choose
@@ -117,6 +120,11 @@ struct DeliveryPaymentSheetView: View {
                             ? AppTheme.warning
                             : AppTheme.textPrimary
                     )
+                if !packDisplayCurrency.isEmpty {
+                    Text(packDisplayCurrency)
+                        .font(.system(.caption, design: .rounded, weight: .semibold))
+                        .foregroundStyle(AppTheme.textTertiary)
+                }
                 Text(L10n.format("mobile_retailer.ui.order_suffix", "\(String(event.orderId.suffix(6)))"))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(AppTheme.textTertiary)
@@ -520,21 +528,31 @@ struct DeliveryPaymentSheetView: View {
     }
 
     private var cardGatewayOptions: [CardGatewayOption] {
-        let configuredGateways = event.availableCardGateways
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
-            .filter { ["GLOBAL_PAY", "ADYEN"].contains($0) }
-
-        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "ADYEN"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
+        let gateways = filterRetailerCardGateways(
+            incoming: event.availableCardGateways,
+            catalog: catalogCodes
+        )
 
         return gateways.compactMap { gateway in
             switch gateway {
             case "GLOBAL_PAY":
                 CardGatewayOption(gateway: gateway, label: "GlobalPay", description: "Pay via GlobalPay checkout")
-            case "ADYEN":
-                CardGatewayOption(gateway: gateway, label: "Adyen", description: "Pay via Adyen checkout")
             default:
                 nil
             }
+        }
+    }
+
+    private func fetchPaymentCatalog() async {
+        do {
+            let resp = try await api.getPaymentCatalog()
+            catalogCodes = selectableRetailerCatalogCodes(resp.catalog)
+            if !resp.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                packDisplayCurrency = resp.currencyCode.uppercased()
+            }
+        } catch {
+            catalogCodes = []
+            packDisplayCurrency = packCurrency(MarketPackStore.pack)
         }
     }
 }

@@ -233,7 +233,7 @@ func (c *Config) validateUpdatesBaseURL(require bool) error {
 }
 
 func isProductionEnv() bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "production")
+	return auth.IsProduction()
 }
 
 // fcmAllowNoOp reports whether FCM may degrade to no-op push (G1.D).

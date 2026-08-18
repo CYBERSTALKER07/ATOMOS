@@ -27,14 +27,12 @@ enum class FactorySection(
     ;
 
     companion object {
-        val compactTabs: List<FactorySection> = listOf(DASHBOARD, LOADING_BAY, TRANSFERS, MORE)
+        val compactTabs: List<FactorySection> = listOf(DASHBOARD, LOADING_BAY, PAYLOAD_LOAD, TRANSFERS, MORE)
 
-        val primarySections: List<FactorySection> = listOf(
-            DASHBOARD, LOADING_BAY, TRANSFERS, FLEET, STAFF, LOCATION,
-        )
+        val primarySections: List<FactorySection> = compactTabs.filter { it != MORE }
 
         val operationsSections: List<FactorySection> = listOf(
-            SUPPLY_REQUESTS, PAYLOAD_LOAD, PAYLOAD_OVERRIDE, MANIFESTS, MANIFEST_EXCEPTIONS,
+            FLEET, STAFF, LOCATION, SUPPLY_REQUESTS, PAYLOAD_OVERRIDE, MANIFESTS, MANIFEST_EXCEPTIONS,
         )
 
         val intelligenceSections: List<FactorySection> = listOf(

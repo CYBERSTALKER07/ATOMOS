@@ -109,8 +109,8 @@ fun CheckoutSheet(
     expressPriority: Boolean = false,
     currencyPickerEnabled: Boolean = false,
     currencyAllowlist: List<String> = emptyList(),
-    operatingCurrency: String = "UZS",
-    orderCurrency: String = "UZS",
+    operatingCurrency: String = "",
+    orderCurrency: String = "",
     onDeliveryModeChange: (String) -> Unit = {},
     onDeliveryDateChange: (String?) -> Unit = {},
     onExpressPriorityChange: (Boolean) -> Unit = {},
@@ -179,44 +179,6 @@ fun CheckoutSheet(
                 onDeliveryDateChange = onDeliveryDateChange,
                 onExpressPriorityChange = onExpressPriorityChange,
             )
-
-            if (currencyPickerEnabled && currencyAllowlist.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "Order currency",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    currencyAllowlist.forEach { code ->
-                        val selected = code.equals(orderCurrency, ignoreCase = true)
-                        Surface(
-                            modifier = Modifier.clickable { onOrderCurrencyChange(code) },
-                            shape = SoftSquircleShape,
-                            color = if (selected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            },
-                        ) {
-                            Text(
-                                text = if (code.equals(operatingCurrency, ignoreCase = true)) {
-                                    "$code (default)"
-                                } else {
-                                    code
-                                },
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                            )
-                        }
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

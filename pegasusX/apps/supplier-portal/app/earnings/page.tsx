@@ -18,6 +18,7 @@ import {
 } from "../payments/_shared/finance";
 import { PageChrome } from "@/components/PageChrome";
 import { PortalSection } from "@/components/portal";
+import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
 
 type LoadState =
   | { status: "loading" }
@@ -30,10 +31,10 @@ type ActionState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
-const gatewayOptions = ["ADYEN", "GLOBAL_PAY", "STRIPE", "PAYME", "CLICK", "CASH"];
-
 export default function EarningsPage() {
   const t = usePortalT();
+  const { gateways, currency: packCurrencyCode } = useSupplierPaymentCatalog();
+  const gatewayOptions = gateways.length ? gateways : ["CASH"];
   const api = useMemo(() => createSupplierApi(), []);
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [refreshTick, setRefreshTick] = useState(0);
@@ -41,10 +42,17 @@ export default function EarningsPage() {
   const [chargebackForm, setChargebackForm] = useState<PaymentChargebackRequest>({
     order_id: "",
     retailer_id: "",
-    gateway: gatewayOptions[0],
+    gateway: "CASH",
     amount: 0,
-    currency: "UZS",
+    currency: "",
   });
+  useEffect(() => {
+    setChargebackForm((current) => ({
+      ...current,
+      gateway: gatewayOptions.includes(current.gateway) ? current.gateway : gatewayOptions[0],
+      currency: packCurrencyCode || current.currency,
+    }));
+  }, [gatewayOptions.join("|"), packCurrencyCode]);
   const [reversalForm, setReversalForm] = useState<PaymentChargebackReversalRequest>({
     session_id: "",
   });
@@ -247,8 +255,8 @@ export default function EarningsPage() {
                   <input
                     className="md-input-outlined"
                     placeholder={t("supplier_portal.chargebacks.text.currency")}
-                    value={chargebackForm.currency ?? "UZS"}
-                    onChange={(event) => setChargebackForm((current) => ({ ...current, currency: event.target.value || "UZS" }))}
+                    value={packCurrencyCode || chargebackForm.currency}
+                    readOnly
                   />
                 </div>
                 <button className="md-btn md-btn-filled" type="submit" disabled={chargebackState.status === "submitting"}>

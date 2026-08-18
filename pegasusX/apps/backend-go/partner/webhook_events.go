@@ -6,20 +6,24 @@ import "github.com/pegasusx/pegasusx/apps/backend-go/events"
 // may be delivered to partner webhooks. Per-subscription EventTypes further
 // filters within this set. Do not expose the full events catalog (159 types) —
 // many are internal/ops-only.
+// EventPartnerWebhookPing is the signed operator/e2e test payload.
+const EventPartnerWebhookPing = "PARTNER_WEBHOOK_PING"
+
 var PartnerWebhookableEvents = map[string]bool{
-	events.EventOrderCreated:             true,
-	events.EventOrderStatusChanged:       true,
-	events.EventClaimFiled:               true,
-	events.EventClaimResolved:            true,
-	events.EventPaymentCleared:           true,
-	events.EventPaymentFailed:            true,
-	events.EventPaymentRequired:          true,
-	events.EventManifestSealed:           true,
-	events.EventManifestDispatched:       true,
-	events.EventManifestCompleted:        true,
+	EventPartnerWebhookPing:               true,
+	events.EventOrderCreated:              true,
+	events.EventOrderStatusChanged:        true,
+	events.EventClaimFiled:                true,
+	events.EventClaimResolved:             true,
+	events.EventPaymentCleared:            true,
+	events.EventPaymentFailed:             true,
+	events.EventPaymentRequired:           true,
+	events.EventManifestSealed:            true,
+	events.EventManifestDispatched:        true,
+	events.EventManifestCompleted:         true,
 	events.EventReturnReceivedAtWarehouse: true,
-	events.EventDemandSignal:             true,
-	events.EventProductHandlingUpdated:   true,
+	events.EventDemandSignal:              true,
+	events.EventProductHandlingUpdated:    true,
 }
 
 // IsPartnerWebhookable reports whether eventType is in the platform-safe set.

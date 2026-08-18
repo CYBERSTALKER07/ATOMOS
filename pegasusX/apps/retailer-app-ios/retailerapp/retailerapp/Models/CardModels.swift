@@ -30,6 +30,30 @@ struct RetailerCardsResponse: Codable {
     let cards: [RetailerCardToken]
 }
 
+struct PSPListing: Codable, Hashable {
+    let code: String
+    let status: String
+    let selectable: Bool
+    let nationalCards: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case code, status, selectable
+        case nationalCards = "national_cards"
+    }
+}
+
+struct RetailerPaymentCatalogResponse: Codable {
+    let currencyCode: String
+    let marketCode: String?
+    let catalog: [PSPListing]
+
+    enum CodingKeys: String, CodingKey {
+        case currencyCode = "currency_code"
+        case marketCode = "market_code"
+        case catalog
+    }
+}
+
 struct CardInitiateRequest: Codable {
     let gateway: String
 }

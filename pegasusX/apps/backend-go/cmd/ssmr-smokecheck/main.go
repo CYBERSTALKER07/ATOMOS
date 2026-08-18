@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/schemadrift"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -147,12 +149,14 @@ func runSpannerCheck(ctx context.Context, cfg *bootstrap.Config) error {
 }
 
 func assertSeedSupplier(ctx context.Context, client *spanner.Client, cfg *bootstrap.Config) error {
+	// Identity is DefaultSupplierID. EnsureDemoScopeLinks rewrites Name to
+	// "SSMR Smoke Supplier" after cmd/setup upserts SEED_SUPPLIER_NAME.
 	stmt := spanner.Statement{
 		SQL: `SELECT SupplierId, CountryCode, Currency
 FROM Suppliers
-WHERE Name = @name
+WHERE SupplierId = @id
 LIMIT 1`,
-		Params: map[string]any{"name": cfg.SeedSupplierName},
+		Params: map[string]any{"id": seed.DefaultSupplierID},
 	}
 
 	iter := client.Single().Query(ctx, stmt)
@@ -161,7 +165,7 @@ LIMIT 1`,
 	row, err := iter.Next()
 	if err != nil {
 		if err == iterator.Done {
-			return fmt.Errorf("seed supplier %q missing", cfg.SeedSupplierName)
+			return fmt.Errorf("seed supplier %q missing", seed.DefaultSupplierID)
 		}
 		return fmt.Errorf("query seeded supplier: %w", err)
 	}
@@ -448,9 +452,29 @@ func spannerDatabasePath(cfg *bootstrap.Config) string {
 }
 
 func envOr(key string, fallback string) string {
-	value := strings.TrimSpace(os.Getenv(key))
-	if value == "" {
-		return fallback
+	if strings.HasPrefix(key, "SSMR_") {
+		sandboxKey := "SANDBOX_" + strings.TrimPrefix(key, "SSMR_")
+		if v := strings.TrimSpace(os.Getenv(sandboxKey)); v != "" {
+			return v
+		}
 	}
-	return value
+	value := strings.TrimSpace(os.Getenv(key))
+	if value != "" {
+		return value
+	}
+	if auth.IsSandbox() && sandboxIdentityKey(key) {
+		return ""
+	}
+	return fallback
+}
+
+func sandboxIdentityKey(key string) bool {
+	switch key {
+	case "SSMR_SMOKE_DRIVER_ID", "SSMR_SMOKE_WAREHOUSE_ID",
+		"SSMR_SMOKE_SUPPLIER_PASSWORD", "SSMR_SMOKE_SUPPLIER_PHONE",
+		"SSMR_SMOKE_RETAILER_PHONE", "SSMR_SMOKE_SUPPLIER_ID":
+		return true
+	default:
+		return false
+	}
 }

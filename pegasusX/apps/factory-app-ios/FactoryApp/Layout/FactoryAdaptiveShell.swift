@@ -6,6 +6,7 @@ struct FactoryAdaptiveShell: View {
     @State private var sidebarSelection: FactorySection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: FactoryCompactTab = .dashboard
+    @State private var pendingTransferFilter: String?
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
@@ -59,6 +60,9 @@ struct FactoryAdaptiveShell: View {
             sectionView(.loadingBay)
                 .tabItem { Label("portal.nav.loading_bay", systemImage: FactorySection.loadingBay.icon) }
                 .tag(FactoryCompactTab.loadingBay)
+            sectionView(.payloadLoad)
+                .tabItem { Label("portal.nav.payload", systemImage: FactorySection.payloadLoad.icon) }
+                .tag(FactoryCompactTab.payload)
             sectionView(.transfers)
                 .tabItem { Label("portal.nav.transfers", systemImage: FactorySection.transfers.icon) }
                 .tag(FactoryCompactTab.transfers)
@@ -82,12 +86,21 @@ struct FactoryAdaptiveShell: View {
                 onOpenPayloadOverride: { sidebarSelection = .payloadOverride },
                 onOpenManifestExceptions: { sidebarSelection = .manifestExceptions },
                 onOpenAnalytics: { sidebarSelection = .analytics },
-                onOpenInsights: { sidebarSelection = .insights }
+                onOpenInsights: { sidebarSelection = .insights },
+                onOpenTransfers: { key in
+                    pendingTransferFilter = key
+                    sidebarSelection = .transfers
+                    compactTab = .transfers
+                },
+                onOpenLoadingBay: {
+                    sidebarSelection = .loadingBay
+                    compactTab = .loadingBay
+                }
             )
         case .loadingBay:
             LoadingBayView()
         case .transfers:
-            TransferListView()
+            TransferListView(initialFilter: pendingTransferFilter)
         case .fleet:
             FleetView()
         case .staff:

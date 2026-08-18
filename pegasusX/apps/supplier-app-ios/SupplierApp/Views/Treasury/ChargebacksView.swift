@@ -6,7 +6,7 @@ struct ChargebacksView: View {
     @State private var retailerId = ""
     @State private var gateway = "ADYEN"
     @State private var amount = ""
-    @State private var currency = "UZS"
+    @State private var currency = packCurrency(MarketPackStore.pack)
     @State private var sessionId = ""
     @State private var busy = false
     @State private var chargebackMessage: String?

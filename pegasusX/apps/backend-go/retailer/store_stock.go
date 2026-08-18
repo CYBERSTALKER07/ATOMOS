@@ -797,6 +797,9 @@ func (s *Service) SumOnHandForSKU(ctx context.Context, retailerID, sku string) (
 }
 
 func (s *Service) listStockBalances(ctx context.Context, retailerID, locationID string) ([]StockBalanceDTO, error) {
+	if s != nil && s.stockBalancesQuery != nil {
+		return s.stockBalancesQuery(ctx, retailerID, locationID)
+	}
 	if s.spannerClient == nil {
 		s.mu.RLock()
 		defer s.mu.RUnlock()

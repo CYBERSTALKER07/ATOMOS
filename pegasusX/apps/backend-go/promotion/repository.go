@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -94,23 +95,7 @@ func appendOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	}
 	mutations := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return mutations
 }
@@ -223,7 +208,7 @@ func (r *SpannerRepository) RedeemPromotion(ctx context.Context, promotionID str
 }
 
 func (r *SpannerRepository) queryPromotions(ctx context.Context, stmt spanner.Statement) ([]Promotion, error) {
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var out []Promotion
 	for {
@@ -311,7 +296,7 @@ func (r *SpannerRepository) LookupProductCategories(ctx context.Context, product
 		SQL:    `SELECT ProductId, CategoryId FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": productIDs},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make(map[string]string, len(productIDs))
 	for {
@@ -340,7 +325,7 @@ func (r *SpannerRepository) LookupListPrices(ctx context.Context, productIDs []s
 		SQL:    `SELECT ProductId, PriceMinor FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": productIDs},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make(map[string]int64, len(productIDs))
 	for {

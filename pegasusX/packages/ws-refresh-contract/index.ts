@@ -120,3 +120,177 @@ export function parseWsEventType(raw: unknown): string | null {
     return null;
   }
 }
+
+/** Command-dashboard dirty slice. Location never refetches the rollup GET. */
+export type DashboardDirtySlice =
+  | "orders"
+  | "manifests"
+  | "money"
+  | "shop_closed"
+  | "pulse"
+  | "map"
+  | "plan"
+  | null;
+
+export const DASHBOARD_MONEY_EVENTS = new Set([
+  "PAYMENT_REQUIRED",
+  "PAYMENT_CLEARED",
+  "PAYMENT_SETTLED",
+  "PAYMENT_FAILED",
+  "PAYMENT_EXPIRED",
+  "FISCAL_FAILED",
+  "RECONCILIATION_REQUIRED",
+]);
+
+export const DASHBOARD_PLAN_EVENTS = new Set([
+  "SCENARIO_PUBLISHED",
+  "PLANNING_SCENARIO_PUBLISHED",
+]);
+
+export const DASHBOARD_ROLLUP_REFRESH_EVENTS = new Set([
+  ...DISPATCH_REFRESH_EVENTS,
+  ...DASHBOARD_MONEY_EVENTS,
+  "ORDER_CREATED",
+]);
+
+export function dashboardDirtySlice(eventType: string): DashboardDirtySlice {
+  const type = eventType.trim();
+  if (!type || type.startsWith("SYSTEM")) {
+    return null;
+  }
+  if (type === "DRIVER_LOCATION_UPDATED") {
+    return "map";
+  }
+  if (DASHBOARD_PLAN_EVENTS.has(type)) {
+    return "plan";
+  }
+  if (type.startsWith("PULSE_")) {
+    return "pulse";
+  }
+  if (type.startsWith("SHOP_CLOSED") || FAILED_DELIVERY_REFRESH_EVENTS.has(type)) {
+    return "shop_closed";
+  }
+  if (DASHBOARD_MONEY_EVENTS.has(type)) {
+    return "money";
+  }
+  if (
+    type.startsWith("MANIFEST_") ||
+    type.startsWith("DISPATCH_") ||
+    type.includes("DISPATCH_LOCK") ||
+    type.startsWith("FREEZE_LOCK") ||
+    type.startsWith("FACTORY_MANIFEST") ||
+    type.startsWith("FACTORY_TRANSFER") ||
+    type === "FACTORY_SUPPLY_REQUEST_UPDATE" ||
+    type === "FACTORY_OUTBOX_FAILED"
+  ) {
+    return "manifests";
+  }
+  if (
+    ORDER_STATUS_REFRESH_EVENTS.has(type) ||
+    type === "ORDER_CREATED" ||
+    type === "ORDER_ASSIGNED" ||
+    RETURN_REFRESH_EVENTS.has(type)
+  ) {
+    return "orders";
+  }
+  return null;
+}
+
+export function shouldRefetchDashboardRollup(eventType: string): boolean {
+  const slice = dashboardDirtySlice(eventType);
+  return slice === "orders" || slice === "manifests" || slice === "money" || slice === "shop_closed";
+}
+
+export type DriverLocationPatch = {
+  driver_id?: string;
+  route_id?: string;
+  lat: number;
+  lng: number;
+};
+
+function finiteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function asRecord(raw: unknown): Record<string, unknown> | null {
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  if (raw && typeof raw === "object") {
+    return raw as Record<string, unknown>;
+  }
+  return null;
+}
+
+export function parseDriverLocationPatch(raw: unknown): DriverLocationPatch | null {
+  const obj = asRecord(raw);
+  if (!obj) {
+    return null;
+  }
+  if (obj.type !== "DRIVER_LOCATION_UPDATED") {
+    return null;
+  }
+  const data =
+    obj.data && typeof obj.data === "object" ? (obj.data as Record<string, unknown>) : obj;
+  const lat = finiteNumber(data.lat) ?? finiteNumber(data.latitude) ?? finiteNumber(data.gps_lat);
+  const lng = finiteNumber(data.lng) ?? finiteNumber(data.longitude) ?? finiteNumber(data.gps_lng);
+  if (lat == null || lng == null) {
+    return null;
+  }
+  return {
+    driver_id: typeof data.driver_id === "string" ? data.driver_id : undefined,
+    route_id: typeof data.route_id === "string" ? data.route_id : undefined,
+    lat,
+    lng,
+  };
+}
+
+export function applyDriverLocationPatch<
+  T extends {
+    driver_id?: string;
+    route_id?: string;
+    live_location_available?: boolean;
+    driver_location?: {
+      lat?: number;
+      lng?: number;
+      latitude?: number;
+      longitude?: number;
+    };
+  },
+>(routes: T[], patch: DriverLocationPatch): T[] {
+  if (!patch.driver_id && !patch.route_id) {
+    return routes;
+  }
+  return routes.map((route) => {
+    const driverMatch = !patch.driver_id || route.driver_id === patch.driver_id;
+    const routeMatch = !patch.route_id || !route.route_id || route.route_id === patch.route_id;
+    if (!driverMatch || !routeMatch) {
+      return route;
+    }
+    return {
+      ...route,
+      live_location_available: true,
+      driver_location: {
+        ...route.driver_location,
+        lat: patch.lat,
+        lng: patch.lng,
+        latitude: patch.lat,
+        longitude: patch.lng,
+      },
+    };
+  });
+}

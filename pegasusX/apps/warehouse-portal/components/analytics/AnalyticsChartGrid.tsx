@@ -26,7 +26,7 @@ export default function AnalyticsChartGrid({ dailySeries, fmtCurrency }: Analyti
                 tickFormatter={(value: string) => (value.length >= 10 ? value.slice(5, 10) : value)}
               />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted)" />
-              <Tooltip formatter={(value) => [`${fmtCurrency(Number(value ?? 0))} UZS`, 'Revenue']} />
+              <Tooltip formatter={(value) => [fmtCurrency(Number(value ?? 0)), 'Revenue']} />
               <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

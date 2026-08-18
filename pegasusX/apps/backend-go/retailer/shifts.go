@@ -316,9 +316,11 @@ func (s *Service) handleShiftOpen(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := stampPackCurrency(r.Context(), req.Currency)
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
 	}
 	if req.OpeningFloatMinor < 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "opening_float_invalid"})

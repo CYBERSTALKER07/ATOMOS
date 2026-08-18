@@ -415,23 +415,7 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return mutations
 }

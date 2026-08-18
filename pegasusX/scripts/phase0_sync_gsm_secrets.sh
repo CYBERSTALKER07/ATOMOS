@@ -73,6 +73,13 @@ GP_SERVICE_GSM="$(echo "$OUT" | jq -r '.global_pay_service_id_secret_id.value')"
 GP_USER_GSM="$(echo "$OUT" | jq -r '.global_pay_username_secret_id.value')"
 GP_PASS_GSM="$(echo "$OUT" | jq -r '.global_pay_password_secret_id.value')"
 REDIS_GSM="$(echo "$OUT" | jq -r '.redis_auth_secret_id.value')"
+FISCAL_SOLIQ_BASE_GSM="$(echo "$OUT" | jq -r '.fiscal_my_soliq_base_url_secret_id.value')"
+FISCAL_SOLIQ_KEY_GSM="$(echo "$OUT" | jq -r '.fiscal_my_soliq_api_key_secret_id.value')"
+FISCAL_SOLIQ_TIN_GSM="$(echo "$OUT" | jq -r '.fiscal_my_soliq_tin_secret_id.value')"
+FISCAL_SOLIQ_SIGNER_GSM="$(echo "$OUT" | jq -r '.fiscal_my_soliq_signer_secret_id.value')"
+FISCAL_SOLIQ_P12_GSM="$(echo "$OUT" | jq -r '.fiscal_my_soliq_pkcs12_password_secret_id.value')"
+PLAYMOBILE_LOGIN_GSM="$(echo "$OUT" | jq -r '.playmobile_login_secret_id.value')"
+PLAYMOBILE_PASSWORD_GSM="$(echo "$OUT" | jq -r '.playmobile_password_secret_id.value')"
 
 # Prefer real env values when provided.
 put_secret "$JWT_GSM" "${JWT_SECRET:-}"
@@ -113,6 +120,14 @@ if [[ "$ENSURE_ES_STUBS" == "1" ]]; then
 	ensure_version "$STRIPE_GSM" "${STRIPE_WEBHOOK_SECRET:-$UNUSED_RAIL_PLACEHOLDER}"
 	ensure_version "$PAYME_GSM" "${PAYME_WEBHOOK_SECRET:-$UNUSED_RAIL_PLACEHOLDER}"
 	ensure_version "$CLICK_GSM" "${CLICK_WEBHOOK_SECRET:-$UNUSED_RAIL_PLACEHOLDER}"
+	# LB-3 fiscal/SMS shells — stub until Soliq EDS / PlayMobile values exist. Do not flip FISCAL_PROVIDER from this script.
+	ensure_version "$FISCAL_SOLIQ_BASE_GSM" "${FISCAL_MY_SOLIQ_BASE_URL:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$FISCAL_SOLIQ_KEY_GSM" "${FISCAL_MY_SOLIQ_API_KEY:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$FISCAL_SOLIQ_TIN_GSM" "${FISCAL_MY_SOLIQ_TIN:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$FISCAL_SOLIQ_SIGNER_GSM" "${FISCAL_MY_SOLIQ_SIGNER:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$FISCAL_SOLIQ_P12_GSM" "${FISCAL_MY_SOLIQ_PKCS12_PASSWORD:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$PLAYMOBILE_LOGIN_GSM" "${PLAYMOBILE_LOGIN:-$UNUSED_RAIL_PLACEHOLDER}"
+	ensure_version "$PLAYMOBILE_PASSWORD_GSM" "${PLAYMOBILE_PASSWORD:-$UNUSED_RAIL_PLACEHOLDER}"
 fi
 
 echo "phase0-secrets-ok"

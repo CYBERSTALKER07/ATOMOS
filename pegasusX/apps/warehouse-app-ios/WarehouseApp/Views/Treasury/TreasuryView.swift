@@ -40,12 +40,12 @@ struct TreasuryView: View {
                                     columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
                                     spacing: LabTheme.spacingMD
                                 ) {
-                                    KpiTile(title: "Balance", value: "\(overview.balance.formatted()) UZS", systemImage: "banknote", tint: .accentColor)
-                                    KpiTile(title: "Receivable", value: "\(overview.totalReceivable.formatted()) UZS", systemImage: "arrow.down.circle", tint: LabTheme.warning)
-                                    KpiTile(title: "Collected", value: "\(overview.totalCollected.formatted()) UZS", systemImage: "checkmark.circle", tint: LabTheme.success)
+                                    KpiTile(title: "Balance", value: "\(overview.balance.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "banknote", tint: .accentColor)
+                                    KpiTile(title: "Receivable", value: "\(overview.totalReceivable.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "arrow.down.circle", tint: LabTheme.warning)
+                                    KpiTile(title: "Collected", value: "\(overview.totalCollected.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "checkmark.circle", tint: LabTheme.success)
                                     KpiTile(
                                         title: "Overdue",
-                                        value: "\(overview.overdueAmount.formatted()) UZS",
+                                        value: "\(overview.overdueAmount.formatted()) \(packCurrency(MarketPackStore.pack))",
                                         systemImage: "exclamationmark.triangle",
                                         tint: LabTheme.destructive,
                                         chip: overview.overdueAmount > 0 ? ("ALERT", LabTheme.destructive) : nil

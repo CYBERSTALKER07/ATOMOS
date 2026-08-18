@@ -2,9 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePortalT } from "@/lib/i18n";
+import { ApiError } from "@pegasusx/api-client";
 import { createSupplierApi } from "@/lib/api";
 import { sessionSupplierId } from "@/lib/supplier-scope";
 import type { ForecastAccuracyDailyRow } from "@pegasusx/types";
+import { SourceChip } from "@pegasusx/ui-kit/portal";
 
 const api = createSupplierApi();
 
@@ -71,7 +73,11 @@ export function ForecastAccuracyPanel() {
       const resp = await api.getForecastAccuracy({ supplierId, days });
       setRows(resp.items ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load forecast accuracy");
+      if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+        setError("unavailable");
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load forecast accuracy");
+      }
       setRows(null);
     } finally {
       setLoading(false);
@@ -121,6 +127,10 @@ export function ForecastAccuracyPanel() {
       {loading ? (
         <p className="md-typescale-body-small mt-4" style={{ color: "var(--desk-text-secondary)" }}>
           Loading accuracy…
+        </p>
+      ) : error === "unavailable" ? (
+        <p className="md-typescale-body-small mt-4" data-testid="gs-u-accuracy-unavailable" style={{ color: "var(--desk-text-secondary)" }}>
+          <SourceChip source="unavailable" /> Accuracy read is not in this role
         </p>
       ) : error ? (
         <p className="md-typescale-body-small mt-4" style={{ color: "var(--desk-danger, #b3261e)" }}>

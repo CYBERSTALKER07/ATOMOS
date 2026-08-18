@@ -19,8 +19,6 @@ import { TrackingMap } from "../../../components/tracking/TrackingMap";
 import { TrackingStatus } from "../../../components/tracking/TrackingStatus";
 
 
-const TASHKENT: [number, number] = [69.2401, 41.2995];
-
 const LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const DARK_STYLE =

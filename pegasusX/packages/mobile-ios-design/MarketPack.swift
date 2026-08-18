@@ -8,6 +8,8 @@ struct MarketPack: Sendable, Equatable {
     var currencyCode: String
     var fiscalAdapter: String
     var mapsAdapter: String
+    var mapCenterLat: Double
+    var mapCenterLng: Double
     var checkoutReadsThis: Bool
 
     var receiptLabel: String { fiscalReceiptLabel(fiscalAdapter) }
@@ -34,6 +36,34 @@ func fiscalReceiptLabel(_ adapter: String?) -> String {
 func packCurrency(_ pack: MarketPack?, fallback: String = "") -> String {
     let code = pack?.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     return code.isEmpty ? fallback : code.uppercased()
+}
+
+/// Empty pack prints the number only. Never invents UZS.
+func formatPackMoney(_ minor: Int64, pack: MarketPack?, decimalPlaces: Int = 2) -> String {
+    let denom = pow(10.0, Double(max(decimalPlaces, 0)))
+    let units = Double(minor) / denom
+    let formatted = units.formatted(.number.precision(.fractionLength(0...max(decimalPlaces, 0))))
+        .replacingOccurrences(of: ",", with: " ")
+    let ccy = packCurrency(pack)
+    return ccy.isEmpty ? formatted : "\(formatted) \(ccy)"
+}
+
+/// Stored/event currency, else session pack. Empty pack does not invent UZS.
+func displayPackCurrency(_ raw: String?, pack: MarketPack? = MarketPackStore.pack) -> String {
+    let fromEvent = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !fromEvent.isEmpty { return fromEvent.uppercased() }
+    return packCurrency(pack)
+}
+
+/// Shipped pack camera. Empty/planned pack does not invent Tashkent.
+func packMapCenter(_ pack: MarketPack?) -> (lat: Double, lng: Double)? {
+    guard let pack else { return nil }
+    if pack.mapCenterLat == 0 && pack.mapCenterLng == 0 { return nil }
+    return (pack.mapCenterLat, pack.mapCenterLng)
+}
+
+func packMapCoordinate(_ pack: MarketPack? = MarketPackStore.pack) -> (lat: Double, lng: Double) {
+    packMapCenter(pack) ?? (0, 0)
 }
 
 func pinnedAPIBaseURL(bootstrap: URL) -> URL {
@@ -112,6 +142,8 @@ enum MarketPackBinder {
                 currencyCode: obj["currency_code"] as? String ?? "",
                 fiscalAdapter: obj["fiscal_adapter"] as? String ?? "",
                 mapsAdapter: obj["maps_adapter"] as? String ?? "",
+                mapCenterLat: (obj["map_center_lat"] as? NSNumber)?.doubleValue ?? 0,
+                mapCenterLng: (obj["map_center_lng"] as? NSNumber)?.doubleValue ?? 0,
                 checkoutReadsThis: obj["checkout_reads_this"] as? Bool ?? false
             )
         }

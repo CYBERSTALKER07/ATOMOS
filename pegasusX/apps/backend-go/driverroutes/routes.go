@@ -34,9 +34,7 @@ type Deps struct {
 		HandleAmendOrder(http.ResponseWriter, *http.Request)
 		HandleReassignHandshake(http.ResponseWriter, *http.Request)
 	}
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	AllowAuthBypass bool
 }
 
 // RegisterRoutes mounts driver role-row endpoints.
@@ -99,8 +97,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/delivery/proximity-unlock", d.OrderService.HandleProximityUnlock)
 			rr.Post("/v1/delivery/bypass-offload", d.OrderService.HandleBypassOffload)
 			rr.Post("/v1/ws/ack", d.Service.HandleWSAck)
-			rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
-			rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
 			// Quantity negotiation product-disabled → 410 feature_disabled.
 			rr.Post("/v1/delivery/negotiate", d.OrderService.HandleProposeNegotiation)
 			rr.Post("/v1/delivery/credit-delivery", d.OrderService.HandleCreditDelivery)
@@ -116,18 +112,14 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleFactoryAdmin))
 		mountEcosystemCRUD(gr)
 	})
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleDriver, auth.RoleFactoryDriver))
 		mountProtected(gr)

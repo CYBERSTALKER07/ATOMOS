@@ -422,21 +422,6 @@ func (b *supplierSpannerTxnBuf) BufferOutbox(_ context.Context, e outbox.Event) 
 }
 
 func portalOutboxMutation(e outbox.Event) *spanner.Mutation {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-	return spanner.InsertOrUpdateMap("OutboxEvents", row)
+	// EventRowMap stamps required OutboxEvents.SupplierId (NOT NULL after 20260819).
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }

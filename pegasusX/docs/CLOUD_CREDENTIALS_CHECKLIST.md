@@ -19,7 +19,23 @@ ExternalSecret `backend-go-secrets` is **atomic** (all `spec.data` keys required
 | `payme-webhook-secret` | `…-payme-webhook-secret` | Stub OK until Payme rail live |
 | `click-webhook-secret` | `…-click-webhook-secret` | Stub OK until Click rail live |
 
-- Terraform shells all 12 names (`infra/terraform/main.tf`). Versions: pass TF vars or run `scripts/phase0_sync_gsm_secrets.sh` (`ENSURE_ES_STUBS=1` writes `unused-rail-placeholder` when env empty).
+### LB-3 fiscal / SMS shells (names only — do not put values in git)
+
+ESO `spec.data` is atomic. **Do not** add these keys to the live ExternalSecret until GSM has ≥1 enabled version (TF apply of the shell + `phase0_sync` placeholder). PKCS#12 **bytes** are a volume (`FISCAL_MY_SOLIQ_PKCS12_FILE`), not a GSM string.
+
+| K8s `secretKey` (when wired) | GSM id | Env | Real vs stub |
+|------------------------------|--------|-----|----------------|
+| `fiscal-my-soliq-base-url` | `…-fiscal-my-soliq-base-url` | `FISCAL_MY_SOLIQ_BASE_URL` | Real for MY_SOLIQ; stub until EDS |
+| `fiscal-my-soliq-api-key` | `…-fiscal-my-soliq-api-key` | `FISCAL_MY_SOLIQ_API_KEY` | Real for MY_SOLIQ |
+| `fiscal-my-soliq-tin` | `…-fiscal-my-soliq-tin` | `FISCAL_MY_SOLIQ_TIN` | Real for MY_SOLIQ |
+| `fiscal-my-soliq-signer` | `…-fiscal-my-soliq-signer` | `FISCAL_MY_SOLIQ_SIGNER` | `pkcs12` in sandbox/prod |
+| `fiscal-my-soliq-pkcs12-password` | `…-fiscal-my-soliq-pkcs12-password` | `FISCAL_MY_SOLIQ_PKCS12_PASSWORD` | Real with E-IMZO |
+| `playmobile-login` | `…-playmobile-login` | `PLAYMOBILE_LOGIN` | Real for UZ SMS |
+| `playmobile-password` | `…-playmobile-password` | `PLAYMOBILE_PASSWORD` | Real for UZ SMS |
+
+TF shells: `infra/terraform/fiscal_sms_secrets.tf`. Phase0: `scripts/phase0_sync_gsm_secrets.sh`. Do not flip `FISCAL_PROVIDER` from a stub.
+
+- Terraform shells all 12 payment names (`infra/terraform/main.tf`) plus the 7 fiscal/SMS shells. Versions: pass TF vars or run `scripts/phase0_sync_gsm_secrets.sh` (`ENSURE_ES_STUBS=1` writes `unused-rail-placeholder` when env empty).
 - Emergency without ESO: `scripts/bootstrap_k8s_secrets.sh` (`SECRET_PREFIX=pegasusx-ssmr`).
 - Env aliases: `GLOBAL_PAY_USERNAME` / `GLOBAL_PAY_PASSWORD` / `GLOBAL_PAY_WEBHOOK_SECRET`, `JWT_SECRET`, `GOOGLE_MAPS_API_KEY`
 

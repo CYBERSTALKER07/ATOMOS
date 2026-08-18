@@ -112,9 +112,10 @@
 				2E5380432F6B10CF00C3D5C6 /* driverappios */,
 			);
 			name = driverappios;
-			packageProductDependencies = (
+            packageProductDependencies = (
 				DR11FB000000000000000002 /* FirebaseAuth */,
 				DR11FB000000000000000003 /* FirebaseCore */,
+				DR11FB000000000000000004 /* FirebaseMessaging */,
 				DR11PK000000000000000002 /* PegasusKit */,
 			);
 			productName = driverappios;
@@ -329,6 +330,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		DR11FB000000000000000004 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 		DR11PK000000000000000002 /* PegasusKit */ = {
 			isa = XCSwiftPackageProductDependency;

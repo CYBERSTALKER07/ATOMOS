@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TransferListView: View {
+    var initialFilter: String? = nil
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var transfers: [Transfer] = []
     @State private var loading = true
@@ -108,6 +109,11 @@ struct TransferListView: View {
                     systemImage: "arrow.left.arrow.right",
                     description: Text("mobile_factory.ui.choose_a_transfer_from_the_list")
                 )
+            }
+        }
+        .task(id: initialFilter) {
+            if let initialFilter, !initialFilter.isEmpty {
+                selectedFilter = initialFilter
             }
         }
         .task(id: selectedFilter) { await load() }

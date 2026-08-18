@@ -37,6 +37,12 @@ func runSafetyStockE2E(
 	}
 	defer spannerClient.Close()
 
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_SAFETY_STOCK_SKIPPED")
+		return nil
+	}
+
 	warehouseID := strings.TrimSpace(envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"))
 	productID := "SSMR-SKU-SAFETY-" + uuid.NewString()[:8]
 	now := time.Now().UTC()
@@ -113,7 +119,7 @@ func runSafetyStockE2E(
 			"LineItemsJson":      lineItems,
 			"TotalMinor":         int64(7000),
 			"OriginalTotalMinor": int64(7000),
-			"Currency":           "UZS",
+			"Currency":           op,
 			"Version":            int64(1),
 			// Lag past wall-clock so emulator clock skew never rejects as future.
 			"CreatedAt": now.Add(-24*time.Hour - 2*time.Second),

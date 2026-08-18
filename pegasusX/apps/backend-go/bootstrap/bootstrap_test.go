@@ -244,6 +244,40 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 	}
 }
 
+func TestNewApp_WiresLoginFirebaseVerifier(t *testing.T) {
+	stubRuntimeConstructors(t)
+
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
+		return &fakeRedisAdapter{}, nil
+	}
+	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
+		return &fakeKafkaPublisher{}, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
+		return &fakeKafkaDLQWriter{}, nil
+	}
+	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
+		return nil, errors.New("skip spanner in firebase wire test")
+	}
+
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.FirebaseAuthEnabled = true
+	cfg.FirebaseProjectID = "demo-project"
+
+	app, err := NewApp(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("NewApp: %v", err)
+	}
+	t.Cleanup(func() { app.Close() })
+	if app.FirebaseVerifier == nil {
+		t.Fatal("App.FirebaseVerifier must be set when flag+project are set")
+	}
+	if app.RetailerService == nil || !app.RetailerService.HasFirebaseVerifier() {
+		t.Fatal("retailer login must receive the same verifier")
+	}
+}
+
 func TestNewApp_StrictModeFailsWhenNotificationDLQUnavailable(t *testing.T) {
 	stubRuntimeConstructors(t)
 

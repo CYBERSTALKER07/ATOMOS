@@ -399,11 +399,11 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - FCM
     func registerDeviceToken(_ token: String) async throws -> StatusResponse {
-        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "IOS"))
+        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "ios"))
     }
     func unregisterDeviceToken(_ token: String) async throws -> StatusResponse {
         var req = try buildRequest(path: "v1/user/device-token", method: "DELETE")
-        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "IOS"))
+        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "ios"))
         return try await execute(req)
     }
 

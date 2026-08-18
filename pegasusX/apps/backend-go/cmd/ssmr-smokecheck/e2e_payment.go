@@ -14,14 +14,23 @@ import (
 )
 
 func replayGlobalPayWebhook(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, sessionID, orderID string) error {
+	return replayGlobalPayWebhookAmount(ctx, client, base, cfg, sessionID, orderID, 0)
+}
+
+var lastCardCheckoutAmount int64
+
+func replayGlobalPayWebhookAmount(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, sessionID, orderID string, amountMinor int64) error {
 	secret := envOr("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret")
 	authHeader := "Basic " + base64.StdEncoding.EncodeToString([]byte("Paycom:"+secret))
+	if amountMinor <= 0 {
+		amountMinor = lastCardCheckoutAmount
+	}
 	body, _ := json.Marshal(map[string]any{
 		"session_id":     sessionID,
 		"transaction_id": "ssmr-tx-" + orderID,
 		"status":         "CAPTURED",
 		"order_id":       orderID,
-		"amount_minor":   int64(100000),
+		"amount_minor":   amountMinor,
 		"currency":       cfg.SeedSupplierCurrency,
 	})
 	idem := "ssmr-webhook-" + orderID
@@ -106,29 +115,35 @@ func advanceOrderToArrived(ctx context.Context, client *http.Client, base, order
 }
 
 func runCardCheckoutAtDelivery(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config) (string, error) {
+	sessionID, _, err := runCardCheckoutAtDeliveryAmount(ctx, client, base, retailerToken, orderID, cfg)
+	return sessionID, err
+}
+
+func runCardCheckoutAtDeliveryAmount(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config) (string, int64, error) {
 	body, _ := json.Marshal(map[string]any{
-		"order_id":     orderID,
-		"amount_minor": int64(100000),
-		"currency":     cfg.SeedSupplierCurrency,
-		"gateway":      "GLOBAL_PAY",
+		"order_id": orderID,
+		"currency": cfg.SeedSupplierCurrency,
+		"gateway":  "GLOBAL_PAY",
 	})
 	status, respBody, _, err := clientPost(ctx, client, base+"/v1/order/card-checkout", body, retailerToken, "ssmr-card-checkout-"+orderID)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if status != http.StatusOK && status != http.StatusCreated {
-		return "", fmt.Errorf("card-checkout status %d body %s", status, string(respBody))
+		return "", 0, fmt.Errorf("card-checkout status %d body %s", status, string(respBody))
 	}
 	var resp struct {
 		SessionID string `json:"session_id"`
+		Amount    int64  `json:"amount"`
 	}
 	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if resp.SessionID == "" {
-		return "", fmt.Errorf("card-checkout missing session_id: %s", string(respBody))
+		return "", 0, fmt.Errorf("card-checkout missing session_id: %s", string(respBody))
 	}
-	return resp.SessionID, nil
+	lastCardCheckoutAmount = resp.Amount
+	return resp.SessionID, resp.Amount, nil
 }
 
 func isGlobalPayMerchantAuthFailure(err error) bool {
@@ -139,14 +154,15 @@ func isGlobalPayMerchantAuthFailure(err error) bool {
 	return strings.Contains(msg, "globalpay auth failed") ||
 		strings.Contains(msg, "Пользователь не авторизован") ||
 		strings.Contains(msg, `"code":"2030"`) ||
-		strings.Contains(msg, "payment_gateway_execution_failed")
+		strings.Contains(msg, "payment_gateway_execution_failed") ||
+		strings.Contains(msg, "no_live_keys")
 }
 
 func runPayAtDeliveryCheckout(ctx context.Context, client *http.Client, base, retailerToken, orderID string, cfg *bootstrap.Config, supplierID string) (string, error) {
 	if err := advanceOrderToArrived(ctx, client, base, orderID, supplierID, cfg); err != nil {
 		return "", err
 	}
-	sessionID, err := runCardCheckoutAtDelivery(ctx, client, base, retailerToken, orderID, cfg)
+	sessionID, _, err := runCardCheckoutAtDeliveryAmount(ctx, client, base, retailerToken, orderID, cfg)
 	if err == nil {
 		// Caller must replay webhook; CARD_SUCCESS marker printed after settle.
 		return sessionID, nil

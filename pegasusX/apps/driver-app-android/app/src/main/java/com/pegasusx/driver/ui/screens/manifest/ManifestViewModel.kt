@@ -195,8 +195,10 @@ class ManifestViewModel @Inject constructor(
                 }
                 val hasInTransit = orders.any {
                     it.state == OrderState.IN_TRANSIT || it.state == OrderState.ARRIVING ||
-                    it.state == OrderState.ARRIVED || it.state == OrderState.AWAITING_PAYMENT ||
-                    it.state == OrderState.PENDING_CASH_COLLECTION || it.state == OrderState.DISPATCHED
+                    it.state == OrderState.ARRIVED || it.state == OrderState.ARRIVED_SHOP_CLOSED ||
+                    it.state == OrderState.AWAITING_PAYMENT ||
+                    it.state == OrderState.PENDING_CASH_COLLECTION || it.state == OrderState.DISPATCHED ||
+                    it.state == OrderState.FISCALIZING || it.state == OrderState.FISCAL_FAILED
                 }
                 val derivedStatus = when {
                     _state.value.truckStatus == "RETURNING" -> "RETURNING"

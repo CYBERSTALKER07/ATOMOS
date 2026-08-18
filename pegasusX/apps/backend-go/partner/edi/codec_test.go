@@ -212,3 +212,96 @@ func TestEDIBreadthRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestEDICurrency_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	if got := ediCurrency("sup-1", ""); got != "UZS" {
+		t.Fatalf("got %q want UZS from pack", got)
+	}
+}
+
+func TestEDICurrency_StoredWins(t *testing.T) {
+	if got := ediCurrency("sup-1", "usd"); got != "USD" {
+		t.Fatalf("got %q want USD", got)
+	}
+}
+
+func TestEDICurrency_PlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	if got := ediCurrency("sup-1", ""); got != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", got)
+	}
+}
+
+func TestBuildINVOIC_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	o := OrderSnapshot{
+		OrderID: "o1", RetailerID: "ret-1", SupplierID: "sup-1",
+		Status: "CONFIRMED", TotalMinor: 1000,
+		Lines: []Line{{SKU: "A", Qty: 1}},
+	}
+	body := BuildINVOIC(o, nil, "inv-pack")
+	if !strings.Contains(body, ":UZS") {
+		t.Fatalf("expected pack UZS in MOA:\n%s", body)
+	}
+	msg, err := ParseINVOIC(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.Currency != "UZS" {
+		t.Fatalf("parse currency=%q want UZS from MOA (not invent)", msg.Currency)
+	}
+}
+
+func TestBuildINVOIC_EmptyCurrencyPlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	o := OrderSnapshot{
+		OrderID: "o1", RetailerID: "ret-1", SupplierID: "sup-1",
+		Status: "CONFIRMED", TotalMinor: 1000,
+		Lines: []Line{{SKU: "A", Qty: 1}},
+	}
+	body := BuildINVOIC(o, nil, "inv-eu")
+	if strings.Contains(body, "UZS") {
+		t.Fatalf("planned pack must not invent UZS:\n%s", body)
+	}
+	msg, err := ParseINVOIC(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.Currency != "" {
+		t.Fatalf("parse currency=%q want empty (no invent)", msg.Currency)
+	}
+}
+
+func TestParseINVOIC_EmptyCurrencyDoesNotInvent(t *testing.T) {
+	raw := "UNA:+.? '" +
+		"UNB+UNOC:3+PEGASUS+ret-1+000101:0000+inv-empty'" +
+		"UNH+1+INVOIC:D:96A:UN'" +
+		"BGM+380+inv-empty'" +
+		"RFF+ON:o1'" +
+		"MOA+86:1000'" +
+		"UNT+6+1'" +
+		"UNZ+1+inv-empty'"
+	msg, err := ParseINVOIC(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.Currency != "" {
+		t.Fatalf("empty inbound must not invent UZS, got %q", msg.Currency)
+	}
+}
+
+func TestBuildPRICATAndREMADV_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	pricat := BuildPRICAT(PricatMessage{
+		ExternalDocID: "PC-empty", SellerRef: "sup-1",
+		Lines: []CatalogLine{{SKU: "A", PriceMinor: 100}},
+	})
+	if !strings.Contains(pricat, ":UZS") {
+		t.Fatalf("PRICAT expected pack UZS:\n%s", pricat)
+	}
+	rem := BuildREMADV(RemadvMessage{ExternalDocID: "RM-empty", RefInvoiceID: "inv-1", PaidMinor: 500, SellerRef: "sup-1"})
+	if !strings.Contains(rem, ":UZS") {
+		t.Fatalf("REMADV expected pack UZS:\n%s", rem)
+	}
+}

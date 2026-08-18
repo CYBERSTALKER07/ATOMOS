@@ -49,7 +49,8 @@ configMapGenerator:
       # G1.B tax default: MY_SOLIQ (creds/EDS via ExternalSecret — boot fails closed if missing).
       - FISCAL_PROVIDER=MY_SOLIQ
       # G1.D: push must be live in prod (set FCM_ALLOW_NOOP only for emergency degraded).
-      # FIREBASE_PROJECT_ID comes from ExternalSecret / Workload Identity.
+      # FIREBASE_PROJECT_ID is the ConfigMap value (pegasus-503013), matching client plists.
+      # ExternalSecret does not supply FIREBASE_PROJECT_ID.
       - FORECAST_ACCURACY_ENABLED=true
       - FORECAST_ALGO_ENABLED=true
       - FORECAST_ALGO_REQUIRE_GATE=true

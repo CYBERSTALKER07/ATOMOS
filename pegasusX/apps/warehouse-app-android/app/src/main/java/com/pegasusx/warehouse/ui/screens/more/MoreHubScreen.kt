@@ -46,6 +46,7 @@ private val inventory = listOf(
     MoreDestination("Tomorrow board", "Orders by delivery date", Icons.Default.CalendarMonth, WarehouseRoutes.TOMORROW_BOARD),
     MoreDestination("Stock commitments", "SKU demand drill-down", Icons.Default.Inventory, WarehouseRoutes.STOCK_COMMITMENTS),
     MoreDestination("Supply requests", "Factory restock queue", Icons.Default.Sync, WarehouseRoutes.SUPPLY_REQUESTS),
+    MoreDestination("Coverage and supply", "Pins view + nearest factory", Icons.Default.Place, WarehouseRoutes.COVERAGE),
     MoreDestination("Replenishment", "Stock velocity insights", Icons.Default.Inventory2, WarehouseRoutes.REPLENISHMENT),
     MoreDestination("Demand Forecast", "Projected demand", Icons.Default.ShowChart, WarehouseRoutes.DEMAND_FORECAST),
     MoreDestination("Ops settings", "Stock policy + hours", Icons.Default.Settings, WarehouseRoutes.OPS_SETTINGS),

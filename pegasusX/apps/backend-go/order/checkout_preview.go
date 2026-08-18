@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -93,7 +94,8 @@ func (s *Service) HandleCheckoutPreview(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, ErrServiceabilityUnavailable):
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
-			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch):
+			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch),
+			errors.Is(err, auth.ErrGeographyIncomplete), errors.Is(err, auth.ErrCrossMarketDeferred):
 			st, code := auth.CheckoutPackHTTPStatus(err)
 			writeJSON(w, st, map[string]string{"error": code})
 		default:
@@ -127,10 +129,11 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		return CheckoutPreviewResponse{}, err
 	}
 
-	lat, lng, err := s.resolveRetailerCoordinates(ctx, retailerID, req.Latitude, req.Longitude)
+	store, err := s.resolveCheckoutStore(ctx, retailerID, req.Latitude, req.Longitude)
 	if err != nil {
 		return CheckoutPreviewResponse{}, err
 	}
+	lat, lng := store.Lat, store.Lng
 	if _, err := h3CellFromLatLng(lat, lng); err != nil {
 		return CheckoutPreviewResponse{}, err
 	}
@@ -143,9 +146,46 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 	if s.warehouse == nil {
 		return CheckoutPreviewResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
-	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, s.resolveSupplierScope(ctx), lat, lng, s.lookupRetailerCountry(ctx, retailerID))
+
+	if MultiSupplierCheckoutEnabled() {
+		groups, groupErr := s.groupCheckoutLinesBySupplier(ctx, req.Items, lineItems)
+		if groupErr != nil {
+			return CheckoutPreviewResponse{}, groupErr
+		}
+		var merged CheckoutPreviewResponse
+		for i, g := range groups {
+			legCtx := createCtxForSupplier(ctx, g.SupplierID)
+			part, partErr := s.previewAtWarehouse(legCtx, g.SupplierID, store, pack, g.Lines, req)
+			if partErr != nil {
+				return CheckoutPreviewResponse{}, partErr
+			}
+			if !part.OK {
+				return part, nil
+			}
+			if i == 0 {
+				merged = part
+				continue
+			}
+			merged = mergePreviewResponses(merged, part)
+		}
+		return merged, nil
+	}
+
+	return s.previewAtWarehouse(ctx, s.resolveSupplierScope(ctx), store, pack, lineItems, req)
+}
+
+func (s *Service) previewAtWarehouse(
+	ctx context.Context,
+	supplierID string,
+	store proximity.StorePoint,
+	pack auth.MarketPack,
+	lineItems []LineItem,
+	req UnifiedCheckoutRequest,
+) (CheckoutPreviewResponse, error) {
+	lat, lng := store.Lat, store.Lng
+	warehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, store)
 	if err != nil {
-		return CheckoutPreviewResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
+		return CheckoutPreviewResponse{}, mapWarehouseResolveError(err)
 	}
 	warehouseID = strings.TrimSpace(warehouseID)
 	if warehouseID == "" {
@@ -227,7 +267,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		if warehouseDefault == "" {
 			warehouseDefault = outOfStockPolicyReject
 		}
-		maxQty, perSKUPolicy, err := loadAvailableQuantitiesAndPolicies(ctx, s.spannerClient, s.resolveSupplierScope(ctx), warehouseID, lineItems, warehouseDefault)
+		maxQty, perSKUPolicy, err := loadAvailableQuantitiesAndPolicies(ctx, s.spannerClient, supplierID, warehouseID, lineItems, warehouseDefault)
 		if err == nil {
 			resp.MaxQuantities = maxQty
 			if policyErr == nil {
@@ -260,7 +300,7 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 			}
 		}
 		policyOverride, _ := s.resolveCheckoutPolicyOverride(whPolicy, req.CheckoutPolicyToken)
-		invPlan, err := PlanInventoryCheckout(ctx, s.spannerClient, s.resolveSupplierScope(ctx), warehouseID, lineItems, policyOverride)
+		invPlan, err := PlanInventoryCheckout(ctx, s.spannerClient, supplierID, warehouseID, lineItems, policyOverride)
 		if err != nil {
 			var ice *InventoryCheckoutError
 			if errors.As(err, &ice) {
@@ -293,6 +333,33 @@ func (s *Service) PreviewCheckout(ctx context.Context, retailerID string, req Un
 		resp.BackorderItemCount = invPlan.BackorderCount
 	}
 	return resp, nil
+}
+
+func mergePreviewResponses(base, extra CheckoutPreviewResponse) CheckoutPreviewResponse {
+	base.BackorderItemCount += extra.BackorderItemCount
+	base.StockWarnings = append(base.StockWarnings, extra.StockWarnings...)
+	base.DeliveryFeeMinor += extra.DeliveryFeeMinor
+	if extra.DeliveryDistanceKm > base.DeliveryDistanceKm {
+		base.DeliveryDistanceKm = extra.DeliveryDistanceKm
+	}
+	base.ShowStockCounts = base.ShowStockCounts || extra.ShowStockCounts
+	if base.MaxQuantities == nil {
+		base.MaxQuantities = map[string]int64{}
+	}
+	if base.OrderableQuantities == nil {
+		base.OrderableQuantities = map[string]int64{}
+	}
+	for sku, qty := range extra.MaxQuantities {
+		base.MaxQuantities[sku] = qty
+	}
+	for sku, qty := range extra.OrderableQuantities {
+		base.OrderableQuantities[sku] = qty
+	}
+	if extra.CheckoutPolicyToken != "" && base.CheckoutPolicyToken == "" {
+		base.CheckoutPolicyToken = extra.CheckoutPolicyToken
+		base.CheckoutPolicyExpiresAt = extra.CheckoutPolicyExpiresAt
+	}
+	return base
 }
 
 func loadWarehouseShowStockCounts(ctx context.Context, client *spanner.Client, warehouseID string) bool {

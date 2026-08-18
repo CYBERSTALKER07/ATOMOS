@@ -8,10 +8,12 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import AnalyticsChartGrid from '@/components/analytics/AnalyticsChartGrid';
+import { moneyCurrency } from '@pegasusx/api-client';
 // VelocityGauge unmounted — no avg-dispatch SoT on warehouse ops analytics
 
 interface AnalyticsData {
   period: string;
+  currency?: string;
   total_revenue: number;
   total_orders: number;
   avg_order_value: number;
@@ -53,7 +55,11 @@ export default function AnalyticsPage() {
   useEffect(() => { load(); }, [load]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
-  const fmtCurrency = (n: number) => new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(n);
+  const packCode = moneyCurrency(data?.currency);
+  const fmtCurrency = (n: number) => {
+    const formatted = new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(n);
+    return packCode ? `${formatted} ${packCode}` : formatted;
+  };
 
   const d = data || { period: '30d', total_revenue: 0, total_orders: 0, avg_order_value: 0, top_products: [], daily: [], fleet_utilization_pct: 0 };
   const topProducts = d.top_products ?? [];
@@ -109,7 +115,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.revenue")}</div>
-          <div className="text-2xl font-light">{fmtCurrency(d.total_revenue)} UZS</div>
+          <div className="text-2xl font-light">{fmtCurrency(d.total_revenue)}</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">{t("portal.nav.orders")}</div>
@@ -117,7 +123,7 @@ export default function AnalyticsPage() {
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.avg_order_value")}</div>
-          <div className="text-2xl font-light">{fmtCurrency(d.avg_order_value)} UZS</div>
+          <div className="text-2xl font-light">{fmtCurrency(d.avg_order_value)}</div>
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">{t("warehouse_portal.analytics.text.fleet_utilization")}</div>

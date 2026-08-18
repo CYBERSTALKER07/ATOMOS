@@ -406,7 +406,7 @@ data class ComplianceFiscalOpenRow(
     val status: String = "",
     @SerialName("fiscal_status") val fiscalStatus: String = "",
     @SerialName("total_minor") val totalMinor: Long = 0,
-    val currency: String = "UZS",
+    val currency: String = "",
     @SerialName("updated_at") val updatedAt: String = "",
 )
 
@@ -416,7 +416,7 @@ data class ComplianceForceCompleteRow(
     @SerialName("reason_code") val reasonCode: String = "",
     @SerialName("actor_id") val actorId: String = "",
     @SerialName("total_minor") val totalMinor: Long = 0,
-    val currency: String = "UZS",
+    val currency: String = "",
     @SerialName("completed_at") val completedAt: String = "",
 )
 
@@ -427,7 +427,7 @@ data class ComplianceClaimMismatchRow(
     @SerialName("claim_amount_minor") val claimAmountMinor: Long = 0,
     @SerialName("order_total_minor") val orderTotalMinor: Long = 0,
     @SerialName("mismatch_reason") val mismatchReason: String = "",
-    val currency: String = "UZS",
+    val currency: String = "",
 )
 
 @Serializable
@@ -992,6 +992,14 @@ data class PromoSimulateResult(
     @SerialName("projected_margin_minor") val projectedMarginMinor: Long = 0,
     @SerialName("margin_delta_pct") val marginDeltaPct: Double = 0.0,
     @SerialName("sandbox_only") val sandboxOnly: Boolean = true,
+)
+
+@Serializable
+data class SparsityGateResult(
+    val allowed: Boolean = false,
+    @SerialName("completed_orders") val completedOrders: Int = 0,
+    @SerialName("blocked_reason") val blockedReason: String? = null,
+    val label: String = "",
 )
 
 @Serializable

@@ -230,6 +230,11 @@ interface FactoryApi {
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
 
+    @POST("v1/user/device-token")
+    suspend fun registerDeviceToken(
+        @Body body: DeviceTokenRequest,
+    ): Response<Map<String, String>>
+
     // ── Location (factory-scoped staff have full read/write) ──
     @GET("v1/factory/ops/location")
     suspend fun getFactoryLocation(): Response<com.pegasusx.factory.data.model.FactoryLocationResponse>

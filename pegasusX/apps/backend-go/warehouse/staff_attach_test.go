@@ -11,6 +11,28 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 )
 
+func TestHandleWarehouseLogin_IDTokenWithoutVerifierUnavailable(t *testing.T) {
+	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/warehouse/login",
+		strings.NewReader(`{"id_token":"tok"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleWarehouseLogin(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleWarehouseRegister_IDTokenWithoutVerifierUnavailable(t *testing.T) {
+	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/warehouse/register",
+		strings.NewReader(`{"name":"Ops","phone":"+15551212","id_token":"tok","assigned_warehouse_id":"wh-1"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleWarehouseRegister(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandleWarehouseRegister_RequiresInvite(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
 	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})

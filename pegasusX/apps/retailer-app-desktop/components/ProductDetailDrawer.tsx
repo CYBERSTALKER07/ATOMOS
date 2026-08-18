@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { isCatalogBlocked } from "../lib/stock-policy";
 import type { Product, Variant } from "../lib/types";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import {
   productDisplayPrice,
   productListPrice,
@@ -170,12 +171,12 @@ export default function ProductDetailDrawer({
                     {productSalePrice(product) != null && (
                       <p className="md-typescale-body-medium text-[var(--desk-text-tertiary)] line-through">
                         {productListPrice(product).toLocaleString()}{" "}
-                        <small className="text-xs opacity-40 uppercase">UZS</small>
+                        <small className="text-xs opacity-40 uppercase">{packCurrency(readCachedAuthSession()?.pack)}</small>
                       </p>
                     )}
                     <p className="md-typescale-title-large font-light text-[var(--desk-text-primary)]">
                       {productDisplayPrice(product).toLocaleString()}{" "}
-                      <small className="text-xs opacity-40 uppercase">UZS</small>
+                      <small className="text-xs opacity-40 uppercase">{packCurrency(readCachedAuthSession()?.pack)}</small>
                     </p>
                   </div>
                 </div>

@@ -24,12 +24,23 @@ data class RefreshTokenRequest(
 )
 
 @Serializable
+data class DeviceTokenRequest(
+    val token: String,
+    val platform: String,
+)
+
+@Serializable
 data class SupplierDashboard(
     @SerialName("supplier_id") val supplierId: String,
     @SerialName("is_configured") val isConfigured: Boolean,
     @SerialName("inventory_skus") val inventorySKUs: Int = 0,
     @SerialName("pending_orders") val pendingOrders: Int = 0,
     @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("today_revenue_minor") val todayRevenueMinor: Long = 0,
+    @SerialName("deliveries_completed_today") val deliveriesCompletedToday: Int = 0,
+    @SerialName("deliveries_attempted_today") val deliveriesAttemptedToday: Int = 0,
+    @SerialName("manifests_by_state") val manifestsByState: Map<String, Int> = emptyMap(),
 )
 
 @Serializable

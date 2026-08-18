@@ -29,7 +29,8 @@ struct LocationPickerView: View {
             coord = CLLocationCoordinate2D(latitude: initialLatitude, longitude: initialLongitude)
         } else {
             // Default: Tashkent city center
-            coord = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
+            let c = packMapCoordinate()
+            coord = CLLocationCoordinate2D(latitude: c.lat, longitude: c.lng)
         }
         _centerCoordinate = State(initialValue: coord)
         _cameraPosition = State(initialValue: .region(MKCoordinateRegion(

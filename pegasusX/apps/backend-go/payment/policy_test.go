@@ -58,3 +58,44 @@ func TestApplyPackToGatewayPolicy_DropsUnknownPSP(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNormalizeGatewayPolicyForPack_EmptyUsesLiveUZ(t *testing.T) {
+	t.Parallel()
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	if !ok {
+		t.Fatal("uz pack")
+	}
+	policy := NormalizeGatewayPolicyForPack(PaymentAcceptorWarehouse, nil, "", pack)
+	if !containsGateway(policy.AllowedGateways, "CASH") || !containsGateway(policy.AllowedGateways, "GLOBAL_PAY") {
+		t.Fatalf("allowed=%#v", policy.AllowedGateways)
+	}
+	if containsGateway(policy.AllowedGateways, "ADYEN") || containsGateway(policy.AllowedGateways, "STRIPE") {
+		t.Fatalf("foreign rails leaked: %#v", policy.AllowedGateways)
+	}
+	if containsGateway(policy.AllowedGateways, "PAYME") {
+		t.Fatalf("empty config must not select unkeyed rails: %#v", policy.AllowedGateways)
+	}
+}
+
+func TestNormalizeGatewayPolicyForPack_RejectsStripeOnUZ(t *testing.T) {
+	t.Parallel()
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	if !ok {
+		t.Fatal("uz pack")
+	}
+	policy := NormalizeGatewayPolicyForPack(PaymentAcceptorWarehouse, []string{"STRIPE", "ADYEN"}, "WAREHOUSE_CONFIG", pack)
+	if containsGateway(policy.AllowedGateways, "STRIPE") || containsGateway(policy.AllowedGateways, "ADYEN") {
+		t.Fatalf("allowed=%#v", policy.AllowedGateways)
+	}
+	if !containsGateway(policy.AllowedGateways, "CASH") || !containsGateway(policy.AllowedGateways, "GLOBAL_PAY") {
+		t.Fatalf("fallback live=%#v", policy.AllowedGateways)
+	}
+}
+
+func TestGatewayPolicy_CardGatewaysDoesNotInventGlobalPay(t *testing.T) {
+	t.Parallel()
+	policy := NormalizeGatewayPolicy(PaymentAcceptorSupplier, []string{"CASH"}, "cash-only")
+	if got := policy.CardGateways(); len(got) != 0 {
+		t.Fatalf("card gateways=%#v", got)
+	}
+}

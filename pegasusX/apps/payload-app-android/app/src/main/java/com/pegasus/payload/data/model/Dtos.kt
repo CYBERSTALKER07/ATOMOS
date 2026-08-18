@@ -48,6 +48,10 @@ data class Truck(
     val label: String = "",
     @SerialName("license_plate") val licensePlate: String = "",
     @SerialName("vehicle_class") val vehicleClass: String = "",
+    @SerialName("truck_status") val truckStatus: String = "",
+    @SerialName("used_volume_vu") val usedVolumeVu: Long = 0,
+    @SerialName("max_volume_vu") val maxVolumeVu: Long = 0,
+    @SerialName("stop_count") val stopCount: Int = 0,
 )
 
 // ─── Manifest / Live order ───────────────────────────────────────────────────

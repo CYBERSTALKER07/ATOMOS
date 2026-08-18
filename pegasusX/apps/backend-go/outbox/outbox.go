@@ -10,6 +10,8 @@ package outbox
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -163,7 +165,7 @@ func EventRowMap(e Event) map[string]interface{} {
 		createdAt = time.Now().UTC()
 	}
 	row := map[string]interface{}{
-		"EventId":       e.EventID,
+		"EventId":       ClampEventID(e.EventID),
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
 		"TopicName":     e.TopicName,
@@ -276,6 +278,23 @@ func (e AuditEntry) AuditRowMap() map[string]any {
 		"CreatedAt":     createdAt,
 	}
 	return m
+}
+
+// EventIDMax is OutboxEvents.EventId STRING(36).
+const EventIDMax = 36
+
+// ClampEventID returns a STRING(36)-safe id. Empty → UUIDv4. Oversize seeds
+// hash to 32 hex so retries stay deterministic.
+func ClampEventID(id string) string {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return uuid.NewString()
+	}
+	if len(id) <= EventIDMax {
+		return id
+	}
+	sum := sha256.Sum256([]byte(id))
+	return hex.EncodeToString(sum[:16])
 }
 
 // newEventID is overridable in tests. Production uses random UUIDv4 (STRING(36)).

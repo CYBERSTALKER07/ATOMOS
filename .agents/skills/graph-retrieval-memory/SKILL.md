@@ -53,7 +53,7 @@ python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<enh
 #   ~/.grok/memory/MEMORY.md
 ```
 
-Cursor CLI details: `references/cursor-cli.md`. Slash: `/graph-retrieve`.
+Cursor CLI details: `references/cursor-cli.md`. Slash: `/graph-retrieve`. First-turn excerpt: `scripts/cursor_cli_memory.py` via `sessionStart` (hypothesis until re-read).
 
 Then grep/read the **paths the graph returned**. Never stop at the JSON.
 

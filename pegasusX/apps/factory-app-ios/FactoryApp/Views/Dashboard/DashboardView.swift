@@ -8,6 +8,8 @@ struct DashboardView: View {
     let onOpenManifestExceptions: () -> Void
     let onOpenAnalytics: () -> Void
     let onOpenInsights: () -> Void
+    var onOpenTransfers: (String) -> Void = { _ in }
+    var onOpenLoadingBay: () -> Void = {}
     @State private var showManifests = false
     @State private var showCreateTransfer = false
     @State private var realtimeClient = FactoryRealtimeClient()
@@ -18,7 +20,7 @@ struct DashboardView: View {
     @State private var clientPolicyForce = false
     @State private var pendingManifest: AutoUpdater.Manifest?
     @State private var showNotifications = false
-    private let refreshNanos: UInt64 = 30_000_000_000
+    private let refreshNanos: UInt64 = 60_000_000_000
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 180 : 160
@@ -78,6 +80,55 @@ struct DashboardView: View {
                                 )
                             }
                         }
+                        .padding(.horizontal)
+
+                        HStack {
+                            SourceChip(source: stats.source)
+                            Text(stats.source == "empty" ? "No factory rows yet" : "Dashboard \(stats.source)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("gs-u-factory-source")
+
+                        FactorySectionHeader(
+                            title: "Transfers",
+                            subtitle: "Factory plane only"
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: factoryTransferStates,
+                            counts: stats.transfersByState,
+                            source: stats.source,
+                            onSelect: { onOpenTransfers($0) }
+                        )
+                        .padding(.horizontal)
+
+                        FactorySectionHeader(
+                            title: "Factory trucks",
+                            subtitle: "FactoryTruckManifests. Last-mile retailer IN_TRANSIT is not a factory truck."
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: manifestStates,
+                            counts: stats.manifestsByState,
+                            source: stats.source,
+                            onSelect: { _ in onOpenLoadingBay() }
+                        )
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("gs-u-factory-trucks")
+
+                        StatusStackView(
+                            dictionary: factoryVehicleStates,
+                            counts: stats.vehiclesByState,
+                            source: stats.source
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: factoryDriverDuty,
+                            counts: stats.driverDuty,
+                            source: stats.source
+                        )
                         .padding(.horizontal)
                     }
                     .labReadableWidth()

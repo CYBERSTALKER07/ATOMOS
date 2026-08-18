@@ -28,7 +28,7 @@ func TestRegisterRoutesRejectsWhenHubAtCapacity(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, driverHub, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, driverHub, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -57,7 +57,7 @@ func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -78,7 +78,7 @@ func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -99,7 +99,7 @@ func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -124,7 +124,7 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -144,7 +144,7 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -173,7 +173,7 @@ func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 func TestRegisterRoutesRejectsSessionJWTInQuery(t *testing.T) {
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -207,7 +207,7 @@ func TestRegisterRoutesRejectsSessionJWTInQuery(t *testing.T) {
 func TestRegisterRoutesAcceptsBearerSessionJWT(t *testing.T) {
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, nil, nil, nil, nil, nil, nil, nil, telemetryHub, nil, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()

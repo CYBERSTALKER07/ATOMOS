@@ -61,6 +61,18 @@ func (e *globalpayProviderExecutor) doHTTP(ctx context.Context, call func(contex
 // without merchant credentials and stub mode is not explicitly enabled.
 var errGlobalPayCredentialsMissing = fmt.Errorf("globalpay credentials missing (GLOBAL_PAY_SERVICE_ID/GLOBAL_PAY_USERNAME/GLOBAL_PAY_PASSWORD) and GLOBAL_PAY_STUB_MODE is not enabled")
 
+// errGlobalPayUnkeyed is the HTTP-honest unkeyed path (501 no_live_keys), not a
+// fake redirect and not a generic 502. Keys stay Layer B.
+func errGlobalPayUnkeyed() error {
+	return fmt.Errorf("%w: %w", errGlobalPayCredentialsMissing, &GatewayPolicyError{
+		Code:             "no_live_keys",
+		Message:          "no_live_keys",
+		RequestedGateway: "GLOBAL_PAY",
+		ResolvedGateway:  "GLOBAL_PAY",
+		PolicySource:     "PSP_CATALOG",
+	})
+}
+
 // stubMode reports whether fabricated-success stub responses are permitted.
 // Stubs exist only for non-production load testing and must be opted into
 // explicitly; production never stubs — missing credentials are hard errors.
@@ -135,7 +147,7 @@ type gpTokenResponse struct {
 func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	if e.username == "" || e.password == "" {
 		if !e.stubMode() {
-			return ExecutionResult{}, errGlobalPayCredentialsMissing
+			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",
@@ -206,7 +218,7 @@ func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, e
 	password := e.password
 
 	if username == "" || password == "" {
-		return "", fmt.Errorf("globalpay credentials missing (username or password)")
+		return "", errGlobalPayUnkeyed()
 	}
 	url := fmt.Sprintf("%s/v1/merchant/auth", e.getCheckoutBaseURL())
 	reqBody, _ := json.Marshal(gpAuthRequest{
@@ -276,7 +288,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	if req.Action == ExecutionActionCheckoutCapture {
 		if e.username == "" || e.password == "" {
 			if !e.stubMode() {
-				return ExecutionResult{}, errGlobalPayCredentialsMissing
+				return ExecutionResult{}, errGlobalPayUnkeyed()
 			}
 			return ExecutionResult{
 				ResolvedGateway: "GLOBAL_PAY",
@@ -341,7 +353,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	if req.Action == ExecutionActionStatusCheck {
 		if e.username == "" || e.password == "" {
 			if !e.stubMode() {
-				return ExecutionResult{}, errGlobalPayCredentialsMissing
+				return ExecutionResult{}, errGlobalPayUnkeyed()
 			}
 			return ExecutionResult{
 				ResolvedGateway: "GLOBAL_PAY",
@@ -396,7 +408,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	// explicitly enabled via GLOBAL_PAY_STUB_MODE; never available in production.
 	if e.username == "" || e.password == "" {
 		if !e.stubMode() {
-			return ExecutionResult{}, errGlobalPayCredentialsMissing
+			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
 		return ExecutionResult{
 			ResolvedGateway: "GLOBAL_PAY",

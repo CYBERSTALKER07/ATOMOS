@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func testDiscardLogger() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -54,6 +55,33 @@ func TestMonthlyFee_Math(t *testing.T) {
 	want := int64(500*100 + 30000 + 100000)
 	if got := s.MonthlyFee(100, 2000000); got != want {
 		t.Fatalf("fee = %d, want %d", got, want)
+	}
+}
+
+func TestZeroSchedule_EmptyDoesNotInvent(t *testing.T) {
+	s := ZeroSchedule("")
+	if s.Currency != "" {
+		t.Fatalf("empty must not invent UZS, got %q", s.Currency)
+	}
+}
+
+func TestZeroSchedule_NormalizesCallerCurrency(t *testing.T) {
+	if s := ZeroSchedule("usd"); s.Currency != "USD" {
+		t.Fatalf("got %q want USD", s.Currency)
+	}
+}
+
+func TestPackCurrencyOrEmpty_ShippedUZ(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	if got := packCurrencyOrEmpty(context.Background(), ""); got != "UZS" {
+		t.Fatalf("got %q want UZS from pack", got)
+	}
+}
+
+func TestPackCurrencyOrEmpty_PlannedEmpty(t *testing.T) {
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	if got := packCurrencyOrEmpty(ctx, "sup-1"); got != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", got)
 	}
 }
 

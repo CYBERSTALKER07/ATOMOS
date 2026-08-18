@@ -74,3 +74,15 @@ func TestValidateWebhookURL_AllowHTTPPrivateForSSMR(t *testing.T) {
 func publicLookup(string) ([]net.IP, error) {
 	return []net.IP{net.ParseIP("93.184.216.34")}, nil // example.com public
 }
+
+func TestIsPartnerWebhookable_PingAndOrder(t *testing.T) {
+	if !IsPartnerWebhookable(EventPartnerWebhookPing) {
+		t.Fatal("ping must be subscribeable")
+	}
+	if !IsPartnerWebhookable("ORDER_CREATED") {
+		t.Fatal("ORDER_CREATED must stay webhookable")
+	}
+	if IsPartnerWebhookable("NOT_A_REAL_EVENT") {
+		t.Fatal("unknown events stay closed")
+	}
+}

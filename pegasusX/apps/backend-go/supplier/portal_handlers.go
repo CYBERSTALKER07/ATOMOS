@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,10 +13,12 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
@@ -536,6 +539,15 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pack, err := auth.CheckoutPackFromContext(r.Context())
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+
 	topology := SupplierTopology{
 		Warehouses: make([]WarehouseNode, 0, len(req.Warehouses)),
 		Factories:  make([]FactoryNode, 0, len(req.Factories)),
@@ -553,6 +565,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 		if wh.Lng < -180 || wh.Lng > 180 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("warehouses[%d].lng_out_of_range", i)})
+			return
+		}
+		geo, stampErr := proximity.StampNodeGeography(pack, wh.Lat, wh.Lng, wh.CountryCode)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
 			return
 		}
 
@@ -582,7 +602,7 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			PrimaryFactoryID:        strings.TrimSpace(wh.PrimaryFactoryID),
 			SecondaryFactoryID:      strings.TrimSpace(wh.SecondaryFactoryID),
 			AssignedFactoryIDs:      append([]string(nil), wh.AssignedFactoryIDs...),
-			CountryCode:             strings.ToUpper(strings.TrimSpace(wh.CountryCode)),
+			CountryCode:             geo.CountryCode,
 			CoverageCities:          append([]order.CoverageCity(nil), wh.CoverageCities...),
 			IsActive:                isActive,
 			IsOnShift:               isOnShift,
@@ -606,6 +626,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("factories[%d].lng_out_of_range", i)})
 			return
 		}
+		geo, stampErr := proximity.StampNodeGeography(pack, fc.Lat, fc.Lng, fc.CountryCode)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+			return
+		}
 
 		isActive := true
 		if fc.IsActive != nil {
@@ -619,7 +647,7 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			Lng:         fc.Lng,
 			Address:     strings.TrimSpace(fc.Address),
 			PlaceID:     strings.TrimSpace(fc.PlaceID),
-			CountryCode: strings.ToUpper(strings.TrimSpace(fc.CountryCode)),
+			CountryCode: geo.CountryCode,
 			IsActive:    isActive,
 		})
 	}
@@ -649,6 +677,7 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			Action:       "TOPOLOGY_UPDATED",
 		})
 	}); err != nil {
+		slog.Error("replace supplier topology", "supplier_id", sid, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_topology_failed"})
 		return
 	}
@@ -890,24 +919,39 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	current, found, _ := s.repo.GetProfile(r.Context(), sid)
-	if !found {
-		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
+	key := cache.DashboardKey("supplier", sid)
+	body, err := cache.LoadDashboard(s.cache, r.Context(), key, func(ctx context.Context) ([]byte, error) {
+		return s.marshalSupplierDashboard(ctx, sid)
+	})
+	if err != nil {
+		s.log.WarnContext(r.Context(), "supplier dashboard marshal failed", "supplier_id", sid, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dashboard_unavailable"})
+		return
+	}
+	cache.WriteJSONWithETag(w, r, body)
+}
+
+func (s *Service) marshalSupplierDashboard(ctx context.Context, sid string) ([]byte, error) {
+	current := Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
+	if s.repo != nil {
+		if profile, found, _ := s.repo.GetProfile(ctx, sid); found {
+			current = profile
+		}
 	}
 	invCount := 0
 	if s.inventorySvc != nil {
-		if levels, err := s.inventorySvc.ListBySupplier(r.Context(), sid); err == nil {
+		if levels, err := s.inventorySvc.ListBySupplier(ctx, sid); err == nil {
 			invCount = len(levels)
 		}
 	}
 
 	pending := 0
 	if s.dashboardQuery != nil {
-		counts, err := s.dashboardQuery(r.Context(), sid)
+		counts, err := s.dashboardQuery(ctx, sid)
 		if err == nil {
 			pending = counts.PendingOrders
 		} else {
-			s.log.WarnContext(r.Context(), "dashboard count query failed, falling back", "err", err)
+			s.log.WarnContext(ctx, "dashboard count query failed, falling back", "err", err)
 		}
 	}
 
@@ -918,13 +962,15 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		PendingOrders: pending,
 		UpdatedAt:     s.now().Format(time.RFC3339Nano),
 	}
-	detail, err := s.buildSupplierDashboardDetail(r.Context(), sid, base)
-	if err != nil {
-		s.log.WarnContext(r.Context(), "supplier dashboard detail failed", "supplier_id", sid, "err", err)
-		writeJSON(w, http.StatusOK, base)
-		return
+	if s.repo == nil {
+		return json.Marshal(base)
 	}
-	writeJSON(w, http.StatusOK, detail)
+	detail, err := s.buildSupplierDashboardDetail(ctx, sid, base)
+	if err != nil {
+		s.log.WarnContext(ctx, "supplier dashboard detail failed", "supplier_id", sid, "err", err)
+		return json.Marshal(base)
+	}
+	return json.Marshal(detail)
 }
 
 // HandleEarnings returns ledger-backed supplier earnings summaries.

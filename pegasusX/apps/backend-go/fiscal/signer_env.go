@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // Signer selection for FISCAL_PROVIDER=MY_SOLIQ.
@@ -51,14 +53,14 @@ func (s *DevHMACSigner) Verify(payload []byte, signature string) bool {
 }
 
 // SignerFromEnv builds the EDS signer for the MY_SOLIQ provider.
-// envName is the deployment environment (PEGASUSX_ENV); "production"/"prod"/"ssmr"
+// envName is the deployment environment (PEGASUSX_ENV); production and sandbox
 // reject the dev-hmac signer.
 func SignerFromEnv(envName string) (EDSSigner, error) {
 	kind := strings.ToLower(strings.TrimSpace(os.Getenv("FISCAL_MY_SOLIQ_SIGNER")))
 	switch kind {
 	case "dev-hmac":
-		switch strings.ToLower(strings.TrimSpace(envName)) {
-		case "production", "prod", "ssmr":
+		switch auth.EnvClassFrom(envName) {
+		case auth.EnvClassProduction, auth.EnvClassSandbox:
 			return nil, fmt.Errorf("FISCAL_MY_SOLIQ_SIGNER=dev-hmac is forbidden in %s", envName)
 		}
 		key := strings.TrimSpace(os.Getenv("FISCAL_MY_SOLIQ_SIGN_KEY"))

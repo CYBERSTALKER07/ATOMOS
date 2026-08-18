@@ -4,7 +4,7 @@ import MapKit
 struct HexagonalControlTowerMap: View {
     @State private var cameraPosition: MapCameraPosition = .camera(
         MapCamera(
-            centerCoordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            centerCoordinate: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
             distance: 10000,
             heading: 0,
             pitch: 45

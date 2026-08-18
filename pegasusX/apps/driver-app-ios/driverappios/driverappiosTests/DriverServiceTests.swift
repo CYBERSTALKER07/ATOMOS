@@ -32,7 +32,7 @@ struct DriverServiceTests {
 
     @Test func orderStateAllCases() {
         let all = OrderState.allCases
-        #expect(all.count == 17)
+        #expect(all.count == 19)
     }
 
     @Test func orderStateLabels() {
@@ -48,7 +48,7 @@ struct DriverServiceTests {
         let activeStates: [OrderState] = [
             .LOADED, .DISPATCHED, .IN_TRANSIT, .ARRIVING, .ARRIVED,
             .ARRIVED_SHOP_CLOSED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION,
-            .DELIVERED_ON_CREDIT
+            .FISCALIZING, .FISCAL_FAILED, .DELIVERED_ON_CREDIT
         ]
         for state in activeStates {
             #expect(state.isActive == true, "\(state) should be active")

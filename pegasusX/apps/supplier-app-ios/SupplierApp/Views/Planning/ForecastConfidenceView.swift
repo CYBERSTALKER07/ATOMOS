@@ -21,9 +21,10 @@ struct ForecastConfidenceView: View {
                 }
             }
             if confidence.isBlocked {
-                Text("warehouse_portal.forecast_confidence_view.text.insufficient_history_predictive_forecast_blocked")
+                Text(confidence.blockedReason ?? "insufficient_history")
                     .font(.caption)
                     .foregroundStyle(SupplierTheme.warning)
+                    .accessibilityIdentifier("gs-u-forecast-blocked-reason")
             } else {
                 Text(L10n.format("mobile_supplier.ui.lowunits_0_highunits_0_units", "\(confidence.lowUnits ?? 0)", "\(confidence.highUnits ?? 0)"))
                     .font(.title3.bold())

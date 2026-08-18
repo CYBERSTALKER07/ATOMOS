@@ -35,6 +35,8 @@ type MarketPack struct {
 	PSPAdapters            []string `json:"psp_adapters"`
 	SMSAdapter             string   `json:"sms_adapter,omitempty"`
 	MapsAdapter            string   `json:"maps_adapter"`
+	MapCenterLat           float64  `json:"map_center_lat,omitempty"`
+	MapCenterLng           float64  `json:"map_center_lng,omitempty"`
 	GridSystem             string   `json:"grid_system"`
 	DistanceUnit           string   `json:"distance_unit"`
 	BreachRadiusMeters     float64  `json:"breach_radius_meters"`
@@ -75,9 +77,13 @@ func NormalizeMarketCode(code string) string {
 func ListMarketPacks() []MarketPack {
 	return []MarketPack{
 		uzMarketPack(),
-		plannedPack("EU", "European Union (PEPPOL / multi-VAT)", "cell-eu", "Europe/Berlin", "EUR", []string{"en", "de", "fr"}, "PEPPOL", []string{"STRIPE", "CASH"}, "sepa-file"),
-		plannedPack("US", "United States", "cell-us", "America/New_York", "USD", []string{"en"}, "COMMERCIAL", []string{"STRIPE", "CASH"}, "ach-file"),
+		plannedPack("EU", "European Union (PEPPOL / multi-VAT)", "cell-eu", "Europe/Berlin", "EUR", []string{"en", "de", "fr"}, "PEPPOL", []string{"STRIPE", "ADYEN", "CASH"}, "sepa-file"),
+		plannedPack("US", "United States", "cell-us", "America/New_York", "USD", []string{"en"}, "COMMERCIAL", []string{"STRIPE", "ADYEN", "CASH"}, "ach-file"),
+		plannedPack("CA", "Canada", "cell-ca", "America/Toronto", "CAD", []string{"en", "fr"}, "COMMERCIAL", []string{"STRIPE", "ADYEN", "CASH"}, "eft-file"),
+		plannedPack("AU", "Australia", "cell-au", "Australia/Sydney", "AUD", []string{"en"}, "COMMERCIAL", []string{"STRIPE", "ADYEN", "CASH"}, "becs-file"),
+		plannedPack("GB", "United Kingdom", "cell-gb", "Europe/London", "GBP", []string{"en"}, "COMMERCIAL", []string{"STRIPE", "ADYEN", "CASH"}, "bacs-file"),
 		plannedPack("KZ", "Kazakhstan", "cell-kz", "Asia/Almaty", "KZT", []string{"ru", "kk", "en"}, "PLANNED", []string{"CASH"}, "bank-file"),
+		plannedPack("PK", "Pakistan", "cell-pk", "Asia/Karachi", "PKR", []string{"en", "ur"}, "PLANNED", []string{"CASH"}, "bank-file"),
 	}
 }
 
@@ -115,9 +121,11 @@ func uzMarketPack() MarketPack {
 		CurrencyDecimalPlaces:  2,
 		Locales:                []string{"uz", "ru", "en"},
 		FiscalAdapter:          "MY_SOLIQ",
-		PSPAdapters:            []string{"GLOBAL_PAY", "CASH"},
+		PSPAdapters:            []string{"GLOBAL_PAY", "CASH", "PAYME", "CLICK"},
 		SMSAdapter:             "PLAYMOBILE",
 		MapsAdapter:            "GOOGLE_ROUTES",
+		MapCenterLat:           41.2995,
+		MapCenterLng:           69.2401,
 		GridSystem:             "H3",
 		DistanceUnit:           "km",
 		BreachRadiusMeters:     150,

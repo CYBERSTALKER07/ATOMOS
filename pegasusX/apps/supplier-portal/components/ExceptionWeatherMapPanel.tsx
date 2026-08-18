@@ -7,9 +7,9 @@ import type { ExceptionMapCell } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createSupplierApi } from "@/lib/api";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
 
 const api = createSupplierApi();
-const DEFAULT_CENTER = { longitude: 69.2401, latitude: 41.2995, zoom: 10 };
 
 const SEVERITY_COLOR: Record<string, string> = {
   low: "#64748b",
@@ -85,7 +85,7 @@ export default function ExceptionWeatherMapPanel({ className }: ExceptionWeather
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] min-h-[320px]">
           <div className="min-h-[280px] rounded-lg overflow-hidden border" style={{ borderColor: "var(--desk-border)" }}>
             <MapGL
-              initialViewState={DEFAULT_CENTER}
+              initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 10)}
               mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               style={{ width: "100%", height: "100%", minHeight: 280 }}
             >

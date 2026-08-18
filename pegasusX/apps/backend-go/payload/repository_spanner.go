@@ -62,23 +62,7 @@ func (r *SpannerRepository) RunTx(ctx context.Context, fn func(ctx context.Conte
 			}
 			muts := make([]*spanner.Mutation, 0, len(buf.events))
 			for _, e := range buf.events {
-				createdAt := e.CreatedAt.UTC()
-				if createdAt.IsZero() {
-					createdAt = time.Now().UTC()
-				}
-				row := map[string]any{
-					"EventId":       e.EventID,
-					"AggregateType": e.AggregateType,
-					"AggregateId":   e.AggregateID,
-					"TopicName":     e.TopicName,
-					"Payload":       e.Payload,
-					"CreatedAt":     createdAt,
-					"PublishedAt":   nil,
-				}
-				if e.PublishedAt != nil {
-					row["PublishedAt"] = e.PublishedAt.UTC()
-				}
-				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 			}
 			if len(muts) > 0 {
 				if err := txn.BufferWrite(muts); err != nil {
@@ -314,14 +298,14 @@ func (tx *spannerPayloadTx) ListExceptions(ctx context.Context) ([]ManifestExcep
 
 func (tx *spannerPayloadTx) SaveException(ctx context.Context, e ManifestException) error {
 	row := map[string]interface{}{
-		"ExceptionId": e.ExceptionID,
-		"ManifestId": e.ManifestID,
-		"OrderId": e.OrderID,
-		"SupplierId": tx.supplierID,
-		"Reason": e.Reason,
-		"Metadata": spanner.NullString{StringVal: e.Metadata, Valid: e.Metadata != ""},
+		"ExceptionId":  e.ExceptionID,
+		"ManifestId":   e.ManifestID,
+		"OrderId":      e.OrderID,
+		"SupplierId":   tx.supplierID,
+		"Reason":       e.Reason,
+		"Metadata":     spanner.NullString{StringVal: e.Metadata, Valid: e.Metadata != ""},
 		"AttemptCount": e.AttemptCount,
-		"CreatedAt": parseTime(e.CreatedAt),
+		"CreatedAt":    parseTime(e.CreatedAt),
 	}
 	if e.Escalated {
 		row["EscalatedAt"] = parseTime(e.CreatedAt) // Assuming escalated at creation for simplicity

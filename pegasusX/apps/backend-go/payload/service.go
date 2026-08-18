@@ -111,6 +111,12 @@ type payloaderTruckWire struct {
 	Label        string `json:"label"`
 	LicensePlate string `json:"license_plate"`
 	VehicleClass string `json:"vehicle_class"`
+	// TruckStatus is the current open manifest state (DRAFT/LOADING/SEALED/DISPATCHED).
+	// Empty when the vehicle has no board-state manifest — do not invent DRAFT.
+	TruckStatus  string `json:"truck_status,omitempty"`
+	UsedVolumeVU int64  `json:"used_volume_vu,omitempty"`
+	MaxVolumeVU  int64  `json:"max_volume_vu,omitempty"`
+	StopCount    int    `json:"stop_count,omitempty"`
 }
 
 type liveOrderLineWire struct {
@@ -227,12 +233,14 @@ func NewService(c ServiceConfig) *Service {
 	if c.Repo == nil {
 		panic("repo is required")
 	}
-	if c.Currency == "" {
-		c.Currency = "UZS"
-	}
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
 		seedID = strings.TrimSpace(c.SupplierID)
+	}
+	if c.Currency == "" {
+		if cur, err := auth.CurrencyFromContext(context.Background(), seedID); err == nil {
+			c.Currency = cur
+		}
 	}
 	return &Service{
 		repo:             c.Repo,
@@ -614,7 +622,13 @@ func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, dat
 }
 
 func (s *Service) invalidatePayloadKeys(ctx context.Context, keys ...string) {
-	if s.cache == nil || len(keys) == 0 {
+	if s.cache == nil {
+		return
+	}
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
+		keys = append(keys, cache.DashboardKey("supplier", sid))
+	}
+	if len(keys) == 0 {
 		return
 	}
 	s.cache.Invalidate(ctx, keys...)
@@ -637,24 +651,21 @@ func payloadExceptionListKey(supplierID string) string {
 }
 
 // HandleTrucks serves GET /v1/payloader/trucks.
+// truck_status + VU come from the vehicle's current board-state manifest, never GET /v1/payload/capacity/{id}.
 func (s *Service) HandleTrucks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
-	s.ensureDemoDataLocked()
+	s.ensureManifestStateLocked()
 	rows := append([]TruckRow(nil), s.trucks...)
-	s.mu.Unlock()
 	wire := make([]payloaderTruckWire, len(rows))
 	for i := range rows {
-		wire[i] = payloaderTruckWire{
-			ID:           rows[i].VehicleID,
-			Label:        rows[i].PlateNo,
-			LicensePlate: rows[i].PlateNo,
-			VehicleClass: "TRUCK",
-		}
+		wire[i] = truckWireFromRowLocked(s, rows[i])
 	}
+	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, wire)
 }
 
@@ -875,6 +886,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "manifest_not_draft"})
 			return
 		default:
+			s.log.ErrorContext(r.Context(), "payload.start_loading_failed", "err", err, "manifest_id", manifestID)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "start_loading_failed"})
 			return
 		}
@@ -1723,6 +1735,20 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 	for _, manifestID := range req.ManifestIDs {
 		manifestID = strings.TrimSpace(manifestID)
 		if manifestID == "" {
+			continue
+		}
+		_ = s.hydrateFromRepo(r.Context())
+		s.mu.Lock()
+		idx := s.findManifestIndexLocked(manifestID)
+		alreadySealed := idx >= 0 && s.manifests[idx].State == payloadManifestStateSealed
+		s.mu.Unlock()
+		if alreadySealed {
+			sealedCount++
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "already_sealed",
+				"state":       payloadManifestStateSealed,
+			})
 			continue
 		}
 		if _, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID); gateErr != nil {

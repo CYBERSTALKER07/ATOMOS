@@ -56,11 +56,9 @@ func (p PegasusReceiptProvider) CreateReceipt(ctx context.Context, req FiscalCre
 	// QR opens the branded HTML document (JSON remains the default Accept/API form).
 	qr := base + "/v1/platform/receipts/" + receiptID + "?format=html"
 
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		if packCur, err := auth.CurrencyFromContext(ctx, req.SupplierID); err == nil {
-			currency = packCur
-		}
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	country, err := auth.CountryFromContext(ctx, req.SupplierID)
 	if err != nil {
@@ -128,7 +126,7 @@ func (p PegasusReceiptProvider) CreateReceipt(ctx context.Context, req FiscalCre
 // original platform receipt. Not a tax document — the tax corrective chain is
 // MY_SOLIQ's job once EDS credentials land; this keeps the refund audit trail
 // honest in the interim.
-func (p PegasusReceiptProvider) CreateCorrectiveReceipt(_ context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error) {
+func (p PegasusReceiptProvider) CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error) {
 	if strings.TrimSpace(req.AttemptID) == "" {
 		return FiscalCreateResult{}, fmt.Errorf("pegasus corrective: attempt_id required")
 	}
@@ -146,26 +144,26 @@ func (p PegasusReceiptProvider) CreateCorrectiveReceipt(_ context.Context, req F
 	if base == "" {
 		base = "https://api-ssmr.pegasusx.app"
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	payload := map[string]any{
-		"provider":             FiscalProviderPegasus,
-		"legal_class":          "platform_credit_receipt",
-		"tax_ofd":              false,
-		"tax_ofd_note":         "platform credit note; tax corrective EHF deferred until Soliq EDS credentials arrive",
-		"receipt_id":           receiptID,
-		"attempt_id":           req.AttemptID,
-		"order_id":             req.OrderID,
-		"supplier_id":          req.SupplierID,
-		"retailer_id":          req.RetailerID,
-		"corrects_receipt_id":  req.OriginalReceiptID,
-		"correct_reason":       req.ReasonCode,
-		"amount_minor":         req.AmountMinor,
-		"currency":             currency,
-		"issued_at":            time.Now().UTC().Format(time.RFC3339),
-		"qr_url":               base + "/v1/platform/receipts/" + receiptID + "?format=html",
+		"provider":            FiscalProviderPegasus,
+		"legal_class":         "platform_credit_receipt",
+		"tax_ofd":             false,
+		"tax_ofd_note":        "platform credit note; tax corrective EHF deferred until Soliq EDS credentials arrive",
+		"receipt_id":          receiptID,
+		"attempt_id":          req.AttemptID,
+		"order_id":            req.OrderID,
+		"supplier_id":         req.SupplierID,
+		"retailer_id":         req.RetailerID,
+		"corrects_receipt_id": req.OriginalReceiptID,
+		"correct_reason":      req.ReasonCode,
+		"amount_minor":        req.AmountMinor,
+		"currency":            currency,
+		"issued_at":           time.Now().UTC().Format(time.RFC3339),
+		"qr_url":              base + "/v1/platform/receipts/" + receiptID + "?format=html",
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -179,6 +177,6 @@ func pegasusSSMRHooksEnabled() bool {
 	if v == "1" || v == "true" || v == "yes" {
 		return true
 	}
-	// SSMR tenant default: keep fiscal e2e fail hooks without FAKE.
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")
+	// Sandbox tenant default: keep fiscal e2e fail hooks without FAKE.
+	return auth.IsSandbox()
 }

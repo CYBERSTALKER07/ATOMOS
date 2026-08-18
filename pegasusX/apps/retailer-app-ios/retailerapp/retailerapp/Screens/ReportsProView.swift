@@ -8,6 +8,8 @@ struct ReportsProView: View {
     @State private var lowStock = 0
     @State private var topLine = "—"
     @State private var banner: String?
+    @State private var loadError: String?
+    @State private var summaryReady = false
     @State private var exportURL: URL?
     @State private var exporting = false
     @State private var showShare = false
@@ -15,13 +17,19 @@ struct ReportsProView: View {
 
     var body: some View {
         List {
-            if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
-            Section("Last 7 days") {
-                Text(String(format: "Sales %.2f", Double(salesMinor) / 100.0))
-                Text(L10n.format("mobile_retailer.ui.sale_count_salecount_2", "\(saleCount)"))
-                Text(L10n.format("mobile_retailer.ui.on_hand_skus_onhand_2", "\(onHand)"))
-                Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(lowStock)"))
-                Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(topLine)"))
+            if let loadError {
+                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
+            } else if let banner {
+                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            }
+            if summaryReady && loadError == nil {
+                Section("Last 7 days") {
+                    Text(String(format: "Sales %.2f", Double(salesMinor) / 100.0))
+                    Text(L10n.format("mobile_retailer.ui.sale_count_salecount_2", "\(saleCount)"))
+                    Text(L10n.format("mobile_retailer.ui.on_hand_skus_onhand_2", "\(onHand)"))
+                    Text(L10n.format("mobile_retailer.ui.low_stock_bins_lowstock_2", "\(lowStock)"))
+                    Text(L10n.format("mobile_retailer.ui.top_sku_topline_2", "\(topLine)"))
+                }
             }
             Section {
                 Button {
@@ -59,9 +67,11 @@ struct ReportsProView: View {
             if let first = s.topSkus?.first {
                 topLine = "\(first.sku ?? "?") · \(Double(first.salesMinor ?? 0) / 100.0)"
             }
+            summaryReady = true
+            loadError = nil
             banner = "REPORTS_PRO auto-enabled if needed"
         } catch {
-            banner = error.localizedDescription
+            loadError = "reports_failed"
         }
     }
 

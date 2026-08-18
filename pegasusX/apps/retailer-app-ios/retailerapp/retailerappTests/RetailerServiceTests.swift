@@ -171,4 +171,31 @@ struct RetailerServiceTests {
         let shouldRefresh = statusCode == 401 && !isRetry && !isRefreshing
         #expect(shouldRefresh == false, "Should not refresh on retry")
     }
+
+    @Test func displayPackCurrencyDoesNotInventUZS() {
+        MarketPackStore.clear()
+        #expect(displayPackCurrency("") == "")
+        #expect(displayPackCurrency(nil) == "")
+        #expect(displayPackCurrency("kzt") == "KZT")
+    }
+
+    @Test func packMapCenterDoesNotInventTashkent() {
+        MarketPackStore.clear()
+        #expect(packMapCenter(nil) == nil)
+        let empty = packMapCoordinate(nil)
+        #expect(empty.lat == 0 && empty.lng == 0)
+        let uz = MarketPack(
+            code: "UZ",
+            name: "Uzbekistan",
+            timezone: "Asia/Tashkent",
+            currencyCode: "UZS",
+            fiscalAdapter: "MY_SOLIQ",
+            mapsAdapter: "GOOGLE_ROUTES",
+            mapCenterLat: 41.2995,
+            mapCenterLng: 69.2401,
+            checkoutReadsThis: false
+        )
+        #expect(packMapCenter(uz)?.lat == 41.2995)
+        #expect(packMapCenter(uz)?.lng == 69.2401)
+    }
 }

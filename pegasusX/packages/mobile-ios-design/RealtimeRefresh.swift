@@ -47,3 +47,33 @@ public enum RealtimeLoadState {
         loading && !hasData
     }
 }
+
+/// Fail-closed code for native pulse GET. Do not treat HTTP failure as an empty timeline.
+public enum PulseHonesty {
+    public static let failed = "pulse_failed"
+    public static let commandFailed = "control_tower_pulse_failed"
+
+    public struct Result<T> {
+        public let events: [T]
+        public let error: String?
+    }
+
+    public struct ObjectResult<T> {
+        public let value: T?
+        public let error: String?
+    }
+
+    public static func apply<T>(ok: Bool, incoming: [T]?, previous: [T]) -> Result<T> {
+        if ok, let incoming {
+            return Result(events: incoming, error: nil)
+        }
+        return Result(events: previous, error: failed)
+    }
+
+    public static func applyObject<T>(ok: Bool, incoming: T?, previous: T?) -> ObjectResult<T> {
+        if ok, let incoming {
+            return ObjectResult(value: incoming, error: nil)
+        }
+        return ObjectResult(value: previous, error: commandFailed)
+    }
+}

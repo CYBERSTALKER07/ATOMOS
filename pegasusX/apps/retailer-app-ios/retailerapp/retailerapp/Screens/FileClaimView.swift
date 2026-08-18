@@ -134,7 +134,7 @@ struct FileClaimView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(L10n.format("mobile_retailer.ui.claimtype_status", "\(c.claimType)", "\(c.status)"))
                                     .font(.subheadline.weight(.semibold))
-                                Text("\(c.amountMinor ?? 0) \(c.currency ?? "UZS") · \(c.claimId)")
+                                Text("\(c.amountMinor ?? 0) \(displayPackCurrency(c.currency)) · \(c.claimId)")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }

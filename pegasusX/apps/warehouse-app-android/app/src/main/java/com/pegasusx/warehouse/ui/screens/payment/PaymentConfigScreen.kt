@@ -15,7 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasusx.warehouse.data.model.PaymentGateway
+import com.pegasusx.warehouse.data.model.PSPListing
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -27,7 +27,8 @@ fun PaymentConfigScreen(
     opsRepository: WarehouseOperationsRepository,
     onBack: (() -> Unit)? = null,
 ) {
-    var gateways by remember { mutableStateOf<List<PaymentGateway>>(emptyList()) }
+    var listings by remember { mutableStateOf<List<PSPListing>>(emptyList()) }
+    var currency by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -38,7 +39,13 @@ fun PaymentConfigScreen(
             error = null
             try {
                 val resp = opsRepository.getPaymentConfig()
-                gateways = if (resp.isSuccessful) resp.body()?.gateways.orEmpty() else emptyList()
+                val body = resp.body()
+                listings = body?.catalog.orEmpty().ifEmpty {
+                    body?.gateways.orEmpty().map {
+                        PSPListing(code = it.gatewayName, status = it.status.ifBlank { it.mode }, selectable = it.selectable || it.isActive)
+                    }
+                }
+                currency = body?.currencyCode.orEmpty()
                 if (!resp.isSuccessful) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 error = e.message
@@ -78,7 +85,7 @@ fun PaymentConfigScreen(
                 }
             }
 
-            gateways.isEmpty() -> Box(
+            listings.isEmpty() -> Box(
                 Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center,
             ) { Text("No payment gateways configured") }
@@ -90,15 +97,20 @@ fun PaymentConfigScreen(
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(padding),
             ) {
-                items(gateways, key = { it.gatewayName }) { gw ->
+                if (currency.isNotBlank()) {
+                    item {
+                        Text("Pack currency $currency (read-only).", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                items(listings, key = { it.code }) { listing ->
                     ListItem(
-                        headlineContent = { Text(gw.gatewayName) },
-                        supportingContent = { Text(stringResource(R.string.mobile_warehouse_ui_provider_mode, gw.provider, gw.mode)) },
+                        headlineContent = { Text(listing.code) },
+                        supportingContent = { Text(listing.status) },
                         trailingContent = {
                             Icon(
-                                if (gw.isActive) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                                if (listing.selectable) Icons.Default.CheckCircle else Icons.Default.Cancel,
                                 contentDescription = null,
-                                tint = if (gw.isActive) {
+                                tint = if (listing.selectable) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant

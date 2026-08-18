@@ -51,6 +51,7 @@ fun LocationSetupScreen(
     var loading by remember { mutableStateOf(hasAssignedWarehouse) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var packCountry by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(hasAssignedWarehouse) {
@@ -61,6 +62,7 @@ fun LocationSetupScreen(
                 val body = resp.body()
                 if (resp.isSuccessful && body != null) {
                     warehouseName = body.name
+                    packCountry = body.packCountryCode.ifBlank { body.countryCode }
                     location = AddressLocationValue(
                         address = body.address,
                         lat = body.lat,
@@ -179,6 +181,15 @@ fun LocationSetupScreen(
                 )
             } else if (warehouseName.isNotBlank()) {
                 Text(warehouseName, style = MaterialTheme.typography.titleMedium)
+            }
+            if (packCountry.isNotBlank()) {
+                OutlinedTextField(
+                    value = packCountry,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Pack country") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
             AddressLocationField(
                 geocodeApi = geocodeApi,

@@ -6,7 +6,7 @@ private func formatRetailerMoney(_ amount: Int64, currency: String) -> String {
     formatter.groupingSeparator = " "
     formatter.maximumFractionDigits = 0
     let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
-    let normalizedCurrency = currency.isEmpty ? "UZS" : currency
+    let normalizedCurrency = currency.isEmpty ? packCurrency(MarketPackStore.pack) : currency
     return "\(formatted) \(normalizedCurrency)"
 }
 
@@ -264,7 +264,7 @@ struct Order: Codable, Identifiable, Hashable {
         case version = "version"
     }
 
-    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, proposedDeliveryDate: String? = nil, deliveryProposalReason: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
+    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = packCurrency(MarketPackStore.pack), paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, confirmationStatus: String? = nil, deliveryPriority: String? = nil, preorderBadge: String? = nil, proposedDeliveryDate: String? = nil, deliveryProposalReason: String? = nil, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
         self.id = id
         self.retailerId = retailerId
         self.supplierId = supplierId
@@ -307,7 +307,7 @@ struct Order: Codable, Identifiable, Hashable {
         
         self.items = try c.decodeIfPresent([OrderLineItem].self, forKey: .items) ?? []
                 self.totalAmount = try c.decodeInt64Lossy(forKey: .totalAmount)
-                self.currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+                self.currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
                 self.paymentGateway = try c.decodeIfPresent(String.self, forKey: .paymentGateway) ?? ""
                 self.paymentStatus = try c.decodeIfPresent(String.self, forKey: .paymentStatus)
                 self.routeId = try c.decodeIfPresent(String.self, forKey: .routeId)

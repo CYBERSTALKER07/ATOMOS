@@ -1,7 +1,8 @@
 'use client';
 
 import { usePortalT } from "@/lib/i18n";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { createWarehouseApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { warehouseCreateSupplyRequestKey, warehouseSupplyRequestTransitionKey } from '@pegasusx/api-client';
 import { apiFetch } from '@/lib/auth';
@@ -26,6 +27,8 @@ export default function NewSupplyRequestPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [factoryId, setFactoryId] = useState('');
+  const [factorySource, setFactorySource] = useState('');
+  const [factoryLocked, setFactoryLocked] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [notes, setNotes] = useState('');
   const [useForecast, setUseForecast] = useState(true);
@@ -35,6 +38,23 @@ export default function NewSupplyRequestPage() {
 
   // Manual items (when not using forecast)
   const [manualItems, setManualItems] = useState<{ product_id: string; quantity: number; unit: string }[]>([]);
+
+  const loadEngineFactory = useCallback(async () => {
+    try {
+      const supply = await createWarehouseApi().getWarehouseOpsSupplyFactory();
+      if (supply.factory_id) {
+        setFactoryId(supply.factory_id);
+        setFactorySource(supply.source);
+        setFactoryLocked(true);
+      }
+    } catch {
+      setFactoryLocked(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadEngineFactory();
+  }, [loadEngineFactory]);
 
   useEffect(() => {
     if (useForecast) {
@@ -130,6 +150,7 @@ export default function NewSupplyRequestPage() {
             onChange={e => setFactoryId(e.target.value)}
             placeholder={t("warehouse_portal.supply_requests.new.text.enter_factory_uuid")}
             required
+            readOnly={factoryLocked}
             className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
             style={{
               background: 'var(--field-background)',
@@ -137,6 +158,9 @@ export default function NewSupplyRequestPage() {
               borderColor: 'var(--field-border)',
             }}
           />
+          {factoryLocked ? (
+            <p className="mt-1 text-xs text-[var(--muted)]">Nearest factory from the engine{factorySource ? ` (${factorySource})` : ""}.</p>
+          ) : null}
         </div>
 
         {/* Delivery date */}

@@ -50,6 +50,7 @@ final class HomeViewModel {
 
     private(set) var pulseEvents: [PulseEvent] = []
     private(set) var pulseLoading = false
+    private(set) var pulseError: String?
 
     // MARK: - Phase 6 state
     private(set) var notifications: [NotificationItem] = []
@@ -119,8 +120,14 @@ final class HomeViewModel {
         defer { if !silent { loadingTrucks = false } }
         do {
             let result = try await api.trucks()
-            trucks = result
-            if selectedTruckId == nil, let first = result.first?.id {
+            var board: [Manifest] = []
+            for state in ManifestBoard.states {
+                if let rows = try? await api.listLoadingBayManifests(state: state) {
+                    board.append(contentsOf: rows)
+                }
+            }
+            trucks = ManifestBoard.attach(trucks: result, manifests: board)
+            if selectedTruckId == nil, let first = trucks.first?.id {
                 await selectTruck(first)
             }
         } catch {
@@ -257,13 +264,14 @@ final class HomeViewModel {
         if !silent { loadingManifest = true }
         defer { if !silent { loadingManifest = false } }
         do {
-            let draft = try await api.listLoadingBayManifests(state: "DRAFT")
-            if let match = draft.first(where: { $0.matchesTruck(truckId) }) {
-                manifest = match
-                return
+            for state in ManifestBoard.states {
+                let rows = try await api.listLoadingBayManifests(state: state)
+                if let match = rows.first(where: { $0.matchesTruck(truckId) }) {
+                    manifest = match
+                    return
+                }
             }
-            let loading = try await api.listLoadingBayManifests(state: "LOADING")
-            manifest = loading.first(where: { $0.matchesTruck(truckId) })
+            manifest = nil
         } catch {
             if !silent { self.error = describe(error) }
         }
@@ -609,12 +617,17 @@ final class HomeViewModel {
 
     func refreshPulse() async {
         pulseLoading = true
+        pulseError = nil
         defer { pulseLoading = false }
         do {
             let response = try await api.pulse()
-            pulseEvents = response.events
+            let result = PulseHonesty.apply(ok: true, incoming: response.events, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         } catch {
-            pulseEvents = []
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         }
     }
 

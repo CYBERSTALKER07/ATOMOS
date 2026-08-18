@@ -4,24 +4,24 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
+import { sessionMapCenter } from "@pegasusx/api-client";
 
 interface FactoryFormProps {
   onSave: (name: string, location: LocationValue, extras: { country_code: string }) => Promise<void>;
   onCancel: () => void;
 }
 
-const DEFAULT_LOCATION: LocationValue = {
-  address: "",
-  lat: "41.3111",
-  lng: "69.2797",
-};
+function emptyFactoryLocation(): LocationValue {
+  const c = sessionMapCenter();
+  return { address: "", lat: c ? String(c.lat) : "", lng: c ? String(c.lng) : "" };
+}
 
 export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
   const t = usePortalT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
+  const [location, setLocation] = useState<LocationValue>(emptyFactoryLocation);
   const [country, setCountry] = useState("");
 
   const handleSave = async () => {

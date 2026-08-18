@@ -43,11 +43,9 @@ import com.pegasusx.warehouse.ui.components.DispatchDriverList
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
 import com.pegasus.design.PegasusLoadingState
-import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
-import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PulseHonesty
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
@@ -116,6 +114,7 @@ fun DispatchScreen(
     var opsActingId by remember { mutableStateOf<String?>(null) }
     var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var handoffLoading by remember { mutableStateOf(true) }
+    var handoffError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -162,19 +161,25 @@ fun DispatchScreen(
                 if (vehiclesResp.isSuccessful && vehiclesResp.body() != null) {
                     fleetVehicles = vehiclesResp.body()!!.vehicles
                 }
-                handoffLoading = true
-                val pulseResp = api.getPulse()
-                if (pulseResp.isSuccessful && pulseResp.body() != null) {
-                    handoffEvents = filterHandoffPulseEvents(pulseResp.body()!!.events)
-                } else {
-                    handoffEvents = emptyList()
-                }
-                handoffLoading = false
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
-            } finally {
-                if (!silent) loading = false
             }
+            handoffLoading = true
+            handoffError = null
+            try {
+                val pulseResp = api.getPulse()
+                val result = PulseHonesty.applyHttp(
+                    pulseResp.isSuccessful,
+                    pulseResp.body()?.events?.let { filterHandoffPulseEvents(it) },
+                    handoffEvents,
+                )
+                handoffEvents = result.events
+                handoffError = result.error
+            } catch (_: Exception) {
+                handoffError = PulseHonesty.FAILED
+            }
+            handoffLoading = false
+            if (!silent) loading = false
         }
     }
 
@@ -690,6 +695,7 @@ fun DispatchScreen(
                 HandoffTimelineSection(
                     events = handoffEvents,
                     loading = handoffLoading,
+                    error = handoffError,
                 )
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_orders_size, preview!!.undispatchedOrders.size)) })

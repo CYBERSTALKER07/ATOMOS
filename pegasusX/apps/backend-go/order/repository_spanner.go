@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"google.golang.org/api/iterator"
 )
 
 // SpannerRepository persists order rows in Spanner and writes emitted outbox
@@ -38,6 +38,10 @@ func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error
 func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
 	b.audits = append(b.audits, e)
 	return nil
+}
+
+func outboxEventMutation(e outbox.Event) *spanner.Mutation {
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }
 
 const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, OriginalTotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, DeliverBefore, DeliveryPriority, DeliveryFeeMinor, WarehouseNotes, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Timezone, PreorderReminderSentAt, NudgeNotifiedAt, ConfirmationNotifiedAt, CancelLockedAt, CancelLockReason, CancelLockExpiresAt, ProposedDeliveryDate, DeliveryProposalAt, DeliveryProposalBy, DeliveryProposalReason, Version, CreatedAt, UpdatedAt, FiscalStatus, LatestFiscalReceiptId, LatestFiscalAttemptId, FiscalizedAt, ShopClosedAt, ShopClosedReason, ShopClosedGraceEndsAt, ShopClosedResolution, PartialDelivery, ProximityUnlockedAt, ProximityMethod, BuyerAcceptanceStatus, BuyerAcceptanceDeadline, ClaimWindowHours, ClaimWindowEndsAt, ClaimWindowPolicySource`
@@ -163,32 +167,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 		mutations = append(mutations, spanner.InsertMap("Orders", orderInsert))
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			sid := strings.TrimSpace(e.SupplierID)
-			if sid == "" {
-				sid = outbox.SupplierIDFromPayload(e.Payload)
-			}
-			if sid != "" {
-				row["SupplierId"] = sid
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 
 		for _, a := range buf.audits {
@@ -424,7 +403,6 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			}))
 		}
 
-
 		for _, ret := range o.PendingSupplierReturns {
 			returnID := strings.TrimSpace(ret.ReturnID)
 			if returnID == "" {
@@ -530,32 +508,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			sid := strings.TrimSpace(e.SupplierID)
-			if sid == "" {
-				sid = outbox.SupplierIDFromPayload(e.Payload)
-			}
-			if sid != "" {
-				row["SupplierId"] = sid
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 
 		for _, a := range buf.audits {
@@ -612,7 +565,6 @@ func (r *SpannerRepository) GetOrderTxn(ctx context.Context, txn *spanner.ReadWr
 	}
 	return o, true, nil
 }
-
 
 // GetFiscalAttempt loads one OrderFiscalReceipts row for worker idempotency (ADR-009).
 func (r *SpannerRepository) GetFiscalAttempt(ctx context.Context, orderID, attemptID string) (FiscalReceiptRow, bool, error) {
@@ -764,7 +716,7 @@ func (r *SpannerRepository) CountFiscalAttemptsByStatus(ctx context.Context, ord
 		return 0, nil
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT COUNT(*) FROM OrderFiscalReceipts WHERE OrderId = @oid AND Status = @st`,
+		SQL:    `SELECT COUNT(*) FROM OrderFiscalReceipts WHERE OrderId = @oid AND Status = @st`,
 		Params: map[string]any{"oid": orderID, "st": status},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -1062,7 +1014,7 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	if orderRecord.OriginalTotalMinor == 0 {
 		orderRecord.OriginalTotalMinor = orderRecord.TotalMinor
 	}
-	
+
 	orderRecord.FiscalStatus = fiscalStatus.StringVal
 	orderRecord.LatestFiscalReceiptID = latestFiscalReceiptID.StringVal
 	orderRecord.LatestFiscalAttemptID = latestFiscalAttemptID.StringVal
@@ -1389,27 +1341,7 @@ func (r *SpannerRepository) CreateConditionReport(ctx context.Context, report Co
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			sid := strings.TrimSpace(e.SupplierID)
-			if sid == "" {
-				sid = outbox.SupplierIDFromPayload(e.Payload)
-			}
-			if sid != "" {
-				row["SupplierId"] = sid
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 
 		return txn.BufferWrite(mutations)
@@ -1858,32 +1790,7 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			sid := strings.TrimSpace(e.SupplierID)
-			if sid == "" {
-				sid = outbox.SupplierIDFromPayload(e.Payload)
-			}
-			if sid != "" {
-				row["SupplierId"] = sid
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 
 		for _, a := range buf.audits {

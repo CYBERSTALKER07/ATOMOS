@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 )
 
@@ -20,24 +20,22 @@ type paymentGatewayWire struct {
 	Provider    string `json:"provider"`
 	IsActive    bool   `json:"is_active"`
 	Mode        string `json:"mode"`
+	Status      string `json:"status,omitempty"`
+	Selectable  bool   `json:"selectable"`
 }
 
 type warehousePaymentConfigResponse struct {
-	Gateways          []paymentGatewayWire `json:"gateways"`
-	SelectedGateways  []string             `json:"selected_gateways"`
-	PaymentAcceptor   string               `json:"payment_acceptor,omitempty"`
-	PaymentConfigID   string               `json:"payment_config_id,omitempty"`
+	Gateways         []paymentGatewayWire `json:"gateways"`
+	SelectedGateways []string             `json:"selected_gateways"`
+	Catalog          []payment.PSPListing `json:"catalog"`
+	CurrencyCode     string               `json:"currency_code"`
+	MarketCode       string               `json:"market_code,omitempty"`
+	PaymentAcceptor  string               `json:"payment_acceptor,omitempty"`
+	PaymentConfigID  string               `json:"payment_config_id,omitempty"`
 }
 
 type warehousePaymentConfigRequest struct {
 	SelectedGateways []string `json:"selected_gateways"`
-}
-
-var allowedWarehouseGateways = map[string]struct{}{
-	"GLOBAL_PAY": {},
-	"ADYEN":      {},
-	"AIRWALLEX":  {},
-	"CASH":       {},
 }
 
 // HandleOpsPaymentConfig serves GET/POST /v1/warehouse/ops/payment-config.
@@ -53,8 +51,14 @@ func (s *Service) HandleOpsPaymentConfig(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Service) handleGetOpsPaymentConfig(w http.ResponseWriter, r *http.Request) {
+	pack, err := auth.CheckoutPackFromContext(r.Context())
+	if err != nil {
+		status, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, status, map[string]string{"error": code})
+		return
+	}
 	warehouseID := warehouseIDFromRequest(r)
-	resp, err := s.loadPaymentConfigResponse(r.Context(), warehouseID)
+	resp, err := s.loadPaymentConfigResponse(r.Context(), warehouseID, pack)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_payment_config_failed"})
 		return
@@ -81,9 +85,16 @@ func (s *Service) handlePostOpsPaymentConfig(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "selected_gateways required"})
 		return
 	}
+	pack, err := auth.CheckoutPackFromContext(r.Context())
+	if err != nil {
+		status, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, status, map[string]string{"error": code})
+		return
+	}
 	for _, gateway := range req.SelectedGateways {
-		if _, ok := allowedWarehouseGateways[strings.ToUpper(strings.TrimSpace(gateway))]; !ok {
-			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": fmt.Sprintf("unknown gateway %q", gateway)})
+		if err := auth.AssertPackPSP(pack, gateway); err != nil {
+			status, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, status, map[string]string{"error": code})
 			return
 		}
 	}
@@ -93,7 +104,7 @@ func (s *Service) handlePostOpsPaymentConfig(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	normalized := payment.NormalizeGatewayPolicy(payment.PaymentAcceptorWarehouse, req.SelectedGateways, "WAREHOUSE_CONFIG").AllowedGateways
+	normalized := payment.NormalizeGatewayPolicyForPack(payment.PaymentAcceptorWarehouse, req.SelectedGateways, "WAREHOUSE_CONFIG", pack).AllowedGateways
 	configID, err := s.upsertWarehousePaymentConfig(r.Context(), warehouseID, normalized)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "persist warehouse payment config failed", "warehouse_id", warehouseID, "err", err)
@@ -108,28 +119,19 @@ func (s *Service) handlePostOpsPaymentConfig(w http.ResponseWriter, r *http.Requ
 		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 	}
 
-	resp, err := s.loadPaymentConfigResponse(r.Context(), warehouseID)
+	resp, err := s.loadPaymentConfigResponse(r.Context(), warehouseID, pack)
 	if err != nil {
-		writeJSON(w, http.StatusOK, warehousePaymentConfigResponse{
-			PaymentConfigID:  configID,
-			SelectedGateways: normalized,
-			Gateways:         gatewaysToWire(normalized),
-		})
+		writeJSON(w, http.StatusOK, packPaymentConfigResponse(pack, normalized, payment.PaymentAcceptorWarehouse, configID))
 		return
 	}
 	resp.PaymentConfigID = configID
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func (s *Service) loadPaymentConfigResponse(ctx context.Context, warehouseID string) (warehousePaymentConfigResponse, error) {
+func (s *Service) loadPaymentConfigResponse(ctx context.Context, warehouseID string, pack auth.MarketPack) (warehousePaymentConfigResponse, error) {
 	warehouseID = strings.TrimSpace(warehouseID)
 	if s.spannerClient == nil || warehouseID == "" {
-		defaultGateways := payment.NormalizeGatewayPolicy(payment.PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT").AllowedGateways
-		return warehousePaymentConfigResponse{
-			Gateways:         gatewaysToWire(defaultGateways),
-			SelectedGateways: defaultGateways,
-			PaymentAcceptor:  payment.PaymentAcceptorSupplier,
-		}, nil
+		return packPaymentConfigResponse(pack, nil, payment.PaymentAcceptorSupplier, ""), nil
 	}
 
 	acceptor, supplierGateways, err := s.loadSupplierPaymentAcceptor(ctx)
@@ -149,16 +151,7 @@ func (s *Service) loadPaymentConfigResponse(ctx context.Context, warehouseID str
 			configID = id
 		}
 	}
-	if len(gateways) == 0 {
-		gateways = payment.NormalizeGatewayPolicy(acceptor, nil, "SUPPLIER_DEFAULT").AllowedGateways
-	}
-
-	return warehousePaymentConfigResponse{
-		Gateways:         gatewaysToWire(gateways),
-		SelectedGateways: gateways,
-		PaymentAcceptor:  normalizePaymentAcceptor(acceptor),
-		PaymentConfigID:  configID,
-	}, nil
+	return packPaymentConfigResponse(pack, gateways, normalizePaymentAcceptor(acceptor), configID), nil
 }
 
 func (s *Service) loadSupplierPaymentAcceptor(ctx context.Context) (string, []string, error) {
@@ -254,22 +247,49 @@ func (s *Service) upsertWarehousePaymentConfig(ctx context.Context, warehouseID 
 	return configID, err
 }
 
-func gatewaysToWire(gateways []string) []paymentGatewayWire {
+func packPaymentConfigResponse(pack auth.MarketPack, selected []string, acceptor, configID string) warehousePaymentConfigResponse {
+	catalog := payment.AvailablePSPs(pack)
+	policy := payment.NormalizeGatewayPolicyForPack(acceptor, selected, "MARKET_PACK", pack)
+	return warehousePaymentConfigResponse{
+		Gateways:         gatewaysToWire(policy.AllowedGateways, catalog),
+		SelectedGateways: policy.AllowedGateways,
+		Catalog:          catalog,
+		CurrencyCode:     pack.CurrencyCode,
+		MarketCode:       pack.Code,
+		PaymentAcceptor:  acceptor,
+		PaymentConfigID:  configID,
+	}
+}
+
+func gatewaysToWire(gateways []string, catalog []payment.PSPListing) []paymentGatewayWire {
+	byCode := make(map[string]payment.PSPListing, len(catalog))
+	for _, listing := range catalog {
+		byCode[listing.Code] = listing
+	}
 	out := make([]paymentGatewayWire, 0, len(gateways))
 	for _, gateway := range gateways {
-		gateway = strings.ToUpper(strings.TrimSpace(gateway))
+		gateway = auth.CanonicalPSP(gateway)
 		if gateway == "" {
+			continue
+		}
+		listing, ok := byCode[gateway]
+		if !ok {
 			continue
 		}
 		mode := "LIVE"
 		if gateway == "GLOBAL_PAY" {
 			mode = "PRODUCTION"
 		}
+		if listing.Status != payment.PSPStatusLive {
+			mode = strings.ToUpper(listing.Status)
+		}
 		out = append(out, paymentGatewayWire{
 			GatewayName: gateway,
 			Provider:    gateway,
-			IsActive:    true,
+			IsActive:    listing.Selectable,
 			Mode:        mode,
+			Status:      listing.Status,
+			Selectable:  listing.Selectable,
 		})
 	}
 	return out

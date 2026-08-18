@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, moneyCurrency } from '@pegasusx/api-client';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';
@@ -135,7 +135,7 @@ export default function SupplierOrderDetailPage() {
 
   const retailerLabel = detail?.retailer_name || listRow?.retailer_id || '—';
   const totalMinor = detail?.total_minor ?? listRow?.total_minor ?? 0;
-  const currency = listRow?.currency ?? 'UZS';
+  const currency = moneyCurrency(listRow?.currency);
   const totalUzs = detail?.total_uzs;
 
   return (

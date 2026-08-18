@@ -1,11 +1,12 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
 
-import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
 import { CoverageCityChips } from "@/components/CoverageCityChips";
+import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
+import { packMapCenter } from "@pegasusx/api-client";
 import type { SupplierTopologyCoverageCity } from "@pegasusx/types";
 
 interface WarehouseFormProps {
@@ -23,20 +24,32 @@ interface WarehouseFormProps {
   factoryOptions?: Array<{ id: string; name: string }>;
 }
 
-const DEFAULT_LOCATION: LocationValue = {
-  address: "",
-  lat: "41.2995",
-  lng: "69.2401",
-};
+function defaultWarehouseLocation(pack: { map_center_lat?: number; map_center_lng?: number; status?: string } | null | undefined): LocationValue {
+  const c = packMapCenter(pack);
+  return {
+    address: "",
+    lat: c ? String(c.lat) : "",
+    lng: c ? String(c.lng) : "",
+  };
+}
 
 export function WarehouseForm({ onSave, onCancel, factoryOptions = [] }: WarehouseFormProps) {
   const t = usePortalT();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [location, setLocation] = useState<LocationValue>(DEFAULT_LOCATION);
+  const { pack } = useSupplierPaymentCatalog();
+  const [location, setLocation] = useState<LocationValue>(() => defaultWarehouseLocation(null));
   const [radius, setRadius] = useState("50");
-  const [country, setCountry] = useState("");
+  const country = pack?.code || "";
+  useEffect(() => {
+    const c = packMapCenter(pack);
+    if (!c) return;
+    setLocation((prev) => {
+      if (prev.lat || prev.lng) return prev;
+      return { ...prev, lat: String(c.lat), lng: String(c.lng) };
+    });
+  }, [pack?.code, pack?.map_center_lat, pack?.map_center_lng]);
   const [cities, setCities] = useState<SupplierTopologyCoverageCity[]>([]);
   const [primaryFactory, setPrimaryFactory] = useState("");
 
@@ -77,12 +90,8 @@ export function WarehouseForm({ onSave, onCancel, factoryOptions = [] }: Warehou
       <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.warehouse_address")} />
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">Country</span>
-        <select className="md-input w-full max-w-xs" value={country} onChange={(e) => setCountry(e.target.value)}>
-          <option value="">Unset (whole-country cover once set on node)</option>
-          {AUTH_COUNTRIES.map((c) => (
-            <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
-          ))}
-        </select>
+        <input className="md-input w-full max-w-xs" value={country} readOnly />
+        <p className="text-xs text-[var(--muted)]">Pack country is locked. Cross-market warehouses are rejected.</p>
       </label>
       <CoverageCityChips cities={cities} onChange={setCities} />
       {factoryOptions.length > 0 ? (

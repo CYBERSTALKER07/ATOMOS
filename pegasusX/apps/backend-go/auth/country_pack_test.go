@@ -44,6 +44,19 @@ func TestCountryFromContext_PlannedFailsClosed(t *testing.T) {
 	}
 }
 
+func TestAssertSameMarket(t *testing.T) {
+	t.Parallel()
+	if err := AssertSameMarket("UZ", "", "uz"); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertSameMarket("", "UZ"); err != ErrGeographyIncomplete {
+		t.Fatalf("err=%v", err)
+	}
+	if err := AssertSameMarket("UZ", "PK"); err != ErrCrossMarketDeferred {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestCountryFromContext_KZTDoesNotInventKZ(t *testing.T) {
 	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	c, err := CountryFromContext(context.Background(), "")

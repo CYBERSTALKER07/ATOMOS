@@ -7,8 +7,7 @@ import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import { useMapLibreTeardown } from "@pegasusx/ui-kit/desktop";
 import { createSupplierApi } from "@/lib/api";
-
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
 
 const LATENESS_COLORS: Record<string, string> = {
   green: "#0f9d58",
@@ -109,11 +108,7 @@ export default function LiveOpsMap({
         ref={(ref) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
-        initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
-          zoom: 11,
-        }}
+        initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 11)}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
         mapLib={maplibregl}

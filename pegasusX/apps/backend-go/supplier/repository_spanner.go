@@ -680,25 +680,7 @@ func (r *SpannerRepository) UpsertPricingRule(ctx context.Context, rule Supplier
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -903,25 +885,7 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = now
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -1006,6 +970,10 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				createdAt = now
 			}
 
+			factoryCountry := strings.ToUpper(strings.TrimSpace(fc.CountryCode))
+			if factoryCountry == "" {
+				return fmt.Errorf("factory country_code required")
+			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Factories", map[string]any{
 				"FactoryId":   id,
 				"SupplierId":  supplierID,
@@ -1015,7 +983,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				"H3Cell":      topologyH3CellString(fc.Lat, fc.Lng),
 				"Address":     nullableString(strings.TrimSpace(fc.Address)),
 				"PlaceId":     nullableString(strings.TrimSpace(fc.PlaceID)),
-				"CountryCode": nullableString(strings.ToUpper(strings.TrimSpace(fc.CountryCode))),
+				"CountryCode": factoryCountry,
 				"IsActive":    fc.IsActive,
 				"CreatedAt":   createdAt,
 				"UpdatedAt":   now,
@@ -1072,6 +1040,8 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 			if cc := strings.ToUpper(strings.TrimSpace(wh.CountryCode)); cc != "" {
 				row["CountryCode"] = cc
+			} else {
+				return fmt.Errorf("warehouse country_code required")
 			}
 			if sched := strings.TrimSpace(wh.OperatingSchedule); sched != "" {
 				row["OperatingSchedule"] = spanner.NullJSON{Value: json.RawMessage(sched), Valid: true}
@@ -1103,23 +1073,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = now
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -1236,9 +1190,9 @@ func topologyH3CellString(lat, lng float64) any {
 	if lat == 0 && lng == 0 {
 		return nil
 	}
-	cells, err := proximity.CellsInRadius(lat, lng, 9, 0)
-	if err != nil || len(cells) == 0 {
+	cell := proximity.MatchingH3Cell(lat, lng)
+	if cell == "" {
 		return nil
 	}
-	return cells[0]
+	return cell
 }

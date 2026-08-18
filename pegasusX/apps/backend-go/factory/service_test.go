@@ -932,6 +932,12 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 	if firstRR.Code != http.StatusOK {
 		t.Fatalf("expected first status 200, got %d body=%s", firstRR.Code, firstRR.Body.String())
 	}
+	if len(repo.savedExceptions) == 0 {
+		t.Fatal("expected SaveException so GET /manifest-exceptions can read Spanner")
+	}
+	if repo.savedExceptions[len(repo.savedExceptions)-1].TransferID != "tr_factory_1" {
+		t.Fatalf("unexpected saved exception: %+v", repo.savedExceptions[len(repo.savedExceptions)-1])
+	}
 	if len(repo.events) != 1 {
 		t.Fatalf("expected one outbox event after first cancel, got %d", len(repo.events))
 	}
@@ -1092,6 +1098,7 @@ type factoryRepoSpy struct {
 	applyCalls         int
 	events             []outbox.Event
 	savedStaff         []StaffRow
+	savedExceptions    []ManifestException
 	resolvedExceptions []ManifestException
 }
 
@@ -1221,6 +1228,12 @@ func (d *dummyFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error 
 func (d *dummyFactoryTx) SaveStaff(ctx context.Context, row StaffRow) error {
 	if d.spy != nil {
 		d.spy.savedStaff = append(d.spy.savedStaff, row)
+	}
+	return nil
+}
+func (d *dummyFactoryTx) SaveException(ctx context.Context, row ManifestException) error {
+	if d.spy != nil {
+		d.spy.savedExceptions = append(d.spy.savedExceptions, row)
 	}
 	return nil
 }

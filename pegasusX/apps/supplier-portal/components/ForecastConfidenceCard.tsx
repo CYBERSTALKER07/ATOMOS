@@ -38,8 +38,12 @@ export function ForecastConfidenceCard({ confidence, updatedAt, stale }: Props) 
         ) : null}
       </div>
       {blocked ? (
-        <p className="md-typescale-body-small" style={{ color: "var(--desk-warning)" }}>
-          Insufficient history — predictive forecast blocked
+        <p
+          className="md-typescale-body-small"
+          data-testid="gs-u-forecast-blocked-reason"
+          style={{ color: "var(--desk-warning)" }}
+        >
+          {confidence.blocked_reason || "insufficient_history"}
         </p>
       ) : (
         <p className="md-kpi-value text-xl tabular-nums">

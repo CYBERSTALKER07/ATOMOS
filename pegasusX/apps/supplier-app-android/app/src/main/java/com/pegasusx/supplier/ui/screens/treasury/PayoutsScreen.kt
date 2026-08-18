@@ -233,9 +233,9 @@ fun PayoutsScreen(
         },
     ) { padding ->
         when {
-            loading && batches.isEmpty && rail == null ->
+            loading && batches.isEmpty() && rail == null ->
                 PegasusLoadingState("Loading payouts…", body = "", modifier = Modifier.padding(padding))
-            error != null && batches.isEmpty && rail == null -> PegasusStatePane(
+            error != null && batches.isEmpty() && rail == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Payouts unavailable",
                 body = error!!,

@@ -34,7 +34,7 @@ func BuildINVOIC(o OrderSnapshot, inv *InvoiceSnapshot, externalDocID string) st
 		}
 	}
 	if currency == "" {
-		currency = "UZS"
+		currency = ediCurrency(o.SupplierID, currency)
 	}
 	ts := time.Now().UTC().Format("060102:1504")
 	segs := []Segment{

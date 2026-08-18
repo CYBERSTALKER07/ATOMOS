@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ApiError } from '@pegasusx/api-client';
 import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from '@pegasusx/desktop-cache';
 import { isTauri } from '@pegasusx/desktop-bridge';
 import type { SupplierOrder } from '@pegasusx/types';
+import { ORDER_STATUS_FUNNEL, canonicalizeOrderStatus } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import { supplierOrdersCacheKey } from '@/lib/supplier-cache-keys';
 import { downloadCsv } from '@/lib/csv';
@@ -22,7 +24,21 @@ const WEB_PAGE_SIZE = 25;
 const DESKTOP_PAGE_SIZE = 200;
 
 export default function OrdersPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrdersPageInner />
+    </Suspense>
+  );
+}
+
+function OrdersPageInner() {
   const t = usePortalT();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const statusFilter = useMemo(() => {
+    const raw = canonicalizeOrderStatus(searchParams.get("status") ?? "");
+    return (ORDER_STATUS_FUNNEL as readonly string[]).includes(raw) ? raw : "";
+  }, [searchParams]);
   const filterLabels: Record<OrderFilter, string> = {
     ACTIVE: t('portal.page.orders.filter.active'),
     SCHEDULED: t('portal.page.orders.filter.scheduled'),
@@ -40,8 +56,9 @@ export default function OrdersPage() {
   const [exporting, setExporting] = useState(false);
 
   const loadOrders = useCallback(async (silent = false) => {
-    const query =
-      filter === 'SCHEDULED'
+    const query = statusFilter
+      ? { limit: pageSize, offset: page * pageSize, status: statusFilter }
+      : filter === 'SCHEDULED'
         ? { limit: pageSize, offset: page * pageSize, status: 'SCHEDULED' }
         : { limit: pageSize, offset: page * pageSize, filter };
     const cacheKey = supplierOrdersCacheKey(query);
@@ -86,7 +103,7 @@ export default function OrdersPage() {
         setLoading(false);
       }
     }
-  }, [filter, page, pageSize, toast]);
+  }, [filter, page, pageSize, statusFilter, toast]);
 
   useEffect(() => {
     void loadOrders();
@@ -94,7 +111,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filter]);
+  }, [filter, statusFilter]);
 
   useSupplierWsRefresh(() => {
     void loadOrders(true);
@@ -110,8 +127,9 @@ export default function OrdersPage() {
   const exportCsv = async () => {
     setExporting(true);
     try {
-      const query =
-        filter === 'SCHEDULED'
+      const query = statusFilter
+        ? { limit: 300, offset: 0, status: statusFilter }
+        : filter === 'SCHEDULED'
           ? { limit: 300, offset: 0, status: 'SCHEDULED' }
           : { limit: 300, offset: 0, filter };
       const response = await supplierApi.getSupplierOrders(query);
@@ -148,7 +166,10 @@ export default function OrdersPage() {
               type="button"
               className="md-chip"
               aria-pressed={filter === nextFilter}
-              onClick={() => setFilter(nextFilter)}
+              onClick={() => {
+                setFilter(nextFilter);
+                if (statusFilter) router.replace("/orders");
+              }}
             >
               {filterLabels[nextFilter]}
             </button>
@@ -157,10 +178,15 @@ export default function OrdersPage() {
       }
     >
       <div className="space-y-4">
+        {statusFilter ? (
+          <p className="md-typescale-body-small" data-testid="gs-u-orders-status-filter">
+            Filtered by {statusFilter.replaceAll("_", " ")}
+          </p>
+        ) : null}
         <ListToolbar
           page={currentPage}
           pageCount={pageCount}
-          totalLabel={`${total} ${filterLabels[filter].toLowerCase()}`}
+          totalLabel={`${total} ${statusFilter ? statusFilter.replaceAll("_", " ").toLowerCase() : filterLabels[filter].toLowerCase()}`}
           onPrev={() => setPage((value) => Math.max(value - 1, 0))}
           onNext={() => setPage((value) => Math.min(value + 1, pageCount - 1))}
           onExport={() => void exportCsv()}

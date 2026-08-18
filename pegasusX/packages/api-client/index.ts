@@ -225,6 +225,16 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierInventoryResponse,
   SupplierTopologyResponse,
   SupplierTopologyUpdateRequest,
+  WarehouseCoverageRequest,
+  WarehouseCoverageResponse,
+  WarehouseOpsLocationResponse,
+  WarehouseOpsPaymentConfigResponse,
+  WarehouseOpsSupplyFactoryResponse,
+  WarehousePinsResponse,
+  SupplierRegionsResponse,
+  SupplierRegionsReplaceRequest,
+  SupplierPaymentCatalogResponse,
+  RetailerPaymentCatalogResponse,
   WarehouseDispatchLock,
   WarehouseDispatchLockAcquireRequest,
   WarehouseDispatchLockReleaseResponse,
@@ -435,6 +445,11 @@ export {
   payloadInboundConfirmKey,
   payloadManifestExceptionKey,
 } from "./idempotency";
+import {
+  dispatchBackpressureFromResponse,
+  etagFromResponse,
+  type ConditionalGet,
+} from "./conditional-get";
 export {
   CELL_API_URLS,
   homeCellFromJwt,
@@ -448,12 +463,19 @@ export {
   cacheAuthSession,
   fetchAuthSession,
   fiscalReceiptLabel,
+  displayPackCurrency,
   formatPackMoney,
+  mapInitialViewState,
+  moneyCurrency,
   packAllowsPsp,
   packCurrency,
+  packMapCenter,
+  selectablePackPsps,
   readCachedAuthSession,
+  sessionMapCenter,
+  sessionPackCurrency,
 } from "./market-pack";
-export type { AuthSession, MarketPack } from "./market-pack";
+export type { AuthSession, MarketPack, PackMapCenter } from "./market-pack";
 export { useMarketPack } from "./use-market-pack";
 export {
   SESSION_RECONCILE_ENDPOINTS,
@@ -462,6 +484,8 @@ export {
 export type { SessionReconcileRole, SessionReconcileEndpoint, SessionReconcileOptions, SessionReconcileResult } from "./session-reconcile";
 export { usePolling } from "./usePolling";
 export type { UsePollingOptions } from "./usePolling";
+export { dispatchBackpressureFromResponse, etagFromResponse } from "./conditional-get";
+export type { ConditionalGet } from "./conditional-get";
 
 export interface ApiClientConfig {
   baseUrl: string;
@@ -475,6 +499,7 @@ interface RequestOptions {
   idempotencyKey?: string;
   requiresAuth?: boolean;
   headers?: HeadersInit;
+  ifNoneMatch?: string;
 }
 
 export class ApiError extends Error {
@@ -585,6 +610,47 @@ export class ApiClient {
 
   async updateSupplierTopology(request: SupplierTopologyUpdateRequest): Promise<SupplierTopologyResponse> {
     return this.request<SupplierTopologyResponse>("/v1/supplier/topology", "PUT", { body: request });
+  }
+
+  async getSupplierPaymentCatalog(): Promise<SupplierPaymentCatalogResponse> {
+    return this.request<SupplierPaymentCatalogResponse>("/v1/supplier/payment-catalog", "GET");
+  }
+
+  async getRetailerPaymentCatalog(): Promise<RetailerPaymentCatalogResponse> {
+    return this.request<RetailerPaymentCatalogResponse>("/v1/retailer/payment-catalog", "GET");
+  }
+
+  async getSupplierRegions(): Promise<SupplierRegionsResponse> {
+    return this.request<SupplierRegionsResponse>("/v1/supplier/regions", "GET");
+  }
+
+  async replaceSupplierRegions(request: SupplierRegionsReplaceRequest): Promise<SupplierRegionsResponse> {
+    return this.request<SupplierRegionsResponse>("/v1/supplier/regions", "PUT", { body: request });
+  }
+
+  async getWarehouseCoverage(warehouseId: string): Promise<WarehouseCoverageResponse> {
+    return this.request<WarehouseCoverageResponse>(
+      `/v1/supplier/warehouses/${encodeURIComponent(warehouseId)}/coverage`,
+      "GET",
+    );
+  }
+
+  async replaceWarehouseCoverage(
+    warehouseId: string,
+    request: WarehouseCoverageRequest,
+  ): Promise<WarehouseCoverageResponse> {
+    return this.request<WarehouseCoverageResponse>(
+      `/v1/supplier/warehouses/${encodeURIComponent(warehouseId)}/coverage`,
+      "PUT",
+      { body: request },
+    );
+  }
+
+  async getWarehousePins(warehouseId: string): Promise<WarehousePinsResponse> {
+    return this.request<WarehousePinsResponse>(
+      `/v1/supplier/warehouses/${encodeURIComponent(warehouseId)}/pins`,
+      "GET",
+    );
   }
 
   async getSupplierInventory(): Promise<SupplierInventoryResponse> {
@@ -896,6 +962,12 @@ export class ApiClient {
 
   async getSupplierDashboard(): Promise<SupplierDashboardResponse> {
     return this.request<SupplierDashboardResponse>("/v1/supplier/dashboard", "GET");
+  }
+
+  async getSupplierDashboardConditional(ifNoneMatch?: string): Promise<ConditionalGet<SupplierDashboardResponse>> {
+    return this.requestConditional<SupplierDashboardResponse>("/v1/supplier/dashboard", "GET", {
+      ifNoneMatch,
+    });
   }
 
   async getSupplierAnalyticsVelocity(): Promise<SupplierAnalyticsVelocityResponse> {
@@ -2143,6 +2215,17 @@ export class ApiClient {
     return this.request<WarehouseOpsDashboardResponse>(appendQuery("/v1/warehouse/ops/dashboard", query as Record<string, unknown>), "GET");
   }
 
+  async getWarehouseOpsDashboardConditional(
+    query: { warehouse_id?: string } = {},
+    ifNoneMatch?: string,
+  ): Promise<ConditionalGet<WarehouseOpsDashboardResponse>> {
+    return this.requestConditional<WarehouseOpsDashboardResponse>(
+      appendQuery("/v1/warehouse/ops/dashboard", query as Record<string, unknown>),
+      "GET",
+      { ifNoneMatch },
+    );
+  }
+
   async getWarehouseFleetLiveMap(query: { warehouse_id?: string } = {}): Promise<WarehouseFleetLiveMapResponse> {
     return this.request<WarehouseFleetLiveMapResponse>(appendQuery("/v1/warehouse/ops/fleet/live-map", query as Record<string, unknown>), "GET");
   }
@@ -2405,6 +2488,34 @@ export class ApiClient {
       ),
       "POST",
       { body: {}, idempotencyKey },
+    );
+  }
+
+  async getWarehouseOpsCoverage(query: { warehouse_id?: string } = {}): Promise<WarehouseCoverageResponse> {
+    return this.request<WarehouseCoverageResponse>(
+      appendQuery("/v1/warehouse/ops/coverage", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getWarehouseOpsSupplyFactory(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsSupplyFactoryResponse> {
+    return this.request<WarehouseOpsSupplyFactoryResponse>(
+      appendQuery("/v1/warehouse/ops/supply-factory", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getWarehouseOpsLocation(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsLocationResponse> {
+    return this.request<WarehouseOpsLocationResponse>(
+      appendQuery("/v1/warehouse/ops/location", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getWarehouseOpsPaymentConfig(query: { warehouse_id?: string } = {}): Promise<WarehouseOpsPaymentConfigResponse> {
+    return this.request<WarehouseOpsPaymentConfigResponse>(
+      appendQuery("/v1/warehouse/ops/payment-config", query as Record<string, unknown>),
+      "GET",
     );
   }
 
@@ -3182,6 +3293,7 @@ export class ApiClient {
     }
 
     const response = await fetchImpl(this.resolveURL(path), init);
+    dispatchBackpressureFromResponse(response);
     const payload = await parseResponsePayload(response);
     if (!response.ok) {
       const message = extractErrorMessage(response.status, payload);
@@ -3189,6 +3301,34 @@ export class ApiClient {
     }
 
     return payload as TResponse;
+  }
+
+  private async requestConditional<TResponse>(
+    path: string,
+    method: "GET",
+    options: RequestOptions = {},
+  ): Promise<ConditionalGet<TResponse>> {
+    const fetchImpl = this.config.fetchImpl ?? fetch;
+    const requiresAuth = options.requiresAuth ?? true;
+    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey, options.rawBody !== undefined);
+    if (options.ifNoneMatch) {
+      headers.set("If-None-Match", options.ifNoneMatch);
+    }
+
+    const response = await fetchImpl(this.resolveURL(path), {
+      method,
+      headers,
+      credentials: "include",
+    });
+    dispatchBackpressureFromResponse(response);
+    if (response.status === 304) {
+      return { notModified: true, etag: etagFromResponse(response) ?? options.ifNoneMatch ?? null };
+    }
+    const payload = await parseResponsePayload(response);
+    if (!response.ok) {
+      throw new ApiError(extractErrorMessage(response.status, payload), response.status, payload);
+    }
+    return { notModified: false, data: payload as TResponse, etag: etagFromResponse(response) };
   }
 
   private async requestText(

@@ -35,6 +35,10 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 
 	var ret Retailer
 	var sessionUser *RetailerUser

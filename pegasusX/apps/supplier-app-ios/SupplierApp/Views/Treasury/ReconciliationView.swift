@@ -4,7 +4,7 @@ struct ReconciliationView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var netMinor: Int64 = 0
-    @State private var currency = "UZS"
+    @State private var currency = packCurrency(MarketPackStore.pack)
     @State private var mismatchCount = 0
 
     var body: some View {

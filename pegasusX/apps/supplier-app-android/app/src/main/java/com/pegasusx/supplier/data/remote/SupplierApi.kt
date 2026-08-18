@@ -16,6 +16,9 @@ interface SupplierApi {
     @POST("v1/auth/supplier/refresh")
     suspend fun refreshToken(@Body body: RefreshTokenRequest): Response<LoginResponse>
 
+    @POST("v1/user/device-token")
+    suspend fun registerDeviceToken(@Body body: DeviceTokenRequest): Response<Map<String, String>>
+
     @POST("v1/supplier/configure")
     suspend fun configureSupplier(@Body body: JsonElement): Response<JsonElement>
 
@@ -265,6 +268,11 @@ interface SupplierApi {
     suspend fun postPlanningPredictivePush(
         @Header("X-Idempotency-Key") idempotencyKey: String,
     ): Response<PredictivePushResponse>
+
+    @GET("v1/supplier/planning/sparsity/{retailerId}")
+    suspend fun getPlanningSparsity(
+        @Path("retailerId") retailerId: String,
+    ): Response<SparsityGateResult>
 
     @GET("v1/supplier/loyalty/program")
     suspend fun getLoyaltyProgram(): Response<LoyaltyProgram>

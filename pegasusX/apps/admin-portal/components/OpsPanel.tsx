@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { deadLetterHealth, deadLetterLabel } from "@/lib/deadLetterHealth";
 
 export default function OpsPanel({ token }: { token: string }) {
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
   const [runtime, setRuntime] = useState<Record<string, unknown> | null>(null);
   const [events, setEvents] = useState<Array<Record<string, string>>>([]);
   const [deadLetters, setDeadLetters] = useState<Array<Record<string, string | number>>>([]);
+  const [deadLetterTotal, setDeadLetterTotal] = useState<ReturnType<typeof deadLetterHealth>>({
+    kind: "unavailable",
+  });
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -28,6 +32,7 @@ export default function OpsPanel({ token }: { token: string }) {
         setRuntime(r);
         setEvents(e.events || []);
         setDeadLetters(d.items || []);
+        setDeadLetterTotal(deadLetterHealth({ ...s, ...d }));
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : "ops_load_failed");
       } finally {
@@ -97,8 +102,14 @@ export default function OpsPanel({ token }: { token: string }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
           Outbox dead letters (Spanner)
         </h2>
-        {deadLetters.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">None or table unavailable.</p>
+        <p className="mt-1 text-sm" data-testid="gs-u-admin-dlq-count">
+          COUNT(*) · {deadLetterLabel(deadLetterTotal)}
+          {deadLetterTotal.kind !== "unavailable" ? " — not page length" : ""}
+        </p>
+        {deadLetterTotal.kind === "unavailable" ? (
+          <p className="mt-2 text-sm text-gray-600">unavailable — table or Spanner not wired</p>
+        ) : deadLetters.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">empty</p>
         ) : (
           <table className="mt-2 w-full text-left text-xs">
             <thead>

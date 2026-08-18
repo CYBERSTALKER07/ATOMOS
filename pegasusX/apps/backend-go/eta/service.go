@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -82,22 +83,31 @@ func (s *Service) GetStopETA(ctx context.Context, stopId string) (*RouteETA, err
 }
 
 type RecalculateRequest struct {
-	RouteId         string
-	Now             time.Time
-	DriverLat       float64
-	DriverLng       float64
-	Profile         DriverProfile
-	Stops           []StopInput
-	ShopClosedRates map[string]float64
+	RouteId         string             `json:"routeId"`
+	RouteIDSnake    string             `json:"route_id"`
+	Now             time.Time          `json:"now"`
+	DriverLat       float64            `json:"driverLat"`
+	DriverLng       float64            `json:"driverLng"`
+	Profile         DriverProfile      `json:"profile"`
+	Stops           []StopInput        `json:"stops"`
+	ShopClosedRates map[string]float64 `json:"shopClosedRates"`
+}
+
+func (r RecalculateRequest) EffectiveRouteID() string {
+	if id := strings.TrimSpace(r.RouteId); id != "" {
+		return id
+	}
+	return strings.TrimSpace(r.RouteIDSnake)
 }
 
 func (s *Service) RecalculateETAs(ctx context.Context, req RecalculateRequest) error {
+	routeID := req.EffectiveRouteID()
 	etas := CalculateETAs(req.Now, req.DriverLat, req.DriverLng, req.Profile, req.Stops, req.ShopClosedRates)
 	if len(etas) > 0 {
 		for i := range etas {
-			etas[i].RouteId = req.RouteId
+			etas[i].RouteId = routeID
 		}
-		return s.PersistETAs(ctx, req.RouteId, etas)
+		return s.PersistETAs(ctx, routeID, etas)
 	}
 	return nil
 }
@@ -225,7 +235,7 @@ func (s *Service) RecalculateRoute(ctx context.Context, routeID string, reason s
 	if len(retailerIds) > 0 {
 		// Example query if RetailerScores exists, simplified for now
 		scStmt := spanner.Statement{
-			SQL: `SELECT RetailerId, ShopClosedRate FROM RetailerScores WHERE RetailerId IN UNNEST(@RetailerIds)`,
+			SQL:    `SELECT RetailerId, ShopClosedRate FROM RetailerScores WHERE RetailerId IN UNNEST(@RetailerIds)`,
 			Params: map[string]interface{}{"RetailerIds": retailerIds},
 		}
 		scIter := s.spanner.Single().Query(ctx, scStmt)
@@ -282,4 +292,3 @@ func (s *Service) RecalculateRoute(ctx context.Context, routeID string, reason s
 
 	return txnErr
 }
-

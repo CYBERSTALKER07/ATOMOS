@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"math/rand"
-	"os"
-	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/uber/h3-go/v4"
 )
@@ -53,8 +52,7 @@ func StartControlTowerSimulation(telemetryHub *ws.Hub, supplierID string, wareho
 	// Defense-in-depth: the random-data simulator is demo/dev-only. Bootstrap
 	// already gates on CONTROL_TOWER_SIMULATOR_ENABLED + env; guard here too so
 	// no future callsite can emit fabricated telemetry on real environments.
-	switch env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))); env {
-	case "ssmr", "production", "prod", "staging":
+	if auth.IsSandbox() || auth.IsProduction() || auth.IsStaging() {
 		return
 	}
 
@@ -79,7 +77,7 @@ func StartControlTowerSimulation(telemetryHub *ws.Hub, supplierID string, wareho
 				telemetryHub.Broadcast(ctx, "telemetry:supplier:"+supplierID, networkBytes)
 				telemetryHub.Broadcast(ctx, "telemetry:supplier:"+supplierID, h3Bytes)
 			}
-			
+
 			// Emit to warehouse room (they might listen to the same telemetry channels or warehouse specific)
 			// According to handler.go, warehouse admins subscribe to telemetry:supplier:<supplierID>
 			// So broadcasting to supplier ID is sufficient for both Supplier and Warehouse portals in single-tenant mode.
@@ -119,14 +117,14 @@ func generateMockH3Data() ControlTowerH3Payload {
 	data := make([]H3Density, 0, 50)
 	centerLat := 37.74
 	centerLng := -122.4
-	
+
 	// Create h3 cells
 	latLng := h3.NewLatLng(centerLat, centerLng)
 	centerCell, _ := h3.LatLngToCell(latLng, 8)
-	
+
 	// Get neighbors to form a cluster
 	cells, _ := h3.GridDisk(centerCell, 4)
-	
+
 	for _, cell := range cells {
 		// Only include some cells randomly to simulate sparse data
 		if rand.Float32() > 0.3 {
@@ -136,7 +134,7 @@ func generateMockH3Data() ControlTowerH3Payload {
 			})
 		}
 	}
-	
+
 	return ControlTowerH3Payload{
 		Type: "control_tower_h3",
 		Data: data,

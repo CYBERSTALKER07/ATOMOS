@@ -236,14 +236,7 @@ func (s *Service) transitionSupplyRequestSpanner(ctx context.Context, requestID,
 				return err
 			}
 			for _, e := range buf.events {
-				createdAt := e.CreatedAt.UTC()
-				if createdAt.IsZero() {
-					createdAt = time.Now().UTC()
-				}
-				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-					"EventId": e.EventID, "AggregateType": e.AggregateType, "AggregateId": e.AggregateID,
-					"TopicName": e.TopicName, "Payload": e.Payload, "CreatedAt": createdAt, "PublishedAt": nil,
-				}))
+				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 			}
 		}
 		return txn.BufferWrite(muts)
@@ -354,15 +347,14 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 		if err != nil {
 			return err
 		}
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": events.AggregateWarehouse,
-			"AggregateId":   transferID,
-			"TopicName":     events.TopicMain,
-			"Payload":       payload,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"PublishedAt":   nil,
-		}))
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateWarehouse,
+			AggregateID:   transferID,
+			TopicName:     events.TopicMain,
+			Payload:       payload,
+			SupplierID:    rec.SupplierID,
+		})))
 		if initialTransferState == "RECEIVED" {
 			for _, line := range lines {
 				if stocklots.LotsEnabled() {
@@ -398,10 +390,14 @@ func (s *Service) fulfillSupplyRequestSpanner(ctx context.Context, requestID str
 			if err != nil {
 				return err
 			}
-			muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId": uuid.NewString(), "AggregateType": events.AggregateWarehouse, "AggregateId": transferID,
-				"TopicName": events.TopicMain, "Payload": recvPayload, "CreatedAt": spanner.CommitTimestamp, "PublishedAt": nil,
-			}))
+			muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       uuid.NewString(),
+				AggregateType: events.AggregateWarehouse,
+				AggregateID:   transferID,
+				TopicName:     events.TopicMain,
+				Payload:       recvPayload,
+				SupplierID:    rec.SupplierID,
+			})))
 		}
 		linkedTransferID = transferID
 		return txn.BufferWrite(muts)

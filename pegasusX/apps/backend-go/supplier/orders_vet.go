@@ -16,11 +16,11 @@ import (
 
 // VetOrderParams captures a supplier vet decision for a queued order.
 type VetOrderParams struct {
-	OrderID    string
-	Decision   string
-	Note       string
-	DecidedBy  string
-	ActorRole  string
+	OrderID   string
+	Decision  string
+	Note      string
+	DecidedBy string
+	ActorRole string
 }
 
 // ErrOrderNotFound is returned when the order id does not exist for the supplier.
@@ -75,18 +75,18 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 		}
 
 		var (
-			current       SupplierOrder
-			confirmation  string
-			orderSource   string
-			lineItemsRaw  []byte
-			version       int64
-			warehouseID   spanner.NullString
-			driverID      spanner.NullString
-			vehicleID     spanner.NullString
-			routeID       spanner.NullString
-			manifestID    spanner.NullString
-			createdAt     time.Time
-			updatedAt     time.Time
+			current      SupplierOrder
+			confirmation string
+			orderSource  string
+			lineItemsRaw []byte
+			version      int64
+			warehouseID  spanner.NullString
+			driverID     spanner.NullString
+			vehicleID    spanner.NullString
+			routeID      spanner.NullString
+			manifestID   spanner.NullString
+			createdAt    time.Time
+			updatedAt    time.Time
 		)
 		if err := row.Columns(
 			&current.OrderID,
@@ -193,23 +193,7 @@ func (r *SpannerRepository) VetOrder(ctx context.Context, supplierID string, par
 			}),
 		}
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		if err := txn.BufferWrite(mutations); err != nil {
 			return fmt.Errorf("buffer vet order %s: %w", orderID, err)

@@ -1,8 +1,8 @@
 {
-  "description": "Canonical PX_E2E markers for full-ecosystem green pass (configuration + lifecycle + realtime cross-role).",
+  "description": "Canonical PX_E2E markers for full-ecosystem green pass (configuration + lifecycle + realtime cross-role). Deprecated alias of sandbox_ecosystem_markers.json.",
   "categories": {
     "configuration": {
-      "description": "Topology, org-fleet, warehouse/factory locations, fleet CRUD \u2014 not order-cycle but required for ops",
+      "description": "Topology, org-fleet, warehouse/factory locations, fleet CRUD — not order-cycle but required for ops",
       "markers": [
         "PX_E2E_TOPOLOGY_EDIT_OK",
         "PX_E2E_ORG_FLEET_OK",
@@ -18,7 +18,7 @@
       ]
     },
     "order_lifecycle": {
-      "description": "Retailer order \u2192 payment \u2192 warehouse dispatch \u2192 factory supply \u2192 payload manifest \u2192 driver delivery",
+      "description": "Retailer order → payment → warehouse dispatch → factory supply → payload manifest → driver delivery",
       "markers": [
         "PX_E2E_ORDER_OK",
         "PX_E2E_PAYMENT_OK",
@@ -127,7 +127,7 @@
       ]
     },
     "next_layer": {
-      "description": "Next-layer L1\u2013L7 markers (flag-gated; SKIPPED when off)",
+      "description": "Next-layer L1–L7 markers (flag-gated; SKIPPED when off)",
       "markers": [
         "PX_E2E_PAYMENT_CARD_SUCCESS_OK",
         "PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED",
@@ -289,6 +289,19 @@
       "markers": [
         "PX_E2E_SEASONAL_OVERRIDE_OK",
         "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
+      ]
+    },
+    "sandbox_layer_b": {
+      "description": "Layer B sandbox proofs: two register(), cross-pack 422, planned pack 404, cell-eu not live",
+      "markers": [
+        "PX_E2E_SANDBOX_REGISTER_TWICE_OK",
+        "PX_E2E_SANDBOX_REGISTER_TWICE_SKIPPED",
+        "PX_E2E_CROSS_MARKET_DEFERRED_OK",
+        "PX_E2E_CROSS_MARKET_DEFERRED_SKIPPED",
+        "PX_E2E_PLANNED_PACK_CHECKOUT_404_OK",
+        "PX_E2E_PLANNED_PACK_CHECKOUT_404_SKIPPED",
+        "PX_E2E_CELL_EU_NOT_LIVE_OK",
+        "PX_E2E_CELL_EU_NOT_LIVE_SKIPPED"
       ]
     }
   },
@@ -561,6 +574,23 @@
     "seasonal_override": [
       "PX_E2E_SEASONAL_OVERRIDE_OK",
       "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
+    ],
+    "sandbox_register_twice": [
+      "PX_E2E_SANDBOX_REGISTER_TWICE_OK",
+      "PX_E2E_SANDBOX_REGISTER_TWICE_SKIPPED"
+    ],
+    "cross_market_deferred": [
+      "PX_E2E_CROSS_MARKET_DEFERRED_OK",
+      "PX_E2E_CROSS_MARKET_DEFERRED_SKIPPED"
+    ],
+    "planned_pack_checkout_404": [
+      "PX_E2E_PLANNED_PACK_CHECKOUT_404_OK",
+      "PX_E2E_PLANNED_PACK_CHECKOUT_404_SKIPPED"
+    ],
+    "cell_eu_not_live": [
+      "PX_E2E_CELL_EU_NOT_LIVE_OK",
+      "PX_E2E_CELL_EU_NOT_LIVE_SKIPPED"
     ]
-  }
+  },
+  "deprecated_alias_of": "sandbox_ecosystem_markers.json"
 }

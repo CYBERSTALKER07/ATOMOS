@@ -13,6 +13,7 @@ import {
   readTokenFromCookie,
   refreshWarehouseSession,
 } from "@/lib/auth";
+import { useWarehousePaymentCatalog } from "@/lib/use-payment-catalog";
 
 type WarehouseLocation = {
   warehouse_id: string;
@@ -21,6 +22,8 @@ type WarehouseLocation = {
   place_id?: string;
   lat: number;
   lng: number;
+  country_code?: string;
+  pack_country_code?: string;
 };
 
 const EMPTY_LOCATION: LocationValue = { address: "", lat: "0", lng: "0" };
@@ -32,6 +35,8 @@ export default function WarehouseLocationSetupPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [packCountry, setPackCountry] = useState("");
+  const { country: catalogCountry } = useWarehousePaymentCatalog();
 
   const hasAssignedWarehouse = useMemo(() => {
     const token = readTokenFromCookie();
@@ -54,6 +59,7 @@ export default function WarehouseLocationSetupPage() {
         lng: String(loc.lng ?? 0),
         place_id: loc.place_id,
       });
+      setPackCountry(loc.pack_country_code || loc.country_code || catalogCountry);
     } finally {
       setLoading(false);
     }
@@ -186,6 +192,9 @@ export default function WarehouseLocationSetupPage() {
               </div>
             ) : null}
 
+            <PortalField id="packCountry" label="Pack country">
+              <PortalInput id="packCountry" value={packCountry || catalogCountry} readOnly />
+            </PortalField>
             <LocationPicker value={location} onChange={setLocation} label={t("factory_portal.settings.location.text.depot_address")} />
 
             <p className="text-xs text-(--muted)">

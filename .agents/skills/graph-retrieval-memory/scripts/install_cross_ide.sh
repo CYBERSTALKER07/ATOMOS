@@ -52,9 +52,11 @@ if ! grep -q 'alwaysApply' "$HOME/.cursor/rules/graph-retrieval-memory.mdc" 2>/d
 fi
 
 # Cursor CLI: slash command + sessionStart hook (merge; keep existing hooks)
-mkdir -p "$HOME/.cursor/commands" "$HOME/.cursor/hooks"
-chmod +x "$SKILL/scripts/cursor_cli_session_hook.sh"
+mkdir -p "$HOME/.cursor/commands" "$HOME/.cursor/hooks" \
+  "$REPO/.cursor/hooks" "$REPO/.cursor/commands"
+chmod +x "$SKILL/scripts/cursor_cli_session_hook.sh" "$SKILL/scripts/cursor_cli_memory.py"
 ln -sfn "$SKILL/scripts/cursor_cli_session_hook.sh" "$HOME/.cursor/hooks/graph-retrieval-session.sh"
+ln -sfn "$SKILL/scripts/cursor_cli_session_hook.sh" "$REPO/.cursor/hooks/graph-retrieval-session.sh"
 cat > "$HOME/.cursor/commands/graph-retrieve.md" <<'EOF'
 # Graph retrieve (Cursor CLI)
 
@@ -72,24 +74,28 @@ python3 "$HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py" 
 EOF
 echo "command -> $HOME/.cursor/commands/graph-retrieve.md"
 echo "hook    -> $HOME/.cursor/hooks/graph-retrieval-session.sh"
+echo "project hook -> $REPO/.cursor/hooks/graph-retrieval-session.sh"
 
-python3 - <<'PY'
+python3 - <<PY
 import json
 from pathlib import Path
 
-p = Path.home() / ".cursor" / "hooks.json"
-data = {"version": 1, "hooks": {}}
-if p.is_file():
-    data = json.loads(p.read_text())
-hooks = data.setdefault("hooks", {})
-wanted = {"command": "./hooks/graph-retrieval-session.sh"}
-existing = hooks.get("sessionStart") or []
-if not any(isinstance(h, dict) and h.get("command") == wanted["command"] for h in existing):
-    existing.append(wanted)
-hooks["sessionStart"] = existing
-data["version"] = data.get("version", 1)
-p.write_text(json.dumps(data, indent=2) + "\n")
-print(f"hooks.json -> {p}")
+def merge(path: Path, command: str) -> None:
+    data = {"version": 1, "hooks": {}}
+    if path.is_file():
+        data = json.loads(path.read_text())
+    hooks = data.setdefault("hooks", {})
+    existing = hooks.get("sessionStart") or []
+    if not any(isinstance(h, dict) and h.get("command") == command for h in existing):
+        existing.append({"command": command})
+    hooks["sessionStart"] = existing
+    data["version"] = data.get("version", 1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"hooks.json -> {path}")
+
+merge(Path.home() / ".cursor" / "hooks.json", "./hooks/graph-retrieval-session.sh")
+merge(Path("$REPO") / ".cursor" / "hooks.json", ".cursor/hooks/graph-retrieval-session.sh")
 PY
 
 echo "done $REPO"

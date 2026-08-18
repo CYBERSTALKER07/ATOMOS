@@ -10,7 +10,12 @@ import {
   type StockAwareProduct,
 } from './stock-policy';
 import { getRetailerId } from './retailer-profile';
+import { packCurrency, readCachedAuthSession } from '@pegasusx/api-client';
 import type { CheckoutPreviewResponse, Product } from './types';
+
+function cartCurrency(): string {
+  return packCurrency(readCachedAuthSession()?.pack);
+}
 
 export interface CartItem {
   product_id: string;
@@ -83,7 +88,7 @@ function toServerCartItems(items: CartItem[]): ServerCartItem[] {
       supplier_id: item.supplier_id,
       quantity: item.quantity,
       unit_price: Math.round(item.price),
-      currency: 'UZS',
+      currency: cartCurrency(),
     }));
 }
 
@@ -128,7 +133,7 @@ async function fetchPromotionTotals(cartItems: CartItem[]): Promise<{
           product_id: item.product_id,
           quantity: item.quantity,
           unit_price_minor: Math.round(item.price),
-          currency: 'UZS',
+          currency: cartCurrency(),
         })),
       }),
     });

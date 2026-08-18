@@ -14,6 +14,7 @@ struct CreateSupplyRequestSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var factoryId = ""
+    @State private var factoryLocked = false
     @State private var priority = "NORMAL"
     @State private var notes = ""
     @State private var useForecast = true
@@ -26,9 +27,16 @@ struct CreateSupplyRequestSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("warehouse_portal.supply_requests.new.text.factory_id", text: $factoryId)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
+                if factoryLocked {
+                    LabeledContent("warehouse_portal.supply_requests.new.text.factory_id", value: factoryId)
+                    Text("Nearest factory from the engine.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    TextField("warehouse_portal.supply_requests.new.text.factory_id", text: $factoryId)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                }
 
                 Toggle("Requested delivery date", isOn: $includeDeliveryDate)
                 if includeDeliveryDate {
@@ -93,6 +101,7 @@ struct CreateSupplyRequestSheet: View {
                         .disabled(!canSubmit)
                 }
             }
+            .task { await loadEngineFactory() }
             .task(id: useForecast) {
                 if useForecast { await loadForecast() }
             }
@@ -105,6 +114,18 @@ struct CreateSupplyRequestSheet: View {
         return manualItems.contains { line in
             !line.productId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
             (Int(line.quantity) ?? 0) > 0
+        }
+    }
+
+    private func loadEngineFactory() async {
+        do {
+            let supply = try await WarehouseService.opsSupplyFactory()
+            if !supply.factoryId.isEmpty {
+                factoryId = supply.factoryId
+                factoryLocked = true
+            }
+        } catch {
+            factoryLocked = false
         }
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { api, type FlagEval } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { api, type FlagEval, type FlagOverride } from "@/lib/api";
 
 // Mirrors featureflags.MoneyAffectingFlags on the backend.
 const MONEY_FLAGS = [
@@ -21,7 +21,23 @@ export default function FlagsPanel({ token }: { token: string }) {
   const [result, setResult] = useState<FlagEval | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<FlagOverride[] | null>(null);
   const isMoney = MONEY_FLAGS.includes(flagKey);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.listPendingFlags(token);
+        if (!cancelled) setPending(r.items || []);
+      } catch {
+        if (!cancelled) setPending(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, message]);
 
   const evaluate = async () => {
     setError("");
@@ -63,6 +79,22 @@ export default function FlagsPanel({ token }: { token: string }) {
 
   return (
     <section className="max-w-2xl space-y-4">
+      <div className="rounded border p-3" data-testid="gs-u-admin-pending-flags">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Pending dual-control</h2>
+        {pending == null ? (
+          <p className="mt-2 text-sm text-gray-600">unavailable</p>
+        ) : pending.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">empty</p>
+        ) : (
+          <ul className="mt-2 space-y-1 text-xs">
+            {pending.map((f) => (
+              <li key={`${f.FlagKey}|${f.TenantType}|${f.TenantID}`}>
+                <span className="font-mono">{f.FlagKey}</span> · {f.TenantID}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Tenant type">
           <select value={tenantType} onChange={(e) => setTenantType(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm">

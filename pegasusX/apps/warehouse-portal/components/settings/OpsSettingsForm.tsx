@@ -16,7 +16,6 @@ export interface OpsSettingsFormProps {
   feeBaseMinor: string;
   setFeeBaseMinor: (val: string) => void;
   feeCurrency: string;
-  setFeeCurrency: (val: string) => void;
   feeTierKm: string;
   setFeeTierKm: (val: string) => void;
   feeTierMinor: string;
@@ -45,7 +44,7 @@ export function OpsSettingsForm({
   orderLineMin, setOrderLineMin,
   orderLineMax, setOrderLineMax,
   feeBaseMinor, setFeeBaseMinor,
-  feeCurrency, setFeeCurrency,
+  feeCurrency,
   feeTierKm, setFeeTierKm,
   feeTierMinor, setFeeTierMinor,
   showStockCounts, setShowStockCounts,
@@ -88,7 +87,7 @@ export function OpsSettingsForm({
             <PortalInput id="feeBaseMinor" value={feeBaseMinor} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeBaseMinor(e.target.value)} />
           </PortalField>
           <PortalField id="feeCurrency" label={t("supplier_portal.chargebacks.text.currency")}>
-            <PortalInput id="feeCurrency" value={feeCurrency} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeCurrency(e.target.value)} />
+            <PortalInput id="feeCurrency" value={feeCurrency} readOnly />
           </PortalField>
           <PortalField id="feeTierKm" label={t("warehouse_portal.residual.text.free_within_km")}>
             <PortalInput id="feeTierKm" value={feeTierKm} onChange={(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setFeeTierKm(e.target.value)} />

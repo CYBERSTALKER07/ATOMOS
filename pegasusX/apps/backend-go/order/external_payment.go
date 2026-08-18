@@ -10,9 +10,17 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
+var (
+	// ErrPaymentAmountRequired is returned when card settle has no paid amount.
+	ErrPaymentAmountRequired = fmt.Errorf("payment_amount_required")
+	// ErrPaymentAmountMismatch is returned when paid != order due.
+	ErrPaymentAmountMismatch = fmt.Errorf("payment_amount_mismatch")
+)
+
 // SettleExternalPayment transitions AWAITING_PAYMENT → FISCALIZING after card/webhook clear (ADR-009).
 // COMPLETED is deferred until fiscal SUCCESS (worker) or audited force-complete.
-func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gateway string) error {
+// paidMinor must equal Orders.TotalMinor; short/over card clear does not fiscalize.
+func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gateway string, paidMinor int64) error {
 	orderRecord, found, err := s.repo.GetOrder(ctx, orderID)
 	if err != nil {
 		return err
@@ -35,12 +43,27 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 		s.log.InfoContext(ctx, "skipping external payment settlement, order not awaiting payment", "order_id", orderID, "status", orderRecord.Status)
 		return nil
 	}
+	if err := assertPaidEqualsDue(paidMinor, orderRecord.TotalMinor); err != nil {
+		s.log.WarnContext(ctx, "external payment settlement rejected (paid != due)",
+			"order_id", orderID, "paid_minor", paidMinor, "due_minor", orderRecord.TotalMinor, "err", err)
+		return err
+	}
 
 	method := strings.TrimSpace(gateway)
 	if method == "" {
 		method = "CARD"
 	}
 	return s.beginFiscalFromAwaitingPayment(ctx, orderRecord, method, "external_payment_cleared", nil)
+}
+
+func assertPaidEqualsDue(paidMinor, dueMinor int64) error {
+	if paidMinor <= 0 || dueMinor <= 0 {
+		return ErrPaymentAmountRequired
+	}
+	if paidMinor != dueMinor {
+		return fmt.Errorf("%w: paid=%d due=%d", ErrPaymentAmountMismatch, paidMinor, dueMinor)
+	}
+	return nil
 }
 
 // ConfirmPaymentBypass validates driver ownership then opens the fiscal gate (ADR-009).

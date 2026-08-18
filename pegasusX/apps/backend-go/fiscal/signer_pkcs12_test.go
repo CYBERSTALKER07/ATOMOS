@@ -110,11 +110,35 @@ func TestPKCS12Signer_FailClosed(t *testing.T) {
 	}
 }
 
+func TestSignerFromEnv_DevHMACForbiddenInSandbox(t *testing.T) {
+	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "dev-hmac")
+	t.Setenv("FISCAL_MY_SOLIQ_SIGN_KEY", "0123456789abcdef")
+	for _, env := range []string{"sandbox", "ssmr", "production", "prod"} {
+		if _, err := SignerFromEnv(env); err == nil {
+			t.Fatalf("expected dev-hmac forbidden in %s", env)
+		}
+	}
+}
+
 func TestSignerFromEnv_PKCS12MissingFile(t *testing.T) {
 	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "pkcs12")
 	t.Setenv("FISCAL_MY_SOLIQ_PKCS12_FILE", "")
 	if _, err := SignerFromEnv("production"); err == nil {
 		t.Fatal("expected error when pkcs12 file not set")
+	}
+}
+
+func TestSignerFromEnv_SandboxMYSoliqMissingCreds(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "sandbox")
+	t.Setenv("FISCAL_PROVIDER", "MY_SOLIQ")
+	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "")
+	if _, err := SignerFromEnv("sandbox"); err == nil {
+		t.Fatal("sandbox MY_SOLIQ without signer must fail closed")
+	}
+	t.Setenv("FISCAL_MY_SOLIQ_SIGNER", "pkcs12")
+	t.Setenv("FISCAL_MY_SOLIQ_PKCS12_FILE", "")
+	if _, err := SignerFromEnv("sandbox"); err == nil {
+		t.Fatal("sandbox MY_SOLIQ pkcs12 without file must fail closed")
 	}
 }
 

@@ -125,10 +125,7 @@ fun LoginScreen(
         applyLoginResponse(response)
         scope.launch {
             if (response.firebaseToken.isNotBlank()) {
-                val fbIdToken = FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-                if (fbIdToken != null) {
-                    TokenHolder.firebaseIdToken = fbIdToken
-                }
+                FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
             }
             registerPushBestEffort()
             onLoginSuccess()

@@ -238,6 +238,7 @@ fun HomeScreen(
             PulseStrip(
                 events = state.pulseEvents,
                 loading = state.pulseLoading,
+                error = state.pulseError,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = PayloadSpacing.lg, vertical = PayloadSpacing.sm),

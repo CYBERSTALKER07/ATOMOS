@@ -76,6 +76,7 @@ import com.pegasusx.warehouse.ui.screens.operations.OperationsScreen
 import com.pegasusx.warehouse.ui.screens.ops.WarehouseScoredExceptionsScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
+import com.pegasusx.warehouse.ui.screens.coverage.CoverageScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
 import com.pegasusx.warehouse.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
@@ -98,7 +99,11 @@ object WarehouseRoutes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDERS_ROUTE = "orders?state={state}"
     const val ORDER_DETAIL = "orders/{id}"
+
+    fun orders(state: String? = null): String =
+        if (state.isNullOrBlank()) ORDERS else "$ORDERS?state=${android.net.Uri.encode(state)}"
     const val DRIVERS = "drivers"
     const val VEHICLES = "vehicles"
     const val VEHICLE_DETAIL = "vehicles/{id}"
@@ -130,6 +135,7 @@ object WarehouseRoutes {
     const val TOMORROW_BOARD = "tomorrow_board"
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
+    const val COVERAGE = "coverage"
     const val NOTIFICATIONS = "notifications"
     const val OPERATIONS = "operations"
     const val CONTROL_TOWER = "control_tower"
@@ -343,13 +349,23 @@ fun WarehouseNavigation(
                     )
                 }
 
-                composable(WarehouseRoutes.ORDERS) {
+                composable(
+                    route = WarehouseRoutes.ORDERS_ROUTE,
+                    arguments = listOf(
+                        navArgument("state") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+                ) { entry ->
+                    val state = entry.arguments?.getString("state").orEmpty()
                     OrdersScreen(
                         api = api,
                         opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.ORDERS),
+                        initialState = state.takeIf { it.isNotBlank() },
                     )
                 }
 
@@ -545,6 +561,9 @@ fun WarehouseNavigation(
                     StockCommitmentsScreen(api = api, onBack = backFor(WarehouseRoutes.STOCK_COMMITMENTS))
                 }
 
+                composable(WarehouseRoutes.COVERAGE) {
+                    CoverageScreen(api = api, onBack = backFor(WarehouseRoutes.COVERAGE))
+                }
                 composable(WarehouseRoutes.PAYMENT_CONFIG) {
                     PaymentConfigScreen(
                         opsRepository = opsRepository,

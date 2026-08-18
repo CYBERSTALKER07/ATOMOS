@@ -208,6 +208,7 @@ dependencies {
     // Firebase Auth (phone OTP)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Geolocation (address picker)
     implementation("com.google.android.gms:play-services-location:21.3.0")

@@ -8,10 +8,8 @@ import (
 )
 
 type Deps struct {
-	Spanner             *spanner.Client
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Spanner         *spanner.Client
+	AllowAuthBypass bool
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
@@ -24,8 +22,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/entity-resolution/explain", entityresolution.HandleExplain(svc))
 	}
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, mount)
 }

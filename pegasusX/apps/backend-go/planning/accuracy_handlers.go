@@ -22,7 +22,7 @@ func (s *AccuracyService) HandleRunAccuracyOnce(w http.ResponseWriter, r *http.R
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleAdmin {
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
 		writeAccuracyJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -36,7 +36,11 @@ func (s *AccuracyService) HandleRunAccuracyOnce(w http.ResponseWriter, r *http.R
 			days = n
 		}
 	}
-	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	supplierID, code := resolveAccuracySupplierID(r, claims)
+	if supplierID == "" {
+		writeAccuracyJSON(w, code, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
 	written, alerts, err := s.RunAccuracyPass(r.Context(), supplierID, days)
 	if err != nil {
 		writeAccuracyJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -53,13 +57,13 @@ func (s *AccuracyService) HandleListAccuracy(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleAdmin {
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
 		writeAccuracyJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	supplierID, code := resolveAccuracySupplierID(r, claims)
 	if supplierID == "" {
-		writeAccuracyJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id is required"})
+		writeAccuracyJSON(w, code, map[string]string{"error": "supplier_scope_required"})
 		return
 	}
 	days := 28
@@ -79,10 +83,30 @@ func (s *AccuracyService) HandleListAccuracy(w http.ResponseWriter, r *http.Requ
 		rows = []AccuracyDailyRow{}
 	}
 	writeAccuracyJSON(w, http.StatusOK, map[string]any{
-		"items":                 rows,
-		"days":                  days,
-		"demote_enabled":        ForecastDemoteEnabled(),
-		"demote_wape28_max":     ForecastDemoteWape28Max(),
+		"items":                  rows,
+		"days":                   days,
+		"demote_enabled":         ForecastDemoteEnabled(),
+		"demote_wape28_max":      ForecastDemoteWape28Max(),
 		"demote_min_sample_days": ForecastDemoteMinSample(),
 	})
+}
+
+// resolveAccuracySupplierID uses TenantContext/claims for supplier ADMIN.
+// PLATFORM_ADMIN may pass ?supplier_id= for break-glass; query is ignored otherwise.
+func resolveAccuracySupplierID(r *http.Request, claims auth.Claims) (string, int) {
+	claimed := strings.TrimSpace(auth.PreferTenantSupplierID(r.Context(), claims.SupplierID))
+	queried := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	if claims.Role == auth.RolePlatformAdmin {
+		if queried != "" {
+			return queried, 0
+		}
+		if claimed != "" {
+			return claimed, 0
+		}
+		return "", http.StatusBadRequest
+	}
+	if claimed == "" {
+		return "", http.StatusForbidden
+	}
+	return claimed, 0
 }

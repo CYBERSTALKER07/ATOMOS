@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -29,15 +30,14 @@ type Repository interface {
 type inMemoryRepository struct{}
 
 // NewInMemoryRepository is a fallback for local/testing bootstrap paths.
-// Production/ssmr with REQUIRE_INFRA_ADAPTERS forbid silent no-op commits (B2 M-P0-9).
+// Production/sandbox with REQUIRE_INFRA_ADAPTERS forbid silent no-op commits (B2 M-P0-9).
 func NewInMemoryRepository() Repository {
 	return &inMemoryRepository{}
 }
 
 func memoryRepoBlocked(component string) error {
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
-	if env == "production" || env == "prod" || env == "ssmr" {
-		return fmt.Errorf("%s: in-memory repository cannot commit mutations under PEGASUSX_ENV=%s; configure Spanner", component, env)
+	if auth.IsProduction() || auth.IsSandbox() {
+		return fmt.Errorf("%s: in-memory repository cannot commit mutations under PEGASUSX_ENV=%s; configure Spanner", component, os.Getenv("PEGASUSX_ENV"))
 	}
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("REQUIRE_INFRA_ADAPTERS")), "true") {
 		return fmt.Errorf("%s: in-memory repository blocked when REQUIRE_INFRA_ADAPTERS=true", component)
@@ -49,14 +49,14 @@ func memoryRepoBlocked(component string) error {
 // List* returns empty so Service.apply keeps in-process overlays).
 type emptyPayloadTx struct{}
 
-func (emptyPayloadTx) ListManifests(context.Context) ([]ManifestRow, error)      { return nil, nil }
-func (emptyPayloadTx) SaveManifest(context.Context, ManifestRow) error           { return nil }
+func (emptyPayloadTx) ListManifests(context.Context) ([]ManifestRow, error) { return nil, nil }
+func (emptyPayloadTx) SaveManifest(context.Context, ManifestRow) error      { return nil }
 func (emptyPayloadTx) ListManifestOrders(context.Context, string) ([]ManifestOrder, error) {
 	return nil, nil
 }
 func (emptyPayloadTx) SaveManifestOrder(context.Context, ManifestOrder, int64) error { return nil }
-func (emptyPayloadTx) ListExceptions(context.Context) ([]ManifestException, error) { return nil, nil }
-func (emptyPayloadTx) SaveException(context.Context, ManifestException) error     { return nil }
+func (emptyPayloadTx) ListExceptions(context.Context) ([]ManifestException, error)   { return nil, nil }
+func (emptyPayloadTx) SaveException(context.Context, ManifestException) error        { return nil }
 func (emptyPayloadTx) UpdateOrderAssignment(context.Context, string, string, string) error {
 	return nil
 }

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PaymentLedgerEntry } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
+import { moneyCurrency } from "@pegasusx/api-client";
 
 const api = createSupplierApi();
 
@@ -116,7 +117,7 @@ export default function ClaimChargebacksPage() {
                   <td className="py-2.5 pr-3 font-mono text-xs">{it.retailer_id || "—"}</td>
                   <td className="py-2.5 pr-3 text-xs">{it.gateway || "—"}</td>
                   <td className="py-2.5 pr-3 text-right font-mono font-medium">
-                    {fmt(it.amount_minor)} {it.currency || "UZS"}
+                    {fmt(it.amount_minor)} {moneyCurrency(it.currency)}
                   </td>
                   <td className="py-2.5 pr-3 text-[10px] text-[var(--muted)] max-w-[180px] truncate">
                     {it.source || it.entry_type || "—"}

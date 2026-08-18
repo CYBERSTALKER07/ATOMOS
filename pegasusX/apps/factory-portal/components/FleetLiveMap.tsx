@@ -7,7 +7,7 @@ import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import type { FactoryFleetLiveRoute } from '@/lib/use-factory-fleet-live-map';
 
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-client';
 const COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed'];
 
 type Props = {
@@ -99,8 +99,7 @@ export default function FleetLiveMap({ routes, className, loading, error }: Prop
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
+          ...mapInitialViewState(readCachedAuthSession()?.pack),
           zoom: 11,
         }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"

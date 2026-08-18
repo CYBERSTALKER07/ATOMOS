@@ -12,8 +12,9 @@
 
 | Env | Tenant enforced | Seed fallback |
 |-----|-----------------|---------------|
-| `PEGASUSX_ENV=production` | yes | **no** unless `ALLOW_SEED_FALLBACK=true` |
-| `PEGASUSX_ENV=ssmr` | yes | **no** unless break-glass |
+| `PEGASUSX_ENV=production` | yes (`RequireTenant` uses `auth.TenantContextEnforced()`) | **no** unless `ALLOW_SEED_FALLBACK=true` |
+| `PEGASUSX_ENV=sandbox` / `ssmr` | yes | **no** unless break-glass |
+| `PEGASUSX_ENV=staging` | no (unless `TENANT_CONTEXT_ENFORCED`) | yes |
 | local/dev | no (unless `TENANT_CONTEXT_ENFORCED`) | yes |
 
 Flags:

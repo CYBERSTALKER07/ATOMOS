@@ -8,6 +8,7 @@ import { authFetch } from '../authSession';
 import type { NotifItem } from '../components/NotificationsSheet';
 import { extractProblemMessage } from '../localization';
 import { reconcilePayloadSession } from '../session-reconcile';
+import { attachTruckStatus, type BoardTruck } from '../utils/manifestBoard';
 import { buildManifest, type LiveOrder, type ManifestItem } from '../utils/manifest';
 import { reconnectDelayMs } from '../utils/reconnect';
 import type { Locale } from '../../../packages/i18n/locales';
@@ -39,7 +40,7 @@ export function useManifestData({
   setUnreadCount: Dispatch<SetStateAction<number>>;
 }) {
   // Truck selector
-  const [trucks, setTrucks] = useState<{ id: string; label: string; license_plate: string; vehicle_class: string }[]>([]);
+  const [trucks, setTrucks] = useState<BoardTruck[]>([]);
   const [isLoadingTrucks, setIsLoadingTrucks] = useState(false);
   const [activeTruck, setActiveTruck] = useState<string | null>(null);
 
@@ -88,13 +89,22 @@ export function useManifestData({
     try {
       const res = await authFetch('/v1/payloader/trucks');
       if (!res.ok) return;
-      const vehicles: { id: string; label: string; license_plate: string; vehicle_class: string }[] = await res.json();
-      setTrucks(vehicles.map(v => ({
-        id: v.id,
+      const vehicles: BoardTruck[] = await res.json();
+      let manifests: { vehicle_id?: string; truck_id?: string; state?: string; total_volume_vu?: number; max_volume_vu?: number; stop_count?: number; created_at?: string }[] = [];
+      try {
+        const boardRes = await authFetch('/v1/payloader/manifests');
+        if (boardRes.ok) {
+          const body = await boardRes.json();
+          manifests = Array.isArray(body?.manifests) ? body.manifests : [];
+        }
+      } catch {
+        manifests = [];
+      }
+      const labeled = vehicles.map(v => ({
+        ...v,
         label: v.label || v.license_plate || v.id.slice(0, 8),
-        license_plate: v.license_plate,
-        vehicle_class: v.vehicle_class,
-      })));
+      }));
+      setTrucks(attachTruckStatus(labeled, manifests));
     } catch {
     } finally {
       setIsLoadingTrucks(false);

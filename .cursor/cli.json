@@ -3,7 +3,9 @@
     "allow": [
       "Shell(python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py*)",
       "Shell(python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve_test.py*)",
-      "Shell(python3 $HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py*)"
+      "Shell(python3 $HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py*)",
+      "Shell(python3 $HOME/.cursor/skills/graph-retrieval-memory/scripts/cursor_cli_memory.py*)",
+      "Shell(python3 $HOME/.cursor/skills/graph-retrieval-memory/scripts/cursor_cli_memory_test.py*)"
     ]
   }
 }

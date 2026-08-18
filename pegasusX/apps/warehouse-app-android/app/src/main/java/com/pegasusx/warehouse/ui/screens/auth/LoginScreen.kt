@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.LoginRequest
+import com.pegasusx.warehouse.data.push.DeviceTokenRegistrar
 import com.pegasusx.warehouse.data.remote.FirebaseAuthHelper
 import com.pegasusx.warehouse.data.remote.TokenHolder
 import com.pegasusx.warehouse.data.remote.WarehouseApi
@@ -79,6 +80,7 @@ fun LoginScreen(
         TokenHolder.token = token
         TokenHolder.refreshToken = refreshToken
         TokenHolder.warehouseId = warehouseId
+        DeviceTokenRegistrar.uploadBestEffort(api)
         onLoginSuccess()
     }
 

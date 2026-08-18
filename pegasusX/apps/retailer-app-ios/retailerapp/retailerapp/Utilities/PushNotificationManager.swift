@@ -4,6 +4,8 @@ import UIKit
 
 // MARK: - Push Notification Manager
 
+/// FCM registration token lifecycle. APNs hex is never POSTed — Admin Messaging
+/// send only accepts Firebase registration tokens (`notifications/fcm.go`).
 @Observable
 final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = PushNotificationManager()
@@ -13,10 +15,14 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     var errorMessage: String?
 
     private let api = APIClient.shared
+    private let storedTokenKey = "pegasus_push_token"
 
     private override init() {
         super.init()
-        UNUserNotificationCenter.current().delegate = self
+    }
+
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
     // MARK: - Foreground Push Display
@@ -31,15 +37,13 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     // MARK: - Request Authorization
 
     func requestAuthorization() async {
+        if isRunningTests { return }
         do {
             let center = UNUserNotificationCenter.current()
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
             isAuthorized = granted
-
-            if granted {
-                await MainActor.run {
-                    UIApplication.shared.registerForRemoteNotifications()
-                }
+            await MainActor.run {
+                UIApplication.shared.registerForRemoteNotifications()
             }
         } catch {
             errorMessage = RetailerErrorSupport.message(
@@ -48,16 +52,6 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
                 offline: "Offline mode active. Reconnect and retry notification setup.",
                 fallback: "Notification permission request failed. Please try again.",
             )
-        }
-    }
-
-    // MARK: - Handle Device Token
-
-    func didRegisterForRemoteNotifications(deviceToken: Data) {
-        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        self.deviceToken = token
-        Task {
-            await sendTokenToServer(token: token)
         }
     }
 
@@ -70,14 +64,24 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         )
     }
 
-    // MARK: - Send Token to Server
+    func didReceiveFCMToken(_ token: String?) async {
+        let trimmed = token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return }
+        deviceToken = trimmed
+        UserDefaults.standard.set(trimmed, forKey: storedTokenKey)
+        await uploadStoredTokenIfPossible()
+    }
+
+    func uploadStoredTokenIfPossible() async {
+        if isRunningTests { return }
+        let token = (deviceToken ?? UserDefaults.standard.string(forKey: storedTokenKey) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty, api.authToken != nil else { return }
+        await sendTokenToServer(token: token)
+    }
 
     private func sendTokenToServer(token: String) async {
-        let payload = DeviceTokenPayload(
-            token: token,
-            platform: "ios",
-            retailerId: AuthManager.shared.currentUser?.id ?? ""
-        )
+        let payload = DeviceTokenPayload(token: token, platform: "ios")
         do {
             let _: APIResponse<String> = try await api.post(path: "/v1/user/device-token", body: payload)
         } catch {

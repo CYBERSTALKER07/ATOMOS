@@ -149,7 +149,7 @@ fun CreditScreen(
             } else {
                 items(rels, key = { it.supplierId }) { r ->
                     Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(r.supplierId, style = MaterialTheme.typography.labelMedium)
                             Text("Limit ${r.limitMinor / 100.0} · Balance ${r.balanceMinor / 100.0}")
                             Text("Terms ${r.termsDays}d${if (r.onHold) " · ON HOLD" else ""}")
@@ -165,7 +165,7 @@ fun CreditScreen(
             } else {
                 items(invoices, key = { it.invoiceId }) { inv ->
                     Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(inv.invoiceId, style = MaterialTheme.typography.labelMedium)
                             Text("${inv.supplierId} · ${inv.status}")
                             Text("Balance ${inv.balanceMinor / 100.0} · Due ${inv.dueAt}")

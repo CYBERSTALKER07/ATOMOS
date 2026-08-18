@@ -6,7 +6,7 @@
 **Tree:** `pegasusX/` (not `pegasus/`)  
 **Ask:** Turn backend + infra into a multi-supplier, multi-country, multi-city, multi-region ecosystem that is **local-first**, **pack-smart** (currency / PSP / fiscal), and **easy to clone** into a new country by adding adapters + keys — without building cross-border commerce yet.
 
-This plan **extends** the existing GS program ([`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md)). It does not replace GS-A/T/M/C and does not implement 250 `BF-*` rows.
+This plan **extends** the existing GS program ([`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md)). It does not replace GS-A/T/M/C and does not implement 250 `BF-*` rows. Client visualization of these reads is [`GLOBAL_SCALE_CLIENT_UI.md`](./GLOBAL_SCALE_CLIENT_UI.md) (GS-U) — U0+U1+UN+UF+U2+U3+U4+U5+U6+U7+U8+U9 shipped.
 
 **Rev 2:** Every warehouse gap from the live-path audit is a numbered **W-item** mapped to a GS-L / GS-K slice. Nothing warehouse-shaped stays “later / implied.” Class A warehouse ops (WMS, dispatch, freeze) stay KEEP.
 
@@ -16,19 +16,29 @@ This plan **extends** the existing GS program ([`GLOBAL_SCALE_PROGRAM.md`](./GLO
 
 ```
 VERDICT: PARTIAL
-DOCS vs CODE: GS-A0–A2, T1–T5, M1–M7, C1 are real readers/writers. Intra-country matching and payment catalogs are incomplete and inconsistent. Stripe/Adyen "work" as fake redirects.
+DOCS vs CODE: GS-A0–A2, T1–T5, M1–M7, C1, L0–L4, K1–K3, R supplier-portal
+  + R warehouse-portal + R retailer clients + R POS/orders/insights
+  + R claims/tracking/local-SKU + R role-portal currency bind
+  + R maps camera bind + GS-U0 visualization contract + GS-U1
+  StatusStack kit + GS-UN primary nav ≤5 + GS-UF freshness
+  + GS-U2 supplier command + GS-U3 Plan & Brain + GS-U4
+  warehouse command + GS-U5 factory command + GS-U6 retailer
+  command + GS-U7 field (payload board + driver stepper)
+  + GS-U8 platform admin (dead_letter_count = COUNT(*))
+  + GS-U9 role-row lock (chip → same status key) are
+  real readers.
+  checkout_reads_this remains open. Stripe/Adyen checkout-init
+  is not a fake redirect.
 BLOCKERS (ranked):
-  1. Two warehouse pickers disagree (order vs catalog) — W8
-  2. Empty country fail-open; cells skip country — W6/W7
-  3. Three warehouse writers persist different columns (setup omits country/H3) — W1–W5
-  4. Checkout ignores active store + reads Latitude/Longitude — W9–W11
-  5. No store/region pin; RegionId unused — W14/W15
-  6. Factory resolve is PrimaryFactoryId only; SupplyLanes unread — W16/W17
-  7. Warehouse payment POST allowlist hardcoded — W19
-  8. Warehouse / delivery-fee currency invents UZS — W20
-  9. Stripe/Adyen staticProviderExecutor is theatre
-  10. checkout_reads_this still false (SSMR PEGASUS ≠ pack MY_SOLIQ)
-NEXT: L0 (W6/W7) + K1 (W19) in parallel — not terraform apply, not Stripe keys.
+  1. checkout_reads_this still false (SSMR PEGASUS ≠ pack MY_SOLIQ)
+CLOSED THIS SLICE:
+  GS-U9 — StatusStack onSelect; supplier/retailer/warehouse/
+    factory chips jump to the same status/state key. Dated
+    skips in gs-u9-role-row-lock.test.ts. Place stays off.
+NEXT: leftovers (GS-M flag, cells apply, live PSP). Not Layer B.
+  checkout_reads_this still false. Not terraform apply, not
+  Stripe keys, not flipping the flag, not swapping MapLibre
+  for Google Maps.
 ```
 
 **Isolation key stays `SupplierId`.** Market pack, home cell, country, city, region are attributes. Do not invent a second RLS key.
@@ -46,7 +56,7 @@ These are product law, not UI preferences.
 | L3 | **Same-market orders only** | An order is legal only when retailer location country, warehouse country, factory country (if used), and supplier `MarketCode` country are the same ISO-3166-1. Cross-country order / attach / payout / card capture → `422 cross_market_deferred`. |
 | L4 | **Local-first default** | Retailer store → **closest covering warehouse** of that supplier. Warehouse replenish → **closest factory** on a `SupplyLane` (or same-country factories if no lanes). |
 | L5 | **Supplier override wins** | When adding/editing a warehouse or factory, supplier may pin: city set, region, or **specific store/location**. Resolution order is in §3. |
-| L6 | **Empty geography fail-closed** | Missing `CountryCode` on a warehouse/factory/store used for matching is **not** "worldwide." It is `422 geography_incomplete`. Today empty country **allows** (`order/coverage.go` `WarehouseCoversRetailer`). That is a bug. |
+| L6 | **Empty geography fail-closed** | Missing `CountryCode` on a warehouse/factory/store used for matching is **not** "worldwide." It is `422 geography_incomplete`. L0: `WarehouseCoversRetailer` rejects empty country. L1: writers stamp pack country so matching rows are not empty. |
 | L7 | **Pack filters PSP UI** | GET available gateways = pack `psp_adapters` ∩ registered executors. A UZ warehouse must never see Stripe/Adyen/US-only rails as selectable. A CA warehouse must never see Global Pay / Payme as selectable. |
 | L8 | **Unkeyed ≠ success** | Missing PSP/fiscal/SMS keys → honest `501` / `no_live_keys` / `adapter_unkeyed`. Never a 200 redirect to `/v1/payment/redirect/stripe/{id}`. |
 | L9 | **One country = one pack + 1–3 adapters** | Adding Canada is: `CA` MarketPack + PSP + fiscal + SMS (+ cell later). Not a fork. Not a new tenant key. |
@@ -67,7 +77,7 @@ These are product law, not UI preferences.
 
 ### 2.1 Market / tenancy (REAL, leftover is honesty flag)
 
-- `MarketPack` in `auth/market_pack.go:25` — UZ **shipped** (`UZS`, `GLOBAL_PAY`+`CASH`, `MY_SOLIQ`, `cell-uz`). EU/US/KZ **planned** (checkout fail-closed).
+- `MarketPack` in `auth/market_pack.go:25` — UZ **shipped** (`UZS`, `GLOBAL_PAY`+`CASH`, `MY_SOLIQ`, `cell-uz`). EU/US/CA/AU/GB/KZ/PK **planned** (checkout fail-closed).
 - Session + catalog: `GET /v1/auth/session`, `GET /v1/platform/market-packs`.
 - JWT stamps `market_code` + `home_cell` (`auth/jwt.go`).
 - `Suppliers.MarketCode` / `HomeCell` nullable (`schema/spanner.ddl:18`).
@@ -81,7 +91,7 @@ These are product law, not UI preferences.
 **Order path (closer to the product):**
 
 - `order.SpannerWarehouseResolver.ResolveNearestWarehouseID` (`order/warehouse_resolver_spanner.go:23`) — active + on-shift warehouses, hybrid cover, then Haversine closest.
-- Hybrid cover (`order/coverage.go:99`): coverage cells set → H3 membership (res 7); **no cells → whole warehouse country**. Empty country **returns true** (`:107–109`) — fail-open.
+- Hybrid cover (`order/coverage.go:99`): **L0** empty country **returns false**; countries must match **even when cells are set**; no cells → whole warehouse country.
 - Order create uses this resolver (`order/service.go:1256`). Empty result → `no_eligible_warehouse` / zone miss.
 - Coverage persist exists: `WarehouseCoverageCells` + `WarehouseCoverageCities` (`spanner.ddl:458–477`). `CoverageMutations` expands city → compacted H3 disk k=4 (`order/coverage.go:11`, `coverage_persist.go:13`).
 - Supplier topology write accepts `country_code`, `coverage_cities`, `assigned_factory_ids` (`supplier/portal_handlers.go:169`, `repository_spanner.go:1073–1088`).
@@ -106,13 +116,13 @@ These are product law, not UI preferences.
 - `Warehouses.RegionId`, `Retailers.RegionId` exist; unused as matching keys.
 - `RetailerLocations` (`:2153`) has lat/lng/H3, **no `CountryCode`**.
 
-### 2.5 Payments (PARTIAL + theatre)
+### 2.5 Payments (PARTIAL — honesty executors, not live charges)
 
 - Pack intersection at checkout: `applyPackToGatewayPolicy` (`payment/policy.go:132`). UZ rejects `STRIPE` (`auth/checkout_pack_test.go:47`).
-- Warehouse payment POST allowlist is **hardcoded** `GLOBAL_PAY|ADYEN|AIRWALLEX|CASH` (`warehouse/payment_config.go:36`) — **not pack-filtered**. UZ warehouse can persist Adyen.
-- Empty policy defaults to `CASH` + `GLOBAL_PAY` (`payment/policy.go:76`) even on a future CA pack.
-- Router (`payment/execution.go:139`): `GLOBAL_PAY` is a real adapter; `STRIPE`/`ADYEN` are `staticProviderExecutor` that invent `/v1/payment/redirect/stripe/{id}` (`:332`) — **theatre**.
-- Payme/Click webhook files exist; **UZ pack does not list them**.
+- Warehouse / supplier payment POST allowlists **deleted (K1)**. GET/POST use `payment.AvailablePSPs` + `auth.AssertPackPSP`. Empty config = live pack adapters (UZ: CASH+GLOBAL_PAY). STRIPE/ADYEN on UZ → 422.
+- `NormalizeGatewayPolicy(nil)` still invents CASH+GP for legacy tests; product paths use `NormalizeGatewayPolicyForPack`.
+- Router (`payment/execution.go:139-152`): `GLOBAL_PAY` is a real adapter; `STRIPE`/`ADYEN`/`PAYME`/`CLICK` are `catalogHonestyExecutor` (`adapter_planned` / `no_live_keys` → HTTP 501). CASH/INTERNAL/CREDIT stay manual `staticProviderExecutor` without a redirect URL.
+- Payme/Click are on the UZ pack as **unkeyed** catalog rows (K1). Checkout execute returns `501 no_live_keys` (K2).
 - `countrycfg` lists US with `GLOBAL_PAY` (`countrycfg/catalog.go:24`) — contradicts MarketPack US=`STRIPE`. Checkout must **not** read countrycfg (already documented; keep that).
 
 ### 2.6 Infra (C1 REAL plan-only; C2 files already on disk)
@@ -127,13 +137,13 @@ Warehouse is the local hub. Class A ops are KEEP. These **W-items** are the geog
 
 | ID | Gap (code) | Severity | Owner slice |
 |----|------------|----------|-------------|
-| **W1** | `POST /v1/warehouse/setup` does not write `CountryCode`, `H3Cell`, coverage (`warehouse/setup.go:87`) | P0 | **L1** |
-| **W2** | `PATCH /v1/warehouse/ops/location` updates lat/lng/address only — no pack country, no H3 res 7, no coverage (`warehouse/location_ops.go:31`) | P0 | **L1** |
-| **W3** | Supplier topology persists H3 at **res 9**; checkout matching is **res 7** (`supplier/repository_spanner.go:1043` vs `order/unified_checkout.go:18`) | P0 | **L1** |
-| **W4** | Warehouse CRUD does not derive `H3Cell`; empty if client omits it (`warehouse/repository_crud.go`) | P1 | **L1** |
-| **W5** | Three writers (setup / CRUD / topology) persist different columns — no single `StampWarehouseGeography` | P0 | **L1** |
-| **W6** | `WarehouseCoversRetailer`: empty country **returns true** (`order/coverage.go:107`) | P0 | **L0** |
-| **W7** | If coverage cells exist, **country is not checked** — cells can match a foreign store (`coverage.go:102–104`) | P0 | **L0** |
+| **W1** | `POST /v1/warehouse/setup` does not write `CountryCode`, `H3Cell`, coverage (`warehouse/setup.go:87`) | P0 | **L1 done** |
+| **W2** | `PATCH /v1/warehouse/ops/location` updates lat/lng/address only — no pack country, no H3 res 7, no coverage (`warehouse/location_ops.go:31`) | P0 | **L1 done** |
+| **W3** | Supplier topology persists H3 at **res 9**; checkout matching is **res 7** (`supplier/repository_spanner.go:1043` vs `order/unified_checkout.go:18`) | P0 | **L1 done** |
+| **W4** | Warehouse CRUD does not derive `H3Cell`; empty if client omits it (`warehouse/repository_crud.go`) | P1 | **L1 done** |
+| **W5** | Three writers (setup / CRUD / topology) persist different columns — no single `StampWarehouseGeography` | P0 | **L1 done** |
+| **W6** | `WarehouseCoversRetailer`: empty country **returns true** (`order/coverage.go:107`) | P0 | **L0 done** |
+| **W7** | If coverage cells exist, **country is not checked** — cells can match a foreign store (`coverage.go:102–104`) | P0 | **L0 done** |
 | **W8** | Catalog stock picker ≠ checkout picker (`catalog/stock.go:91` uses radius only; ignores country, cells, on-shift) | P0 | **L2** |
 | **W9** | Catalog loads `Retailers.Latitude/Longitude` — live columns are `Lat`/`Lng` (`catalog/stock.go:77`) | P0 | **L2** |
 | **W10** | Unified checkout fallback reads `Latitude`/`Longitude` (`order/unified_checkout.go:441`) | P0 | **L2** |
@@ -144,15 +154,15 @@ Warehouse is the local hub. Class A ops are KEEP. These **W-items** are the geog
 | **W15** | No store → warehouse pin table; client cannot (and must not) pass `warehouse_id` on create | P0 | **L3** |
 | **W16** | Factory resolve is `PrimaryFactoryId` only (`warehouse/transfers.go:266`, `supply_topology.go:18`) | P0 | **L2** |
 | **W17** | `SupplyLanes` written, never read for nearest factory | P1 | **L2** |
-| **W18** | `HandleSupplyRequestAccepted` falls back warehouse to `"wh-1"` if payload omits it (`warehouse/service.go:486`) | P0 | **L1** — fail-closed, no seed id |
-| **W19** | Warehouse payment POST allowlist `GLOBAL_PAY\|ADYEN\|AIRWALLEX\|CASH` (`payment_config.go:36`); GET not pack-filtered | P0 | **K1** |
-| **W20** | `warehouse.NewService` and `DeliveryFeeRules.Currency` invent `UZS` when empty (`warehouse/service.go:214`, `ops_policy.go:97`) | P0 | **L1** + **K1** (pack currency only) |
+| **W18** | `HandleSupplyRequestAccepted` falls back warehouse to `"wh-1"` if payload omits it (`warehouse/service.go:486`) | P0 | **L1 done** — fail-closed, no seed id |
+| **W19** | Warehouse payment POST allowlist `GLOBAL_PAY\|ADYEN\|AIRWALLEX\|CASH` (`payment_config.go:36`); GET not pack-filtered | P0 | **K1 done** |
+| **W20** | `warehouse.NewService` and `DeliveryFeeRules.Currency` invent `UZS` when empty (`warehouse/service.go:214`, `ops_policy.go:97`) | P0 | **L1 done** + **K1** (pack currency only) |
 | **W21** | Redis `ssmr:delivery_perimeter` / per-supplier keys exist; **Create never calls** `IsRetailerInZone` | P1 | **L2** follow-up — derive perimeter from same coverage cells; do not keep a second truth |
 | **W22** | Checkout preview is single-supplier (`checkout_preview.go:146`); create-split is per child | P1 | **L2** — preview must resolve warehouse **per supplier group** |
-| **W23** | Supplier billing `allowedGateways` same hardcoded set as warehouse (`supplier/service.go:653`) | P0 | **K1** |
-| **W24** | `available_card_gateways` on payment-required events is **unfiltered**; empty invents `GLOBAL_PAY` (`order/service.go:3258`) | P0 | **K1** |
-| **W25** | Executor empty gateway defaults to `GLOBAL_PAY` (`payment/execution.go:225`) | P1 | **K2** |
-| **W26** | Factory setup / ops location omit country (same as W1/W2 on factory side) | P0 | **L1** |
+| **W23** | Supplier billing `allowedGateways` same hardcoded set as warehouse (`supplier/service.go:653`) | P0 | **K1 done** |
+| **W24** | `available_card_gateways` on payment-required events is **unfiltered**; empty invents `GLOBAL_PAY` (`order/service.go:3258`) | P0 | **K1 done** |
+| **W25** | Executor empty gateway defaults to `GLOBAL_PAY` (`payment/execution.go:225`) | P1 | **K2 done** |
+| **W26** | Factory setup / ops location omit country (same as W1/W2 on factory side) | P0 | **L1 done** |
 
 **Not a gap (product law):** retailer/warehouse must **not** send `warehouse_id` on checkout. Assignment is engine + supplier pins only.
 
@@ -264,6 +274,8 @@ L and K streams may run in parallel after L0. R (clients) starts after L2+K1 con
 
 ### GS-L1 — Geography persist on every node (M)
 
+**Shipped 2026-08-16.** Helper `proximity.StampNodeGeography`. Writers stamp pack country + H3 res 7. Topology `country_code=US` on UZ → 422. Supply accept missing id → `warehouse_id_required`. Empty warehouse currency → `auth.PackCurrency`. Schema: `RetailerLocations.CountryCode` + `schema/migrations/20260816_gs_l1_retailer_location_country.ddl`. Unit tests lock the helper and 422 paths; no live Spanner apply this slice.
+
 **Goal:** Every warehouse / factory / store used for matching has `CountryCode` + H3 **res 7**, inherited from pack if omitted, **rejected** if it disagrees with pack country.
 
 **Closes:** W1, W2, W3, W4, W5, W18, W20 (warehouse currency default), W26
@@ -286,7 +298,7 @@ L and K streams may run in parallel after L0. R (clients) starts after L2+K1 con
 | Supplier topology upsert | H3 **res 9** (W3) | H3-7; country required or default pack; reject mismatch |
 | Factory setup / factory ops location / factory CRUD / topology | omit country (W26) | same helper |
 | Retailer register / setup / location create | country optional, not pack-checked | default pack country of attached supplier; reject mismatch |
-| Supply accept missing warehouse | `"wh-1"` seed (W18) | 422 `warehouse_id_required` |
+| Supply accept missing warehouse | `"wh-1"` seed (W18) | error `warehouse_id_required` (async consumer) |
 
 Geocode is best-effort (Maps adapter from pack). If geocode is down: require explicit country and still reject ≠ pack.
 
@@ -297,13 +309,15 @@ Geocode is best-effort (Maps adapter from pack). If geocode is down: require exp
 - Setup without country on UZ pack → persisted `UZ` + H3 res 7.
 - Topology `country_code=US` on UZ supplier → `422 cross_market_deferred`.
 - After setup, `Warehouses.CountryCode` and `H3Cell` non-empty in Spanner.
-- Supply accept without warehouse id → 422, not `wh-1`.
+- Supply accept without warehouse id → `warehouse_id_required`, not `wh-1`.
 - Warehouse delivery fee with empty currency → pack `UZS` (from pack, not a string literal in ops_policy).
 - Tests: `./warehouse/` `./supplier/` `./factory/` `./retailer/` `./order/`.
 
 ---
 
 ### GS-L2 — One CoverageEngine (M)
+
+**Shipped 2026-08-16.** `proximity.ResolveServingWarehouse` + `ResolveSupplyFactory` + `CoverageStore`. Catalog/order/preview/factory call the same engine. Active store from JWT `active_location_id`. PK vs UZ → `cross_market_deferred`.
 
 **Goal:** Catalog, quote, unified checkout, preview, order create, retailer "nearest warehouse", and warehouse "nearest factory" all call **one** engine.
 
@@ -381,6 +395,8 @@ Optional `SupplierRegions` if the supplier wants named regions ("Tashkent metro"
 
 **W14:** stop PATCHing `Warehouses.RegionId` to a global `Regions` id. Either ignore the field or point it at `SupplierRegions`. No `/v1/region*` against the dead table.
 
+**Shipped 2026-08-16:** schema + engine + supplier ADMIN GET/PUT pins, coverage, regions. Create/update warehouse also reject unknown `region_id`. Backend API only — portal editor is GS-R.
+
 ---
 
 ### GS-L4 — Same-market attach + order hard gate (S–M)
@@ -401,6 +417,8 @@ Optional `SupplierRegions` if the supplier wants named regions ("Tashkent metro"
 - Tests: `./retailer/` `./order/` `./payment/`.
 
 **Non-goal:** FX conversion path for those orders.
+
+**Shipped 2026-08-16:** attach + invite + parent-cart + create/unified defense. Planned child on a parent cart is 404 `market_pack_not_shipped` (KZ is planned; no second shipped pack exists). That still inserts no parent row.
 
 ---
 
@@ -442,15 +460,17 @@ type PSPAdapter struct {
 
 ### GS-K2 — Honest placeholder executors (M)
 
+**Shipped 2026-08-16.** `catalogHonestyExecutor` for STRIPE/ADYEN (`adapter_planned`) and PAYME/CLICK (`no_live_keys` → HTTP 501). Empty gateway resolves through `LivePackGateways` (UZ still GLOBAL_PAY). CASH/INTERNAL/CREDIT stay manual `staticProviderExecutor` without `urlPrefix`. Chargeback record/reversal on planned rails is local ledger only.
+
 **Goal:** Architecture can accept any country's PSP; missing keys never look like a charge.
 
-**Code**
+**Code (shipped)**
 
-- Replace `staticProviderExecutor` checkout-init success (`payment/execution.go:326`) with `UnkeyedExecutor` / `PlannedExecutor`:
-  - `planned` → 404/422 `adapter_planned`
-  - `unkeyed` → 501 `no_live_keys` (or 422 if we treat it as config)
-- Empty gateway must **not** default to `GLOBAL_PAY` (**W25**). Resolve from pack default card PSP; else 422 `gateway_required`.
-- Keep `ProviderExecutor` interface. New country = `SetExecutor("JAZZCASH", impl)` + pack row.
+- `catalogHonestyExecutor` on STRIPE/ADYEN/PAYME/CLICK (`payment/execution.go:149-152`, `:363-387`):
+  - `planned` → `adapter_planned` (no redirect URL)
+  - `unkeyed` → `501 no_live_keys`
+- Empty gateway uses `LivePackGateways` (UZ: GLOBAL_PAY + CASH), not a hardcoded GLOBAL_PAY string (**W25**).
+- Keep `ProviderExecutor` interface. New country = pack row + honesty or live executor.
 - Live path remains Global Pay + cash + credit (existing).
 - Fiscal already fail-closes PEPPOL/planned (`auth/fiscal_pack.go:67`). Same shape for SMS/maps later.
 
@@ -464,6 +484,8 @@ type PSPAdapter struct {
 ---
 
 ### GS-K3 — Planned packs for clone-ready countries (S)
+
+**Shipped 2026-08-16.** CA/AU/GB/PK planned on `ListMarketPacks`. EU/US include ADYEN. countrycfg `PaymentGatewaysListed` is empty. Checkout stays fail-closed.
 
 **Goal:** Catalog is wider than UZ/EU/US/KZ so "add Canada" is keys + ship-the-pack, not a schema project.
 
@@ -508,6 +530,18 @@ Doctrine role rows. Minimum for this program:
 
 No web-only currency. No "Stripe" button on UZ.
 
+**Shipped 2026-08-16 (supplier portal row):** payment-catalog GET, pin/coverage editor, pack currency lock, UZ catalog has no Stripe. Mobile handoff deadline 2026-09-16.
+
+**Shipped 2026-08-16 (warehouse portal row):** ops coverage/supply-factory GET, pack PSP catalog + locked country/currency on portal+iOS+Android.
+
+**Shipped 2026-08-16 (retailer clients row):** payment-catalog GET; desktop/iOS/Android checkout + payment-required filter pack rails; no currency picker; no Adyen default on empty card list.
+
+**Shipped 2026-08-16 (POS·orders·insights leftover):** POS/shift open stamp pack currency; HQ insights coalesce pack; desktop/iOS/Android POS+orders+insights labels use pack.
+
+**Shipped 2026-08-16 (claims·tracking·local-SKU leftover):** local-SKU create/list/PATCH stamp pack currency; desktop/iOS/Android claims + tracking labels + local-SKU create/display use pack.
+
+**Shipped 2026-08-16 (role-portal UZS leftover):** supplier analytics/import + warehouse analytics/treasury stamp pack currency; supplier/warehouse portal+iOS+Android leftover labels use pack. Maps SDK leftover is continuous.
+
 ---
 
 ### GS-C2 — Cell scaffold leftover (plan only, when asked)
@@ -549,7 +583,7 @@ A new **country** does not require a new cell on day one (a planned pack can liv
 | Body omits lat; JWT has active location | W11: that store’s warehouse |
 | CoverageRadiusKm=1 but store 5 km in same country, no cells | W12: still assigned (closest), radius is not law |
 | Cells drawn across border | W7: country still rejects |
-| Supply accept, no warehouse in payload | W18: 422, not `wh-1` |
+| Supply accept, no warehouse in payload | W18: `warehouse_id_required`, not `wh-1` |
 | Warehouse GET payment-config on UZ | W19: no Adyen/Stripe selectable |
 | Payment-required event card list | W24: pack-filtered |
 | Delivery fee currency empty | W20: pack currency |
@@ -600,14 +634,14 @@ These are **N-track**. Code can only fail closed and show the right catalog. Bos
 |----|-------|--------|---------|-------|
 | 1 | L0 fail-closed cover + country-even-with-cells | W6 W7 | — | `go test ./order/` |
 | 2 | K1 pack PSP catalog + warehouse/supplier/event filter | W19 W23 W24 | — | `./payment/ ./warehouse/ ./supplier/ ./auth/` |
-| 3 | K2 unkeyed executors + no GP default | W25 + theatre | K1 | `./payment/` |
-| 4 | L1 `StampNodeGeography` on **all** warehouse/factory writers + kill `wh-1` + pack currency default | W1–W5 W18 W20 W26 | L0 | `./warehouse/ ./supplier/ ./factory/ ./retailer/` |
-| 5 | L2 CoverageEngine + active store + preview-per-supplier + factory/lanes | W8–W13 W16 W17 W21 W22 | L1 | `./order/ ./catalog/ ./warehouse/ ./proximity/` |
-| 6 | L3 ServicePins + SupplierRegions (not dead `Regions`) | W14 W15 | L2 | `./order/ ./supplier/` |
-| 7 | L4 attach + parent-cart same-market | — | L1 | `./retailer/ ./order/` |
-| 8 | K3 planned CA/AU/GB/PK packs | — | K1 | `./auth/` |
-| 9 | R supplier portal coverage + pin editor + pack PSP | W15 UI | L3+K1 | portal tests |
-| 10 | R warehouse portal: pack PSP, locked country, factory view, pins view | W19 UI W16 UI | K1+L2 | warehouse portal + Android/iOS or desktop handoff |
+| 3 | K2 unkeyed executors + no GP default **shipped** | W25 + theatre | K1 | `./payment/` |
+| 4 | L1 `StampNodeGeography` on **all** warehouse/factory writers + kill `wh-1` + pack currency default **shipped** | W1–W5 W18 W20 W26 | L0 | `./warehouse/ ./supplier/ ./factory/ ./retailer/` |
+| 5 | L2 CoverageEngine + active store + preview-per-supplier + factory/lanes **shipped** | W8–W13 W16 W17 W21 W22 | L1 | `./order/ ./catalog/ ./warehouse/ ./proximity/` |
+| 6 | L3 ServicePins + SupplierRegions (not dead `Regions`) **shipped** | W14 W15 | L2 | `./order/ ./supplier/ ./proximity/ ./warehouse/` |
+| 7 | L4 attach + parent-cart same-market **shipped** | — | L1 | `./retailer/ ./order/ ./payment/ ./auth/` |
+| 8 | K3 planned CA/AU/GB/PK packs **shipped** | — | K1 | `./auth/` |
+| 9 | R supplier portal coverage + pin editor + pack PSP **shipped** | W15 UI | L3+K1 | `supplier-portal` vitest + `./supplier/` |
+| 10 | R warehouse portal: pack PSP, locked country, factory view, pins view **shipped** | W19 UI W16 UI | K1+L2 | warehouse portal + Android/iOS |
 
 C2 `make cell-plan` only if explicitly asked. No apply.
 

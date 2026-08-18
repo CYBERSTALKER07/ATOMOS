@@ -36,6 +36,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pricing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -299,7 +300,7 @@ type Repository interface {
 // WarehouseResolver resolves the best supplier warehouse for retailer
 // coordinates at order-create time.
 type WarehouseResolver interface {
-	ResolveNearestWarehouseID(ctx context.Context, supplierID string, retailerLat, retailerLng float64, retailerCountry string) (string, error)
+	ResolveNearestWarehouseID(ctx context.Context, supplierID string, store proximity.StorePoint) (string, error)
 }
 
 // PaymentCapturer allows the order service to trigger synchronous card captures.
@@ -1253,9 +1254,20 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("%w: warehouse_resolver_unavailable", ErrServiceabilityUnavailable)
 	}
 
-	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, req.Lat, req.Lng, s.lookupRetailerCountry(ctx, retailerID))
+	store, err := s.resolveCheckoutStore(ctx, retailerID, req.Lat, req.Lng)
 	if err != nil {
-		return CreateResponse{}, fmt.Errorf("%w: resolve nearest warehouse: %v", ErrServiceabilityUnavailable, err)
+		return CreateResponse{}, err
+	}
+	if pack, packErr := auth.CheckoutPackFromContext(ctx); packErr == nil {
+		if packCountry, countryErr := auth.PackCountryCode(pack); countryErr == nil {
+			if err := auth.AssertSameMarket(packCountry, store.CountryCode); err != nil {
+				return CreateResponse{}, err
+			}
+		}
+	}
+	resolvedWarehouseID, err := s.warehouse.ResolveNearestWarehouseID(ctx, supplierID, store)
+	if err != nil {
+		return CreateResponse{}, mapWarehouseResolveError(err)
 	}
 	warehouseID := strings.TrimSpace(resolvedWarehouseID)
 	if warehouseID == "" {
@@ -1278,7 +1290,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		if open, _, _, closedMsg := checkOrderAcceptanceGate(whPolicy, now); !open {
 			return CreateResponse{}, fmt.Errorf("%w: %s", ErrOrderAcceptanceClosed, closedMsg)
 		}
-		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, req.Lat, req.Lng)
+		deliveryFeeMinor, _ = ComputeOrderDeliveryFee(whPolicy, store.Lat, store.Lng)
 	}
 
 	loc, locErr := auth.TimezoneFromContext(ctx, supplierID)
@@ -1463,11 +1475,14 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	// Post-commit cache invalidation: any retailer-orders or supplier-orders
 	// list cache MUST be dropped so the next read sees the new row.
 	if s.cache != nil {
-		s.cache.Invalidate(ctx,
-			retailerOrdersKey(o.RetailerID),
-			supplierOrdersKey(o.SupplierID),
-			"catalog:products:"+o.SupplierID,
-		)
+		s.cache.Invalidate(ctx, append(
+			[]string{
+				retailerOrdersKey(o.RetailerID),
+				supplierOrdersKey(o.SupplierID),
+				"catalog:products:" + o.SupplierID,
+			},
+			dashboardCacheKeys(o.SupplierID, o.WarehouseID)...,
+		)...)
 	}
 
 	s.log.Info("order created",
@@ -1557,7 +1572,10 @@ func (s *Service) createBackorderOrder(
 		return "", err
 	}
 	if s.cache != nil {
-		s.cache.Invalidate(ctx, retailerOrdersKey(bo.RetailerID), supplierOrdersKey(bo.SupplierID))
+		s.cache.Invalidate(ctx, append(
+			[]string{retailerOrdersKey(bo.RetailerID), supplierOrdersKey(bo.SupplierID)},
+			dashboardCacheKeys(bo.SupplierID, bo.WarehouseID)...,
+		)...)
 	}
 	return bo.OrderID, nil
 }
@@ -1666,10 +1684,13 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	s.recordStatusTransitionFromOrder(current, prevStatus, strings.TrimSpace(req.Reason), string(claims.Role), actorID, "", nil)
 
 	if s.cache != nil {
-		s.cache.Invalidate(ctx,
-			retailerOrdersKey(current.RetailerID),
-			supplierOrdersKey(current.SupplierID),
-		)
+		s.cache.Invalidate(ctx, append(
+			[]string{
+				retailerOrdersKey(current.RetailerID),
+				supplierOrdersKey(current.SupplierID),
+			},
+			dashboardCacheKeys(current.SupplierID, current.WarehouseID)...,
+		)...)
 	}
 
 	s.log.Info("order status updated",
@@ -2515,7 +2536,8 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
-			errors.Is(err, auth.ErrPackCurrencyMismatch):
+			errors.Is(err, auth.ErrPackCurrencyMismatch), errors.Is(err, auth.ErrGeographyIncomplete),
+			errors.Is(err, auth.ErrCrossMarketDeferred):
 			st, code := auth.CheckoutPackHTTPStatus(err)
 			writeJSON(w, st, map[string]string{"error": code})
 		default:
@@ -3204,6 +3226,7 @@ func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
 		if orderRecord.Status == StatusCancelled {
 			keys = append(keys, "catalog:products:"+orderRecord.SupplierID)
 		}
+		keys = append(keys, dashboardCacheKeys(orderRecord.SupplierID, orderRecord.WarehouseID)...)
 		s.cache.Invalidate(ctx, keys...)
 	}
 	if s.dispatchPlanWarm != nil {
@@ -3259,22 +3282,27 @@ func (s *Service) paymentRequiredData(ctx context.Context, orderRecord Order) ma
 		gateways, acceptor, err := s.gatewayPolicy.AllowedGateways(ctx, orderRecord.SupplierID, orderRecord.WarehouseID)
 		if err == nil {
 			data["payment_acceptor"] = acceptor
-			data["available_card_gateways"] = cardGatewaysOnly(gateways)
+			data["available_card_gateways"] = cardGatewaysOnly(ctx, gateways)
 		}
 	}
 	return data
 }
 
-func cardGatewaysOnly(gateways []string) []string {
+func cardGatewaysOnly(ctx context.Context, gateways []string) []string {
 	out := make([]string, 0, len(gateways))
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return out
+	}
 	for _, gateway := range gateways {
-		if strings.EqualFold(strings.TrimSpace(gateway), "CASH") {
+		canon := auth.CanonicalPSP(gateway)
+		if canon == "" || canon == "CASH" {
 			continue
 		}
-		out = append(out, gateway)
-	}
-	if len(out) == 0 {
-		return []string{"GLOBAL_PAY"}
+		if !auth.PackAllowsPSP(pack, canon) {
+			continue
+		}
+		out = append(out, canon)
 	}
 	return out
 }
@@ -4001,6 +4029,17 @@ func retailerOrdersKey(retailerID string) string {
 
 func supplierOrdersKey(supplierID string) string {
 	return "orders:supplier:" + supplierID
+}
+
+func dashboardCacheKeys(supplierID, warehouseID string) []string {
+	keys := make([]string, 0, 2)
+	if sid := strings.TrimSpace(supplierID); sid != "" {
+		keys = append(keys, cache.DashboardKey("supplier", sid))
+	}
+	if wh := strings.TrimSpace(warehouseID); wh != "" {
+		keys = append(keys, cache.DashboardKey("warehouse", wh))
+	}
+	return keys
 }
 
 func defaultOrderID() string {

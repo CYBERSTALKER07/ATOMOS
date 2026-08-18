@@ -102,6 +102,10 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
+func outboxEventMutation(e outbox.Event) *spanner.Mutation {
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
+}
+
 // Flush writes buffered outbox/audit rows into the active Spanner RW transaction.
 func (b *spannerTxnBuffer) Flush(txn *spanner.ReadWriteTransaction) error {
 	if b == nil || txn == nil {
@@ -109,23 +113,7 @@ func (b *spannerTxnBuffer) Flush(txn *spanner.ReadWriteTransaction) error {
 	}
 	var mutations []*spanner.Mutation
 	for _, e := range b.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, outboxEventMutation(e))
 	}
 	for _, a := range b.audits {
 		mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -157,25 +145,7 @@ func (r *SpannerRepository) CreateRetailer(ctx context.Context, ret Retailer, em
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -317,25 +287,7 @@ func (r *SpannerRepository) UpdateRetailer(ctx context.Context, ret Retailer, em
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, outboxEventMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -541,7 +493,7 @@ func (r *SpannerRepository) attachFiscalReceipts(ctx context.Context, orders []T
 		},
 	}
 
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	type fiscalSnap struct {

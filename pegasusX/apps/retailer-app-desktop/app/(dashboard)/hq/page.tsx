@@ -60,6 +60,7 @@ export default function HqPage() {
   const [orgNet, setOrgNet] = useState(0);
   const [disabled, setDisabled] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
+  const [hqError, setHqError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -75,6 +76,7 @@ export default function HqPage() {
       ]);
       if (sRes.status === 404 || locRes.status === 404) {
         setDisabled(true);
+        setHqError(null);
         setSummary(null);
         setByLoc([]);
         setBySku([]);
@@ -84,28 +86,27 @@ export default function HqPage() {
         return;
       }
       if (sRes.status === 403 || locRes.status === 403) {
-        setBanner("HQ requires OWNER or ADMIN with reports.view.");
+        setHqError("HQ requires OWNER or ADMIN with reports.view.");
         return;
       }
-      if (sRes.ok) {
-        setSummary((await sRes.json()) as HqSummary);
+      if (!sRes.ok || !locRes.ok || !skuRes.ok) {
+        setHqError("hq_failed");
+        return;
       }
-      if (locRes.ok) {
-        const json = (await locRes.json()) as {
-          items?: LocItem[];
-          balanced?: boolean;
-          org_net_minor?: number;
-        };
-        setByLoc(json.items ?? []);
-        setBalanced(json.balanced !== false);
-        setOrgNet(json.org_net_minor ?? 0);
-      }
-      if (skuRes.ok) {
-        const json = (await skuRes.json()) as { items?: SkuItem[] };
-        setBySku(json.items ?? []);
-      }
+      setHqError(null);
+      setSummary((await sRes.json()) as HqSummary);
+      const locJson = (await locRes.json()) as {
+        items?: LocItem[];
+        balanced?: boolean;
+        org_net_minor?: number;
+      };
+      setByLoc(locJson.items ?? []);
+      setBalanced(locJson.balanced !== false);
+      setOrgNet(locJson.org_net_minor ?? 0);
+      const skuJson = (await skuRes.json()) as { items?: SkuItem[] };
+      setBySku(skuJson.items ?? []);
     } catch {
-      setBanner("Failed to load HQ analytics");
+      setHqError("hq_failed");
     } finally {
       setBusy(false);
     }
@@ -182,7 +183,11 @@ export default function HqPage() {
             <Building2 className="h-10 w-10 opacity-40" />
             <p className="text-sm">{t("retailer_desktop.hq.text.hq_analytics_not_enabled_for_this_environment")}</p>
           </div>
-        ) : (
+        ) : hqError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {hqError}
+          </p>
+        ) : summary ? (
           <>
             <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[

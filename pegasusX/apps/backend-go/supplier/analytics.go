@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/planning"
 )
 
@@ -134,7 +135,13 @@ func (s *Service) HandleAnalyticsRevenue(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_orders_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, buildRevenueResponse(orders, s.currency, now, 30))
+	cur, err := auth.CoalesceCurrency(r.Context(), s.scopedSupplierID(r), s.currency)
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
+	}
+	writeJSON(w, http.StatusOK, buildRevenueResponse(orders, cur, now, 30))
 }
 
 // HandleAnalyticsDemandToday serves GET /v1/supplier/analytics/demand/today.
@@ -480,9 +487,7 @@ func buildRevenueResponse(orders []SupplierOrder, currency string, now time.Time
 		key := start.AddDate(0, 0, day).Format("2006-01-02")
 		series = append(series, analyticsRevenuePoint{Date: key, RevenueMinor: seriesMap[key]})
 	}
-	if currency == "" {
-		currency = "UZS"
-	}
+	currency = strings.ToUpper(strings.TrimSpace(currency))
 	return analyticsRevenueResponse{
 		Currency:    currency,
 		TotalMinor:  total,

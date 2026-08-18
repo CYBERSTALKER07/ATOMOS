@@ -59,6 +59,7 @@ type Repository interface {
 	Get(ctx context.Context, flagKey, tenantType, tenantID string) (Override, bool, error)
 	Upsert(ctx context.Context, o Override) error
 	ListForTenant(ctx context.Context, tenantType, tenantID string) ([]Override, error)
+	ListPending(ctx context.Context, limit int) ([]Override, error)
 }
 
 // MemoryRepository for tests.
@@ -105,6 +106,32 @@ func (r *MemoryRepository) ListForTenant(_ context.Context, tenantType, tenantID
 		}
 	}
 	return out, nil
+}
+
+func (r *MemoryRepository) ListPending(_ context.Context, limit int) ([]Override, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	out := make([]Override, 0)
+	for _, o := range r.rows {
+		if o.Status == StatusPending {
+			out = append(out, o)
+			if len(out) >= limit {
+				break
+			}
+		}
+	}
+	return out, nil
+}
+
+// ListPending returns money-flag overrides awaiting a second PLATFORM_ADMIN.
+func (s *Service) ListPending(ctx context.Context, limit int) ([]Override, error) {
+	if s == nil || s.repo == nil {
+		return nil, fmt.Errorf("featureflags_unavailable")
+	}
+	return s.repo.ListPending(ctx, limit)
 }
 
 // Service evaluates flags: tenant override → env default.

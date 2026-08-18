@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.LoginRequest
+import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasus.design.PegasusRuntimeBanner
@@ -122,6 +123,7 @@ fun LoginScreen(
                                     TokenHolder.refreshToken = body.refreshToken
                                     TokenHolder.supplierId = body.supplierId
                                     TokenHolder.isConfigured = body.isConfigured
+                                    DeviceTokenRegistrar.uploadBestEffort(api)
                                     onLoginSuccess()
                                 }
                             } else {

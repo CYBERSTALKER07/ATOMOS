@@ -14,76 +14,10 @@ import { useNotifications, type WarehouseWsState } from '@/lib/useNotifications'
 import { clearSession, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
 import { SessionPackChip } from './SessionPackChip';
 import { usePortalT } from '@/lib/i18n';
+import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
-type NavEntry = { href: string; icon: string; labelKey: string; globalOnly?: boolean; factoryHidden?: boolean };
-type NavSection = { labelKey?: string; items: NavEntry[] };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: '/', icon: 'dashboard', labelKey: 'portal.nav.dashboard' },
-      { href: '/control-tower', icon: 'global', labelKey: 'portal.nav.control_tower' },
-      { href: '/orders', icon: 'orders', labelKey: 'portal.nav.orders' },
-      { href: '/preorders', icon: 'orders', labelKey: 'portal.nav.preorders' },
-      { href: '/tomorrow-board', icon: 'orders', labelKey: 'portal.nav.tomorrow_board' },
-      { href: '/dispatch', icon: 'dispatch', labelKey: 'portal.nav.dispatch' },
-      { href: '/dispatch/rescues', icon: 'dispatch', labelKey: 'portal.nav.rescues' },
-      { href: '/dispatch-settings', icon: 'settings', labelKey: 'portal.nav.dispatch_settings' },
-      { href: '/manifests', icon: 'manifests', labelKey: 'portal.nav.manifests' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.inventory',
-    items: [
-      { href: '/inventory', icon: 'inventory', labelKey: 'portal.nav.stock' },
-      { href: '/bins', icon: 'inventory', labelKey: 'portal.nav.bins_lots' },
-      { href: '/pick-waves', icon: 'inventory', labelKey: 'portal.nav.pick_waves' },
-      { href: '/cycle-counts', icon: 'inventory', labelKey: 'portal.nav.cycle_counts' },
-      { href: '/cold-chain', icon: 'warning', labelKey: 'portal.nav.cold_chain' },
-      { href: '/stock-commitments', icon: 'inventory', labelKey: 'portal.nav.stock_commitments' },
-      { href: '/products', icon: 'catalog', labelKey: 'portal.nav.products' },
-      { href: '/supply-requests', icon: 'supplyRequests', labelKey: 'portal.nav.supply_requests' },
-      { href: '/settings', icon: 'settings', labelKey: 'portal.nav.settings' },
-      { href: '/replenishment', icon: 'forecast', labelKey: 'portal.nav.replenishment' },
-      { href: '/demand-forecast', icon: 'forecast', labelKey: 'portal.nav.demand_forecast' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.fleet',
-    items: [
-      { href: '/drivers', icon: 'fleet', labelKey: 'portal.nav.drivers' },
-      { href: '/labor-capacity', icon: 'fleet', labelKey: 'portal.nav.labor_capacity' },
-      { href: '/vehicles', icon: 'fleet', labelKey: 'portal.nav.trucks' },
-      { href: '/fleet-live-map', icon: 'map', labelKey: 'portal.nav.live_fleet' },
-      { href: '/dispatch-locks', icon: 'lock', labelKey: 'portal.nav.dispatch_locks' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.operations',
-    items: [
-      { href: '/staff', icon: 'staff', labelKey: 'portal.nav.staff' },
-      { href: '/crm', icon: 'crm', labelKey: 'portal.nav.retailers' },
-      { href: '/operations', icon: 'send', labelKey: 'portal.nav.operations' },
-      { href: '/returns', icon: 'returns', labelKey: 'portal.nav.returns' },
-      { href: '/claims', icon: 'warning', labelKey: 'portal.nav.claims' },
-      { href: '/exceptions', icon: 'warning', labelKey: 'portal.nav.exceptions' },
-      { href: '/transfers', icon: 'transfers', labelKey: 'portal.nav.transfers' },
-      { href: '/analytics', icon: 'analytics', labelKey: 'portal.nav.analytics' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.finance',
-    items: [
-      { href: '/treasury', icon: 'treasury', labelKey: 'portal.nav.treasury' },
-      { href: '/payment-config', icon: 'payment', labelKey: 'portal.nav.payment_config' },
-    ],
-  },
-];
-
 const BARE_ROUTES = ["/auth/", "/setup/"];
-
-const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
@@ -216,45 +150,61 @@ const DrawerContent = memo(function DrawerContent({
           </button>
         )}
 
-        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
-          {filteredNav.map((section, si) => (
-            <div key={si}>
-              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
-              {section.labelKey && !isRail && (
-                <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
-              )}
-              {section.items.map((item, ii) => {
-                const active = isActiveRoute(pathname, item.href);
-                const label = t(item.labelKey);
-                return (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      delay: (si * 0.08) + (ii * 0.02),
-                      type: 'spring',
-                      stiffness: 320,
-                      damping: 28
-                    }}
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`} data-testid="gs-un-nav">
+          {filteredNav.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item, ii) => {
+              const active = isActiveRoute(pathname, item.href);
+              const label = t(item.labelKey);
+              return (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    delay: (si * 0.08) + (ii * 0.02),
+                    type: 'spring',
+                    stiffness: 320,
+                    damping: 28
+                  }}
+                >
+                  <Link
+                    href={item.href as any}
+                    className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
+                    data-active={active ? 'true' : undefined}
+                    title={isRail ? label : undefined}
+                    aria-label={label}
+                    aria-current={active ? 'page' : undefined}
+                    style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                   >
-                    <Link
-                      href={item.href as any}
-                      className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
-                      data-active={active ? 'true' : undefined}
-                      title={isRail ? label : undefined}
-                      aria-label={label}
-                      aria-current={active ? 'page' : undefined}
-                      style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
-                    >
-                      <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
-                      {!isRail && <span className="truncate">{label}</span>}
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ))}
+                    <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
+                    {!isRail && <span className="truncate">{label}</span>}
+                  </Link>
+                </motion.div>
+              );
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 

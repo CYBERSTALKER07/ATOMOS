@@ -17,6 +17,7 @@ import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.ConfirmCashResponse
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CashCheckoutResponse
+import com.pegasusx.retailer.data.model.ControlTowerPulse
 import com.pegasusx.retailer.data.model.CreditProfile
 import com.pegasusx.retailer.data.model.LoyaltyLedgerResponse
 import com.pegasusx.retailer.data.model.LoyaltyTierView
@@ -27,6 +28,7 @@ import com.pegasusx.retailer.data.model.LoginRequest
 import com.pegasusx.retailer.data.model.MediaUploadTicket
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderCurrencyOptions
+import com.pegasusx.retailer.data.model.RetailerPaymentCatalogResponse
 import com.pegasusx.retailer.data.model.OrderTimelineResponse
 import com.pegasusx.retailer.data.model.PendingPaymentsResponse
 import com.pegasusx.retailer.data.model.Product
@@ -477,7 +479,7 @@ interface PegasusApi {
     suspend fun getRetailerPulse(): PulseResponse
 
     @GET("/v1/retailer/control-tower/pulse")
-    suspend fun getControlTowerPulse(): JsonElement
+    suspend fun getControlTowerPulse(): ControlTowerPulse
 
     @GET("/v1/retailer/assist/tickets")
     suspend fun getAssistTickets(): JsonElement
@@ -507,6 +509,9 @@ interface PegasusApi {
     // ── Checkout ──
     @GET("/v1/order/currencies")
     suspend fun getOrderCurrencies(): OrderCurrencyOptions
+
+    @GET("/v1/retailer/payment-catalog")
+    suspend fun getPaymentCatalog(): RetailerPaymentCatalogResponse
 
     @POST("/v1/checkout/preview")
     suspend fun checkoutPreview(@Body body: UnifiedCheckoutRequest): CheckoutPreviewResponse

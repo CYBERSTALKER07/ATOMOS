@@ -1378,7 +1378,38 @@ func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) 
 	}
 
 	assertBatchExplain("missing_manifest", "not_found", "manifest_not_found")
-	assertBatchExplain("mf_payload_2", "not_sealable", "manifest_not_sealable")
+	if got, _ := body["sealed_count"].(float64); got != 1 {
+		t.Fatalf("already-sealed batch should count as success, sealed_count=%v", body["sealed_count"])
+	}
+	foundAlready := false
+	for _, raw := range rawResults {
+		row, ok := raw.(map[string]any)
+		if !ok || row["manifest_id"] != "mf_payload_2" {
+			continue
+		}
+		if row["status"] != "already_sealed" {
+			t.Fatalf("mf_payload_2 expected already_sealed, got %#v", row["status"])
+		}
+		foundAlready = true
+	}
+	if !foundAlready {
+		t.Fatal("result row for mf_payload_2 not found")
+	}
+}
+
+func TestHandleSeal_RejectsOrderOnly(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
+	repo.svc = svc
+	req := httptest.NewRequest(http.MethodPost, "/v1/payload/seal", strings.NewReader(`{"order_id":"ord_payload_1","manifest_cleared":true}`))
+	rr := httptest.NewRecorder()
+	svc.HandleSeal(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "manifest_id_required") {
+		t.Fatalf("expected manifest_id_required, got %s", rr.Body.String())
+	}
 }
 
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
@@ -1491,10 +1522,10 @@ type orderAssignmentCall struct {
 }
 
 type payloadRepoSpy struct {
-	svc          *Service
-	applyCalls   int
-	events       []outbox.Event
-	assignments  []orderAssignmentCall
+	svc         *Service
+	applyCalls  int
+	events      []outbox.Event
+	assignments []orderAssignmentCall
 }
 
 func (r *payloadRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error {

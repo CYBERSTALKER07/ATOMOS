@@ -44,6 +44,11 @@ struct AuthResponse: Decodable {
     }
 }
 
+struct DeviceTokenRequest: Encodable, Equatable {
+    let token: String
+    let platform: String
+}
+
 // MARK: - Dashboard
 struct DashboardStats: Decodable {
     let pendingTransfers: Int
@@ -54,6 +59,17 @@ struct DashboardStats: Decodable {
     let vehiclesAvailable: Int
     let staffOnShift: Int
     let criticalInsights: Int
+    let source: String
+    let plane: String
+    let transfersByState: [String: Int]
+    let manifestsByState: [String: Int]
+    let vehiclesByState: [String: Int]
+    let driverDuty: [String: Int]
+    let slaByStatus: [String: Int]
+    let qcByResult: [String: Int]
+    let qcAvailable: Bool
+    let bayLoadingTransfers: Int
+    let bayLoadingManifests: Int
 
     enum CodingKeys: String, CodingKey {
         case pendingTransfers = "pending_transfers"
@@ -64,13 +80,85 @@ struct DashboardStats: Decodable {
         case vehiclesAvailable = "vehicles_available"
         case staffOnShift = "staff_on_shift"
         case criticalInsights = "critical_insights"
+        case source
+        case plane
+        case transfersByState = "transfers_by_state"
+        case manifestsByState = "manifests_by_state"
+        case vehiclesByState = "vehicles_by_state"
+        case driverDuty = "driver_duty"
+        case slaByStatus = "sla_by_status"
+        case qcByResult = "qc_by_result"
+        case qcAvailable = "qc_available"
+        case bayLoadingTransfers = "bay_loading_transfers"
+        case bayLoadingManifests = "bay_loading_manifests"
     }
 
-    static let empty = DashboardStats(
-        pendingTransfers: 0, loadingTransfers: 0, activeManifests: 0,
-        dispatchedToday: 0, vehiclesTotal: 0, vehiclesAvailable: 0,
-        staffOnShift: 0, criticalInsights: 0
-    )
+    init(
+        pendingTransfers: Int = 0,
+        loadingTransfers: Int = 0,
+        activeManifests: Int = 0,
+        dispatchedToday: Int = 0,
+        vehiclesTotal: Int = 0,
+        vehiclesAvailable: Int = 0,
+        staffOnShift: Int = 0,
+        criticalInsights: Int = 0,
+        source: String = "empty",
+        plane: String = "factory_trucks",
+        transfersByState: [String: Int] = [:],
+        manifestsByState: [String: Int] = [:],
+        vehiclesByState: [String: Int] = [:],
+        driverDuty: [String: Int] = [:],
+        slaByStatus: [String: Int] = [:],
+        qcByResult: [String: Int] = [:],
+        qcAvailable: Bool = false,
+        bayLoadingTransfers: Int = 0,
+        bayLoadingManifests: Int = 0
+    ) {
+        self.pendingTransfers = pendingTransfers
+        self.loadingTransfers = loadingTransfers
+        self.activeManifests = activeManifests
+        self.dispatchedToday = dispatchedToday
+        self.vehiclesTotal = vehiclesTotal
+        self.vehiclesAvailable = vehiclesAvailable
+        self.staffOnShift = staffOnShift
+        self.criticalInsights = criticalInsights
+        self.source = source
+        self.plane = plane
+        self.transfersByState = transfersByState
+        self.manifestsByState = manifestsByState
+        self.vehiclesByState = vehiclesByState
+        self.driverDuty = driverDuty
+        self.slaByStatus = slaByStatus
+        self.qcByResult = qcByResult
+        self.qcAvailable = qcAvailable
+        self.bayLoadingTransfers = bayLoadingTransfers
+        self.bayLoadingManifests = bayLoadingManifests
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        pendingTransfers = try c.decodeIfPresent(Int.self, forKey: .pendingTransfers) ?? 0
+        loadingTransfers = try c.decodeIfPresent(Int.self, forKey: .loadingTransfers) ?? 0
+        activeManifests = try c.decodeIfPresent(Int.self, forKey: .activeManifests) ?? 0
+        dispatchedToday = try c.decodeIfPresent(Int.self, forKey: .dispatchedToday) ?? 0
+        vehiclesTotal = try c.decodeIfPresent(Int.self, forKey: .vehiclesTotal) ?? 0
+        vehiclesAvailable = try c.decodeIfPresent(Int.self, forKey: .vehiclesAvailable) ?? 0
+        staffOnShift = try c.decodeIfPresent(Int.self, forKey: .staffOnShift) ?? 0
+        criticalInsights = try c.decodeIfPresent(Int.self, forKey: .criticalInsights) ?? 0
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "empty"
+        plane = try c.decodeIfPresent(String.self, forKey: .plane) ?? "factory_trucks"
+        transfersByState = try c.decodeIfPresent([String: Int].self, forKey: .transfersByState) ?? [:]
+        manifestsByState = try c.decodeIfPresent([String: Int].self, forKey: .manifestsByState) ?? [:]
+        vehiclesByState = try c.decodeIfPresent([String: Int].self, forKey: .vehiclesByState) ?? [:]
+        driverDuty = try c.decodeIfPresent([String: Int].self, forKey: .driverDuty) ?? [:]
+        slaByStatus = try c.decodeIfPresent([String: Int].self, forKey: .slaByStatus) ?? [:]
+        qcByResult = try c.decodeIfPresent([String: Int].self, forKey: .qcByResult) ?? [:]
+        qcAvailable = try c.decodeIfPresent(Bool.self, forKey: .qcAvailable) ?? false
+        bayLoadingTransfers = try c.decodeIfPresent(Int.self, forKey: .bayLoadingTransfers) ?? 0
+        bayLoadingManifests = try c.decodeIfPresent(Int.self, forKey: .bayLoadingManifests) ?? 0
+    }
+
+    static let empty = DashboardStats()
 }
 
 // MARK: - Transfer

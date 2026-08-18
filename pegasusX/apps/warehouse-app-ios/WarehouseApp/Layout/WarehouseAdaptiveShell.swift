@@ -60,13 +60,17 @@ struct WarehouseAdaptiveShell: View {
                 .tabItem { Label("portal.nav.dashboard", systemImage: WarehouseSection.dashboard.icon) }
                 .tag(WarehouseCompactTab.dashboard)
 
-            sectionView(.orders)
-                .tabItem { Label("portal.nav.orders", systemImage: WarehouseSection.orders.icon) }
-                .tag(WarehouseCompactTab.orders)
-
             sectionView(.dispatch)
                 .tabItem { Label("portal.nav.dispatch", systemImage: WarehouseSection.dispatch.icon) }
                 .tag(WarehouseCompactTab.dispatch)
+
+            sectionView(.inventory)
+                .tabItem { Label("portal.nav.floor", systemImage: WarehouseSection.inventory.icon) }
+                .tag(WarehouseCompactTab.floor)
+
+            sectionView(.demandForecast)
+                .tabItem { Label("portal.nav.planning", systemImage: WarehouseSection.demandForecast.icon) }
+                .tag(WarehouseCompactTab.plan)
 
             NavigationStack {
                 MoreHubView()
@@ -135,6 +139,8 @@ struct WarehouseAdaptiveShell: View {
             ClaimsView()
         case .rescues:
             RescuesView()
+        case .coverage:
+            NavigationStack { CoverageView() }
         case .paymentConfig:
             NavigationStack { PaymentConfigView() }
         case .opsSettings:

@@ -9,6 +9,7 @@ private enum OrdersHubSurface: String, CaseIterable, Identifiable {
 
 struct OrdersHubView: View {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+  var initialCommandStatus: String? = nil
   @State private var surface: OrdersHubSurface = .queue
 
   var body: some View {
@@ -17,7 +18,7 @@ struct OrdersHubView: View {
       Group {
         switch surface {
         case .queue:
-          OrdersQueueView(embeddedInHub: true)
+          OrdersQueueView(embeddedInHub: true, initialCommandStatus: initialCommandStatus)
         case .dispatch:
             DispatchPreviewView(embeddedInHub: true)
         }
@@ -48,6 +49,7 @@ struct OrdersQueueView: View {
   @Environment(\.horizontalSizeClass) private var horizontalSizeClass
   @Environment(SupplierRealtimeHub.self) private var realtimeHub
   var embeddedInHub: Bool = false
+  var initialCommandStatus: String? = nil
   @State private var vm = OrdersViewModel()
 
   var body: some View {
@@ -65,7 +67,12 @@ struct OrdersQueueView: View {
       }
     }
     .background(SupplierTheme.background)
-    .task(id: vm.statusFilter) { await vm.load() }
+    .onAppear {
+      if let initialCommandStatus {
+        vm.applyCommandStatus(initialCommandStatus)
+      }
+    }
+    .task(id: vm.loadIdentity) { await vm.load() }
     .onChange(of: realtimeHub.refreshEpoch) { _, _ in
       Task { await vm.load(silent: true) }
     }
@@ -128,9 +135,19 @@ struct OrdersQueueView: View {
   private var filterTabs: some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: SupplierTheme.spacingSM) {
+        if let commandStatus = vm.commandStatus {
+          HStack {
+            Text("Filtered by \(commandStatus.replacingOccurrences(of: "_", with: " "))")
+              .font(.caption)
+              .accessibilityIdentifier("gs-u-command-filter")
+            Button("Clear") { vm.setCoarseFilter(vm.statusFilter) }
+              .font(.caption.bold())
+          }
+          .padding(.horizontal)
+        }
         ForEach(vm.filters, id: \.id) { filter in
           Button {
-            vm.statusFilter = filter.id
+            vm.setCoarseFilter(filter.id)
           } label: {
             Text(filter.label)
               .font(.subheadline.weight(vm.statusFilter == filter.id ? .semibold : .regular))

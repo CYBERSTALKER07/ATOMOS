@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pegasus.design.PulseHonesty
 import com.pegasus.design.RealtimeRefreshEffect
 import com.pegasus.design.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierDashboard
@@ -39,9 +40,12 @@ import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
+import com.pegasus.design.MANIFEST_STATES
 import com.pegasus.design.MarketPack
 import com.pegasus.design.MarketPackBinder
 import com.pegasus.design.PackBanner
+import com.pegasus.design.StatusStack
+import com.pegasus.design.formatPackMoney
 import com.pegasusx.supplier.BuildConfig
 import com.pegasusx.supplier.data.remote.TokenHolder
 import kotlinx.coroutines.Dispatchers
@@ -53,10 +57,11 @@ private data class DashboardKpi(
     val icon: ImageVector,
 )
 
-private val dashboardKpis = listOf(
+private fun dashboardKpis(pack: MarketPack?) = listOf(
+    DashboardKpi("Revenue today", { formatPackMoney(it.todayRevenueMinor, pack) }, Icons.Default.CheckCircle),
+    DashboardKpi("Completion", { "${it.deliveriesCompletedToday}/${it.deliveriesAttemptedToday}" }, Icons.Default.LocalShipping),
     DashboardKpi("Pending orders", { "${it.pendingOrders}" }, Icons.Default.LocalShipping),
     DashboardKpi("Inventory SKUs", { "${it.inventorySKUs}" }, Icons.Default.Archive),
-    DashboardKpi("Configured", { if (it.isConfigured) "Yes" else "No" }, Icons.Default.CheckCircle),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,11 +73,13 @@ fun DashboardScreen(
     showBillingBanner: Boolean,
     onOpenBilling: () -> Unit,
     onOpenNotifications: () -> Unit = {},
+    onOpenOrderStatus: (String) -> Unit = {},
 ) {
     var dashboard by remember { mutableStateOf<SupplierDashboard?>(null) }
     var meiSummary by remember { mutableStateOf<SupplierMEIONetworkSummary?>(null) }
     var pulseEvents by remember { mutableStateOf<List<com.pegasusx.supplier.data.model.PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
+    var pulseError by remember { mutableStateOf<String?>(null) }
     var demandConfidence by remember { mutableStateOf<ForecastConfidence?>(null) }
     var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
@@ -114,10 +121,18 @@ fun DashboardScreen(
                 if (!silent) loading = false
             }
             pulseLoading = true
-            runCatching {
-                ops.getPulse().body()?.let { pulseEvents = it.events }
-            }.onFailure {
-                pulseEvents = emptyList()
+            pulseError = null
+            try {
+                val resp = ops.getPulse()
+                val result = PulseHonesty.applyHttp(
+                    resp.isSuccessful,
+                    resp.body()?.events,
+                    pulseEvents,
+                )
+                pulseEvents = result.events
+                pulseError = result.error
+            } catch (_: Exception) {
+                pulseError = PulseHonesty.FAILED
             }
             pulseLoading = false
         }
@@ -232,6 +247,7 @@ fun DashboardScreen(
                     SupplierPulseStrip(
                         events = pulseEvents,
                         loading = pulseLoading,
+                        error = pulseError,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     LazyVerticalGrid(
@@ -240,7 +256,7 @@ fun DashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         modifier = Modifier.weight(1f, fill = false),
                     ) {
-                        items(dashboardKpis, key = { it.label }) { kpi ->
+                        items(dashboardKpis(pack), key = { it.label }) { kpi ->
                             SupplierKpiTile(
                                 label = kpi.label,
                                 value = kpi.value(d),
@@ -248,6 +264,18 @@ fun DashboardScreen(
                             )
                         }
                     }
+                    StatusStack(
+                        counts = d.ordersByStatus,
+                        source = "live",
+                        onSelect = onOpenOrderStatus,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    StatusStack(
+                        counts = d.manifestsByState.ifEmpty { null },
+                        dictionary = MANIFEST_STATES,
+                        source = if (d.manifestsByState.isEmpty()) "empty" else "live",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Text(
                         stringResource(R.string.mobile_supplier_ui_updated_updatedat, d.updatedAt),
                         style = MaterialTheme.typography.labelSmall,

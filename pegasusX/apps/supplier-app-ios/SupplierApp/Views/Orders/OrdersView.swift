@@ -18,7 +18,7 @@ struct OrdersView: View {
             }
         }
         .background(SupplierTheme.background)
-        .task(id: vm.statusFilter) { await vm.load() }
+        .task(id: vm.loadIdentity) { await vm.load() }
         .onChange(of: realtimeHub.refreshEpoch) { _, _ in
             Task { await vm.load(silent: true) }
         }
@@ -59,7 +59,10 @@ struct OrdersView: View {
     }
 
     private var filterTabs: some View {
-        Picker("Filter", selection: $vm.statusFilter) {
+        Picker("Filter", selection: Binding(
+            get: { vm.statusFilter },
+            set: { vm.setCoarseFilter($0) }
+        )) {
             ForEach(vm.filters, id: \.id) { filter in
                 Text(filter.label).tag(filter.id)
             }

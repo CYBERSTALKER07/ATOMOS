@@ -7,6 +7,7 @@ import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
+import { moneyCurrency } from '@pegasusx/api-client';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('uz-UZ').format(n);
@@ -81,7 +82,7 @@ export default function DispatchOrderList({
                   orderId={order.order_id}
                   retailerName={order.retailer_name || 'Unknown'}
                   state="PENDING"
-                  amountLabel={`${fmt(order.total_uzs)} UZS · ${formatVU(order.volume_vu ?? 0)} VU`}
+                  amountLabel={`${fmt(order.total_uzs)} ${moneyCurrency()} · ${formatVU(order.volume_vu ?? 0)} VU`.trim()}
                   index={index}
                   disabled={opsActingId === order.order_id}
                   detailOpenMode="double"

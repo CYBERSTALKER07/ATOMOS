@@ -124,3 +124,41 @@ func TestExportJournalsWorkerEmptySpanner(t *testing.T) {
 		t.Fatalf("path=%s", got.ObjectPath)
 	}
 }
+
+func TestJournalCurrency_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	if got := journalCurrency(context.Background(), "sup-j", ""); got != "UZS" {
+		t.Fatalf("got %q want UZS from pack", got)
+	}
+}
+
+func TestJournalCurrency_StoredWins(t *testing.T) {
+	if got := journalCurrency(context.Background(), "sup-j", "eur"); got != "EUR" {
+		t.Fatalf("got %q want EUR", got)
+	}
+}
+
+func TestJournalCurrency_PlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	if got := journalCurrency(context.Background(), "sup-j", ""); got != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", got)
+	}
+}
+
+func TestCreditNotesJournalQuery_EmptyCurrencyNoInvent(t *testing.T) {
+	for _, tenant := range []string{TenantSupplier, TenantRetailer} {
+		sql, err := creditNotesJournalQuery(tenant)
+		if err != nil {
+			t.Fatalf("%s: %v", tenant, err)
+		}
+		if strings.Contains(sql, "'UZS'") || strings.Contains(sql, `"UZS"`) {
+			t.Fatalf("%s SQL must not invent UZS: %s", tenant, sql)
+		}
+		if !strings.Contains(sql, "COALESCE(o.Currency, '')") {
+			t.Fatalf("%s want empty COALESCE, got %s", tenant, sql)
+		}
+	}
+	if _, err := creditNotesJournalQuery("bogus"); err == nil {
+		t.Fatal("expected invalid_tenant")
+	}
+}

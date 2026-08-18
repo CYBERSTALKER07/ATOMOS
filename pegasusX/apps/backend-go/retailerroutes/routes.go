@@ -19,18 +19,16 @@ type Deps struct {
 	Service          *retailer.Service
 	PaymentService   *payment.Service
 	PromotionService *promotion.Service
-	OrderService interface {
+	OrderService     interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
 		HandleRetailerRespondShopClosed(http.ResponseWriter, *http.Request)
 		HandleRetailerCancel(http.ResponseWriter, *http.Request)
 		HandleRetailerRequestCancel(http.ResponseWriter, *http.Request)
 	}
-	JWTSecret           string
-	JWTIssuer           string
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
-	Spanner             *spanner.Client
+	JWTSecret       string
+	JWTIssuer       string
+	AllowAuthBypass bool
+	Spanner         *spanner.Client
 }
 
 // RegisterRoutes mounts the retailer role-row surface.
@@ -252,6 +250,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/retailer/settings/auto-order/variant/{variantID}", d.Service.HandleAutoOrderPatch)
 
 		rr.Get("/v1/retailer/cards", d.Service.HandleRetailerCards)
+		rr.Get("/v1/retailer/payment-catalog", d.Service.HandlePaymentCatalog)
 		loyaltyH := &loyalty.Handlers{Spanner: d.Spanner}
 		rr.Get("/v1/retailer/loyalty/tier", loyaltyH.HandleRetailerTier)
 		rr.Get("/v1/retailer/loyalty/ledger", loyaltyH.HandleRetailerLedger)
@@ -259,15 +258,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/card/confirm", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/deactivate", d.Service.HandleRetailerCardMutation)
 		rr.Post("/v1/retailer/card/default", d.Service.HandleRetailerCardMutation)
-
-		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
-		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleRetailer))
 		mountProtected(gr)

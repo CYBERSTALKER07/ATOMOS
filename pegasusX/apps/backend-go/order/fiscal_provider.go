@@ -290,9 +290,9 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 	if p == nil {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq: nil provider")
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	body := mySoliqReceiptRequest{
 		AttemptID:      req.AttemptID,
@@ -356,9 +356,9 @@ func (p *MySoliqProvider) CreateCorrectiveReceipt(ctx context.Context, req Fisca
 	if p.signer == nil {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq: no EDSSigner configured")
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	body := mySoliqReceiptRequest{
 		AttemptID:      req.AttemptID,

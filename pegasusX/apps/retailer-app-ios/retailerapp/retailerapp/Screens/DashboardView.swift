@@ -13,7 +13,11 @@ struct DashboardView: View {
     @State private var loadError: String?
     @State private var pulseEvents: [RetailerPulseEvent] = []
     @State private var pulseLoading = false
+    @State private var pulseError: String?
+    @State private var commandPulse: ControlTowerPulseWire?
+    @State private var commandPulseError: String?
     @State private var socket = RetailerWebSocket.shared
+    @State private var commandJump: CommandStatusJump?
 
     private let api = APIClient.shared
 
@@ -34,15 +38,20 @@ struct DashboardView: View {
                         Task { await loadData() }
                     }
                 } else {
-                    KpiGrid(
-                        activeOrdersCount: activeOrders.count,
-                        predictionsCount: predictions.count,
-                        reorderProductsCount: reorderProducts.count,
-                        horizontalSizeClass: horizontalSizeClass
-                    )
+                    retailerCommandBoard
                         .slideIn(delay: 0)
 
-                    PulseStripView(events: pulseEvents, loading: pulseLoading)
+                    if commandPulseError == nil {
+                        KpiGrid(
+                            activeOrdersCount: commandPulse?.openOrders ?? activeOrders.count,
+                            predictionsCount: predictions.count,
+                            reorderProductsCount: reorderProducts.count,
+                            horizontalSizeClass: horizontalSizeClass
+                        )
+                        .slideIn(delay: 0)
+                    }
+
+                    PulseStripView(events: pulseEvents, loading: pulseLoading, error: pulseError)
                         .slideIn(delay: 0.02)
 
                     // Hero Service Grid (Yandex Go style)
@@ -92,6 +101,15 @@ struct DashboardView: View {
         .refreshable {
             await loadData()
         }
+        .navigationDestination(item: $commandJump) { jump in
+            OrdersView(initialCommandStatus: jump.status, initialSupplierId: jump.supplierId)
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                await loadCommandPulse()
+            }
+        }
         .onChange(of: socket.reconnectEpoch) { _, _ in
             if orderActionPending {
                 orderActionPending = false
@@ -102,6 +120,80 @@ struct DashboardView: View {
     }
 
 
+
+    private var retailerCommandBoard: some View {
+        VStack(alignment: .leading, spacing: AppTheme.spacingMD) {
+            HStack {
+                Text("Retailer command")
+                    .font(.system(.headline, design: .rounded))
+                Spacer()
+                if commandPulseError == nil {
+                    SourceChip(source: commandPulse?.source ?? "empty")
+                }
+            }
+            if let commandPulseError {
+                Text(commandPulseError)
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.destructive)
+                    .accessibilityIdentifier("gs-u-retailer-command-error")
+            } else if commandPulse?.empty == true {
+                Text("No live ops signals yet. Empty pulse — not demo tiles.")
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .accessibilityIdentifier("gs-u-retailer-pulse-empty")
+            } else if let pulse = commandPulse {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
+                    commandTile("Open orders", "\(pulse.openOrders)")
+                    commandTile("Fulfillment", "\(pulse.activeFulfillments)")
+                    commandTile("Dock", "\(pulse.dockPending)")
+                    commandTile("POS", "\(pulse.posOpenSessions)")
+                }
+            }
+            if commandPulseError == nil {
+                StatusStackView(
+                    dictionary: orderStatusFunnel,
+                    counts: commandPulse?.ordersByStatus,
+                    source: commandPulse?.source,
+                    onSelect: { commandJump = CommandStatusJump(status: $0) }
+                )
+                .accessibilityIdentifier("gs-u-retailer-stack")
+                ForEach(Array((commandPulse?.ordersBySupplier ?? []).enumerated()), id: \.offset) { _, facet in
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(facet.supplierId.isEmpty ? "missing supplier" : facet.supplierId)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.textTertiary)
+                        StatusStackView(
+                            dictionary: orderStatusFunnel,
+                            counts: facet.ordersByStatus,
+                            source: commandPulse?.source,
+                            onSelect: { commandJump = CommandStatusJump(status: $0, supplierId: facet.supplierId) }
+                        )
+                    }
+                    .accessibilityIdentifier("gs-u-retailer-supplier-facet")
+                }
+                if commandPulse?.loyalty?.enrolled != true {
+                    Text("Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet.")
+                        .font(.footnote)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .accessibilityIdentifier("gs-u-retailer-loyalty")
+                }
+            }
+        }
+    }
+
+    private func commandTile(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(AppTheme.textTertiary)
+            Text(value)
+                .font(.system(.headline, design: .rounded))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(AppTheme.cardBackground)
+        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+    }
 
     // MARK: - Active Deliveries
 
@@ -183,6 +275,7 @@ struct DashboardView: View {
         if !silent { isLoading = true }
         if !silent { loadError = nil }
         pulseLoading = true
+        pulseError = nil
         do {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             activeOrders = orders.filter { $0.status.isActive }
@@ -208,12 +301,30 @@ struct DashboardView: View {
 
         do {
             let pulse = try await api.getRetailerPulse()
-            pulseEvents = pulse.events
+            let result = PulseHonesty.apply(ok: true, incoming: pulse.events, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         } catch {
-            pulseEvents = []
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         }
+        await loadCommandPulse()
         pulseLoading = false
         if !silent { isLoading = false }
+    }
+
+    private func loadCommandPulse() async {
+        do {
+            let incoming = try await api.getControlTowerPulse()
+            let result = PulseHonesty.applyObject(ok: true, incoming: incoming, previous: commandPulse)
+            commandPulse = result.value
+            commandPulseError = result.error
+        } catch {
+            let result = PulseHonesty.applyObject(ok: false, incoming: nil, previous: commandPulse)
+            commandPulse = result.value
+            commandPulseError = result.error
+        }
     }
 
     private func cancelOrder(_ orderId: String) async {

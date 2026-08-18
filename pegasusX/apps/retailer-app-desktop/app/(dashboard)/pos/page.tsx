@@ -30,6 +30,7 @@ import {
   type PendingPosSale,
 } from "@/lib/pending-pos-sales";
 import { retailerPosSaleKey } from "@pegasusx/api-client";
+import { moneyCurrency, sessionPackCurrency } from "@/lib/payment-catalog";
 
 type Register = {
   register_id: string;
@@ -74,11 +75,11 @@ type ServerHold = {
   expires_at?: string;
 };
 
-function formatMoney(minor: number, currency = "UZS") {
+function formatMoney(minor: number, currency?: string) {
   return `${(minor / 100).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} ${currency}`;
+  })} ${moneyCurrency(currency)}`;
 }
 
 export default function POSPage() {
@@ -359,7 +360,7 @@ export default function POSPage() {
         body: JSON.stringify({
           register_id: registerId,
           opening_float_minor: Number(floatMinor) || 0,
-          currency: "UZS",
+          currency: sessionPackCurrency(),
         }),
       });
       const json = await res.json();

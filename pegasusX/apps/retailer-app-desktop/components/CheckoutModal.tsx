@@ -20,10 +20,11 @@ import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import { getRetailerProfile } from "@/lib/retailer-profile";
+import { checkoutGatewayForMethod } from "@/lib/payment-catalog";
+import { useRetailerPaymentCatalog } from "@/lib/use-payment-catalog";
 import type {
   ActiveFulfillmentsResponse,
   CheckoutPreviewResponse,
-  OrderCurrencyOptions,
   PendingPaymentsResponse,
   UnifiedCheckoutResponse,
   RetailerProfile,
@@ -63,8 +64,8 @@ export default function CheckoutModal({
   const [deliveryMode, setDeliveryMode] = useState<"STANDARD" | "SCHEDULED">("STANDARD");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [expressPriority, setExpressPriority] = useState(false);
-  const [currencyOptions, setCurrencyOptions] = useState<OrderCurrencyOptions | null>(null);
-  const [orderCurrency, setOrderCurrency] = useState(() => packCurrency(readCachedAuthSession()?.pack));
+  const { currency: packDisplayCurrency, allowsCash, allowsGlobalPay, gateways } =
+    useRetailerPaymentCatalog();
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -85,25 +86,6 @@ export default function CheckoutModal({
           }
         })
         .catch(() => setHasCardConfigured(false));
-
-      apiFetch("/v1/order/currencies")
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: OrderCurrencyOptions | null) => {
-          if (!data) {
-            setCurrencyOptions(null);
-            return;
-          }
-          setCurrencyOptions(data);
-          const op = data.operating_currency || packCurrency(readCachedAuthSession()?.pack);
-          setOrderCurrency(
-            data.enabled && data.allowlist?.length
-              ? data.allowlist.includes(op)
-                ? op
-                : data.allowlist[0]
-              : op,
-          );
-        })
-        .catch(() => setCurrencyOptions(null));
     }
   }, [isOpen]);
 
@@ -223,6 +205,15 @@ export default function CheckoutModal({
     return () => unsub();
   }, [subscribe, method]);
 
+  useEffect(() => {
+    if (method === "cash" && !allowsCash && allowsGlobalPay) {
+      setMethod("global_pay");
+    }
+    if (method === "global_pay" && !allowsGlobalPay && allowsCash) {
+      setMethod("cash");
+    }
+  }, [allowsCash, allowsGlobalPay, method]);
+
   const handleCheckout = async () => {
     if (items.length === 0) return;
     setLoading(true);
@@ -235,13 +226,6 @@ export default function CheckoutModal({
       if (!profile) {
         throw new Error("Authentication required. Please log in again.");
       }
-
-      const gatewayMap: Record<string, string> = {
-        global_pay: "GLOBAL_PAY",
-        adyen: "ADYEN",
-        airwallex: "AIRWALLEX",
-        cash: "CASH",
-      };
 
       const lineItems = items.map((item) => ({
         sku_id: item.product_id,
@@ -311,7 +295,7 @@ export default function CheckoutModal({
 
       const checkoutPayload: Record<string, unknown> = {
         retailer_id: profile.id,
-        payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+        payment_gateway: checkoutGatewayForMethod(method, gateways),
         latitude: 0,
         longitude: 0,
         items: submitItems,
@@ -319,9 +303,6 @@ export default function CheckoutModal({
         delivery_priority: expressPriority ? "EXPRESS" : "STANDARD",
         checkout_policy_token: checkoutPolicyToken ?? preview.checkout_policy_token,
       };
-      if (currencyOptions?.enabled && orderCurrency) {
-        checkoutPayload.currency = orderCurrency;
-      }
       if (deliveryDate) {
         const iso = new Date(`${deliveryDate}T12:00:00+05:00`).toISOString();
         if (deliveryMode === "SCHEDULED") {
@@ -371,7 +352,7 @@ export default function CheckoutModal({
         if (cartRes.status === 422 && errBody?.error === "payment_gateway_policy_violation") {
           // This happens when unified checkout policy triggers 3C Fallback.
           // We can read it here, although WS will arrive shortly.
-          setDegradedBanner({ gateway: gatewayMap[method], reason: errBody.message || "Gateway temporarily blocked." });
+          setDegradedBanner({ gateway: checkoutGatewayForMethod(method, gateways), reason: errBody.message || "Gateway temporarily blocked." });
           if (method !== "cash") {
              setMethod("cash");
           }
@@ -399,12 +380,6 @@ export default function CheckoutModal({
         try {
           const profile = getProfile();
           if (profile) {
-            const gatewayMap: Record<string, string> = {
-              global_pay: "GLOBAL_PAY",
-              adyen: "ADYEN",
-              airwallex: "AIRWALLEX",
-              cash: "CASH",
-            };
             const lineItems = items.map((item) => ({
               sku_id: item.product_id,
               quantity: item.quantity,
@@ -417,7 +392,7 @@ export default function CheckoutModal({
             void enqueuePendingCheckout(
               {
                 retailer_id: profile.id,
-                payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+                payment_gateway: checkoutGatewayForMethod(method, gateways),
                 latitude: 0,
                 longitude: 0,
                 items: lineItems,
@@ -473,11 +448,11 @@ export default function CheckoutModal({
                     Total Authorization
                   </span>
                   <div className="md-typescale-display-small font-light text-[var(--desk-text-primary)]">
-                    {orderCurrency || packCurrency(readCachedAuthSession()?.pack)} {(total + deliveryFeeMinor).toLocaleString()}
+                    {packDisplayCurrency || packCurrency(readCachedAuthSession()?.pack)} {(total + deliveryFeeMinor).toLocaleString()}
                   </div>
                   {deliveryFeeMinor > 0 && (
                     <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                      Includes {deliveryFeeMinor.toLocaleString()} {orderCurrency || packCurrency(readCachedAuthSession()?.pack)} delivery fee
+                      Includes {deliveryFeeMinor.toLocaleString()} {packDisplayCurrency || packCurrency(readCachedAuthSession()?.pack)} delivery fee
                     </p>
                   )}
                 </div>
@@ -503,30 +478,6 @@ export default function CheckoutModal({
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
                   Delivery Intent
                 </span>
-                {currencyOptions?.enabled && (currencyOptions.allowlist?.length ?? 0) > 0 ? (
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
-                      Order currency
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {currencyOptions.allowlist.map((code) => (
-                        <button
-                          key={code}
-                          type="button"
-                          onClick={() => setOrderCurrency(code)}
-                          className={`px-4 py-2 rounded-xl border text-sm font-medium ${
-                            orderCurrency === code
-                              ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5"
-                              : "border-[var(--desk-border)]"
-                          }`}
-                        >
-                          {code}
-                          {code === currencyOptions.operating_currency ? " (default)" : ""}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -567,6 +518,7 @@ export default function CheckoutModal({
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {allowsCash ? (
                   <button
                     onClick={() => setMethod("cash")}
                     className={`relative p-5 rounded-2xl border text-left transition-all ${
@@ -595,7 +547,9 @@ export default function CheckoutModal({
                       Physical tender
                     </span>
                   </button>
+                  ) : null}
 
+                  {allowsGlobalPay ? (
                   <button
                     disabled={isCardDisabled}
                     onClick={() => setMethod("global_pay")}
@@ -625,6 +579,7 @@ export default function CheckoutModal({
                       Secure digital payment
                     </span>
                   </button>
+                  ) : null}
                 </div>
               </div>
 

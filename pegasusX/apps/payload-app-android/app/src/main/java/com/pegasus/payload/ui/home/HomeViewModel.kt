@@ -21,6 +21,7 @@ import com.pegasus.payload.ui.navigation.HandoffPathResolver
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.data.remote.PayloadApi
 import com.pegasus.payload.data.repository.PayloadRepository
+import com.pegasus.design.PulseHonesty
 import com.pegasus.payload.services.PayloadWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -104,6 +105,7 @@ data class HomeUiState(
     val barcodeScanMessage: String? = null,
     val pulseEvents: List<PulseEvent> = emptyList(),
     val pulseLoading: Boolean = false,
+    val pulseError: String? = null,
     val error: String? = null,
     val errorExplain: StatusExplain? = null,
     val pack: com.pegasus.design.MarketPack? = null,
@@ -147,12 +149,12 @@ class HomeViewModel @Inject constructor(
 
     fun refreshPulse() {
         viewModelScope.launch {
-            _state.update { it.copy(pulseLoading = true) }
+            _state.update { it.copy(pulseLoading = true, pulseError = null) }
             try {
                 val response = api.getPulse()
-                _state.update { it.copy(pulseEvents = response.events, pulseLoading = false) }
+                _state.update { it.copy(pulseEvents = response.events, pulseLoading = false, pulseError = null) }
             } catch (_: Exception) {
-                _state.update { it.copy(pulseEvents = emptyList(), pulseLoading = false) }
+                _state.update { it.copy(pulseLoading = false, pulseError = PulseHonesty.FAILED) }
             }
         }
     }
@@ -305,7 +307,11 @@ class HomeViewModel @Inject constructor(
             _state.update { it.copy(loadingTrucks = true, error = null) }
         }
         viewModelScope.launch {
-            runCatching { repository.loadTrucks() }
+            runCatching {
+                val trucks = repository.loadTrucks()
+                val board = runCatching { repository.listBoardManifests() }.getOrDefault(emptyList())
+                ManifestBoard.attach(trucks, board)
+            }
                 .onSuccess { trucks ->
                     _state.update { it.copy(trucks = trucks, loadingTrucks = if (silent) it.loadingTrucks else false) }
                     if (_state.value.selectedTruckId == null) {

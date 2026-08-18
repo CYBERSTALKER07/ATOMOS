@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 )
 
@@ -202,16 +203,12 @@ func (s *Service) collectFuzzyCandidates(ctx context.Context, brand, name string
 }
 
 func (s *Service) linkOffer(ctx context.Context, in ProductInput, globalID string) error {
-	cur := in.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
 	return s.repo.UpsertOffer(ctx, Offer{
 		SupplierID:      in.SupplierID,
 		ProductID:       in.ProductID,
 		GlobalProductID: globalID,
 		PriceMinor:      in.PriceMinor,
-		Currency:        cur,
+		Currency:        offerCurrency(ctx, in.SupplierID, in.Currency),
 		Moq:             1,
 		LeadTimeDays:    0,
 		Status:          StatusLinked,
@@ -269,7 +266,7 @@ func (s *Service) ResolveMatch(ctx context.Context, queueID, decision, actorSupp
 			ProductID:       item.ProductID,
 			GlobalProductID: gid,
 			PriceMinor:      0,
-			Currency:        "UZS",
+			Currency:        offerCurrency(ctx, item.SupplierID, ""),
 			Moq:             1,
 			Status:          StatusLinked,
 			Version:         1,
@@ -306,4 +303,14 @@ func (s *Service) LinkExplicit(ctx context.Context, in ProductInput, globalProdu
 		return MatchResult{GlobalProductID: globalProductID, Method: MethodManual}, nil
 	}
 	return s.MatchAndLink(ctx, in)
+}
+
+// offerCurrency is empty-currency law for catalog offers: stored ISO code, else
+// the shipped pack. Planned/unknown packs stay empty — never invent UZS.
+func offerCurrency(ctx context.Context, supplierID, stored string) string {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, stored)
+	if err != nil {
+		return strings.ToUpper(strings.TrimSpace(stored))
+	}
+	return c
 }

@@ -225,11 +225,7 @@ struct LoginView: View {
         guard TokenStore.shared.isAuthenticated else { return }
         Haptics.success()
         onAuthenticated()
-        if let pushToken = PushNotificationManager.shared.deviceToken
-            ?? UserDefaults.standard.string(forKey: "pegasus_push_token"),
-           !pushToken.isEmpty {
-            try? await APIClient.shared.registerDeviceToken(token: pushToken)
-        }
+        await PushNotificationManager.shared.uploadStoredTokenIfPossible()
     }
 }
 

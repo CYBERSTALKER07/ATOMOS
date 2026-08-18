@@ -67,6 +67,8 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.formattedAmount
 import com.pegasusx.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
+import com.pegasusx.driver.ui.screens.home.RemainingStops
+import com.pegasusx.driver.ui.screens.home.components.RemainingStopsStepper
 import com.pegasusx.driver.ui.screens.manifest.components.EarlyCompleteDialog
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestEmptyView
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestHeader
@@ -143,6 +145,14 @@ fun ManifestScreen(
                                     .padding(horizontal = PegasusSpacing.s16, vertical = 8.dp),
                             )
                         }
+                    }
+
+                    item {
+                        RemainingStopsStepper(
+                            stops = RemainingStops.remaining(pendingOrders),
+                            onSelect = { id -> pendingOrders.firstOrNull { it.id == id }?.let(onOrderClick) },
+                            modifier = Modifier.padding(horizontal = PegasusSpacing.s16, vertical = 8.dp),
+                        )
                     }
 
                     // Ride cards

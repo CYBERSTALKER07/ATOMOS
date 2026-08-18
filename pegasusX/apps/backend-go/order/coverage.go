@@ -2,7 +2,6 @@ package order
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/uber/h3-go/v4"
@@ -54,58 +53,12 @@ func CellsForCity(lat, lng float64) []string {
 	return out
 }
 
-// CellInCoverage is true when the retailer H3 cell is the stored cell or a child of it.
+// CellInCoverage is the GS-L0 membership helper. Implementation lives on the engine.
 func CellInCoverage(retailerCell string, stored []string) bool {
-	retailerCell = strings.TrimSpace(retailerCell)
-	if retailerCell == "" || len(stored) == 0 {
-		return false
-	}
-	r := h3.Cell(h3.IndexFromString(retailerCell))
-	if !r.IsValid() {
-		for _, s := range stored {
-			if strings.TrimSpace(s) == retailerCell {
-				return true
-			}
-		}
-		return false
-	}
-	for _, raw := range stored {
-		s := strings.TrimSpace(raw)
-		if s == "" {
-			continue
-		}
-		if s == retailerCell {
-			return true
-		}
-		sc := h3.Cell(h3.IndexFromString(s))
-		if !sc.IsValid() {
-			continue
-		}
-		if r == sc {
-			return true
-		}
-		res := sc.Resolution()
-		if res < 0 || res > 15 {
-			continue
-		}
-		parent, err := r.Parent(res)
-		if err == nil && parent == sc {
-			return true
-		}
-	}
-	return false
+	return proximity.CellInCoverage(retailerCell, stored)
 }
 
-// WarehouseCoversRetailer is the locked hybrid:
-// cells set → H3 membership; no cells → whole warehouse country (closest is caller's job).
+// WarehouseCoversRetailer is the locked hybrid (GS-L0). One implementation: proximity.CoversRetailer.
 func WarehouseCoversRetailer(warehouseCountry string, coverageCells []string, retailerCountry, retailerCell string) bool {
-	if len(coverageCells) > 0 {
-		return CellInCoverage(retailerCell, coverageCells)
-	}
-	whC := strings.ToUpper(strings.TrimSpace(warehouseCountry))
-	rtC := strings.ToUpper(strings.TrimSpace(retailerCountry))
-	if whC == "" || rtC == "" {
-		return true
-	}
-	return whC == rtC
+	return proximity.CoversRetailer(warehouseCountry, coverageCells, retailerCountry, retailerCell)
 }

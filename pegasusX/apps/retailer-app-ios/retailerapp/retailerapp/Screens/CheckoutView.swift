@@ -33,10 +33,8 @@ struct CheckoutView: View {
     @State private var deliveryMode = "STANDARD"
     @State private var deliveryDate = ""
     @State private var expressPriority = false
-    @State private var currencyPickerEnabled = false
-    @State private var currencyAllowlist: [String] = []
-    @State private var operatingCurrency = "UZS"
-    @State private var orderCurrency = "UZS"
+    @State private var catalogCodes: [String] = []
+    @State private var packDisplayCurrency = packCurrency(MarketPackStore.pack)
     @State private var showBackorderConfirm = false
     @State private var pendingBackorderPreview: CheckoutPreviewResponse?
     @State private var skipBackorderConfirm = false
@@ -51,10 +49,11 @@ struct CheckoutView: View {
     /// Map UI labels to backend gateway codes expected by /v1/checkout/unified
     private func gatewayCode(for methodId: String) -> String {
         switch methodId {
-        case "GlobalPay": return "GLOBAL_PAY"
-        case "Adyen": return "ADYEN"
+        case "GlobalPay": return catalogCodes.contains("GLOBAL_PAY") || catalogCodes.isEmpty ? "GLOBAL_PAY" : (catalogCodes.contains("CASH") ? "CASH" : catalogCodes[0])
         case "Cash": return "CASH"
-        default: return "GLOBAL_PAY"
+        default:
+            if catalogCodes.contains(methodId.uppercased()) { return methodId.uppercased() }
+            return catalogCodes.contains("CASH") ? "CASH" : (catalogCodes.first ?? "CASH")
         }
     }
 
@@ -89,8 +88,8 @@ struct CheckoutView: View {
                 }
             }
             .task {
+                await fetchPaymentCatalog()
                 await fetchCards()
-                await fetchOrderCurrencies()
             }
             .sheet(isPresented: $showPaymentPicker) {
                 paymentPickerSheet
@@ -202,7 +201,7 @@ struct CheckoutView: View {
             requestedDeliveryDate: requestedDate,
             deliveryPriority: expressPriority ? "EXPRESS" : "STANDARD",
             checkoutPolicyToken: checkoutPolicyToken,
-            currency: currencyPickerEnabled ? orderCurrency : nil
+            currency: nil
         )
     }
 
@@ -294,32 +293,8 @@ struct CheckoutView: View {
                 }
                 Toggle("Express priority (+fee)", isOn: $expressPriority)
                     .font(.system(.caption, design: .rounded))
-                if currencyPickerEnabled, !currencyAllowlist.isEmpty {
-                    Text("Order currency")
-                        .font(.system(.caption, design: .rounded, weight: .semibold))
-                        .foregroundStyle(AppTheme.textSecondary)
-                    HStack(spacing: AppTheme.spacingSM) {
-                        ForEach(currencyAllowlist, id: \.self) { code in
-                            Button {
-                                orderCurrency = code
-                            } label: {
-                                Text(code == operatingCurrency ? "\(code) (default)" : code)
-                                    .font(.system(.caption, design: .rounded, weight: .semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(orderCurrency == code ? AppTheme.accentSoft.opacity(0.45) : AppTheme.surfaceElevated)
-                                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusSM))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                                            .stroke(orderCurrency == code ? AppTheme.accent : AppTheme.separator.opacity(0.4), lineWidth: 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
                 if let fee = preview?.deliveryFeeMinor, fee > 0 {
-                    Text("Delivery fee: \(Int(fee).formatted()) UZS\(preview?.deliveryDistanceKm.map { " · \(String(format: "%.1f", $0)) km" } ?? "")")
+                    Text("Delivery fee: \(Int(fee).formatted()) \(packDisplayCurrency)\(preview?.deliveryDistanceKm.map { " · \(String(format: "%.1f", $0)) km" } ?? "")")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                 }
@@ -548,30 +523,43 @@ struct CheckoutView: View {
                     isToken: true
                 )
             }
-            paymentOptions = tokenOptions + [
-                CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false),
-                CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false)
-            ]
+            paymentOptions = tokenOptions + catalogPaymentOptions()
+            if !paymentOptions.contains(where: { $0.id == selectedPaymentId }) {
+                selectedPaymentId = paymentOptions.first?.id ?? "Cash"
+            }
         } catch {
-            print("Failed to fetch cards")
+            paymentOptions = catalogPaymentOptions()
         }
     }
 
-    private func fetchOrderCurrencies() async {
+    private func fetchPaymentCatalog() async {
         do {
-            let opts = try await api.getOrderCurrencies()
-            currencyPickerEnabled = opts.enabled
-            currencyAllowlist = opts.allowlist
-            operatingCurrency = opts.operatingCurrency.isEmpty ? "UZS" : opts.operatingCurrency
-            if opts.enabled, !opts.allowlist.isEmpty {
-                orderCurrency = opts.allowlist.contains(operatingCurrency)
-                    ? operatingCurrency
-                    : opts.allowlist[0]
-            } else {
-                orderCurrency = operatingCurrency
+            let resp = try await api.getPaymentCatalog()
+            catalogCodes = selectableRetailerCatalogCodes(resp.catalog)
+            if !resp.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                packDisplayCurrency = resp.currencyCode.uppercased()
             }
         } catch {
-            currencyPickerEnabled = false
+            catalogCodes = []
+            packDisplayCurrency = packCurrency(MarketPackStore.pack)
+        }
+        paymentOptions = catalogPaymentOptions()
+        if !paymentOptions.contains(where: { $0.id == selectedPaymentId }) {
+            selectedPaymentId = paymentOptions.first?.id ?? "Cash"
+        }
+    }
+
+    private func catalogPaymentOptions() -> [CheckoutPaymentOption] {
+        let codes = catalogCodes.isEmpty ? ["CASH"] : catalogCodes
+        return codes.compactMap { code in
+            switch code {
+            case "CASH":
+                return CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
+            case "GLOBAL_PAY":
+                return CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false)
+            default:
+                return nil
+            }
         }
     }
 
@@ -614,7 +602,6 @@ struct CheckoutView: View {
         if option.isToken { return "creditcard.fill" }
         switch option.id {
         case "GlobalPay": return "wallet.pass"
-        case "Adyen": return "creditcard.and.123"
         case "Cash": return "banknote"
         default: return "creditcard"
         }
@@ -674,7 +661,7 @@ struct CheckoutView: View {
         if option?.isToken == true {
             do {
                 try await api.setDefaultCard(tokenId: selectedPaymentId)
-                finalGateway = "GLOBAL_PAY"
+                finalGateway = catalogCodes.contains("GLOBAL_PAY") ? "GLOBAL_PAY" : (catalogCodes.contains("CASH") ? "CASH" : (catalogCodes.first ?? "CASH"))
             } catch {
                 errorMessage = RetailerErrorSupport.message(
                     for: error,

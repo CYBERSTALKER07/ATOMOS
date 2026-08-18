@@ -137,8 +137,7 @@ const WorkflowCustomNode = ({ data }: any) => {
   return (
     <div className={`
       group w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
-      flex items-center relative transition-all duration-300
-      hover:border-white/70 hover:bg-[#151515] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
+      flex items-center relative
     `}>
       {data.type !== 'start' && <Handle type="target" position={Position.Left} className="w-2 h-2 bg-white !border-none !-ml-1" />}
       <Handle type="source" position={Position.Right} className="w-2 h-2 bg-white !border-none !-mr-1" />
@@ -148,8 +147,8 @@ const WorkflowCustomNode = ({ data }: any) => {
           <WorkflowIcon type={data.icon} className="w-6 h-6" />
         </div>
         <div className="flex flex-col text-left truncate leading-tight">
-          <span className="text-sm font-mono text-white/90 transition-colors duration-300 group-hover:text-white">{data.title}</span>
-          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1 transition-colors duration-300 group-hover:text-white/80">{data.subtitle}</span>}
+          <span className="text-sm font-mono text-white/90">{data.title}</span>
+          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1">{data.subtitle}</span>}
         </div>
       </div>
     </div>

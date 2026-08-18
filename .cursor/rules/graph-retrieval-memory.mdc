@@ -15,6 +15,8 @@ enhance → retrieve (WORKSPACE.md ∥ graph_retrieve.py ∥ grep) → verify fi
 python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>" --hops 2
 ```
 
+Cursor CLI `sessionStart` injects a bounded GOAL + latest WORKSPACE excerpt. Excerpt is not status.
+
 Then open the returned paths. `architecture-graph.json` is not status (`generatedAt` is null). Code wins.
 
 Persist verified bullets to `.agents/memory/WORKSPACE.md` only.

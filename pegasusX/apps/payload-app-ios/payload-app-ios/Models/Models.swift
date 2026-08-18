@@ -64,12 +64,62 @@ struct RefreshTokenResponse: Decodable {
 
 // MARK: - Trucks / Manifest
 
-/// Wire format: bare JSON array of {id, label, license_plate, vehicle_class}.
-struct Truck: Decodable, Identifiable {
+/// Wire format: {id, label, license_plate, vehicle_class, truck_status, used/max VU}.
+/// truck_status is the current open manifest state. Empty ≠ invented DRAFT.
+struct Truck: Decodable, Identifiable, Equatable {
     let id: String
     let label: String?
     let licensePlate: String?
     let vehicleClass: String?
+    let truckStatus: String?
+    let usedVolumeVu: Double?
+    let maxVolumeVu: Double?
+    let stopCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, label
+        case licensePlate = "license_plate"
+        case vehicleClass = "vehicle_class"
+        case truckStatus = "truck_status"
+        case usedVolumeVu = "used_volume_vu"
+        case maxVolumeVu = "max_volume_vu"
+        case stopCount = "stop_count"
+    }
+}
+
+extension Truck {
+    /// Test/UI fixture. Distinct from memberwise (all labels required, no defaults).
+    static func fixture(
+        id: String,
+        truckStatus: String? = nil,
+        usedVolumeVu: Double? = nil,
+        maxVolumeVu: Double? = nil,
+        stopCount: Int? = nil
+    ) -> Truck {
+        Truck(
+            id: id,
+            label: nil,
+            licensePlate: nil,
+            vehicleClass: nil,
+            truckStatus: truckStatus,
+            usedVolumeVu: usedVolumeVu,
+            maxVolumeVu: maxVolumeVu,
+            stopCount: stopCount
+        )
+    }
+
+    func withBoard(status: String, used: Double?, max: Double?, stops: Int?) -> Truck {
+        Truck(
+            id: id,
+            label: label,
+            licensePlate: licensePlate,
+            vehicleClass: vehicleClass,
+            truckStatus: status,
+            usedVolumeVu: used,
+            maxVolumeVu: max,
+            stopCount: stops
+        )
+    }
 }
 
 struct LiveOrderItem: Decodable, Identifiable {
@@ -139,6 +189,35 @@ struct Manifest: Decodable, Identifiable {
         var copy = self
         copy.source = source
         return copy
+    }
+}
+
+extension Manifest {
+    init(
+        manifestId: String,
+        vehicleId: String? = nil,
+        truckId: String? = nil,
+        state: String,
+        totalVolumeVu: Double? = nil,
+        maxVolumeVu: Double? = nil,
+        stopCount: Int? = nil,
+        createdAt: String? = nil
+    ) {
+        self.manifestId = manifestId
+        self.truckId = truckId
+        self.vehicleId = vehicleId
+        self.driverId = nil
+        self.state = state
+        self.totalVolumeVu = totalVolumeVu
+        self.maxVolumeVu = maxVolumeVu
+        self.stopCount = stopCount
+        self.regionCode = nil
+        self.sealedAt = nil
+        self.dispatchedAt = nil
+        self.createdAt = createdAt
+        self.orders = nil
+        self.overflowCount = nil
+        self.source = "payloader"
     }
 }
 
@@ -327,7 +406,7 @@ struct MissingItemsRequest: Encodable {
 
 struct DeviceTokenRequest: Encodable {
     let token: String
-    let platform: String   // "IOS"
+    let platform: String   // "ios"
 }
 
 // MARK: - Pulse / explain / handoff

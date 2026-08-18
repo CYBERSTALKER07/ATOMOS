@@ -33,6 +33,7 @@ import { VirtualScrollList } from "@pegasusx/ui-kit/desktop";
 import { ListRowSkeleton } from "../../../components/Skeleton";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { sessionPackCurrency } from "../../../lib/payment-catalog";
 import { OrderTimelinePanel } from "../../../components/OrderTimelinePanel";
 import { FileClaimPanel } from "../../../components/FileClaimPanel";
 import {
@@ -387,15 +388,24 @@ function OrdersPageContent() {
   );
 
   const list = orders ?? [];
+  const statusFilter = (searchParams.get("status") || "").trim().toUpperCase();
+  const supplierFilter = (searchParams.get("supplier") || "").trim();
   const filtered = useMemo(() => {
+    let rows = list;
     if (activeTab === "ACTIVE")
-      return list.filter(
+      rows = rows.filter(
         (o) => o.state !== "COMPLETED" && o.state !== "CANCELLED",
       );
-    if (activeTab === "COMPLETED")
-      return list.filter((o) => o.state === "COMPLETED");
-    return list;
-  }, [activeTab, list]);
+    else if (activeTab === "COMPLETED")
+      rows = rows.filter((o) => o.state === "COMPLETED");
+    if (statusFilter) {
+      rows = rows.filter((o) => String(o.state || "").toUpperCase() === statusFilter);
+    }
+    if (supplierFilter) {
+      rows = rows.filter((o) => o.supplier_id === supplierFilter);
+    }
+    return rows;
+  }, [activeTab, list, statusFilter, supplierFilter]);
 
   const kpi = useMemo(() => {
     const active = list.filter(
@@ -687,7 +697,7 @@ function OrdersPageContent() {
               className="md-typescale-metric text-[var(--desk-text-primary)]"
             />
             <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
-              UZS Volume
+              {[sessionPackCurrency(), "Volume"].filter(Boolean).join(" ")}
             </p>
           </div>
         </BentoCard>

@@ -18,27 +18,39 @@ const (
 	defaultSmokeInventoryQOH = int64(10000)
 )
 
-// EnsureDemoScopeLinks upserts SSMR demo warehouse/factory rows with factory linkage,
+// EnsureDemoScopeLinks upserts sandbox demo warehouse/factory rows with factory linkage,
 // smoke supplier login, and catalog inventory so FACTORY_ADMIN scope resolution and
 // retailer order create succeed in the isolated sandbox.
 func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierID string) error {
 	if client == nil || strings.TrimSpace(supplierID) == "" {
 		return nil
 	}
+	if IsProduction() {
+		return nil
+	}
 
 	warehouseID := demoWarehouseID()
+	if warehouseID == "" {
+		return fmt.Errorf("SANDBOX_SMOKE_WAREHOUSE_ID (or SSMR_SMOKE_WAREHOUSE_ID / WAREHOUSE_DEMO_ID) required")
+	}
 	factoryID := demoFactoryID()
 	centerLat, centerLng := deliveryZoneCenter()
 	coverageKm := deliveryZoneRadiusKm()
 	sku := smokeSKU()
 	barcode := smokeBarcode()
 
-	password := strings.TrimSpace(os.Getenv("SSMR_SMOKE_SUPPLIER_PASSWORD"))
+	password := envFirst("SANDBOX_SMOKE_SUPPLIER_PASSWORD", "SSMR_SMOKE_SUPPLIER_PASSWORD")
 	if password == "" {
+		if IsSandbox() {
+			return fmt.Errorf("SANDBOX_SMOKE_SUPPLIER_PASSWORD (or SSMR_SMOKE_SUPPLIER_PASSWORD) required in sandbox")
+		}
 		password = "SmokeTest!234"
 	}
-	phone := strings.TrimSpace(os.Getenv("SSMR_SMOKE_SUPPLIER_PHONE"))
+	phone := envFirst("SANDBOX_SMOKE_SUPPLIER_PHONE", "SSMR_SMOKE_SUPPLIER_PHONE")
 	if phone == "" {
+		if IsSandbox() {
+			return fmt.Errorf("SANDBOX_SMOKE_SUPPLIER_PHONE (or SSMR_SMOKE_SUPPLIER_PHONE) required in sandbox")
+		}
 		phone = "+998901000001"
 	}
 
@@ -53,6 +65,9 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 	}
 	factoryPIN := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PIN"))
 	if factoryPIN == "" {
+		if IsSandbox() {
+			return fmt.Errorf("FACTORY_DEMO_PIN required in sandbox")
+		}
 		factoryPIN = "1234"
 	}
 	factoryPINHash, err := bcrypt.GenerateFromPassword([]byte(factoryPIN), bcrypt.DefaultCost)
@@ -69,6 +84,9 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 		driverPIN = strings.TrimSpace(os.Getenv("DRIVER_DEMO_PASSWORD"))
 	}
 	if driverPIN == "" {
+		if IsSandbox() {
+			return fmt.Errorf("DRIVER_DEMO_PIN required in sandbox")
+		}
 		driverPIN = "1234"
 	}
 	driverPINHash, err := bcrypt.GenerateFromPassword([]byte(driverPIN), bcrypt.DefaultCost)
@@ -205,7 +223,7 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"Name":          "SSMR Demo SKU",
 				"Barcode":       barcode,
 				"PriceMinor":    int64(50000),
-				"Currency":      "UZS",
+				"Currency":      seedSupplierCurrency(),
 				"StockQuantity": defaultSmokeInventoryQOH,
 				"Unit":          "UNIT",
 				"UnitVolumeVU":  1.0,
@@ -227,6 +245,18 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"UnitPriceMinor": int64(50000),
 				"MinQty":         int64(1),
 			}),
+			spanner.InsertOrUpdateMap("Vehicles", map[string]any{
+				"VehicleId":    "veh_factory_1",
+				"SupplierId":   supplierID,
+				"LicensePlate": "01F111AA",
+				"HomeNodeType": "FACTORY",
+				"HomeNodeId":   factoryID,
+				"VehicleClass": "CLASS_B",
+				"MaxVolumeVU":  150.0,
+				"IsActive":     true,
+				"CreatedAt":    ts,
+				"UpdatedAt":    ts,
+			}),
 			spanner.InsertOrUpdateMap("Drivers", map[string]any{
 				"DriverId":     "drv_factory_1",
 				"SupplierId":   supplierID,
@@ -235,7 +265,9 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 				"PinHash":      string(driverPINHash),
 				"HomeNodeType": "FACTORY",
 				"HomeNodeId":   factoryID,
+				"VehicleId":    "veh_factory_1",
 				"IsActive":     true,
+				"OnShift":      true,
 				"CreatedAt":    ts,
 				"UpdatedAt":    ts,
 			}),
@@ -332,12 +364,21 @@ func EnsureDemoScopeLinks(ctx context.Context, client *spanner.Client, supplierI
 	return nil
 }
 
+func envFirst(keys ...string) string {
+	for _, k := range keys {
+		if v := strings.TrimSpace(os.Getenv(k)); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 func demoWarehouseID() string {
-	if id := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID")); id != "" {
+	if id := envFirst("SANDBOX_SMOKE_WAREHOUSE_ID", "SSMR_SMOKE_WAREHOUSE_ID", "WAREHOUSE_DEMO_ID"); id != "" {
 		return id
 	}
-	if id := strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID")); id != "" {
-		return id
+	if IsSandbox() {
+		return ""
 	}
 	return "wh-demo-1"
 }
@@ -350,7 +391,7 @@ func demoFactoryID() string {
 }
 
 func smokeSKU() string {
-	if sku := strings.TrimSpace(os.Getenv("SSMR_SMOKE_SKU")); sku != "" {
+	if sku := envFirst("SANDBOX_SMOKE_SKU", "SSMR_SMOKE_SKU"); sku != "" {
 		return sku
 	}
 	return defaultSmokeSKU
@@ -372,7 +413,7 @@ func seedSupplierCountry() string {
 
 func seedSupplierCurrency() string {
 	if c := strings.TrimSpace(os.Getenv("SEED_SUPPLIER_CURRENCY")); c != "" {
-		return c
+		return strings.ToUpper(c)
 	}
 	cur, err := CurrencyFromContext(context.Background(), "")
 	if err != nil {

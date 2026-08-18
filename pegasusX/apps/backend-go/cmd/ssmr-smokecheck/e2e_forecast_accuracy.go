@@ -35,6 +35,12 @@ func runForecastAccuracyE2E(
 	}
 	defer spannerClient.Close()
 
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_FORECAST_ACCURACY_SKIPPED")
+		return nil
+	}
+
 	warehouseID := strings.TrimSpace(envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"))
 	// Unique product so earlier e2e COMPLETED orders on SSMR-SKU-1 do not inflate ActualQty.
 	productID := fmt.Sprintf("SSMR-SKU-ACC-%s", uuid.NewString()[:8])
@@ -75,7 +81,7 @@ func runForecastAccuracyE2E(
 			"LineItemsJson":      lineItems,
 			"TotalMinor":         int64(1000),
 			"OriginalTotalMinor": int64(1000),
-			"Currency":           "UZS",
+			"Currency":           op,
 			"Version":            int64(1),
 			"CreatedAt":          spanner.CommitTimestamp,
 			"UpdatedAt":          spanner.CommitTimestamp,

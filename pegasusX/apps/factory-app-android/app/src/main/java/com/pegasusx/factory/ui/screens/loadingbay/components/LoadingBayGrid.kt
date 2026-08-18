@@ -29,6 +29,7 @@ fun LoadingBayGrid(
     dispatched: List<Transfer>,
     handoffEvents: List<PulseEvent>,
     handoffLoading: Boolean,
+    handoffError: String? = null,
     onTransferClick: (String) -> Unit,
     innerPadding: PaddingValues
 ) {
@@ -50,6 +51,7 @@ fun LoadingBayGrid(
             HandoffTimelineSection(
                 events = handoffEvents,
                 loading = handoffLoading,
+                error = handoffError,
             )
         }
         item { FactorySectionHeader(title = stringResource(R.string.mobile_factory_ui_ready_for_loading), count = approved.size) }

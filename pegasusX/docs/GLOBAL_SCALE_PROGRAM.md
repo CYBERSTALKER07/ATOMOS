@@ -14,7 +14,8 @@
 **Enterprise backend + infra (modules, cells, IAM):** [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md)  
 **Every backend feature classified (KEEP/ADAPT/RESHAPE/LOCAL/DEFER):** [`GLOBAL_SCALE_BACKEND_FEATURES.md`](./GLOBAL_SCALE_BACKEND_FEATURES.md)  
 **Phased modules × exits (Part I):** [`GLOBAL_SCALE_BACKEND_FEATURES.md`](./GLOBAL_SCALE_BACKEND_FEATURES.md#part-i--phased-modular-plan) — implement phases, not 250 inventory rows. GS-A0–A2 + T1–T5 + **M1–M7** + **C1–C5** + **GS-I** + **GS-R bind** + **GS-P** shipped (C plan-only). No next phase from this catalog. Leftover only when asked (flag, apply, live PEPPOL/PSP, SAML/SCIM).  
-**Local-first warehouse / pack PSP (GS-L + GS-K, W1–W26):** [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) — does not replace A/T/M/C. Next slices **L0 + K1**.
+**Local-first warehouse / pack PSP (GS-L + GS-K, W1–W26):** [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) — does not replace A/T/M/C. **L0–L4 + K1–K3 + R supplier-portal shipped.** Next is **warehouse-portal R** (pack PSP + pins view). countrycfg is signup picker only; MarketPack is product law. Do not add a `CountryConfigs` Spanner table.  
+**Client visualization (GS-U0–U9):** [`GLOBAL_SCALE_CLIENT_UI.md`](./GLOBAL_SCALE_CLIENT_UI.md) — command dashboards + Plan & Brain tabs for every role × web/desktop/iOS/Android. Extends R; does not replace A/T/M/C/L/K. U0+U1+UN+UF+U2+U3+U4+U5+U6+U7+U8+U9 shipped.
 
 **Do not:** redesign Spanner→outbox→Kafka; merge factory/payload tables; flip factory planning / auto-order place globally; invent a second tenant key.
 
@@ -187,6 +188,7 @@ GS-M  Checkout/fiscal/maps READ pack
 GS-C  Regional cell (terraform/k8s)
 GS-I  Enterprise identity (OIDC)      ← done (SAML/SCIM later)
 GS-R  Role UI parity (pack-aware copy) ← bind done
+GS-U  Client visualization            ← U0+U1+UN+UF+U2+U3+U4+U5+U6+U7+U8+U9 done (GLOBAL_SCALE_CLIENT_UI.md)
 GS-P  Partner/legal packs per sale  ← done (never blocks register)
 ```
 
@@ -197,10 +199,11 @@ GS-P  Partner/legal packs per sale  ← done (never blocks register)
 | **GS-M** | Pack is live law | M1–M7 done. Leftover: flag | Currency/locale from session | Secrets per adapter | `checkout_reads_this: true` only when SSMR fiscal matches pack MY_SOLIQ |
 | **GS-C** | Second cell possible | `home_cell` on tenant | Cell-local API URL | **C1–C5 done** (session `api_url` + global DNS/AR plan). EU/global not applied | EU cell empty adapters OK |
 | **GS-I** | Buyer SSO | **Done** — `SupplierOIDC` + `/v1/auth/oidc/{discovery,exchange}` + `/v1/supplier/oidc`. AUTH0 wrap removed | Portal “Login with IdP” + Integrations attach | Secrets stay out of Spanner | Optional per tenant. SAML/SCIM later |
-| **GS-R** | Role apps | **Bind done** — session pack chip; no new domains | Currency + receipts on portal+Android+iOS; native pin | — | Deep UZS leftover continuous |
+| **GS-R** | Role apps | **Bind done** — session pack chip; no new domains | Currency + receipts + maps camera on portal+Android+iOS; native pin | — | Leftover: `checkout_reads_this` |
+| **GS-U** | See the data | **U0+U1+UN+UF+U2+U3+U4+U5+U6+U7+U8+U9 done** — honesty + StatusStack + nav ≤5 + ETag + supplier/warehouse/factory/retailer/field command + Plan & Brain + admin dead-letter COUNT(*) + chip→same-key lock | leftovers (flag, cells, PSP) | — | Live-path widgets; event-driven freshness; empty ≠ zero ≠ unavailable; motion deferred |
 | **GS-P** | Sold integrations | **Done** — dialect catalog + fail-closed 1C/PEPPOL/X12/SAP/AS2 gates. Register unblocked | Partner settings | Certs | Per contract; PEPPOL execute still unimplemented |
 
-**Dependency:** GS-A → GS-T → GS-M before any second-country **claim**. GS-C can scaffold in parallel. GS-I after GS-T. GS-R continuous. GS-P never blocks register.
+**Dependency:** GS-A → GS-T → GS-M before any second-country **claim**. GS-C can scaffold in parallel. GS-I after GS-T. GS-R continuous. GS-U after R bind (visualize live reads only). GS-P never blocks register.
 
 ---
 
@@ -227,7 +230,7 @@ GS-P  Partner/legal packs per sale  ← done (never blocks register)
 - **C3:** project factory `pegasusx-cell-eu`; empty adapters OK; same DDL; new JWT; no UZ restore (plan only)
 - **C4:** isolation proof written (`make cell-isolation-proof`). UZ JWT 401 on EU (`CELL_JWT_ENFORCE` / production). IAM/Kafka/GSM structural. Live gcloud deny waits for apply.
 - **C5:** session `api_url` / `ws_url` from `home_cell`; `GET /v1/platform/cells`; global DNS/AR plan (`make global-plan`); Next.js/Tauri portals pin JWT cell (localhost stays local).
-- **GS-R:** native pin closed; session pack splash (currency + receipts) on role clients. Deep UZS leftover continuous.
+- **GS-R:** native pin closed; session pack splash (currency + receipts) on role clients. Maps camera bind shipped (empty/planned pack does not invent Tashkent). Leftover: flag.
 
 **Out of scope**
 
@@ -235,7 +238,7 @@ GS-P  Partner/legal packs per sale  ← done (never blocks register)
 - Flipping `checkout_reads_this`  
 - SAML / SCIM (after GS-I OIDC)  
 - Multi-region Spanner  
-- Deep POS UZS labels / maps SDK swap (GS-R leftover, continuous)
+- Swapping MapLibre/MapKit for Google Maps (MapsAdapter is routing/geometry)
 
 ---
 

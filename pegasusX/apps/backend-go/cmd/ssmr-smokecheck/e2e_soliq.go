@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fiscal"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 )
@@ -22,10 +23,16 @@ import (
 // Optional live: set FISCAL_MY_SOLIQ_LIVE_PROOF=1 with BaseURL + APIKey + TIN
 // (+ real EDS signer via FISCAL_MY_SOLIQ_SIGNER) to hit the operator sandbox.
 // Credentials alone without LIVE_PROOF print CREDS_PRESENT_LIVE_PROOF_OFF.
-func runSoliqSandboxE2E(ctx context.Context, client *http.Client, base string) error {
+func runSoliqSandboxE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) error {
 	_ = client
 	_ = base
-	if err := proveSoliqSignSubmitPoll(ctx); err != nil {
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_SOLIQ_CONTRACT_SKIPPED")
+		fmt.Println("PX_E2E_SOLIQ_SANDBOX_SKIPPED")
+		return nil
+	}
+	if err := proveSoliqSignSubmitPoll(ctx, op); err != nil {
 		return fmt.Errorf("soliq contract sign→submit→poll: %w", err)
 	}
 	fmt.Println("PX_E2E_SOLIQ_CONTRACT_OK")
@@ -57,7 +64,7 @@ func runSoliqSandboxE2E(ctx context.Context, client *http.Client, base string) e
 		SupplierID:    "sup-live-proof",
 		RetailerID:    "ret-live-proof",
 		AmountMinor:   1000,
-		Currency:      "UZS",
+		Currency:      op,
 		PaymentMethod: "CARD",
 		LineItems: []order.LineItem{
 			{SKU: "PROOF", Name: "EDS live proof", Quantity: 1, UnitPrice: 1000},
@@ -80,7 +87,7 @@ func runSoliqSandboxE2E(ctx context.Context, client *http.Client, base string) e
 	return nil
 }
 
-func proveSoliqSignSubmitPoll(ctx context.Context) error {
+func proveSoliqSignSubmitPoll(ctx context.Context, currency string) error {
 	const signKey = "ssmr-soliq-contract-key-16"
 	signer, err := fiscal.NewDevHMACSigner([]byte(signKey))
 	if err != nil {
@@ -120,7 +127,7 @@ func proveSoliqSignSubmitPoll(ctx context.Context) error {
 		SupplierID:    "sup-ssmr",
 		RetailerID:    "ret-ssmr",
 		AmountMinor:   125000,
-		Currency:      "UZS",
+		Currency:      currency,
 		PaymentMethod: "CARD",
 		LineItems: []order.LineItem{
 			{SKU: "SKU-1", Name: "Water 1.5L", Quantity: 10, UnitPrice: 12500},

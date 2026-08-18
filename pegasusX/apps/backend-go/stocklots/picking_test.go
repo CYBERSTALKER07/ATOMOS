@@ -95,6 +95,54 @@ func TestAssertManifestPickReady_softWarn(t *testing.T) {
 	}
 }
 
+func TestSkuPickDraftsFromLines(t *testing.T) {
+	got := skuPickDraftsFromLines("ord-1", []LineQty{
+		{SKU: "SSMR-SKU-1", Quantity: 2},
+		{SKU: "  ", Quantity: 3},
+		{SKU: "skip-zero", Quantity: 0},
+	})
+	if len(got) != 1 {
+		t.Fatalf("got %d drafts want 1", len(got))
+	}
+	if got[0].OrderID != "ord-1" || got[0].ProductID != "SSMR-SKU-1" || got[0].Qty != 2 {
+		t.Fatalf("got %+v", got[0])
+	}
+	if got[0].LotID != "" || shouldDepleteLot(got[0].LotID) {
+		t.Fatal("bag-of-SKU task must not deplete lots")
+	}
+}
+
+func TestParseOrderLineQtys(t *testing.T) {
+	got, err := parseOrderLineQtys([]byte(`[{"sku":"SSMR-SKU-1","quantity":2},{"product_id":"p2","quantity":1},{"sku_id":"s3","quantity":4}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 || got[0].SKU != "SSMR-SKU-1" || got[1].SKU != "p2" || got[2].SKU != "s3" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestWaveReadyFromTasks(t *testing.T) {
+	if waveReadyFromTasks(nil) {
+		t.Fatal("empty is not ready")
+	}
+	if waveReadyFromTasks([]PickTaskView{{Status: "PENDING"}}) {
+		t.Fatal("pending is not ready")
+	}
+	if !waveReadyFromTasks([]PickTaskView{{Status: "CONFIRMED"}, {Status: "SHORT_WAIVED"}}) {
+		t.Fatal("confirmed+waived should be ready")
+	}
+}
+
+func TestShouldDepleteLot(t *testing.T) {
+	if shouldDepleteLot("") || shouldDepleteLot("   ") {
+		t.Fatal("empty lot must skip depletion")
+	}
+	if !shouldDepleteLot("lot-1") {
+		t.Fatal("real lot must deplete")
+	}
+}
+
 func TestSortSShapePickTaskDrafts(t *testing.T) {
 	drafts := []pickTaskDraft{
 		{LocationID: "z1", Zone: "A", Aisle: "2", Seq: 1, StopRank: 1},

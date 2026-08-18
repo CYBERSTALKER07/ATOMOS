@@ -396,6 +396,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/payment-config")
     suspend fun getPaymentConfig(): Response<PaymentConfigResponse>
 
+    @GET("v1/warehouse/ops/coverage")
+    suspend fun getOpsCoverage(): Response<WarehouseCoverageResponse>
+
+    @GET("v1/warehouse/ops/supply-factory")
+    suspend fun getOpsSupplyFactory(): Response<WarehouseSupplyFactoryResponse>
+
     // ── P1-03 ops depth ──
     @POST("v1/warehouse/transfers/emergency")
     suspend fun emergencyTransfer(
@@ -548,7 +554,7 @@ interface WarehouseApi {
 
     @POST("v1/user/device-token")
     suspend fun registerDeviceToken(
-        @Body body: Map<String, String>,
+        @Body body: DeviceTokenRequest,
     ): Response<Map<String, String>>
 
     @GET("v1/control-tower/exceptions/scored")

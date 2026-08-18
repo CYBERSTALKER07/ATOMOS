@@ -3,6 +3,7 @@ import SwiftUI
 
 
 struct OrdersView: View {
+    var initialState: String? = nil
     @State private var hubTab: OrdersHubTab = .active
     @State private var orders: [Order] = []
     @State private var preorders: [WarehousePreorderRow] = []
@@ -16,6 +17,10 @@ struct OrdersView: View {
     @State private var statusMessage: String?
 
     private let states = ["ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"]
+
+    private var filterStates: [String] {
+        states.contains(selectedState) ? states : states + [selectedState]
+    }
 
     var body: some View {
         NavigationStack {
@@ -51,7 +56,7 @@ struct OrdersView: View {
                 if hubTab == .active {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
-                            ForEach(states, id: \.self) { state in
+                            ForEach(filterStates, id: \.self) { state in
                                 Button {
                                     selectedState = state
                                 } label: {
@@ -69,6 +74,11 @@ struct OrdersView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
+                }
+            }
+            .onAppear {
+                if let initialState, !initialState.isEmpty {
+                    selectedState = initialState
                 }
             }
             .task(id: "\(hubTab)-\(selectedState)") { load() }

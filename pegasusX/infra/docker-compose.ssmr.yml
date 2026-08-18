@@ -1,4 +1,5 @@
 name: pegasusx-ssmr
+# Deprecated alias of docker-compose.sandbox.yml. Prefer that file. Live GCS prefix pegasusx/ssmr is unchanged.
 
 services:
   spanner-emulator:
@@ -140,6 +141,7 @@ services:
     volumes:
       - ..:/workspace/pegasusX
       - ../.ssmr/gcs-signer-key.json:/run/secrets/gcs-signer-key.json:ro
+      - ../.ssmr/import-uploads:/data/import-uploads
       - pegasusx-ssmr-go-mod:/root/go/pkg/mod
       - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
@@ -153,6 +155,7 @@ services:
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
       DISPATCH_AI_MIN_STOPS: "1"
       GCS_BUCKET_NAME: pegasus-503013-ssmr-assets
+      IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcs-signer-key.json
       INTERNAL_API_KEY: dev-internal-key
       GLOBAL_PAY_ENV: dev

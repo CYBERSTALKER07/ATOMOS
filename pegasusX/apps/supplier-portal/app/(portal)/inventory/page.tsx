@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierInventoryAdjustKey } from "@pegasusx/api-client";
+import { sessionPackCurrency, supplierInventoryAdjustKey } from "@pegasusx/api-client";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
@@ -30,7 +30,7 @@ function mapInventoryRow(item: InventoryApiItem): InventoryRow {
     product_name: item.product_id,
     quantity: Math.max(0, onHand - reserved),
     unit_price_minor: 0,
-    currency: "UZS",
+    currency: sessionPackCurrency(),
     out_of_stock_policy: item.out_of_stock_policy || "INHERIT",
     effective_policy: item.effective_policy,
     accepts_backorder: item.accepts_backorder,

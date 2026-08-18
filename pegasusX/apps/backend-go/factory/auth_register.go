@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 )
 
@@ -57,6 +58,10 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	}
 
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		web.JSONError(w, auth.FirebaseLoginUnavailable, http.StatusServiceUnavailable)
+		return
+	}
 	if idToken != "" && s.firebaseVerifier != nil {
 		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
@@ -116,10 +121,26 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		[]any{userID, supplierID, name, phone, passwordHash, "FACTORY", assignedFactory, true, now, now},
 	)
 	muts := []*spanner.Mutation{m}
-	if factoryID != "" && country != "" {
+	if factoryID != "" {
+		pack, packErr := auth.CheckoutPackFromContext(r.Context())
+		if packErr != nil {
+			if writeMarketLaw(w, packErr) {
+				return
+			}
+			web.JSONError(w, packErr.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		stamped, stampErr := proximity.ResolveNodeCountry(pack, country)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			web.JSONError(w, stampErr.Error(), http.StatusUnprocessableEntity)
+			return
+		}
 		muts = append(muts, spanner.UpdateMap("Factories", map[string]any{
 			"FactoryId":   factoryID,
-			"CountryCode": country,
+			"CountryCode": stamped,
 			"UpdatedAt":   spanner.CommitTimestamp,
 		}))
 	}

@@ -22,6 +22,7 @@ import com.pegasusx.warehouse.R
 fun HandoffTimelineSection(
     events: List<PulseEvent>,
     loading: Boolean,
+    error: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -32,6 +33,7 @@ fun HandoffTimelineSection(
     ) {
         WarehouseSectionTitle(title = stringResource(R.string.warehouse_portal_dispatch_text_handoff_timeline))
         val subtitle = when {
+            !error.isNullOrBlank() -> error.orEmpty()
             loading && events.isEmpty() -> "Loading handoff chain…"
             events.isEmpty() -> "No preorder → dispatch → seal events in the recent pulse window."
             else -> "${events.size} handoff event(s) in recent pulse."
@@ -39,32 +41,34 @@ fun HandoffTimelineSection(
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (!error.isNullOrBlank()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        events.take(8).forEach { event ->
-            Card(
-                colors = CardDefaults.elevatedCardColors(),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier.padding(PegasusSpacing.md),
-                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
+        if (error.isNullOrBlank()) {
+            events.take(8).forEach { event ->
+                Card(
+                    colors = CardDefaults.elevatedCardColors(),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        text = event.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    event.description?.takeIf { it.isNotBlank() }?.let { description ->
+                    Column(
+                        modifier = Modifier.padding(PegasusSpacing.md),
+                        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
+                    ) {
                         Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 3,
+                            text = event.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        event.description?.takeIf { it.isNotBlank() }?.let { description ->
+                            Text(
+                                text = description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
             }

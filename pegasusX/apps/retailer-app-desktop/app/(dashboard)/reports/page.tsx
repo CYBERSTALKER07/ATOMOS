@@ -30,6 +30,8 @@ export default function ReportsProPage() {
   const [sales, setSales] = useState<SalesItem[]>([]);
   const [banner, setBanner] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [salesError, setSalesError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -38,14 +40,28 @@ export default function ReportsProPage() {
         apiFetch("/v1/retailer/reports/summary"),
         apiFetch("/v1/retailer/reports/sales?group_by=sku"),
       ]);
-      if (sRes.ok) setSummary((await sRes.json()) as Summary);
-      if (salesRes.ok) {
+      if (!sRes.ok) {
+        setSummaryError("reports_failed");
+      } else {
+        setSummary((await sRes.json()) as Summary);
+        setSummaryError(null);
+      }
+      if (!salesRes.ok) {
+        setSalesError("reports_failed");
+      } else {
         const json = (await salesRes.json()) as { items?: SalesItem[] };
         setSales(json.items ?? []);
+        setSalesError(null);
       }
-      setBanner("REPORTS_PRO pack auto-enabled on first view if needed");
+      if (sRes.ok && salesRes.ok) {
+        setBanner("REPORTS_PRO pack auto-enabled on first view if needed");
+      } else {
+        setBanner("reports_failed");
+      }
     } catch {
-      setBanner("Failed to load reports");
+      setSummaryError("reports_failed");
+      setSalesError("reports_failed");
+      setBanner("reports_failed");
     } finally {
       setBusy(false);
     }
@@ -99,7 +115,11 @@ export default function ReportsProPage() {
           </button>
         </div>
 
-        {summary && (
+        {summaryError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {summaryError}
+          </p>
+        ) : summary ? (
           <section className="grid gap-3 sm:grid-cols-2">
             {[
               ["Sales", formatMoney(summary.sales_minor ?? 0)],
@@ -114,11 +134,15 @@ export default function ReportsProPage() {
               </div>
             ))}
           </section>
-        )}
+        ) : null}
 
         <section className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 font-semibold">{t("retailer_desktop.hq.text.sales_by_sku")}</h2>
-          {sales.length === 0 ? (
+          {salesError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {salesError}
+            </p>
+          ) : sales.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("retailer_desktop.reports.text.no_pos_sales_in_window_last_7_days")}</p>
           ) : (
             <ul className="space-y-2 text-sm">

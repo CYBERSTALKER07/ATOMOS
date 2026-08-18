@@ -43,7 +43,7 @@ struct OrderDetailView: View {
                 ResponsiveGridContentWrapper {
                     Section("Summary") {
                         LabeledContent("State", value: order.state)
-                        LabeledContent("Total", value: "\(order.totalUzs.formatted()) UZS")
+                        LabeledContent("Total", value: "\(order.totalUzs.formatted()) \(packCurrency(MarketPackStore.pack))")
                         LabeledContent("Retailer", value: order.retailerName.isEmpty ? "—" : order.retailerName)
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())

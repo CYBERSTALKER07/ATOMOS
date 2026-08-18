@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -92,7 +93,7 @@ func TestRegister_InviteToken(t *testing.T) {
 		Repo: repo, SeedSupplierID: "seed-1", JWTSecret: "invite-secret",
 		Now: func() time.Time { return time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC) },
 	})
-	tok, _, err := MintTradingPartnerInvite("invite-secret", "sup-minted", time.Hour, svc.now())
+	tok, _, err := MintTradingPartnerInvite("invite-secret", "sup-minted", "UZ", time.Hour, svc.now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,6 +137,110 @@ func TestDemoPasswordAllowedInSSMR(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "ssmr")
 	if !secretMatchesDemo("1234") {
 		t.Fatal("ssmr still allows demo secret")
+	}
+}
+
+func TestRegister_RejectsPlannedPartner(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+	auth.SetMarketProfileLookup(func(supplierID string) (auth.MarketProfile, bool) {
+		if supplierID == "sup-kz" {
+			return auth.MarketProfile{MarketCode: "KZ", HomeCell: "cell-kz"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	svc := NewService(ServiceConfig{Repo: &captureRetailerRepo{}, SeedSupplierID: "seed-1"})
+	_, err := svc.Register(context.Background(), testRegisterReq("sup-kz"))
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRegister_RejectsCountryMismatch(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	req := testRegisterReq("sup-minted")
+	req.CountryCode = "PK"
+	svc := NewService(ServiceConfig{Repo: &captureRetailerRepo{}, SeedSupplierID: "seed-1"})
+	_, err := svc.Register(context.Background(), req)
+	if !errors.Is(err, auth.ErrCrossMarketDeferred) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRegister_RejectsInviteMarketMismatch(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	svc := NewService(ServiceConfig{
+		Repo: &captureRetailerRepo{}, SeedSupplierID: "seed-1", JWTSecret: "invite-secret",
+		Now: func() time.Time { return time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC) },
+	})
+	tok, _, err := MintTradingPartnerInvite("invite-secret", "sup-minted", "CA", time.Hour, svc.now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := testRegisterReq("")
+	req.InviteToken = tok
+	_, err = svc.Register(context.Background(), req)
+	if !errors.Is(err, auth.ErrCrossMarketDeferred) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRegister_LegacyInviteWithoutMarket(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	repo := &captureRetailerRepo{}
+	svc := NewService(ServiceConfig{
+		Repo: repo, SeedSupplierID: "seed-1", JWTSecret: "invite-secret",
+		Now: func() time.Time { return time.Date(2026, 8, 16, 0, 0, 0, 0, time.UTC) },
+	})
+	tok, _, err := MintTradingPartnerInvite("invite-secret", "sup-minted", "", time.Hour, svc.now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := testRegisterReq("")
+	req.InviteToken = tok
+	resp, err := svc.Register(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.SupplierID != "sup-minted" {
+		t.Fatalf("supplier_id=%s", resp.SupplierID)
+	}
+}
+
+func TestHandleRegister_PlannedPartner404(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+	auth.SetMarketProfileLookup(func(supplierID string) (auth.MarketProfile, bool) {
+		if supplierID == "sup-kz" {
+			return auth.MarketProfile{MarketCode: "KZ", HomeCell: "cell-kz"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	svc := NewService(ServiceConfig{Repo: &captureRetailerRepo{}, SeedSupplierID: "seed-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/retailer/register",
+		strings.NewReader(`{"phone":"+99890","name":"S","supplier_id":"sup-kz","lat":41,"lng":69,"h3_cell":"8928308280fffff"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleRegister(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "market_pack_not_shipped") {
+		t.Fatalf("body=%s", rr.Body.String())
+	}
+}
+
+func TestHandleRegister_CountryMismatch422(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "production")
+	svc := NewService(ServiceConfig{Repo: &captureRetailerRepo{}, SeedSupplierID: "seed-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/retailer/register",
+		strings.NewReader(`{"phone":"+99890","name":"S","supplier_id":"sup-minted","country_code":"PK","lat":41,"lng":69,"h3_cell":"8928308280fffff"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleRegister(rr, req)
+	if rr.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "cross_market_deferred") {
+		t.Fatalf("body=%s", rr.Body.String())
 	}
 }
 

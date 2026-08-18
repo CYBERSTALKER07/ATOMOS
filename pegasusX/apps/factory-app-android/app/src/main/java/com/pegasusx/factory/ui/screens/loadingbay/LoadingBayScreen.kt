@@ -24,6 +24,7 @@ import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PulseHonesty
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
@@ -43,6 +44,7 @@ fun LoadingBayScreen(
     var dispatching by remember { mutableStateOf(false) }
     var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var handoffLoading by remember { mutableStateOf(true) }
+    var handoffError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -59,20 +61,26 @@ fun LoadingBayScreen(
                 } else {
                     error = "Failed (${resp.code()})"
                 }
-                handoffLoading = true
-                val pulseResp = api.getPulse()
-                handoffEvents = if (pulseResp.isSuccessful && pulseResp.body() != null) {
-                    filterHandoffPulseEvents(pulseResp.body()!!.events)
-                } else {
-                    emptyList()
-                }
-                handoffLoading = false
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
-            } finally {
-                if (!silent) {
-                    loading = false
-                }
+            }
+            handoffLoading = true
+            handoffError = null
+            try {
+                val pulseResp = api.getPulse()
+                val result = PulseHonesty.applyHttp(
+                    pulseResp.isSuccessful,
+                    pulseResp.body()?.events?.let { filterHandoffPulseEvents(it) },
+                    handoffEvents,
+                )
+                handoffEvents = result.events
+                handoffError = result.error
+            } catch (_: Exception) {
+                handoffError = PulseHonesty.FAILED
+            }
+            handoffLoading = false
+            if (!silent) {
+                loading = false
             }
         }
     }
@@ -178,6 +186,7 @@ fun LoadingBayScreen(
                 dispatched = dispatched,
                 handoffEvents = handoffEvents,
                 handoffLoading = handoffLoading,
+                handoffError = handoffError,
                 onTransferClick = onTransferClick,
                 innerPadding = innerPadding
             )

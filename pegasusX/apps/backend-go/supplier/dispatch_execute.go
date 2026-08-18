@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -30,16 +31,16 @@ const dispatchExecuteCommittedStatus = "dispatched"
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.
 // Status is "no_op" when nothing was committed; "dispatched" when one or more manifests were written.
 type DispatchExecuteResult struct {
-	Status           string                 `json:"status"`
-	SupplierID       string                 `json:"supplier_id"`
-	WarehouseID      string                 `json:"warehouse_id,omitempty"`
-	ManifestsCreated int                    `json:"manifests_created"`
-	OrdersAssigned   int                    `json:"orders_assigned"`
-	OptimizerSource  string                 `json:"optimizer_source,omitempty"`
-	Warnings         []string               `json:"warnings,omitempty"`
+	Status           string                     `json:"status"`
+	SupplierID       string                     `json:"supplier_id"`
+	WarehouseID      string                     `json:"warehouse_id,omitempty"`
+	ManifestsCreated int                        `json:"manifests_created"`
+	OrdersAssigned   int                        `json:"orders_assigned"`
+	OptimizerSource  string                     `json:"optimizer_source,omitempty"`
+	Warnings         []string                   `json:"warnings,omitempty"`
 	CapacityWarnings []dispatch.CapacityWarning `json:"capacity_warnings,omitempty"`
-	Manifests        []DispatchExecuteRoute `json:"manifests"`
-	Orphans          []string               `json:"orphan_order_ids,omitempty"`
+	Manifests        []DispatchExecuteRoute     `json:"manifests"`
+	Orphans          []string                   `json:"orphan_order_ids,omitempty"`
 }
 
 type dispatchExecuteOptions struct {
@@ -117,8 +118,8 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 		Mode          string `json:"mode"`
 		ForceCapacity bool   `json:"force_capacity"`
 		Routes        []struct {
-			DriverID  string   `json:"driver_id"`
-			OrderIDs  []string `json:"order_ids"`
+			DriverID string   `json:"driver_id"`
+			OrderIDs []string `json:"order_ids"`
 		} `json:"routes"`
 	}
 	if len(body) > 0 {
@@ -145,13 +146,13 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 				s.log.ErrorContext(r.Context(), "failed to execute partial commit compensation", "err", compErr)
 			}
 			writeJSON(w, http.StatusInternalServerError, map[string]any{
-				"error":             "dispatch_partial_commit",
-				"committed_routes":  len(partial.CommittedRoutes),
-				"failed_chunk":      partial.FailedChunk,
-				"total_chunks":      partial.TotalChunks,
-				"total_routes":      partial.TotalRoutes,
-				"detail":            partial.Cause.Error(),
-				"compensated":       compErr == nil,
+				"error":            "dispatch_partial_commit",
+				"committed_routes": len(partial.CommittedRoutes),
+				"failed_chunk":     partial.FailedChunk,
+				"total_chunks":     partial.TotalChunks,
+				"total_routes":     partial.TotalRoutes,
+				"detail":           partial.Cause.Error(),
+				"compensated":      compErr == nil,
 			})
 			return
 		}
@@ -172,7 +173,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
+		keys := []string{supplierCacheKey(sid), cache.DashboardKey("supplier", sid)}
+		if wh := strings.TrimSpace(warehouseFilter); wh != "" {
+			keys = append(keys, cache.DashboardKey("warehouse", wh))
+		}
+		s.cache.Invalidate(r.Context(), keys...)
 	}
 	s.broadcastDispatchCommitted(r.Context(), sid, result)
 	s.log.InfoContext(r.Context(), "dispatch executed",

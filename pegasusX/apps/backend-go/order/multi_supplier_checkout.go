@@ -24,11 +24,11 @@ const (
 )
 
 // MultiSupplierCheckoutEnabled gates ParentOrders + per-supplier Create split.
-// Default on when PEGASUSX_ENV=ssmr; elsewhere require MULTI_SUPPLIER_CHECKOUT_ENABLED=true.
+// Default on when PEGASUSX_ENV=sandbox (ssmr alias); elsewhere require MULTI_SUPPLIER_CHECKOUT_ENABLED=true.
 func MultiSupplierCheckoutEnabled() bool {
 	raw := strings.TrimSpace(os.Getenv("MULTI_SUPPLIER_CHECKOUT_ENABLED"))
 	if raw == "" {
-		return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")
+		return auth.IsSandbox()
 	}
 	switch strings.ToLower(raw) {
 	case "1", "true", "yes", "on":
@@ -273,6 +273,27 @@ func (s *Service) compensateParentCheckout(ctx context.Context, parentID string,
 		}
 	}
 	_ = s.updateParentOrderTotals(ctx, parentID, parentStatusCancelled, s.currency, 0, len(created))
+}
+
+func assertChildSuppliersSameMarket(_ context.Context, pack auth.MarketPack, groups []checkoutLineGroup) error {
+	packCountry, err := auth.PackCountryCode(pack)
+	if err != nil {
+		return err
+	}
+	for _, g := range groups {
+		childPack, err := auth.FiscalPackForSupplier(g.SupplierID)
+		if err != nil {
+			return err
+		}
+		childCountry, err := auth.PackCountryCode(childPack)
+		if err != nil {
+			return err
+		}
+		if err := auth.AssertSameMarket(packCountry, childCountry); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createCtxForSupplier(ctx context.Context, supplierID string) context.Context {

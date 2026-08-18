@@ -142,16 +142,13 @@ func (s *Service) RailInfo() RailInfo {
 
 // SubmitForDispatch validates beneficiary details and submits the batch via the
 // rail. live=false (default) is a dry-run that only validates + renders.
-func (s *Service) SubmitForDispatch(ctx context.Context, batchID string, live bool) (Batch, error) {
+func (s *Service) SubmitForDispatch(ctx context.Context, supplierID, batchID string, live bool) (Batch, error) {
 	if s == nil || s.repo == nil {
 		return Batch{}, fmt.Errorf("payout service unavailable")
 	}
-	b, found, err := s.repo.Get(ctx, batchID)
+	b, err := s.GetBatch(ctx, supplierID, batchID)
 	if err != nil {
 		return Batch{}, err
-	}
-	if !found {
-		return Batch{}, ErrBatchNotFound
 	}
 	if b.Status == StatusPaid {
 		return Batch{}, fmt.Errorf("batch %s already PAID", batchID)

@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // SupplierBackfillEnabled reports whether the Gate 5 outbox SupplierId backfill loop should run.
-// Default on for PEGASUSX_ENV=ssmr|production; override with OUTBOX_SUPPLIER_BACKFILL=0/1.
+// Default on for PEGASUSX_ENV=sandbox|production (ssmr aliases sandbox); override with OUTBOX_SUPPLIER_BACKFILL=0/1.
 func SupplierBackfillEnabled() bool {
 	if v := strings.TrimSpace(os.Getenv("OUTBOX_SUPPLIER_BACKFILL")); v != "" {
 		switch strings.ToLower(v) {
@@ -22,8 +23,7 @@ func SupplierBackfillEnabled() bool {
 			return false
 		}
 	}
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
-	return env == "ssmr" || env == "production"
+	return auth.IsSandbox() || auth.IsProduction()
 }
 
 func supplierBackfillLimit() int {

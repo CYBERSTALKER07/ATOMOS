@@ -13,6 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 type testTxnBuffer struct {
@@ -77,7 +78,7 @@ type testWarehouseResolver struct {
 	calls       int
 }
 
-func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _, _ float64, _ string) (string, error) {
+func (r *testWarehouseResolver) ResolveNearestWarehouseID(_ context.Context, _ string, _ proximity.StorePoint) (string, error) {
 	r.calls++
 	if r.err != nil {
 		return "", r.err
@@ -477,6 +478,54 @@ func TestServiceCreateFailsClosedOnZoneMiss(t *testing.T) {
 	}
 	if repo.createCalls != 0 {
 		t.Fatalf("create calls = %d, want 0", repo.createCalls)
+	}
+}
+
+func TestServiceCreate_GeographyIncompleteNotServiceability(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: auth.ErrGeographyIncomplete}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, auth.ErrGeographyIncomplete) {
+		t.Fatalf("err=%v", err)
+	}
+	if errors.Is(err, ErrServiceabilityUnavailable) {
+		t.Fatal("geography must not become delivery_perimeter_unavailable")
+	}
+}
+
+func TestServiceCreate_CrossMarketDeferred(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: auth.ErrCrossMarketDeferred}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, auth.ErrCrossMarketDeferred) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestServiceCreate_ProximityZoneMiss(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{}
+	svc := newTestServiceWithResolver(repo, &testWarehouseResolver{err: proximity.ErrZoneMiss}, now)
+	_, err := svc.Create(context.Background(), "ret-1", CreateRequest{
+		LineItems: []LineItem{{SKU: "sku-1", Quantity: 1, UnitPrice: 250}},
+		H3Cell:    "872830828ffffff",
+		Lat:       41.3,
+		Lng:       69.2,
+	})
+	if !errors.Is(err, ErrZoneMiss) {
+		t.Fatalf("err=%v", err)
 	}
 }
 

@@ -218,15 +218,9 @@ struct APIResponse<T: Codable>: Codable {
 
 // MARK: - Device Token
 
-struct DeviceTokenPayload: Codable {
+struct DeviceTokenPayload: Codable, Equatable {
     let token: String
     let platform: String
-    let retailerId: String
-
-    enum CodingKeys: String, CodingKey {
-        case token, platform
-        case retailerId = "retailer_id"
-    }
 }
 
 // MARK: - Phase 4 Retailer Ecosystem Data Sync

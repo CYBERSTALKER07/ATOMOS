@@ -4,7 +4,8 @@ import Network
 enum CompactTab: Hashable {
     case dashboard
     case orders
-    case fleet
+    case dispatch
+    case plan
     case more
 }
 
@@ -91,9 +92,13 @@ struct SupplierAdaptiveShell: View {
                 .tabItem { Label("portal.nav.orders", systemImage: SupplierSection.orders.icon) }
                 .tag(CompactTab.orders)
 
-            sectionView(.fleet)
-                .tabItem { Label("portal.nav.fleet", systemImage: SupplierSection.fleet.icon) }
-                .tag(CompactTab.fleet)
+            sectionView(.dispatchPreview)
+                .tabItem { Label("portal.nav.dispatch", systemImage: SupplierSection.dispatchPreview.icon) }
+                .tag(CompactTab.dispatch)
+
+            sectionView(.planningBrain)
+                .tabItem { Label("portal.nav.planning", systemImage: SupplierSection.planningBrain.icon) }
+                .tag(CompactTab.plan)
 
             NavigationStack {
                 MoreHubView()

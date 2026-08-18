@@ -191,6 +191,13 @@ export default function PlanningBrainPanel() {
               value={sandop.capacity_alert ? 1 : 0}
               labelOverride={sandop.capacity_alert ? "Breach" : "OK"}
             />
+            {sandop.capacity_source || sandop.capacity_model ? (
+              <p className="md-typescale-body-small col-span-full" style={{ color: "var(--desk-text-secondary)" }}>
+                {sandop.capacity_model ? `model ${sandop.capacity_model}` : "model —"}
+                {" · "}
+                {sandop.capacity_source ? `source ${sandop.capacity_source}` : "source unavailable"}
+              </p>
+            ) : null}
           </>
         ) : null}
       </section>

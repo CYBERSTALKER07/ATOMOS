@@ -93,7 +93,7 @@ struct OpsSettingsForm: View {
             if !clearFeeRules {
                 TextField("warehouse_portal.residual.text.base_fee_minor", text: $feeBaseMinor)
                     .keyboardType(.numberPad)
-                TextField("supplier_portal.chargebacks.text.currency", text: $feeCurrency)
+                LabeledContent("supplier_portal.chargebacks.text.currency", value: feeCurrency)
                 ForEach($feeTiers) { $tier in
                     HStack {
                         TextField("mobile_warehouse.ui.max_km", text: $tier.maxKm)

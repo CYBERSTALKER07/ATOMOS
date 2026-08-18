@@ -131,8 +131,8 @@ fun DeliveryMapScreen(
     val visibleOrders = uiState.visibleOrders
     var selectedOrder by remember { mutableStateOf<TrackingOrder?>(null) }
 
-    // Default center: Tashkent
-    val defaultPosition = LatLng(41.2995, 69.2401)
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }

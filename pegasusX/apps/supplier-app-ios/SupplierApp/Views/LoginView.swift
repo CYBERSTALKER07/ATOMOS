@@ -91,6 +91,7 @@ struct LoginView: View {
                     return
                 }
                 tokenStore.store(auth: auth)
+                Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
             } catch {
                 self.error = error.localizedDescription
             }

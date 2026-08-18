@@ -40,7 +40,7 @@ struct ControlTowerView: View {
                             .font(.footnote)
                             .foregroundStyle(AppTheme.textSecondary)
                     }
-                } else {
+                } else if error == nil || !tiles.isEmpty {
                     Section("Pulse") {
                         ForEach(tiles, id: \.label) { tile in
                             NavigationLink {
@@ -85,7 +85,7 @@ struct ControlTowerView: View {
                 ("Sales 7d", String(format: "%.2f", Double(p.salesMinor7d) / 100.0), .reports),
             ]
         } catch {
-            self.error = error.localizedDescription
+            self.error = PulseHonesty.commandFailed
         }
     }
 

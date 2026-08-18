@@ -145,7 +145,8 @@ func (s *Service) HandleLoyaltyNotProduct(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleUserNotifications serves GET /v1/user/notifications.
+// HandleUserNotifications is not mounted. Live GET is notifications.InboxHandlers.HandleList
+// (main.go last registration). Kept fail-closed so a remount cannot return empty [] as success.
 func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -157,17 +158,22 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if s.notifSvc == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
 		return
 	}
 	limit, offset := notifications.ParseInboxPagination(r)
 	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), rid, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "list notifications failed", "err", listErr, "retailer_id", rid)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0, "limit": limit, "offset": offset})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_list_failed"})
 		return
 	}
-	unread, _ := s.notifSvc.UnreadCount(r.Context(), rid)
+	unread, unreadErr := s.notifSvc.UnreadCount(r.Context(), rid)
+	if unreadErr != nil {
+		s.log.ErrorContext(r.Context(), "unread count failed", "err", unreadErr, "retailer_id", rid)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_unread_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"notifications": notifications.ToInboxWireFromAnyList(notifs),
 		"unread_count":  unread,
@@ -177,7 +183,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleMarkNotificationsRead serves POST /v1/user/notifications/read.
+// HandleMarkNotificationsRead is not mounted. Live POST is notifications.InboxHandlers.HandleMarkRead.
 func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -193,8 +199,14 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	if s.notifSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
+		return
+	}
 	if markErr := notifications.ApplyMarkRead(r.Context(), s.notifSvc, rid, req); markErr != nil {
 		s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "retailer_id", rid)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "mark_read_failed"})
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

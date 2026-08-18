@@ -198,8 +198,12 @@ func (h *Handler) HandleDeviceToken(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "invalid_json")
 		return
 	}
+	if !IsFCMRegistrationToken(req.Token, req.Platform) {
+		h.writeError(w, http.StatusUnprocessableEntity, "not_fcm_registration_token")
+		return
+	}
 	if h.tokens == nil {
-		h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		h.writeError(w, http.StatusServiceUnavailable, "device_token_unavailable")
 		return
 	}
 	row := DeviceTokenRow{

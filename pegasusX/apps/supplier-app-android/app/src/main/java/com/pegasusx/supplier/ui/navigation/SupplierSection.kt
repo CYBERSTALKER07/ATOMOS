@@ -31,6 +31,7 @@ enum class SupplierSection(
     AI_RECOMMENDATIONS(SupplierRoutes.AI_RECOMMENDATIONS, "AI recommendations", Icons.Default.AutoAwesome),
     GEO_REPORT(SupplierRoutes.GEO_REPORT, "Geo report", Icons.Default.Map),
     DEMAND_HISTORY(SupplierRoutes.DEMAND_HISTORY, "Demand forecast", Icons.Default.Timeline),
+    PLANNING_BRAIN(SupplierRoutes.PLANNING_BRAIN, "Plan", Icons.Default.AutoAwesome),
     TOPOLOGY(SupplierRoutes.TOPOLOGY, "Topology", Icons.Default.Hub),
     FACTORIES(SupplierRoutes.FACTORIES, "Factories", Icons.Default.Business),
     WAREHOUSES(SupplierRoutes.WAREHOUSES, "Warehouses", Icons.Default.Inventory2),
@@ -62,12 +63,12 @@ enum class SupplierSection(
     ;
 
     companion object {
-        val compactTabs = listOf(DASHBOARD, ORDERS, FLEET, MORE)
+        val compactTabs = listOf(DASHBOARD, ORDERS, DISPATCH_PREVIEW, PLANNING_BRAIN, MORE)
 
         /** Tablet / expanded rail — aligned with iOS sidebar + portal shell. */
         val opsSections = listOf(
+            FLEET,
             MANIFESTS,
-            DISPATCH_PREVIEW,
             ACTIVITY,
             FLEET_ORDERS,
             ORG_FLEET,

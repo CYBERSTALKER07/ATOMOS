@@ -279,6 +279,8 @@ type Service struct {
 	controlTower         *controltower.Service
 	// OnRegistered is optional (platform admin tenant mint).
 	OnRegistered func(ctx context.Context, supplierID, legalName string) error
+	// lookupPinCountry is a test seam for GS-L3 pin country checks.
+	lookupPinCountry func(ctx context.Context, supplierID, targetType, targetID string) (string, error)
 }
 
 const supplierWebSocketSessionTTL = 10 * time.Minute
@@ -650,13 +652,6 @@ type BillingSetupResponse struct {
 	PaymentAcceptor  string   `json:"payment_acceptor"`
 }
 
-var allowedGateways = map[string]struct{}{
-	"GLOBAL_PAY": {},
-	"ADYEN":      {},
-	"AIRWALLEX":  {},
-	"CASH":       {},
-}
-
 const defaultCoverageRadiusKm = 10.0
 
 const (
@@ -712,11 +707,6 @@ func (r BillingSetupRequest) Validate() error {
 	if len(r.SelectedGateways) == 0 {
 		return errors.New("selectedGateways required")
 	}
-	for _, g := range r.SelectedGateways {
-		if _, ok := allowedGateways[g]; !ok {
-			return fmt.Errorf("unknown gateway %q", g)
-		}
-	}
 	switch strings.ToUpper(strings.TrimSpace(r.PaymentAcceptor)) {
 	case "", PaymentAcceptorSupplier, PaymentAcceptorWarehouse:
 	default:
@@ -730,6 +720,15 @@ func (r BillingSetupRequest) Validate() error {
 func (s *Service) ConfigureBilling(ctx context.Context, req BillingSetupRequest) (BillingSetupResponse, error) {
 	if err := req.Validate(); err != nil {
 		return BillingSetupResponse{}, err
+	}
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return BillingSetupResponse{}, err
+	}
+	for _, gateway := range req.SelectedGateways {
+		if err := auth.AssertPackPSP(pack, gateway); err != nil {
+			return BillingSetupResponse{}, err
+		}
 	}
 	current, found, err := s.repo.GetProfile(ctx, s.supplierID)
 	if err != nil {

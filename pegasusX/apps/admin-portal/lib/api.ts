@@ -7,11 +7,33 @@ export interface Tenant {
   Status: string;
   DisplayName: string;
   KybNotes: string;
+  market_code?: string;
+  home_cell?: string;
   CreatedAt: string;
   UpdatedAt: string;
   ApprovedAt?: string | null;
   SuspendedAt?: string | null;
   OffboardedAt?: string | null;
+}
+
+export interface FlagOverride {
+  FlagKey: string;
+  TenantType: string;
+  TenantID: string;
+  Enabled: boolean;
+  Status: string;
+  Reason?: string;
+  UpdatedBy?: string;
+}
+
+export interface AccuracyRow {
+  supplier_id: string;
+  forecast_date: string;
+  warehouse_id: string;
+  product_id: string;
+  mape28: number;
+  wape28: number;
+  demoted: boolean;
 }
 
 export interface AuditRow {
@@ -86,6 +108,8 @@ export const api = {
     req<Tenant>(token, "POST", `/v1/platform-admin/tenants/${type}/${id}/transition`, { status, kyb_notes: kybNotes }),
   listAudit: (token: string, limit = 100) =>
     req<{ audit: AuditRow[] }>(token, "GET", `/v1/platform-admin/audit?limit=${limit}`),
+  listPendingFlags: (token: string) =>
+    req<{ items: FlagOverride[]; count: number; available?: boolean }>(token, "GET", "/v1/platform-admin/flags/"),
   evalFlag: (token: string, flagKey: string, tenantType = "", tenantId = "") =>
     req<FlagEval>(token, "GET", `/v1/platform-admin/flags/${encodeURIComponent(flagKey)}?tenant_type=${tenantType}&tenant_id=${tenantId}`),
   setFlag: (token: string, flagKey: string, tenantType: string, tenantId: string, enabled: boolean, reason: string) =>
@@ -161,7 +185,10 @@ export const api = {
   },
   outboxSummary: (token: string) =>
     req<{
-      unpublished_count: number;
+      unpublished_count?: number;
+      unpublished_available?: boolean;
+      dead_letter_count?: number;
+      dead_letter_available?: boolean;
       oldest_age_seconds: number;
       lagging?: boolean;
       available?: boolean;
@@ -174,10 +201,18 @@ export const api = {
       "/v1/platform-admin/ops/outbox/events?limit=25",
     ),
   outboxDeadLetters: (token: string) =>
-    req<{ items: Array<Record<string, string | number>>; count: number; available?: boolean; note?: string }>(
+    req<{
+      items: Array<Record<string, string | number>>;
+      page_count?: number;
+      dead_letter_count?: number;
+      available?: boolean;
+      note?: string;
+    }>(token, "GET", "/v1/platform-admin/ops/outbox/dead-letters?limit=25"),
+  listPlanningAccuracy: (token: string, supplierId: string, days = 28) =>
+    req<{ items: AccuracyRow[]; demote_enabled?: boolean }>(
       token,
       "GET",
-      "/v1/platform-admin/ops/outbox/dead-letters?limit=25",
+      `/v1/admin/planning/accuracy?supplier_id=${encodeURIComponent(supplierId)}&days=${days}`,
     ),
   runtimeOps: (token: string) =>
     req<Record<string, unknown>>(token, "GET", "/v1/platform-admin/ops/runtime"),

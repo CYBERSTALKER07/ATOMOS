@@ -8,9 +8,14 @@ struct TruckSidebar: View {
         VStack(spacing: 0) {
             HStack {
                 if isExpanded {
-                    Text("VEHICLES")
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("MANIFEST BOARD")
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .foregroundStyle(TermTheme.secondary)
+                        Text("DRAFT · LOADING · SEALED · DISPATCHED")
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
+                            .foregroundStyle(TermTheme.tertiary)
+                    }
                 }
                 Spacer(minLength: 0)
                 Button {
@@ -83,12 +88,32 @@ struct TruckSidebar: View {
                     .padding(.vertical, 4)
                 }
             }
-            List(viewModel.trucks, selection: Binding(
+            List(selection: Binding(
                 get: { viewModel.selectedTruckId },
                 set: { id in if let id { Task { await viewModel.selectTruck(id) } } }
-            )) { truck in
-                TruckRow(truck: truck)
-                    .tag(truck.id)
+            )) {
+                ForEach(ManifestBoard.group(viewModel.trucks), id: \.state) { column in
+                    Section(column.trucks.isEmpty ? "\(column.state) · empty" : "\(column.state) · \(column.trucks.count)") {
+                        if column.trucks.isEmpty {
+                            Text("No \(column.state.lowercased()) manifests")
+                                .font(.caption)
+                                .foregroundStyle(TermTheme.tertiary)
+                        } else {
+                            ForEach(column.trucks) { truck in
+                                TruckRow(truck: truck)
+                                    .tag(truck.id)
+                            }
+                        }
+                    }
+                }
+                if !ManifestBoard.unassigned(viewModel.trucks).isEmpty {
+                    Section("NO OPEN MANIFEST") {
+                        ForEach(ManifestBoard.unassigned(viewModel.trucks)) { truck in
+                            TruckRow(truck: truck)
+                                .tag(truck.id)
+                        }
+                    }
+                }
             }
             .refreshable { await viewModel.refreshTrucks() }
         }
@@ -154,8 +179,14 @@ struct TruckRow: View {
     }
 
     private var subtitle: String {
-        [truck.licensePlate, truck.vehicleClass]
+        var parts = [truck.licensePlate, truck.vehicleClass]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
-            .joined(separator: " — ")
+        if let status = truck.truckStatus, ManifestBoard.isBoardState(status) {
+            parts.append(status)
+        }
+        if let max = truck.maxVolumeVu, max > 0 {
+            parts.append(String(format: "%.0f/%.0f VU", truck.usedVolumeVu ?? 0, max))
+        }
+        return parts.joined(separator: " — ")
     }
 }

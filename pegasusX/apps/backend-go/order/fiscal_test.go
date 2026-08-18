@@ -400,7 +400,7 @@ func TestSettleExternalPaymentIgnoresTerminalAndFiscalStates(t *testing.T) {
 		}
 		repo := &testRepo{found: true, order: o}
 		svc := newTestService(repo, now)
-		err := svc.SettleExternalPayment(context.Background(), o.OrderID, "payme")
+		err := svc.SettleExternalPayment(context.Background(), o.OrderID, "payme", o.TotalMinor)
 		if err != nil {
 			t.Fatalf("status %s: unexpected err %v", st, err)
 		}

@@ -184,7 +184,8 @@ fun OpsSettingsForm(
                 )
                 OutlinedTextField(
                     value = feeCurrency,
-                    onValueChange = onFeeCurrencyChange,
+                    onValueChange = {},
+                    readOnly = true,
                     label = { Text("Currency") },
                     singleLine = true,
                     modifier = Modifier.weight(1f),

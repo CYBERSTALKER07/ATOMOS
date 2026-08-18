@@ -9,12 +9,10 @@ import (
 
 // Deps is the narrow dependency contract for factory routes.
 type Deps struct {
-	Service             *factory.Service
-	JWTSecret           string
-	JWTIssuer           string
-	Spanner             *spanner.Client
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	Service   *factory.Service
+	JWTSecret string
+	JWTIssuer string
+	Spanner   *spanner.Client
 }
 
 // RegisterRoutes mounts factory role-row operational endpoints.
@@ -99,14 +97,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			// payload routes are registered separately — mountLoadingBay is already
 			// on loadingBayRoles which includes factory roles, so no duplicate needed.
 		})
-	}
-
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			register(gr)
-		})
-		return
 	}
 
 	r.Group(register)

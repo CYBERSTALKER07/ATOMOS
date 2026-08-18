@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"os"
 	"testing"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestValidateProductionProfile_RejectsDisabledTenantEnforcement(t *testing.T) {
@@ -107,6 +109,61 @@ func TestLoadConfig_ProductionProfileFailsClosed(t *testing.T) {
 	_, err := LoadConfig()
 	if err == nil {
 		t.Fatal("expected LoadConfig to fail on dev webhook secrets in production")
+	}
+}
+
+func TestConfigTenantContextEnforced_ProductionDefault(t *testing.T) {
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "")
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("JWT_SECRET", "prod-jwt-secret-value")
+	t.Setenv("UPDATES_BASE_URL", "https://cdn.void.example")
+	t.Setenv("GLOBAL_PAY_WEBHOOK_SECRET", "prod-global-pay-secret")
+	t.Setenv("ADYEN_WEBHOOK_SECRET", "prod-adyen-secret")
+	t.Setenv("STRIPE_WEBHOOK_SECRET", "prod-stripe-secret")
+	t.Setenv("PAYME_WEBHOOK_SECRET", "prod-payme-secret")
+	t.Setenv("CLICK_WEBHOOK_SECRET", "prod-click-secret")
+	setenvFiscalMySoliqProd(t)
+
+	if auth.IsSandbox() {
+		t.Fatal("production must not classify as sandbox")
+	}
+	if !auth.TenantContextEnforced() {
+		t.Fatal("auth.TenantContextEnforced must default true when PEGASUSX_ENV=production and flag unset")
+	}
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig production: %v", err)
+	}
+	if !cfg.TenantContextEnforced {
+		t.Fatal("RequireTenant cfg must be true when PEGASUSX_ENV=production and TENANT_CONTEXT_ENFORCED unset")
+	}
+}
+
+func TestLoadConfig_TenantContextEnforcedMatchesAuth(t *testing.T) {
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "")
+	t.Setenv("JWT_SECRET", "dev-only-change-me")
+
+	cases := []struct {
+		name string
+		env  string
+	}{
+		{name: "local", env: ""},
+		{name: "sandbox", env: "sandbox"},
+		{name: "ssmr", env: "ssmr"},
+		{name: "staging", env: "staging"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("PEGASUSX_ENV", tc.env)
+			cfg, err := LoadConfig()
+			if err != nil {
+				t.Fatalf("LoadConfig: %v", err)
+			}
+			if cfg.TenantContextEnforced != auth.TenantContextEnforced() {
+				t.Fatalf("cfg=%v auth=%v env=%q", cfg.TenantContextEnforced, auth.TenantContextEnforced(), tc.env)
+			}
+		})
 	}
 }
 

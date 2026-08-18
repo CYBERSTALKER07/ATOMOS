@@ -31,7 +31,7 @@ type RegisterConfig struct {
 // RegisterRoutes mounts the WebSocket upgrade handler for the provided hubs.
 // Note: Authentication is enforced upstream by standard middleware. The Upgrade
 // handler extracts auth.Claims from context to determine identity and rooms.
-func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
+func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 	platformSvc *platform.Service,
 	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub, platformAdminHub *Hub,
 	cfg RegisterConfig,
@@ -78,11 +78,7 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, log)
 	})
 
-	if firebaseAuthEnabled && verifier != nil {
-		r.With(auth.FirebaseAuth(verifier)).Get("/v1/ws", wsHandler)
-	} else {
-		r.Get("/v1/ws", wsHandler)
-	}
+	r.Get("/v1/ws", wsHandler)
 }
 
 func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) {
@@ -113,7 +109,8 @@ func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) 
 	}
 	jti := strings.TrimSpace(ident.JTI)
 	if jti != "" {
-		if revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti); err == nil && revoked {
+		revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti)
+		if err != nil || revoked {
 			return auth.Claims{}, false
 		}
 	}
@@ -299,7 +296,7 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func
 	conn.conn.SetPongHandler(func(string) error {
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	})
-	
+
 	limiter := NewIngressRateLimiter()
 	for {
 		if _, _, err := conn.conn.ReadMessage(); err != nil {

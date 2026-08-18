@@ -8,6 +8,7 @@ struct LocationSetupView: View {
     @State private var loading = false
     @State private var submitting = false
     @State private var error: String?
+    @State private var packCountry = ""
 
     private var hasAssignedWarehouse: Bool { tokenStore.hasAssignedWarehouse }
 
@@ -34,6 +35,11 @@ struct LocationSetupView: View {
                             }
                         } else if !warehouseName.isEmpty {
                             Section { Text(warehouseName) }
+                        }
+                        if !packCountry.isEmpty {
+                            Section("Pack country") {
+                                Text(packCountry)
+                            }
                         }
                         Section("Depot address") {
                             AddressLocationField(value: $location, label: "Depot address")
@@ -70,6 +76,7 @@ struct LocationSetupView: View {
                 lng: resp.lng,
                 placeId: resp.placeId
             )
+            packCountry = resp.packCountryCode.isEmpty ? resp.countryCode : resp.packCountryCode
         } catch {
             self.error = error.localizedDescription
         }

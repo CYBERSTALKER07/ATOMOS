@@ -132,6 +132,20 @@ class ModelComputedPropsTest {
     }
 
     @Test
+    fun order_displayTotal_emptyCurrencyDoesNotInventUZS() {
+        val o = Order(id = "o1", totalAmount = 100)
+        assertFalse(o.displayTotal.contains("UZS"))
+    }
+
+    @Test
+    fun moneyCurrency_emptyDoesNotInventUZS() {
+        assertEquals("", moneyCurrency(""))
+        assertEquals("", moneyCurrency(null))
+        assertEquals("KZT", moneyCurrency("kzt"))
+        assertFalse(moneyCurrency("").contains("UZS"))
+    }
+
+    @Test
     fun order_itemCount_sumsQuantities() {
         val items = listOf(
             OrderLineItem("l1", "p1", "A", "v1", "1L", 3, 10.0, 30.0),

@@ -258,7 +258,7 @@ fun PosScreen(
                                                 body = mapOf(
                                                     "register_id" to (registerId ?: ""),
                                                     "opening_float_minor" to 0L,
-                                                    "currency" to "UZS",
+                                                    "currency" to com.pegasusx.retailer.data.model.sessionPackCurrency(),
                                                 ),
                                                 idempotencyKey = "open-${System.currentTimeMillis()}",
                                             ).asJsonObject

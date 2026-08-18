@@ -64,10 +64,11 @@ func runOrderCurrencyPickerE2E(
 	}
 	op := strings.ToUpper(strings.TrimSpace(opts.OperatingCurrency))
 	if op == "" {
-		op = strings.ToUpper(strings.TrimSpace(cfg.SeedSupplierCurrency))
+		op = smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
 	}
 	if op == "" {
-		op = "UZS"
+		fmt.Println("PX_E2E_ORDER_CURRENCY_PICKER_SKIPPED")
+		return nil
 	}
 
 	flagOn := strings.EqualFold(strings.TrimSpace(os.Getenv("ORDER_CURRENCY_PICKER_ENABLED")), "true") ||

@@ -6,12 +6,18 @@ struct LocalSkusView: View {
     @State private var barcode = ""
     @State private var price = "5000"
     @State private var banner: String?
+    @State private var loadError: String?
+    @State private var summaryReady = false
     @State private var busy = false
     private let api = APIClient.shared
 
     var body: some View {
         List {
-            if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
+            if let loadError {
+                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
+            } else if let banner {
+                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            }
             Section("Add local SKU") {
                 TextField("retailer_desktop.pos.text.name", text: $name)
                 TextField("retailer_desktop.stock.local_skus.text.barcode", text: $barcode)
@@ -19,18 +25,20 @@ struct LocalSkusView: View {
                 Button(busy ? "…" : "Create") { Task { await create() } }
                     .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            Section("Catalog") {
-                if rows.isEmpty {
-                    Text("mobile_retailer.ui.no_local_skus").foregroundStyle(AppTheme.textTertiary)
-                } else {
-                    ForEach(rows) { row in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(row.name).font(.headline)
-                            Text("\(row.id) · \(row.priceMinor) · \(row.active ? "active" : "inactive")")
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
-                            Button(row.active ? "Disable" : "Enable") {
-                                Task { await toggle(row) }
+            if summaryReady && loadError == nil {
+                Section("Catalog") {
+                    if rows.isEmpty {
+                        Text("mobile_retailer.ui.no_local_skus").foregroundStyle(AppTheme.textTertiary)
+                    } else {
+                        ForEach(rows) { row in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(row.name).font(.headline)
+                                Text("\(row.id) · \(row.priceMinor) \(row.currency) · \(row.active ? "active" : "inactive")")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                                Button(row.active ? "Disable" : "Enable") {
+                                    Task { await toggle(row) }
+                                }
                             }
                         }
                     }
@@ -50,11 +58,15 @@ struct LocalSkusView: View {
                     id: $0.localSkuId,
                     name: $0.name,
                     priceMinor: $0.defaultPriceMinor ?? 0,
+                    currency: displayPackCurrency($0.currency),
                     active: $0.isActive ?? true
                 )
             }
+            banner = nil
+            loadError = nil
+            summaryReady = true
         } catch {
-            banner = error.localizedDescription
+            loadError = "local_skus_failed"
         }
     }
 
@@ -90,5 +102,6 @@ struct LocalSkuRowIOS: Identifiable {
     let id: String
     let name: String
     let priceMinor: Int64
+    let currency: String
     let active: Bool
 }

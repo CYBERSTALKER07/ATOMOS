@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -44,22 +45,22 @@ func parsePhysicalStatusFilter(raw string) []string {
 
 // InboundReturnRow is the gate queue read model.
 type InboundReturnRow struct {
-	ReturnID              string `json:"return_id"`
-	OrderID               string `json:"order_id"`
-	SkuID                 string `json:"sku_id"`
-	ProductName           string `json:"product_name"`
-	ImageURL              string `json:"image_url,omitempty"`
-	Barcode               string `json:"barcode,omitempty"`
-	ExpectedQty           int64  `json:"expected_qty"`
-	ReceivedQty           int64  `json:"received_qty"`
-	Reason                string `json:"reason"`
-	DriverNotes           string `json:"driver_notes,omitempty"`
-	PhysicalStatus        string `json:"physical_status"`
-	ManifestID            string `json:"manifest_id,omitempty"`
-	DriverID              string `json:"driver_id,omitempty"`
-	DriverName            string `json:"driver_name,omitempty"`
-	SuggestedDisposition  string `json:"suggested_disposition"`
-	CreatedAt             string `json:"created_at"`
+	ReturnID             string `json:"return_id"`
+	OrderID              string `json:"order_id"`
+	SkuID                string `json:"sku_id"`
+	ProductName          string `json:"product_name"`
+	ImageURL             string `json:"image_url,omitempty"`
+	Barcode              string `json:"barcode,omitempty"`
+	ExpectedQty          int64  `json:"expected_qty"`
+	ReceivedQty          int64  `json:"received_qty"`
+	Reason               string `json:"reason"`
+	DriverNotes          string `json:"driver_notes,omitempty"`
+	PhysicalStatus       string `json:"physical_status"`
+	ManifestID           string `json:"manifest_id,omitempty"`
+	DriverID             string `json:"driver_id,omitempty"`
+	DriverName           string `json:"driver_name,omitempty"`
+	SuggestedDisposition string `json:"suggested_disposition"`
+	CreatedAt            string `json:"created_at"`
 }
 
 // HandleInboundList serves GET /v1/returns/inbound.
@@ -117,9 +118,9 @@ func (s *Service) HandleInboundList(w http.ResponseWriter, r *http.Request) {
 	          AND sr.PhysicalStatus IN UNNEST(@physical_statuses)
 	          AND sr.Status = @fin_pending`
 	params := map[string]any{
-		"warehouse_id":       warehouseID,
-		"physical_statuses":  statusList,
-		"fin_pending":        FinancialPending,
+		"warehouse_id":      warehouseID,
+		"physical_statuses": statusList,
+		"fin_pending":       FinancialPending,
 	}
 	if manifestID != "" {
 		sql += " AND sr.ManifestId = @manifest_id"
@@ -255,20 +256,20 @@ func (s *Service) HandleStartReceiveSession(w http.ResponseWriter, r *http.Reque
 }
 
 type scanRequest struct {
-	Barcode   string `json:"barcode"`
-	Qty       int64  `json:"qty"`
-	ReturnID  string `json:"return_id"`
-	SessionID string `json:"session_id"`
+	Barcode    string `json:"barcode"`
+	Qty        int64  `json:"qty"`
+	ReturnID   string `json:"return_id"`
+	SessionID  string `json:"session_id"`
 	ManifestID string `json:"manifest_id"`
 }
 
 type scanResponse struct {
-	Matched    bool             `json:"matched"`
-	ReturnID   string           `json:"return_id,omitempty"`
-	Product    map[string]any   `json:"product,omitempty"`
-	Line       *InboundReturnRow  `json:"line,omitempty"`
-	Variance   bool             `json:"variance"`
-	Message    string           `json:"message,omitempty"`
+	Matched  bool              `json:"matched"`
+	ReturnID string            `json:"return_id,omitempty"`
+	Product  map[string]any    `json:"product,omitempty"`
+	Line     *InboundReturnRow `json:"line,omitempty"`
+	Variance bool              `json:"variance"`
+	Message  string            `json:"message,omitempty"`
 }
 
 // HandleInboundScan serves POST /v1/returns/inbound/scan.
@@ -406,15 +407,15 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 		if aggID == "" {
 			aggID = returnID
 		}
-		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       fmt.Sprintf("return-scan-%s-%d", returnID, newReceived),
-			"AggregateType": events.AggregateOrder,
-			"AggregateId":   aggID,
-			"TopicName":     events.TopicMain,
-			"Payload":       payload,
-			"CreatedAt":     s.now().UTC(),
-			"PublishedAt":   nil,
-		})}); err != nil {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       outbox.ClampEventID(fmt.Sprintf("return-scan-%s-%d", returnID, newReceived)),
+			AggregateType: events.AggregateOrder,
+			AggregateID:   aggID,
+			TopicName:     events.TopicMain,
+			Payload:       payload,
+			CreatedAt:     s.now().UTC(),
+			SupplierID:    supplierID,
+		}))}); err != nil {
 			return err
 		}
 		resp = scanResponse{
@@ -594,15 +595,15 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			eventID := returnID
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       eventID,
-				"AggregateType": events.AggregateOrder,
-				"AggregateId":   orderID,
-				"TopicName":     events.TopicMain,
-				"Payload":       payload,
-				"CreatedAt":     s.now().UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       eventID,
+				AggregateType: events.AggregateOrder,
+				AggregateID:   orderID,
+				TopicName:     events.TopicMain,
+				Payload:       payload,
+				CreatedAt:     s.now().UTC(),
+				SupplierID:    supplierID,
+			})))
 			if err := txn.BufferWrite(mutations); err != nil {
 				return err
 			}
@@ -672,7 +673,7 @@ func (s *Service) HandleReturnsHistory(w http.ResponseWriter, r *http.Request) {
 	        LEFT JOIN Drivers d ON d.DriverId = sr.DriverId
 	        WHERE sr.PhysicalStatus IN (@restocked, @written_off)`
 	params := map[string]any{
-		"restocked":  PhysicalRestocked,
+		"restocked":   PhysicalRestocked,
 		"written_off": PhysicalWrittenOff,
 	}
 
@@ -779,11 +780,11 @@ func (s *Service) HandleDriverReturnGoods(w http.ResponseWriter, r *http.Request
 		        AND sr.Status = @fin_pending
 		      ORDER BY sr.CreatedAt ASC`,
 		Params: map[string]any{
-			"driver_id":  driverID,
-			"pending":    PhysicalPending,
-			"on_truck":   PhysicalOnTruck,
-			"arrived":    PhysicalArrived,
-			"receiving":  PhysicalReceiving,
+			"driver_id":   driverID,
+			"pending":     PhysicalPending,
+			"on_truck":    PhysicalOnTruck,
+			"arrived":     PhysicalArrived,
+			"receiving":   PhysicalReceiving,
 			"fin_pending": FinancialPending,
 		},
 	}

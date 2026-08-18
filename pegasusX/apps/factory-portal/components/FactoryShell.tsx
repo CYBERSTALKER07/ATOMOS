@@ -13,42 +13,8 @@ import NotificationPanel from './NotificationPanel';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications } from '@/lib/useNotifications';
 import { usePortalT } from '@/lib/i18n';
+import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, useReducedMotion } from 'framer-motion';
-
-type NavEntry = { href: string; icon: string; labelKey: string };
-type NavSection = { labelKey?: string; items: NavEntry[] };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: '/', icon: 'dashboard', labelKey: 'portal.nav.dashboard' },
-      { href: '/loading-bay', icon: 'loadingBay', labelKey: 'portal.nav.loading_bay' },
-      { href: '/transfers', icon: 'transfers', labelKey: 'portal.nav.transfers' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.operations',
-    items: [
-      { href: '/fleet', icon: 'fleet', labelKey: 'portal.nav.fleet' },
-      { href: '/staff', icon: 'staff', labelKey: 'portal.nav.staff' },
-      { href: '/settings/location', icon: 'loadingBay', labelKey: 'portal.nav.location' },
-      { href: '/insights', icon: 'insights', labelKey: 'portal.nav.insights' },
-      { href: '/analytics', icon: 'analytics', labelKey: 'portal.nav.analytics' },
-    ],
-  },
-  {
-    labelKey: 'portal.nav.section.supply_chain',
-    items: [
-      { href: '/supply-requests', icon: 'transfers', labelKey: 'portal.nav.supply_requests' },
-      { href: '/payload', icon: 'loadingBay', labelKey: 'portal.nav.payload' },
-      { href: '/payload-override', icon: 'loadingBay', labelKey: 'portal.nav.payload_override' },
-      { href: '/manifests', icon: 'manifests', labelKey: 'portal.nav.manifests' },
-      { href: '/manifest-exceptions', icon: 'insights', labelKey: 'portal.nav.gate_exceptions' },
-    ],
-  },
-];
-
-const ALL_NAV_ITEMS = NAV.flatMap((section) => section.items);
 const BARE_ROUTES = ['/auth/', '/setup/'];
 
 function isActiveRoute(pathname: string, href: string): boolean {
@@ -138,14 +104,11 @@ const DrawerContent = memo(function DrawerContent({
         <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '4px 8px' : '4px 16px' }} />
 
         {/* Navigation */}
-        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
-          {NAV.map((section, si) => (
-            <div key={si}>
-              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
-              {section.labelKey && !isRail && (
-                <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
-              )}
-              {section.items.map((item, ii) => {
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`} data-testid="gs-un-nav">
+          {NAV.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
                 const label = t(item.labelKey);
                 return (
@@ -170,9 +133,28 @@ const DrawerContent = memo(function DrawerContent({
                     </Link>
                   </motion.div>
                 );
-              })}
-            </div>
-          ))}
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 

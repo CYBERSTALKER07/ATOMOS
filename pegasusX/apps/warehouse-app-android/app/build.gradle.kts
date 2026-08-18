@@ -207,6 +207,7 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // MapLibre (fleet live map polylines)
     implementation("org.maplibre.gl:android-sdk:11.7.1")

@@ -13,11 +13,13 @@ import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { HubCard } from '@/components/portal';
 import EmptyState from '@/components/EmptyState';
 import { TreasuryTransactionList } from '@/components/treasury/TreasuryTransactionList';
+import { moneyCurrency } from '@pegasusx/api-client';
 
 interface TreasuryOverview {
   total_invoiced: number;
   total_paid: number;
   total_outstanding: number;
+  currency?: string;
 }
 
 export interface Invoice {
@@ -80,7 +82,8 @@ export default function TreasuryPage() {
     if (typeof inv.amount_uzs === 'number' && Number.isFinite(inv.amount_uzs)) return inv.amount_uzs;
     return 0;
   };
-  const resolveCurrency = (inv: Invoice) => (inv.currency || 'UZS').toUpperCase();
+  const resolveCurrency = (inv: Invoice) => moneyCurrency(inv.currency);
+  const overviewCurrency = moneyCurrency(overview?.currency);
   const formatPayoutOwner = (inv: Invoice) => {
     const ownerType = (inv.payout_owner_type || '').trim();
     const ownerID = (inv.payout_owner_id || '').trim();
@@ -143,15 +146,15 @@ export default function TreasuryPage() {
         />
       </div>
       <KpiStatGrid columns={3}>
-        <KpiStatCard label={t("warehouse_portal.residual.text.total_invoiced")} value={`${fmt(ov.total_invoiced)} UZS`} />
+        <KpiStatCard label={t("warehouse_portal.residual.text.total_invoiced")} value={`${fmt(ov.total_invoiced)} ${overviewCurrency}`.trim()} />
         <KpiStatCard
           label={t("warehouse_portal.residual.text.paid")}
-          value={`${fmt(ov.total_paid)} UZS`}
+          value={`${fmt(ov.total_paid)} ${overviewCurrency}`.trim()}
           sub="Settled to date"
         />
         <KpiStatCard
           label={t("warehouse_portal.residual.text.outstanding")}
-          value={`${fmt(ov.total_outstanding)} UZS`}
+          value={`${fmt(ov.total_outstanding)} ${overviewCurrency}`.trim()}
           sub={ov.total_outstanding > 0 ? 'Requires collection' : 'All clear'}
         />
       </KpiStatGrid>

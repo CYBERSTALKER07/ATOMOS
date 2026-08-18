@@ -237,6 +237,10 @@ final class APIClient {
     func getOrderCurrencies() async throws -> OrderCurrencyOptions {
         try await get(path: "/v1/order/currencies")
     }
+
+    func getPaymentCatalog() async throws -> RetailerPaymentCatalogResponse {
+        try await get(path: "/v1/retailer/payment-catalog")
+    }
     
     func initiateCardSave(gateway: String = "GLOBAL_PAY") async throws -> CardInitiateResponse {
         return try await post(path: "/v1/retailer/card/initiate", body: CardInitiateRequest(gateway: gateway))
@@ -643,10 +647,16 @@ final class APIClient {
             let name: String
             let barcode: String
             let default_price_minor: Int64
+            let currency: String
         }
         return try await post(
             path: "/v1/retailer/local-skus",
-            body: Body(name: name, barcode: barcode, default_price_minor: priceMinor),
+            body: Body(
+                name: name,
+                barcode: barcode,
+                default_price_minor: priceMinor,
+                currency: packCurrency(MarketPackStore.pack)
+            ),
             headers: ["Idempotency-Key": "local-\(Int(Date().timeIntervalSince1970 * 1000))"]
         )
     }
@@ -678,7 +688,7 @@ final class APIClient {
         }
         return try await post(
             path: "/v1/retailer/pos/sessions/open",
-            body: Body(register_id: registerId, opening_float_minor: 0, currency: "UZS"),
+            body: Body(register_id: registerId, opening_float_minor: 0, currency: packCurrency(MarketPackStore.pack)),
             headers: ["Idempotency-Key": "open-\(Int(Date().timeIntervalSince1970 * 1000))"]
         )
     }
@@ -811,7 +821,7 @@ final class APIClient {
         }
         return try await post(
             path: "/v1/retailer/shifts",
-            body: Body(register_id: registerId, opening_float_minor: openingFloatMinor, currency: "UZS"),
+            body: Body(register_id: registerId, opening_float_minor: openingFloatMinor, currency: packCurrency(MarketPackStore.pack)),
             headers: ["Idempotency-Key": "shift-\(Int(Date().timeIntervalSince1970 * 1000))"]
         )
     }
@@ -1422,7 +1432,36 @@ struct RetailerPulseResponse: Codable {
     }
 }
 
-struct ControlTowerPulseWire: Codable {
+struct RetailerSupplierOrderFacetWire: Decodable {
+    let supplierId: String
+    let ordersByStatus: [String: Int]
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case ordersByStatus = "orders_by_status"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        ordersByStatus = try c.decodeIfPresent([String: Int].self, forKey: .ordersByStatus) ?? [:]
+    }
+}
+
+struct RetailerPulseLoyaltyWire: Decodable {
+    let enrolled: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case enrolled
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enrolled = try c.decodeIfPresent(Bool.self, forKey: .enrolled) ?? false
+    }
+}
+
+struct ControlTowerPulseWire: Decodable {
     let retailerId: String?
     let generatedAt: String?
     let openOrders: Int
@@ -1436,10 +1475,16 @@ struct ControlTowerPulseWire: Codable {
     let salesMinor7d: Int64
     let capabilities: [String]?
     let empty: Bool
+    let source: String?
+    let ordersByStatus: [String: Int]
+    let ordersBySupplier: [RetailerSupplierOrderFacetWire]
+    let loyalty: RetailerPulseLoyaltyWire?
 
     enum CodingKeys: String, CodingKey {
         case empty
         case capabilities
+        case source
+        case loyalty
         case retailerId = "retailer_id"
         case generatedAt = "generated_at"
         case openOrders = "open_orders"
@@ -1451,6 +1496,29 @@ struct ControlTowerPulseWire: Codable {
         case lowStockSkuBins = "low_stock_sku_bins"
         case shiftVariances7d = "shift_variances_7d"
         case salesMinor7d = "sales_minor_7d"
+        case ordersByStatus = "orders_by_status"
+        case ordersBySupplier = "orders_by_supplier"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        retailerId = try c.decodeIfPresent(String.self, forKey: .retailerId)
+        generatedAt = try c.decodeIfPresent(String.self, forKey: .generatedAt)
+        openOrders = try c.decodeIfPresent(Int.self, forKey: .openOrders) ?? 0
+        activeFulfillments = try c.decodeIfPresent(Int.self, forKey: .activeFulfillments) ?? 0
+        dockPending = try c.decodeIfPresent(Int.self, forKey: .dockPending) ?? 0
+        posOpenSessions = try c.decodeIfPresent(Int.self, forKey: .posOpenSessions) ?? 0
+        openShifts = try c.decodeIfPresent(Int.self, forKey: .openShifts) ?? 0
+        openAssistTickets = try c.decodeIfPresent(Int.self, forKey: .openAssistTickets) ?? 0
+        lowStockSkuBins = try c.decodeIfPresent(Int.self, forKey: .lowStockSkuBins) ?? 0
+        shiftVariances7d = try c.decodeIfPresent(Int.self, forKey: .shiftVariances7d) ?? 0
+        salesMinor7d = try c.decodeIfPresent(Int64.self, forKey: .salesMinor7d) ?? 0
+        capabilities = try c.decodeIfPresent([String].self, forKey: .capabilities)
+        empty = try c.decodeIfPresent(Bool.self, forKey: .empty) ?? true
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        ordersByStatus = try c.decodeIfPresent([String: Int].self, forKey: .ordersByStatus) ?? [:]
+        ordersBySupplier = try c.decodeIfPresent([RetailerSupplierOrderFacetWire].self, forKey: .ordersBySupplier) ?? []
+        loyalty = try c.decodeIfPresent(RetailerPulseLoyaltyWire.self, forKey: .loyalty)
     }
 }
 
@@ -1491,11 +1559,13 @@ struct LocalSkuWire: Codable {
     let name: String
     let barcode: String?
     let defaultPriceMinor: Int64?
+    let currency: String?
     let isActive: Bool?
 
     enum CodingKeys: String, CodingKey {
         case name
         case barcode
+        case currency
         case localSkuId = "local_sku_id"
         case defaultPriceMinor = "default_price_minor"
         case isActive = "is_active"

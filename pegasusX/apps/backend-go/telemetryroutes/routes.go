@@ -36,15 +36,13 @@ type ReturnApproachChecker interface {
 }
 
 type Deps struct {
-	TelemetryHub        *ws.Hub
-	RetailerHub         *ws.Hub
-	LastLocations       telemetry.LastLocationWriter
-	DeliveryTokens      DeliveryTokenResolver
-	ReturnApproach      ReturnApproachChecker
-	SupplierID          string
-	Log                 *slog.Logger
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	TelemetryHub   *ws.Hub
+	RetailerHub    *ws.Hub
+	LastLocations  telemetry.LastLocationWriter
+	DeliveryTokens DeliveryTokenResolver
+	ReturnApproach ReturnApproachChecker
+	SupplierID     string
+	Log            *slog.Logger
 	// LocationBusEmitter publishes a throttled DRIVER_LOCATION_UPDATED to the
 	// transactional outbox (TopicRealtime) so the notification dispatcher and
 	// digital-twin consumers are live. Nil disables bus emit (WS/Redis still run
@@ -121,11 +119,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	handler := http.HandlerFunc(d.handleLocation)
-
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.With(auth.FirebaseAuth(d.FirebaseVerifier), auth.RequireRole(auth.RoleDriver)).Post("/v1/telemetry/location", handler)
-		return
-	}
 	r.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/telemetry/location", handler)
 }
 

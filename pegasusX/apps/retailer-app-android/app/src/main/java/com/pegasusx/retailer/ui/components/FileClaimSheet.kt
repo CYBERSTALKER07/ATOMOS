@@ -54,6 +54,7 @@ import com.pegasusx.retailer.data.model.FileClaimLineBody
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.RetailerClaim
+import com.pegasusx.retailer.data.model.moneyCurrency
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -314,7 +315,7 @@ fun FileClaimSheet(
                 }
                 items(existing, key = { it.claimId }) { c ->
                     Text(
-                        "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${c.currency ?: "UZS"}",
+                        "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${moneyCurrency(c.currency)}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

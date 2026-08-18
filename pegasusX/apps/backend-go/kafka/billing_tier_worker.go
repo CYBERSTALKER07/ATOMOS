@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
@@ -23,10 +24,15 @@ type BillingTierWorker struct {
 }
 
 // NewBillingTierWorker initializes a new BillingTierWorker.
+// Empty operating currency reads the shipped pack — never invents UZS.
 func NewBillingTierWorker(meterWorker *billing.MeterWorker) *BillingTierWorker {
+	op := ""
+	if c, err := auth.CurrencyFromContext(context.Background(), ""); err == nil {
+		op = c
+	}
 	return &BillingTierWorker{
 		MeterWorker:       meterWorker,
-		OperatingCurrency: "UZS",
+		OperatingCurrency: op,
 		Now:               func() time.Time { return time.Now().UTC() },
 	}
 }
@@ -87,7 +93,13 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 
 	operating := fxrates.NormalizeCurrency(w.OperatingCurrency)
 	if operating == "" {
-		operating = "UZS"
+		if c, err := auth.CurrencyFromContext(ctx, supplierID); err == nil {
+			operating = fxrates.NormalizeCurrency(c)
+		}
+	}
+	if operating == "" {
+		log.Printf("billing ORDER_FINALIZED empty operating currency (planned/unknown pack); skipping orderID=%s", orderID)
+		return nil
 	}
 	source := fxrates.NormalizeCurrency(event.Total.Currency)
 	if source == "" {

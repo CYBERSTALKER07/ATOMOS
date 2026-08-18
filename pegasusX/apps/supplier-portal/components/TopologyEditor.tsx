@@ -13,6 +13,7 @@ import type {
   SupplierTopologyWarehouse,
 } from "@pegasusx/types";
 import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
+import { sessionMapCenter } from "@pegasusx/api-client";
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { createSupplierApi } from "@/lib/api";
 import { LocationPicker } from "@/components/LocationPicker";
@@ -303,14 +304,16 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
             type="button"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
             onClick={() =>
-              setWarehouses((prev) => [
+              setWarehouses((prev) => {
+                const c = sessionMapCenter();
+                return [
                 ...prev,
                 {
                   key: `new-wh-${Date.now()}`,
                   name: `Warehouse ${prev.length + 1}`,
                   address: "",
-                  lat: "41.2995",
-                  lng: "69.2401",
+                  lat: c ? String(c.lat) : "",
+                  lng: c ? String(c.lng) : "",
                   coverage_radius_km: "50",
                   is_active: true,
                   is_on_shift: true,
@@ -653,18 +656,21 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
             type="button"
             className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2"
             onClick={() =>
-              setFactories((prev) => [
+              setFactories((prev) => {
+                const c = sessionMapCenter();
+                return [
                 ...prev,
                 {
                   key: `new-fc-${Date.now()}`,
                   name: `Factory ${prev.length + 1}`,
                   address: "",
-                  lat: "41.3111",
-                  lng: "69.2797",
+                  lat: c ? String(c.lat) : "",
+                  lng: c ? String(c.lng) : "",
                   country_code: "",
                   is_active: true,
                 },
-              ])
+              ];
+              })
             }
           >
             Add factory

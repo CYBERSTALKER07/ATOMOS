@@ -27,7 +27,13 @@ import com.pegasusx.factory.service.EnterpriseUpdateConfig
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
+import com.pegasus.design.FACTORY_DRIVER_DUTY
+import com.pegasus.design.FACTORY_TRANSFER_STATES
+import com.pegasus.design.FACTORY_VEHICLE_STATES
+import com.pegasus.design.MANIFEST_STATES
 import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.SourceChip
+import com.pegasus.design.StatusStack
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasus.design.PegasusStateKind
@@ -65,7 +71,7 @@ private val kpiCards = listOf(
     KpiCard("Staff on Shift", Icons.Default.People, FactoryRoutes.STAFF, { it.staffOnShift.toString() }, { "Operators currently active" }),
     KpiCard("Gate Exceptions", Icons.Default.Warning, FactoryRoutes.MANIFEST_EXCEPTIONS, { it.criticalInsights.toString() }, { "Transfers removed during loading" }),
 )
-private const val DASHBOARD_REFRESH_MS = 30_000L
+private const val DASHBOARD_REFRESH_MS = 60_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -256,6 +262,51 @@ fun DashboardScreen(
                         supporting = card.supporting(stats),
                         badge = badge,
                         onClick = { onNavigate(card.route) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        SourceChip(if (stats.source.isBlank()) "empty" else stats.source)
+                        Text(
+                            if (stats.source == "empty") "No factory rows yet" else "Dashboard ${stats.source}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    FactorySectionTitle(title = "Transfers")
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.transfersByState,
+                        dictionary = FACTORY_TRANSFER_STATES,
+                        source = stats.source,
+                        onSelect = { key -> onNavigate(FactoryRoutes.transfers(key)) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    FactorySectionTitle(title = "Factory trucks")
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.manifestsByState,
+                        dictionary = MANIFEST_STATES,
+                        source = stats.source,
+                        onSelect = { onNavigate(FactoryRoutes.LOADING_BAY) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.vehiclesByState,
+                        dictionary = FACTORY_VEHICLE_STATES,
+                        source = stats.source,
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.driverDuty,
+                        dictionary = FACTORY_DRIVER_DUTY,
+                        source = stats.source,
                     )
                 }
             }

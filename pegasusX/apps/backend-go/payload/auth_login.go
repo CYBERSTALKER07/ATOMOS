@@ -55,6 +55,10 @@ func (s *Service) HandlePayloaderLogin(w http.ResponseWriter, r *http.Request) {
 	phone := strings.TrimSpace(req.Phone)
 	pin := strings.TrimSpace(req.PIN)
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 
 	if idToken != "" && s.firebaseVerifier != nil {
 		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)

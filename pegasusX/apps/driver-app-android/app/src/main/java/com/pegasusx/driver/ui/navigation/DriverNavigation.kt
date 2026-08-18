@@ -286,6 +286,8 @@ fun DriverNavigation(
                     order.latitude != null &&
                     order.longitude != null
             }
+            val pendingVm: PendingSyncCountViewModel = hiltViewModel()
+            val pendingCount by pendingVm.pendingCount.collectAsState()
             MainTabView(
                 requestedTab = handoffTabRequest,
                 onRequestedTabConsumed = { handoffTabRequest = null },
@@ -301,6 +303,13 @@ fun DriverNavigation(
                         },
                         onNotificationsClick = { navController.navigate(DriverRoutes.NOTIFICATIONS) { launchSingleTop = true } },
                         onOpenSupplyTransfers = { navController.navigate(DriverRoutes.SUPPLY_TRANSFERS) },
+                        onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        onStopClick = { order ->
+                            navController.navigate(
+                                DriverRoutes.correctionRoute(order.id, order.retailerName)
+                            )
+                        },
+                        pendingCount = pendingCount,
                     )
                 },
                 mapContent = {
@@ -327,8 +336,6 @@ fun DriverNavigation(
                     )
                 },
                 profileContent = {
-                    val pendingVm: PendingSyncCountViewModel = hiltViewModel()
-                    val pendingCount by pendingVm.pendingCount.collectAsState()
                     ProfileScreen(
                         viewModel = manifestViewModel,
                         onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },

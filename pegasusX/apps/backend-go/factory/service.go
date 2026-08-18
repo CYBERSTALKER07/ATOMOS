@@ -54,6 +54,7 @@ type Service struct {
 	planning        *PlanningService
 	qcRepo          supplyQCRepo
 	exceptionRepo   factoryExceptionBackend
+	dashboardQuery  FactoryDashboardQuery
 
 	seedSupplierID   string
 	factoryNodeID    string
@@ -101,6 +102,7 @@ type ServiceConfig struct {
 	Idem             idempotency.Store
 	Planning         *PlanningService
 	OptimizerClient  *optimizerclient.Client
+	DashboardQuery   FactoryDashboardQuery
 }
 
 // TransferRow represents one factory transfer record.
@@ -267,14 +269,16 @@ func NewService(c ServiceConfig) *Service {
 	if c.Repo == nil {
 		c.Repo = NewInMemoryRepository()
 	}
-	if c.Currency == "" {
-		c.Currency = "UZS"
-	}
-	factoryNodeID := strings.TrimSpace(c.FactoryNodeID)
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
 		seedID = strings.TrimSpace(c.SupplierID)
 	}
+	if c.Currency == "" {
+		if cur, err := auth.CurrencyFromContext(context.Background(), seedID); err == nil {
+			c.Currency = cur
+		}
+	}
+	factoryNodeID := strings.TrimSpace(c.FactoryNodeID)
 	if factoryNodeID == "" {
 		factoryNodeID = seedID
 	}
@@ -296,6 +300,7 @@ func NewService(c ServiceConfig) *Service {
 		idem:                  c.Idem,
 		locations:             c.Locations,
 		planning:              c.Planning,
+		dashboardQuery:        c.DashboardQuery,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),
@@ -795,7 +800,13 @@ func (s *Service) manifestOutboxFields(ctx context.Context, manifest ManifestRow
 }
 
 func (s *Service) invalidateFactoryKeys(ctx context.Context, keys ...string) {
-	if s.cache == nil || len(keys) == 0 {
+	if s.cache == nil {
+		return
+	}
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
+		keys = append(keys, cache.DashboardKey("factory", sid))
+	}
+	if len(keys) == 0 {
 		return
 	}
 	s.cache.Invalidate(ctx, keys...)
@@ -868,11 +879,21 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	resp := s.iosDashboardLocked(s.resolveSupplierScope(r.Context()))
-	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, resp)
+	sid := s.resolveSupplierScope(r.Context())
+	key := cache.DashboardKey("factory", sid)
+	body, err := cache.LoadDashboard(s.cache, r.Context(), key, func(ctx context.Context) ([]byte, error) {
+		snap, source, loadErr := s.loadDashboardSnapshot(ctx)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		resp := buildFactoryDashboard(snap, source, sid, s.resolveFactoryNode(ctx), s.now())
+		return json.Marshal(resp)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dashboard_unavailable"})
+		return
+	}
+	cache.WriteJSONWithETag(w, r, body)
 }
 
 // HandleProfile serves GET /v1/factory/profile.
@@ -943,6 +964,11 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 		if req.TotalVU <= 0 {
 			req.TotalVU = 25
 		}
+		// FactoryInternalTransfers.OrderId is STRING(36); oversize is a 400, not a Spanner 500.
+		if oid := strings.TrimSpace(req.OrderID); len(oid) > 36 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_too_long"})
+			return
+		}
 		var row TransferRow
 		now := ""
 		factoryID := s.resolveFactoryNode(r.Context())
@@ -975,6 +1001,7 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			})
 		})
 		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory.transfer_create_failed", "err", err)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_create_failed"})
 			return
 		}
@@ -1059,6 +1086,74 @@ func (s *Service) loadFactoryTransfersFromSpanner(ctx context.Context) ([]Transf
 	return out, nil
 }
 
+func (s *Service) loadFactoryManifestsFromSpanner(ctx context.Context) ([]ManifestRow, error) {
+	fid := strings.TrimSpace(s.resolveFactoryNode(ctx))
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
+	if fid == "" || sid == "" || s.spannerClient == nil {
+		return nil, fmt.Errorf("factory manifest scope required")
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ManifestId, State, TotalVolumeVU, MaxVolumeVU, StopCount, TransferCount,
+		      DriverId, VehicleId, CreatedAt, UpdatedAt
+		      FROM FactoryTruckManifests
+		      WHERE FactoryId = @fid AND SupplierId = @sid
+		      ORDER BY UpdatedAt DESC`,
+		Params: map[string]any{"fid": fid, "sid": sid},
+	}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var out []ManifestRow
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			if err == iterator.Done {
+				break
+			}
+			return nil, fmt.Errorf("factory manifest query: %w", err)
+		}
+		var m ManifestRow
+		var totalVolume, maxVolume float64
+		var stopCount, transferCount int64
+		var driverID, vehicleID spanner.NullString
+		var createdAt, updatedAt time.Time
+		if err := row.Columns(&m.ManifestID, &m.State, &totalVolume, &maxVolume, &stopCount, &transferCount,
+			&driverID, &vehicleID, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("factory manifest scan: %w", err)
+		}
+		m.TotalVolumeVU = int64(totalVolume)
+		m.MaxVolumeVU = int64(maxVolume)
+		m.TransferCnt = int(transferCount)
+		m.StopCount = int(stopCount)
+		m.DriverID = driverID.StringVal
+		m.VehicleID = vehicleID.StringVal
+		m.TruckID = m.VehicleID
+		m.CreatedAt = createdAt.Format(time.RFC3339Nano)
+		m.UpdatedAt = updatedAt.Format(time.RFC3339Nano)
+		out = append(out, m)
+	}
+	return out, nil
+}
+
+func (s *Service) hydrateFactoryManifestsFromSpanner(ctx context.Context) error {
+	if s == nil || s.spannerClient == nil {
+		return nil
+	}
+	manifests, err := s.loadFactoryManifestsFromSpanner(ctx)
+	if err != nil {
+		return err
+	}
+	transfers, err := s.loadFactoryTransfersFromSpanner(ctx)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.manifests = manifests
+	s.transfers = transfers
+	s.rebuildManifestTransfersLocked()
+	s.mu.Unlock()
+	return nil
+}
+
 // HandleManifests serves GET /v1/factory/manifests.
 func (s *Service) HandleManifests(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -1066,6 +1161,10 @@ func (s *Service) HandleManifests(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("state")))
+
+	if err := s.hydrateFactoryManifestsFromSpanner(r.Context()); err != nil {
+		s.log.WarnContext(r.Context(), "factory manifest list hydrate failed", "err", err)
+	}
 
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
@@ -1100,6 +1199,10 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
+	}
+
+	if err := s.hydrateFactoryManifestsFromSpanner(r.Context()); err != nil {
+		s.log.WarnContext(r.Context(), "factory manifest detail hydrate failed", "err", err)
 	}
 
 	s.mu.Lock()

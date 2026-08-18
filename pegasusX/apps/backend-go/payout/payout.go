@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
 )
@@ -31,9 +32,9 @@ const (
 )
 
 var (
-	ErrNothingPayable  = errors.New("nothing payable for the period")
+	ErrNothingPayable     = errors.New("nothing payable for the period")
 	ErrBankDetailsMissing = errors.New("supplier bank details incomplete")
-	ErrBatchNotFound   = errors.New("payout batch not found")
+	ErrBatchNotFound      = errors.New("payout batch not found")
 )
 
 type Batch struct {
@@ -141,6 +142,10 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 	if err != nil {
 		return Batch{}, err
 	}
+	currency, err = coalescePayoutCurrency(ctx, supplierID, currency)
+	if err != nil {
+		return Batch{}, err
+	}
 	commission, err := s.commission.CommissionMinor(ctx, supplierID, captured, currency)
 	if err != nil {
 		return Batch{}, fmt.Errorf("commission: %w", err)
@@ -148,9 +153,6 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 	net := captured - refunded - commission
 	if net <= 0 {
 		return Batch{}, fmt.Errorf("%w: captured=%d refunded=%d commission=%d", ErrNothingPayable, captured, refunded, commission)
-	}
-	if currency == "" {
-		currency = "UZS"
 	}
 
 	b := Batch{
@@ -175,13 +177,10 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 
 // ExportBankFile renders the CSV payment instruction for the batch and marks
 // it EXPORTED. Fails closed when supplier bank details are incomplete.
-func (s *Service) ExportBankFile(ctx context.Context, batchID string) ([]byte, Batch, error) {
-	b, found, err := s.repo.Get(ctx, batchID)
+func (s *Service) ExportBankFile(ctx context.Context, supplierID, batchID string) ([]byte, Batch, error) {
+	b, err := s.GetBatch(ctx, supplierID, batchID)
 	if err != nil {
 		return nil, Batch{}, err
-	}
-	if !found {
-		return nil, Batch{}, ErrBatchNotFound
 	}
 	if b.Status == StatusPaid {
 		return nil, Batch{}, fmt.Errorf("batch %s already PAID", batchID)
@@ -202,13 +201,10 @@ func (s *Service) ExportBankFile(ctx context.Context, batchID string) ([]byte, B
 }
 
 // MarkPaid records the bank's settlement of an exported batch.
-func (s *Service) MarkPaid(ctx context.Context, batchID string) error {
-	b, found, err := s.repo.Get(ctx, batchID)
+func (s *Service) MarkPaid(ctx context.Context, supplierID, batchID string) error {
+	b, err := s.GetBatch(ctx, supplierID, batchID)
 	if err != nil {
 		return err
-	}
-	if !found {
-		return ErrBatchNotFound
 	}
 	if b.Status != StatusExported {
 		return fmt.Errorf("batch %s must be EXPORTED before PAID (current %s)", batchID, b.Status)
@@ -291,4 +287,17 @@ func (r *Repository) SumLegs(ctx context.Context, supplierID string, start, end 
 			captured += amount
 		}
 	}
+}
+
+// coalescePayoutCurrency uses stored ISO code from payment legs, else the shipped pack.
+// Planned/unknown packs fail closed — never invent UZS.
+func coalescePayoutCurrency(ctx context.Context, supplierID, stored string) (string, error) {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, stored)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(c) == "" {
+		return "", auth.ErrMarketPackNotShipped
+	}
+	return c, nil
 }

@@ -3,8 +3,9 @@
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
-import type { StatusExplain } from '@pegasusx/types';
+import { FACTORY_TRANSFER_STATES, type StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { downloadCsv, exportCsv } from '@/lib/csv';
@@ -19,16 +20,20 @@ import EmptyState from '@/components/EmptyState';
 import { TransferFilters } from '@/components/transfers/TransferFilters';
 import { TransferList, type Transfer } from '@/components/transfers/TransferList';
 
-const STATE_FILTERS = ['ALL', 'DRAFT', 'APPROVED', 'LOADING', 'DISPATCHED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', 'CANCELLED'];
+const STATE_FILTERS = ['ALL', ...FACTORY_TRANSFER_STATES];
 
 
 export default function TransfersPage() {
   const t = usePortalT();
+  const searchParams = useSearchParams();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchExplain, setFetchExplain] = useState<StatusExplain | null>(null);
-  const [stateFilter, setStateFilter] = useState('ALL');
+  const initialState = (searchParams.get('state') ?? 'ALL').trim().toUpperCase();
+  const [stateFilter, setStateFilter] = useState(
+    initialState && STATE_FILTERS.includes(initialState) ? initialState : 'ALL',
+  );
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -14,7 +14,10 @@
 | [`.agents/memory/GOAL.md`](../../.agents/memory/GOAL.md) | **Final goal** (load every session) |
 | [`GLOBAL_SCALE_PROGRAM.md`](./GLOBAL_SCALE_PROGRAM.md) | Destination program: register + pack + cells (GS-A/T/M/C/I/R/P) |
 | [`GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](./GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | Destination program: local-first matching + pack PSP (GS-L/K, W1–W26) |
+| [`GLOBAL_SCALE_CLIENT_UI.md`](./GLOBAL_SCALE_CLIENT_UI.md) | Destination program: client visualization (GS-U0–U9). Dashboards + Plan & Brain. Not status. |
 | [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) | Ordered residuals R0–R6 after W0–W5 |
+| [`LAYER_B_ECOSYSTEM_READINESS_PLAN.md`](./LAYER_B_ECOSYSTEM_READINESS_PLAN.md) | Phased modules LB-0…LB-G to reach **READY FOR LAYER B**. **Not** the destination. Not a go-live certificate |
+| [`LAYER_B_SANDBOX_READINESS.md`](./LAYER_B_SANDBOX_READINESS.md) | Ops sequence after LB-G (sandbox + LB-B secrets). **Not** the destination. Not a go-live certificate |
 | [`PROD_ECOSYSTEM_GOAL.md`](./PROD_ECOSYSTEM_GOAL.md) | Class A coverage / “prod ready” definition — **not** the destination |
 | [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) | Evidence backlog + Part 5 re-verify notes |
 | [`session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md`](./session-2026-08-07/MASTER_ALIGNMENT_DATAFLOW_2026-08-12.md) | Docs↔code↔role×platform alignment |
@@ -23,6 +26,7 @@
 | [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md) | Enterprise backend + infra plan (4-agent audit) |
 | [`ROLE_ROW_PARITY_MATRIX.md`](./ROLE_ROW_PARITY_MATRIX.md) | Role×platform parity matrix |
 | [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) | Platform audit (R0 banner + §8 often current; frozen §0/§3/§5 need care) |
+| [`SURFACE_AUDITS.md`](./SURFACE_AUDITS.md) | **2026-08-18 agent index** — Kafka/Redis/infra/CI/Firebase/backend/UI/maps audits. Evidence only; re-verify `file:line`. Not a cloud go-live certificate |
 | [`AUTO_ORDER.md`](./AUTO_ORDER.md) | Auto-order wiring SoT |
 | [`OPTIMIZER_AND_ROUTING_RUNTIME.md`](./OPTIMIZER_AND_ROUTING_RUNTIME.md) | OR-Tools vs heuristic runtime |
 | [`DATA_FLOW_AS_IMPLEMENTED.md`](./DATA_FLOW_AS_IMPLEMENTED.md) | As-built event pipeline |
@@ -33,6 +37,9 @@
 | Doc | Note |
 |-----|------|
 | [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md) | Deep narrative; prefer `FEATURES_BY_APP_ROLE` for nav/routes |
+| [`DEMAND_CLASS_IBP_SLICE.md`](./DEMAND_CLASS_IBP_SLICE.md) | **PLAN** (2026-08-18): first executable slice — persist/show SBC demand class. Not status. Place flags stay off |
+| [`PegasusX_o9_Digital_Brain_Feature_Extraction_Integration_Blueprint.md`](./PegasusX_o9_Digital_Brain_Feature_Extraction_Integration_Blueprint.md) | **PLAN/SPEC** (2026-08-18): o9 Digital Brain catalog + integration path. Not status. Do not clone GraphCube |
+| [`PegasusX_o9_Demand_Planning_Problems_Extraction.md`](./PegasusX_o9_Demand_Planning_Problems_Extraction.md) | **PLAN** (2026-08-18): problem-centric companion to the blueprint. Not status |
 | App `README.md` files under `apps/*` | Local how-to; parity claims must match shells |
 
 ## Historical / frozen (banners applied 2026-08-12)

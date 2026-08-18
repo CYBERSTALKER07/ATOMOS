@@ -148,19 +148,6 @@ func main() {
 	if app.Idempotency != nil {
 		r.Use(idempotency.Middleware(app.Idempotency))
 	}
-	var firebaseVerifier auth.FirebaseVerifier
-	if cfg.FirebaseAuthEnabled {
-		if cfg.FirebaseProjectID == "" {
-			slog.Warn("firebase auth enabled but FIREBASE_PROJECT_ID is empty")
-		} else {
-			firebaseVerifier = auth.NewFirebaseTokenVerifier(
-				cfg.FirebaseProjectID,
-				auth.FirebaseVerifierOptionsForProject(cfg.FirebaseCertsURL),
-			)
-			slog.Info("firebase auth verifier initialized", "project_id", cfg.FirebaseProjectID)
-		}
-	}
-
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
 	// SLO metrics (void_outbox_lag_seconds, void_fiscal_success_ratio,
 	// void_capture_success_ratio) polled from Spanner into the default
@@ -204,45 +191,35 @@ func main() {
 		})
 	})
 	pulseroutes.RegisterRoutes(r, pulseroutes.Deps{
-		Handlers:            app.PulseHandlers,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Handlers:        app.PulseHandlers,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
-		Service:             app.RetailerService,
-		PaymentService:      app.PaymentService,
-		PromotionService:    app.PromotionService,
-		OrderService:        app.OrderService,
-		JWTSecret:           cfg.JWTSecret,
-		JWTIssuer:           cfg.JWTIssuer,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
-		Spanner:             app.Spanner,
+		Service:          app.RetailerService,
+		PaymentService:   app.PaymentService,
+		PromotionService: app.PromotionService,
+		OrderService:     app.OrderService,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		AllowAuthBypass:  cfg.AllowAuthBypass,
+		Spanner:          app.Spanner,
 	})
 	driverroutes.RegisterRoutes(r, driverroutes.Deps{
-		Service:             app.DriverService,
-		WarehouseSvc:        app.WarehouseService,
-		OrderService:        app.OrderService,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Service:         app.DriverService,
+		WarehouseSvc:    app.WarehouseService,
+		OrderService:    app.OrderService,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	factoryroutes.RegisterRoutes(r, factoryroutes.Deps{
-		Service:             app.FactoryService,
-		JWTSecret:           cfg.JWTSecret,
-		JWTIssuer:           cfg.JWTIssuer,
-		Spanner:             app.Spanner,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
+		Service:   app.FactoryService,
+		JWTSecret: cfg.JWTSecret,
+		JWTIssuer: cfg.JWTIssuer,
+		Spanner:   app.Spanner,
 	})
 	payloadroutes.RegisterRoutes(r, payloadroutes.Deps{
-		Service:             app.PayloadService,
-		OrderService:        app.OrderService,
-		JWTSecret:           cfg.JWTSecret,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
+		Service:      app.PayloadService,
+		OrderService: app.OrderService,
+		JWTSecret:    cfg.JWTSecret,
 	})
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
 		Service:        app.WarehouseService,
@@ -251,16 +228,12 @@ func main() {
 		WMSHandler: &stocklots.Handler{
 			Spanner: app.Spanner,
 		},
-		JWTSecret:           cfg.JWTSecret,
-		JWTIssuer:           cfg.JWTIssuer,
-		Spanner:             app.Spanner,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
+		JWTSecret: cfg.JWTSecret,
+		JWTIssuer: cfg.JWTIssuer,
+		Spanner:   app.Spanner,
 	})
 	returnsDeps := returnsroutes.Deps{
-		Service:             app.ReturnsService,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
+		Service: app.ReturnsService,
 	}
 	returnsroutes.RegisterRoutes(r, returnsDeps)
 	returnsroutes.RegisterDriverRoutes(r, returnsDeps)
@@ -275,7 +248,6 @@ func main() {
 		},
 		OrderService:      app.OrderService,
 		PayloadService:    app.PayloadService,
-		NotificationInbox: app.NotificationInbox,
 		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
 		ExceptionResolve: supplier.ExceptionResolveDeps{
 			CashRecon:  app.CashReconService,
@@ -289,43 +261,33 @@ func main() {
 		OrgOIDC:      app.OrgOIDC,
 	})
 	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{
-		Spanner:             app.Spanner,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Spanner:         app.Spanner,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	countrycfg.RegisterRoutes(r, countrycfg.Deps{
-		Spanner:             app.Spanner,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Spanner:         app.Spanner,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	controltowerroutes.RegisterRoutes(r, controltowerroutes.Deps{
-		Handlers:            app.ControlTowerHandlers,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Handlers:        app.ControlTowerHandlers,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
 		Service:   app.PromotionService,
 		JWTSecret: cfg.JWTSecret,
 	})
 	paymentroutes.RegisterRoutes(r, paymentroutes.Deps{
-		Service:             app.PaymentService,
-		JWTSecret:           cfg.JWTSecret,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Service:         app.PaymentService,
+		JWTSecret:       cfg.JWTSecret,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	webhookroutes.RegisterRoutes(r, webhookroutes.Deps{Service: app.PaymentService})
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
-		Service:             app.OrderService,
-		ClaimsService:       app.ClaimsService,
-		TaxService:          app.TaxService,
-		ComplianceHandler:   compliance.NewHandler(app.ComplianceService),
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Service:           app.OrderService,
+		ClaimsService:     app.ClaimsService,
+		TaxService:        app.TaxService,
+		ComplianceHandler: compliance.NewHandler(app.ComplianceService),
+		AllowAuthBypass:   cfg.AllowAuthBypass,
 	})
 	creditroutes.RegisterRoutes(r, creditroutes.Deps{
 		Service:       app.CreditService,
@@ -337,7 +299,7 @@ func main() {
 	if app.ForecastAccuracy != nil || app.ForecastRunner != nil || app.Spanner != nil {
 		auth.ProtectMutations(r, auth.MutationGuardConfig{}, func(gr chi.Router) {
 			if app.ForecastAccuracy != nil {
-				gr.With(auth.RequireRole(auth.RoleAdmin)).Post(
+				gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).Post(
 					"/v1/admin/planning/accuracy/run-once",
 					app.ForecastAccuracy.HandleRunAccuracyOnce,
 				)
@@ -358,33 +320,24 @@ func main() {
 		})
 	}
 	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
-		Handlers:            app.CashReconHandlers,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Handlers:        app.CashReconHandlers,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	creditnoteroutes.RegisterRoutes(r, creditnoteroutes.Deps{
-		Handlers:            app.CreditNoteHandlers,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Handlers:        app.CreditNoteHandlers,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
-		Service:             app.OrderService,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Service: app.OrderService,
 	})
 	telemetryroutes.RegisterRoutes(r, telemetryroutes.Deps{
-		TelemetryHub:        app.TelemetryHub,
-		RetailerHub:         app.RetailerHub,
-		LastLocations:       app.DriverLocations,
-		DeliveryTokens:      app.OrderService,
-		ReturnApproach:      app.ReturnsService,
-		SupplierID:          app.Supplier.SupplierID,
-		Log:                 slog.Default(),
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
+		TelemetryHub:   app.TelemetryHub,
+		RetailerHub:    app.RetailerHub,
+		LastLocations:  app.DriverLocations,
+		DeliveryTokens: app.OrderService,
+		ReturnApproach: app.ReturnsService,
+		SupplierID:     app.Supplier.SupplierID,
+		Log:            slog.Default(),
 		// P1-10: throttled copy of driver location onto the outbox/Kafka bus so the
 		// notification dispatcher + twin consumers are live. Full fidelity stays on
 		// WS/Redis; only the bus copy is throttled.
@@ -415,17 +368,13 @@ func main() {
 	})
 
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{
-		Service:             app.CatalogService,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
+		Service:         app.CatalogService,
+		AllowAuthBypass: cfg.AllowAuthBypass,
 	})
 	globalproductsroutes.RegisterRoutes(r, globalproductsroutes.Deps{
-		Service:             app.GlobalProductsService,
-		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
-		FirebaseVerifier:    firebaseVerifier,
-		AllowAuthBypass:     cfg.AllowAuthBypass,
-		StepUp:              mfa.RequireStepUp(app.MFAService),
+		Service:         app.GlobalProductsService,
+		AllowAuthBypass: cfg.AllowAuthBypass,
+		StepUp:          mfa.RequireStepUp(app.MFAService),
 	})
 	if app.PartnerHandlers != nil && app.PartnerKeys != nil {
 		partner.RegisterPartnerRoutesOpts(r, partner.AuthOptions{
@@ -445,7 +394,7 @@ func main() {
 	if app.BillingInvoiceWorker != nil {
 		billing.RegisterRoutes(r, &billing.Handlers{Worker: app.BillingInvoiceWorker}, mfa.RequireStepUp(app.MFAService))
 	}
-	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
+	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret,
 		app.PlatformService,
 		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub, app.PlatformAdminHub,
 		ws.RegisterConfig{
@@ -462,10 +411,8 @@ func main() {
 			},
 		},
 	)
-	// Role-row *routes packages each mount /v1/user/notifications with role-specific
-	// middleware; chi keeps only the last registration. Mount once here so every
-	// authenticated role (supplier cookie, retailer/driver Bearer) resolves via
-	// RecipientIDFromClaims after Kafka inbox persistence.
+	// Live inbox for every authenticated role. Role-row packages must not remount
+	// this path (chi last-wins). Fail-closed when NotificationInbox.Service is nil.
 	if app.NotificationInbox != nil {
 		inbox := app.NotificationInbox
 		r.Get("/v1/user/notifications", inbox.HandleList)

@@ -7,12 +7,17 @@ struct SectionsView: View {
     @State private var selectedId: String?
     @State private var skuText = ""
     @State private var banner: String?
+    @State private var saveError: String?
     @State private var busy = false
     private let api = APIClient.shared
 
     var body: some View {
         List {
-            if let banner { Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) } }
+            if let saveError {
+                Section { Text(saveError).font(.caption).foregroundStyle(AppTheme.destructive) }
+            } else if let banner {
+                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            }
             Section("New section") {
                 TextField("retailer_desktop.pos.text.name", text: $name)
                 TextField("retailer_desktop.sections.text.aisle_tag", text: $aisle)
@@ -61,6 +66,7 @@ struct SectionsView: View {
         defer { busy = false }
         do {
             _ = try await api.createSection(name: name, aisleTag: aisle.isEmpty ? nil : aisle)
+            saveError = nil
             banner = "Created"
             await refresh()
         } catch {
@@ -75,9 +81,10 @@ struct SectionsView: View {
         do {
             let skus = skuText.split { $0 == "," || $0.isWhitespace }.map(String.init).filter { !$0.isEmpty }
             _ = try await api.putSectionSkus(sectionId: selectedId, skus: skus)
+            saveError = nil
             banner = "SKUs saved"
         } catch {
-            banner = error.localizedDescription
+            saveError = "section_skus_failed"
         }
     }
 }

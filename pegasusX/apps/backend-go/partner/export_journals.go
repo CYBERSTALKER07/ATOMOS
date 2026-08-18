@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"google.golang.org/api/iterator"
 )
 
@@ -189,7 +190,7 @@ func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantI
 			"credit_account": credit,
 			"amount_minor":   amt,
 			"vat_minor":      int64(0),
-			"currency":       currency,
+			"currency":       journalCurrency(ctx, supplierID, currency),
 			"supplier_id":    supplierID,
 			"retailer_id":    retailerID,
 			"invoice_id":     invID,
@@ -203,30 +204,34 @@ func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantI
 	return out, nil
 }
 
+func creditNotesJournalQuery(tenantType string) (string, error) {
+	const selectSQL = `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
+			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, ''), cn.CreatedAt
+			FROM CreditNotes cn
+			JOIN Orders o ON o.OrderId = cn.OrderId`
+	switch tenantType {
+	case TenantSupplier:
+		return selectSQL + `
+			WHERE o.SupplierId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
+			ORDER BY cn.CreatedAt DESC LIMIT @lim`, nil
+	case TenantRetailer:
+		return selectSQL + `
+			WHERE o.RetailerId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
+			ORDER BY cn.CreatedAt DESC LIMIT @lim`, nil
+	default:
+		return "", fmt.Errorf("invalid_tenant")
+	}
+}
+
 func (w *ExportWorker) exportJournalsCreditNotes(ctx context.Context, tenantType, tenantID string, from, to time.Time, lim int, coa CoaMap) ([]map[string]any, error) {
 	if lim <= 0 {
 		return nil, nil
 	}
-	var sql string
-	params := map[string]any{"tid": tenantID, "from": from, "to": to, "lim": int64(lim)}
-	switch tenantType {
-	case TenantSupplier:
-		sql = `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
-			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, 'UZS'), cn.CreatedAt
-			FROM CreditNotes cn
-			JOIN Orders o ON o.OrderId = cn.OrderId
-			WHERE o.SupplierId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
-			ORDER BY cn.CreatedAt DESC LIMIT @lim`
-	case TenantRetailer:
-		sql = `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
-			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, 'UZS'), cn.CreatedAt
-			FROM CreditNotes cn
-			JOIN Orders o ON o.OrderId = cn.OrderId
-			WHERE o.RetailerId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
-			ORDER BY cn.CreatedAt DESC LIMIT @lim`
-	default:
-		return nil, fmt.Errorf("invalid_tenant")
+	sql, err := creditNotesJournalQuery(tenantType)
+	if err != nil {
+		return nil, err
 	}
+	params := map[string]any{"tid": tenantID, "from": from, "to": to, "lim": int64(lim)}
 	iter := w.spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	out := make([]map[string]any, 0)
@@ -254,7 +259,7 @@ func (w *ExportWorker) exportJournalsCreditNotes(ctx context.Context, tenantType
 			"credit_account": credit,
 			"amount_minor":   absMinor(gross),
 			"vat_minor":      absMinor(vat),
-			"currency":       currency,
+			"currency":       journalCurrency(ctx, supplierID, currency),
 			"supplier_id":    supplierID,
 			"retailer_id":    retailerID,
 			"invoice_id":     "",
@@ -327,7 +332,7 @@ func (w *ExportWorker) exportJournalsPayment(ctx context.Context, tenantType, te
 			"credit_account": credit,
 			"amount_minor":   amt,
 			"vat_minor":      int64(0),
-			"currency":       currency,
+			"currency":       journalCurrency(ctx, supplierID, currency),
 			"supplier_id":    supplierID,
 			"retailer_id":    retailerID,
 			"invoice_id":     "",
@@ -339,4 +344,14 @@ func (w *ExportWorker) exportJournalsPayment(ctx context.Context, tenantType, te
 		}))
 	}
 	return out, nil
+}
+
+// journalCurrency is empty-currency law for partner journals: stored ISO, else
+// the shipped pack. Planned/unknown packs stay empty — never invent UZS.
+func journalCurrency(ctx context.Context, supplierID, stored string) string {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, stored)
+	if err != nil {
+		return strings.ToUpper(strings.TrimSpace(stored))
+	}
+	return c
 }

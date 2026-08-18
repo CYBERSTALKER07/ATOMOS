@@ -10,15 +10,18 @@ export default function NetworkPulsePanel({ className }: { className?: string })
   const t = usePortalT();
   const [events, setEvents] = useState<PulseEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await supplierFetch("/v1/supplier/pulse");
+      if (!response.ok) throw new Error("pulse_failed");
       const data = (await response.json()) as { events: PulseEvent[] };
       setEvents(data.events ?? []);
     } catch {
-      setEvents([]);
+      setError("pulse_failed");
     } finally {
       setLoading(false);
     }
@@ -36,7 +39,7 @@ export default function NetworkPulsePanel({ className }: { className?: string })
           Refresh
         </button>
       </div>
-      <PulseTimeline events={events} loading={loading} />
+      <PulseTimeline events={events} loading={loading} error={error} />
     </div>
   );
 }

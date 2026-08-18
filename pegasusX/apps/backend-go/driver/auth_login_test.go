@@ -12,6 +12,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func TestHandleDriverLogin_IDTokenWithoutVerifierUnavailable(t *testing.T) {
+	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/driver/login",
+		strings.NewReader(`{"id_token":"tok"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleDriverLogin(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandleDriverLogin_NoDefault998(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
 	t.Setenv("DRIVER_DEMO_PHONE", "")

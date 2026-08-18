@@ -3,6 +3,8 @@ package globalproducts
 import (
 	"context"
 	"testing"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestMatchAndLink_ExactGTIN(t *testing.T) {
@@ -110,5 +112,72 @@ func TestEnabledFlag(t *testing.T) {
 	t.Setenv("GLOBAL_PRODUCTS_ENABLED", "true")
 	if !Enabled() {
 		t.Fatal("want enabled")
+	}
+}
+
+func TestLinkOffer_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("GLOBAL_PRODUCTS_ENABLED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+	res, err := svc.MatchAndLink(context.Background(), ProductInput{
+		ProductID: "p-ccy", SupplierID: "s-ccy", Name: "Water 1.5L", Brand: "Aqua",
+		Barcode: "4006381333931", PriceMinor: 1000, UnitsPerPack: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off, err := repo.GetOffer(context.Background(), "s-ccy", "p-ccy")
+	if err != nil || off == nil {
+		t.Fatalf("offer err=%v off=%v", err, off)
+	}
+	if off.Currency != "UZS" {
+		t.Fatalf("currency=%q want UZS from pack (created=%v)", off.Currency, res.Created)
+	}
+}
+
+func TestLinkOffer_EmptyCurrencyPlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("GLOBAL_PRODUCTS_ENABLED", "true")
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU", SupplierID: "s-eu"})
+	_, err := svc.MatchAndLink(ctx, ProductInput{
+		ProductID: "p-eu", SupplierID: "s-eu", Name: "Eau 1.5L", Brand: "Aqua",
+		Barcode: "4006381333932", PriceMinor: 1000, UnitsPerPack: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off, err := repo.GetOffer(ctx, "s-eu", "p-eu")
+	if err != nil || off == nil {
+		t.Fatalf("offer err=%v off=%v", err, off)
+	}
+	if off.Currency != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", off.Currency)
+	}
+}
+
+func TestResolveMatch_AcceptUsesPackCurrency(t *testing.T) {
+	t.Setenv("GLOBAL_PRODUCTS_ENABLED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	repo := NewMemoryRepository()
+	svc := NewService(repo, nil)
+	_ = repo.UpsertGlobal(context.Background(), GlobalProduct{
+		GlobalProductID: "gp-acc", Brand: "Acme", Name: "Widget", PackQty: 1, BaseUomID: UomEachID,
+		NormalizedKey: BuildNormalizedKey("Acme", "Widget", 1, "EACH"),
+	})
+	_ = repo.EnqueueMatch(context.Background(), MatchQueueItem{
+		QueueID: "q-acc", SupplierID: "s-acc", ProductID: "p-acc",
+		CandidateGlobalProductID: "gp-acc", Status: StatusPending,
+	})
+	if err := svc.ResolveMatch(context.Background(), "q-acc", "ACCEPT", "s-acc", ""); err != nil {
+		t.Fatal(err)
+	}
+	off, err := repo.GetOffer(context.Background(), "s-acc", "p-acc")
+	if err != nil || off == nil {
+		t.Fatalf("offer err=%v off=%v", err, off)
+	}
+	if off.Currency != "UZS" {
+		t.Fatalf("accept currency=%q want UZS from pack", off.Currency)
 	}
 }

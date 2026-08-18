@@ -1,10 +1,12 @@
 package notifications
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 )
 
@@ -218,7 +220,7 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 	case events.EventRetailerPriceOverride:
 		var e events.RetailerPriceOverrideEvent
 		if json.Unmarshal(payload, &e) == nil && e.RetailerID != "" {
-			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, "UZS", strings.EqualFold(e.Action, "CREATED"))
+			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, priceOverrideCurrency(e.SupplierID, ""), strings.EqualFold(e.Action, "CREATED"))
 		}
 	case events.EventPreOrderDateProposed:
 		var e events.OrderEvent
@@ -379,4 +381,14 @@ func humanizeEventType(eventType string) string {
 		parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
 	}
 	return strings.Join(parts, " ")
+}
+
+// priceOverrideCurrency is empty-currency law for retailer price-override inbox
+// copy: shipped pack ISO. Planned/unknown packs stay empty — never invent UZS.
+func priceOverrideCurrency(supplierID, stored string) string {
+	c, err := auth.CoalesceCurrency(context.Background(), supplierID, stored)
+	if err != nil {
+		return strings.ToUpper(strings.TrimSpace(stored))
+	}
+	return c
 }

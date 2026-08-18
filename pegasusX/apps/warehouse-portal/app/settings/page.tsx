@@ -9,25 +9,17 @@ import { useToast } from '@/components/Toast';
 import { LocationPicker, resolveLocationValue, type LocationValue } from '@/components/LocationPicker';
 import { hasValidCoordinates } from '@/lib/geocode';
 import { PortalField, PortalInput, PortalSection } from '@/components/portal';
-import type { DeliveryFeeRules, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';
+import type { DeliveryFeeRules, WarehouseOpsLocationResponse, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';
 import { warehouseOpsLocationKey, warehouseOpsSettingsKey } from '@pegasusx/api-client';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { OpsSettingsForm } from '@/components/settings/OpsSettingsForm';
 import { ReturnPolicySettingsSection } from '@/components/settings/ReturnPolicySettingsSection';
-
-type WarehouseLocation = {
-  warehouse_id: string;
-  name: string;
-  address?: string;
-  place_id?: string;
-  lat: number;
-  lng: number;
-  gln?: string;
-};
+import { useWarehousePaymentCatalog } from '@/lib/use-payment-catalog';
 
 export default function WarehouseSettingsPage() {
   const t = usePortalT();
   const { toast } = useToast();
+  const { currency: packCurrency, country: catalogCountry } = useWarehousePaymentCatalog();
   const [settings, setSettings] = useState<WarehouseOpsSettings | null>(null);
   const [policy, setPolicy] = useState<'REJECT' | 'ACCEPT_BACKORDER'>('REJECT');
   const [showStockCounts, setShowStockCounts] = useState(false);
@@ -36,7 +28,8 @@ export default function WarehouseSettingsPage() {
   const [orderLineMin, setOrderLineMin] = useState('');
   const [orderLineMax, setOrderLineMax] = useState('');
   const [feeBaseMinor, setFeeBaseMinor] = useState('0');
-  const [feeCurrency, setFeeCurrency] = useState('UZS');
+  const [feeCurrency, setFeeCurrency] = useState('');
+  const [packCountry, setPackCountry] = useState('');
   const [feeTierKm, setFeeTierKm] = useState('5');
   const [feeTierMinor, setFeeTierMinor] = useState('100000');
   const [scheduleJSON, setScheduleJSON] = useState('{\n  "is_24h": true\n}');
@@ -64,7 +57,7 @@ export default function WarehouseSettingsPage() {
       const rules = data.delivery_fee_rules;
       if (rules) {
         setFeeBaseMinor(String(rules.base_fee_minor ?? 0));
-        setFeeCurrency(rules.currency || 'UZS');
+        setFeeCurrency(packCurrency || rules.currency || '');
         const openTier = rules.tiers?.find((t) => t.max_km == null);
         const nearTier = rules.tiers?.find((t) => t.max_km != null);
         if (nearTier?.max_km != null) setFeeTierKm(String(nearTier.max_km));
@@ -84,7 +77,7 @@ export default function WarehouseSettingsPage() {
     }
     const locRes = await apiFetch('/v1/warehouse/ops/location');
     if (locRes.ok) {
-      const loc = (await locRes.json()) as WarehouseLocation;
+      const loc = (await locRes.json()) as WarehouseOpsLocationResponse;
       setLocation({
         address: loc.address ?? '',
         lat: String(loc.lat ?? 0),
@@ -92,12 +85,17 @@ export default function WarehouseSettingsPage() {
         place_id: loc.place_id,
       });
       setGln(loc.gln ?? '');
+      setPackCountry(loc.pack_country_code || loc.country_code || catalogCountry);
     }
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (packCurrency) setFeeCurrency(packCurrency);
+  }, [packCurrency]);
 
   async function save() {
     setSaving(true);
@@ -129,7 +127,7 @@ export default function WarehouseSettingsPage() {
         return;
       }
       const deliveryFeeRules: DeliveryFeeRules = {
-        currency: feeCurrency.trim() || 'UZS',
+        currency: packCurrency || feeCurrency.trim(),
         base_fee_minor: Number.parseInt(feeBaseMinor, 10) || 0,
         tiers: [
           { max_km: Number.parseFloat(feeTierKm), fee_minor: 0 },
@@ -233,6 +231,9 @@ export default function WarehouseSettingsPage() {
       >
         <div className="max-w-2xl space-y-6">
           <PortalSection icon="warehouse" title={t("warehouse_portal.settings.text.depot_location")} description={t("warehouse_portal.residual.text.delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del")}>
+            <PortalField label="Pack country">
+              <PortalInput value={packCountry || catalogCountry} readOnly />
+            </PortalField>
             <LocationPicker value={location} onChange={setLocation} label={t("warehouse_portal.residual.text.warehouse_address")} />
             <PortalField label={t("warehouse_portal.residual.text.gln_13_digits")}>
               <PortalInput
@@ -262,8 +263,7 @@ export default function WarehouseSettingsPage() {
             setOrderLineMax={setOrderLineMax}
             feeBaseMinor={feeBaseMinor}
             setFeeBaseMinor={setFeeBaseMinor}
-            feeCurrency={feeCurrency}
-            setFeeCurrency={setFeeCurrency}
+            feeCurrency={packCurrency || feeCurrency}
             feeTierKm={feeTierKm}
             setFeeTierKm={setFeeTierKm}
             feeTierMinor={feeTierMinor}

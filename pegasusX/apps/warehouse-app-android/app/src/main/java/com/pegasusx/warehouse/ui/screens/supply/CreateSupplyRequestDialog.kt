@@ -41,6 +41,7 @@ fun CreateSupplyRequestDialog(
     onCreate: (SupplyRequestFormResult) -> Unit,
 ) {
     var factoryId by remember { mutableStateOf("") }
+    var factoryLocked by remember { mutableStateOf(false) }
     var priority by remember { mutableStateOf("NORMAL") }
     var notes by remember { mutableStateOf("") }
     var useForecast by remember { mutableStateOf(true) }
@@ -62,6 +63,15 @@ fun CreateSupplyRequestDialog(
         }
     }
 
+    LaunchedEffect(Unit) {
+        runCatching { api.getOpsSupplyFactory() }.getOrNull()?.body()?.factoryId
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                factoryId = it
+                factoryLocked = true
+            }
+    }
+
     LaunchedEffect(useForecast) {
         if (useForecast) loadForecast()
     }
@@ -79,8 +89,14 @@ fun CreateSupplyRequestDialog(
             ) {
                 OutlinedTextField(
                     value = factoryId,
-                    onValueChange = { factoryId = it },
+                    onValueChange = { if (!factoryLocked) factoryId = it },
+                    readOnly = factoryLocked,
                     label = { Text("Factory ID") },
+                    supportingText = if (factoryLocked) {
+                        { Text("Nearest factory from the engine.") }
+                    } else {
+                        null
+                    },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )

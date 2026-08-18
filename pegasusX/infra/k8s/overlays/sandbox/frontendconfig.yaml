@@ -1,0 +1,15 @@
+# Keep HTTPS redirect OFF until ManagedCertificate is Active (needs DNS).
+# Interim TLS uses the self-signed secret pegasusx-ssmr-api-tls (curl -k).
+# Flip enabled:true after:
+#   kubectl -n pegasusx-ssmr get mcrt pegasusx-ssmr-api-cert  # Status=Active
+apiVersion: networking.gke.io/v1beta1
+kind: FrontendConfig
+metadata:
+  name: pegasusx-ssmr-frontend
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: ssmr
+spec:
+  redirectToHttps:
+    enabled: false
+    responseCodeName: MOVED_PERMANENTLY_DEFAULT

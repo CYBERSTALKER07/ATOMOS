@@ -196,10 +196,7 @@ func BuildPRICAT(m PricatMessage) string {
 		if ln.Name != "" {
 			segs = append(segs, Segment{Tag: "IMD", Elements: []string{"F", "", ln.Name}})
 		}
-		cur := ln.Currency
-		if cur == "" {
-			cur = "UZS"
-		}
+		cur := ediCurrency(m.SellerRef, ln.Currency)
 		segs = append(segs, Segment{Tag: "PRI", Elements: []string{fmt.Sprintf("AAA:%d:%s", ln.PriceMinor, cur)}})
 	}
 	segs = append(segs,
@@ -612,10 +609,7 @@ func ParseREMADV(raw string) (RemadvMessage, error) {
 
 // BuildREMADV encodes a REMADV message.
 func BuildREMADV(m RemadvMessage) string {
-	cur := m.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
+	cur := ediCurrency(m.SellerRef, m.Currency)
 	segs := []Segment{
 		{Tag: "UNB", Elements: []string{"UNOC:3", "PEGASUS", "PARTNER", "00000000:0000", m.ExternalDocID}},
 		{Tag: "UNH", Elements: []string{"1", "REMADV:D:96A:UN"}},

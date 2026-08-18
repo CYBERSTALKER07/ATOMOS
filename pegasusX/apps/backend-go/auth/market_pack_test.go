@@ -22,6 +22,10 @@ func TestResolveMarketPack_UZShipped(t *testing.T) {
 	if p.PayoutRail != "bank-file" {
 		t.Fatalf("payout_rail=%s", p.PayoutRail)
 	}
+	lat, lng, ok := PackMapCenter(p)
+	if !ok || lat != 41.2995 || lng != 69.2401 {
+		t.Fatalf("uz map center lat=%v lng=%v ok=%v", lat, lng, ok)
+	}
 }
 
 func TestResolveMarketPack_PlannedNotShipped(t *testing.T) {
@@ -34,6 +38,16 @@ func TestResolveMarketPack_PlannedNotShipped(t *testing.T) {
 	}
 	if _, ok := ResolveMarketPack("XX"); ok {
 		t.Fatal("unknown must be false")
+	}
+}
+
+func TestPackMapCenter_EmptyAndPlannedDoNotInvent(t *testing.T) {
+	if _, _, ok := PackMapCenter(MarketPack{}); ok {
+		t.Fatal("empty pack must not invent a map center")
+	}
+	p, _ := ResolveMarketPack("CA")
+	if _, _, ok := PackMapCenter(p); ok {
+		t.Fatal("planned CA must not invent Tashkent")
 	}
 }
 
@@ -289,4 +303,45 @@ func TestHandleListMarketPacks(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("got %d", rr.Code)
 	}
+	var body struct {
+		Items []MarketPack `json:"items"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	byCode := map[string]MarketPack{}
+	for _, p := range body.Items {
+		byCode[p.Code] = p
+	}
+	for _, code := range []string{"CA", "AU", "GB", "PK"} {
+		p, ok := byCode[code]
+		if !ok || p.Status != MarketPackPlanned {
+			t.Fatalf("%s missing or not planned: %+v", code, p)
+		}
+	}
+	if byCode["UZ"].Status != MarketPackShipped {
+		t.Fatalf("UZ=%+v", byCode["UZ"])
+	}
+	if _, _, ok := PackMapCenter(byCode["UZ"]); !ok {
+		t.Fatal("shipped UZ must advertise map center")
+	}
+	if _, _, ok := PackMapCenter(byCode["CA"]); ok {
+		t.Fatal("planned CA must not invent a map center")
+	}
+	if !containsString(byCode["EU"].PSPAdapters, "ADYEN") || !containsString(byCode["US"].PSPAdapters, "ADYEN") {
+		t.Fatal("EU/US packs must list ADYEN")
+	}
+	if byCode["CA"].PayoutRail != "eft-file" || byCode["AU"].PayoutRail != "becs-file" ||
+		byCode["GB"].PayoutRail != "bacs-file" || byCode["PK"].PayoutRail != "bank-file" {
+		t.Fatalf("payout rails CA=%s AU=%s GB=%s PK=%s", byCode["CA"].PayoutRail, byCode["AU"].PayoutRail, byCode["GB"].PayoutRail, byCode["PK"].PayoutRail)
+	}
+}
+
+func containsString(items []string, want string) bool {
+	for _, item := range items {
+		if item == want {
+			return true
+		}
+	}
+	return false
 }

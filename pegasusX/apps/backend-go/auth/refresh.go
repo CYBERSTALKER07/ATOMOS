@@ -30,7 +30,12 @@ func HandleTokenRefresh(secret, issuer string) http.HandlerFunc {
 			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_token"})
 			return
 		}
-		if tokenRevoked(r.Context(), claims) {
+		revoked, storeErr := checkTokenRevoked(r.Context(), claims)
+		if storeErr != nil {
+			writeRefreshJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "revocation_store_unavailable"})
+			return
+		}
+		if revoked {
 			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "token_revoked"})
 			return
 		}
@@ -38,8 +43,17 @@ func HandleTokenRefresh(secret, issuer string) http.HandlerFunc {
 			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_token_claims"})
 			return
 		}
+		if IsWSTicket(claims) {
+			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "ws_ticket_not_refreshable"})
+			return
+		}
+		if IsPendingOrgSelect(claims) {
+			writeRefreshJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "code": "ORG_SELECT_REQUIRED"})
+			return
+		}
 		// New jti on every refresh so the previous token can be denylisted independently.
 		claims.JTI = ""
+		claims.TokenUse = TokenUseFull
 		next, err := Issue(claims, IssueOptions{
 			Secret: secret,
 			Issuer: issuer,

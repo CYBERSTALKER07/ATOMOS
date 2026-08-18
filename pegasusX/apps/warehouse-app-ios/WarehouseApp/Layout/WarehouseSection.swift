@@ -29,6 +29,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case claims = "Claims"
     case rescues = "Rescues"
     case paymentConfig = "Payment config"
+    case coverage = "Coverage and supply"
     case opsSettings = "Ops settings"
     case returnPolicy = "Returns & reverse SLA"
     case notifications = "Notifications"
@@ -69,6 +70,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .claims: "doc.text"
         case .rescues: "wrench.and.screwdriver"
         case .paymentConfig: "creditcard"
+        case .coverage: "mappin.and.ellipse"
         case .opsSettings: "gearshape"
         case .returnPolicy: "arrow.uturn.backward.circle"
         case .notifications: "bell"
@@ -79,13 +81,13 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Primary iPhone tabs (compact shell).
+    /// Primary iPhone tabs: Home · Dispatch · Floor · Plan · More.
     static var compactTabs: [WarehouseSection] {
-        [.dashboard, .orders, .dispatch]
+        [.dashboard, .dispatch, .inventory, .demandForecast]
     }
 
     static var primarySections: [WarehouseSection] {
-        compactTabs + [.drivers, .vehicles, .inventory, .analytics, .treasury, .staff]
+        compactTabs
     }
 
     static var fulfillmentSections: [WarehouseSection] {
@@ -93,11 +95,11 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     }
 
     static var inventorySections: [WarehouseSection] {
-        [.products, .supplyRequests, .preorders, .stockCommitments, .tomorrowBoard, .replenishment, .demandForecast, .opsSettings, .returnPolicy]
+        [.products, .supplyRequests, .preorders, .stockCommitments, .tomorrowBoard, .replenishment, .demandForecast, .coverage, .opsSettings, .returnPolicy]
     }
 
     static var operationsSections: [WarehouseSection] {
-        [.retailers, .returns, .coldChain, .laborCapacity, .exceptions, .controlTower, .claims, .rescues, .paymentConfig, .notifications]
+        [.orders, .drivers, .vehicles, .analytics, .treasury, .staff, .retailers, .returns, .coldChain, .laborCapacity, .exceptions, .controlTower, .claims, .rescues, .paymentConfig, .notifications]
     }
 
     static var portalSections: [WarehouseSection] {
@@ -121,7 +123,8 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
 
 enum WarehouseCompactTab: Hashable {
     case dashboard
-    case orders
     case dispatch
+    case floor
+    case plan
     case more
 }

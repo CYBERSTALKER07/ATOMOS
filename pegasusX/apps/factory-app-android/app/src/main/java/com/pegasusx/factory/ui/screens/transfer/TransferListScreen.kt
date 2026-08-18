@@ -35,11 +35,18 @@ fun TransferListScreen(
     onTransferClick: (String) -> Unit,
     onCreateTransfer: () -> Unit,
     onBack: () -> Unit,
+    initialState: String? = null,
 ) {
     var transfers by remember { mutableStateOf<List<Transfer>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedFilter by remember { mutableStateOf("ALL") }
+    var selectedFilter by remember { mutableStateOf(initialState?.takeIf { it.isNotBlank() } ?: "ALL") }
+
+    LaunchedEffect(initialState) {
+        if (!initialState.isNullOrBlank()) {
+            selectedFilter = initialState
+        }
+    }
     val scope = rememberCoroutineScope()
 
     fun load(silent: Boolean = false) {

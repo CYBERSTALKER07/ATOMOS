@@ -79,7 +79,7 @@ fun OrdersList(
                     retailerName = order.retailerName,
                     orderId = order.orderId,
                     state = order.state,
-                    amountLabel = "${fmt.format(order.totalUzs)} UZS",
+                    amountLabel = "${fmt.format(order.totalUzs)} ${com.pegasus.design.sessionPackCurrency()}",
                     enabled = actingId != order.orderId,
                     canDelay = flags.canDelay,
                     canReject = flags.canReject,

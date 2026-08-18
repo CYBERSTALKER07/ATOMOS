@@ -61,6 +61,27 @@ func TestHandleOpsAnalyticsFallbackMarksBreakdownsUnavailable(t *testing.T) {
 	}
 }
 
+func TestHandleOpsAnalytics_EmptyServiceCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	svc := NewService(ServiceConfig{SupplierID: "sup-1"})
+	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/ops/analytics?period=7d&warehouse_id=wh-1", nil)
+	req = withWarehouseClaims(req, auth.Claims{
+		Subject: "ops-1", Role: auth.RoleWarehouseAdmin, HomeNodeID: "wh-1", SupplierID: "sup-1", MarketCode: "UZ",
+	})
+	rr := httptest.NewRecorder()
+	svc.HandleOpsAnalytics(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["currency"] != "UZS" {
+		t.Fatalf("currency=%v want pack UZS", body["currency"])
+	}
+}
+
 func TestHandleOpsFinancialsOmitsInventedGatewayBreakdown(t *testing.T) {
 	t.Parallel()
 	svc := NewService(ServiceConfig{SupplierID: "sup-1", Currency: "UZS"})

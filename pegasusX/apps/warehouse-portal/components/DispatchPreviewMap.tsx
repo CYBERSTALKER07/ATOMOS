@@ -6,8 +6,7 @@ import type { WarehouseDispatchProposedRoute } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-client';
 const ROUTE_COLORS = [
   '#1b6ef3',
   '#0f9d58',
@@ -82,8 +81,7 @@ export default function DispatchPreviewMap({ routes, className }: DispatchPrevie
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
+          ...mapInitialViewState(readCachedAuthSession()?.pack),
           zoom: 11,
         }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"

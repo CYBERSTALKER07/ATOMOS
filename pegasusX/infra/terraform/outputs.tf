@@ -114,6 +114,41 @@ output "click_webhook_secret_id" {
   value       = google_secret_manager_secret.click_webhook_secret.secret_id
 }
 
+output "fiscal_my_soliq_base_url_secret_id" {
+  description = "GSM id for MY_SOLIQ OFD base URL (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_base_url"].secret_id
+}
+
+output "fiscal_my_soliq_api_key_secret_id" {
+  description = "GSM id for MY_SOLIQ API key (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_api_key"].secret_id
+}
+
+output "fiscal_my_soliq_tin_secret_id" {
+  description = "GSM id for MY_SOLIQ TIN (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_tin"].secret_id
+}
+
+output "fiscal_my_soliq_signer_secret_id" {
+  description = "GSM id for MY_SOLIQ signer name (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_signer"].secret_id
+}
+
+output "fiscal_my_soliq_pkcs12_password_secret_id" {
+  description = "GSM id for E-IMZO PKCS#12 password (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_pkcs12_password"].secret_id
+}
+
+output "playmobile_login_secret_id" {
+  description = "GSM id for PlayMobile login (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["playmobile_login"].secret_id
+}
+
+output "playmobile_password_secret_id" {
+  description = "GSM id for PlayMobile password (LB-3 shell)."
+  value       = google_secret_manager_secret.fiscal_sms["playmobile_password"].secret_id
+}
+
 output "global_pay_service_id_secret_id" {
   description = "Secret Manager secret id for Global Pay service id."
   value       = google_secret_manager_secret.global_pay_service_id.secret_id

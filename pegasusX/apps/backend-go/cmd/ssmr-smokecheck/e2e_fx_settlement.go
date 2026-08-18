@@ -23,7 +23,7 @@ func runFxSettlementConvertE2E(
 ) error {
 	adminToken, err := auth.Issue(auth.Claims{
 		Subject:    "ssmr-fx-settlement-admin",
-		Role:       auth.RoleAdmin,
+		Role:       auth.RolePlatformAdmin,
 		SupplierID: supplierID,
 	}, auth.IssueOptions{
 		Secret: cfg.JWTSecret,
@@ -35,9 +35,10 @@ func runFxSettlementConvertE2E(
 		return nil
 	}
 
-	op := strings.ToUpper(strings.TrimSpace(cfg.SeedSupplierCurrency))
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
 	if op == "" {
-		op = "UZS"
+		fmt.Println("PX_E2E_FX_SETTLEMENT_CONVERT_SKIPPED")
+		return nil
 	}
 
 	// Ensure USD/op rate exists for conversion paths (identity alone is enough for rollup field).

@@ -13,6 +13,7 @@ import { CLAIM_SETTLEMENT_MODES } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { moneyCurrency } from "@pegasusx/api-client";
 
 const api = createSupplierApi();
 
@@ -152,7 +153,7 @@ export default function ClaimsQueuePage() {
               <span className="font-mono">{c.retailer_id}</span>
             </p>
             <p className="mt-1 text-sm text-[var(--color-md-outline)]">
-              Amount {c.amount_minor ?? 0} {c.currency ?? "UZS"} ·{" "}
+              Amount {c.amount_minor ?? 0} {moneyCurrency(c.currency)} ·{" "}
               {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}
             </p>
             {c.description ? <p className="mt-2">{c.description}</p> : null}

@@ -133,6 +133,7 @@ struct LoginView: View {
 
     private func storeAuth(_ auth: AuthResponse) {
         tokenStore.store(auth: auth)
+        Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
     }
 
     private func switchMode() {

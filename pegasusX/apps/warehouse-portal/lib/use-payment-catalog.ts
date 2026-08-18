@@ -1,0 +1,48 @@
+"use client";
+
+import { packCurrency, selectablePackPsps, useMarketPack } from "@pegasusx/api-client";
+import type { PSPListing } from "@pegasusx/types";
+import { useEffect, useState } from "react";
+import { createWarehouseApi } from "@/lib/api";
+import { readTokenFromCookie, warehouseApiBaseUrl } from "@/lib/auth";
+
+export function useWarehousePaymentCatalog() {
+  const token = readTokenFromCookie();
+  const { pack } = useMarketPack({ baseUrl: warehouseApiBaseUrl(), token });
+  const [catalog, setCatalog] = useState<PSPListing[]>([]);
+  const [currency, setCurrency] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void createWarehouseApi()
+      .getWarehouseOpsPaymentConfig()
+      .then((resp) => {
+        if (cancelled) return;
+        setCatalog(resp.catalog ?? []);
+        setCurrency(resp.currency_code || packCurrency(pack));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const fallback = (pack?.psp_adapters ?? []).map((code) => ({
+          code,
+          status: "live",
+          selectable: true,
+        }));
+        setCatalog(fallback);
+        setCurrency(packCurrency(pack));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pack?.code, pack?.currency_code]);
+
+  return {
+    pack,
+    catalog,
+    currency: currency || packCurrency(pack),
+    country: pack?.code || "",
+    gateways: selectablePackPsps(
+      catalog.length ? catalog : (pack?.psp_adapters ?? []).map((code) => ({ code, selectable: true })),
+    ),
+  };
+}

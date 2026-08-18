@@ -3,10 +3,8 @@ package com.pegasusx.warehouse.ui.screens.dashboard
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
@@ -15,8 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.pegasus.design.ORDER_STATUS_FUNNEL
+import com.pegasus.design.SourceChip
+import com.pegasus.design.StatusStack
+import com.pegasus.design.TRUCK_DUTY_STATUSES
 import com.pegasusx.warehouse.data.model.DashboardData
-import com.pegasusx.warehouse.data.model.FleetStatusEntry
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
@@ -27,7 +28,6 @@ import com.pegasus.design.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
-import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.navigation.WarehouseRoutes
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -50,15 +50,13 @@ private data class KpiCard(
 )
 
 private val kpiCards = listOf(
-    KpiCard("Active Orders", Icons.Default.ShoppingCart, WarehouseRoutes.ORDERS, value = { it.activeOrders.toString() }),
-    KpiCard("Completed Today", Icons.Default.CheckCircle, WarehouseRoutes.ORDERS, value = { it.completedToday.toString() }, highlight = { it.completedToday > 0 }),
     KpiCard("Pending Dispatch", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH, value = { it.pendingDispatch.toString() }, danger = { it.pendingDispatch > 5 }),
-    KpiCard("Today Revenue", Icons.Default.AttachMoney, WarehouseRoutes.TREASURY, value = { "${it.todayRevenue / 1000}K" }),
-    KpiCard("Drivers On Route", Icons.Default.DirectionsCar, WarehouseRoutes.DRIVERS, value = { it.driversOnRoute.toString() }),
-    KpiCard("Idle Drivers", Icons.Default.PersonOff, WarehouseRoutes.DRIVERS, value = { it.driversIdle.toString() }),
+    KpiCard("Active Orders", Icons.Default.ShoppingCart, WarehouseRoutes.ORDERS, value = { it.activeOrders.toString() }),
     KpiCard("Vehicles", Icons.Default.DirectionsCar, WarehouseRoutes.VEHICLES, value = { it.totalVehicles.toString() }),
     KpiCard("Low Stock", Icons.Default.Warning, WarehouseRoutes.INVENTORY, value = { it.lowStockCount.toString() }, danger = { it.lowStockCount > 0 }),
-    KpiCard("Staff", Icons.Default.People, WarehouseRoutes.STAFF, value = { it.totalStaff.toString() }),
+    KpiCard("Drivers", Icons.Default.People, WarehouseRoutes.DRIVERS, value = { it.totalDrivers.toString() }),
+    KpiCard("Completed Today", Icons.Default.CheckCircle, WarehouseRoutes.ORDERS, value = { if (it.completedTodayAvailable) it.completedToday.toString() else "unavailable" }),
+    KpiCard("Today Revenue", Icons.Default.AttachMoney, WarehouseRoutes.TREASURY, value = { if (it.todayRevenueAvailable) "${it.todayRevenue / 1000}K" else "unavailable" }),
     KpiCard("More", Icons.Default.Apps, WarehouseRoutes.MORE, value = { "…" }),
 )
 
@@ -181,25 +179,37 @@ fun DashboardScreen(
                         )
                     }
                 }
-                if (data.fleetStatus.isNotEmpty()) {
-                    FleetStatusBreakdown(data.fleetStatus)
+                StatusStack(
+                    counts = data.ordersByStatus,
+                    dictionary = ORDER_STATUS_FUNNEL,
+                    source = "live",
+                    onSelect = { key -> onNavigate(WarehouseRoutes.orders(key)) },
+                )
+                StatusStack(
+                    counts = data.truckDuty,
+                    dictionary = TRUCK_DUTY_STATUSES,
+                    source = "live",
+                )
+                if (data.holdReasons.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                        WarehouseSectionTitle("Hold reasons")
+                        data.holdReasons.forEach { row ->
+                            Text("${row.code} · ${row.count}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FleetStatusBreakdown(entries: List<FleetStatusEntry>) {
-    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(PegasusSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
-        ) {
-            WarehouseSectionTitle("Fleet status tracking")
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                items(entries) { entry ->
-                    WarehouseStatusChip(status = "${entry.status}: ${entry.count}")
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    SourceChip(if (data.demandSource.isBlank()) "empty" else data.demandSource)
+                    Text(
+                        if (data.demandSource == "empty") "Planner empty" else "Demand ${data.demandSource}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (!data.historyAvailable) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        SourceChip("unavailable")
+                        Text("History unavailable", style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }

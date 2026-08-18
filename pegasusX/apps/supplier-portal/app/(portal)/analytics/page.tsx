@@ -23,7 +23,6 @@ import type {
   SupplierDemandSummaryResponse,
 } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
-import PlanningBrainPanel from "@/components/PlanningBrainPanel";
 // RevenueHeatmap unmounted — no H3 revenue density SoT yet
 
 const api = createSupplierApi();
@@ -103,6 +102,9 @@ export default function AnalyticsPage() {
       error={error}
       actions={
         <div className="flex flex-wrap items-center gap-3">
+          <Link href={"/planning?tab=brain" as Route} className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2">
+            Open in Brain
+          </Link>
           <Link href={"/analytics/demand" as Route} className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2">
             Demand forecast
           </Link>
@@ -248,8 +250,15 @@ export default function AnalyticsPage() {
         </section>
       ) : null}
 
-      <section className="desk-card p-0 mt-6 overflow-hidden min-h-[320px]">
-        <PlanningBrainPanel />
+      <section className="desk-card p-6 mt-6">
+        <h2 className="bento-card-title">Belief</h2>
+        <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
+          S&amp;OP, scenarios, twin, and knowledge graph live on Plan &amp; Brain.
+        </p>
+        <Link href={"/planning?tab=brain" as Route} className="md-btn md-btn-filled inline-flex items-center gap-2 mt-4">
+          Open in Brain
+          <Icon name="right" size={16} />
+        </Link>
       </section>
       {/* RevenueHeatmap unmounted — no H3 revenue density SoT (analytics/revenue is time series only) */}
     </PageChrome>

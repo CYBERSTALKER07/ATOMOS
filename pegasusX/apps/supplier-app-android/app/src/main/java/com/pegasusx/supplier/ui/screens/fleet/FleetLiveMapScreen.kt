@@ -114,6 +114,11 @@ fun FleetLiveMapScreen(
                                 publishing = true
                                 publishStatus = null
                                 val polygon = defaultControlTowerPolygon()
+                                if (polygon == null) {
+                                    publishing = false
+                                    publishStatus = "no pack map center"
+                                    return@launch
+                                }
                                 val scopeId = SupplierIdempotencyKeys.supplierScopeId()
                                 val key = SupplierIdempotencyKeys.controlTowerZoneOverride(
                                     scopeId,
@@ -219,17 +224,21 @@ fun FleetLiveMapScreen(
     }
 }
 
-private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload = GeoJSONPolygonPayload(
-    coordinates = listOf(
-        listOf(
-            listOf(69.24, 41.31),
-            listOf(69.28, 41.31),
-            listOf(69.28, 41.34),
-            listOf(69.24, 41.34),
-            listOf(69.24, 41.31),
+private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload? {
+    val c = com.pegasus.design.sessionMapCenter() ?: return null
+    val d = 0.02
+    return GeoJSONPolygonPayload(
+        coordinates = listOf(
+            listOf(
+                listOf(c.lng - d, c.lat - d),
+                listOf(c.lng + d, c.lat - d),
+                listOf(c.lng + d, c.lat + d),
+                listOf(c.lng - d, c.lat + d),
+                listOf(c.lng - d, c.lat - d),
+            ),
         ),
-    ),
-)
+    )
+}
 
 @Composable
 private fun FleetLiveRouteCard(route: SupplierFleetLiveRoute) {

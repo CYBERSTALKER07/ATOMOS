@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"google.golang.org/api/iterator"
 )
 
@@ -26,12 +27,10 @@ type FeeSchedule struct {
 	EffectiveTo              *time.Time
 }
 
-// ZeroSchedule is the no-billing default (all fees zero).
+// ZeroSchedule is the no-billing default (all fees zero). Empty currency stays
+// empty — never invent UZS; callers pass the shipped pack when they have one.
 func ZeroSchedule(currency string) FeeSchedule {
-	if currency == "" {
-		currency = "UZS"
-	}
-	return FeeSchedule{Tier: "STANDARD", Currency: currency}
+	return FeeSchedule{Tier: "STANDARD", Currency: strings.ToUpper(strings.TrimSpace(currency))}
 }
 
 // MonthlyFee computes the total monthly fee in minor units.
@@ -78,7 +77,7 @@ func (r *FeeScheduleResolver) Resolve(ctx context.Context, supplierID string) (F
 			return sched, nil
 		}
 	}
-	return ZeroSchedule(""), nil
+	return ZeroSchedule(packCurrencyOrEmpty(ctx, supplierID)), nil
 }
 
 func (r *FeeScheduleResolver) find(ctx context.Context, where string, params map[string]any, now time.Time) (FeeSchedule, bool, error) {
@@ -126,4 +125,12 @@ func (r *FeeScheduleResolver) CommissionMinor(ctx context.Context, supplierID st
 		return 0, fmt.Errorf("fee schedule currency %s mismatches payout currency %s", sched.Currency, currency)
 	}
 	return grossCapturedMinor * sched.GmvBps / 10000, nil
+}
+
+func packCurrencyOrEmpty(ctx context.Context, supplierID string) string {
+	c, err := auth.CurrencyFromContext(ctx, supplierID)
+	if err != nil {
+		return ""
+	}
+	return c
 }

@@ -38,7 +38,7 @@ func TenantFromContext(ctx context.Context) (TenantContext, bool) {
 }
 
 // TenantContextEnforced reports whether missing tenant on authenticated routes must fail closed.
-// Explicit TENANT_CONTEXT_ENFORCED wins; otherwise default true for PEGASUSX_ENV=ssmr|production.
+// Explicit TENANT_CONTEXT_ENFORCED wins; otherwise default true for sandbox (incl. ssmr alias) and production.
 func TenantContextEnforced() bool {
 	if v := strings.TrimSpace(os.Getenv("TENANT_CONTEXT_ENFORCED")); v != "" {
 		switch strings.ToLower(v) {
@@ -48,12 +48,11 @@ func TenantContextEnforced() bool {
 			return false
 		}
 	}
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
-	return env == "ssmr" || env == "production"
+	return IsEnforcedEnv()
 }
 
 // SeedFallbackAllowed reports whether PreferTenant may return a bootstrap seed supplier id.
-// Default false under ssmr/production (G4.A). Break-glass: ALLOW_SEED_FALLBACK=true.
+// Default false under sandbox/production (G4.A). Break-glass: ALLOW_SEED_FALLBACK=true.
 // Explicit false always wins. Local/dev defaults true when not enforced.
 func SeedFallbackAllowed() bool {
 	if v := strings.TrimSpace(os.Getenv("ALLOW_SEED_FALLBACK")); v != "" {
@@ -94,7 +93,7 @@ func AttachTenantFromClaims(next http.Handler) http.Handler {
 // ResolveSupplierID from claims, else optional seed fallback.
 // G4.A fail-closed rules:
 //  1. Authenticated + TenantContextEnforced without supplier → never seed ("").
-//  2. Seed fallback only when SeedFallbackAllowed() (false under ssmr/production by default).
+//  2. Seed fallback only when SeedFallbackAllowed() (false under sandbox/production by default).
 func PreferTenantSupplierID(ctx context.Context, fallback string) string {
 	if t, ok := TenantFromContext(ctx); ok {
 		return t.SupplierID

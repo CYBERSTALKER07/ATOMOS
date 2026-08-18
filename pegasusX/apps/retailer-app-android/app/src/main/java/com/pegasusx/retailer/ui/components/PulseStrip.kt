@@ -23,13 +23,23 @@ import com.pegasusx.retailer.data.model.PulseEvent
 fun PulseStrip(
     events: List<PulseEvent>,
     loading: Boolean,
+    error: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (loading && events.isEmpty()) {
+    if (loading && events.isEmpty() && error.isNullOrBlank()) {
         Text(
             text = "Loading network pulse…",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        return
+    }
+    if (!error.isNullOrBlank()) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(vertical = 8.dp),
         )
         return

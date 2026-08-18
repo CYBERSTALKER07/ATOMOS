@@ -21,7 +21,13 @@ struct WarehousesView: View {
                     showAdd = true
                 }
             } else {
-                WarehouseList(warehouses: warehouses)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Pin stores and city coverage on the supplier desktop portal by 2026-09-16. Mobile stays view-only.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                    WarehouseList(warehouses: warehouses)
+                }
             }
         }
         .background(SupplierTheme.background)

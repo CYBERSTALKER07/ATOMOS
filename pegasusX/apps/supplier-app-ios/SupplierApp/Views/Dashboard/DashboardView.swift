@@ -8,11 +8,13 @@ struct DashboardView: View {
     @State private var meiSummary: SupplierMEIONetworkSummary?
     @State private var pulseEvents: [SupplierPulseEvent] = []
     @State private var pulseLoading = true
+    @State private var pulseError: String?
     @State private var demandConfidence: ForecastConfidence?
     @State private var demandGeneratedAt: String?
     @State private var loading = true
     @State private var error: String?
     @State private var pack: MarketPack?
+    @State private var commandJump: CommandStatusJump?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
@@ -65,12 +67,24 @@ struct DashboardView: View {
                                 )
                             }
 
-                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading)
+                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading, error: pulseError)
 
                             LazyVGrid(
                                 columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
                                 spacing: SupplierTheme.spacingMD
                             ) {
+                                KpiTile(
+                                    title: "Revenue today",
+                                    value: formatPackMoney(dashboard.todayRevenueMinor, pack: pack),
+                                    systemImage: "banknote",
+                                    tint: .accentColor
+                                )
+                                KpiTile(
+                                    title: "Completion",
+                                    value: "\(dashboard.deliveriesCompletedToday)/\(dashboard.deliveriesAttemptedToday)",
+                                    systemImage: "checkmark.circle",
+                                    tint: SupplierTheme.success
+                                )
                                 KpiTile(
                                     title: "Pending orders",
                                     value: "\(dashboard.pendingOrders)",
@@ -83,13 +97,20 @@ struct DashboardView: View {
                                     systemImage: "archivebox",
                                     tint: .accentColor
                                 )
-                                KpiTile(
-                                    title: "Configured",
-                                    value: dashboard.isConfigured ? "Yes" : "No",
-                                    systemImage: "checkmark.seal",
-                                    tint: dashboard.isConfigured ? SupplierTheme.success : SupplierTheme.destructive
-                                )
                             }
+
+                            StatusStackView(
+                                dictionary: orderStatusFunnel,
+                                counts: dashboard.ordersByStatus,
+                                source: "live",
+                                onSelect: { commandJump = CommandStatusJump(status: $0) }
+                            )
+
+                            StatusStackView(
+                                dictionary: manifestStates,
+                                counts: dashboard.manifestsByState,
+                                source: dashboard.manifestsByState.isEmpty ? "empty" : "live"
+                            )
 
                             Text(L10n.format("mobile_supplier.ui.updated_updatedat", "\(dashboard.updatedAt)"))
                                 .font(.caption2)
@@ -118,6 +139,9 @@ struct DashboardView: View {
                     .labelStyle(.iconOnly)
                 }
             }
+            .navigationDestination(item: $commandJump) { jump in
+                OrdersHubView(initialCommandStatus: jump.status)
+            }
             .refreshable { await load(silent: true) }
             .task {
                 if let token = tokenStore.token {
@@ -125,7 +149,7 @@ struct DashboardView: View {
                 }
                 await load()
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 30_000_000_000)
+                    try? await Task.sleep(nanoseconds: 60_000_000_000)
                     await load(silent: true)
                 }
             }
@@ -184,7 +208,17 @@ struct DashboardView: View {
                 demandConfidence = nil
             }
             pulseLoading = true
-            pulseEvents = (try? await SupplierOperationsService.pulse())?.events ?? []
+            pulseError = nil
+            do {
+                let events = try await SupplierOperationsService.pulse().events
+                let result = PulseHonesty.apply(ok: true, incoming: events, previous: pulseEvents)
+                pulseEvents = result.events
+                pulseError = result.error
+            } catch {
+                let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+                pulseEvents = result.events
+                pulseError = result.error
+            }
             pulseLoading = false
             if let configured = dashboard?.isConfigured {
                 tokenStore.markConfigured(configured)

@@ -9,6 +9,7 @@ import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.data.model.RetailerAIPrediction
+import com.pegasusx.retailer.ui.filterCommand
 import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -33,6 +34,8 @@ data class OrdersUiState(
     val error: String? = null,
     val loadIssue: OrdersLoadIssue? = null,
     val orderActionPending: Boolean = false,
+    val commandStatus: String? = null,
+    val commandSupplierId: String? = null,
 ) {
     val activeOrders: List<Order> get() = allOrders.filter {
         it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
@@ -44,6 +47,8 @@ data class OrdersUiState(
     }
     val aiPendingOrders: List<Order> get() = allOrders.filter { it.needsAiConfirmation }
     val scheduledPreorders: List<Order> get() = allOrders.filter { it.needsPreorderAction }
+    val commandOrders: List<Order>
+        get() = allOrders.filterCommand(commandStatus, commandSupplierId)
 
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -110,6 +115,14 @@ class OrdersViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         retailerWebSocket.disconnect()
+    }
+
+    fun applyCommandFilter(status: String?, supplierId: String?) {
+        _uiState.update { it.copy(commandStatus = status, commandSupplierId = supplierId) }
+    }
+
+    fun clearCommandFilter() {
+        _uiState.update { it.copy(commandStatus = null, commandSupplierId = null) }
     }
 
     fun refresh(silent: Boolean = false) {

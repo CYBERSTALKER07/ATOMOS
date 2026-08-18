@@ -3,7 +3,8 @@ import SwiftUI
 struct HqView: View {
     @State private var summaryLine = "—"
     @State private var locations: [HqLocationWire] = []
-    @State private var banner: String?
+    @State private var loadError: String?
+    @State private var summaryReady = false
     private let api = APIClient.shared
     private var day: String {
         let f = ISO8601DateFormatter()
@@ -13,23 +14,25 @@ struct HqView: View {
 
     var body: some View {
         List {
-            if let banner {
-                Section { Text(banner).font(.caption).foregroundStyle(AppTheme.accent) }
+            if let loadError {
+                Section { Text(loadError).font(.caption).foregroundStyle(AppTheme.destructive) }
             }
-            Section("Summary") {
-                Text(summaryLine)
-            }
-            Section("Sales by location") {
-                if locations.isEmpty {
-                    Text("No HQ rows for this day.")
-                        .foregroundStyle(AppTheme.textSecondary)
-                } else {
-                    ForEach(locations, id: \.locationId) { loc in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(loc.locationId).font(.headline)
-                            Text(String(format: "Qty %d · Net %.2f", loc.qtySold, Double(loc.netMinor) / 100.0))
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.textSecondary)
+            if summaryReady && loadError == nil {
+                Section("Summary") {
+                    Text(summaryLine)
+                }
+                Section("Sales by location") {
+                    if locations.isEmpty {
+                        Text("No HQ rows for this day.")
+                            .foregroundStyle(AppTheme.textSecondary)
+                    } else {
+                        ForEach(locations, id: \.locationId) { loc in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(loc.locationId).font(.headline)
+                                Text(String(format: "Qty %d · Net %.2f", loc.qtySold, Double(loc.netMinor) / 100.0))
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.textSecondary)
+                            }
                         }
                     }
                 }
@@ -52,9 +55,10 @@ struct HqView: View {
                 Double(summary.netMinor) / 100.0
             )
             locations = try await api.getHqSalesByLocation(day: day)
-            banner = nil
+            summaryReady = true
+            loadError = nil
         } catch {
-            banner = error.localizedDescription
+            loadError = "hq_failed"
         }
     }
 }

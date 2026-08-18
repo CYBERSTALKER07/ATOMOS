@@ -160,6 +160,46 @@ func TestCheckoutSnapshot_ForbidsForeignRetailer(t *testing.T) {
 	}
 }
 
+func TestAssertChildSuppliersSameMarket_PlannedChild(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+	auth.SetMarketProfileLookup(func(supplierID string) (auth.MarketProfile, bool) {
+		switch supplierID {
+		case "sup-uz":
+			return auth.MarketProfile{MarketCode: "UZ", HomeCell: "cell-uz"}, true
+		case "sup-kz":
+			return auth.MarketProfile{MarketCode: "KZ", HomeCell: "cell-kz"}, true
+		default:
+			return auth.MarketProfile{}, false
+		}
+	})
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	if !ok {
+		t.Fatal("uz pack")
+	}
+	err := assertChildSuppliersSameMarket(context.Background(), pack, []checkoutLineGroup{
+		{SupplierID: "sup-uz"},
+		{SupplierID: "sup-kz"},
+	})
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("mixed UZ+KZ must fail before parent insert: %v", err)
+	}
+}
+
+func TestAssertChildSuppliersSameMarket_SamePack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	if !ok {
+		t.Fatal("uz pack")
+	}
+	if err := assertChildSuppliersSameMarket(context.Background(), pack, []checkoutLineGroup{
+		{SupplierID: "sup-a"},
+		{SupplierID: "sup-b"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestUnifiedCheckout_PlannedPackFailsClosed(t *testing.T) {
 	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "false")

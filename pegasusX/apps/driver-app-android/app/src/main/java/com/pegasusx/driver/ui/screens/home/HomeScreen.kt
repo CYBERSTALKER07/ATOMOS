@@ -78,13 +78,17 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import com.pegasusx.driver.ui.screens.home.components.FactorySupplyCard
+import com.pegasusx.driver.ui.screens.home.components.FieldMoneyStrip
 import com.pegasusx.driver.ui.screens.home.components.MapButton
+import com.pegasusx.driver.ui.screens.home.components.ManifestBulletMeter
 import com.pegasusx.driver.ui.screens.home.components.QuickActionsSection
 import com.pegasusx.driver.ui.screens.home.components.RecentActivitySection
+import com.pegasusx.driver.ui.screens.home.components.RemainingStopsStepper
 import com.pegasusx.driver.ui.screens.home.components.ReturningToWarehouseCard
 import com.pegasusx.driver.ui.screens.home.components.TodaySummaryCard
 import com.pegasusx.driver.ui.screens.home.components.TransitControlCard
 import com.pegasusx.driver.ui.screens.home.components.VehicleInfoCard
+import com.pegasusx.driver.ui.screens.home.RemainingStops
 import com.pegasusx.driver.ui.screens.manifest.ManifestViewModel
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
@@ -99,8 +103,8 @@ import com.pegasusx.driver.R
 import com.pegasus.design.MarketPack
 import com.pegasus.design.MarketPackBinder
 import com.pegasus.design.PackBanner
+import com.pegasus.design.PulseHonesty
 import com.pegasusx.driver.BuildConfig
-import com.pegasusx.driver.data.remote.TokenHolder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -114,6 +118,9 @@ fun HomeScreen(
     onResumeCashCollection: (orderId: String, amount: Long) -> Unit = { _, _ -> },
     onNotificationsClick: () -> Unit = {},
     onOpenSupplyTransfers: () -> Unit = {},
+    onSyncQueue: () -> Unit = {},
+    onStopClick: (Order) -> Unit = {},
+    pendingCount: Int = 0,
 ) {
     val state by viewModel.state.collectAsState()
     val lab = LocalPegasusColors.current
@@ -121,6 +128,7 @@ fun HomeScreen(
     var returnUnits by remember { mutableStateOf(0L) }
     var pulseEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
+    var pulseError by remember { mutableStateOf<String?>(null) }
     var showRescueSheet by remember { mutableStateOf(false) }
     var pack by remember { mutableStateOf<MarketPack?>(null) }
 
@@ -136,11 +144,13 @@ fun HomeScreen(
             MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
         }
         pulseLoading = true
+        pulseError = null
         try {
             val response = api.getPulse()
             pulseEvents = response.events
+            pulseError = null
         } catch (_: Exception) {
-            pulseEvents = emptyList()
+            pulseError = PulseHonesty.FAILED
         } finally {
             pulseLoading = false
         }
@@ -211,6 +221,7 @@ fun HomeScreen(
             PulseStrip(
                 events = pulseEvents,
                 loading = pulseLoading,
+                error = pulseError,
             )
         }
 
@@ -263,6 +274,75 @@ fun HomeScreen(
                     orders = state.orders,
                     onDepart = { viewModel.departRoute() }
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
+
+        if (pendingCount > 0) {
+            StaggeredAppear(index = 4) {
+                PegasusCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pressable { onSyncQueue() },
+                ) {
+                    Text(
+                        text = "Offline sync queue · $pendingCount",
+                        modifier = Modifier.padding(PegasusSpacing.s16),
+                        fontWeight = FontWeight.SemiBold,
+                        color = lab.warning,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(PegasusSpacing.s20))
+        }
+
+        StaggeredAppear(index = 5) {
+            RemainingStopsStepper(
+                stops = RemainingStops.remaining(state.orders),
+                onSelect = { id -> state.orders.firstOrNull { it.id == id }?.let(onStopClick) },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
+
+        ManifestBulletMeter(
+            state = state.manifestState,
+            usedVU = null,
+            maxVU = TokenHolder.maxVolumeVU,
+        )
+        Spacer(modifier = Modifier.height(PegasusSpacing.s12))
+        FieldMoneyStrip(counts = RemainingStops.moneyHealth(state.orders))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s12))
+        val earnCode = pack?.currencyCode?.trim().orEmpty()
+        val todayMinor = state.earnings?.todayMinor
+        PegasusCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(PegasusSpacing.s16)) {
+                Text("EARNINGS", fontSize = 11.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = lab.fgTertiary)
+                Text(
+                    when {
+                        state.earnings == null -> "unavailable"
+                        todayMinor == 0L -> "empty"
+                        earnCode.isEmpty() -> todayMinor.toString()
+                        else -> "$todayMinor $earnCode"
+                    },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = lab.fg,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(PegasusSpacing.s12))
+        PegasusCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(PegasusSpacing.s16), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("HISTORY · 30D", fontSize = 11.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, color = lab.fgTertiary)
+                if (state.historyRows.isEmpty()) {
+                    Text("empty", fontSize = 13.sp, color = lab.fgTertiary)
+                } else {
+                    state.historyRows.take(3).forEach { row ->
+                        Text("${row.orderId} · ${row.status}", fontSize = 12.sp, color = lab.fgSecondary)
+                    }
+                }
             }
         }
 

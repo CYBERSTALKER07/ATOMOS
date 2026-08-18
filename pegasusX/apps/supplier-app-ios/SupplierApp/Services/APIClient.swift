@@ -48,6 +48,13 @@ final class APIClient: Sendable {
     }
 #endif
 
+    func registerDeviceToken(token: String, platform: String = "ios") async throws {
+        let _: [String: String] = try await post(
+            "v1/user/device-token",
+            body: DeviceTokenRequest(token: token, platform: platform)
+        )
+    }
+
     func get<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
         var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty {

@@ -27,6 +27,7 @@ type RetailerLocation struct {
 	Lat                  float64
 	Lng                  float64
 	H3Cell               string
+	CountryCode          string
 	ReceivingWindowOpen  string
 	ReceivingWindowClose string
 	Gln                  string
@@ -46,6 +47,7 @@ type LocationDTO struct {
 	Lat                  float64 `json:"lat,omitempty"`
 	Lng                  float64 `json:"lng,omitempty"`
 	H3Cell               string  `json:"h3_cell,omitempty"`
+	CountryCode          string  `json:"country_code,omitempty"`
 	ReceivingWindowOpen  string  `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose string  `json:"receiving_window_close,omitempty"`
 	Gln                  string  `json:"gln,omitempty"`
@@ -62,15 +64,16 @@ type locationsResponse struct {
 }
 
 type locationCreateRequest struct {
-	Name                 string   `json:"name"`
-	DeliveryAddress      string   `json:"delivery_address"`
-	PlaceID              string   `json:"place_id"`
-	Lat                  float64  `json:"lat"`
-	Lng                  float64  `json:"lng"`
-	H3Cell               string   `json:"h3_cell"`
-	ReceivingWindowOpen  string   `json:"receiving_window_open"`
-	ReceivingWindowClose string   `json:"receiving_window_close"`
-	IsPrimary            *bool    `json:"is_primary,omitempty"`
+	Name                 string  `json:"name"`
+	DeliveryAddress      string  `json:"delivery_address"`
+	PlaceID              string  `json:"place_id"`
+	Lat                  float64 `json:"lat"`
+	Lng                  float64 `json:"lng"`
+	H3Cell               string  `json:"h3_cell"`
+	CountryCode          string  `json:"country_code"`
+	ReceivingWindowOpen  string  `json:"receiving_window_open"`
+	ReceivingWindowClose string  `json:"receiving_window_close"`
+	IsPrimary            *bool   `json:"is_primary,omitempty"`
 }
 
 type locationUpdateRequest struct {
@@ -80,6 +83,7 @@ type locationUpdateRequest struct {
 	Lat                  *float64 `json:"lat,omitempty"`
 	Lng                  *float64 `json:"lng,omitempty"`
 	H3Cell               *string  `json:"h3_cell,omitempty"`
+	CountryCode          *string  `json:"country_code,omitempty"`
 	ReceivingWindowOpen  *string  `json:"receiving_window_open,omitempty"`
 	ReceivingWindowClose *string  `json:"receiving_window_close,omitempty"`
 	Gln                  *string  `json:"gln,omitempty"`
@@ -322,11 +326,13 @@ func (s *Service) handleLocationsPost(w http.ResponseWriter, r *http.Request) {
 	// Ensure primary exists first.
 	primary, _ := s.EnsurePrimaryLocation(r.Context(), orgID)
 
-	h3 := strings.TrimSpace(req.H3Cell)
-	if h3 == "" && s.proximity != nil && (req.Lat != 0 || req.Lng != 0) {
-		if cell, err := s.proximity.CellForCoordinate(req.Lat, req.Lng); err == nil {
-			h3 = cell
+	country, h3, stampErr := stampRetailerOptionalCoords(r.Context(), req.Lat, req.Lng, req.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
 		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
 	}
 
 	loc := RetailerLocation{
@@ -338,6 +344,7 @@ func (s *Service) handleLocationsPost(w http.ResponseWriter, r *http.Request) {
 		Lat:                  req.Lat,
 		Lng:                  req.Lng,
 		H3Cell:               h3,
+		CountryCode:          country,
 		ReceivingWindowOpen:  strings.TrimSpace(req.ReceivingWindowOpen),
 		ReceivingWindowClose: strings.TrimSpace(req.ReceivingWindowClose),
 		IsPrimary:            false,
@@ -411,12 +418,22 @@ func (s *Service) handleLocationPatch(w http.ResponseWriter, r *http.Request, lo
 	if req.Lng != nil {
 		loc.Lng = *req.Lng
 	}
-	if req.H3Cell != nil {
-		loc.H3Cell = strings.TrimSpace(*req.H3Cell)
-	} else if s.proximity != nil && (req.Lat != nil || req.Lng != nil) {
-		if cell, err := s.proximity.CellForCoordinate(loc.Lat, loc.Lng); err == nil {
-			loc.H3Cell = cell
+	if req.CountryCode != nil {
+		loc.CountryCode = strings.TrimSpace(*req.CountryCode)
+	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), loc.Lat, loc.Lng, loc.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
 		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	loc.CountryCode = country
+	if cell != "" {
+		loc.H3Cell = cell
+	} else if req.H3Cell != nil {
+		loc.H3Cell = strings.TrimSpace(*req.H3Cell)
 	}
 	if req.ReceivingWindowOpen != nil {
 		loc.ReceivingWindowOpen = strings.TrimSpace(*req.ReceivingWindowOpen)
@@ -543,6 +560,14 @@ func (s *Service) EnsurePrimaryLocation(ctx context.Context, retailerID string) 
 	if name == "" {
 		name = "Primary store"
 	}
+	country, cell, stampErr := stampRetailerOptionalCoords(ctx, ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		return RetailerLocation{}, stampErr
+	}
+	h3 := ret.H3Cell
+	if cell != "" {
+		h3 = cell
+	}
 	loc := RetailerLocation{
 		LocationID:           s.newID(),
 		RetailerID:           retailerID,
@@ -551,7 +576,8 @@ func (s *Service) EnsurePrimaryLocation(ctx context.Context, retailerID string) 
 		PlaceID:              ret.PlaceID,
 		Lat:                  ret.Lat,
 		Lng:                  ret.Lng,
-		H3Cell:               ret.H3Cell,
+		H3Cell:               h3,
+		CountryCode:          country,
 		ReceivingWindowOpen:  ret.ReceivingWindowOpen,
 		ReceivingWindowClose: ret.ReceivingWindowClose,
 		IsPrimary:            true,
@@ -599,7 +625,7 @@ func (s *Service) listLocations(ctx context.Context, retailerID string) ([]Retai
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT LocationId, RetailerId, Name, IFNULL(DeliveryAddress, ''), IFNULL(PlaceId, ''),
-			IFNULL(Lat, 0), IFNULL(Lng, 0), IFNULL(H3Cell, ''),
+			IFNULL(Lat, 0), IFNULL(Lng, 0), IFNULL(H3Cell, ''), IFNULL(CountryCode, ''),
 			IFNULL(ReceivingWindowOpen, ''), IFNULL(ReceivingWindowClose, ''),
 			IFNULL(Gln, ''),
 			IsPrimary, IsActive, CreatedAt, UpdatedAt
@@ -642,7 +668,7 @@ func (s *Service) getLocation(ctx context.Context, locationID string) (RetailerL
 		return RetailerLocation{}, false, nil
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "RetailerLocations", spanner.Key{locationID},
-		[]string{"LocationId", "RetailerId", "Name", "DeliveryAddress", "PlaceId", "Lat", "Lng", "H3Cell",
+		[]string{"LocationId", "RetailerId", "Name", "DeliveryAddress", "PlaceId", "Lat", "Lng", "H3Cell", "CountryCode",
 			"ReceivingWindowOpen", "ReceivingWindowClose", "Gln", "IsPrimary", "IsActive", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		if isNotFound(err) {
@@ -659,23 +685,23 @@ func (s *Service) getLocation(ctx context.Context, locationID string) (RetailerL
 
 func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 	var loc RetailerLocation
-	var addr, place, h3, open, close, gln spanner.NullString
+	var addr, place, h3, country, open, close, gln spanner.NullString
 	var lat, lng spanner.NullFloat64
 	var created, updated time.Time
 	// Try flexible column decode.
 	var name string
 	err := row.Columns(
 		&loc.LocationID, &loc.RetailerID, &name,
-		&addr, &place, &lat, &lng, &h3, &open, &close, &gln,
+		&addr, &place, &lat, &lng, &h3, &country, &open, &close, &gln,
 		&loc.IsPrimary, &loc.IsActive, &created, &updated,
 	)
 	if err != nil {
 		// Query path uses IFNULL strings/floats
-		var addrS, placeS, h3S, openS, closeS, glnS string
+		var addrS, placeS, h3S, countryS, openS, closeS, glnS string
 		var latF, lngF float64
 		if err2 := row.Columns(
 			&loc.LocationID, &loc.RetailerID, &name,
-			&addrS, &placeS, &latF, &lngF, &h3S, &openS, &closeS, &glnS,
+			&addrS, &placeS, &latF, &lngF, &h3S, &countryS, &openS, &closeS, &glnS,
 			&loc.IsPrimary, &loc.IsActive, &created, &updated,
 		); err2 != nil {
 			return RetailerLocation{}, err
@@ -686,6 +712,7 @@ func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 		loc.Lat = latF
 		loc.Lng = lngF
 		loc.H3Cell = h3S
+		loc.CountryCode = countryS
 		loc.ReceivingWindowOpen = openS
 		loc.ReceivingWindowClose = closeS
 		loc.Gln = glnS
@@ -708,6 +735,9 @@ func decodeLocationRow(row *spanner.Row) (RetailerLocation, error) {
 	}
 	if h3.Valid {
 		loc.H3Cell = h3.StringVal
+	}
+	if country.Valid {
+		loc.CountryCode = country.StringVal
 	}
 	if open.Valid {
 		loc.ReceivingWindowOpen = open.StringVal
@@ -735,13 +765,13 @@ func (s *Service) insertLocation(ctx context.Context, loc RetailerLocation) erro
 	}
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row := map[string]any{
-			"LocationId":  loc.LocationID,
-			"RetailerId":  loc.RetailerID,
-			"Name":        loc.Name,
-			"IsPrimary":   loc.IsPrimary,
-			"IsActive":    loc.IsActive,
-			"CreatedAt":   spanner.CommitTimestamp,
-			"UpdatedAt":   spanner.CommitTimestamp,
+			"LocationId": loc.LocationID,
+			"RetailerId": loc.RetailerID,
+			"Name":       loc.Name,
+			"IsPrimary":  loc.IsPrimary,
+			"IsActive":   loc.IsActive,
+			"CreatedAt":  spanner.CommitTimestamp,
+			"UpdatedAt":  spanner.CommitTimestamp,
 		}
 		if loc.DeliveryAddress != "" {
 			row["DeliveryAddress"] = loc.DeliveryAddress
@@ -755,6 +785,9 @@ func (s *Service) insertLocation(ctx context.Context, loc RetailerLocation) erro
 		}
 		if loc.H3Cell != "" {
 			row["H3Cell"] = loc.H3Cell
+		}
+		if loc.CountryCode != "" {
+			row["CountryCode"] = loc.CountryCode
 		}
 		if loc.ReceivingWindowOpen != "" {
 			row["ReceivingWindowOpen"] = loc.ReceivingWindowOpen
@@ -808,6 +841,7 @@ func (s *Service) updateLocation(ctx context.Context, loc RetailerLocation) erro
 				Lat = @lat,
 				Lng = @lng,
 				H3Cell = @h3,
+				CountryCode = @country,
 				ReceivingWindowOpen = @open,
 				ReceivingWindowClose = @close,
 				Gln = @gln,
@@ -822,6 +856,7 @@ func (s *Service) updateLocation(ctx context.Context, loc RetailerLocation) erro
 				"lat":     loc.Lat,
 				"lng":     loc.Lng,
 				"h3":      nullableStr(loc.H3Cell),
+				"country": nullableStr(loc.CountryCode),
 				"open":    nullableStr(loc.ReceivingWindowOpen),
 				"close":   nullableStr(loc.ReceivingWindowClose),
 				"gln":     nullableStr(loc.Gln),
@@ -909,6 +944,7 @@ func (s *Service) mirrorPrimaryToRetailer(ctx context.Context, loc RetailerLocat
 	ret.Lat = loc.Lat
 	ret.Lng = loc.Lng
 	ret.H3Cell = loc.H3Cell
+	ret.CountryCode = loc.CountryCode
 	ret.ReceivingWindowOpen = loc.ReceivingWindowOpen
 	ret.ReceivingWindowClose = loc.ReceivingWindowClose
 	ret.UpdatedAt = s.now()
@@ -998,6 +1034,7 @@ func dtoFromLocation(loc RetailerLocation) LocationDTO {
 		Lat:                  loc.Lat,
 		Lng:                  loc.Lng,
 		H3Cell:               loc.H3Cell,
+		CountryCode:          loc.CountryCode,
 		ReceivingWindowOpen:  loc.ReceivingWindowOpen,
 		ReceivingWindowClose: loc.ReceivingWindowClose,
 		Gln:                  loc.Gln,
@@ -1025,4 +1062,3 @@ func (s *Service) DeliverySnapshotFromActiveLocation(ctx context.Context, claims
 	}
 	return loc.DeliveryAddress, loc.Lat, loc.Lng, loc.H3Cell, loc.ReceivingWindowOpen, loc.ReceivingWindowClose, loc.LocationID, true
 }
-

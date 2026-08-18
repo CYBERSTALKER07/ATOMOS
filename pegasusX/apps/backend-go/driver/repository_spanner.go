@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 // Repository is the persistence seam for the driver module.
@@ -70,19 +70,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	muts := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-		}
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return muts
 }

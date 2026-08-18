@@ -40,10 +40,17 @@ fun OrdersHubScreen(
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
     onOrderClick: (SupplierOrder) -> Unit,
+    initialStatus: String? = null,
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
     var surface by remember { mutableStateOf(OrdersHubSurface.Queue) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(initialStatus) {
+        if (!initialStatus.isNullOrBlank()) {
+            viewModel.setCommandStatus(initialStatus)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -69,6 +76,11 @@ fun OrdersHubScreen(
                         onClick = { surface = OrdersHubSurface.Dispatch },
                         text = { Text("Dispatch") },
                     )
+                }
+                if (surface == OrdersHubSurface.Queue && state.commandStatus != null) {
+                    TextButton(onClick = { viewModel.clearCommandStatus() }) {
+                        Text("Filtered by ${state.commandStatus?.replace('_', ' ')} · Clear")
+                    }
                 }
                 if (surface == OrdersHubSurface.Queue) {
                     ScrollableTabRow(selectedTabIndex = state.filter.ordinal) {

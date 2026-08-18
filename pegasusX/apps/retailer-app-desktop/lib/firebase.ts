@@ -7,11 +7,8 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
   connectAuthEmulator,
-  signInWithCustomToken,
   signInWithPhoneNumber,
-  type Auth,
   type ConfirmationResult,
-  type User,
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -45,27 +42,6 @@ if (
   connectAuthEmulator(auth, resolveAuthEmulatorHost(), { disableWarnings: true });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (auth as any)._emulatorConnected = true;
-}
-
-export async function exchangeCustomToken(customToken: string): Promise<string> {
-  if (!customToken) return "";
-  try {
-    const cred = await signInWithCustomToken(auth, customToken);
-    return await cred.user.getIdToken();
-  } catch (err) {
-    console.warn("[firebase] custom token exchange failed:", err);
-    return "";
-  }
-}
-
-export async function getFirebaseIdToken(): Promise<string> {
-  const user = auth.currentUser;
-  if (!user) return "";
-  try {
-    return await user.getIdToken(false);
-  } catch {
-    return "";
-  }
 }
 
 export async function firebaseSignOut(): Promise<void> {

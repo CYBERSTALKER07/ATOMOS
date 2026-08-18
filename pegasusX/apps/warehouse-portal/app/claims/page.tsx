@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
 import { PageChrome } from '@/components/PageChrome';
+import { moneyCurrency } from '@pegasusx/api-client';
 
 type ClaimLine = {
   sku: string;
@@ -102,7 +103,7 @@ export default function WarehouseClaimsPage() {
                 <Link href={`/orders/${c.order_id}`}>Order {c.order_id}</Link>
                 <span>Retailer {c.retailer_id}</span>
                 <span>
-                  {c.amount_minor ?? 0} {c.currency ?? 'UZS'}
+                  {c.amount_minor ?? 0} {moneyCurrency(c.currency)}
                 </span>
               </div>
               {c.line_items && c.line_items.length > 0 ? (

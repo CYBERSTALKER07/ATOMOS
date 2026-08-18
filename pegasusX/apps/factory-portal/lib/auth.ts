@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-client';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
-import { getFirebaseIdToken, firebaseSignOut } from './firebase';
 import { runFactorySessionReconcile } from './session-reconcile';
 
 const BOOTSTRAP = (
@@ -117,6 +116,16 @@ export async function getFactoryToken(): Promise<string> {
   throw new Error('No auth token available. Please log in.');
 }
 
+/** Session JWT for HTTP Bearer. Firebase ID is OTP `id_token` body only — never Authorization. */
+export function httpAuthorizationToken(sessionJwt: string, firebaseIdToken?: string): string {
+  const jwt = sessionJwt.trim();
+  if (jwt) return jwt;
+  if (firebaseIdToken) {
+    return '';
+  }
+  return '';
+}
+
 let refreshInFlight: Promise<string | null> | null = null;
 
 async function tryRefreshToken(): Promise<string | null> {
@@ -139,10 +148,7 @@ async function tryRefreshToken(): Promise<string | null> {
 }
 
 export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  let token = await getFirebaseIdToken();
-  if (!token) {
-    token = await getFactoryToken();
-  }
+  const token = httpAuthorizationToken(await getFactoryToken());
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
@@ -166,7 +172,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
     }
     document.cookie = `${FACTORY_JWT_COOKIE}=; Max-Age=0; path=/`;
     document.cookie = `${FACTORY_REFRESH_COOKIE}=; Max-Age=0; path=/`;
-    firebaseSignOut().catch(() => {});
+    import('./firebase').then(({ firebaseSignOut }) => firebaseSignOut()).catch(() => {});
     if (isTauri()) {
       clearStoredToken().catch(() => {});
     }

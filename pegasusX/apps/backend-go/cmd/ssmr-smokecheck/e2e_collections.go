@@ -32,6 +32,12 @@ func runCollectionsDunningE2E(
 	}
 	defer spannerClient.Close()
 
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_COLLECTIONS_DUNNING_SKIPPED")
+		return nil
+	}
+
 	invoiceID := fmt.Sprintf("ari-e2e-%s", uuid.NewString()[:20])
 	orderID := fmt.Sprintf("ord-dun-%s", uuid.NewString()[:18])
 	// Lag wall-clock for DueAt/CreditLeaveAt so the Spanner emulator never
@@ -41,7 +47,7 @@ func runCollectionsDunningE2E(
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{
 		spanner.InsertOrUpdateMap("ArInvoices", map[string]any{
 			"InvoiceId": invoiceID, "SupplierId": supplierID, "RetailerId": retailerID, "OrderId": orderID,
-			"Status": "OPEN", "PrincipalMinor": int64(50_000), "BalanceMinor": int64(50_000), "Currency": "UZS",
+			"Status": "OPEN", "PrincipalMinor": int64(50_000), "BalanceMinor": int64(50_000), "Currency": op,
 			"CreditLeaveAt": dueAt.Add(-30 * 24 * time.Hour), "DueAt": dueAt, "TermsDays": int64(30),
 			"GracePeriodDays": int64(0), "AgingBucket": "1_30", "DunningStep": int64(0), "Version": int64(1),
 			// CreatedAt/UpdatedAt allow_commit_timestamp — use commit time so the

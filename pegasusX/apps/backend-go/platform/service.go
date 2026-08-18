@@ -30,11 +30,11 @@ type ClientPolicyResponse struct {
 
 // ClientConfigResponse is the wire DTO for GET /v1/platform/client-config.
 type ClientConfigResponse struct {
-	Role                 string `json:"role"`
-	Platform             string `json:"platform"`
-	SyncIntervalMs       int    `json:"sync_interval_ms"`
-	TelemetryIntervalMs  int    `json:"telemetry_interval_ms"`
-	OfflineModeEnabled   bool   `json:"offline_mode_enabled"`
+	Role                string `json:"role"`
+	Platform            string `json:"platform"`
+	SyncIntervalMs      int    `json:"sync_interval_ms"`
+	TelemetryIntervalMs int    `json:"telemetry_interval_ms"`
+	OfflineModeEnabled  bool   `json:"offline_mode_enabled"`
 }
 
 // Service evaluates version policy and builds outdated WS payloads.
@@ -232,7 +232,7 @@ func normalizePlatform(p string) string {
 	switch p {
 	case "iphone", "ipad":
 		return "ios"
-	case "android", "ios", "web", "desktop", "expo":
+	case "android", "ios", "web", "desktop":
 		return p
 	default:
 		if p == "" {
@@ -240,6 +240,24 @@ func normalizePlatform(p string) string {
 		}
 		return p
 	}
+}
+
+// IsFCMRegistrationToken reports whether a DeviceTokens row can be sent via
+// Firebase Admin Messaging. Expo push tokens (ExponentPushToken[…]) are not
+// FCM registration tokens.
+func IsFCMRegistrationToken(token, platform string) bool {
+	p := strings.ToLower(strings.TrimSpace(platform))
+	if p == "expo" {
+		return false
+	}
+	t := strings.TrimSpace(token)
+	if t == "" {
+		return false
+	}
+	if strings.HasPrefix(t, "ExponentPushToken[") || strings.HasPrefix(t, "ExpoPushToken[") {
+		return false
+	}
+	return true
 }
 
 func normalizeRole(r string) string {

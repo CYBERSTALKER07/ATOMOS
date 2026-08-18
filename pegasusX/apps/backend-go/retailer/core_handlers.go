@@ -225,11 +225,18 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		}
 		ret.Lat = *req.Lat
 		ret.Lng = *req.Lng
-		if s.proximity != nil {
-			if cell, err := s.proximity.CellForCoordinate(ret.Lat, ret.Lng); err == nil {
-				ret.H3Cell = cell
-			}
+	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
 		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	ret.CountryCode = country
+	if cell != "" {
+		ret.H3Cell = cell
 	}
 	ret.UpdatedAt = s.now()
 	if err := s.repo.UpdateRetailer(r.Context(), ret, func(txn outbox.TxnBuffer) error {

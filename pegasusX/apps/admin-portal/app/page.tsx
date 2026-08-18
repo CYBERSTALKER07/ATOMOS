@@ -11,8 +11,10 @@ import MatchQueuePanel from "@/components/MatchQueuePanel";
 import PartnerPanel from "@/components/PartnerPanel";
 import OpsPanel from "@/components/OpsPanel";
 import BillingPanel from "@/components/BillingPanel";
+import CommandBoard from "@/components/CommandBoard";
+import AccuracyPanel from "@/components/AccuracyPanel";
 
-type Tab = "tenants" | "flags" | "audit" | "match" | "partner" | "ops" | "billing";
+type Tab = "command" | "tenants" | "flags" | "audit" | "match" | "partner" | "ops" | "billing" | "accuracy";
 
 type MfaGate =
   | { kind: "ok" }
@@ -188,7 +190,7 @@ export default function Home() {
 }
 
 function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => void }) {
-  const [tab, setTab] = useState<Tab>("tenants");
+  const [tab, setTab] = useState<Tab>("command");
   const [refreshKey, setRefreshKey] = useState(0);
   const [live, setLive] = useState(false);
 
@@ -215,26 +217,31 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
         </button>
       </header>
       <nav className="mb-4 flex flex-wrap gap-2 border-b">
-        {(["tenants", "flags", "audit", "match", "partner", "ops", "billing"] as Tab[]).map((t) => (
+        {(["command", "tenants", "flags", "ops", "billing", "accuracy", "match", "partner", "audit"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize ${
+            className={`px-3 py-2 text-sm font-medium capitalize ${
               tab === t ? "border-b-2 border-indigo-600 text-indigo-700" : "text-gray-500 hover:text-gray-800"
             }`}
           >
-            {t === "match"
-              ? "Match queue"
-              : t === "partner"
-                ? "Partner / dunning"
-                : t === "ops"
-                  ? "Ops / outbox"
-                  : t === "billing"
-                    ? "Billing"
-                    : t}
+            {t === "command"
+              ? "Command"
+              : t === "match"
+                ? "Match queue"
+                : t === "partner"
+                  ? "Partner"
+                  : t === "ops"
+                    ? "Outbox"
+                    : t === "accuracy"
+                      ? "Accuracy"
+                      : t}
           </button>
         ))}
       </nav>
+      {tab === "command" && (
+        <CommandBoard token={token} refreshKey={refreshKey} onOpenTab={(next) => setTab(next as Tab)} />
+      )}
       {tab === "tenants" && <TenantsPanel token={token} refreshKey={refreshKey} />}
       {tab === "flags" && <FlagsPanel token={token} />}
       {tab === "audit" && <AuditPanel token={token} refreshKey={refreshKey} />}
@@ -242,6 +249,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
       {tab === "partner" && <PartnerPanel token={token} />}
       {tab === "ops" && <OpsPanel token={token} />}
       {tab === "billing" && <BillingPanel token={token} />}
+      {tab === "accuracy" && <AccuracyPanel token={token} />}
     </main>
   );
 }

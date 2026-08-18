@@ -24,7 +24,7 @@ type UseSupplierWsRefreshOptions = {
  * Polling fallbacks should remain — this is an acceleration path, not sole transport.
  */
 export function useSupplierWsRefresh(
-  onSignal: (eventType: string) => void,
+  onSignal: (eventType: string, raw?: unknown) => void,
   { eventTypes, debounceMs = 500, enabled = true }: UseSupplierWsRefreshOptions,
 ) {
   const onSignalRef = useRef(onSignal);
@@ -127,7 +127,7 @@ export function useSupplierWsRefresh(
             if (cancelled) {
               return;
             }
-            onSignalRef.current(eventType);
+            onSignalRef.current(eventType, event.data);
           }, debounceMs);
         };
 

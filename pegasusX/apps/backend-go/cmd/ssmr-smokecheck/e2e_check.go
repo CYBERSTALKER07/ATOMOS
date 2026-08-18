@@ -117,6 +117,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runParentOrderE2E(ctx, client, base, cfg); err != nil {
 		return fmt.Errorf("parent-order e2e: %w", err)
 	}
+	if err := runSandboxLayerBProofs(ctx, client, base, cfg); err != nil {
+		return fmt.Errorf("sandbox layer-b proofs: %w", err)
+	}
 
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
@@ -142,7 +145,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWMSColdChainE2E(ctx, client, base, cookie, cfg); err != nil {
 		return fmt.Errorf("wms cold chain: %w", err)
 	}
-	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken); err != nil {
+	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken, cfg); err != nil {
 		return fmt.Errorf("warehouse ops policy: %w", err)
 	}
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie, cfg); err != nil {
@@ -279,7 +282,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := assertSupplierPortalAPIs(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier portal apis: %w", err)
 	}
-	if err := runRetailerPricingOverrideE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken); err != nil {
+	if err := runRetailerPricingOverrideE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken, cfg); err != nil {
 		return fmt.Errorf("retailer pricing override: %w", err)
 	}
 	if err := runSupplierIntelligenceE2E(ctx, client, base, cookie); err != nil {
@@ -337,7 +340,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runClaimsE2E(ctx, cfg); err != nil {
 		return fmt.Errorf("claims e2e: %w", err)
 	}
-	if err := runSoliqSandboxE2E(ctx, client, base); err != nil {
+	if err := runSoliqSandboxE2E(ctx, client, base, cfg); err != nil {
 		return fmt.Errorf("soliq sandbox: %w", err)
 	}
 

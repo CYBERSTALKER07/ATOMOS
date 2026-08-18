@@ -31,7 +31,10 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-var errDispatchLockNotFound = errors.New("dispatch_lock_not_found")
+var (
+	errDispatchLockNotFound = errors.New("dispatch_lock_not_found")
+	errWarehouseIDRequired  = errors.New("warehouse_id_required")
+)
 
 // DemandPlanner exposes the warehouse-facing demand projection owned by the
 // order aggregate.
@@ -71,25 +74,25 @@ type WarehouseOpsVehiclesQuery func(ctx context.Context, warehouseID string) ([]
 
 // Service stores additive in-memory data for warehouse operational surfaces.
 type Service struct {
-	repo                 Repository
-	planner              DemandPlanner
-	analyticsQuery       WarehouseAnalyticsQuery
-	opsOrders            WarehouseOpsOrdersQuery
-	opsDrivers           WarehouseOpsDriversQuery
-	opsVehicles            WarehouseOpsVehiclesQuery
-	gatewayBreakdownQuery  func(ctx context.Context, warehouseID, period string) ([]map[string]any, bool)
-	platformFeeQuery       func(ctx context.Context, warehouseID, period string) (int64, bool)
-	cache                  *cache.Cache
-	idem                 idempotency.Store
-	spannerClient        *spanner.Client
-	manifestStore        *manifest.Store
-	routeGeometryBuilder *routing.GeometryBuilder
-	locations            telemetry.LastLocationReader
-	supplierHub          *ws.Hub
-	warehouseHub         *ws.Hub
-	driverHub            *ws.Hub
-	retailerHub          *ws.Hub
-	log                  *slog.Logger
+	repo                  Repository
+	planner               DemandPlanner
+	analyticsQuery        WarehouseAnalyticsQuery
+	opsOrders             WarehouseOpsOrdersQuery
+	opsDrivers            WarehouseOpsDriversQuery
+	opsVehicles           WarehouseOpsVehiclesQuery
+	gatewayBreakdownQuery func(ctx context.Context, warehouseID, period string) ([]map[string]any, bool)
+	platformFeeQuery      func(ctx context.Context, warehouseID, period string) (int64, bool)
+	cache                 *cache.Cache
+	idem                  idempotency.Store
+	spannerClient         *spanner.Client
+	manifestStore         *manifest.Store
+	routeGeometryBuilder  *routing.GeometryBuilder
+	locations             telemetry.LastLocationReader
+	supplierHub           *ws.Hub
+	warehouseHub          *ws.Hub
+	driverHub             *ws.Hub
+	retailerHub           *ws.Hub
+	log                   *slog.Logger
 
 	seedSupplierID string
 	currency       string
@@ -118,6 +121,7 @@ type Service struct {
 	broadcastTemplatesMem map[string][]customBroadcastTemplateRow
 	firebaseVerifier      auth.FirebaseVerifier
 	orderStock            OrderStockReader
+	resolveSupplyContext  func(ctx context.Context, warehouseID string) (warehouseSupplyContext, error)
 }
 
 // ServiceConfig is the constructor input.
@@ -212,7 +216,7 @@ func NewService(c ServiceConfig) *Service {
 		c.Log = slog.Default()
 	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		c.Currency = packCurrencyDefault()
 	}
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
@@ -483,9 +487,10 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 		return nil
 	}
 
-	warehouseID := payload.WarehouseID
+	warehouseID := strings.TrimSpace(payload.WarehouseID)
 	if warehouseID == "" {
-		warehouseID = "wh-1"
+		s.log.Warn("missing warehouse_id in supply request accepted payload", "request_id", requestID)
+		return errWarehouseIDRequired
 	}
 
 	status := "ACKNOWLEDGED"
@@ -849,7 +854,7 @@ func (s *Service) effectiveWarehouseID(ctx context.Context, r *http.Request) (st
 
 func (s *Service) defaultWarehouseIDForSupplier(ctx context.Context, supplierID string) (string, error) {
 	if s.memoryTransfersEnabled() {
-		return "ssmr-warehouse-1", nil
+		return "", errors.New("no warehouse for supplier")
 	}
 	if s.spannerClient == nil {
 		return "", errors.New("warehouse resolver unavailable")

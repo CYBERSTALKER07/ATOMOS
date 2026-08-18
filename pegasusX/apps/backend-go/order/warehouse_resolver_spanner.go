@@ -3,11 +3,11 @@ package order
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 // SpannerWarehouseResolver resolves the nearest covering warehouse for a supplier.
@@ -21,13 +21,11 @@ func NewSpannerWarehouseResolver(client *spanner.Client) *SpannerWarehouseResolv
 }
 
 // ResolveNearestWarehouseID returns the closest warehouse that covers the retailer.
-// Hybrid: no coverage cells → whole warehouse country; cells set → H3 membership.
+// Matching is proximity.ResolveServingWarehouse (GS-L2/L3), including service pins.
 func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	ctx context.Context,
 	supplierID string,
-	retailerLat float64,
-	retailerLng float64,
-	retailerCountry string,
+	store proximity.StorePoint,
 ) (string, error) {
 	if r == nil || r.client == nil {
 		return "", fmt.Errorf("spanner warehouse resolver: nil client")
@@ -36,102 +34,35 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	if supplierID == "" {
 		return "", fmt.Errorf("supplier_id required")
 	}
-	if retailerLat == 0 && retailerLng == 0 {
+	if store.Lat == 0 && store.Lng == 0 {
 		return "", nil
 	}
 
-	cellsByWH, err := r.loadCoverageCells(ctx, supplierID)
+	pack, err := auth.CheckoutPackFromContext(ctx)
 	if err != nil {
 		return "", err
 	}
-	retailerCell := coverageH3Cell(retailerLat, retailerLng)
-
-	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Lat, Lng, COALESCE(CountryCode, '')
-		      FROM Warehouses
-		      WHERE SupplierId = @supplierId
-		        AND IsActive = true
-		        AND COALESCE(IsOnShift, true) = true`,
-		Params: map[string]any{"supplierId": supplierID},
+	packCountry, err := auth.PackCountryCode(pack)
+	if err != nil {
+		return "", err
 	}
-	iter := r.client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
-	coveredID := ""
-	coveredDist := math.MaxFloat64
-
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return "", fmt.Errorf("query warehouses: %w", err)
-		}
-		var warehouseID, country string
-		var lat, lng spanner.NullFloat64
-		if err := row.Columns(&warehouseID, &lat, &lng, &country); err != nil {
-			continue
-		}
-		if !lat.Valid || !lng.Valid {
-			continue
-		}
-		if !WarehouseCoversRetailer(country, cellsByWH[warehouseID], retailerCountry, retailerCell) {
-			continue
-		}
-		distance := haversineKm(retailerLat, retailerLng, lat.Float64, lng.Float64)
-		if isCloserWarehouse(distance, warehouseID, coveredDist, coveredID) {
-			coveredDist = distance
-			coveredID = warehouseID
-		}
+	if err := auth.AssertSameMarket(packCountry, store.CountryCode); err != nil {
+		return "", err
 	}
-	return coveredID, nil
-}
 
-func (r *SpannerWarehouseResolver) loadCoverageCells(ctx context.Context, supplierID string) (map[string][]string, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL:    `SELECT WarehouseId, H3Cell FROM WarehouseCoverageCells WHERE SupplierId = @sid`,
-		Params: map[string]any{"sid": supplierID},
-	})
-	defer iter.Stop()
-	out := map[string][]string{}
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("query coverage cells: %w", err)
-		}
-		var wid, cell string
-		if err := row.Columns(&wid, &cell); err != nil {
-			continue
-		}
-		out[wid] = append(out[wid], cell)
+	cov := proximity.CoverageStore{Client: r.client}
+	warehouses, err := cov.ListWarehouses(ctx, supplierID)
+	if err != nil {
+		return "", err
 	}
-	return out, nil
-}
-
-func isCloserWarehouse(distance float64, warehouseID string, bestDistance float64, bestID string) bool {
-	if distance < bestDistance {
-		return true
+	pins, err := cov.ListPins(ctx, supplierID)
+	if err != nil {
+		return "", err
 	}
-	if distance > bestDistance {
-		return false
+	if store.H3Cell == "" {
+		store.H3Cell = proximity.MatchingH3Cell(store.Lat, store.Lng)
 	}
-	if bestID == "" {
-		return true
-	}
-	return warehouseID < bestID
-}
-
-func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
-	const earthKm = 6371.0
-	toRad := func(d float64) float64 { return d * math.Pi / 180 }
-	dLat := toRad(lat2 - lat1)
-	dLng := toRad(lng2 - lng1)
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(toRad(lat1))*math.Cos(toRad(lat2))*math.Sin(dLng/2)*math.Sin(dLng/2)
-	return 2 * earthKm * math.Asin(math.Min(1, math.Sqrt(a)))
+	return proximity.ResolveServingWarehouse(packCountry, store, warehouses, pins)
 }
 
 func (s *Service) lookupRetailerCountry(ctx context.Context, retailerID string) string {

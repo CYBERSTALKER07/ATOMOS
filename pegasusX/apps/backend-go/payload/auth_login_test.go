@@ -11,6 +11,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func TestHandlePayloaderLogin_IDTokenWithoutVerifierUnavailable(t *testing.T) {
+	svc := NewService(ServiceConfig{
+		Repo: NewInMemoryRepository(), JWTSecret: "t5-secret", SeedSupplierID: "seed-1",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/payloader/login",
+		strings.NewReader(`{"id_token":"tok"}`))
+	rr := httptest.NewRecorder()
+	svc.HandlePayloaderLogin(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandlePayloaderLogin_NoDefault998(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "production")
 	t.Setenv("PAYLOAD_DEMO_PHONE", "")

@@ -10,7 +10,7 @@ class OrderModelTest {
     @Test
     fun orderState_allCases() {
         val values = OrderState.values()
-        assertEquals("OrderState should have 17 values", 17, values.size)
+        assertEquals("OrderState should have 19 values", 19, values.size)
         // Verify critical states exist
         assertTrue(values.contains(OrderState.PENDING))
         assertTrue(values.contains(OrderState.PENDING_REVIEW))

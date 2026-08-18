@@ -40,6 +40,7 @@ import javax.inject.Inject
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.json.*
 import com.pegasusx.retailer.ui.components.PegasusTab
+import com.pegasus.design.PulseHonesty
 
 data class PulseTile(val label: String, val value: String, val route: String)
 
@@ -64,28 +65,23 @@ fun ControlTowerScreen(
             loading = true
             error = null
             try {
-                val p = viewModel.api.getControlTowerPulse().asJsonObject
-                empty = p.get("empty")?.asBoolean != false
-                generatedAt = p.get("generated_at")?.asString?.take(19) ?: ""
-                val caps = p.getAsJsonArray("capabilities")
-                packs = if (caps != null) caps.joinToString { it.asString } else "CORE"
+                val p = viewModel.api.getControlTowerPulse()
+                empty = p.empty
+                generatedAt = p.generatedAt.take(19)
+                packs = p.capabilities.joinToString().ifBlank { "CORE" }
                 tiles = listOf(
-                    PulseTile("Open orders", "${p.get("open_orders")?.asInt ?: 0}", PegasusTab.ORDERS.name),
-                    PulseTile("Fulfillment", "${p.get("active_fulfillments")?.asInt ?: 0}", PegasusTab.MAP.name),
-                    PulseTile("Dock pending", "${p.get("dock_pending")?.asInt ?: 0}", "DOCK"),
-                    PulseTile("POS sessions", "${p.get("pos_open_sessions")?.asInt ?: 0}", "POS"),
-                    PulseTile("Open shifts", "${p.get("open_shifts")?.asInt ?: 0}", "SHIFTS"),
-                    PulseTile("Assist", "${p.get("open_assist_tickets")?.asInt ?: 0}", "ASSIST"),
-                    PulseTile("Low stock", "${p.get("low_stock_sku_bins")?.asInt ?: 0}", "STORE_STOCK"),
-                    PulseTile("Variances", "${p.get("shift_variances_7d")?.asInt ?: 0}", "SHIFTS"),
-                    PulseTile(
-                        "Sales 7d",
-                        "${(p.get("sales_minor_7d")?.asLong ?: 0L) / 100.0}",
-                        "REPORTS_PRO",
-                    ),
+                    PulseTile("Open orders", "${p.openOrders}", PegasusTab.ORDERS.name),
+                    PulseTile("Fulfillment", "${p.activeFulfillments}", PegasusTab.MAP.name),
+                    PulseTile("Dock pending", "${p.dockPending}", "DOCK"),
+                    PulseTile("POS sessions", "${p.posOpenSessions}", "POS"),
+                    PulseTile("Open shifts", "${p.openShifts}", "SHIFTS"),
+                    PulseTile("Assist", "${p.openAssistTickets}", "ASSIST"),
+                    PulseTile("Low stock", "${p.lowStockSkuBins}", "STORE_STOCK"),
+                    PulseTile("Variances", "${p.shiftVariances7d}", "SHIFTS"),
+                    PulseTile("Sales 7d", "${p.salesMinor7d}", "REPORTS_PRO"),
                 )
-            } catch (e: Exception) {
-                error = e.message
+            } catch (_: Exception) {
+                error = PulseHonesty.COMMAND_FAILED
             } finally {
                 loading = false
             }
@@ -130,7 +126,7 @@ fun ControlTowerScreen(
                     )
                 }
             }
-        } else {
+        } else if (error == null || tiles.isNotEmpty()) {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(140.dp),
                 contentPadding = PaddingValues(vertical = 4.dp),

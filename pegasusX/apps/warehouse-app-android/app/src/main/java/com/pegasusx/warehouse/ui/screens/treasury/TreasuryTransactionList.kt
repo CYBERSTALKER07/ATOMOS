@@ -34,7 +34,7 @@ fun TreasuryTransactionList(
         ) {
             items(invoices, key = { it.invoiceId }) { inv ->
                 val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs
-                val displayCurrency = if (inv.currency.isBlank()) "UZS" else inv.currency.uppercase()
+                val displayCurrency = com.pegasus.design.moneyCurrency(inv.currency)
                 val payoutOwner = buildString {
                     append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
                     if (inv.payoutOwnerId.isNotBlank()) {

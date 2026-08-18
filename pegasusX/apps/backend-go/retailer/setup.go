@@ -68,6 +68,18 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 	if country := rawString(req, "country_code"); country != "" {
 		ret.CountryCode = country
 	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	ret.CountryCode = country
+	if cell != "" {
+		ret.H3Cell = cell
+	}
 
 	// Desktop setup wizard fields — best-effort label when name is still empty.
 	if strings.TrimSpace(ret.Name) == "" {

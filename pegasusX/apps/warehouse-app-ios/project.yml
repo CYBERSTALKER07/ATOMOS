@@ -30,6 +30,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     sources:
       - path: WarehouseApp
         excludes:
@@ -50,11 +52,20 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.warehouse
         INFOPLIST_FILE: WarehouseApp/Info.plist
         CODE_SIGN_ENTITLEMENTS: WarehouseApp/WarehouseApp.entitlements
+  WarehouseAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: WarehouseAppTests
+    dependencies:
+      - target: WarehouseAppIOS
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk

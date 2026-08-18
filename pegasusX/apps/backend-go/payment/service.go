@@ -211,9 +211,9 @@ type ReconciliationMismatchRow struct {
 
 // Service wires repository + cache + idempotency + secrets.
 type Service struct {
-	repo       Repository
-	cache      *cache.Cache
-	idem       idempotency.Store
+	repo  Repository
+	cache *cache.Cache
+	idem  idempotency.Store
 	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierID.
 	seedSupplierID string
 	currency       string
@@ -233,22 +233,23 @@ type Service struct {
 	stripeWebhookSecret    string
 	paymeWebhookSecret     string
 	clickWebhookSecret     string
+	paymeTx                *paymeMerchantMemory
 
 	webhookInbox *WebhookInboxStore
 
-	fx     *fxrates.Service
-	log    *slog.Logger
-	now    func() time.Time
-	newID  func(prefix string) string
+	fx    *fxrates.Service
+	log   *slog.Logger
+	now   func() time.Time
+	newID func(prefix string) string
 }
 
 // ServiceConfig is constructor input.
 type ServiceConfig struct {
-	Repo                            Repository
-	Cache                           *cache.Cache
-	Idem                            idempotency.Store
+	Repo  Repository
+	Cache *cache.Cache
+	Idem  idempotency.Store
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
-	SeedSupplierID                  string
+	SeedSupplierID string
 	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID                      string
 	Currency                        string
@@ -392,6 +393,7 @@ func NewService(c ServiceConfig) *Service {
 		stripeWebhookSecret:    c.StripeWebhookSecret,
 		paymeWebhookSecret:     c.PaymeWebhookSecret,
 		clickWebhookSecret:     c.ClickWebhookSecret,
+		paymeTx:                newPaymeMerchantMemory(),
 		webhookInbox:           c.WebhookInbox,
 		policy:                 c.Policy,
 		fx:                     c.Fx,
@@ -1413,7 +1415,11 @@ func (s *Service) writeExecutionError(w http.ResponseWriter, endpoint string, er
 		if code == "" {
 			code = "payment_gateway_policy_violation"
 		}
-		writeJSONError(w, http.StatusUnprocessableEntity, code, policyErr.Error(), endpoint, false, "")
+		status := http.StatusUnprocessableEntity
+		if code == "no_live_keys" {
+			status = http.StatusNotImplemented
+		}
+		writeJSONError(w, status, code, policyErr.Error(), endpoint, false, "")
 		return
 	}
 	writeJSONError(w, http.StatusBadGateway, "payment_gateway_execution_failed", err.Error(), endpoint, false, "")

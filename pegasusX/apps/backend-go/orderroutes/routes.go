@@ -13,13 +13,11 @@ import (
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service             *order.Service
-	ClaimsService       *claims.Service
-	TaxService          *tax.Service
-	ComplianceHandler   *compliance.Handler
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service           *order.Service
+	ClaimsService     *claims.Service
+	TaxService        *tax.Service
+	ComplianceHandler *compliance.Handler
+	AllowAuthBypass   bool
 }
 
 // RegisterRoutes mounts the order endpoints.
@@ -97,8 +95,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, mount)
 }

@@ -598,7 +598,7 @@ func (s *Service) fetchFactoryDispatchTransfers(ctx context.Context, factoryID, 
 		Params: map[string]any{
 			"fid":    factoryID,
 			"sid":    supplierID,
-			"states": []string{TransferStateCreated, TransferStateApproved},
+			"states": []string{TransferStateCreated, TransferStateApproved, TransferStateLoading},
 		},
 	})
 	defer iter.Stop()

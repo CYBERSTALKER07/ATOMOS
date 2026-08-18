@@ -2,6 +2,8 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasus.design.ORDER_STATUS_FUNNEL
+import com.pegasus.design.canonicalizeOrderStatus
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
@@ -18,6 +20,7 @@ enum class OrderFilterTab { ACTIVE, SCHEDULED, COMPLETED, CANCELLED }
 
 data class OrdersUiState(
     val filter: OrderFilterTab = OrderFilterTab.ACTIVE,
+    val commandStatus: String? = null,
     val orders: List<SupplierOrder> = emptyList(),
     val loading: Boolean = true,
     val error: String? = null,
@@ -47,7 +50,19 @@ class OrdersViewModel @Inject constructor(
     }
 
     fun setFilter(filter: OrderFilterTab) {
-        _state.update { it.copy(filter = filter) }
+        _state.update { it.copy(filter = filter, commandStatus = null) }
+        load()
+    }
+
+    fun setCommandStatus(status: String) {
+        val key = canonicalizeOrderStatus(status)
+        if (key !in ORDER_STATUS_FUNNEL) return
+        _state.update { it.copy(commandStatus = key) }
+        load()
+    }
+
+    fun clearCommandStatus() {
+        _state.update { it.copy(commandStatus = null) }
         load()
     }
 
@@ -59,11 +74,8 @@ class OrdersViewModel @Inject constructor(
                 _state.update { it.copy(error = null) }
             }
             try {
-                val filter = _state.value.filter
-                val resp = when (filter) {
-                    OrderFilterTab.SCHEDULED -> ops.getOrders(status = "SCHEDULED", limit = 500)
-                    else -> ops.getOrders(filter = filter.name, limit = 500)
-                }
+                val query = resolveSupplierOrdersQuery(_state.value.commandStatus, _state.value.filter)
+                val resp = ops.getOrders(status = query.status, filter = query.filter, limit = 500)
                 if (resp.isSuccessful) {
                     _state.update {
                         it.copy(orders = resp.body()?.orders.orEmpty(), loading = false)
@@ -190,5 +202,19 @@ class OrdersViewModel @Inject constructor(
                 _state.update { it.copy(isReassigning = false) }
             }
         }
+    }
+}
+
+data class SupplierOrdersQuery(val status: String? = null, val filter: String? = null)
+
+fun resolveSupplierOrdersQuery(commandStatus: String?, filter: OrderFilterTab): SupplierOrdersQuery {
+    val key = commandStatus?.trim()?.takeIf { it.isNotEmpty() }?.let { canonicalizeOrderStatus(it) }
+    if (key != null && key in ORDER_STATUS_FUNNEL) {
+        return SupplierOrdersQuery(status = key)
+    }
+    return if (filter == OrderFilterTab.SCHEDULED) {
+        SupplierOrdersQuery(status = "SCHEDULED")
+    } else {
+        SupplierOrdersQuery(filter = filter.name)
     }
 }

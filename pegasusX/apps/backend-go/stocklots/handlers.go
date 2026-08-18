@@ -228,13 +228,13 @@ func (h *Handler) HandlePutaway(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		ProductID        string  `json:"product_id"`
-		LocationID       string  `json:"location_id"`
-		LotCode          string  `json:"lot_code"`
-		Quantity         int64   `json:"quantity"`
-		ExpiryDate       string  `json:"expiry_date"`
-		ManufacturedDate string  `json:"manufactured_date"`
-		LotID            string  `json:"lot_id"`
+		ProductID        string `json:"product_id"`
+		LocationID       string `json:"location_id"`
+		LotCode          string `json:"lot_code"`
+		Quantity         int64  `json:"quantity"`
+		ExpiryDate       string `json:"expiry_date"`
+		ManufacturedDate string `json:"manufactured_date"`
+		LotID            string `json:"lot_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -416,6 +416,15 @@ func (h *Handler) HandleConfirmPickTask(w http.ResponseWriter, r *http.Request) 
 		}
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
+	}
+	// Re-read after commit: same-txn Query/ReadRow can miss BufferWrite on the emulator.
+	if wave == nil || !strings.EqualFold(wave.Status, "READY_TO_SEAL") {
+		_ = spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return maybeMarkWaveReadyInTxn(ctx, txn, waveID, "", "")
+		})
+		if latest, gerr := GetPickWave(r.Context(), h.Spanner, waveID, true); gerr == nil {
+			wave = latest
+		}
 	}
 	writeJSON(w, http.StatusOK, wave)
 }

@@ -57,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,6 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
+import com.pegasusx.retailer.ui.LocalCommandFilter
 import com.pegasusx.retailer.data.model.RetailerAIPrediction
 import com.pegasusx.retailer.ui.components.CountdownTimer
 import com.pegasus.design.PegasusStateKind
@@ -115,6 +117,11 @@ fun OrdersScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
+    val commandFilter = LocalCommandFilter.current
+
+    LaunchedEffect(commandFilter.orderStatus, commandFilter.supplierId) {
+        viewModel.applyCommandFilter(commandFilter.orderStatus, commandFilter.supplierId)
+    }
 
     var selectedOrder by remember { mutableStateOf<Order?>(null) }
     var claimOrder by remember { mutableStateOf<Order?>(null) }
@@ -171,6 +178,34 @@ fun OrdersScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     onRetry = viewModel::refresh,
                 )
+            }
+
+            if (uiState.commandStatus != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Filtered by ${uiState.commandStatus?.replace('_', ' ')}",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = {
+                            commandFilter.clear()
+                            viewModel.clearCommandFilter()
+                        },
+                    ) { Text("Clear") }
+                }
+                ActiveOrdersList(
+                    orders = uiState.commandOrders,
+                    isLoading = uiState.isLoading,
+                    onDetailsCash = { selectedOrder = it },
+                    onQRCash = { qrOrder = it },
+                )
+                return@Column
             }
 
             // ── M3 Icon Tabs ──

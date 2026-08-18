@@ -18,7 +18,7 @@
 |-------|---------|
 | **Auth / tenancy** | Gate 5 `SupplierId` isolation is real. JWT **stamps** `market_code`/`home_cell` on every `Issue` (A1). A2 persists nullable `Suppliers.MarketCode`/`HomeCell`; session `source: claim\|profile\|env`. T1–T5 done. **GS-I:** OIDC per supplier org; AUTH0_DOMAIN wrap not mounted. **M1–M7:** checkout + fiscal + radius + TZ + currency + payout_rail + tax country read shipped pack; flag still false. |
 | **Infra** | **C1–C5 done** (plan only): isolation proof + global DNS/AR plan + session `api_url`. `cells/eu/project/` declares `pegasusx-cell-eu`. Live objects still one project / `pegasusx/ssmr`. |
-| **Fiscal / PSP** | **M2:** fiscalize/retry read shipped `fiscal_adapter` (planned/PEPPOL fail-closed). Cell `FISCAL_PROVIDER` remains SSMR default (PEGASUS/FAKE). Prod: MY_SOLIQ needs EDS; FAKE forbidden; planned `DEFAULT_MARKET_CODE` fails boot. Buyer poller only if UZ MY_SOLIQ. Flag still false. Stripe/Adyen executors are **theatre redirects**. |
+| **Fiscal / PSP** | **M2:** fiscalize/retry read shipped `fiscal_adapter` (planned/PEPPOL fail-closed). Cell `FISCAL_PROVIDER` remains SSMR default (PEGASUS/FAKE). Prod: MY_SOLIQ needs EDS; FAKE forbidden; planned `DEFAULT_MARKET_CODE` fails boot. Buyer poller only if UZ MY_SOLIQ. Flag still false. Stripe/Adyen checkout-init is `catalogHonestyExecutor` (`adapter_planned` → not a redirect). Live Stripe/Adyen charge is DEFER until a sold legal entity. |
 | **Roles** | Class A loops (dispatch, WMS, doorstep, seal) **KEEP**. T5 closed +998 login defaults. M1–M7 closed pack readers. **GS-P** dialect gates shipped. Remaining blockers: flag, one cell, extra PSPs / live PEPPOL. |
 
 ---
@@ -74,7 +74,7 @@ Company register ┴─► Tenant row: SupplierId + market_code + home_cell
 - Retailer demo password `"1234"` — **T4 done:** master key only when `PEGASUSX_ENV=ssmr`.
 - Warehouse secret: **T5 done** — bcrypt only (plaintext compare removed).
 - Partner `withPartnerTenant`: do not stuff retailer `TenantID` into `SupplierId`.
-- Production `RequireTenant` must use the **same** rule as `auth.TenantContextEnforced()` (cfg default is ssmr-only today).
+- Production `RequireTenant` — **LB-1 done:** cfg default is `auth.TenantContextEnforced()` (sandbox|production), not `IsSandbox()` only.
 
 ### GS-M — Pack is law (checkout / fiscal / proximity)
 
@@ -95,7 +95,7 @@ Company register ┴─► Tenant row: SupplierId + market_code + home_cell
 | Pack | Fiscal | PSP | SMS | Payout |
 |------|--------|-----|-----|--------|
 | UZ shipped | MY_SOLIQ + EDS | GLOBAL_PAY + CASH | PlayMobile | Bank-file |
-| EU planned | PEPPOL or COMMERCIAL | Stripe (real executor, not `staticProviderExecutor`) | Twilio | SEPA file |
+| EU planned | PEPPOL or COMMERCIAL | Stripe (real executor later; today `catalogHonestyExecutor`) | Twilio | SEPA file |
 | US planned | COMMERCIAL | Stripe | Twilio | ACH file |
 | KZ planned | TBD | CASH first | local | Bank-file |
 

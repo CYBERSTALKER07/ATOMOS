@@ -12,6 +12,8 @@ data class MarketPack(
     val currencyCode: String,
     val fiscalAdapter: String,
     val mapsAdapter: String,
+    val mapCenterLat: Double = 0.0,
+    val mapCenterLng: Double = 0.0,
     val checkoutReadsThis: Boolean,
 ) {
     val receiptLabel: String get() = fiscalReceiptLabel(fiscalAdapter)
@@ -39,6 +41,40 @@ fun packCurrency(pack: MarketPack?, fallback: String = ""): String {
     val code = pack?.currencyCode?.trim().orEmpty()
     return if (code.isNotEmpty()) code.uppercase() else fallback
 }
+
+/** Empty pack prints the number only. Never invents UZS. */
+fun formatPackMoney(minor: Long, pack: MarketPack?, decimalPlaces: Int = 2): String {
+    val places = decimalPlaces.coerceAtLeast(0)
+    val denom = Math.pow(10.0, places.toDouble())
+    val units = minor / denom
+    val nf = java.text.NumberFormat.getNumberInstance(java.util.Locale.US)
+    nf.minimumFractionDigits = 0
+    nf.maximumFractionDigits = places
+    val formatted = nf.format(units).replace(',', ' ')
+    val ccy = packCurrency(pack)
+    return if (ccy.isEmpty()) formatted else "$formatted $ccy"
+}
+
+fun sessionPackCurrency(): String = packCurrency(MarketPackStore.pack)
+
+/** Stored/event currency, else session pack. Empty pack does not invent UZS. */
+fun moneyCurrency(raw: String?): String {
+    val fromEvent = raw?.trim().orEmpty()
+    if (fromEvent.isNotEmpty()) return fromEvent.uppercase()
+    return sessionPackCurrency()
+}
+
+data class PackMapCenter(val lat: Double, val lng: Double)
+
+/** Shipped pack camera. Empty/planned pack does not invent Tashkent. */
+fun packMapCenter(pack: MarketPack?): PackMapCenter? {
+    val lat = pack?.mapCenterLat ?: 0.0
+    val lng = pack?.mapCenterLng ?: 0.0
+    if (lat == 0.0 && lng == 0.0) return null
+    return PackMapCenter(lat, lng)
+}
+
+fun sessionMapCenter(): PackMapCenter? = packMapCenter(MarketPackStore.pack)
 
 object MarketPackStore {
     private val ref = AtomicReference<AuthSession?>(null)
@@ -90,6 +126,8 @@ object MarketPackBinder {
                     currencyCode = it.optString("currency_code"),
                     fiscalAdapter = it.optString("fiscal_adapter"),
                     mapsAdapter = it.optString("maps_adapter"),
+                    mapCenterLat = it.optDouble("map_center_lat", 0.0),
+                    mapCenterLng = it.optDouble("map_center_lng", 0.0),
                     checkoutReadsThis = it.optBoolean("checkout_reads_this", false),
                 )
             }

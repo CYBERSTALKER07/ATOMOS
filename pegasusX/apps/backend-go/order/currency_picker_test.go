@@ -122,3 +122,34 @@ func TestHandleOrderCurrencies_PlannedPack404(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestFiscalCurrency_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	c, err := fiscalCurrency(context.Background(), "", "")
+	if err != nil || c != "UZS" {
+		t.Fatalf("cur=%q err=%v want UZS from pack", c, err)
+	}
+}
+
+func TestFiscalCurrency_StoredWins(t *testing.T) {
+	c, err := fiscalCurrency(context.Background(), "", "usd")
+	if err != nil || c != "USD" {
+		t.Fatalf("cur=%q err=%v want USD", c, err)
+	}
+}
+
+func TestFiscalCurrency_PlannedFailsClosed(t *testing.T) {
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	if _, err := fiscalCurrency(ctx, "sup-1", ""); err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want %v", err, auth.ErrMarketPackNotShipped)
+	}
+}
+
+func TestMySoliqEmptyCurrency_PlannedFailsClosedBeforeSigner(t *testing.T) {
+	p := &MySoliqProvider{}
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	_, err := p.CreateReceipt(ctx, FiscalCreateRequest{AttemptID: "a", OrderID: "o", AmountMinor: 100})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want planned pack fail-closed", err)
+	}
+}

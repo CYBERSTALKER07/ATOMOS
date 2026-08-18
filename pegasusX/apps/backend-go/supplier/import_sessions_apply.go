@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
@@ -41,16 +42,13 @@ func (r *ImportRepository) ApplyImportSession(ctx context.Context, supplierID, s
 
 	if errors.Is(err, errImportSessionNotFound) ||
 		errors.Is(err, errImportStateConflict) ||
-		errors.Is(err, errImportAccessDenied) {
+		errors.Is(err, errImportAccessDenied) ||
+		errors.Is(err, errImportNoApplicableRows) {
 		return summary, err
 	}
 
 	if markErr := r.markApplyFailure(ctx, supplierID, sessionID, err); markErr != nil && !errors.Is(markErr, errImportSessionNotFound) {
 		return summary, fmt.Errorf("apply import session failed: %w (mark failed: %v)", err, markErr)
-	}
-
-	if errors.Is(err, errImportNoApplicableRows) {
-		return summary, errImportStateConflict
 	}
 
 	return summary, err
@@ -235,8 +233,12 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 					"ProductId", "SupplierId", "CategoryId", "Name", "PriceMinor", "Currency",
 					"StockQuantity", "Unit", "UnitVolumeVU", "IsActive", "Version", "CreatedAt", "UpdatedAt",
 				}
+				currency, curErr := importRowCurrency(ctx, supplierID, cleanedData, rawData)
+				if curErr != nil {
+					return curErr
+				}
 				productVals := []any{
-					productID, supplierID, categoryID, productName, priceMinor, "UZS",
+					productID, supplierID, categoryID, productName, priceMinor, currency,
 					int64(0), "UNIT", 1.0, true, int64(1), spanner.CommitTimestamp, spanner.CommitTimestamp,
 				}
 				if description := strings.TrimSpace(importStringValue(cleanedData, rawData, "description")); description != "" {
@@ -263,7 +265,8 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 
 			rowDeterministicKey := fmt.Sprintf("%s|%s|%s|%d", supplierID, warehouseID, productID, rowIndex)
 			if _, alreadySeen := seenRowKeys[rowDeterministicKey]; alreadySeen {
-				return fmt.Errorf("row %d duplicate deterministic key", rowIndex)
+				// Discovery replay can stage the same row_index twice; one apply is enough.
+				continue
 			}
 			seenRowKeys[rowDeterministicKey] = struct{}{}
 
@@ -343,13 +346,13 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 		sort.Strings(whList)
 		buf := outbox.NewSpannerTxnBuffer(txn)
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateSupplier, supplierID, events.TopicMain, map[string]any{
-			"type":            events.EventInventorySyncComplete,
-			"supplier_id":     supplierID,
-			"session_id":      sessionID,
-			"applied_rows":    summary.AppliedRows,
-			"warehouse_ids":   whList,
-			"product_count":   len(affectedProducts),
-			"timestamp":       time.Now().UTC().Format(time.RFC3339Nano),
+			"type":          events.EventInventorySyncComplete,
+			"supplier_id":   supplierID,
+			"session_id":    sessionID,
+			"applied_rows":  summary.AppliedRows,
+			"warehouse_ids": whList,
+			"product_count": len(affectedProducts),
+			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -495,6 +498,15 @@ func importLookupValue(cleaned, raw map[string]any, keys ...string) (any, bool) 
 		}
 	}
 	return nil, false
+}
+
+func importRowCurrency(ctx context.Context, supplierID string, cleaned, raw map[string]any) (string, error) {
+	fromRow := importStringValue(cleaned, raw, "currency", "currency_code")
+	pack, err := auth.FiscalPackFromContext(ctx, supplierID)
+	if err != nil {
+		return "", err
+	}
+	return auth.ResolveCheckoutCurrency(pack, fromRow)
 }
 
 func importStringValue(cleaned, raw map[string]any, keys ...string) string {

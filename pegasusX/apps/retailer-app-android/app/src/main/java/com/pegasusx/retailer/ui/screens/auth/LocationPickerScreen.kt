@@ -62,8 +62,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import com.pegasusx.retailer.R
 
-// Default: Tashkent city center
-private val TASHKENT = LatLng(41.2995, 69.2401)
+private fun packStartPosition(): LatLng {
+    val c = com.pegasus.design.sessionMapCenter()
+    return LatLng(c?.lat ?: 0.0, c?.lng ?: 0.0)
+}
 
 data class PickedLocation(
     val latitude: Double,
@@ -90,7 +92,7 @@ fun LocationPickerScreen(
     val startPosition = if (initialLat != 0.0 || initialLng != 0.0) {
         LatLng(initialLat, initialLng)
     } else {
-        TASHKENT
+        packStartPosition()
     }
 
     val cameraPositionState = rememberCameraPositionState {

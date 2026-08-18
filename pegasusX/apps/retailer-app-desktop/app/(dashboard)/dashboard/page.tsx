@@ -11,35 +11,30 @@ import {
 import { PageChrome } from "@/components/PageChrome";
 import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { motion } from "framer-motion";
+import { CommandBoard } from "../../../components/dashboard/CommandBoard";
 import { KpiGrid } from "../../../components/dashboard/KpiGrid";
 import { QuickReorderSection } from "../../../components/dashboard/QuickReorderSection";
 import { AiPredictionSection } from "../../../components/dashboard/AiPredictionSection";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import { useOptionalWebSocket } from "../../../lib/ws";
-import { getRetailerId } from "@/lib/retailer-profile";
-import type { Order, Product, RetailerAIPredictionsResponse } from "../../../lib/types";
+import type { Product, RetailerAIPredictionsResponse } from "../../../lib/types";
+import type { RetailerControlTowerPulse } from "@pegasusx/types";
 import { usePortalT } from "@/lib/i18n";
 
-const EMPTY_ORDERS: Order[] = [];
 const EMPTY_PRODUCTS: Product[] = [];
 
 type LoadIssue = "restricted" | "offline" | "error";
 
 export default function DashboardPage() {
   const t = usePortalT();
-  const retailerID = getRetailerId();
-  const ordersPath = retailerID
-    ? `/v1/retailers/${retailerID}/orders`
-    : "/v1/orders";
-
   const {
-    data: orders,
-    loading: loadingOrders,
-    error: ordersError,
-    isRefreshing: isOrdersRefreshing,
-    mutate: refreshOrders,
-  } = useLiveData<Order[]>(ordersPath, 30000);
+    data: pulse,
+    loading: loadingPulse,
+    error: pulseError,
+    isRefreshing: isPulseRefreshing,
+    mutate: refreshPulse,
+  } = useLiveData<RetailerControlTowerPulse>("/v1/retailer/control-tower/pulse", 60000);
   const {
     data: predictions,
     loading: loadingPred,
@@ -57,35 +52,23 @@ export default function DashboardPage() {
   const ws = useOptionalWebSocket();
   const { addToCart, items } = useCart();
 
-  const orderList = orders ?? EMPTY_ORDERS;
   const predictionList = predictions?.items ?? [];
   const productList = products ?? EMPTY_PRODUCTS;
   const cartQuantity = items.reduce((total, item) => total + item.quantity, 0);
   const isRefreshing =
-    isOrdersRefreshing || isPredictionsRefreshing || isProductsRefreshing;
+    isPulseRefreshing || isPredictionsRefreshing || isProductsRefreshing;
 
   const refreshAll = useCallback(() => {
-    void refreshOrders();
+    void refreshPulse();
     void refreshPredictions();
     void refreshProducts();
-  }, [refreshOrders, refreshPredictions, refreshProducts]);
+  }, [refreshPulse, refreshPredictions, refreshProducts]);
 
-  const activeOrders = useMemo(
-    () =>
-      orderList.filter(
-        (order) => order.state !== "COMPLETED" && order.state !== "CANCELLED",
-      ),
-    [orderList],
-  );
-  const completedOrders = useMemo(
-    () => orderList.filter((order) => order.state === "COMPLETED"),
-    [orderList],
-  );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
-  const loading = loadingOrders || loadingPred || loadingProducts;
+  const loading = loadingPulse || loadingPred || loadingProducts;
 
   const loadIssue = useMemo<LoadIssue | null>(() => {
-    const errors = [ordersError, predictionsError, productsError].filter(
+    const errors = [pulseError, predictionsError, productsError].filter(
       Boolean,
     ) as Array<Error & { status?: number }>;
     if (errors.length === 0) return null;
@@ -101,7 +84,7 @@ export default function DashboardPage() {
       return "offline";
     }
     return "error";
-  }, [ordersError, predictionsError, productsError]);
+  }, [pulseError, predictionsError, productsError]);
 
   const syncBanner = useMemo(() => {
     if (loadIssue === "restricted") {
@@ -143,7 +126,7 @@ export default function DashboardPage() {
   }, [isRefreshing, loadIssue, loading, ws]);
 
   useRetailerSessionReconcile(() => {
-    void refreshOrders();
+    void refreshPulse();
     void refreshPredictions();
     void refreshProducts();
   });
@@ -224,15 +207,23 @@ export default function DashboardPage() {
               <CreditProfileCard />
             </div>
 
-            <KpiGrid
-              activeOrdersLength={activeOrders.length}
-              predictionListLength={predictionList.length}
-              productListLength={productList.length}
-              cartQuantity={cartQuantity}
-              completedOrdersLength={completedOrders.length}
-              blockedPredictionCount={0}
-              uniqueSuppliersCount={new Set(productList.map((p) => p.supplier_id)).size}
+            <CommandBoard
+              pulse={pulse}
+              loading={loadingPulse}
+              error={pulseError ? "control_tower_pulse_failed" : null}
             />
+
+            {pulseError || (loadingPulse && !pulse) ? null : (
+              <KpiGrid
+                activeOrdersLength={pulse?.open_orders ?? 0}
+                predictionListLength={predictionList.length}
+                productListLength={productList.length}
+                cartQuantity={cartQuantity}
+                completedOrdersLength={pulse?.orders_by_status?.COMPLETED ?? 0}
+                blockedPredictionCount={0}
+                uniqueSuppliersCount={pulse?.orders_by_supplier?.length ?? 0}
+              />
+            )}
 
             <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
               <QuickReorderSection

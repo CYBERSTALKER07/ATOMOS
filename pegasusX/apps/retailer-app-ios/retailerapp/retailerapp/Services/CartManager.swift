@@ -226,7 +226,7 @@ struct CheckoutQuoteLine: Encodable {
         case currency
     }
 
-    init(productID: String, quantity: Int64, unitPriceMinor: Int64, currency: String = "UZS") {
+    init(productID: String, quantity: Int64, unitPriceMinor: Int64, currency: String = packCurrency(MarketPackStore.pack)) {
         self.productID = productID
         self.quantity = quantity
         self.unitPriceMinor = unitPriceMinor
@@ -500,7 +500,7 @@ extension CartManager {
                 supplierId: supplierID,
                 quantity: Int64(item.quantity),
                 unitPrice: Int64(item.variant.price),
-                currency: "UZS"
+                currency: packCurrency(MarketPackStore.pack)
             )
         }
         let request = CartSyncRequest(items: cartItems)

@@ -1,8 +1,12 @@
 import { useCallback, useState } from "react";
 import { usePolling } from "@pegasusx/api-client";
 import type { SupplierFleetLiveRoute } from "@pegasusx/types";
+import { applyDriverLocationPatch, parseDriverLocationPatch } from "@pegasusx/ws-refresh-contract";
 import { createSupplierApi } from "@/lib/api";
-import { SUPPLIER_FLEET_LIVE_REFRESH_EVENTS } from "@/lib/supplier-ws-events";
+import {
+  SUPPLIER_FLEET_LIVE_REFRESH_EVENTS,
+  SUPPLIER_LOCATION_PATCH_EVENTS,
+} from "@/lib/supplier-ws-events";
 import { useSupplierWsRefresh } from "@/lib/use-supplier-ws-refresh";
 
 const api = createSupplierApi();
@@ -48,6 +52,20 @@ export function useFleetLiveMap(pollMs = 15_000) {
     {
       eventTypes: SUPPLIER_FLEET_LIVE_REFRESH_EVENTS,
       debounceMs: 750,
+    },
+  );
+
+  useSupplierWsRefresh(
+    (_eventType, raw) => {
+      const patch = parseDriverLocationPatch(raw);
+      if (!patch) {
+        return;
+      }
+      setRoutes((current) => applyDriverLocationPatch(current, patch));
+    },
+    {
+      eventTypes: SUPPLIER_LOCATION_PATCH_EVENTS,
+      debounceMs: 400,
     },
   );
 

@@ -95,6 +95,56 @@ func TestFlagSetRejectsEmptyActorAsUnknownOnlyWithoutClaims(t *testing.T) {
 	}
 }
 
+func TestHandleListPending_EmptyAndLive(t *testing.T) {
+	flagRepo := NewMemoryRepository()
+	h := &Handlers{Svc: NewService(flagRepo)}
+	r := chi.NewRouter()
+	RegisterRoutes(r, h)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/platform-admin/flags/", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "pa", Role: auth.RolePlatformAdmin,
+	}))
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("empty status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var empty map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &empty); err != nil {
+		t.Fatal(err)
+	}
+	if empty["count"] != float64(0) || empty["available"] != true {
+		t.Fatalf("empty pending must be available zero, got %+v", empty)
+	}
+
+	if err := h.Svc.SetOverride(context.Background(), Override{
+		FlagKey: "AUTO_ORDER_PLACE_ENABLED", TenantType: "SUPPLIER", TenantID: "s1",
+		Enabled: true, Reason: "pilot", UpdatedBy: "setter",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Svc.SetOverride(context.Background(), Override{
+		FlagKey: "PROMO_RULES_ENABLED", TenantType: "SUPPLIER", TenantID: "s1",
+		Enabled: true, UpdatedBy: "setter",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	rr2 := httptest.NewRecorder()
+	r.ServeHTTP(rr2, req)
+	var live struct {
+		Items []Override `json:"items"`
+		Count int        `json:"count"`
+	}
+	if err := json.Unmarshal(rr2.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+	if live.Count != 1 || len(live.Items) != 1 || live.Items[0].FlagKey != "AUTO_ORDER_PLACE_ENABLED" {
+		t.Fatalf("want only pending money flag, got %+v", live)
+	}
+}
+
 func muxFlag(req *http.Request, flag string) *http.Request {
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("flagKey", flag)

@@ -196,7 +196,7 @@ func (s *Simulator) Run(ctx context.Context) error {
 	// 8. Trigger Webhook for payment (mimic external provider)
 	// 9. Give time for final WS events to flush
 	time.Sleep(2 * time.Second)
-	
+
 	// ---- NEGATIVE EDGE CASE: PAYMENT FAILURE ----
 	slog.Info("Starting Negative Edge Case: Payment Failure...")
 	failOrderID, err := s.retailerPlacePrepayOrder(ctx, retailerToken, supplierID)
@@ -211,7 +211,7 @@ func (s *Simulator) Run(ctx context.Context) error {
 			slog.Info("Payment failure webhook sent successfully")
 		}
 	}
-	
+
 	// ---- NEGATIVE EDGE CASE: DRIVER REPORTS DAMAGE ----
 	slog.Info("Starting Negative Edge Case: Driver Reports Damage...")
 	damageOrderID, err := s.retailerPlaceOrder(ctx, retailerToken, supplierID)
@@ -231,10 +231,10 @@ func (s *Simulator) Run(ctx context.Context) error {
 
 	// ---- FACTORY & PAYLOAD LIFECYCLE ----
 	slog.Info("Starting Factory & Payload Lifecycle...")
-	
+
 	// Create a transfer order for the factory to dispatch
 	transferOrderID := "sim-transfer-ord-" + uuid.NewString()[:8]
-	
+
 	factoryManifestID, err := s.factoryDispatch(ctx, factoryToken, map[string]any{
 		"reason": "simulated factory dispatch",
 	})
@@ -243,7 +243,7 @@ func (s *Simulator) Run(ctx context.Context) error {
 	} else {
 		slog.Info("Factory dispatched manifest", "manifest_id", factoryManifestID)
 		time.Sleep(1 * time.Second)
-		
+
 		// Payloader starts loading
 		slog.Info("Payloader starting loading...")
 		if err := s.payloadStartLoading(ctx, payloadToken, factoryManifestID); err != nil {
@@ -251,7 +251,7 @@ func (s *Simulator) Run(ctx context.Context) error {
 		} else {
 			slog.Info("Payloader started loading manifest successfully")
 			time.Sleep(1 * time.Second)
-			
+
 			// For testing payload Exceptions, we can simulate an exception
 			if err := s.payloadException(ctx, payloadToken, factoryManifestID, transferOrderID, "OVERFLOW"); err != nil {
 				// We expect this might fail if transferOrderID isn't actually in the DB or manifest
@@ -260,7 +260,7 @@ func (s *Simulator) Run(ctx context.Context) error {
 				slog.Info("Payloader successfully recorded manifest exception")
 			}
 			time.Sleep(1 * time.Second)
-			
+
 			if err := s.payloadSealCompleted(ctx, payloadToken, factoryManifestID); err != nil {
 				slog.Error("Payloader failed to complete sealing", "err", err)
 			} else {
@@ -304,9 +304,13 @@ func (s *Simulator) wsReader(role string, c *websocket.Conn) {
 }
 
 func (s *Simulator) retailerPlaceOrder(ctx context.Context, token, supplierID string) (string, error) {
+	ccy := s.operatingCurrency(ctx)
+	if ccy == "" {
+		return "", fmt.Errorf("empty_operating_currency")
+	}
 	body := map[string]any{
 		"supplier_id": supplierID,
-		"currency":    "UZS",
+		"currency":    ccy,
 		"items": []map[string]any{
 			{"product_id": "prod-1", "quantity": 10},
 		},
@@ -331,7 +335,7 @@ func (s *Simulator) retailerPlaceOrder(ctx context.Context, token, supplierID st
 	}
 	var res map[string]any
 	json.Unmarshal(respBody, &res)
-	
+
 	orderID, _ := res["order_id"].(string)
 	if orderID == "" {
 		return "", fmt.Errorf("no order_id in response: %s", string(respBody))
@@ -340,9 +344,13 @@ func (s *Simulator) retailerPlaceOrder(ctx context.Context, token, supplierID st
 }
 
 func (s *Simulator) retailerPlacePrepayOrder(ctx context.Context, token, supplierID string) (string, error) {
+	ccy := s.operatingCurrency(ctx)
+	if ccy == "" {
+		return "", fmt.Errorf("empty_operating_currency")
+	}
 	body := map[string]any{
-		"supplier_id": supplierID,
-		"currency":    "UZS",
+		"supplier_id":    supplierID,
+		"currency":       ccy,
 		"payment_method": "CARD_ONLINE",
 		"items": []map[string]any{
 			{"product_id": "prod-1", "quantity": 10},
@@ -368,7 +376,7 @@ func (s *Simulator) retailerPlacePrepayOrder(ctx context.Context, token, supplie
 	}
 	var res map[string]any
 	json.Unmarshal(respBody, &res)
-	
+
 	orderID, _ := res["order_id"].(string)
 	if orderID == "" {
 		return "", fmt.Errorf("no order_id in response: %s", string(respBody))
@@ -466,12 +474,16 @@ func (s *Simulator) driverReportDamage(ctx context.Context, token, driverID, ord
 }
 
 func (s *Simulator) simulateGlobalPayWebhook(ctx context.Context, orderID string) error {
+	ccy := s.operatingCurrency(ctx)
+	if ccy == "" {
+		return fmt.Errorf("empty_operating_currency")
+	}
 	body := map[string]any{
 		"transaction_id": "sim-tx-1234",
 		"order_id":       orderID,
 		"status":         "SUCCESS",
 		"amount":         100000,
-		"currency":       "UZS",
+		"currency":       ccy,
 	}
 	b, _ := json.Marshal(body)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/v1/webhooks/global-pay", s.base), bytes.NewReader(b))
@@ -491,12 +503,16 @@ func (s *Simulator) simulateGlobalPayWebhook(ctx context.Context, orderID string
 }
 
 func (s *Simulator) simulateGlobalPayFailureWebhook(ctx context.Context, orderID string) error {
+	ccy := s.operatingCurrency(ctx)
+	if ccy == "" {
+		return fmt.Errorf("empty_operating_currency")
+	}
 	body := map[string]any{
 		"transaction_id": "sim-tx-fail",
 		"order_id":       orderID,
 		"status":         "FAILED",
 		"amount":         100000,
-		"currency":       "UZS",
+		"currency":       ccy,
 	}
 	b, _ := json.Marshal(body)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/v1/webhooks/global-pay", s.base), bytes.NewReader(b))

@@ -10,13 +10,14 @@ import { BulkImportWizard } from "@/components/BulkImportWizard";
 import type { CatalogProduct, CatalogCategory, CreateProductFormState } from "./components/types";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "./components/types";
 import { CreateProductForm } from "./components/CreateProductForm";
+import { sessionPackCurrency } from "@pegasusx/api-client";
 import { CatalogTable } from "./components/CatalogTable";
 
 export default function CatalogPage() {
   const t = usePortalT();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [categories, setCategories] = useState<CatalogCategory[]>([]);
-  const [currency, setCurrency] = useState("UZS");
+  const [currency, setCurrency] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -29,7 +30,7 @@ export default function CatalogPage() {
     try {
       const api = createSupplierApi();
       const profile = await api.getSupplierProfile();
-      setCurrency(profile.currency || "UZS");
+      setCurrency(profile.currency || sessionPackCurrency());
 
       const [productsRes, categoriesRes] = await Promise.all([
         supplierFetch("/v1/catalog/products"),

@@ -37,6 +37,9 @@ struct MoreHubView: View {
                 NavigationLink { SupplyRequestsHubView() } label: {
                     Label("portal.nav.supply_requests", systemImage: "arrow.triangle.2.circlepath")
                 }
+                NavigationLink { CoverageView() } label: {
+                    Label("Coverage and supply", systemImage: "mappin.and.ellipse")
+                }
                 NavigationLink { ReplenishmentView() } label: {
                     Label("portal.nav.replenishment", systemImage: "shippingbox")
                 }

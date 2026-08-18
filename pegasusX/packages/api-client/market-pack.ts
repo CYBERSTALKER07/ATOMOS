@@ -14,9 +14,13 @@ export type MarketPack = {
   fiscal_adapter: string;
   psp_adapters?: string[];
   maps_adapter?: string;
+  map_center_lat?: number;
+  map_center_lng?: number;
   distance_unit?: string;
   checkout_reads_this?: boolean;
 };
+
+export type PackMapCenter = { lat: number; lng: number };
 
 export type AuthSession = {
   subject?: string;
@@ -47,6 +51,57 @@ export function fiscalReceiptLabel(adapter?: string | null): string {
 export function packCurrency(pack?: Pick<MarketPack, "currency_code"> | null, fallback = ""): string {
   const code = String(pack?.currency_code || fallback || "").trim().toUpperCase();
   return code;
+}
+
+export function displayPackCurrency(raw?: string | null, packCurrencyCode = ""): string {
+  const fromEvent = String(raw || "").trim().toUpperCase();
+  if (fromEvent) return fromEvent;
+  return String(packCurrencyCode || "").trim().toUpperCase();
+}
+
+export function sessionPackCurrency(): string {
+  return packCurrency(readCachedAuthSession()?.pack);
+}
+
+/** Stored/event currency, else session pack. Empty pack does not invent UZS. */
+export function moneyCurrency(raw?: string | null): string {
+  return displayPackCurrency(raw, sessionPackCurrency());
+}
+
+/** Shipped pack camera. Empty/planned pack does not invent Tashkent. */
+export function packMapCenter(
+  pack?: Pick<MarketPack, "map_center_lat" | "map_center_lng" | "status"> | null,
+): PackMapCenter | null {
+  if (pack && pack.status && pack.status !== "shipped") return null;
+  const lat = Number(pack?.map_center_lat);
+  const lng = Number(pack?.map_center_lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+    return null;
+  }
+  return { lat, lng };
+}
+
+export function sessionMapCenter(): PackMapCenter | null {
+  return packMapCenter(readCachedAuthSession()?.pack);
+}
+
+export function mapInitialViewState(
+  pack?: Pick<MarketPack, "map_center_lat" | "map_center_lng" | "status"> | null,
+  zoom = 12,
+): { latitude: number; longitude: number; zoom: number } {
+  const c = packMapCenter(pack);
+  if (!c) return { latitude: 0, longitude: 0, zoom: 1 };
+  return { latitude: c.lat, longitude: c.lng, zoom };
+}
+
+/** Selectable catalog codes. Planned rows stay visible but are not choosable. */
+export function selectablePackPsps(
+  catalog: Array<{ code?: string; selectable?: boolean }> | null | undefined,
+): string[] {
+  return (catalog || [])
+    .filter((row) => row.selectable !== false)
+    .map((row) => String(row.code || "").trim().toUpperCase())
+    .filter(Boolean);
 }
 
 export function packAllowsPsp(pack: MarketPack | null | undefined, psp: string): boolean {

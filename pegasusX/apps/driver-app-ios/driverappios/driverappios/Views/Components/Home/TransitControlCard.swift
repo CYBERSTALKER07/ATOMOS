@@ -155,8 +155,9 @@ struct TransitControlCard: View {
     }
 
     private func openWarehouseInMaps() {
-        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : 41.2995
-        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : 69.2401
+        let pack = packMapCoordinate()
+        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : pack.lat
+        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : pack.lng
         let depotCoord = CLLocationCoordinate2D(latitude: lat, longitude: lng)
         let placemark = MKPlacemark(coordinate: depotCoord)
         let mapItem = MKMapItem(placemark: placemark)

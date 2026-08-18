@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { usePolling } from '@pegasusx/api-client';
 import { createWarehouseApi } from '@/lib/api';
 import { subscribeWarehouseWS } from '@/lib/auth';
-import { parseWarehouseWsEventType, WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS } from '@/lib/fleet-ws-events';
+import { applyDriverLocationPatch, parseDriverLocationPatch } from '@pegasusx/ws-refresh-contract';
+import { parseWarehouseWsEventType, WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS, WAREHOUSE_LOCATION_PATCH_EVENTS } from '@/lib/fleet-ws-events';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 
 const api = createWarehouseApi();
@@ -50,6 +51,13 @@ export function useWarehouseFleetLiveMap(pollMs = 15_000) {
     const unsubscribe = subscribeWarehouseWS({
       onMessage: (payload) => {
         const eventType = parseWarehouseWsEventType(payload);
+        if (eventType && WAREHOUSE_LOCATION_PATCH_EVENTS.has(eventType)) {
+          const patch = parseDriverLocationPatch(payload);
+          if (patch) {
+            setRoutes((current) => applyDriverLocationPatch(current ?? [], patch));
+          }
+          return;
+        }
         if (!eventType || !WAREHOUSE_FLEET_LIVE_REFRESH_EVENTS.has(eventType) || eventType.startsWith('SYSTEM')) {
           return;
         }

@@ -204,7 +204,7 @@ func (r *SpannerDeviceTokenRepository) ListTokens(ctx context.Context, actorID, 
 		if err := row.Columns(&token); err != nil {
 			return nil, err
 		}
-		if token != "" {
+		if IsFCMRegistrationToken(token, "") {
 			tokens = append(tokens, token)
 		}
 	}
@@ -251,7 +251,7 @@ func (r *MemoryDeviceTokenRepository) ListTokens(ctx context.Context, actorID, a
 	defer r.mu.RUnlock()
 	var out []string
 	for _, row := range r.tokens {
-		if row.ActorID == actorID && row.ActorRole == actorRole {
+		if row.ActorID == actorID && row.ActorRole == actorRole && IsFCMRegistrationToken(row.Token, row.Platform) {
 			out = append(out, row.Token)
 		}
 	}

@@ -190,7 +190,7 @@ fun ShiftsScreen(
                                 try {
                                     val body = mutableMapOf<String, Any>(
                                         "opening_float_minor" to (floatMinor.toLongOrNull() ?: 0L),
-                                        "currency" to "UZS",
+                                        "currency" to com.pegasusx.retailer.data.model.sessionPackCurrency(),
                                     )
                                     registerId?.let { body["register_id"] = it }
                                     viewModel.api.openShift(

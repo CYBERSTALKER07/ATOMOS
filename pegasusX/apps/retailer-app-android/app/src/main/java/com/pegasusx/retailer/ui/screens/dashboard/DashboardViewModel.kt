@@ -6,8 +6,10 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasus.design.MarketPack
 import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PulseHonesty
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
+import com.pegasusx.retailer.data.model.ControlTowerPulse
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.PulseEvent
@@ -37,6 +39,9 @@ data class DashboardUiState(
     val recentProducts: List<Product> = emptyList(),
     val pulseEvents: List<PulseEvent> = emptyList(),
     val pulseLoading: Boolean = false,
+    val pulseError: String? = null,
+    val commandPulse: ControlTowerPulse? = null,
+    val commandPulseError: String? = null,
     val error: String? = null,
     val loadIssue: DashboardLoadIssue? = null,
     val orderActionPending: Boolean = false,
@@ -89,7 +94,7 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, pulseLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, pulseLoading = true, pulseError = null, error = null) }
             val pack = MarketPackBinder.fetch(BuildConfig.BASE_URL, tokenManager.getPreferredToken().orEmpty())?.pack
             _uiState.update { it.copy(pack = pack) }
 
@@ -129,10 +134,30 @@ class DashboardViewModel @Inject constructor(
 
             try {
                 val pulse = api.getRetailerPulse()
-                _uiState.update { it.copy(pulseEvents = pulse.events, pulseLoading = false) }
+                _uiState.update { it.copy(pulseEvents = pulse.events, pulseLoading = false, pulseError = null) }
             } catch (_: Exception) {
-                // Soft-fail: hide strip when pulse is unavailable.
-                _uiState.update { it.copy(pulseEvents = emptyList(), pulseLoading = false) }
+                _uiState.update { it.copy(pulseLoading = false, pulseError = PulseHonesty.FAILED) }
+            }
+
+            try {
+                val command = api.getControlTowerPulse()
+                val applied = PulseHonesty.applyObject(
+                    ok = true,
+                    incoming = command,
+                    previous = _uiState.value.commandPulse,
+                )
+                _uiState.update {
+                    it.copy(commandPulse = applied.value, commandPulseError = applied.error)
+                }
+            } catch (_: Exception) {
+                val applied = PulseHonesty.applyObject(
+                    ok = false,
+                    incoming = null,
+                    previous = _uiState.value.commandPulse,
+                )
+                _uiState.update {
+                    it.copy(commandPulse = applied.value, commandPulseError = applied.error)
+                }
             }
 
             _uiState.update {

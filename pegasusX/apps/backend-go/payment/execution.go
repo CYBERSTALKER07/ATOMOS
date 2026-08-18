@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
@@ -42,6 +43,8 @@ type ExecutionRequest struct {
 	AmountMinor     int64
 	Currency        string
 	AttemptNo       int
+	CardToken       string
+	PayerPhone      string
 }
 
 // ExecutionResult carries normalized provider execution outputs.
@@ -145,16 +148,16 @@ func NewProviderExecutionRouter(cfg ProviderExecutionRouterConfig) *ProviderExec
 				"",
 				cfg.PaymentBreaker,
 			),
-			"ADYEN": &staticProviderExecutor{
-				gateway:      "ADYEN",
-				checkoutMode: ExecutionModeHostedRedirect,
-				urlPrefix:    "/v1/payment/redirect/adyen/",
-			},
-			"STRIPE": &staticProviderExecutor{
-				gateway:      "STRIPE",
-				checkoutMode: ExecutionModeHostedRedirect,
-				urlPrefix:    "/v1/payment/redirect/stripe/",
-			},
+			"ADYEN":  catalogHonestyExecutorFor("ADYEN"),
+			"STRIPE": catalogHonestyExecutorFor("STRIPE"),
+			// PAYME / CLICK adapters exist (payme_executor.go, click_executor.go,
+			// Merchant/SHOP inbound handlers) but are NOT wired. UZ launch is
+			// Cash + Global Pay + MySoliq + bank-file. Checkout stays honesty
+			// 501 no_live_keys. Uncomment only after an explicit wire decision:
+			// "PAYME": newPaymeProviderExecutor(merchantID, key, env),
+			// "CLICK": newClickProviderExecutor(merchantID, serviceID, merchantUserID, secret),
+			"PAYME": catalogHonestyExecutorFor("PAYME"),
+			"CLICK": catalogHonestyExecutorFor("CLICK"),
 			"CASH": &staticProviderExecutor{
 				gateway:      "CASH",
 				checkoutMode: ExecutionModeManual,
@@ -223,7 +226,11 @@ func (r *ProviderExecutionRouter) Execute(ctx context.Context, req ExecutionRequ
 	executeWithRetries := func(targetGateway string, execReq ExecutionRequest) (ExecutionResult, error) {
 		targetGateway = strings.ToUpper(strings.TrimSpace(targetGateway))
 		if targetGateway == "" {
-			targetGateway = "GLOBAL_PAY"
+			return ExecutionResult{}, &GatewayPolicyError{
+				Code:         "gateway_required",
+				Message:      "gateway_required",
+				PolicySource: "MARKET_PACK",
+			}
 		}
 		executor, ok := r.executors[targetGateway]
 		if !ok {
@@ -266,9 +273,13 @@ func (r *ProviderExecutionRouter) Execute(ctx context.Context, req ExecutionRequ
 		return ExecutionResult{}, lastErr
 	}
 
-	primaryGateway := req.Gateway
+	primaryGateway := strings.ToUpper(strings.TrimSpace(req.Gateway))
 	if primaryGateway == "" {
-		primaryGateway = "GLOBAL_PAY"
+		resolved, resolveErr := resolveDefaultCardGateway(ctx)
+		if resolveErr != nil {
+			return ExecutionResult{}, resolveErr
+		}
+		primaryGateway = resolved
 	}
 
 	result, err := executeWithRetries(primaryGateway, req)
@@ -320,6 +331,67 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 		return ctx.Err()
 	case <-timer.C:
 		return nil
+	}
+}
+
+func resolveDefaultCardGateway(ctx context.Context) (string, error) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return "", &GatewayPolicyError{
+			Code:         "gateway_required",
+			Message:      err.Error(),
+			PolicySource: "MARKET_PACK",
+		}
+	}
+	for _, gw := range LivePackGateways(pack) {
+		if gw != "CASH" {
+			return gw, nil
+		}
+	}
+	return "", &GatewayPolicyError{
+		Code:         "gateway_required",
+		Message:      "no live card gateway in pack",
+		PolicySource: "MARKET_PACK",
+	}
+}
+
+func catalogHonestyExecutorFor(gateway string) ProviderExecutor {
+	status := PSPStatusUnkeyed
+	if adapter, ok := LookupPSP(gateway); ok {
+		status = adapter.Status
+	}
+	return &catalogHonestyExecutor{gateway: gateway, status: status}
+}
+
+type catalogHonestyExecutor struct {
+	gateway string
+	status  string
+}
+
+func (e *catalogHonestyExecutor) Execute(_ context.Context, req ExecutionRequest) (ExecutionResult, error) {
+	gateway := ""
+	if e != nil {
+		gateway = e.gateway
+	}
+	switch req.Action {
+	case ExecutionActionChargebackRecord, ExecutionActionChargebackReversal:
+		// Local ledger only — not a PSP charge and not a redirect.
+		return ExecutionResult{
+			ResolvedGateway: gateway,
+			Mode:            ExecutionModeDirect,
+			PolicySource:    "PSP_CATALOG",
+		}, nil
+	}
+	code := "no_live_keys"
+	if e != nil && e.status == PSPStatusPlanned {
+		code = "adapter_planned"
+	}
+	return ExecutionResult{}, &GatewayPolicyError{
+		Code:             code,
+		Message:          code,
+		RequestedGateway: strings.ToUpper(strings.TrimSpace(req.Gateway)),
+		ResolvedGateway:  gateway,
+		PolicySource:     "PSP_CATALOG",
 	}
 }
 

@@ -29,6 +29,11 @@
   "scripts": {
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:sandbox:up": "docker compose -f infra/docker-compose.sandbox.yml up -d",
+    "infra:sandbox:down": "docker compose -f infra/docker-compose.sandbox.yml down",
+    "infra:sandbox:test": "bash scripts/smoke_sandbox.sh",
+    "test:sandbox": "bash scripts/smoke_sandbox.sh",
+    "test:sandbox:lifecycle": "bash scripts/smoke_sandbox_lifecycle.sh",
     "infra:ssmr:up": "docker compose -f infra/docker-compose.ssmr.yml up -d",
     "infra:ssmr:down": "docker compose -f infra/docker-compose.ssmr.yml down",
     "infra:ssmr:test": "bash scripts/smoke_ssmr.sh",

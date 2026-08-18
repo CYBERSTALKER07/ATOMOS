@@ -16,4 +16,4 @@ Do not treat `.AGENTS.MD` runtime notes as status.
 
 **Retrieval (all IDEs):** read `.agents/memory/WORKSPACE.md`, run `python3 .agents/skills/graph-retrieval-memory/scripts/graph_retrieve.py -q "<topic>"`, then open live paths. Persist verified facts only. See `.agents/skills/graph-retrieval-memory/references/always-on.md`.
 
-**Cursor CLI:** if cwd is not this repo, use `python3 "$HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py" -q "<topic>" --hops 2` and read `$HOME/Desktop/V.O.I.D/.agents/memory/{GOAL,WORKSPACE}.md`. Prefer `agent --workspace "$HOME/Desktop/V.O.I.D"`. Hits are paths, not status. `/graph-retrieve`.
+**Cursor CLI:** if cwd is not this repo, use `python3 "$HOME/.cursor/skills/graph-retrieval-memory/scripts/graph_retrieve.py" -q "<topic>" --hops 2` and read `$HOME/Desktop/V.O.I.D/.agents/memory/{GOAL,WORKSPACE}.md`. Prefer `agent --workspace "$HOME/Desktop/V.O.I.D"`. `sessionStart` injects a bounded GOAL/WORKSPACE excerpt (hypothesis). Hits are paths, not status. `/graph-retrieve`.

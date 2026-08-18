@@ -86,7 +86,7 @@ struct TreasuryHubView: View {
             refreshEpoch: realtimeHub.refreshEpoch,
             reconnectEpoch: realtimeHub.reconnectEpoch
         ) { silent in
-            await vm.load(silent: silent)
+            Task { await vm.load(silent: silent) }
         }
     }
 }

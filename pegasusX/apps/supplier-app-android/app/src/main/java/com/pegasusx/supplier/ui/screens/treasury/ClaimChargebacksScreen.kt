@@ -111,7 +111,7 @@ fun ClaimChargebacksScreen(
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    "${row.amountMinor} ${row.currency.ifBlank { "UZS" }}",
+                                    "${row.amountMinor} ${com.pegasus.design.moneyCurrency(row.currency)}",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                                 Text(stringResource(R.string.mobile_supplier_ui_order_orderid_2, row.orderId ?: "—"), style = MaterialTheme.typography.bodySmall)

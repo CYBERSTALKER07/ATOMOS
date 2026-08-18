@@ -127,7 +127,7 @@ struct TopologyView: View {
                             id: "new-fc-\(factoryDrafts.count)",
                             factoryId: nil,
                             name: "Factory \(factoryDrafts.count + 1)",
-                            location: AddressLocationValue(lat: 41.3111, lng: 69.2797)
+                            location: AddressLocationValue(lat: TopologyMutation.defaultLat, lng: TopologyMutation.defaultLng)
                         )
                     )
                 }

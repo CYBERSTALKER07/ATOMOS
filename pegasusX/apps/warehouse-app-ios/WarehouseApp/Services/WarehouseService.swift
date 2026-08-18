@@ -535,6 +535,14 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/payment-config")
     }
 
+    static func opsCoverage() async throws -> WarehouseCoverageResponse {
+        try await api.get("v1/warehouse/ops/coverage")
+    }
+
+    static func opsSupplyFactory() async throws -> WarehouseSupplyFactoryResponse {
+        try await api.get("v1/warehouse/ops/supply-factory")
+    }
+
     // MARK: - P1-03 ops depth
     static func replenishmentInsights() async throws -> ReplenishmentInsightsResponse {
         try await api.get("v1/warehouse/replenishment/insights")

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -16,6 +17,7 @@ type FactoryTx interface {
 	ListTransfers(ctx context.Context) ([]TransferRow, error)
 	SaveTransfer(ctx context.Context, t TransferRow) error
 	SaveStaff(ctx context.Context, row StaffRow) error
+	SaveException(ctx context.Context, row ManifestException) error
 	ResolveException(ctx context.Context, row ManifestException, orderID string) error
 }
 
@@ -30,7 +32,7 @@ type Repository interface {
 	ListFactories(ctx context.Context, supplierID string, limit, offset int) ([]Factory, error)
 }
 
-// inMemoryRepository is a local/testing fallback. Production/ssmr forbid silent
+// inMemoryRepository is a local/testing fallback. Production/sandbox forbid silent
 // no-op commits (B2 M-P0-9).
 type inMemoryRepository struct{}
 
@@ -39,9 +41,8 @@ func NewInMemoryRepository() Repository {
 }
 
 func memoryRepoBlocked(component string) error {
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
-	if env == "production" || env == "prod" || env == "ssmr" {
-		return fmt.Errorf("%s: in-memory repository cannot commit mutations under PEGASUSX_ENV=%s; configure Spanner", component, env)
+	if auth.IsProduction() || auth.IsSandbox() {
+		return fmt.Errorf("%s: in-memory repository cannot commit mutations under PEGASUSX_ENV=%s; configure Spanner", component, os.Getenv("PEGASUSX_ENV"))
 	}
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("REQUIRE_INFRA_ADAPTERS")), "true") {
 		return fmt.Errorf("%s: in-memory repository blocked when REQUIRE_INFRA_ADAPTERS=true", component)
@@ -51,11 +52,14 @@ func memoryRepoBlocked(component string) error {
 
 type emptyFactoryTx struct{}
 
-func (emptyFactoryTx) ListManifests(context.Context) ([]ManifestRow, error)  { return nil, nil }
-func (emptyFactoryTx) SaveManifest(context.Context, ManifestRow) error       { return nil }
-func (emptyFactoryTx) ListTransfers(context.Context) ([]TransferRow, error)  { return nil, nil }
-func (emptyFactoryTx) SaveTransfer(context.Context, TransferRow) error       { return nil }
-func (emptyFactoryTx) SaveStaff(context.Context, StaffRow) error             { return nil }
+func (emptyFactoryTx) ListManifests(context.Context) ([]ManifestRow, error) { return nil, nil }
+func (emptyFactoryTx) SaveManifest(context.Context, ManifestRow) error      { return nil }
+func (emptyFactoryTx) ListTransfers(context.Context) ([]TransferRow, error) { return nil, nil }
+func (emptyFactoryTx) SaveTransfer(context.Context, TransferRow) error      { return nil }
+func (emptyFactoryTx) SaveStaff(context.Context, StaffRow) error            { return nil }
+func (emptyFactoryTx) SaveException(context.Context, ManifestException) error {
+	return nil
+}
 func (emptyFactoryTx) ResolveException(context.Context, ManifestException, string) error {
 	return nil
 }

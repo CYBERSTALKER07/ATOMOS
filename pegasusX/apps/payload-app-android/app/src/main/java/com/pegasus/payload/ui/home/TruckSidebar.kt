@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,8 +80,8 @@ fun TruckListPane(
             ) {
                 if (isExpanded) {
                     PayloadSectionTitle(
-                        title = stringResource(R.string.supplier_portal_org_fleet_components_vehicle_form_text_vehicles),
-                        subtitle = "Assigned loading vehicles",
+                        title = "Manifest board",
+                        subtitle = "DRAFT · LOADING · SEALED · DISPATCHED",
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -173,13 +174,48 @@ fun TruckListPane(
                     body = "Pull to refresh once dispatch assigns trucks.",
                 )
             }
+            val columns = ManifestBoard.group(trucks)
+            val unassigned = ManifestBoard.unassigned(trucks)
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 340.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                items(trucks, key = { it.id }) { truck ->
-                    TruckRow(truck, selected = truck.id == selectedTruckId, onClick = { onSelect(truck.id) })
-                    Spacer(Modifier.height(6.dp))
+                columns.forEach { column ->
+                    item(key = "col-${column.state}", span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            text = "${column.state} · ${if (column.trucks.isEmpty()) "empty" else column.trucks.size.toString()}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                        )
+                    }
+                    if (column.trucks.isEmpty()) {
+                        item(key = "empty-${column.state}", span = { GridItemSpan(maxLineSpan) }) {
+                            Text(
+                                "No ${column.state.lowercase()} manifests",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 6.dp),
+                            )
+                        }
+                    } else {
+                        items(column.trucks, key = { "${column.state}-${it.id}" }) { truck ->
+                            TruckRow(truck, selected = truck.id == selectedTruckId, onClick = { onSelect(truck.id) })
+                            Spacer(Modifier.height(6.dp))
+                        }
+                    }
+                }
+                if (unassigned.isNotEmpty()) {
+                    item(key = "unassigned-head", span = { GridItemSpan(maxLineSpan) }) {
+                        Text(
+                            "No open manifest",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
+                        )
+                    }
+                    items(unassigned, key = { "none-${it.id}" }) { truck ->
+                        TruckRow(truck, selected = truck.id == selectedTruckId, onClick = { onSelect(truck.id) })
+                    }
                 }
             }
         }
@@ -222,6 +258,8 @@ fun TruckRow(truck: Truck, selected: Boolean, onClick: () -> Unit) {
                     listOfNotNull(
                         truck.licensePlate.takeIf { it.isNotBlank() },
                         truck.vehicleClass.takeIf { it.isNotBlank() },
+                        ManifestBoard.canonicalState(truck.truckStatus).takeIf { it.isNotEmpty() },
+                        if (truck.maxVolumeVu > 0) "${truck.usedVolumeVu}/${truck.maxVolumeVu} VU" else null,
                     ).joinToString(" • "),
                     style = MaterialTheme.typography.bodySmall,
                 )

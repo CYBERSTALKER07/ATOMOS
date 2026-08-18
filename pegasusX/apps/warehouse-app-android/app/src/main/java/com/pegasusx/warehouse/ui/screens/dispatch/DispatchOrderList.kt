@@ -226,7 +226,7 @@ fun DispatchOrderList(
                         retailerName = o.retailerName,
                         orderId = o.orderId,
                         state = "PENDING",
-                        amountLabel = fmt.format(o.totalUzs) + " UZS · ${"%.1f".format(o.volumeVu)} VU",
+                        amountLabel = fmt.format(o.totalUzs) + " ${com.pegasus.design.sessionPackCurrency()} · ${"%.1f".format(o.volumeVu)} VU",
                         showOpsMenu = true,
                         detailOpenMode = OrderDetailOpenMode.Double,
                         canDelay = true,

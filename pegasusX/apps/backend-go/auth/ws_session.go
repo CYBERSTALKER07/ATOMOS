@@ -22,7 +22,7 @@ func WSSessionHandler(secret, issuer string, ttl time.Duration) http.HandlerFunc
 			return
 		}
 		claims, ok := FromContext(r.Context())
-		if !ok || IsPendingOrgSelect(claims) {
+		if !ok || IsPendingOrgSelect(claims) || IsWSTicket(claims) {
 			writeWSSessionJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}

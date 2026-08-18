@@ -215,6 +215,7 @@ func runRetailerPricingOverrideE2E(
 	ctx context.Context,
 	client *http.Client,
 	base, cookie, supplierID, retailerID, retailerToken string,
+	cfg *bootstrap.Config,
 ) error {
 	const overridePrice = int64(42000)
 	productID := envOr("SSMR_SMOKE_SKU", "SSMR-SKU-1")
@@ -265,29 +266,33 @@ func runRetailerPricingOverrideE2E(
 		return fmt.Errorf("list retailer overrides missing active row: %s", string(respBody))
 	}
 
-	quoteBody, _ := json.Marshal(map[string]any{
-		"supplier_id": supplierID,
-		"lines": []map[string]any{
-			{"product_id": productID, "quantity": 1, "unit_price_minor": 50000, "currency": "UZS"},
-		},
-	})
-	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/retailer/checkout/quote", quoteBody, retailerToken, "")
-	if err != nil {
-		return err
-	}
-	if status != http.StatusOK {
-		return fmt.Errorf("checkout quote status %d body %s", status, string(respBody))
-	}
-	var quote struct {
-		Lines []struct {
-			UnitPrice int64 `json:"unit_price_minor"`
-		} `json:"lines"`
-	}
-	if err := json.Unmarshal(respBody, &quote); err != nil {
-		return err
-	}
-	if len(quote.Lines) == 0 || quote.Lines[0].UnitPrice != overridePrice {
-		return fmt.Errorf("checkout quote did not apply override: %s", string(respBody))
+	if op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency); op == "" {
+		fmt.Println("PX_E2E_RETAILER_CHECKOUT_QUOTE_SKIPPED")
+	} else {
+		quoteBody, _ := json.Marshal(map[string]any{
+			"supplier_id": supplierID,
+			"lines": []map[string]any{
+				{"product_id": productID, "quantity": 1, "unit_price_minor": 50000, "currency": op},
+			},
+		})
+		status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/retailer/checkout/quote", quoteBody, retailerToken, "")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("checkout quote status %d body %s", status, string(respBody))
+		}
+		var quote struct {
+			Lines []struct {
+				UnitPrice int64 `json:"unit_price_minor"`
+			} `json:"lines"`
+		}
+		if err := json.Unmarshal(respBody, &quote); err != nil {
+			return err
+		}
+		if len(quote.Lines) == 0 || quote.Lines[0].UnitPrice != overridePrice {
+			return fmt.Errorf("checkout quote did not apply override: %s", string(respBody))
+		}
 	}
 
 	if err := assertInboxContainsEvent(ctx, client, base, retailerToken, events.EventRetailerPriceOverride); err != nil {

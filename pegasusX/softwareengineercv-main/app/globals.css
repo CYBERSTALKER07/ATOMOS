@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+.workflow-flow .react-flow__pane {
+  cursor: default;
+}
+
+.workflow-flow .react-flow__node {
+  cursor: pointer;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {

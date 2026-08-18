@@ -7,8 +7,10 @@ import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 
-private const val DEFAULT_LAT = 41.2995
-private const val DEFAULT_LNG = 69.2401
+fun defaultWarehouseCoordinates(): Pair<Double, Double> {
+    val c = com.pegasus.design.sessionMapCenter()
+    return (c?.lat ?: 0.0) to (c?.lng ?: 0.0)
+}
 
 suspend fun appendWarehouseNode(
     ops: SupplierOperationsRepository,
@@ -116,5 +118,3 @@ suspend fun appendFactoryNode(
     if (!resp.isSuccessful) error("save_failed_${resp.code()}")
     resp.body() ?: error("topology_empty")
 }
-
-fun defaultWarehouseCoordinates(): Pair<Double, Double> = DEFAULT_LAT to DEFAULT_LNG

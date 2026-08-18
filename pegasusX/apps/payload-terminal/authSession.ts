@@ -8,7 +8,6 @@ type SessionPayload = {
   supplier_id?: string;
   warehouse_id?: string;
   warehouse_name?: string;
-  firebase_token?: string;
 };
 
 let tokenRefreshListener: ((token: string) => void) | null = null;
@@ -26,9 +25,6 @@ export async function savePayloaderSession(data: SessionPayload): Promise<void> 
   if (data.supplier_id) await SecureStore.setItemAsync('payloader_supplier_id', data.supplier_id);
   if (data.warehouse_id) await SecureStore.setItemAsync('payloader_warehouse_id', data.warehouse_id);
   if (data.warehouse_name) await SecureStore.setItemAsync('payloader_warehouse_name', data.warehouse_name);
-  if (data.firebase_token) {
-    await SecureStore.setItemAsync('payloader_firebase_token', data.firebase_token);
-  }
 }
 
 export async function clearPayloaderSession(): Promise<void> {
@@ -36,7 +32,6 @@ export async function clearPayloaderSession(): Promise<void> {
   await SecureStore.deleteItemAsync('payloader_refresh_token');
   await SecureStore.deleteItemAsync('payloader_name');
   await SecureStore.deleteItemAsync('payloader_supplier_id');
-  await SecureStore.deleteItemAsync('payloader_firebase_token');
   await SecureStore.deleteItemAsync('payloader_warehouse_id');
   await SecureStore.deleteItemAsync('payloader_warehouse_name');
 }

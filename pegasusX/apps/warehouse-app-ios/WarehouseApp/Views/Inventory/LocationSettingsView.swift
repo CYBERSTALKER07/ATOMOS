@@ -7,6 +7,7 @@ struct LocationSettingsView: View {
     @State private var saving = false
     @State private var error: String?
     @State private var saveMessage: String?
+    @State private var packCountry = ""
 
     var body: some View {
         Group {
@@ -24,6 +25,11 @@ struct LocationSettingsView: View {
                 Form {
                     if !warehouseName.isEmpty {
                         Section { Text(warehouseName) }
+                    }
+                    if !packCountry.isEmpty {
+                        Section("Pack country") {
+                            Text(packCountry)
+                        }
                     }
                     Section("Depot address") {
                         Text("mobile_warehouse.ui.used_for_smart_dispatch_routing_coordinates_stay_hidden_from_dai")
@@ -63,6 +69,7 @@ struct LocationSettingsView: View {
                     lng: resp.lng,
                     placeId: resp.placeId
                 )
+                packCountry = resp.packCountryCode.isEmpty ? resp.countryCode : resp.packCountryCode
                 loading = false
             } catch {
                 self.error = error.localizedDescription

@@ -12,19 +12,19 @@ import {
   supplierPlanningPredictivePushKey,
 } from "@pegasusx/api-client/idempotency";
 import type { NetworkModeResponse, PullMatrixResponse, KillSwitchResponse } from "@pegasusx/types";
+import { factoryPlanningDisabledCode } from "@pegasusx/types";
 
 const api = createSupplierApi();
 
 const MODES = ["SPEED", "ECONOMY", "BALANCED", "LOW_CARBON", "MANUAL_ONLY"] as const;
 
 function planningDisabledMessage(err: unknown): string | null {
-  if (!(err instanceof ApiError) || err.status !== 409) return null;
-  const payload = err.payload as { error?: string; code?: string } | null;
-  const code = payload?.error || payload?.code || err.message;
-  if (String(code).includes("factory_planning_disabled")) {
-    return "Planning engines disabled (FACTORY_PLANNING_ENABLED off). Mode and kill-switch still work; pull-matrix will 409 until the env flag is on.";
+  if (!(err instanceof ApiError)) return null;
+  const code = factoryPlanningDisabledCode(err.status, err.payload ?? err.message);
+  if (code) {
+    return "factory_planning_disabled — engines off until FACTORY_PLANNING_ENABLED is on";
   }
-  return err.message;
+  return err.status === 409 ? err.message : null;
 }
 
 export default function FactoryPlanningOpsPanel() {
@@ -129,7 +129,7 @@ export default function FactoryPlanningOpsPanel() {
     <section className="desk-card p-6 mt-6">
       <h2 className="bento-card-title">Factory network ops</h2>
       <p className="md-typescale-body-small mt-1" style={{ color: "var(--desk-text-secondary)" }}>
-        Network mode, pull-matrix, predictive-push, and ADMIN kill-switch. Predictive-push and pull-matrix 409 factory_planning_disabled when FACTORY_PLANNING_ENABLED is off. Does not change S&amp;OP on /planning.
+        Network mode, pull-matrix, predictive-push, and ADMIN kill-switch. Flag-off push returns 409 factory_planning_disabled. Preview only — never a placed-order tile.
       </p>
 
       {error ? (
@@ -198,7 +198,11 @@ export default function FactoryPlanningOpsPanel() {
           )}
 
           {status ? (
-            <p className="md-typescale-body-small" style={{ color: "var(--desk-text-secondary)" }}>
+            <p
+              className="md-typescale-body-small"
+              data-testid="gs-u-planning-push-status"
+              style={{ color: "var(--desk-text-secondary)" }}
+            >
               {status}
             </p>
           ) : null}

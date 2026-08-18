@@ -7,8 +7,7 @@ import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import { useMapLibreTeardown } from '@pegasusx/ui-kit/desktop';
 import { FLEET_ROUTE_COLORS, useAnimatedDriverMarkers } from '@/lib/use-animated-driver-markers';
-
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-client';
 const MAP_PITCH_3D = 50;
 
 type FleetLiveMapProps = {
@@ -123,8 +122,7 @@ export default function FleetLiveMap({
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
+          ...mapInitialViewState(readCachedAuthSession()?.pack),
           zoom: 11,
           pitch: 0,
         }}

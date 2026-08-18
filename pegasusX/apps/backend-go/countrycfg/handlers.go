@@ -19,7 +19,8 @@ import (
 
 const DefaultCountry = "UZ"
 
-// Config is the UZ seed surface. Checkout gateway selection does not read this.
+// Config is the signup-picker / UZ seed surface. MarketPack is product law.
+// Checkout gateway selection does not read this.
 type Config struct {
 	CountryCode                 string   `json:"country_code"`
 	CountryName                 string   `json:"country_name"`
@@ -33,7 +34,7 @@ type Config struct {
 	ShopClosedEscalationMinutes int64    `json:"shop_closed_escalation_minutes"`
 	OfflineModeDurationMinutes  int64    `json:"offline_mode_duration_minutes"`
 	CashCustodyAlertHours       int64    `json:"cash_custody_alert_hours"`
-	PaymentGatewaysListed       []string `json:"payment_gateways_listed"`
+	PaymentGatewaysListed       []string `json:"payment_gateways_listed,omitempty"`
 	CheckoutReadsThis           bool     `json:"checkout_reads_this"`
 	OpsReadsThis                bool     `json:"ops_reads_this"`
 	Source                      string   `json:"source"`
@@ -66,7 +67,7 @@ func UZDefault() Config {
 		ShopClosedEscalationMinutes: 30,
 		OfflineModeDurationMinutes:  120,
 		CashCustodyAlertHours:       24,
-		PaymentGatewaysListed:       []string{"GLOBAL_PAY", "CASH"},
+		PaymentGatewaysListed:       nil,
 		CheckoutReadsThis:           false,
 		OpsReadsThis:                true,
 		Source:                      "uz_seed",

@@ -28,13 +28,14 @@ func NewHandlers(repo Repository) *Handlers {
 	}
 }
 
-// RegisterAdminRoutes mounts GET/PUT /v1/admin/fx-rates (admin JWT).
+// RegisterAdminRoutes mounts GET/PUT /v1/admin/fx-rates.
+// GET: supplier ADMIN or PLATFORM_ADMIN. PUT: PLATFORM_ADMIN only (cross-tenant rates).
 func RegisterAdminRoutes(r chi.Router, h *Handlers) {
 	if h == nil || h.Repo == nil {
 		return
 	}
-	r.With(auth.RequireRole(auth.RoleAdmin)).Get("/v1/admin/fx-rates", h.HandleList)
-	r.With(auth.RequireRole(auth.RoleAdmin)).Put("/v1/admin/fx-rates", h.HandleUpsert)
+	r.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin)).Get("/v1/admin/fx-rates", h.HandleList)
+	r.With(auth.RequireRole(auth.RolePlatformAdmin)).Put("/v1/admin/fx-rates", h.HandleUpsert)
 }
 
 // RegisterSupplierRoutes mounts GET /v1/supplier/fx-rates (supplier portal ADMIN session, read-only).
@@ -87,7 +88,7 @@ func (h *Handlers) HandleList(w http.ResponseWriter, r *http.Request) {
 	writeFXJSON(w, http.StatusOK, map[string]any{"rates": out})
 }
 
-// HandleUpsert PUT /v1/admin/fx-rates — manual/admin rate upsert.
+// HandleUpsert PUT /v1/admin/fx-rates — platform-admin rate upsert.
 func (h *Handlers) HandleUpsert(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, 32*1024))
 	if err != nil {

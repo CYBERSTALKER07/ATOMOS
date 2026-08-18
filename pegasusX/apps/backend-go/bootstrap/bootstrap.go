@@ -215,6 +215,7 @@ type App struct {
 	DemandService        *demand.Service
 	LaborCapacityService *laborcapacity.Service
 	ETAService           *eta.Service
+	FirebaseVerifier     auth.FirebaseVerifier
 	OrderService         *order.Service
 	ClaimsService        *claims.Service
 	CreditService        *credit.Service
@@ -353,17 +354,18 @@ func LoadConfig() (*Config, error) {
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 1),
 		AllowMultiSupplierRegister:      envBool("ALLOW_MULTI_SUPPLIER_REGISTER", false),
-		TenantContextEnforced:           envBool("TENANT_CONTEXT_ENFORCED", strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")),
-		OptimizerBaseURL:                envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
-		RoutingOSRMURL:                  envOr("ROUTING_OSRM_URL", ""),
-		RoutingProvider:                 envOr("ROUTING_PROVIDER", "auto"),
-		InternalAPIKey:                  envOr("INTERNAL_API_KEY", "dev-internal-key"),
-		GCSBucketName:                   envOr("GCS_BUCKET_NAME", ""),
-		GoogleMapsAPIKey:                envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
-		UpdatesBaseURL:                  strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
-		UpdatesDefaultVersion:           envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
-		WeatherWorkerEnabled:            envBool("WEATHER_WORKER_ENABLED", true),
-		WeatherBaseURL:                  envOr("WEATHER_BASE_URL", "https://api.open-meteo.com/v1/forecast"),
+		// Same rule as seed fail-closed: explicit TENANT_CONTEXT_ENFORCED, else sandbox|production.
+		TenantContextEnforced: auth.TenantContextEnforced(),
+		OptimizerBaseURL:      envOr("OPTIMIZER_BASE_URL", "http://localhost:8081"),
+		RoutingOSRMURL:        envOr("ROUTING_OSRM_URL", ""),
+		RoutingProvider:       envOr("ROUTING_PROVIDER", "auto"),
+		InternalAPIKey:        envOr("INTERNAL_API_KEY", "dev-internal-key"),
+		GCSBucketName:         envOr("GCS_BUCKET_NAME", ""),
+		GoogleMapsAPIKey:      envOr("GOOGLE_MAPS_API_KEY", envOr("GOOGLE_PLACES_API_KEY", "")),
+		UpdatesBaseURL:        strings.TrimRight(strings.TrimSpace(envOr("UPDATES_BASE_URL", "")), "/"),
+		UpdatesDefaultVersion: envOr("UPDATES_DEFAULT_VERSION", "1.0.0"),
+		WeatherWorkerEnabled:  envBool("WEATHER_WORKER_ENABLED", true),
+		WeatherBaseURL:        envOr("WEATHER_BASE_URL", "https://api.open-meteo.com/v1/forecast"),
 	}
 	if cfg.JWTSecret == "" {
 		return nil, fmt.Errorf("JWT_SECRET required")
@@ -646,26 +648,29 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		notifRepo := notifications.NewSpannerRepository(spannerClient)
 		notifSvc = notifications.NewService(notifRepo, cacheClient, log)
-		notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
 		notifPrefHandlers = &notifications.PreferenceHandlers{Repo: notifRepo}
 		notifAdapter = &notificationReaderAdapter{svc: notifSvc}
 		log.Info("notification service enabled", "backend", "spanner")
 	}
+	notifInbox = &notifications.InboxHandlers{Service: notifSvc, Log: log}
+
+	firebaseVerifier := newLoginFirebaseVerifier(cfg, log)
 
 	retailerSvc := retailer.NewService(retailer.ServiceConfig{
-		Repo:           retailerRepo,
-		CartRepo:       cartRepo,
-		NotifSvc:       notifAdapter,
-		Cache:          cacheClient,
-		Idem:           idemStore,
-		Locations:      driverLocations,
-		Proximity:      retailerProximity,
-		SupplierID:     supplierSeed.SupplierID,
-		SeedSupplierID: supplierSeed.SupplierID,
-		CountryCode:    cfg.SeedSupplierCountry,
-		JWTSecret:      cfg.JWTSecret,
-		JWTIssuer:      cfg.JWTIssuer,
-		Log:            log,
+		Repo:             retailerRepo,
+		CartRepo:         cartRepo,
+		NotifSvc:         notifAdapter,
+		Cache:            cacheClient,
+		Idem:             idemStore,
+		Locations:        driverLocations,
+		Proximity:        retailerProximity,
+		SupplierID:       supplierSeed.SupplierID,
+		SeedSupplierID:   supplierSeed.SupplierID,
+		CountryCode:      cfg.SeedSupplierCountry,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		Log:              log,
+		FirebaseVerifier: firebaseVerifier,
 		// Required for sell-through, reorder suggestions, auto-order bucket/runs, locations Spanner path.
 		Spanner: spannerClient,
 	})
@@ -968,20 +973,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	warehouseNodeID := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))
 	if warehouseNodeID == "" {
+		warehouseNodeID = strings.TrimSpace(os.Getenv("SANDBOX_SMOKE_WAREHOUSE_ID"))
+	}
+	if warehouseNodeID == "" {
 		warehouseNodeID = strings.TrimSpace(os.Getenv("SSMR_SMOKE_WAREHOUSE_ID"))
 	}
 	if warehouseNodeID == "" {
 		warehouseNodeID = "wh-demo-1"
 	}
 
-	// Fake H3 / network graph telemetry — never on SSMR/production even if flag set.
-	envName := strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")))
+	// Fake H3 / network graph telemetry — never on sandbox/production even if flag set.
 	ctSim := strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true")
-	if ctSim && envName != "ssmr" && envName != "production" && envName != "prod" {
+	if ctSim && !auth.IsSandbox() && !auth.IsProduction() {
 		simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
 		log.Info("control tower telemetry simulator enabled")
 	} else if ctSim {
-		log.Warn("control tower simulator ignored on non-dev env", "env", envName)
+		log.Warn("control tower simulator ignored on non-dev env", "env", os.Getenv("PEGASUSX_ENV"))
 	}
 
 	var driverRepo driver.Repository
@@ -1007,39 +1014,41 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	factorySvc := factory.NewService(factory.ServiceConfig{
-		Repo:            factoryRepo,
-		Cache:           cacheClient,
-		SupplierHub:     supplierHub,
-		FactoryHub:      factoryHub,
-		Log:             log,
-		Spanner:         spannerClient,
-		Locations:       driverLocations,
-		SupplierID:      supplierSeed.SupplierID,
-		SeedSupplierID:  supplierSeed.SupplierID,
-		FactoryNodeID:   factoryNodeID,
-		Currency:        cfg.SeedSupplierCurrency,
-		JWTSecret:       cfg.JWTSecret,
-		JWTIssuer:       cfg.JWTIssuer,
-		Idem:            idemStore,
-		Planning:        factoryPlanning,
-		OptimizerClient: optimizerCli,
+		Repo:             factoryRepo,
+		Cache:            cacheClient,
+		SupplierHub:      supplierHub,
+		FactoryHub:       factoryHub,
+		Log:              log,
+		Spanner:          spannerClient,
+		Locations:        driverLocations,
+		SupplierID:       supplierSeed.SupplierID,
+		SeedSupplierID:   supplierSeed.SupplierID,
+		FactoryNodeID:    factoryNodeID,
+		Currency:         cfg.SeedSupplierCurrency,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		Idem:             idemStore,
+		Planning:         factoryPlanning,
+		OptimizerClient:  optimizerCli,
+		FirebaseVerifier: firebaseVerifier,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
-		Repo:           payloadRepo,
-		Cache:          cacheClient,
-		SupplierHub:    supplierHub,
-		PayloadHub:     payloadHub,
-		DriverHub:      driverHub,
-		NotifSvc:       notifSvc,
-		Log:            log,
-		SupplierID:     supplierSeed.SupplierID,
-		SeedSupplierID: supplierSeed.SupplierID,
-		Currency:       cfg.SeedSupplierCurrency,
-		JWTSecret:      cfg.JWTSecret,
-		JWTIssuer:      cfg.JWTIssuer,
-		ManifestStore:  manifest.NewStore(spannerClient),
-		Idem:           idemStore,
-		Locations:      driverLocations,
+		Repo:             payloadRepo,
+		Cache:            cacheClient,
+		SupplierHub:      supplierHub,
+		PayloadHub:       payloadHub,
+		DriverHub:        driverHub,
+		NotifSvc:         notifSvc,
+		Log:              log,
+		SupplierID:       supplierSeed.SupplierID,
+		SeedSupplierID:   supplierSeed.SupplierID,
+		Currency:         cfg.SeedSupplierCurrency,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		ManifestStore:    manifest.NewStore(spannerClient),
+		Idem:             idemStore,
+		Locations:        driverLocations,
+		FirebaseVerifier: firebaseVerifier,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.SetOrderExpectationReader(orderRepo)
@@ -1187,12 +1196,13 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			}
 			return factorySvc.ManifestDetailSnapshotForDriver(driverID, manifestID, date)
 		},
-		SupplierID:     supplierSeed.SupplierID,
-		SeedSupplierID: supplierSeed.SupplierID,
-		Currency:       cfg.SeedSupplierCurrency,
-		JWTSecret:      cfg.JWTSecret,
-		JWTIssuer:      cfg.JWTIssuer,
-		Idem:           idemStore,
+		SupplierID:       supplierSeed.SupplierID,
+		SeedSupplierID:   supplierSeed.SupplierID,
+		Currency:         cfg.SeedSupplierCurrency,
+		JWTSecret:        cfg.JWTSecret,
+		JWTIssuer:        cfg.JWTIssuer,
+		Idem:             idemStore,
+		FirebaseVerifier: firebaseVerifier,
 	})
 	if spannerClient != nil {
 		driverSvc.SetLoginLookup(driverLoginLookup(spannerClient))
@@ -1330,6 +1340,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Currency:             cfg.SeedSupplierCurrency,
 		JWTSecret:            cfg.JWTSecret,
 		JWTIssuer:            cfg.JWTIssuer,
+		FirebaseVerifier:     firebaseVerifier,
 		OptimizerClient:      optimizerCli,
 		PlanCounters:         dispatchCounters,
 		FallbackDepotLat:     cfg.DeliveryZoneCenterLat,
@@ -1869,6 +1880,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		DemandService:           demandSvc,
 		LaborCapacityService:    laborcapacity.NewService(spannerClient),
 		ETAService:              eta.NewService(spannerClient),
+		FirebaseVerifier:        firebaseVerifier,
 		OrderService:            orderSvc,
 		ClaimsService:           claimsSvc,
 		CreditService:           creditSvc,

@@ -272,9 +272,11 @@ func (s *Service) HandlePosSessionOpen(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := stampPackCurrency(r.Context(), req.Currency)
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
 	}
 	if req.OpeningFloatMinor < 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "opening_float_invalid"})
@@ -513,6 +515,10 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 	lines := make([]PosSaleLine, 0, len(req.Lines))
 	for _, l := range req.Lines {
 		sku, name, errMsg := s.validatePosSaleSKU(r.Context(), orgID, l.Sku, l.Name, l.UnitPriceMinor)
+		if errMsg == "local_skus_failed" {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "local_skus_failed"})
+			return
+		}
 		if errMsg != "" || l.Qty <= 0 || l.UnitPriceMinor < 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_line", "sku": sku, "detail": errMsg})
 			return
@@ -581,12 +587,11 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
 	}
 
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = sess.Currency
-	}
-	if currency == "" {
-		currency = "UZS"
+	currency, err := stampPackCurrency(r.Context(), firstNonEmpty(req.Currency, sess.Currency))
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
 	}
 	sale := PosSaleDTO{
 		SaleID:          saleID,
@@ -1209,6 +1214,73 @@ func (s *Service) listSessionSales(ctx context.Context, sessionID string, limit 
 			return nil, err
 		}
 		out = append(out, sale)
+	}
+	return out, nil
+}
+
+const retailerPosSalesReportLimit = 2000
+
+// listRetailerPosSales reads POS ledger rows in [from, to) for reports/pulse.
+// Spanner is the live SoT; memory only when the client is unset (tests / no-Spanner).
+func (s *Service) listRetailerPosSales(ctx context.Context, retailerID, locationID string, from, to time.Time, limit int) ([]PosSaleDTO, error) {
+	if limit <= 0 {
+		limit = retailerPosSalesReportLimit
+	}
+	if s.spannerClient == nil {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		var out []PosSaleDTO
+		for _, sale := range s.posSales {
+			if sale.RetailerID != retailerID {
+				continue
+			}
+			if locationID != "" && sale.LocationID != locationID {
+				continue
+			}
+			t, okT := parseReportTime(sale.CreatedAt)
+			if !okT || t.Before(from) || !t.Before(to) {
+				continue
+			}
+			out = append(out, sale)
+		}
+		return out, nil
+	}
+	sql := `SELECT SaleId, SessionId, RegisterId, LocationId, RetailerId, CashierUserId,
+			Status, TotalMinor, Currency, ReceiptNumber, LinesJson, TendersJson, StockBin,
+			CreatedAt, VoidedAt, VoidedByUserId, VoidReason
+			FROM RetailerPosSales@{FORCE_INDEX=Idx_RetailerPosSales_ByRetailer}
+			WHERE RetailerId = @rid AND CreatedAt >= @from AND CreatedAt < @to`
+	params := map[string]any{
+		"rid":  retailerID,
+		"from": from,
+		"to":   to,
+		"lim":  int64(limit + 1),
+	}
+	if locationID != "" {
+		sql += ` AND LocationId = @lid`
+		params["lid"] = locationID
+	}
+	sql += ` ORDER BY CreatedAt DESC LIMIT @lim`
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	iter := s.spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var out []PosSaleDTO
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		sale, _, err := decodePosSaleRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, sale)
+	}
+	if len(out) > limit {
+		return nil, fmt.Errorf("pos sales window exceeds report limit")
 	}
 	return out, nil
 }

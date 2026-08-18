@@ -27,9 +27,18 @@ func runParentOrderSmokeCheck(ctx context.Context, cfg *bootstrap.Config) error 
 }
 
 func runParentOrderE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config) error {
+	firstSupplierID, err := runMultiSupplierRegisterE2E(ctx, client, base, cfg)
+	if err != nil {
+		return err
+	}
 	secondSupplierID, err := runMultiSupplierRegisterE2E(ctx, client, base, cfg)
 	if err != nil {
 		return err
+	}
+	if strings.TrimSpace(firstSupplierID) != "" && strings.TrimSpace(secondSupplierID) != "" {
+		fmt.Println("PX_E2E_SANDBOX_REGISTER_TWICE_OK")
+	} else {
+		fmt.Println("PX_E2E_SANDBOX_REGISTER_TWICE_SKIPPED")
 	}
 	if err := runParentOrderSplitE2E(ctx, client, base, cfg, secondSupplierID); err != nil {
 		return err
@@ -76,6 +85,13 @@ func runMultiSupplierRegisterE2E(ctx context.Context, client *http.Client, base 
 	if sid == "" {
 		return "", fmt.Errorf("multi supplier register: missing supplier_id body=%s", string(respBody))
 	}
+	_, cookie, err := loginSupplierSession(ctx, client, base, phone, "ParentTest!234", cfg)
+	if err != nil {
+		return "", fmt.Errorf("multi supplier login: %w", err)
+	}
+	if err := putSupplierTopology(ctx, client, base, cookie, cfg); err != nil {
+		return "", fmt.Errorf("multi supplier topology: %w", err)
+	}
 	fmt.Println("PX_E2E_MULTI_SUPPLIER_REGISTER_OK")
 	return sid, nil
 }
@@ -87,6 +103,11 @@ func runParentOrderSplitE2E(ctx context.Context, client *http.Client, base strin
 		return nil
 	}
 	if strings.TrimSpace(secondSupplierID) == "" {
+		fmt.Println("PX_E2E_PARENT_ORDER_SPLIT_SKIPPED")
+		fmt.Println("PX_E2E_PARENT_ORDER_ISOLATION_SKIPPED")
+		return nil
+	}
+	if smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency) == "" {
 		fmt.Println("PX_E2E_PARENT_ORDER_SPLIT_SKIPPED")
 		fmt.Println("PX_E2E_PARENT_ORDER_ISOLATION_SKIPPED")
 		return nil
@@ -191,10 +212,18 @@ func runParentOrderSplitE2E(ctx context.Context, client *http.Client, base strin
 	return nil
 }
 
+func parentOrderCountry(cfg *bootstrap.Config) string {
+	cc := strings.ToUpper(strings.TrimSpace(cfg.SeedSupplierCountry))
+	if cc == "" {
+		return "UZ"
+	}
+	return cc
+}
+
 func multiSupplierCheckoutEnvOn() bool {
 	raw := strings.TrimSpace(envOr("MULTI_SUPPLIER_CHECKOUT_ENABLED", ""))
 	if raw == "" {
-		return strings.EqualFold(strings.TrimSpace(envOr("PEGASUSX_ENV", "")), "ssmr")
+		return auth.IsSandbox()
 	}
 	return envTruthy("MULTI_SUPPLIER_CHECKOUT_ENABLED")
 }
@@ -211,6 +240,10 @@ func seedSecondSupplierCatalog(ctx context.Context, cfg *bootstrap.Config, suppl
 	priceListID := "pl-parent-" + suffix
 	ts := spanner.CommitTimestamp
 	effectiveFrom := time.Now().UTC().Add(-24 * time.Hour)
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		return "", fmt.Errorf("empty operating currency")
+	}
 
 	warehouseIDs, err := listSupplierWarehouseIDs(ctx, client, supplierID)
 	if err != nil {
@@ -227,7 +260,7 @@ func seedSecondSupplierCatalog(ctx context.Context, cfg *bootstrap.Config, suppl
 			"CategoryId":    "GENERAL",
 			"Name":          "Parent Phase2 SKU B",
 			"PriceMinor":    int64(25000),
-			"Currency":      "UZS",
+			"Currency":      op,
 			"StockQuantity": int64(1000),
 			"Unit":          "UNIT",
 			"UnitVolumeVU":  1.0,
@@ -262,6 +295,7 @@ func seedSecondSupplierCatalog(ctx context.Context, cfg *bootstrap.Config, suppl
 				"TransferMode":     "TRUCK",
 				"IsActive":         true,
 				"IsOnShift":        true,
+				"CountryCode":      parentOrderCountry(cfg),
 				"CreatedAt":        ts,
 				"UpdatedAt":        ts,
 			}),

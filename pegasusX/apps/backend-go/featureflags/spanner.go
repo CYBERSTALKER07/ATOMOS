@@ -57,6 +57,34 @@ func (r *SpannerRepository) Upsert(ctx context.Context, o Override) error {
 	return err
 }
 
+func (r *SpannerRepository) ListPending(ctx context.Context, limit int) ([]Override, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT FlagKey, TenantType, TenantId, Enabled, UpdatedBy, UpdatedAt, Reason, Status, ApprovedBy, ApprovedAt
+			FROM FeatureFlagOverrides WHERE Status=@st ORDER BY UpdatedAt DESC LIMIT @lim`,
+		Params: map[string]any{"st": StatusPending, "lim": int64(limit)},
+	})
+	defer iter.Stop()
+	out := make([]Override, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		o, err := scanOverride(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, o)
+	}
+	return out, nil
+}
+
 func (r *SpannerRepository) ListForTenant(ctx context.Context, tenantType, tenantID string) ([]Override, error) {
 	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT FlagKey, TenantType, TenantId, Enabled, UpdatedBy, UpdatedAt, Reason, Status, ApprovedBy, ApprovedAt

@@ -83,6 +83,7 @@ func normalizeAllowedGateways(gateways []string) []string {
 }
 
 // CardGateways returns non-cash gateways exposed to retailer card checkout.
+// Empty means cash-only — do not invent GLOBAL_PAY (GS-K1 / W24).
 func (p GatewayPolicy) CardGateways() []string {
 	out := make([]string, 0, len(p.AllowedGateways))
 	for _, gateway := range p.AllowedGateways {
@@ -91,10 +92,33 @@ func (p GatewayPolicy) CardGateways() []string {
 		}
 		out = append(out, gateway)
 	}
-	if len(out) == 0 {
-		return []string{DefaultCardGatewayName}
-	}
 	return out
+}
+
+// NormalizeGatewayPolicyForPack intersects selected gateways with the pack.
+// Empty selection becomes live pack adapters (CASH + GLOBAL_PAY on UZ), never Adyen.
+func NormalizeGatewayPolicyForPack(acceptor string, gateways []string, policySource string, pack auth.MarketPack) GatewayPolicy {
+	filtered := make([]string, 0, len(gateways))
+	seen := map[string]struct{}{}
+	for _, gateway := range gateways {
+		canon := auth.CanonicalPSP(gateway)
+		if canon == "" || !auth.PackAllowsPSP(pack, canon) {
+			continue
+		}
+		if _, ok := seen[canon]; ok {
+			continue
+		}
+		seen[canon] = struct{}{}
+		filtered = append(filtered, canon)
+	}
+	if len(filtered) == 0 {
+		filtered = LivePackGateways(pack)
+		if policySource == "" {
+			policySource = "MARKET_PACK"
+		}
+	}
+	out := NormalizeGatewayPolicy(acceptor, filtered, policySource)
+	return stripPackForbidden(out, pack)
 }
 
 // ResolveCardGateway picks the gateway for card checkout.
@@ -145,22 +169,38 @@ func applyPackToGatewayPolicy(policy GatewayPolicy, pack auth.MarketPack) Gatewa
 		filtered = append(filtered, canon)
 	}
 	if len(filtered) == 0 {
-		return GatewayPolicy{
-			Acceptor:             policy.Acceptor,
-			DefaultPaymentMethod: DefaultPaymentMethod,
-			PolicySource:         "MARKET_PACK",
-		}
+		return NormalizeGatewayPolicyForPack(policy.Acceptor, nil, "MARKET_PACK", pack)
 	}
 	out := NormalizeGatewayPolicy(policy.Acceptor, filtered, "MARKET_PACK")
-	if !auth.PackAllowsPSP(pack, DefaultPaymentMethod) {
-		kept := make([]string, 0, len(out.AllowedGateways))
-		for _, g := range out.AllowedGateways {
-			if g == DefaultPaymentMethod {
-				continue
-			}
-			kept = append(kept, g)
+	return stripPackForbidden(out, pack)
+}
+
+func stripPackForbidden(policy GatewayPolicy, pack auth.MarketPack) GatewayPolicy {
+	kept := make([]string, 0, len(policy.AllowedGateways))
+	seen := map[string]struct{}{}
+	for _, gateway := range policy.AllowedGateways {
+		canon := auth.CanonicalPSP(gateway)
+		if !auth.PackAllowsPSP(pack, canon) {
+			continue
 		}
-		out.AllowedGateways = kept
+		if _, ok := seen[canon]; ok {
+			continue
+		}
+		seen[canon] = struct{}{}
+		kept = append(kept, canon)
 	}
-	return out
+	policy.AllowedGateways = kept
+	if !auth.PackAllowsPSP(pack, policy.DefaultCardGateway) {
+		policy.DefaultCardGateway = ""
+		for _, gateway := range kept {
+			if gateway != DefaultPaymentMethod {
+				policy.DefaultCardGateway = gateway
+				break
+			}
+		}
+	}
+	if !auth.PackAllowsPSP(pack, policy.DefaultPaymentMethod) {
+		policy.DefaultPaymentMethod = ""
+	}
+	return policy
 }

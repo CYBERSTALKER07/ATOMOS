@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import { useCart } from "../lib/cart";
 import { effectiveCartMaxQuantity } from "../lib/stock-policy";
 
@@ -177,7 +178,7 @@ export default function CartDrawer({
                   </span>
                   <span className="md-typescale-display-small font-light text-[var(--desk-text-primary)] tabular-nums">
                     {total.toLocaleString()}{" "}
-                    <small className="text-xs opacity-40 ml-0.5">UZS</small>
+                    <small className="text-xs opacity-40 ml-0.5">{packCurrency(readCachedAuthSession()?.pack)}</small>
                   </span>
                 </div>
               </div>

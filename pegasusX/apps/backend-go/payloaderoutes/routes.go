@@ -14,9 +14,7 @@ type Deps struct {
 	OrderService interface {
 		HandleExceptionReport(http.ResponseWriter, *http.Request)
 	}
-	JWTSecret           string
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	JWTSecret string
 }
 
 // RegisterRoutes mounts payload role-row operational endpoints.
@@ -63,24 +61,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/supplier/manifests/{id}/ship-units", d.Service.HandleListShipUnits)
 		rr.Post("/v1/supplier/manifests/{id}/labels", d.Service.HandleManifestLabels)
 
-		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
-		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
-
 		if d.OrderService != nil {
 			rr.Post("/v1/delivery/exception-report", d.OrderService.HandleExceptionReport)
 		}
 	}
 
 	allowed := []auth.Role{auth.RolePayload, auth.RoleAdmin}
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(allowed...))
-			mountProtected(gr)
-		})
-		return
-	}
-
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.RequireRole(allowed...))
 		mountProtected(gr)

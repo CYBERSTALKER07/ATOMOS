@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,13 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 )
+
+func TestHydrateFactoryManifestsFromSpanner_NilClient(t *testing.T) {
+	svc := &Service{}
+	if err := svc.hydrateFactoryManifestsFromSpanner(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
 
 func factoryDisablePortalSeed(t *testing.T) {
 	t.Helper()
@@ -174,6 +182,26 @@ func TestHandleResolveManifestException_NotFound(t *testing.T) {
 	}
 	if len(repo.resolvedExceptions) != 0 {
 		t.Fatalf("expected no persist on missing exception, got %d", len(repo.resolvedExceptions))
+	}
+}
+
+func TestHandleTransfers_Create_OrderIDTooLong(t *testing.T) {
+	repo := &factoryRepoSpy{}
+	svc := newFactoryTestService(repo, &factoryCacheBackendSpy{})
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/create", strings.NewReader(`{"order_id":"ssmr-factory-tr-1755443457491052000-0","total_vu":12}`))
+	rr := httptest.NewRecorder()
+	svc.HandleTransfers(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "order_id_too_long") {
+		t.Fatalf("expected order_id_too_long, got %s", rr.Body.String())
+	}
+	if repo.applyCalls != 0 {
+		t.Fatalf("expected no persist on oversize order_id, got %d apply calls", repo.applyCalls)
 	}
 }
 

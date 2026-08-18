@@ -32,6 +32,26 @@ func TestResolveSupplierIDPlatformSentinel(t *testing.T) {
 	}
 }
 
+func TestClampEventID(t *testing.T) {
+	if got := ClampEventID("short"); got != "short" {
+		t.Fatalf("short=%q", got)
+	}
+	long := "return-scan-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee-1"
+	if len(long) <= EventIDMax {
+		t.Fatalf("fixture too short: %d", len(long))
+	}
+	got := ClampEventID(long)
+	if len(got) > EventIDMax || got == "" {
+		t.Fatalf("clamped=%q len=%d", got, len(got))
+	}
+	if ClampEventID(long) != got {
+		t.Fatal("clamp must be deterministic")
+	}
+	if row := EventRowMap(Event{EventID: long, AggregateType: "o", AggregateID: "a", TopicName: "t", Payload: []byte(`{}`)}); row["EventId"] != got {
+		t.Fatalf("EventRowMap EventId=%v", row["EventId"])
+	}
+}
+
 func TestEventRowMapIncludesSupplierId(t *testing.T) {
 	row := EventRowMap(Event{
 		EventID:       "e1",

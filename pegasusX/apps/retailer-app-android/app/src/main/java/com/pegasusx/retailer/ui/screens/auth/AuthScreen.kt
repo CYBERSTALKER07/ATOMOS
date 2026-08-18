@@ -191,8 +191,8 @@ fun AuthScreen(
 
     if (showMapPicker) {
         LocationPickerScreen(
-            initialLat = if (latitude != 0.0) latitude else 41.2995,
-            initialLng = if (longitude != 0.0) longitude else 69.2401,
+            initialLat = if (latitude != 0.0) latitude else (com.pegasus.design.sessionMapCenter()?.lat ?: 0.0),
+            initialLng = if (longitude != 0.0) longitude else (com.pegasus.design.sessionMapCenter()?.lng ?: 0.0),
             resolveAddress = { lat, lng -> viewModel.resolveAddress(lat, lng) },
             onConfirm = { picked ->
                 latitude = picked.latitude

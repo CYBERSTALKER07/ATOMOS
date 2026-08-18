@@ -2,7 +2,9 @@ package countrycfg
 
 import "strings"
 
-// Catalog is the signup-picker country set. Checkout gateways still do not read this.
+// Catalog is the signup-picker country set only. MarketPack is product law
+// for currency, PSP, fiscal, and matching country. Do not add a CountryConfigs
+// Spanner table. Checkout must not read PaymentGatewaysListed from here.
 func Catalog() map[string]Config {
 	uz := UZDefault()
 	uz.OpsReadsThis = true
@@ -13,7 +15,7 @@ func Catalog() map[string]Config {
 			CurrencyCode: "KZT", CurrencyDecimalPlaces: 2, DistanceUnit: "km", GridSystem: "H3",
 			BreachRadiusMeters: 150, ShopClosedGraceMinutes: 10, ShopClosedEscalationMinutes: 30,
 			OfflineModeDurationMinutes: 120, CashCustodyAlertHours: 24,
-			PaymentGatewaysListed: []string{"GLOBAL_PAY", "CASH"}, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
+			PaymentGatewaysListed: nil, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
 		},
 		"KG": catalogRow("KG", "Kyrgyzstan", "Asia/Bishkek", "KGS"),
 		"TJ": catalogRow("TJ", "Tajikistan", "Asia/Dushanbe", "TJS"),
@@ -26,7 +28,7 @@ func Catalog() map[string]Config {
 			CurrencyCode: "USD", CurrencyDecimalPlaces: 2, DistanceUnit: "mi", GridSystem: "H3",
 			BreachRadiusMeters: 150, ShopClosedGraceMinutes: 10, ShopClosedEscalationMinutes: 30,
 			OfflineModeDurationMinutes: 120, CashCustodyAlertHours: 24,
-			PaymentGatewaysListed: []string{"GLOBAL_PAY", "CASH"}, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
+			PaymentGatewaysListed: nil, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
 		},
 		"GB": catalogRow("GB", "United Kingdom", "Europe/London", "GBP"),
 	}
@@ -38,7 +40,7 @@ func catalogRow(code, name, tz, currency string) Config {
 		CurrencyCode: currency, CurrencyDecimalPlaces: 2, DistanceUnit: "km", GridSystem: "H3",
 		BreachRadiusMeters: 150, ShopClosedGraceMinutes: 10, ShopClosedEscalationMinutes: 30,
 		OfflineModeDurationMinutes: 120, CashCustodyAlertHours: 24,
-		PaymentGatewaysListed: []string{"GLOBAL_PAY", "CASH"}, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
+		PaymentGatewaysListed: nil, CheckoutReadsThis: false, OpsReadsThis: true, Source: "catalog",
 	}
 }
 

@@ -912,6 +912,20 @@ struct PlanningScenarioResult: Decodable {
     }
 }
 
+struct SparsityGateResult: Decodable {
+    let allowed: Bool
+    let completedOrders: Int
+    let blockedReason: String?
+    let label: String
+
+    enum CodingKeys: String, CodingKey {
+        case allowed
+        case completedOrders = "completed_orders"
+        case blockedReason = "blocked_reason"
+        case label
+    }
+}
+
 struct ForecastConfidence: Decodable {
     let lowUnits: Int64?
     let highUnits: Int64?
@@ -1124,7 +1138,7 @@ struct PaymentLedgerEntry: Decodable, Identifiable {
         gateway = try c.decodeIfPresent(String.self, forKey: .gateway) ?? ""
         entryType = try c.decodeIfPresent(String.self, forKey: .entryType) ?? ""
         amountMinor = try c.decodeIfPresent(Int64.self, forKey: .amountMinor) ?? 0
-        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
         referenceId = try c.decodeIfPresent(String.self, forKey: .referenceId)
         source = try c.decodeIfPresent(String.self, forKey: .source)
         occurredAt = try c.decodeIfPresent(String.self, forKey: .occurredAt) ?? ""
@@ -2163,7 +2177,7 @@ struct ComplianceFiscalOpenRow: Decodable, Identifiable {
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         fiscalStatus = try c.decodeIfPresent(String.self, forKey: .fiscalStatus) ?? ""
         totalMinor = try c.decodeIfPresent(Int64.self, forKey: .totalMinor) ?? 0
-        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
     }
 }
 

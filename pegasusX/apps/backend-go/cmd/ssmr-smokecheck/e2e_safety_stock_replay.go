@@ -33,6 +33,12 @@ func runSafetyStockReplayE2E(
 	}
 	defer spannerClient.Close()
 
+	op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency)
+	if op == "" {
+		fmt.Println("PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED")
+		return nil
+	}
+
 	warehouseID := strings.TrimSpace(envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"))
 	productID := "SSMR-SKU-SS-REPLAY-" + uuid.NewString()[:8]
 	now := time.Now().UTC().Truncate(24 * time.Hour)
@@ -59,7 +65,7 @@ func runSafetyStockReplayE2E(
 			"LineItemsJson":      lineItems,
 			"TotalMinor":         qty * 100,
 			"OriginalTotalMinor": qty * 100,
-			"Currency":           "UZS",
+			"Currency":           op,
 			"Version":            int64(1),
 			"CreatedAt":          d,
 			"UpdatedAt":          d,

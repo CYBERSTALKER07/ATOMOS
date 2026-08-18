@@ -694,19 +694,7 @@ func bufferOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	}
 	out := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		out = append(out, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}))
+		out = append(out, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return out
 }
@@ -718,4 +706,3 @@ func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerI
 	_ = retailerIDs
 	return map[string]RetailerCreditScore{}, nil
 }
-

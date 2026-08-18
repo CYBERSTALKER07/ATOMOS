@@ -12,6 +12,7 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.moneyCurrency
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
@@ -35,7 +36,7 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                     if (ledger.isSuccessful && ledger.body() != null) {
                         val items = ledger.body()!!.items
                         val total = items.sumOf { it.amountMinor }
-                        val currency = items.firstOrNull()?.currency ?: "UZS"
+                        val currency = moneyCurrency(items.firstOrNull()?.currency)
                         earnings = SupplierEarnings(
                             currency = currency,
                             todayMinor = 0,

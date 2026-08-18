@@ -22,6 +22,12 @@ data class AuthResponse(
     @SerialName("is_configured") val isConfigured: Boolean = false,
 )
 
+@Serializable
+data class DeviceTokenRequest(
+    val token: String,
+    val platform: String,
+)
+
 // ── Dashboard ──
 @Serializable
 data class DashboardStats(
@@ -33,6 +39,17 @@ data class DashboardStats(
     @SerialName("vehicles_available") val vehiclesAvailable: Int = 0,
     @SerialName("staff_on_shift") val staffOnShift: Int = 0,
     @SerialName("critical_insights") val criticalInsights: Int = 0,
+    val source: String = "empty",
+    val plane: String = "factory_trucks",
+    @SerialName("transfers_by_state") val transfersByState: Map<String, Int> = emptyMap(),
+    @SerialName("manifests_by_state") val manifestsByState: Map<String, Int> = emptyMap(),
+    @SerialName("vehicles_by_state") val vehiclesByState: Map<String, Int> = emptyMap(),
+    @SerialName("driver_duty") val driverDuty: Map<String, Int> = emptyMap(),
+    @SerialName("sla_by_status") val slaByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("qc_by_result") val qcByResult: Map<String, Int> = emptyMap(),
+    @SerialName("qc_available") val qcAvailable: Boolean = false,
+    @SerialName("bay_loading_transfers") val bayLoadingTransfers: Int = 0,
+    @SerialName("bay_loading_manifests") val bayLoadingManifests: Int = 0,
 )
 
 // mirror of backend-go/factory HandleAnalyticsOverview + packages/types FactoryAnalyticsOverviewResponse

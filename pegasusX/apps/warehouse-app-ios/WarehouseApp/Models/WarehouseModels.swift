@@ -49,6 +49,11 @@ struct FleetStatusEntry: Decodable, Hashable {
     let count: Int64
 }
 
+struct HoldReasonEntry: Decodable, Hashable {
+    let code: String
+    let count: Int
+}
+
 struct DashboardData: Decodable {
     let activeOrders: Int64
     let completedToday: Int64
@@ -58,9 +63,16 @@ struct DashboardData: Decodable {
     let totalDrivers: Int64
     let totalVehicles: Int64
     let todayRevenue: Int64
+    let completedTodayAvailable: Bool
+    let todayRevenueAvailable: Bool
     let lowStockCount: Int64
     let totalStaff: Int64
     let fleetStatus: [FleetStatusEntry]
+    let ordersByStatus: [String: Int]
+    let truckDuty: [String: Int]
+    let holdReasons: [HoldReasonEntry]
+    let demandSource: String
+    let historyAvailable: Bool
 
     enum CodingKeys: String, CodingKey {
         case activeOrders = "active_orders"
@@ -71,9 +83,16 @@ struct DashboardData: Decodable {
         case totalDrivers = "total_drivers"
         case totalVehicles = "total_vehicles"
         case todayRevenue = "today_revenue"
+        case completedTodayAvailable = "completed_today_available"
+        case todayRevenueAvailable = "today_revenue_available"
         case lowStockCount = "low_stock_count"
         case totalStaff = "total_staff"
         case fleetStatus = "fleet_status"
+        case ordersByStatus = "orders_by_status"
+        case truckDuty = "truck_duty"
+        case holdReasons = "hold_reasons"
+        case demandSource = "demand_source"
+        case historyAvailable = "history_available"
     }
 
     init(
@@ -85,9 +104,16 @@ struct DashboardData: Decodable {
         totalDrivers: Int64 = 0,
         totalVehicles: Int64 = 0,
         todayRevenue: Int64 = 0,
+        completedTodayAvailable: Bool = false,
+        todayRevenueAvailable: Bool = false,
         lowStockCount: Int64 = 0,
         totalStaff: Int64 = 0,
-        fleetStatus: [FleetStatusEntry] = []
+        fleetStatus: [FleetStatusEntry] = [],
+        ordersByStatus: [String: Int] = [:],
+        truckDuty: [String: Int] = [:],
+        holdReasons: [HoldReasonEntry] = [],
+        demandSource: String = "empty",
+        historyAvailable: Bool = false
     ) {
         self.activeOrders = activeOrders
         self.completedToday = completedToday
@@ -97,9 +123,16 @@ struct DashboardData: Decodable {
         self.totalDrivers = totalDrivers
         self.totalVehicles = totalVehicles
         self.todayRevenue = todayRevenue
+        self.completedTodayAvailable = completedTodayAvailable
+        self.todayRevenueAvailable = todayRevenueAvailable
         self.lowStockCount = lowStockCount
         self.totalStaff = totalStaff
         self.fleetStatus = fleetStatus
+        self.ordersByStatus = ordersByStatus
+        self.truckDuty = truckDuty
+        self.holdReasons = holdReasons
+        self.demandSource = demandSource
+        self.historyAvailable = historyAvailable
     }
 
     init(from decoder: Decoder) throws {
@@ -112,9 +145,16 @@ struct DashboardData: Decodable {
         totalDrivers = (try? c.decode(Int64.self, forKey: .totalDrivers)) ?? 0
         totalVehicles = (try? c.decode(Int64.self, forKey: .totalVehicles)) ?? 0
         todayRevenue = (try? c.decode(Int64.self, forKey: .todayRevenue)) ?? 0
+        completedTodayAvailable = (try? c.decode(Bool.self, forKey: .completedTodayAvailable)) ?? false
+        todayRevenueAvailable = (try? c.decode(Bool.self, forKey: .todayRevenueAvailable)) ?? false
         lowStockCount = (try? c.decode(Int64.self, forKey: .lowStockCount)) ?? 0
         totalStaff = (try? c.decode(Int64.self, forKey: .totalStaff)) ?? 0
         fleetStatus = (try? c.decode([FleetStatusEntry].self, forKey: .fleetStatus)) ?? []
+        ordersByStatus = (try? c.decode([String: Int].self, forKey: .ordersByStatus)) ?? [:]
+        truckDuty = (try? c.decode([String: Int].self, forKey: .truckDuty)) ?? [:]
+        holdReasons = (try? c.decode([HoldReasonEntry].self, forKey: .holdReasons)) ?? []
+        demandSource = (try? c.decode(String.self, forKey: .demandSource)) ?? "empty"
+        historyAvailable = (try? c.decode(Bool.self, forKey: .historyAvailable)) ?? false
     }
 
     static let empty = DashboardData()
@@ -1395,7 +1435,7 @@ struct WarehouseClaim: Decodable, Identifiable {
         claimType = try c.decodeIfPresent(String.self, forKey: .claimType) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         amountMinor = try c.decodeIfPresent(Int.self, forKey: .amountMinor) ?? 0
-        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
         description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
         lineItems = try c.decodeIfPresent([WarehouseClaimLine].self, forKey: .lineItems) ?? []
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
@@ -1631,7 +1671,7 @@ struct Invoice: Decodable, Identifiable {
         let additiveAmount = try c.decodeIfPresent(Int.self, forKey: .amount)
         let legacyAmount = try c.decodeIfPresent(Int.self, forKey: .amountUzs)
         amountUzs = additiveAmount ?? legacyAmount ?? 0
-        currency = (try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS").uppercased()
+        currency = displayPackCurrency(try c.decodeIfPresent(String.self, forKey: .currency))
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         dueDate = try c.decodeIfPresent(String.self, forKey: .dueDate) ?? ""
         feeAmount = try c.decodeIfPresent(Int.self, forKey: .feeAmount) ?? 0
@@ -2024,6 +2064,7 @@ struct DemandForecastResponse: Decodable {
     let generatedAt: String?
     let series: [DemandForecastDay]
     let products: [DemandForecastProduct]
+    let source: String
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
@@ -2031,6 +2072,7 @@ struct DemandForecastResponse: Decodable {
         case generatedAt = "generated_at"
         case series
         case products
+        case source
     }
 
     init(
@@ -2038,13 +2080,15 @@ struct DemandForecastResponse: Decodable {
         forecastDays: Int = 7,
         generatedAt: String? = nil,
         series: [DemandForecastDay] = [],
-        products: [DemandForecastProduct] = []
+        products: [DemandForecastProduct] = [],
+        source: String = "empty"
     ) {
         self.warehouseId = warehouseId
         self.forecastDays = forecastDays
         self.generatedAt = generatedAt
         self.series = series
         self.products = products
+        self.source = source
     }
 
     init(from decoder: Decoder) throws {
@@ -2054,6 +2098,7 @@ struct DemandForecastResponse: Decodable {
         generatedAt = try container.decodeIfPresent(String.self, forKey: .generatedAt)
         series = try container.decodeIfPresent([DemandForecastDay].self, forKey: .series) ?? []
         products = try container.decodeIfPresent([DemandForecastProduct].self, forKey: .products) ?? []
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "empty"
     }
 }
 
@@ -2325,29 +2370,133 @@ struct CreateStaffResponse: Decodable {
 // MARK: - Payment Config
 
 struct PaymentGateway: Decodable, Identifiable {
-    var id: String { gatewayId }
-    let gatewayId: String
+    var id: String { code }
+    let code: String
     let name: String
     let provider: String
     let isActive: Bool
+    let status: String
+    let selectable: Bool
 
     enum CodingKeys: String, CodingKey {
-        case gatewayId = "gateway_id"
-        case name, provider
+        case gatewayName = "gateway_name"
+        case code, name, provider, status, selectable
         case isActive = "is_active"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        gatewayId = try c.decode(String.self, forKey: .gatewayId)
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? ""
+        let gatewayName = try c.decodeIfPresent(String.self, forKey: .gatewayName) ?? ""
+        code = try c.decodeIfPresent(String.self, forKey: .code) ?? gatewayName
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? gatewayName
+        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? code
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        selectable = try c.decodeIfPresent(Bool.self, forKey: .selectable) ?? isActive
     }
+}
+
+struct PSPListing: Decodable, Identifiable {
+    var id: String { code }
+    let code: String
+    let status: String
+    let selectable: Bool
 }
 
 struct PaymentConfigResponse: Decodable {
     let gateways: [PaymentGateway]
+    let catalog: [PSPListing]
+    let currencyCode: String
+    let marketCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case gateways, catalog
+        case currencyCode = "currency_code"
+        case marketCode = "market_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gateways = try c.decodeIfPresent([PaymentGateway].self, forKey: .gateways) ?? []
+        catalog = try c.decodeIfPresent([PSPListing].self, forKey: .catalog) ?? []
+        currencyCode = try c.decodeIfPresent(String.self, forKey: .currencyCode) ?? ""
+        marketCode = try c.decodeIfPresent(String.self, forKey: .marketCode) ?? ""
+    }
+}
+
+struct WarehouseCoverageResponse: Decodable {
+    let warehouseId: String
+    let mode: String
+    let cities: [WarehouseCoverageCity]
+    let pins: [WarehouseServicePin]
+    let countryCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case mode, cities, pins
+        case countryCode = "country_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? "COUNTRY_CLOSEST"
+        cities = try c.decodeIfPresent([WarehouseCoverageCity].self, forKey: .cities) ?? []
+        pins = try c.decodeIfPresent([WarehouseServicePin].self, forKey: .pins) ?? []
+        countryCode = try c.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
+    }
+}
+
+struct WarehouseCoverageCity: Decodable, Identifiable {
+    var id: String { "\(name):\(lat):\(lng)" }
+    let name: String
+    let lat: Double
+    let lng: Double
+}
+
+struct WarehouseServicePin: Decodable, Identifiable {
+    var id: String { "\(targetType):\(targetId)" }
+    let targetType: String
+    let targetId: String
+    let priority: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case targetType = "target_type"
+        case targetId = "target_id"
+        case priority
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        targetType = try c.decodeIfPresent(String.self, forKey: .targetType) ?? ""
+        targetId = try c.decodeIfPresent(String.self, forKey: .targetId) ?? ""
+        priority = try c.decodeIfPresent(Int64.self, forKey: .priority) ?? 0
+    }
+}
+
+struct WarehouseSupplyFactoryResponse: Decodable {
+    let warehouseId: String
+    let factoryId: String
+    let transferMode: String
+    let source: String
+    let countryCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case factoryId = "factory_id"
+        case transferMode = "transfer_mode"
+        case source
+        case countryCode = "country_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId) ?? ""
+        transferMode = try c.decodeIfPresent(String.self, forKey: .transferMode) ?? ""
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "engine"
+        countryCode = try c.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
+    }
 }
 
 // MARK: - JSON helpers

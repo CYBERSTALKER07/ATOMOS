@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -98,7 +99,7 @@ type OpenFromCreditLeaveRequest struct {
 	RetailerID      string
 	OrderID         string
 	AmountMinor     int64
-	Currency        string // ISO-4217; empty falls back to UZS only as last resort
+	Currency        string // ISO-4217; empty reads the shipped pack, never invents UZS
 	TermsDays       int64
 	GraceDays       int64
 	CreditLeaveAt   time.Time
@@ -106,7 +107,7 @@ type OpenFromCreditLeaveRequest struct {
 }
 
 // buildOpenInvoice validates and constructs an OPEN invoice for credit leave (no I/O).
-func (s *Service) buildOpenInvoice(req OpenFromCreditLeaveRequest) (Invoice, error) {
+func (s *Service) buildOpenInvoice(ctx context.Context, req OpenFromCreditLeaveRequest) (Invoice, error) {
 	if !InvoicesEnabled() {
 		if req.AmountMinor > 0 {
 			return Invoice{}, ErrInvoicesDisabled
@@ -126,7 +127,11 @@ func (s *Service) buildOpenInvoice(req OpenFromCreditLeaveRequest) (Invoice, err
 	}
 	currency := fxrates.NormalizeCurrency(req.Currency)
 	if currency == "" {
-		currency = "UZS"
+		packCur, err := auth.CurrencyFromContext(ctx, req.SupplierID)
+		if err != nil {
+			return Invoice{}, err
+		}
+		currency = fxrates.NormalizeCurrency(packCur)
 	}
 	if len(currency) != 3 {
 		return Invoice{}, fmt.Errorf("%w: %q", fxrates.ErrInvalidCurrency, req.Currency)
@@ -162,7 +167,7 @@ func (s *Service) OpenFromCreditLeave(ctx context.Context, req OpenFromCreditLea
 	} else if found {
 		return existing, nil
 	}
-	inv, err := s.buildOpenInvoice(req)
+	inv, err := s.buildOpenInvoice(ctx, req)
 	if err != nil {
 		return Invoice{}, err
 	}
@@ -188,7 +193,7 @@ func (s *Service) OpenFromCreditLeaveInTxn(ctx context.Context, txn *spanner.Rea
 	}
 	// Prefer in-txn path when Spanner repo (same database as orders).
 	if _, ok := s.repo.(*SpannerRepository); ok {
-		inv, err := s.buildOpenInvoice(req)
+		inv, err := s.buildOpenInvoice(ctx, req)
 		if err != nil {
 			return err
 		}

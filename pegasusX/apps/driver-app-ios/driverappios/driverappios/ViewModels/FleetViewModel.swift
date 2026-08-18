@@ -82,8 +82,9 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var maxVolumeVU: Double { TokenStore.shared.maxVolumeVU }
 
     static var warehouseCenter: CLLocationCoordinate2D {
-        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : 41.2995
-        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : 69.2401
+        let pack = packMapCoordinate()
+        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : pack.lat
+        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : pack.lng
         return CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
     /// Shared location for FleetServiceLive GPS injection
@@ -103,7 +104,15 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     var inTransitOrders: [Order] {
-        orders.filter { $0.state == .IN_TRANSIT || $0.state == .ARRIVING || $0.state == .ARRIVED }
+        orders.filter {
+            switch $0.state {
+            case .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
+                 .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED:
+                return true
+            default:
+                return false
+            }
+        }
     }
 
     var hasActiveRoute: Bool { activeMission != nil || !inTransitOrders.isEmpty }
@@ -631,7 +640,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     /// Derive truck status from current order states
     private func deriveTruckStatus() {
-        let activeStates: Set<OrderState> = [.IN_TRANSIT, .ARRIVING, .ARRIVED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED]
+        let activeStates: Set<OrderState> = [
+            .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
+            .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED,
+        ]
         let hasActive = orders.contains { activeStates.contains($0.state) }
         let hasLoaded = orders.contains { $0.state == .LOADED || $0.state == .DISPATCHED }
         let allDone = !orders.isEmpty && orders.allSatisfy { $0.state == .COMPLETED || $0.state == .CANCELLED }

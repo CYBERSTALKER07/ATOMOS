@@ -130,7 +130,7 @@ Do **not** flip `checkout_reads_this` until M1–M2 match UZ (catalog MY_SOLIQ v
 | **M2** | Fiscal | BF-243, BF-247, BF-352 | **Done** — collect/retry/worker/receipts read shipped `fiscal_adapter`. Planned pack 404. PEPPOL unimplemented 422. FAKE forbidden in prod. Buyer poller only if UZ MY_SOLIQ. Cell env remains SSMR default (PEGASUS/FAKE); flag stays false |
 | **M3** | Proximity | BF-221 | **Done** — one `breach_radius_meters` from shipped pack (UZ 150). Doorstep / approach / telemetry fail-closed on planned pack or radius ≤ 0. 500 m dual deleted. Settlement stays 100 m. Flag still false |
 | **M4** | Shop-closed / labor / TZ | BF-052, BF-058, BF-157, BF-189, BF-283–284, BF-341, BF-345, BF-355–356 | **Done** — calendar TZ, shop-closed grace, weather scope, factory SLA hours, labor max shift from shipped pack. Planned pack fail-closed. `UZDefault()` / `FixedZone("Asia/Tashkent")` / worker `city:Tashkent` no longer product law. Flag still false |
-| **M5** | Order/payment defaults | BF-240, BF-241, BF-245 | **Done** — empty currency from shipped pack (`order.NewService`, picker, currencies GET, refunds, payment NewService / refund / chargeback). Planned pack fail-closed. No `"UZS"` invent. Flag still false |
+| **M5** | Order/payment defaults | BF-240, BF-241, BF-245 | **PARTIAL leftover** — empty currency from shipped pack on order/payment NewService, picker, refunds, fiscal receipts, claims, AR open, payout batch, EDI-lite, billing, globalproducts, auto-order draft cart (place off), partner journals, fxrates identity seed (planned pack skips identity). Named + continuous invent train closed (smokecheck payloads skip planned pack). Optional USD/UZS pair only when scaled > 0. Flag still false |
 | **M6** | Payout | BF-131 | **Done** — pack `payout_rail` (UZ `bank-file`; EU/US catalog `sepa-file`/`ach-file`). Planned pack 404. Unknown name does not fall through to bank-file. Unknown+live → `no_live_rail`. No live PSP invented. Flag still false |
 | **M7** | Tax stamp | BF-249 | **Done** — `stampTaxRegimeTxn` / receipts use shipped pack country. `countryFromCurrency` KZT→KZ else UZ deleted. Planned pack 404. Missing regime still fails the txn. Flag still false |
 
@@ -156,7 +156,7 @@ From [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md). **Plan 
 | Phase | BF | Rule |
 |-------|----|------|
 | **GS-I** | BF-015 | **Done** — `SupplierOIDC` + `/v1/auth/oidc/{discovery,exchange}` + `/v1/supplier/oidc`. AUTH0_DOMAIN wrap removed. SAML/SCIM later. |
-| **GS-R** | — | **Bind done** — `GET /v1/auth/session` chip (currency + receipts) on portal+Android+iOS; native `pinApiBaseUrl`. Deep UZS / maps SDK leftover continuous. |
+| **GS-R** | — | **Bind done** — `GET /v1/auth/session` chip (currency + receipts) on portal+Android+iOS; native `pinApiBaseUrl`; maps camera from shipped pack (empty/planned does not invent Tashkent). Leftover: `checkout_reads_this`. |
 | **GS-P** | BF-069, BF-130, BF-300–311 | **Done** — `GET /v1/platform/partner-dialects` + `AllowPartnerDialect`. 1C CIS-only; PEPPOL planned/not live; X12/SAP sold_only; AS2 transport (no VAN). Empty 1C currency from pack. Register unblocked. |
 
 ## I.8 KEEP / DEFER (do not retag as global work)
@@ -178,7 +178,7 @@ From [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md). **Plan 
 9. **GS-M2** — **Done.** Fiscal fail-closes on shipped pack adapter. Flag stays false.  
 10. **GS-M3** — **Done.** One breach radius from shipped pack. Flag stays false.  
 11. **GS-M4** — **Done.** Shop-closed / labor / TZ / weather / factory SLA from shipped pack. Flag stays false.  
-12. **GS-M5** — **Done.** Empty currency from shipped pack, not `UZS`. Flag stays false.  
+12. **GS-M5** — **PARTIAL leftover.** Empty currency from shipped pack (not invent), including fxrates identity seed. Named invent train closed. Flag stays false. Place stays off.  
 13. **GS-M6** — **Done.** Pack `payout_rail`; unknown+live → `no_live_rail`. Flag stays false.  
 14. **GS-M7** — **Done.** Tax stamp from pack country. `countryFromCurrency` deleted. Flag stays false.  
 15. **GS-C1** — **Done** (plan only). Per-cell `backend-*.hcl`; `cell_id` / `api_hostname` / `k8s_namespace`; Kafka from `cell_id`; GSM regional path; WI from namespace; instance-level IAM; custom VPC path; `overlays/cells/uz`. `make cell-backend-guard`. No apply.
@@ -187,10 +187,10 @@ From [`GLOBAL_SCALE_BACKEND_INFRA.md`](./GLOBAL_SCALE_BACKEND_INFRA.md). **Plan 
 18. **GS-C4** — **Done** (written evidence). UZ JWT 401 on EU; IAM/Kafka/GSM isolation. `make cell-isolation-proof`. No apply.
 19. **GS-C5** — **Done** (plan only). Global DNS/AR; session `api_url`; portals pin `home_cell`. `make global-plan` + `make cell-api-proof`. No apply.
 20. **GS-I** — **Done.** Per-supplier OIDC; HS256 staff JWT unchanged. SAML/SCIM later.
-21. **GS-R** — **Done (bind).** Session pack splash + native cell pin. `make pack-client-proof`. Deep UZS leftover continuous.
+21. **GS-R** — **Done (bind).** Session pack splash + native cell pin + maps camera. `make pack-client-proof`. Leftover: `checkout_reads_this`.
 22. **GS-P** — **Done.** Dialect catalog + fail-closed gates. `make partner-dialect-proof`. Never blocks register.
 
-No next phase from this catalog. Leftover only when asked: flip `checkout_reads_this`; terraform/kubectl apply; live PEPPOL AP; live Stripe/Adyen executor; SAML/SCIM; EDI codec empty-currency defaults; deep UZS screens. Do not invent GS-Q.
+No next phase from this catalog. Leftover only when asked: flip `checkout_reads_this`; terraform/kubectl apply; live PEPPOL AP; live Stripe/Adyen executor; SAML/SCIM; deep UZS screens. Do not invent GS-Q.
 
 ---
 
@@ -507,7 +507,7 @@ Gone-on-purpose (do not port, do not “fix for EU”): saved cards, B2B checkou
 | BF-266 | Payers CRUD | `/v1/payers*` | REAL | **ADAPT** | — | — | — |
 | BF-267 | Webhook Global Pay | `POST /v1/webhooks/global-pay` | REAL | **LOCAL** | HMAC; UZ pack | GP merchant | LC-02 |
 | BF-268 | Webhook Payme / Click | `POST /v1/webhooks/{payme,click}` | REAL | **LOCAL** | UZ-only adapters | Local PSP contracts | LC-03 |
-| BF-269 | Webhook Stripe / Adyen | `POST /v1/webhooks/{stripe,adyen}` | PARTIAL — Stripe/Adyen **executors theatre** | **DEFER** until real executor | Do not flip pack to STRIPE until executor is real | EU/US merchant | GS-M / P |
+| BF-269 | Webhook Stripe / Adyen | `POST /v1/webhooks/{stripe,adyen}` | PARTIAL — webhook parsers exist; checkout-init is `catalogHonestyExecutor` (`adapter_planned`) | **DEFER** live charge | Do not flip a pack to STRIPE until a real executor + legal entity | EU/US merchant | GS-M / P |
 | BF-270 | GP simulator | `/sim/globalpay/*` | REAL local only | **KEEP** | Never mount in staging/prod | — | — |
 
 ---
@@ -609,7 +609,7 @@ Loyalty is **not** in this table. Live `GET /v1/retailer/loyalty/tier` `{enrolle
 | Payload capacity GET | 410 | **DEFER** |
 | GP initiate | 410 deprecated | **DEFER** |
 | Inventory audit list | 410 `audit_unwired` | **DEFER** |
-| Stripe/Adyen execute | theatre redirect | **DEFER** until real executor |
+| Stripe/Adyen execute | `catalogHonestyExecutor` (`adapter_planned`, no redirect URL) | **DEFER** live charge until sold legal entity |
 | Marketplace / discovery | not a product | **DEFER** |
 | Factory planning / auto-order **place** | flags off | **DEFER** default-on |
 
@@ -653,7 +653,7 @@ See **Part I §I.9**. Do not implement this inventory as 250 rows.
 18. **GS-C4** — **Done** (written). `make cell-isolation-proof`. No apply.
 19. **GS-C5** — **Done** (plan only). `make global-plan` + `make cell-api-proof`. No apply.
 20. **GS-I** — **Done.** Per-supplier OIDC. No process-global Auth0 wrap.
-21. **GS-R** — **Done (bind).** Session pack splash + native pin. Deep UZS leftover continuous.
+21. **GS-R** — **Done (bind).** Session pack splash + native pin + maps camera. Leftover: `checkout_reads_this`.
 22. **GS-P** — **Done.** `make partner-dialect-proof`. Never blocked register.
 
 ---

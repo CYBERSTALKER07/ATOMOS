@@ -154,3 +154,33 @@ func TestResolveMeterAmountMajor_Precedence(t *testing.T) {
 		})
 	}
 }
+
+func TestNewBillingTierWorker_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
+	if w.OperatingCurrency != "UZS" {
+		t.Fatalf("operating=%q want UZS from pack", w.OperatingCurrency)
+	}
+}
+
+func TestNewBillingTierWorker_PlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
+	if w.OperatingCurrency != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", w.OperatingCurrency)
+	}
+}
+
+func TestHandleMessage_PlannedPackSkipsWithoutMetering(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
+	payload, _ := json.Marshal(map[string]any{
+		"type":         events.EventOrderFinalized,
+		"order_id":     "ord-eu-1",
+		"supplier_id":  "sup-1",
+		"amount_minor": int64(12500),
+	})
+	if err := w.HandleMessage(context.Background(), payload); err != nil {
+		t.Fatalf("planned pack should skip, got %v", err)
+	}
+}

@@ -85,6 +85,39 @@ func TestHandleGetBatch_MissingID(t *testing.T) {
 	}
 }
 
+func TestHandleMutations_RequireSupplierScope(t *testing.T) {
+	h := &Handlers{Svc: NewService(nil)}
+	r := chi.NewRouter()
+	r.Post("/v1/supplier/payouts/batches/{batchID}/export", h.HandleExport)
+	r.Post("/v1/supplier/payouts/batches/{batchID}/mark-paid", h.HandleMarkPaid)
+	r.Post("/v1/supplier/payouts/batches/{batchID}/dispatch", h.HandleDispatch)
+	for _, path := range []string{
+		"/v1/supplier/payouts/batches/po-1/export",
+		"/v1/supplier/payouts/batches/po-1/mark-paid",
+		"/v1/supplier/payouts/batches/po-1/dispatch",
+	} {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		rr := httptest.NewRecorder()
+		r.ServeHTTP(rr, req)
+		if rr.Code != http.StatusForbidden {
+			t.Fatalf("%s status=%d body=%s want 403", path, rr.Code, rr.Body.String())
+		}
+		if !strings.Contains(rr.Body.String(), "supplier_scope_required") {
+			t.Fatalf("%s body=%s", path, rr.Body.String())
+		}
+	}
+}
+
+func TestGetBatch_EmptyScopeNotFound(t *testing.T) {
+	svc := NewService(NewRepository(nil))
+	if _, err := svc.GetBatch(context.Background(), "", "po-1"); err != ErrBatchNotFound {
+		t.Fatalf("empty supplier: %v", err)
+	}
+	if _, err := svc.GetBatch(context.Background(), "sup-1", ""); err != ErrBatchNotFound {
+		t.Fatalf("empty batch: %v", err)
+	}
+}
+
 func TestHandleRailInfo_ShippedPackBankFile(t *testing.T) {
 	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	h := &Handlers{Svc: NewService(nil)}

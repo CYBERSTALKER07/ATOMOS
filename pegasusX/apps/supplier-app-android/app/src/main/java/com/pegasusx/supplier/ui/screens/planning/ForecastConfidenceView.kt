@@ -44,7 +44,7 @@ fun ForecastConfidenceView(
             }
             if (blocked) {
                 Text(
-                    "Insufficient history — predictive forecast blocked",
+                    confidence.blockedReason ?: "insufficient_history",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                 )

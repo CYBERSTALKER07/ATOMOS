@@ -224,6 +224,9 @@ class SupplierOperationsRepository @Inject constructor(
     suspend fun postPlanningPredictivePush(idempotencyKey: String): Response<PredictivePushResponse> =
         api.postPlanningPredictivePush(idempotencyKey)
 
+    suspend fun getPlanningSparsity(retailerId: String): Response<SparsityGateResult> =
+        api.getPlanningSparsity(retailerId)
+
     suspend fun getLoyaltyProgram(): Response<LoyaltyProgram> = api.getLoyaltyProgram()
 
     suspend fun patchLoyaltyProgram(body: LoyaltyProgram, idempotencyKey: String): Response<LoyaltyProgram> =

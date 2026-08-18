@@ -30,6 +30,7 @@ import {
 } from "../../../lib/dock-pending-patches";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
+import { moneyCurrency } from "../../../lib/payment-catalog";
 
 /* ── Config ── */
 
@@ -574,7 +575,7 @@ export default function DockPage() {
                       </h3>
                       <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-light uppercase tracking-widest">
                         {group.orders.length} ACTIVE NODES ·{" "}
-                        {formatAmount(group.totalAmount)} UZS
+                        {formatAmount(group.totalAmount)} {moneyCurrency()}
                       </p>
                     </div>
                   </div>
@@ -637,7 +638,7 @@ export default function DockPage() {
                                 </Chip>
                               </div>
                               <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-light">
-                                {formatAmount(order.total_amount)} UZS ·{" "}
+                                {formatAmount(order.total_amount)} {moneyCurrency()} ·{" "}
                                 {order.items.length} SKUS
                               </p>
                             </div>

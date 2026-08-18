@@ -345,14 +345,7 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product, emit f
 		})
 		mutations := []*spanner.Mutation{m}
 		for _, e := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     e.CreatedAt,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -408,14 +401,7 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product, emit f
 		})
 		mutations := []*spanner.Mutation{m}
 		for _, e := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     e.CreatedAt,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		return txn.BufferWrite(mutations)
 	})

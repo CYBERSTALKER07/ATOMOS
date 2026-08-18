@@ -13,7 +13,7 @@ struct ProfileView: View {
     @State private var pricingRulesSummary: String = ""
     @State private var orderCount: Int = 0
     @State private var totalSpent: Int64 = 0
-    @State private var totalSpentCurrency: String = "UZS"
+    @State private var totalSpentCurrency: String = packCurrency(MarketPackStore.pack)
     @State private var creditProfile: CreditProfile?
     @State private var creditLoading = true
     @State private var creditMissing = false

@@ -37,8 +37,8 @@ struct AnalyticsView: View {
                         // KPI grid
                         LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
                             AnalyticsKpiCard(title: "Total Orders", value: "\(data.totalOrders)", icon: "cart", index: 0)
-                            AnalyticsKpiCard(title: "Revenue", value: "\(data.totalRevenue.formatted()) UZS", icon: "banknote", index: 1)
-                            AnalyticsKpiCard(title: "Avg Order", value: "\(Int(data.avgOrderValue.rounded()).formatted()) UZS", icon: "clock", index: 2)
+                            AnalyticsKpiCard(title: "Revenue", value: "\(data.totalRevenue.formatted()) \(packCurrency(MarketPackStore.pack))", icon: "banknote", index: 1)
+                            AnalyticsKpiCard(title: "Avg Order", value: "\(Int(data.avgOrderValue.rounded()).formatted()) \(packCurrency(MarketPackStore.pack))", icon: "clock", index: 2)
                             AnalyticsKpiCard(title: "Fleet Utilization", value: "\(Int(data.fleetUtilizationPct.rounded()))%", icon: "checkmark.circle", index: 3)
                         }
 

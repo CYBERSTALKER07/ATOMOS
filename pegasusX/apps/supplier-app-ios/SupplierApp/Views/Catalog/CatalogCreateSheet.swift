@@ -9,7 +9,7 @@ struct CatalogCreateSheet: View {
     @State private var barcode = ""
     @State private var categories: [CatalogCategory] = []
     @State private var categoryId = ""
-    @State private var currency = "UZS"
+    @State private var currency = packCurrency(MarketPackStore.pack)
     @State private var photoItem: PhotosPickerItem?
     @State private var imageData: Data?
     @State private var creating = false
@@ -70,7 +70,7 @@ struct CatalogCreateSheet: View {
     private func loadForm() async {
         do {
             let profile = try await SupplierService.profile()
-            currency = profile.currency.isEmpty ? "UZS" : profile.currency
+            currency = displayPackCurrency(profile.currency)
             categories = try await SupplierService.catalogCategories(supplierId: profile.supplierId)
             categoryId = categories.first?.categoryId ?? ""
         } catch {

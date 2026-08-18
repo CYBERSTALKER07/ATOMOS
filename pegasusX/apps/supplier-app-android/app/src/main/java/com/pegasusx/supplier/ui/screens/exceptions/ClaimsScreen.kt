@@ -216,7 +216,7 @@ private fun ClaimCard(
             Text(claim.claimId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             Text(stringResource(R.string.mobile_supplier_ui_order_orderid_retailer_retailerid, claim.orderId, claim.retailerId), style = MaterialTheme.typography.bodySmall)
             Text(
-                "Amount ${claim.amountMinor ?: 0} ${claim.currency ?: "UZS"}",
+                "Amount ${claim.amountMinor ?: 0} ${com.pegasus.design.moneyCurrency(claim.currency)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
             claim.description?.takeIf { it.isNotBlank() }?.let {

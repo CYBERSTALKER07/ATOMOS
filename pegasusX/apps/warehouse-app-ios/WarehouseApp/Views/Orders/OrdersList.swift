@@ -44,7 +44,7 @@ struct OrdersList: View {
                                     title: order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName,
                                     orderId: order.orderId,
                                     state: order.state,
-                                    amountLabel: "\(order.totalUzs.formatted()) UZS",
+                                    amountLabel: "\(order.totalUzs.formatted()) \(packCurrency(MarketPackStore.pack))",
                                     canDelay: orderActionFlags(order.state).canDelay,
                                     canReject: orderActionFlags(order.state).canReject,
                                     onDelay: { onProposeActive(order.orderId) },

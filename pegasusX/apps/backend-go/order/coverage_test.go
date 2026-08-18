@@ -20,8 +20,27 @@ func TestWarehouseCoversRetailer_Hybrid(t *testing.T) {
 	if WarehouseCoversRetailer("US", nil, "DE", retailer) {
 		t.Fatal("no cells + different country must not cover")
 	}
-	if !WarehouseCoversRetailer("", nil, "US", retailer) {
-		t.Fatal("empty warehouse country is unrestricted default")
+	if WarehouseCoversRetailer("", nil, "US", retailer) {
+		t.Fatal("empty warehouse country is geography_incomplete, not worldwide")
+	}
+	if WarehouseCoversRetailer("UZ", nil, "", retailer) {
+		t.Fatal("empty retailer country is geography_incomplete, not worldwide")
+	}
+}
+
+func TestWarehouseCoversRetailer_CountryBeatsCells(t *testing.T) {
+	cells := CellsForCity(41.3111, 69.2797)
+	if len(cells) == 0 {
+		t.Fatal("tashkent cells")
+	}
+	if !WarehouseCoversRetailer("UZ", nil, "UZ", cells[0]) {
+		t.Fatal("UZ+UZ + empty cells must cover (whole country)")
+	}
+	if WarehouseCoversRetailer("UZ", cells, "PK", cells[0]) {
+		t.Fatal("UZ warehouse + PK retailer must miss even if cells overlap")
+	}
+	if WarehouseCoversRetailer("", cells, "UZ", cells[0]) {
+		t.Fatal("cells must not override empty warehouse country")
 	}
 }
 

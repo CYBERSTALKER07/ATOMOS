@@ -56,7 +56,7 @@ fun CatalogScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var products by remember { mutableStateOf(emptyList<CatalogProduct>()) }
     var categories by remember { mutableStateOf(emptyList<CatalogCategory>()) }
-    var currency by remember { mutableStateOf("UZS") }
+    var currency by remember { mutableStateOf(com.pegasus.design.sessionPackCurrency()) }
     
     val draftVU = remember { mutableStateMapOf<String, String>() }
     val draftBarcode = remember { mutableStateMapOf<String, String>() }
@@ -141,7 +141,7 @@ fun CatalogScreen(
             try {
                 val profileResp = api.getProfile()
                 if (profileResp.isSuccessful) {
-                    currency = profileResp.body()?.currency?.ifBlank { "UZS" } ?: "UZS"
+                    currency = com.pegasus.design.moneyCurrency(profileResp.body()?.currency)
                 }
                 val resp = api.listCatalogProducts()
                 if (resp.isSuccessful) {

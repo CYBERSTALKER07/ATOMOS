@@ -44,13 +44,20 @@ fun OrdersScreen(
     realtimeSignals: WarehouseRealtimeSignals,
     onOrderClick: (String) -> Unit,
     onBack: (() -> Unit)? = null,
+    initialState: String? = null,
 ) {
     var hubTab by remember { mutableIntStateOf(0) }
     var orders by remember { mutableStateOf<List<Order>>(emptyList()) }
     var preorders by remember { mutableStateOf<List<WarehousePreorderRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedState by remember { mutableStateOf("ALL") }
+    var selectedState by remember { mutableStateOf(initialState?.takeIf { it.isNotBlank() } ?: "ALL") }
+
+    LaunchedEffect(initialState) {
+        if (!initialState.isNullOrBlank()) {
+            selectedState = initialState
+        }
+    }
     var filterExpanded by remember { mutableStateOf(false) }
     var actingId by remember { mutableStateOf<String?>(null) }
     var proposeActiveTarget by remember { mutableStateOf<String?>(null) }

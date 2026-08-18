@@ -37,14 +37,14 @@ enum FactorySection: String, CaseIterable, Identifiable {
         }
     }
 
-    static var compactTabs: [FactorySection] { [.dashboard, .loadingBay, .transfers] }
+    static var compactTabs: [FactorySection] { [.dashboard, .loadingBay, .payloadLoad, .transfers] }
 
     static var primarySections: [FactorySection] {
-        [.dashboard, .loadingBay, .transfers, .fleet, .staff, .location]
+        compactTabs
     }
 
     static var operationsSections: [FactorySection] {
-        [.supplyRequests, .payloadLoad, .payloadOverride, .manifests, .manifestExceptions]
+        [.fleet, .staff, .location, .supplyRequests, .payloadOverride, .manifests, .manifestExceptions]
     }
 
     static var intelligenceSections: [FactorySection] {
@@ -55,6 +55,7 @@ enum FactorySection: String, CaseIterable, Identifiable {
 enum FactoryCompactTab: Hashable {
     case dashboard
     case loadingBay
+    case payload
     case transfers
     case more
 }

@@ -127,9 +127,9 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Primary tabs on iPhone.
+    /// Primary tabs on iPhone. Home · Orders · Dispatch · Plan · More.
     static var compactTabs: [SupplierSection] {
-        [.dashboard, .orders, .fleet]
+        [.dashboard, .orders, .dispatchPreview, .planningBrain]
     }
 
     /// iPad sidebar: primary + ops + intelligence + network + account.
@@ -139,7 +139,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
 
     static var opsSections: [SupplierSection] {
         [
-            .manifests, .dispatchPreview, .activity,
+            .fleet, .manifests, .activity,
             .fleetOrders, .orgFleet, .treasury, .payouts, .ledger, .payments, .chargebacks,
             .claims, .claimChargebacks,
             .reconciliation, .compliance, .operations, .replenishmentPolicies,
@@ -148,7 +148,7 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings, .returnPolicy, .controlTower, .playbooks, .flywheel, .paydayCalendar]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .knowledgeGraph, .planningSettings, .returnPolicy, .controlTower, .playbooks, .flywheel, .paydayCalendar]
     }
 
     static var networkSections: [SupplierSection] {

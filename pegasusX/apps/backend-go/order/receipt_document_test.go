@@ -174,3 +174,37 @@ func TestAuthorizeReceiptParty(t *testing.T) {
 		t.Fatal("cross-supplier warehouse forbidden")
 	}
 }
+
+func TestPegasusCorrective_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	res, err := p.CreateCorrectiveReceipt(t.Context(), FiscalCorrectiveRequest{
+		AttemptID:         "att-cn-empty",
+		OriginalReceiptID: "PX-RCPT-1",
+		AmountMinor:       100,
+	})
+	if err != nil {
+		t.Fatalf("CreateCorrectiveReceipt: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(res.RawPayload, &payload); err != nil {
+		t.Fatalf("payload json: %v", err)
+	}
+	if payload["currency"] != "UZS" {
+		t.Fatalf("currency=%v want UZS from pack", payload["currency"])
+	}
+}
+
+func TestPegasusCorrective_PlannedPackFailsClosed(t *testing.T) {
+	p := PegasusReceiptProvider{PublicBaseURL: "https://api.example.test"}
+	ctx := auth.WithClaims(t.Context(), auth.Claims{MarketCode: "EU", SupplierID: "sup-1"})
+	_, err := p.CreateCorrectiveReceipt(ctx, FiscalCorrectiveRequest{
+		AttemptID:         "att-cn-eu",
+		OriginalReceiptID: "PX-RCPT-1",
+		SupplierID:        "sup-1",
+		AmountMinor:       100,
+	})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want %v", err, auth.ErrMarketPackNotShipped)
+	}
+}

@@ -13,15 +13,13 @@ import (
 
 // Deps is the narrow dependency contract for warehouse routes.
 type Deps struct {
-	Service             *warehouse.Service
-	OrderService        *order.Service
-	PayloadService      *payload.Service
-	WMSHandler          *stocklots.Handler
-	JWTSecret           string
-	JWTIssuer           string
-	Spanner             *spanner.Client
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	Service        *warehouse.Service
+	OrderService   *order.Service
+	PayloadService *payload.Service
+	WMSHandler     *stocklots.Handler
+	JWTSecret      string
+	JWTIssuer      string
+	Spanner        *spanner.Client
 }
 
 // RegisterRoutes mounts warehouse role-row operational endpoints.
@@ -87,6 +85,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Patch("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Get("/v1/warehouse/ops/location", d.Service.HandleOpsLocation)
 		rr.Patch("/v1/warehouse/ops/location", d.Service.HandleOpsLocation)
+		rr.Get("/v1/warehouse/ops/coverage", d.Service.HandleOpsCoverage)
+		rr.Get("/v1/warehouse/ops/supply-factory", d.Service.HandleOpsSupplyFactory)
 		rr.Get("/v1/warehouse/ops/orders", d.Service.HandleOrders)
 		rr.Get("/v1/warehouse/ops/orders/*", d.Service.HandleOrders)
 		if d.OrderService != nil {
@@ -186,14 +186,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Use(auth.RequireRole(allowed...))
 		gr.Use(auth.RequireWarehouseOpsScope)
 		mountProtected(gr)
-	}
-
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			register(gr)
-		})
-		return
 	}
 
 	r.Group(register)

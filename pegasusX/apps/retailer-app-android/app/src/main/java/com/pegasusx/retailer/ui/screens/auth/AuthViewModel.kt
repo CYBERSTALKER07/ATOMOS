@@ -110,8 +110,7 @@ class AuthViewModel @Inject constructor(
             tokenManager.saveUserName(user.name)
         }
         if (response.firebaseToken.isNotBlank()) {
-            val fbIdToken = com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
-            if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
+            com.pegasusx.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
         }
         _uiState.value = _uiState.value.copy(
             isLoading = false,

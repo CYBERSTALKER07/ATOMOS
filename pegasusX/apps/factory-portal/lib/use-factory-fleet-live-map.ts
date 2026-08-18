@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { usePolling } from '@pegasusx/api-client';
+import { applyDriverLocationPatch, parseDriverLocationPatch } from '@pegasusx/ws-refresh-contract';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 
@@ -47,11 +49,15 @@ export function useFactoryFleetLiveMap(pollMs = 15_000) {
     }
   }, []);
 
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(true), pollMs);
-    return () => window.clearInterval(id);
-  }, [pollMs, refresh]);
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await refresh(true);
+    },
+    pollMs,
+    [refresh],
+    { hiddenIntervalMs: 60_000 },
+  );
 
   useFactorySessionReconcile(() => {
     void refresh(true);
@@ -60,13 +66,14 @@ export function useFactoryFleetLiveMap(pollMs = 15_000) {
   useEffect(() => {
     const unsubscribe = subscribeFactoryWS({
       onMessage: (payload) => {
+        const patch = parseDriverLocationPatch(payload);
+        if (patch) {
+          setRoutes((current) => applyDriverLocationPatch(current, patch));
+          return;
+        }
         const event = parseFactoryLiveEvent(payload);
         if (!event) return;
-        if (
-          event.type === 'FACTORY_TRANSFER_UPDATE' ||
-          event.type === 'FACTORY_MANIFEST_UPDATE' ||
-          event.type === 'DRIVER_LOCATION_UPDATED'
-        ) {
+        if (event.type === 'FACTORY_TRANSFER_UPDATE' || event.type === 'FACTORY_MANIFEST_UPDATE') {
           void refresh(true);
         }
       },

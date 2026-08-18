@@ -91,15 +91,7 @@ func (r *SpannerRepository) CreateOrgMember(ctx context.Context, member CreateOr
 			"UpdatedAt":           member.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -173,15 +165,7 @@ func (r *SpannerRepository) UpdateOrgMember(ctx context.Context, supplierID, use
 		}
 		mutations := []*spanner.Mutation{spanner.Update("SupplierUsers", cols, vals)}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -271,15 +255,7 @@ func (r *SpannerRepository) CreateFleetDriver(ctx context.Context, driver Create
 			"UpdatedAt":    driver.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -363,15 +339,7 @@ func (r *SpannerRepository) CreateFleetVehicle(ctx context.Context, vehicle Crea
 			"UpdatedAt":    vehicle.UpdatedAt.UTC(),
 		})}
 		for _, event := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     event.CreatedAt.UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 		return txn.BufferWrite(mutations)
 	})

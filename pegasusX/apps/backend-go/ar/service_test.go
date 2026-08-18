@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 )
 
@@ -54,8 +55,9 @@ func TestOpenInvoiceRejectsInvalidCurrency(t *testing.T) {
 	}
 }
 
-func TestOpenInvoiceDefaultsEmptyCurrencyToUZS(t *testing.T) {
+func TestOpenInvoiceEmptyCurrencyUsesPack(t *testing.T) {
 	t.Setenv("AR_INVOICES_ENABLED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	svc := NewService(NewMemoryRepository())
 	leave := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
 	inv, err := svc.OpenFromCreditLeave(context.Background(), OpenFromCreditLeaveRequest{
@@ -66,7 +68,21 @@ func TestOpenInvoiceDefaultsEmptyCurrencyToUZS(t *testing.T) {
 		t.Fatal(err)
 	}
 	if inv.Currency != "UZS" {
-		t.Fatalf("currency=%q want UZS fallback", inv.Currency)
+		t.Fatalf("currency=%q want UZS from shipped pack", inv.Currency)
+	}
+}
+
+func TestOpenInvoiceEmptyCurrencyPlannedFailsClosed(t *testing.T) {
+	t.Setenv("AR_INVOICES_ENABLED", "true")
+	svc := NewService(NewMemoryRepository())
+	leave := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	ctx := auth.WithClaims(context.Background(), auth.Claims{MarketCode: "EU"})
+	_, err := svc.OpenFromCreditLeave(ctx, OpenFromCreditLeaveRequest{
+		SupplierID: "s", RetailerID: "r", OrderID: "ord-eu-ccy",
+		AmountMinor: 1000, CreditLeaveAt: leave,
+	})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want %v", err, auth.ErrMarketPackNotShipped)
 	}
 }
 

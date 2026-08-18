@@ -144,7 +144,7 @@ func ParseINVOIC(raw string) (InvoicMessage, error) {
 				msg.SellerRef = ref
 			}
 		case "MOA":
-			// MOA+86:{amount} or MOA+9:{amount}
+			// MOA+86:{amount}:{currency} or MOA+9:{amount}
 			qual := Comp(s.Elem(0), 0)
 			amtStr := Comp(s.Elem(0), 1)
 			if amtStr == "" {
@@ -153,6 +153,11 @@ func ParseINVOIC(raw string) (InvoicMessage, error) {
 			if qual == "86" || qual == "9" || qual == "77" {
 				if v, err := strconv.ParseInt(strings.ReplaceAll(amtStr, ".", ""), 10, 64); err == nil {
 					msg.PrincipalMinor = v
+				}
+			}
+			if msg.Currency == "" {
+				if c := Comp(s.Elem(0), 2); c != "" {
+					msg.Currency = c
 				}
 			}
 		case "CUX":
@@ -167,9 +172,6 @@ func ParseINVOIC(raw string) (InvoicMessage, error) {
 	}
 	if msg.RefOrderID == "" {
 		msg.RefOrderID = msg.ExternalDocID
-	}
-	if msg.Currency == "" {
-		msg.Currency = "UZS"
 	}
 	return msg, nil
 }

@@ -65,7 +65,11 @@ object FactoryRoutes {
     const val DASHBOARD = "dashboard"
     const val LOADING_BAY = "loading_bay"
     const val TRANSFERS = "transfers"
+    const val TRANSFERS_ROUTE = "transfers?state={state}"
     const val TRANSFER_DETAIL = "transfers/{id}"
+
+    fun transfers(state: String? = null): String =
+        if (state.isNullOrBlank()) TRANSFERS else "$TRANSFERS?state=${android.net.Uri.encode(state)}"
     const val TRANSFER_CREATE = "transfers/create"
     const val FLEET = "fleet"
     const val STAFF = "staff"
@@ -239,12 +243,22 @@ fun FactoryNavigation(
                 )
             }
 
-            composable(FactoryRoutes.TRANSFERS) {
+            composable(
+                route = FactoryRoutes.TRANSFERS_ROUTE,
+                arguments = listOf(
+                    navArgument("state") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val state = entry.arguments?.getString("state").orEmpty()
                 TransferListScreen(
                     api = api,
                     onTransferClick = { id -> navController.navigate(FactoryRoutes.transferDetail(id)) },
                     onCreateTransfer = { navController.navigate(FactoryRoutes.TRANSFER_CREATE) },
                     onBack = requireBack(FactoryRoutes.TRANSFERS),
+                    initialState = state.takeIf { it.isNotBlank() },
                 )
             }
 

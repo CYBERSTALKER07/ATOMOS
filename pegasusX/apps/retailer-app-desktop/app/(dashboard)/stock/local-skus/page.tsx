@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
 import { apiFetch } from "@/lib/auth";
+import { moneyCurrency, sessionPackCurrency } from "@/lib/payment-catalog";
 
 type LocalSKU = {
   local_sku_id: string;
@@ -31,13 +32,15 @@ export default function LocalSKUsPage() {
     setLoading(true);
     try {
       const res = await apiFetch("/v1/retailer/local-skus");
-      if (!res.ok) throw new Error(`list_${res.status}`);
+      if (!res.ok) {
+        setError("local_skus_failed");
+        return;
+      }
       const data = (await res.json()) as { items?: LocalSKU[] };
       setItems(Array.isArray(data.items) ? data.items : []);
       setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.load_failed"));
-      setItems([]);
+    } catch {
+      setError("local_skus_failed");
     } finally {
       setLoading(false);
     }
@@ -59,6 +62,7 @@ export default function LocalSKUsPage() {
           name: n,
           barcode: barcode.trim() || undefined,
           default_price_minor: Number(price) || 0,
+          currency: sessionPackCurrency(),
         }),
       });
       if (!res.ok) {
@@ -112,7 +116,9 @@ export default function LocalSKUsPage() {
     >
       <div className="max-w-3xl space-y-6">
         {error && (
-          <p className="text-sm text-[var(--desk-warning)]">{error}</p>
+          <p role="alert" className="text-sm text-[var(--desk-warning)]">
+            {error}
+          </p>
         )}
 
         <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 space-y-3">
@@ -166,7 +172,7 @@ export default function LocalSKUsPage() {
               </tr>
             </thead>
             <tbody>
-              {items.length === 0 ? (
+              {error === "local_skus_failed" ? null : items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-3 py-6 text-[var(--desk-text-secondary)]">
                     No local SKUs yet. Add items sold only at this store.
@@ -186,7 +192,7 @@ export default function LocalSKUsPage() {
                       {row.barcode || "—"}
                     </td>
                     <td className="px-3 py-2">
-                      {row.default_price_minor} {row.currency || "UZS"}
+                      {row.default_price_minor} {moneyCurrency(row.currency)}
                     </td>
                     <td className="px-3 py-2">
                       <button

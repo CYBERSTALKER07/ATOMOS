@@ -375,8 +375,8 @@ struct LoginView: View {
         }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerView(
-                initialLatitude: latitude != 0 ? latitude : 41.2995,
-                initialLongitude: longitude != 0 ? longitude : 69.2401
+                initialLatitude: latitude != 0 ? latitude : packMapCoordinate().lat,
+                initialLongitude: longitude != 0 ? longitude : packMapCoordinate().lng
             ) { lat, lng, display in
                 latitude = lat
                 longitude = lng

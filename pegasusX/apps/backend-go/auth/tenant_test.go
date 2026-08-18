@@ -111,6 +111,34 @@ func TestPreferTenantSupplierIDNoSeedWhenEnforced(t *testing.T) {
 	}
 }
 
+func TestTenantContextEnforcedSandboxAlias(t *testing.T) {
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "")
+	t.Setenv("PEGASUSX_ENV", "sandbox")
+	if !TenantContextEnforced() {
+		t.Fatal("sandbox must enforce tenant context by default")
+	}
+	t.Setenv("PEGASUSX_ENV", "ssmr")
+	if !TenantContextEnforced() {
+		t.Fatal("ssmr alias must enforce tenant context by default")
+	}
+	t.Setenv("PEGASUSX_ENV", "production")
+	if !TenantContextEnforced() {
+		t.Fatal("production must enforce tenant context by default")
+	}
+	t.Setenv("PEGASUSX_ENV", "prod")
+	if !TenantContextEnforced() {
+		t.Fatal("prod alias must enforce tenant context by default")
+	}
+	t.Setenv("PEGASUSX_ENV", "staging")
+	if TenantContextEnforced() {
+		t.Fatal("staging must not enforce by default")
+	}
+	t.Setenv("PEGASUSX_ENV", "")
+	if TenantContextEnforced() {
+		t.Fatal("local must not enforce by default")
+	}
+}
+
 func TestSeedFallbackAllowed(t *testing.T) {
 	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
 	t.Setenv("ALLOW_SEED_FALLBACK", "")

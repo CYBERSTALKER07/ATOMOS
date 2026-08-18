@@ -352,9 +352,13 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 	if err != nil {
 		return nil, false, err
 	}
-	currency := strings.TrimSpace(signal.Currency)
+	currency := preorderOperatingCurrency(ctx, signal.SupplierID, signal.Currency)
 	if currency == "" {
-		currency = "UZS"
+		e.Log.Info("skipping AI_PREORDER insert; empty operating currency",
+			"supplier_id", signal.SupplierID,
+			"retailer_id", signal.RetailerID,
+		)
+		return nil, false, nil
 	}
 
 	mut := spanner.InsertMap("Orders", map[string]any{

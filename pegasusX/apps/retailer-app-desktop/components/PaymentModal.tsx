@@ -17,7 +17,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequired } from "@pegasusx/types";
 import { retailerConfirmCashKey, retailerCardCheckoutKey } from "@pegasusx/api-client";
 import { useWsEvent, useWebSocket, type WsMessage } from "../lib/ws";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
 import { apiFetch } from "../lib/auth";
+import { displayPackCurrency, filterRetailerCardGateways } from "../lib/payment-catalog";
+import { useRetailerPaymentCatalog } from "../lib/use-payment-catalog";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
 /* ── Types ── */
@@ -65,7 +68,7 @@ function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
     original_amount: session.locked_amount,
     payment_method: gateway === "CASH" ? "CASH" : "CARD",
     gateway: gateway,
-    currency: session.currency || "UZS",
+    currency: displayPackCurrency(session.currency, packCurrency(readCachedAuthSession()?.pack)),
     available_card_gateways: gateway === "CASH" ? [] : [gateway],
     message: "Pending payment requires completion.",
   };
@@ -89,7 +92,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
     original_amount: originalAmount,
     payment_method: (msg.payment_method as string) || "CARD",
     gateway: ((msg.gateway as string) || "GLOBAL_PAY"),
-    currency: (msg.currency as string) || "UZS",
+    currency: displayPackCurrency(msg.currency as string | undefined, packCurrency(readCachedAuthSession()?.pack)),
     available_card_gateways: gateways,
     message: (msg.message as string | undefined) ?? "",
   };
@@ -107,6 +110,8 @@ export default function PaymentModal() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const hideForAddCard = pathname?.startsWith("/settings/cards") ?? false;
+  const { currency: packDisplayCurrency, gateways: catalogGateways, allowsCash } =
+    useRetailerPaymentCatalog();
 
   const openPaymentEvent = useCallback((msg: WsMessage) => {
     const evt = wsMessageToPaymentEvent(msg);
@@ -428,7 +433,9 @@ export default function PaymentModal() {
 
   if (!event || state === "idle" || hideForAddCard) return null;
 
-  const gateways = event.available_card_gateways ?? [];
+  const displayCurrency =
+    displayPackCurrency(event.currency, packDisplayCurrency || packCurrency(readCachedAuthSession()?.pack));
+  const gateways = filterRetailerCardGateways(event.available_card_gateways, catalogGateways);
   const amended =
     event.original_amount && event.original_amount !== event.amount;
 
@@ -498,7 +505,7 @@ export default function PaymentModal() {
                   <h3 className="md-typescale-display-small font-light tabular-nums">
                     {formatAmount(event.amount)}{" "}
                     <small className="text-sm opacity-40 uppercase ml-0.5">
-                      UZS
+                      {displayCurrency}
                     </small>
                   </h3>
                   {amended && (
@@ -555,7 +562,7 @@ export default function PaymentModal() {
                         Awaiting driver cash collection
                       </p>
                       <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                        The driver will collect {formatAmount(event.amount)} UZS, then a fiscal receipt is issued.
+                        The driver will collect {formatAmount(event.amount)} {displayCurrency}, then a fiscal receipt is issued.
                       </p>
                     </div>
                   </div>
@@ -581,7 +588,7 @@ export default function PaymentModal() {
                         Cash Payment
                       </p>
                       <p className="mt-2 text-sm font-light text-[var(--desk-text-primary)]">
-                        Confirm you will pay {formatAmount(event.amount)} UZS in cash. The driver will collect and complete the delivery.
+                        Confirm you will pay {formatAmount(event.amount)} {displayCurrency} in cash. The driver will collect and complete the delivery.
                       </p>
                     </div>
 
@@ -602,6 +609,7 @@ export default function PaymentModal() {
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    {allowsCash ? (
                     <button
                       onClick={reviewCash}
                       className="flex items-center gap-4 w-full p-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-border-strong)] hover:shadow-md transition-all group"
@@ -618,6 +626,7 @@ export default function PaymentModal() {
                         </p>
                       </div>
                     </button>
+                    ) : null}
 
                     {gateways.map((gw) => (
                       <button

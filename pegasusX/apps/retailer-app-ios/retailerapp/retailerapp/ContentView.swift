@@ -10,16 +10,15 @@ import SwiftUI
 // MARK: - Tab Enums
 
 enum AppTab: String, CaseIterable {
-    case home, catalog, orders, deliveries, profile, suppliers
+    case home, catalog, deliveries, store, more
 
     var title: String {
         switch self {
         case .home: "Home"
-        case .catalog: "Catalog"
-        case .orders: "Orders"
-        case .deliveries: "Deliveries"
-        case .profile: "Profile"
-        case .suppliers: "Suppliers"
+        case .catalog: "Buy"
+        case .deliveries: "Incoming"
+        case .store: "Store"
+        case .more: "More"
         }
     }
 
@@ -27,10 +26,9 @@ enum AppTab: String, CaseIterable {
         switch self {
         case .home: "house"
         case .catalog: "square.grid.2x2"
-        case .orders: "shippingbox"
         case .deliveries: "map"
-        case .profile: "person.circle"
-        case .suppliers: "building.2"
+        case .store: "storefront"
+        case .more: "ellipsis.circle"
         }
     }
 }
@@ -118,7 +116,7 @@ struct ContentView: View {
         if horizontalSizeClass == .regular {
             return sideMenuSelection == .home || sideMenuSelection == .orders || sideMenuSelection == .suppliers || sideMenuSelection == .deliveries
         } else {
-            return selectedTab == .home || selectedTab == .orders || selectedTab == .suppliers || selectedTab == .deliveries
+            return selectedTab == .home || selectedTab == .catalog || selectedTab == .deliveries || selectedTab == .store
         }
     }
 
@@ -287,6 +285,7 @@ struct ContentView: View {
             }
         }
         .task {
+            await PushNotificationManager.shared.requestAuthorization()
             await loadActiveOrders()
             await loadPendingPayments()
             await loadNotificationCount()
@@ -517,14 +516,26 @@ struct ContentView: View {
         switch sideMenuSelection {
         case .home: tabContent(.home)
         case .catalog: tabContent(.catalog)
-        case .orders: tabContent(.orders)
+        case .orders:
+            NavigationStack {
+                OrdersView()
+                    .toolbar { standardToolbar }
+            }
         case .deliveries:
             NavigationStack {
                 DeliveriesHubView(initialTab: deliveriesHubInitialTab)
                     .toolbar { standardToolbar }
             }
-        case .suppliers: tabContent(.suppliers)
-        case .profile: tabContent(.profile)
+        case .suppliers:
+            NavigationStack {
+                MySuppliersView()
+                    .toolbar { standardToolbar }
+            }
+        case .profile:
+            NavigationStack {
+                ProfileView()
+                    .toolbar { standardToolbar }
+            }
         case .insights:
             NavigationStack {
                 InsightsView()
@@ -593,10 +604,9 @@ struct ContentView: View {
                 case .home: DashboardView()
                 case .catalog:
                     CatalogView(onNavigateToSuppliers: navigateToSuppliersTab)
-                case .orders: OrdersView()
                 case .deliveries: DeliveriesHubView(initialTab: deliveriesHubInitialTab)
-                case .profile: ProfileView()
-                case .suppliers: MySuppliersView()
+                case .store: StoreStockView()
+                case .more: RetailerMoreHubView()
                 }
             }
             .toolbar { standardToolbar }
@@ -702,7 +712,7 @@ struct ContentView: View {
                 sideMenuSelection = .suppliers
             }
         } else {
-            selectedTab = .suppliers
+            selectedTab = .more
         }
     }
 
@@ -743,12 +753,12 @@ struct ContentView: View {
                 selectedTab = .deliveries
             }
         case .inbox: showNotificationInbox = true
-        case .profile: selectedTab = .profile
+        case .profile: selectedTab = .more
         case .insights: showInsights = true
         case .controlTower: showControlTower = true
         case .credit: showCredit = true
         case .hq: showHq = true
-        case .settings: selectedTab = .profile
+        case .settings: selectedTab = .more
         case .logout: auth.logout()
         }
     }

@@ -6,6 +6,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { useLiveData } from "@/lib/hooks";
 import { supplierFetch } from "@/lib/auth";
+import { sessionPackCurrency } from "@pegasusx/api-client";
 import {
   RefreshCw,
   Plus,
@@ -42,7 +43,7 @@ export default function TaxRegimesPage() {
   
   const [formData, setFormData] = useState({
     country_code: "UZ",
-    currency: "UZS",
+    currency: sessionPackCurrency(),
     effective_from: "",
     vat_rate_bps: "1200",
     simplified: false
@@ -70,7 +71,7 @@ export default function TaxRegimesPage() {
       setIsCreating(false);
       setFormData({
         country_code: "UZ",
-        currency: "UZS",
+        currency: sessionPackCurrency(),
         effective_from: "",
         vat_rate_bps: "1200",
         simplified: false

@@ -144,14 +144,45 @@ func TestHandleListAccuracyForbidden(t *testing.T) {
 	}
 }
 
+func TestHandleListAccuracyPlatformAdminPassesRoleGate(t *testing.T) {
+	svc := &AccuracyService{}
+	req := httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Subject: "pa", Role: auth.RolePlatformAdmin}))
+	rec := httptest.NewRecorder()
+	svc.HandleListAccuracy(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("platform admin should pass role gate (400 supplier_scope), got %d", rec.Code)
+	}
+}
+
 func TestHandleListAccuracyRequiresSupplier(t *testing.T) {
 	svc := &AccuracyService{}
 	req := httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy", nil)
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Subject: "u1", Role: auth.RoleAdmin}))
 	rec := httptest.NewRecorder()
 	svc.HandleListAccuracy(rec, req)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("got %d want 400 (missing supplier_id)", rec.Code)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("got %d want 403 (missing claims supplier)", rec.Code)
+	}
+}
+
+func TestHandleListAccuracyIgnoresQuerySupplierForAdmin(t *testing.T) {
+	got, code := resolveAccuracySupplierID(
+		httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy?supplier_id=sup-other", nil),
+		auth.Claims{Role: auth.RoleAdmin, SupplierID: "sup-mine"},
+	)
+	if code != 0 || got != "sup-mine" {
+		t.Fatalf("got=%q code=%d want claims supplier", got, code)
+	}
+}
+
+func TestResolveAccuracySupplierID_PlatformQuery(t *testing.T) {
+	got, code := resolveAccuracySupplierID(
+		httptest.NewRequest(http.MethodGet, "/v1/admin/planning/accuracy?supplier_id=sup-x", nil),
+		auth.Claims{Role: auth.RolePlatformAdmin},
+	)
+	if code != 0 || got != "sup-x" {
+		t.Fatalf("got=%q code=%d want query supplier", got, code)
 	}
 }
 

@@ -27,6 +27,7 @@ fun MoreScreen(
     onDispatch: () -> Unit,
     onActivity: () -> Unit,
     onFleetOrders: () -> Unit,
+    onFleet: () -> Unit = {},
     onLedger: () -> Unit,
     onOperations: () -> Unit,
     onReplenishmentPolicies: () -> Unit,
@@ -77,6 +78,7 @@ fun MoreScreen(
     val fulfillment = listOf(
         MoreDestination("Manifests", "Loading manifests", Icons.Default.Description, onManifests),
         MoreDestination("Dispatch preview", "Pending orders & drivers", Icons.Default.LocalShipping, onDispatch),
+        MoreDestination("Fleet", "Live trucks and drivers", Icons.Default.LocalShipping, onFleet),
         MoreDestination("Fleet orders", "In-flight assignments", Icons.Default.Route, onFleetOrders),
     )
     val intelligence = listOf(

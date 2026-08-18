@@ -10,10 +10,8 @@ import (
 
 // Deps for route registration.
 type Deps struct {
-	Service             *globalproducts.Service
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service         *globalproducts.Service
+	AllowAuthBypass bool
 	// StepUp optional MFA middleware for PLATFORM_ADMIN on match-queue mutators (B5 M-P1-11).
 	StepUp func(http.Handler) http.Handler
 }
@@ -24,9 +22,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.Get("/v1/global-products/{id}", d.Service.HandleGetGlobal)
 		gr.Get("/v1/global-products/{id}/offers", d.Service.HandleListOffers)

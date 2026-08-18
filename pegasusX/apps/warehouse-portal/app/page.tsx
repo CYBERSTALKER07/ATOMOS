@@ -1,7 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ApiError } from '@pegasusx/api-client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ApiError, moneyCurrency, usePolling } from '@pegasusx/api-client';
+import {
+  ORDER_STATUS_FUNNEL,
+  TRUCK_DUTY_STATUSES,
+  canonicalizeOrderStatus,
+  canonicalizeTruckDuty,
+  emptyOrderStatusCounts,
+  emptyTruckDutyCounts,
+  type OrderStatusFunnel,
+  type TruckDutyFunnel,
+  type WarehouseHoldReason,
+} from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import Icon from '@/components/Icon';
@@ -13,97 +26,132 @@ import NetworkPulsePanel from '@/components/NetworkPulsePanel';
 import { PageSection } from '@/components/PageSection';
 import { PageChrome } from '@/components/PageChrome';
 import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
+import { SourceChip, StatusStack } from '@pegasusx/ui-kit/portal';
 import { usePortalT } from '@/lib/i18n';
 
 interface DashboardData {
   active_orders: number;
-  completed_today: number;
+  completed_today_available: boolean;
   pending_dispatch: number;
   total_drivers: number;
-  on_route_drivers: number;
-  idle_drivers: number;
   total_vehicles: number;
-  today_revenue: number;
+  today_revenue_available: boolean;
   low_stock_count: number;
   total_staff: number;
-  fleet_status: FleetStatusRow[];
-  sparkline_active_orders?: number[];
-  sparkline_revenue?: number[];
-  sparkline_completed?: number[];
+  history_available: boolean;
+  orders_by_status: Record<OrderStatusFunnel, number>;
+  truck_duty: Record<TruckDutyFunnel, number>;
+  hold_reasons: WarehouseHoldReason[];
+  demand_source: string;
 }
 
-type FleetStatusRow = { status: string; count: number };
+function foldOrderCounts(raw: unknown): Record<OrderStatusFunnel, number> {
+  const next = emptyOrderStatusCounts();
+  if (!raw || typeof raw !== 'object') return next;
+  for (const [key, value] of Object.entries(raw as Record<string, number>)) {
+    const normalized = canonicalizeOrderStatus(key);
+    if (normalized in next && Number.isFinite(Number(value))) {
+      next[normalized as OrderStatusFunnel] = Number(value);
+    }
+  }
+  return next;
+}
 
-function normalizeFleetStatus(raw: unknown): FleetStatusRow[] {
-  if (Array.isArray(raw)) {
-    return raw
-      .map((item) => {
-        if (!item || typeof item !== 'object') return null;
-        const row = item as { status?: string; count?: number };
-        if (!row.status) return null;
-        return { status: row.status, count: Number(row.count ?? 0) };
-      })
-      .filter((row): row is FleetStatusRow => row !== null);
+function foldTruckDuty(raw: unknown): Record<TruckDutyFunnel, number> {
+  const next = emptyTruckDutyCounts();
+  if (!raw || typeof raw !== 'object') return next;
+  for (const [key, value] of Object.entries(raw as Record<string, number>)) {
+    const normalized = canonicalizeTruckDuty(key);
+    if (normalized in next && Number.isFinite(Number(value))) {
+      next[normalized as TruckDutyFunnel] = Number(value);
+    }
   }
-  if (raw && typeof raw === 'object') {
-    return Object.entries(raw as Record<string, number>).map(([status, count]) => ({
-      status,
-      count: Number(count),
-    }));
-  }
-  return [];
+  return next;
+}
+
+function foldHoldReasons(raw: unknown): WarehouseHoldReason[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as { code?: string; count?: number };
+      if (!row.code) return null;
+      return { code: String(row.code), count: Number(row.count ?? 0) };
+    })
+    .filter((row): row is WarehouseHoldReason => row !== null);
 }
 
 type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
 
 export default function WarehouseDashboard() {
   const t = usePortalT();
+  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [dateRange, setDateRange] = useState<'today' | '7d' | '30d'>('today');
+  const etagRef = useRef<string | null>(null);
 
   useWarehouseSessionReconcile(() => {
     setReloadToken((token) => token + 1);
   });
 
-  useEffect(() => {
-    setLoading(true);
-    async function load() {
-      try {
-        const dashboard = await warehouseApi.getWarehouseOpsDashboard();
-        const row = dashboard as unknown as Record<string, unknown>;
-        setData({
-          active_orders: Number(row.active_orders ?? 0),
-          completed_today: Number(row.completed_today ?? 0),
-          pending_dispatch: Number(row.pending_dispatch ?? 0),
-          total_drivers: Number(row.total_drivers ?? 0),
-          on_route_drivers: Number(row.drivers_on_route ?? row.on_route_drivers ?? 0),
-          idle_drivers: Number(row.drivers_idle ?? row.idle_drivers ?? 0),
-          total_vehicles: Number(row.total_vehicles ?? 0),
-          today_revenue: Number(row.today_revenue ?? 0),
-          low_stock_count: Number(row.low_stock_count ?? 0),
-          total_staff: Number(row.total_staff ?? 0),
-          fleet_status: normalizeFleetStatus(row.fleet_status),
-          sparkline_active_orders: Array.isArray(row.sparkline_active_orders) ? row.sparkline_active_orders.map(Number) : undefined,
-          sparkline_revenue: Array.isArray(row.sparkline_revenue) ? row.sparkline_revenue.map(Number) : undefined,
-          sparkline_completed: Array.isArray(row.sparkline_completed) ? row.sparkline_completed.map(Number) : undefined,
-        });
-        setLoadIssue(null);
-      } catch (err) {
-        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-          setLoadIssue('restricted');
-        } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          setLoadIssue('offline');
-        } else {
-          setLoadIssue('error');
-        }
-      }
-      finally { setLoading(false); }
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
     }
-    load();
-  }, [reloadToken, dateRange]);
+    try {
+      const result = await warehouseApi.getWarehouseOpsDashboardConditional({}, etagRef.current ?? undefined);
+      if (result.notModified) {
+        if (result.etag) etagRef.current = result.etag;
+        setLoadIssue(null);
+        return;
+      }
+      etagRef.current = result.etag;
+      const dashboard = result.data;
+      const row = dashboard as unknown as Record<string, unknown>;
+      setData({
+        active_orders: Number(row.active_orders ?? 0),
+        completed_today_available: row.completed_today_available === true,
+        pending_dispatch: Number(row.pending_dispatch ?? 0),
+        total_drivers: Number(row.total_drivers ?? 0),
+        total_vehicles: Number(row.total_vehicles ?? 0),
+        today_revenue_available: row.today_revenue_available === true,
+        low_stock_count: Number(row.low_stock_count ?? 0),
+        total_staff: Number(row.total_staff ?? 0),
+        history_available: row.history_available === true,
+        orders_by_status: foldOrderCounts(row.orders_by_status),
+        truck_duty: foldTruckDuty(row.truck_duty),
+        hold_reasons: foldHoldReasons(row.hold_reasons),
+        demand_source: typeof row.demand_source === 'string' && row.demand_source ? row.demand_source : 'empty',
+      });
+      setLoadIssue(null);
+    } catch (err) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        setLoadIssue('restricted');
+      } else if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setLoadIssue('offline');
+      } else {
+        setLoadIssue('error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load, reloadToken]);
+
+  usePolling(
+    async (signal) => {
+      if (signal.aborted) return;
+      await load(true);
+    },
+    60_000,
+    [load, reloadToken],
+    { pauseWhenHidden: true, immediate: false },
+  );
 
   if (!data && loadIssue) {
     const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
@@ -164,7 +212,7 @@ export default function WarehouseDashboard() {
   const d = data;
 
   const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
-  const fmtCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'UZS', maximumFractionDigits: 0 }).format(n);
+  const packCode = moneyCurrency();
 
   const kpis: {
     label: string;
@@ -173,17 +221,15 @@ export default function WarehouseDashboard() {
     href: string;
     bay: 'ops' | 'inventory' | 'fleet' | 'finance';
     flag?: 'alert' | 'ok';
-    sparkline?: number[];
   }[] = [
-    { label: 'Active orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders', bay: 'ops', sparkline: d.sparkline_active_orders },
-    { label: 'Completed today', value: fmt(d.completed_today), icon: 'check', href: '/orders', bay: 'ops', flag: d.completed_today > 0 ? 'ok' : undefined, sparkline: d.sparkline_completed },
     { label: 'Pending dispatch', value: fmt(d.pending_dispatch), icon: 'dispatch', href: '/dispatch', bay: 'ops', flag: d.pending_dispatch > 5 ? 'alert' : undefined },
-    { label: 'Today revenue', value: fmtCurrency(d.today_revenue), icon: 'treasury', href: '/treasury', bay: 'finance', sparkline: d.sparkline_revenue },
-    { label: 'Drivers on route', value: `${d.on_route_drivers} / ${d.total_drivers}`, icon: 'fleet', href: '/drivers', bay: 'fleet' },
-    { label: 'Idle drivers', value: fmt(d.idle_drivers), icon: 'fleet', href: '/drivers', bay: 'fleet' },
+    { label: 'Active orders', value: fmt(d.active_orders), icon: 'orders', href: '/orders', bay: 'ops' },
     { label: 'Vehicles', value: fmt(d.total_vehicles), icon: 'fleet', href: '/vehicles', bay: 'fleet' },
     { label: 'Low stock items', value: fmt(d.low_stock_count), icon: 'warning', href: '/inventory', bay: 'inventory', flag: d.low_stock_count > 0 ? 'alert' : undefined },
-    { label: 'Total staff', value: fmt(d.total_staff), icon: 'staff', href: '/staff', bay: 'ops' },
+    { label: 'Drivers', value: fmt(d.total_drivers), icon: 'fleet', href: '/drivers', bay: 'fleet' },
+    { label: 'Staff', value: fmt(d.total_staff), icon: 'staff', href: '/staff', bay: 'ops' },
+    { label: 'Completed today', value: d.completed_today_available ? 'live' : 'unavailable', icon: 'check', href: '/orders', bay: 'ops' },
+    { label: 'Today revenue', value: d.today_revenue_available ? (packCode || 'live') : 'unavailable', icon: 'treasury', href: '/treasury', bay: 'finance' },
   ];
 
   return (
@@ -195,26 +241,15 @@ export default function WarehouseDashboard() {
         loading={loading}
         skeletonVariant="dashboard"
         actions={
-          <div className="flex items-center gap-3">
-            <select
-              className="h-8 rounded-lg border border-[var(--wh-border)] bg-[var(--wh-surface)] px-2 text-xs text-[var(--wh-ink-main)] outline-none"
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value as 'today' | '7d' | '30d')}
-            >
-              <option value="today">{t('portal.page.dashboard.range.today')}</option>
-              <option value="7d">{t('portal.page.dashboard.range.last_7d')}</option>
-              <option value="30d">{t('portal.page.dashboard.range.last_30d')}</option>
-            </select>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setReloadToken((v) => v + 1)}
-              className="desk-icon-btn"
-              aria-label={t('portal.page.dashboard.action.refresh')}
-            >
-              <Icon name="refresh" size={18} />
-            </motion.button>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setReloadToken((v) => v + 1)}
+            className="desk-icon-btn"
+            aria-label={t('portal.page.dashboard.action.refresh')}
+          >
+            <Icon name="refresh" size={18} />
+          </motion.button>
         }
       >
       <KpiStatGrid columns={4}>
@@ -227,10 +262,53 @@ export default function WarehouseDashboard() {
             href={kpi.href}
             bay={kpi.bay}
             flag={kpi.flag}
-            sparkline={kpi.sparkline}
           />
         ))}
       </KpiStatGrid>
+      {!d.history_available ? (
+        <p className="md-typescale-label-medium flex items-center gap-2" style={{ color: 'var(--wh-ink-muted)' }}>
+          <SourceChip source="unavailable" />
+          History unavailable
+        </p>
+      ) : null}
+
+      <PageSection title="Orders now" description="Full warehouse order dictionary. Zero is a real count." bay="ops">
+        <StatusStack
+          dictionary={ORDER_STATUS_FUNNEL}
+          counts={d.orders_by_status}
+          source="live"
+          onSelect={(key) => router.push(`/orders?state=${encodeURIComponent(key)}`)}
+        />
+      </PageSection>
+
+      <PageSection title="Truck duty" description="Every duty key stays visible. Idle is not everything except in-transit." bay="fleet">
+        <StatusStack dictionary={TRUCK_DUTY_STATUSES} counts={d.truck_duty} source="live" />
+        {d.hold_reasons.length > 0 ? (
+          <ul className="mt-3 flex flex-col gap-1" data-testid="gs-u-hold-reasons">
+            {d.hold_reasons.map((row) => (
+              <li key={row.code} className="md-typescale-body-small" style={{ color: 'var(--wh-ink-muted)' }}>
+                {row.code} · {row.count}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="md-typescale-body-small mt-3" style={{ color: 'var(--wh-ink-muted)' }}>
+            No hold reasons
+          </p>
+        )}
+      </PageSection>
+
+      <PageSection title="Demand" description="Planner source only. Empty is not a zero series." bay="ops">
+        <div className="flex items-center gap-2" data-testid="gs-u-demand-source">
+          <SourceChip source={d.demand_source === 'empty' ? 'empty' : d.demand_source} />
+          <span className="md-typescale-body-small" style={{ color: 'var(--wh-ink-muted)' }}>
+            {d.demand_source === 'empty' ? 'Planner empty' : `source ${d.demand_source}`}
+          </span>
+        </div>
+        <Link href="/demand-forecast" className="portal-btn portal-btn--ghost text-sm mt-3 inline-flex">
+          Open forecast
+        </Link>
+      </PageSection>
 
       <PageSection
         title={t("warehouse_portal.app.text.network_pulse")}
@@ -248,33 +326,6 @@ export default function WarehouseDashboard() {
       >
         <FleetLiveMapPanel className="h-[360px] w-full -mx-5 -mb-5" />
       </PageSection>
-
-      {d.fleet_status.length > 0 && (
-        <PageSection
-          title={t("warehouse_portal.app.text.fleet_status")}
-          description={t("warehouse_portal.residual.text.manifest_and_driver_state_breakdown_for_this_node")}
-          bay="fleet"
-        >
-          <div className="flex flex-wrap gap-3">
-            {d.fleet_status.map(({ status, count }) => (
-              <span
-                key={status}
-                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg"
-                style={{
-                  border: '1px solid var(--wh-border)',
-                  background: 'var(--wh-surface-raised)',
-                  color: 'var(--wh-ink-muted)',
-                }}
-              >
-                {status.replace(/_/g, ' ')}
-                <span className="wh-ops-card-amount" style={{ color: 'var(--wh-accent)' }}>
-                  {count}
-                </span>
-              </span>
-            ))}
-          </div>
-        </PageSection>
-      )}
       </PageChrome>
     </PageTransition>
   );

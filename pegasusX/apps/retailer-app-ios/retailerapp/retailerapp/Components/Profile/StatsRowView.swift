@@ -11,7 +11,7 @@ struct StatsRowView: View {
         formatter.groupingSeparator = " "
         formatter.maximumFractionDigits = 0
         let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
-        return "\(formatted) \(currency.isEmpty ? "UZS" : currency)"
+        return "\(formatted) \(currency.isEmpty ? packCurrency(MarketPackStore.pack) : currency)"
     }
 
     var body: some View {

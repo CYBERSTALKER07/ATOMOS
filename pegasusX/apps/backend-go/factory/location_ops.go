@@ -11,7 +11,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -105,21 +104,25 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 
 	address := strings.TrimSpace(req.Address)
 	placeID := strings.TrimSpace(req.PlaceID)
-	h3Cell := proximity.H3CellFromLatLng(req.Lat, req.Lng)
+	geo, err := stampFactoryCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
 	supplierID := strings.TrimSpace(s.resolveSupplierScope(r.Context()))
 
 	update := map[string]any{
-		"FactoryId": factoryID,
-		"Address":   address,
-		"PlaceId":   factoryNullableString(placeID),
-		"Lat":       req.Lat,
-		"Lng":       req.Lng,
-		"UpdatedAt": spanner.CommitTimestamp,
-	}
-	if h3Cell != "" {
-		update["H3Cell"] = h3Cell
-	} else {
-		update["H3Cell"] = nil
+		"FactoryId":   factoryID,
+		"Address":     address,
+		"PlaceId":     factoryNullableString(placeID),
+		"Lat":         req.Lat,
+		"Lng":         req.Lng,
+		"CountryCode": geo.CountryCode,
+		"H3Cell":      geo.H3Cell,
+		"UpdatedAt":   spanner.CommitTimestamp,
 	}
 	if req.DailyOutputCapacity != nil {
 		if *req.DailyOutputCapacity < 0 {
@@ -136,7 +139,7 @@ func (s *Service) handleFactoryLocationPatch(w http.ResponseWriter, r *http.Requ
 			SupplierID: supplierID,
 			Lat:        req.Lat,
 			Lng:        req.Lng,
-			H3Cell:     h3Cell,
+			H3Cell:     geo.H3Cell,
 		}
 		buf := &spannerTxnBuffer{}
 		if emitErr := outbox.EmitJSON(ctx, buf, events.AggregateFactory, factoryID, events.TopicMain, eventPayload); emitErr != nil {

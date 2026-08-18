@@ -64,6 +64,8 @@ fun ReportsScreen(
     var lowStock by remember { mutableStateOf(0) }
     var topLine by remember { mutableStateOf("—") }
     var banner by remember { mutableStateOf<String?>(null) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var summaryReady by remember { mutableStateOf(false) }
     var exporting by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -79,9 +81,11 @@ fun ReportsScreen(
                     val first = top[0].asJsonObject
                     topLine = "${first.get("sku")?.asString} · ${first.get("sales_minor")?.asLong?.div(100.0)}"
                 }
+                summaryReady = true
+                loadError = null
                 banner = "REPORTS_PRO enabled on first view"
-            } catch (e: Exception) {
-                banner = e.message
+            } catch (_: Exception) {
+                loadError = "reports_failed"
             }
         }
     }
@@ -137,16 +141,19 @@ fun ReportsScreen(
             contentPadding = PaddingValues(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            banner?.let { item { Text(it, color = MaterialTheme.colorScheme.primary) } }
-            item {
-                Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Last 7 days", style = MaterialTheme.typography.titleMedium)
-                        Text(stringResource(R.string.mobile_retailer_ui_sales_n_0, salesMinor / 100.0))
-                        Text(stringResource(R.string.mobile_retailer_ui_sale_count_salecount_2, saleCount))
-                        Text(stringResource(R.string.mobile_retailer_ui_on_hand_skus_onhand_2, onHand))
-                        Text(stringResource(R.string.mobile_retailer_ui_low_stock_bins_lowstock_2, lowStock))
-                        Text(stringResource(R.string.mobile_retailer_ui_top_sku_topline_2, topLine))
+            loadError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            banner?.let { if (loadError == null) item { Text(it, color = MaterialTheme.colorScheme.primary) } }
+            if (summaryReady && loadError == null) {
+                item {
+                    Card {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Last 7 days", style = MaterialTheme.typography.titleMedium)
+                            Text(stringResource(R.string.mobile_retailer_ui_sales_n_0, salesMinor / 100.0))
+                            Text(stringResource(R.string.mobile_retailer_ui_sale_count_salecount_2, saleCount))
+                            Text(stringResource(R.string.mobile_retailer_ui_on_hand_skus_onhand_2, onHand))
+                            Text(stringResource(R.string.mobile_retailer_ui_low_stock_bins_lowstock_2, lowStock))
+                            Text(stringResource(R.string.mobile_retailer_ui_top_sku_topline_2, topLine))
+                        }
                     }
                 }
             }

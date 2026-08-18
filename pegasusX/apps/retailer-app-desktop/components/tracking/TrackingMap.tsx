@@ -11,8 +11,8 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { PageSection } from "../PageSection";
 import type { TrackingOrder } from "../../lib/types";
-
-const TASHKENT: [number, number] = [69.2401, 41.2995];
+import { moneyCurrency } from "../../lib/payment-catalog";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
 
 const LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -166,11 +166,7 @@ export function TrackingMap({
         <MapGL
           mapLib={maplibregl}
           mapStyle={colorScheme === "dark" ? DARK_STYLE : LIGHT_STYLE}
-          initialViewState={{
-            longitude: TASHKENT[0],
-            latitude: TASHKENT[1],
-            zoom: 12,
-          }}
+          initialViewState={mapInitialViewState(readCachedAuthSession()?.pack)}
           style={{ width: "100%", height: "100%" }}
           onLoad={(e) => {
             mapRef.current = e.target;
@@ -290,7 +286,7 @@ export function TrackingMap({
                   </p>
                   <p className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] tabular-nums">
                     {formatAmount(selectedOrder.total_amount)}{" "}
-                    <small className="text-[10px] ml-0.5 opacity-60">UZS</small>
+                    <small className="text-[10px] ml-0.5 opacity-60">{moneyCurrency()}</small>
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-black text-[10px] tracking-widest">

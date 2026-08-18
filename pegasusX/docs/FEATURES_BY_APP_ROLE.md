@@ -18,7 +18,7 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 
 **GS-I:** public `GET /v1/auth/oidc/discovery` + `POST /v1/auth/oidc/exchange`; ADMIN `GET/PUT/DELETE /v1/supplier/oidc`. Process-global Auth0 wrap is not mounted. SAML/SCIM not mounted.
 
-**GS-R:** clients bind `GET /v1/auth/session` pack (currency + receipts label). Native apps pin `home_cell` via `CellApi.pinApiBaseUrl` / `CellPinInterceptor` (localhost stays bootstrap). `checkout_reads_this` still false.
+**GS-R:** clients bind `GET /v1/auth/session` pack (currency + receipts label + maps camera). Native apps pin `home_cell` via `CellApi.pinApiBaseUrl` / `CellPinInterceptor` (localhost stays bootstrap). Empty/planned pack does not invent Tashkent. `checkout_reads_this` still false.
 
 **GS-P:** `GET /v1/platform/partner-dialects`. 1C CIS-only; PEPPOL planned/not live; X12/SAP sold_only; AS2 transport (no VAN). Empty 1C currency from pack. `POST /v1/platform/tenants/register` is not gated.
 

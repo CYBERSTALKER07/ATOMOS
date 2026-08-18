@@ -173,8 +173,31 @@ func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http
 				fr.Use(mw)
 			}
 		}
+		fr.Get("/", h.HandleListPending)
 		fr.Get("/{flagKey}", h.HandleEvaluate)
 		fr.Put("/{flagKey}", h.HandleSetOverride)
 		fr.Post("/{flagKey}/approve", h.HandleApproveOverride)
+	})
+}
+
+// HandleListPending GET /v1/platform-admin/flags — PENDING dual-control overrides.
+func (h *Handlers) HandleListPending(w http.ResponseWriter, r *http.Request) {
+	if h.Svc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "unavailable")
+		return
+	}
+	rows, err := h.Svc.ListPending(r.Context(), 100)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if rows == nil {
+		rows = []Override{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":     rows,
+		"count":     len(rows),
+		"available": true,
+		"status":    StatusPending,
 	})
 }

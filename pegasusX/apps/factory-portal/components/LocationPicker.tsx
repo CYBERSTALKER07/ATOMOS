@@ -11,6 +11,7 @@ import {
   reverseGeocode,
   type ResolvedLocation,
 } from "@/lib/geocode";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
 import MapGL, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -234,9 +235,10 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
       <div className="h-64 w-full mt-2 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
         <MapGL
           initialViewState={{
-            longitude: pinned ? parseFloat(value.lng) : -122.4194,
-            latitude: pinned ? parseFloat(value.lat) : 37.7749,
-            zoom: pinned ? 14 : 10,
+            ...mapInitialViewState(readCachedAuthSession()?.pack, pinned ? 14 : 10),
+            ...(pinned
+              ? { longitude: parseFloat(value.lng), latitude: parseFloat(value.lat), zoom: 14 }
+              : {}),
           }}
           longitude={pinned ? parseFloat(value.lng) : undefined}
           latitude={pinned ? parseFloat(value.lat) : undefined}

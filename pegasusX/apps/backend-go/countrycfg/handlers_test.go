@@ -18,6 +18,17 @@ func TestUZDefaultDoesNotClaimCheckout(t *testing.T) {
 	if cfg.CountryCode != "UZ" || cfg.CurrencyCode != "UZS" {
 		t.Fatalf("%+v", cfg)
 	}
+	if len(cfg.PaymentGatewaysListed) != 0 {
+		t.Fatalf("countrycfg must not list gateways: %#v", cfg.PaymentGatewaysListed)
+	}
+}
+
+func TestCatalogOmitsPaymentGateways(t *testing.T) {
+	for code, cfg := range Catalog() {
+		if len(cfg.PaymentGatewaysListed) != 0 {
+			t.Fatalf("%s listed gateways %#v", code, cfg.PaymentGatewaysListed)
+		}
+	}
 }
 
 func TestHandleCountryConfig_UZ(t *testing.T) {

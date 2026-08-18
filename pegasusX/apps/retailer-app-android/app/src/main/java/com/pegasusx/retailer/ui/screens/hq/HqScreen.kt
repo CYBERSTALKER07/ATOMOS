@@ -64,7 +64,8 @@ fun HqScreen(
     }
     var summaryLine by remember { mutableStateOf("—") }
     var locs by remember { mutableStateOf<List<HqLocRow>>(emptyList()) }
-    var banner by remember { mutableStateOf<String?>(null) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var summaryReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -90,9 +91,10 @@ fun HqScreen(
                         }
                     }
                 }
-                banner = null
-            } catch (e: Exception) {
-                banner = e.message ?: "HQ unavailable"
+                loadError = null
+                summaryReady = true
+            } catch (_: Exception) {
+                loadError = "hq_failed"
             }
         }
     }
@@ -116,25 +118,27 @@ fun HqScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            banner?.let {
+            loadError?.let {
                 item {
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
-            item {
-                Text(summaryLine, style = MaterialTheme.typography.bodyMedium)
-            }
-            item {
-                Text("Sales by location", style = MaterialTheme.typography.titleMedium)
-            }
-            if (locs.isEmpty()) {
-                item { Text("No HQ rows for this day.", style = MaterialTheme.typography.bodySmall) }
-            } else {
-                items(locs, key = { it.locationId }) { row ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(row.locationId, style = MaterialTheme.typography.labelMedium)
-                            Text("Qty ${row.qtySold} · Net ${row.netMinor / 100.0}")
+            if (summaryReady && loadError == null) {
+                item {
+                    Text(summaryLine, style = MaterialTheme.typography.bodyMedium)
+                }
+                item {
+                    Text("Sales by location", style = MaterialTheme.typography.titleMedium)
+                }
+                if (locs.isEmpty()) {
+                    item { Text("No HQ rows for this day.", style = MaterialTheme.typography.bodySmall) }
+                } else {
+                    items(locs, key = { it.locationId }) { row ->
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(row.locationId, style = MaterialTheme.typography.labelMedium)
+                                Text("Qty ${row.qtySold} · Net ${row.netMinor / 100.0}")
+                            }
                         }
                     }
                 }

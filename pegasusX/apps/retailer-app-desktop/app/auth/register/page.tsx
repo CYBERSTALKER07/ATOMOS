@@ -12,6 +12,7 @@ import {
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { FormAlert } from "@pegasusx/ui-kit/portal";
 import { storeToken } from "@/lib/bridge";
+import { sessionMapCenter } from "@pegasusx/api-client";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import {
   INITIAL_STATE,
@@ -125,8 +126,8 @@ export default function RetailerRegisterPage() {
         body: JSON.stringify({
           phone,
           name: state.profile.legalName.trim(),
-          lat: 41.2995,
-          lng: 69.2401,
+          lat: sessionMapCenter()?.lat ?? 0,
+          lng: sessionMapCenter()?.lng ?? 0,
           delivery_address: "Pending setup",
         }),
       });

@@ -365,7 +365,7 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 					ProductID:     aoFirstNonEmpty(c.ProductID, c.SKU),
 					Quantity:      c.Qty,
 					PriceSnapshot: 0,
-					Currency:      "UZS",
+					Currency:      autoOrderCartCurrency(ctx, c.SupplierID),
 					UpdatedAt:     now,
 				}
 				if err := s.cartRepo.UpsertItems(ctx, []CartItem{item}); err != nil {
@@ -490,7 +490,7 @@ func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, c
 				_ = s.cartRepo.UpsertItems(ctx, []CartItem{{
 					CartItemID: s.newID(), RetailerID: orgID, SupplierID: c.SupplierID,
 					ProductID: aoFirstNonEmpty(c.ProductID, c.SKU), Quantity: c.Qty,
-					Currency: "UZS", UpdatedAt: now,
+					Currency: autoOrderCartCurrency(ctx, c.SupplierID), UpdatedAt: now,
 				}})
 			}
 			key := orgID + "|" + bucket + "|" + AutoOrderModePlace + "|" + c.SKU
@@ -1015,4 +1015,15 @@ func aoFirstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
+}
+
+// autoOrderCartCurrency is empty-currency law for draft / place-fallback cart
+// lines: shipped pack ISO. Planned/unknown packs stay empty — never invent UZS.
+// Place stays off; this only stamps cart currency.
+func autoOrderCartCurrency(ctx context.Context, supplierID string) string {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, "")
+	if err != nil {
+		return ""
+	}
+	return c
 }

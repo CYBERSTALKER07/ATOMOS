@@ -409,7 +409,7 @@ data class Order(
     @SerialName("state") val status: OrderStatus = OrderStatus.PENDING,
     @SerialName("items") val items: List<OrderLineItem> = emptyList(),
     @SerialName("amount") val totalAmount: Long = 0,
-    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("currency") val currency: String = "",
     @SerialName("payment_gateway") val paymentGateway: String = "",
     @SerialName("payment_status") val paymentStatus: String? = null,
     @SerialName("route_id") val routeId: String? = null,
@@ -950,7 +950,7 @@ data class CheckoutQuoteLine(
     @SerialName("product_id") val productId: String,
     @SerialName("quantity") val quantity: Long,
     @SerialName("unit_price_minor") val unitPriceMinor: Long,
-    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("currency") val currency: String = "",
 )
 
 @Serializable
@@ -1098,6 +1098,21 @@ data class OrderCurrencyOptions(
     @SerialName("allowlist") val allowlist: List<String> = emptyList(),
 )
 
+@Serializable
+data class PSPListing(
+    val code: String = "",
+    val status: String = "",
+    val selectable: Boolean = true,
+    @SerialName("national_cards") val nationalCards: Boolean = false,
+)
+
+@Serializable
+data class RetailerPaymentCatalogResponse(
+    @SerialName("currency_code") val currencyCode: String = "",
+    @SerialName("market_code") val marketCode: String = "",
+    val catalog: List<PSPListing> = emptyList(),
+)
+
 // ── Delivery Tracking (real-time driver positions) ──
 
 @Serializable
@@ -1243,6 +1258,38 @@ data class CreditProfile(
     @SerialName("delinquency_count") val delinquencyCount: Long = 0,
     val status: String = "",
     val version: Long = 0,
+)
+
+@Serializable
+data class RetailerSupplierOrderFacet(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+)
+
+@Serializable
+data class RetailerPulseLoyalty(
+    val enrolled: Boolean = false,
+)
+
+@Serializable
+data class ControlTowerPulse(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("generated_at") val generatedAt: String = "",
+    @SerialName("open_orders") val openOrders: Int = 0,
+    @SerialName("active_fulfillments") val activeFulfillments: Int = 0,
+    @SerialName("dock_pending") val dockPending: Int = 0,
+    @SerialName("pos_open_sessions") val posOpenSessions: Int = 0,
+    @SerialName("open_shifts") val openShifts: Int = 0,
+    @SerialName("open_assist_tickets") val openAssistTickets: Int = 0,
+    @SerialName("low_stock_sku_bins") val lowStockSkuBins: Int = 0,
+    @SerialName("shift_variances_7d") val shiftVariances7d: Int = 0,
+    @SerialName("sales_minor_7d") val salesMinor7d: Long = 0,
+    val capabilities: List<String> = emptyList(),
+    val empty: Boolean = true,
+    val source: String = "empty",
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("orders_by_supplier") val ordersBySupplier: List<RetailerSupplierOrderFacet> = emptyList(),
+    val loyalty: RetailerPulseLoyalty = RetailerPulseLoyalty(),
 )
 
 @Serializable

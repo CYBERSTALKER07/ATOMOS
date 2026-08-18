@@ -38,7 +38,7 @@ struct ClaimChargebacksView: View {
                 Section("portal.nav.claim_chargebacks") {
                     ForEach(items) { row in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(row.amountMinor) \(row.currency.isEmpty ? "UZS" : row.currency)")
+                            Text("\(row.amountMinor) \(displayPackCurrency(row.currency))")
                                 .font(.subheadline.weight(.semibold))
                             Text(L10n.format("mobile_supplier.ui.order_orderid_2", "\(row.orderId ?? "—")"))
                                 .font(.caption)

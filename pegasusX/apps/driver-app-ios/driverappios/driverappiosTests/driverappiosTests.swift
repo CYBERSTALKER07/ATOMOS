@@ -15,7 +15,7 @@ struct OrderModelTests {
 
     @Test func orderStateEnum_allCases() async throws {
         let count = OrderState.allCases.count
-        #expect(count == 17, "OrderState should have 17 cases, got \(count)")
+        #expect(count == 19, "OrderState should have 19 cases, got \(count)")
     }
 
     @Test func orderStateEnum_labels() async throws {
@@ -27,6 +27,8 @@ struct OrderModelTests {
     @Test func orderState_activeStates() async throws {
         #expect(OrderState.IN_TRANSIT.isActive == true)
         #expect(OrderState.ARRIVED.isActive == true)
+        #expect(OrderState.ARRIVED_SHOP_CLOSED.isActive == true)
+        #expect(OrderState.FISCAL_FAILED.isActive == true)
         #expect(OrderState.COMPLETED.isActive == false)
         #expect(OrderState.CANCELLED.isActive == false)
         #expect(OrderState.PENDING.isActive == false)
@@ -53,7 +55,9 @@ struct OrderModelTests {
             etaDurationSec: nil,
             etaDistanceM: nil,
             routeId: nil,
-            sequenceIndex: nil
+            sequenceIndex: nil,
+            isPartial: nil,
+            splitGroupId: nil
         )
         #expect(order.displayTotal.contains("150"), "displayTotal should include the amount")
     }
@@ -119,7 +123,9 @@ struct OrderImmutabilityTests {
             etaDurationSec: nil,
             etaDistanceM: nil,
             routeId: "ROUTE-01",
-            sequenceIndex: 2
+            sequenceIndex: 2,
+            isPartial: nil,
+            splitGroupId: nil
         )
 
         let arrived = Order(
@@ -142,7 +148,9 @@ struct OrderImmutabilityTests {
             etaDurationSec: original.etaDurationSec,
             etaDistanceM: original.etaDistanceM,
             routeId: original.routeId,
-            sequenceIndex: original.sequenceIndex
+            sequenceIndex: original.sequenceIndex,
+            isPartial: original.isPartial,
+            splitGroupId: original.splitGroupId
         )
 
         #expect(arrived.state == .ARRIVED)

@@ -284,7 +284,7 @@ func (s *Store) ListSupplierManifestExceptions(ctx context.Context, supplierID s
 			"limit":      int64(limit),
 		},
 	}
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	rows := make([]SupplierExceptionRow, 0)
@@ -363,7 +363,7 @@ func (s *Store) DriversOnActiveManifests(ctx context.Context, supplierID, wareho
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -433,7 +433,7 @@ func (s *Store) ActiveManifestCapacityByDrivers(ctx context.Context, supplierID,
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -500,7 +500,7 @@ func (s *Store) DriversOnInTransitManifests(ctx context.Context, supplierID, war
 		}
 	}
 
-	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := s.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	for {
 		row, err := iter.Next()
@@ -927,23 +927,7 @@ func factoryMutations(batch *FactoryWriteBatch) []*spanner.Mutation {
 func outboxMutations(buf *txnBuffer) []*spanner.Mutation {
 	var mutations []*spanner.Mutation
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	for _, a := range buf.audits {
 		mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))

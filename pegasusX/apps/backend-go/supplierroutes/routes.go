@@ -8,7 +8,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
-	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
@@ -28,7 +27,6 @@ type Deps struct {
 	StaffInvite       *staffinvite.Handler
 	OrderService      *order.Service
 	PayloadService    *payload.Service
-	NotificationInbox *notifications.InboxHandlers
 	ComplianceHandler *compliance.Handler
 	ExceptionResolve  supplier.ExceptionResolveDeps
 	JWTSecret         string
@@ -108,6 +106,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Delete("/v1/supplier/pricing/retailer-overrides/{overrideID}", d.Service.HandleRetailerPricingOverrideDelete)
 		gr.Get("/v1/supplier/topology", d.Service.HandleTopology)
 		gr.Put("/v1/supplier/topology", d.Service.HandleTopology)
+		gr.Get("/v1/supplier/payment-catalog", d.Service.HandlePaymentCatalog)
+		gr.Get("/v1/supplier/regions", d.Service.HandleSupplierRegions)
+		gr.Put("/v1/supplier/regions", d.Service.HandleSupplierRegions)
+		gr.Get("/v1/supplier/warehouses/{warehouseID}/pins", d.Service.HandleWarehousePins)
+		gr.Put("/v1/supplier/warehouses/{warehouseID}/pins", d.Service.HandleWarehousePins)
+		gr.Get("/v1/supplier/warehouses/{warehouseID}/coverage", d.Service.HandleWarehouseCoverage)
+		gr.Put("/v1/supplier/warehouses/{warehouseID}/coverage", d.Service.HandleWarehouseCoverage)
 		gr.Get("/v1/supplier/org/members", d.Service.HandleOrgMembers)
 		gr.Post("/v1/supplier/org/members", d.Service.HandleOrgMembers)
 		if d.RetailerService != nil {
@@ -253,9 +258,5 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/fleet/live-map", d.Service.HandleSupplierFleetLiveMap)
 		gr.Get("/v1/supplier/returns", d.Service.HandleReturns)
 		gr.Post("/v1/supplier/returns/resolve", d.Service.HandleResolveReturn)
-		if d.NotificationInbox != nil {
-			gr.Get("/v1/user/notifications", d.NotificationInbox.HandleList)
-			gr.Post("/v1/user/notifications/read", d.NotificationInbox.HandleMarkRead)
-		}
 	})
 }

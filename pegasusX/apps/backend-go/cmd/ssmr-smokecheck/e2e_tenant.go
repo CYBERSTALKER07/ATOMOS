@@ -169,7 +169,7 @@ func runOutboxTenantPartitionE2E(ctx context.Context, cfg *bootstrap.Config, sup
 	// Probe insert proves schema + stamp path when the stack is quiet.
 	sid := strings.TrimSpace(supplierID)
 	if sid == "" {
-		sid = envOr("SSMR_SMOKE_SUPPLIER_ID", "ssmr-supplier-1")
+		sid = smokeSupplierID()
 	}
 	probeID := "e2e-outbox-tenant-" + uuid.NewString()
 	payload, _ := json.Marshal(map[string]any{

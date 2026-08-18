@@ -28,13 +28,23 @@ import com.pegasusx.supplier.R
 fun SupplierPulseStrip(
     events: List<PulseEvent>,
     loading: Boolean,
+    error: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    if (loading && events.isEmpty()) {
+    if (loading && events.isEmpty() && error.isNullOrBlank()) {
         Text(
             text = stringResource(R.string.mobile_supplier_ui_loading_network_pulse),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = modifier.padding(vertical = PegasusSpacing.sm),
+        )
+        return
+    }
+    if (!error.isNullOrBlank()) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
             modifier = modifier.padding(vertical = PegasusSpacing.sm),
         )
         return

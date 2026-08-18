@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -80,6 +81,64 @@ func TestLogoutRevokesRefresh(t *testing.T) {
 	}
 	if !strings.Contains(refreshRR.Body.String(), "token_revoked") {
 		t.Fatalf("expected token_revoked, got %s", refreshRR.Body.String())
+	}
+}
+
+type errRevocationStore struct{}
+
+func (errRevocationStore) Revoke(context.Context, string, time.Duration) error {
+	return errors.New("store down")
+}
+func (errRevocationStore) IsRevoked(context.Context, string) (bool, error) {
+	return false, errors.New("store down")
+}
+
+func TestTokenRevoked_StoreErrorFailsClosed(t *testing.T) {
+	SetRevocationStore(errRevocationStore{})
+	t.Cleanup(func() { SetRevocationStore(NewMemoryRevocationStore()) })
+	if !tokenRevoked(context.Background(), Claims{JTI: "jti-x"}) {
+		t.Fatal("store error must treat token as revoked")
+	}
+	if tokenRevoked(context.Background(), Claims{}) {
+		t.Fatal("legacy empty jti still accepted")
+	}
+}
+
+func TestSessionAuth_StoreErrorDoesNotAttach(t *testing.T) {
+	SetRevocationStore(errRevocationStore{})
+	t.Cleanup(func() { SetRevocationStore(NewMemoryRevocationStore()) })
+	tok, err := Issue(Claims{Subject: "u1", Role: RoleAdmin, SupplierID: "s1"}, IssueOptions{
+		Secret: "sec", TTL: time.Hour,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/v1/x", nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	SessionAuth("sec")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := FromContext(r.Context()); ok {
+			t.Fatal("must not attach claims when revocation store is down")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})).ServeHTTP(rr, req)
+}
+
+func TestRefresh_StoreError503(t *testing.T) {
+	SetRevocationStore(errRevocationStore{})
+	t.Cleanup(func() { SetRevocationStore(NewMemoryRevocationStore()) })
+	tok, err := Issue(Claims{Subject: "u1", Role: RoleAdmin, SupplierID: "s1"}, IssueOptions{
+		Secret: "sec", TTL: time.Hour,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	HandleTokenRefresh("sec", "test")(rr, req)
+	if rr.Code != http.StatusServiceUnavailable || !strings.Contains(rr.Body.String(), "revocation_store_unavailable") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
 	}
 }
 

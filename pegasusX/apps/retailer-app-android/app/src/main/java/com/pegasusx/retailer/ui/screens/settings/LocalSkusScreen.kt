@@ -42,12 +42,15 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.json.*
+import com.pegasusx.retailer.data.model.moneyCurrency
+import com.pegasusx.retailer.data.model.sessionPackCurrency
 
 data class LocalSkuRow(
     val id: String,
     val name: String,
     val barcode: String,
     val priceMinor: Long,
+    val currency: String,
     val active: Boolean,
 )
 
@@ -65,6 +68,8 @@ fun LocalSkusScreen(
     var barcode by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("5000") }
     var banner by remember { mutableStateOf<String?>(null) }
+    var loadError by remember { mutableStateOf<String?>(null) }
+    var summaryReady by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val rows = remember { mutableStateListOf<LocalSkuRow>() }
 
@@ -82,13 +87,16 @@ fun LocalSkusScreen(
                                 name = o.get("name")?.asString ?: "",
                                 barcode = o.get("barcode")?.asString ?: "",
                                 priceMinor = o.get("default_price_minor")?.asLong ?: 0L,
+                                currency = moneyCurrency(o.get("currency")?.asString),
                                 active = o.get("is_active")?.asBoolean ?: true,
                             ),
                         )
                     }
                 }
-            } catch (e: Exception) {
-                banner = e.message
+                loadError = null
+                summaryReady = true
+            } catch (_: Exception) {
+                loadError = "local_skus_failed"
             }
         }
     }
@@ -112,7 +120,8 @@ fun LocalSkusScreen(
             contentPadding = PaddingValues(vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            banner?.let { item { Text(it, color = MaterialTheme.colorScheme.primary) } }
+            loadError?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
+            banner?.let { if (loadError == null) item { Text(it, color = MaterialTheme.colorScheme.primary) } }
             item {
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -129,6 +138,7 @@ fun LocalSkusScreen(
                                             "name" to name.trim(),
                                             "barcode" to barcode.trim(),
                                             "default_price_minor" to (price.toLongOrNull() ?: 0L),
+                                            "currency" to sessionPackCurrency(),
                                         ),
                                         idempotencyKey = "local-sku-${System.currentTimeMillis()}",
                                     )
@@ -146,25 +156,27 @@ fun LocalSkusScreen(
                     }
                 }
             }
-            items(rows, key = { it.id }) { row ->
-                Card {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(row.name, style = MaterialTheme.typography.titleSmall)
-                        Text("${row.id} · ${row.priceMinor} minor · ${if (row.active) "active" else "inactive"}", style = MaterialTheme.typography.bodySmall)
-                        if (row.barcode.isNotBlank()) {
-                            Text(stringResource(R.string.mobile_retailer_ui_barcode_barcode, row.barcode), style = MaterialTheme.typography.bodySmall)
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = {
-                                scope.launch {
-                                    try {
-                                        viewModel.api.patchLocalSku(row.id, mapOf("is_active" to !row.active))
-                                        refresh()
-                                    } catch (e: Exception) {
-                                        banner = e.message
+            if (summaryReady && loadError == null) {
+                items(rows, key = { it.id }) { row ->
+                    Card {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(row.name, style = MaterialTheme.typography.titleSmall)
+                            Text("${row.id} · ${row.priceMinor} ${row.currency} · ${if (row.active) "active" else "inactive"}", style = MaterialTheme.typography.bodySmall)
+                            if (row.barcode.isNotBlank()) {
+                                Text(stringResource(R.string.mobile_retailer_ui_barcode_barcode, row.barcode), style = MaterialTheme.typography.bodySmall)
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = {
+                                    scope.launch {
+                                        try {
+                                            viewModel.api.patchLocalSku(row.id, mapOf("is_active" to !row.active))
+                                            refresh()
+                                        } catch (e: Exception) {
+                                            banner = e.message
+                                        }
                                     }
-                                }
-                            }) { Text(if (row.active) "Disable" else "Enable") }
+                                }) { Text(if (row.active) "Disable" else "Enable") }
+                            }
                         }
                     }
                 }

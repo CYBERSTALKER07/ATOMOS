@@ -8,6 +8,7 @@ struct LoadingBayView: View {
     @State private var dispatching = false
     @State private var handoffEvents: [FactoryPulseEvent] = []
     @State private var handoffLoading = true
+    @State private var handoffError: String?
 
     private var approved: [Transfer] { transfers.filter { $0.state == "APPROVED" } }
     private var loadingState: [Transfer] { transfers.filter { $0.state == "LOADING" } }
@@ -40,7 +41,7 @@ struct LoadingBayView: View {
                                 dispatchedCount: dispatched.count
                             )
 
-                            FactoryHandoffTimelineSection(events: handoffEvents, loading: handoffLoading)
+                            FactoryHandoffTimelineSection(events: handoffEvents, loading: handoffLoading, error: handoffError)
 
                             BaySection(
                                 title: "Ready for Loading",
@@ -110,18 +111,27 @@ struct LoadingBayView: View {
         do {
             let response = try await FactoryService.loadingBayTransfers()
             transfers = response.transfers
-            handoffLoading = true
-            if let pulse = try? await FactoryService.pulse() {
-                handoffEvents = FactoryHandoffPulseSupport.filter(pulse.events)
-            } else {
-                handoffEvents = []
-            }
-            handoffLoading = false
         } catch {
             self.error = error.localizedDescription
-            handoffEvents = []
-            handoffLoading = false
         }
+
+        handoffLoading = true
+        handoffError = nil
+        do {
+            let pulse = try await FactoryService.pulse()
+            let result = PulseHonesty.apply(
+                ok: true,
+                incoming: FactoryHandoffPulseSupport.filter(pulse.events),
+                previous: handoffEvents
+            )
+            handoffEvents = result.events
+            handoffError = result.error
+        } catch {
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: handoffEvents)
+            handoffEvents = result.events
+            handoffError = result.error
+        }
+        handoffLoading = false
 
         loading = false
     }

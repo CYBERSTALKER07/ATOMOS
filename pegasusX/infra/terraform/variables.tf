@@ -228,6 +228,55 @@ variable "click_webhook_secret" {
   sensitive   = true
 }
 
+variable "fiscal_my_soliq_base_url" {
+  description = "MY_SOLIQ OFD base URL. Empty = no TF version (phase0 stub later). Never commit live values."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "fiscal_my_soliq_api_key" {
+  description = "MY_SOLIQ API key. Empty = no TF version."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "fiscal_my_soliq_tin" {
+  description = "MY_SOLIQ TIN / STIR. Empty = no TF version."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "fiscal_my_soliq_signer" {
+  description = "MY_SOLIQ signer name (pkcs12). Empty = no TF version. Never set dev-hmac here."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "fiscal_my_soliq_pkcs12_password" {
+  description = "E-IMZO PKCS#12 password. Empty = no TF version. The .p12 file is a volume, not this string."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "playmobile_login" {
+  description = "PlayMobile SMS login. Empty = no TF version."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "playmobile_password" {
+  description = "PlayMobile SMS password. Empty = no TF version."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "global_pay_service_id" {
   description = "Global Pay merchant service id (Secret Manager)."
   type        = string

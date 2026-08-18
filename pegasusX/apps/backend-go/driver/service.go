@@ -283,12 +283,14 @@ func NewService(c ServiceConfig) *Service {
 	if c.Log == nil {
 		c.Log = slog.Default()
 	}
-	if strings.TrimSpace(c.Currency) == "" {
-		c.Currency = "UZS"
-	}
 	seedID := strings.TrimSpace(c.SeedSupplierID)
 	if seedID == "" {
 		seedID = strings.TrimSpace(c.SupplierID)
+	}
+	if strings.TrimSpace(c.Currency) == "" {
+		if cur, err := auth.CurrencyFromContext(context.Background(), seedID); err == nil {
+			c.Currency = cur
+		}
 	}
 	return &Service{
 		availability:       make(map[string]bool),

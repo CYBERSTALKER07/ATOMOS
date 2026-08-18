@@ -82,6 +82,17 @@ class PayloadRepository @Inject constructor(
 
     suspend fun loadTrucks(): List<Truck> = api.trucks()
 
+    /** All board-state manifests (DRAFT/LOADING/SEALED/DISPATCHED). VU lives here — never GET /v1/payload/capacity/. */
+    suspend fun listBoardManifests(): List<Manifest> {
+        val out = linkedMapOf<String, Manifest>()
+        for (state in listOf("DRAFT", "LOADING", "SEALED", "DISPATCHED")) {
+            for (m in listLoadingBayManifests(state)) {
+                out.putIfAbsent(m.manifestId, m)
+            }
+        }
+        return out.values.toList()
+    }
+
     /**
      * Payloader + factory loading-bay manifests (P1-18 / P2-25 Class A bridge).
      * Dedupes by manifest_id; payloader wins on collision.
@@ -102,10 +113,12 @@ class PayloadRepository @Inject constructor(
         return out.values.toList()
     }
 
-    /** Draft OR currently-loading manifest for the selected truck, or null. */
+    /** Current board-state manifest for the selected truck, or null. */
     suspend fun loadOpenManifest(truckId: String): Manifest? {
-        listLoadingBayManifests("DRAFT").firstOrNull { it.matchesTruck(truckId) }?.let { return it }
-        return listLoadingBayManifests("LOADING").firstOrNull { it.matchesTruck(truckId) }
+        for (state in listOf("DRAFT", "LOADING", "SEALED", "DISPATCHED")) {
+            listLoadingBayManifests(state).firstOrNull { it.matchesTruck(truckId) }?.let { return it }
+        }
+        return null
     }
 
     suspend fun loadSupplierManifestDetail(manifestId: String, source: String = Manifest.SOURCE_PAYLOADER): Manifest =

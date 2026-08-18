@@ -12,20 +12,22 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
 type warehouseLocationResponse struct {
-	WarehouseID string  `json:"warehouse_id"`
-	Name        string  `json:"name"`
-	Address     string  `json:"address,omitempty"`
-	PlaceID     string  `json:"place_id,omitempty"`
-	Lat         float64 `json:"lat"`
-	Lng         float64 `json:"lng"`
-	Gln         string  `json:"gln,omitempty"`
-	Timezone    string  `json:"timezone,omitempty"`
-	UpdatedAt   string  `json:"updated_at,omitempty"`
+	WarehouseID     string  `json:"warehouse_id"`
+	Name            string  `json:"name"`
+	Address         string  `json:"address,omitempty"`
+	PlaceID         string  `json:"place_id,omitempty"`
+	Lat             float64 `json:"lat"`
+	Lng             float64 `json:"lng"`
+	Gln             string  `json:"gln,omitempty"`
+	CountryCode     string  `json:"country_code,omitempty"`
+	PackCountryCode string  `json:"pack_country_code,omitempty"`
+	CurrencyCode    string  `json:"currency_code,omitempty"`
+	Timezone        string  `json:"timezone,omitempty"`
+	UpdatedAt       string  `json:"updated_at,omitempty"`
 }
 
 type warehouseLocationPatch struct {
@@ -59,7 +61,7 @@ func (s *Service) handleOpsLocationGet(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_warehouse_location_failed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, loc)
+	writeJSON(w, http.StatusOK, decorateLocationWithPack(r.Context(), loc))
 }
 
 func (s *Service) handleOpsLocationPatch(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +118,14 @@ func (s *Service) handleOpsLocationPatch(w http.ResponseWriter, r *http.Request)
 
 	address := strings.TrimSpace(req.Address)
 	placeID := strings.TrimSpace(req.PlaceID)
-	h3Cell := proximity.H3CellFromLatLng(req.Lat, req.Lng)
+	geo, err := stampWarehouseCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
 	supplierID := s.resolveDispatchSupplierID(r.Context(), warehouseID)
 
 	update := map[string]any{
@@ -125,18 +134,15 @@ func (s *Service) handleOpsLocationPatch(w http.ResponseWriter, r *http.Request)
 		"PlaceId":     nullableString(placeID),
 		"Lat":         req.Lat,
 		"Lng":         req.Lng,
+		"CountryCode": geo.CountryCode,
+		"H3Cell":      geo.H3Cell,
 		"UpdatedAt":   spanner.CommitTimestamp,
 	}
 	if req.Gln != nil {
 		update["Gln"] = nullableString(gln)
 	}
-	if h3Cell != "" {
-		update["H3Cell"] = h3Cell
-	} else {
-		update["H3Cell"] = nil
-	}
 
-	err := spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err = spannerutils.RunReadWriteTransaction(r.Context(), s.spannerClient, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		eventPayload := events.WarehouseEvent{
 			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseLocationUpdated},
 			WarehouseID: warehouseID,
@@ -205,7 +211,7 @@ func (s *Service) scopedWarehouseID(r *http.Request) (string, bool) {
 func (s *Service) loadWarehouseLocation(ctx context.Context, warehouseID string) (warehouseLocationResponse, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Name, COALESCE(Address, ''), COALESCE(PlaceId, ''), COALESCE(Lat, 0), COALESCE(Lng, 0),
-		             COALESCE(Gln, ''), UpdatedAt
+		             COALESCE(Gln, ''), COALESCE(CountryCode, ''), UpdatedAt
 		      FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
@@ -217,7 +223,7 @@ func (s *Service) loadWarehouseLocation(ctx context.Context, warehouseID string)
 	}
 	var resp warehouseLocationResponse
 	var updatedAt time.Time
-	if err := row.Columns(&resp.WarehouseID, &resp.Name, &resp.Address, &resp.PlaceID, &resp.Lat, &resp.Lng, &resp.Gln, &updatedAt); err != nil {
+	if err := row.Columns(&resp.WarehouseID, &resp.Name, &resp.Address, &resp.PlaceID, &resp.Lat, &resp.Lng, &resp.Gln, &resp.CountryCode, &updatedAt); err != nil {
 		return warehouseLocationResponse{}, err
 	}
 	resp.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
@@ -225,6 +231,23 @@ func (s *Service) loadWarehouseLocation(ctx context.Context, warehouseID string)
 		resp.Timezone = tz
 	}
 	return resp, nil
+}
+
+func decorateLocationWithPack(ctx context.Context, loc warehouseLocationResponse) warehouseLocationResponse {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return loc
+	}
+	if country, err := auth.PackCountryCode(pack); err == nil {
+		loc.PackCountryCode = country
+		if strings.TrimSpace(loc.CountryCode) == "" {
+			loc.CountryCode = country
+		}
+	}
+	if cur, err := auth.PackCurrency(pack); err == nil {
+		loc.CurrencyCode = cur
+	}
+	return loc
 }
 
 func nullableString(v string) spanner.NullString {

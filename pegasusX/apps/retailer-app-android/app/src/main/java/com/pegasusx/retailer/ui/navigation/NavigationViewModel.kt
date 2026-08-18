@@ -14,6 +14,7 @@ import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.formatRetailerAmount
+import com.pegasusx.retailer.data.model.selectableRetailerCatalogCodes
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.PendingPaymentSession
 import com.pegasusx.retailer.services.PendingOrderSyncScheduler
@@ -68,6 +69,7 @@ data class NavigationUiState(
     val unreadNotificationCount: Int = 0,
     val clientPolicyMessage: String? = null,
     val clientPolicyForce: Boolean = false,
+    val allowedCardGateways: List<String> = emptyList(),
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -75,7 +77,8 @@ data class NavigationUiState(
     val floatingTotalDisplay: String
         get() {
             val total = activeOrders.sumOf { it.totalAmount }
-            val currency = activeOrders.firstOrNull()?.currency ?: "UZS"
+            val currency = activeOrders.firstOrNull()?.currency?.ifBlank { null }
+                ?: com.pegasusx.retailer.data.model.sessionPackCurrency()
             return if (total > 0) formatRetailerAmount(total, currency) else ""
         }
     val floatingCountdownIso: String?
@@ -131,6 +134,7 @@ class NavigationViewModel @Inject constructor(
         }
         loadActiveOrders()
         loadPendingPayments()
+        loadPaymentCatalog()
         loadNotificationBadge()
         loadClientPolicy()
         connectWebSocket()
@@ -155,6 +159,19 @@ class NavigationViewModel @Inject constructor(
         loadPendingPayments(reconcile = true)
         loadClientPolicy()
         PendingOrderSyncScheduler.enqueue(appContext)
+    }
+
+    private fun loadPaymentCatalog() {
+        viewModelScope.launch {
+            try {
+                val resp = api.getPaymentCatalog()
+                _uiState.update {
+                    it.copy(allowedCardGateways = selectableRetailerCatalogCodes(resp.catalog))
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(allowedCardGateways = emptyList()) }
+            }
+        }
     }
 
     fun loadNotificationBadge() {

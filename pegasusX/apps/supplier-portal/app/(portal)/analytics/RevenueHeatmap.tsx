@@ -5,9 +5,7 @@ import MapGL, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { cellToBoundary } from 'h3-js';
-
-/** Tashkent-ish default when no H3 cells (honest empty map, not US mock). */
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-client';
 
 type RevenueHeatmapProps = {
   className?: string;
@@ -39,11 +37,7 @@ export default function RevenueHeatmap({ className, cells = [] }: RevenueHeatmap
   return (
     <div className={className} style={{ position: 'relative' }}>
       <MapGL
-        initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
-          zoom: 10,
-        }}
+        initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 10)}
         mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
         style={{ width: '100%', height: '100%', borderRadius: '12px' }}
         mapLib={maplibregl}

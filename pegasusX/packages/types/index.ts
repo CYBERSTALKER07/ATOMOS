@@ -296,6 +296,335 @@ export type FiscalStatus =
   | "FAILED"
   | "FORCE_SKIPPED";
 
+/** Canonical order columns for command boards. Aliases map into these. */
+export const ORDER_STATUS_FUNNEL = [
+  "PENDING",
+  "SCHEDULED",
+  "AUTO_ACCEPTED",
+  "BACKORDERED",
+  "LOADED",
+  "IN_TRANSIT",
+  "DELAYED",
+  "ARRIVED",
+  "ARRIVED_SHOP_CLOSED",
+  "AWAITING_PAYMENT",
+  "PENDING_CASH_COLLECTION",
+  "DELIVERED_ON_CREDIT",
+  "FISCALIZING",
+  "FISCAL_FAILED",
+  "RECONCILIATION_REQUIRED",
+  "COMPLETED",
+  "CANCELLED",
+] as const satisfies readonly OrderStatus[];
+
+export type OrderStatusFunnel = (typeof ORDER_STATUS_FUNNEL)[number];
+
+export const ORDER_STATUS_ALIASES: Record<string, OrderStatusFunnel> = {
+  DISPATCHED: "LOADED",
+  EN_ROUTE: "IN_TRANSIT",
+  ARRIVING: "ARRIVED",
+  SHOP_CLOSED_PENDING: "ARRIVED_SHOP_CLOSED",
+};
+
+export function canonicalizeOrderStatus(status: string): string {
+  const key = String(status || "").trim().toUpperCase();
+  return ORDER_STATUS_ALIASES[key] ?? key;
+}
+
+export function emptyOrderStatusCounts(): Record<OrderStatusFunnel, number> {
+  return Object.fromEntries(ORDER_STATUS_FUNNEL.map((key) => [key, 0])) as Record<OrderStatusFunnel, number>;
+}
+
+/** Optimistic chip increment. Aliases fold into the funnel; unknown keys are ignored. */
+export function incrementOrderStatusCount(
+  counts: Partial<Record<string, number>> | null | undefined,
+  status: string,
+): Record<OrderStatusFunnel, number> {
+  const next = { ...emptyOrderStatusCounts() };
+  for (const [key, value] of Object.entries(counts ?? {})) {
+    const normalized = canonicalizeOrderStatus(key);
+    if (normalized in next && Number.isFinite(value)) {
+      next[normalized as OrderStatusFunnel] = Number(value);
+    }
+  }
+  const key = canonicalizeOrderStatus(status);
+  if (key in next) {
+    next[key as OrderStatusFunnel] += 1;
+  }
+  return next;
+}
+
+export type ManifestState = "DRAFT" | "LOADING" | "SEALED" | "DISPATCHED" | "COMPLETED" | "CANCELLED";
+
+export const MANIFEST_STATES = [
+  "DRAFT",
+  "LOADING",
+  "SEALED",
+  "DISPATCHED",
+  "COMPLETED",
+  "CANCELLED",
+] as const satisfies readonly ManifestState[];
+
+export function emptyManifestStateCounts(): Record<ManifestState, number> {
+  return Object.fromEntries(MANIFEST_STATES.map((key) => [key, 0])) as Record<ManifestState, number>;
+}
+
+/** Live factory-transfer dictionary. Last-mile retailer IN_TRANSIT is not a factory truck. */
+export const FACTORY_TRANSFER_STATES = [
+  "CREATED",
+  "APPROVED",
+  "PENDING",
+  "ASSIGNED",
+  "LOADING",
+  "DISPATCHED",
+  "IN_TRANSIT",
+  "ARRIVED",
+  "RECEIVED",
+  "CANCELLED",
+  "REASSIGNED",
+] as const;
+
+export type FactoryTransferState = (typeof FACTORY_TRANSFER_STATES)[number];
+
+export function emptyFactoryTransferCounts(): Record<FactoryTransferState, number> {
+  return Object.fromEntries(FACTORY_TRANSFER_STATES.map((key) => [key, 0])) as Record<FactoryTransferState, number>;
+}
+
+export function canonicalizeFactoryTransfer(status: string): string {
+  return String(status || "").trim().toUpperCase();
+}
+
+export const FACTORY_VEHICLE_STATES = ["READY", "AVAILABLE", "UNAVAILABLE"] as const;
+export type FactoryVehicleState = (typeof FACTORY_VEHICLE_STATES)[number];
+
+export function emptyFactoryVehicleCounts(): Record<FactoryVehicleState, number> {
+  return Object.fromEntries(FACTORY_VEHICLE_STATES.map((key) => [key, 0])) as Record<FactoryVehicleState, number>;
+}
+
+export function canonicalizeFactoryVehicle(status: string): string {
+  const key = String(status || "").trim().toUpperCase();
+  if (key === "READY" || key === "AVAILABLE") return key;
+  return "UNAVAILABLE";
+}
+
+export const FACTORY_DRIVER_DUTY = ["ON_SHIFT", "OFF_SHIFT"] as const;
+export type FactoryDriverDuty = (typeof FACTORY_DRIVER_DUTY)[number];
+
+export function emptyFactoryDriverDuty(): Record<FactoryDriverDuty, number> {
+  return Object.fromEntries(FACTORY_DRIVER_DUTY.map((key) => [key, 0])) as Record<FactoryDriverDuty, number>;
+}
+
+export const FACTORY_SLA_STATUSES = ["ON_TIME", "AT_RISK", "BREACHED", "MET", "N/A"] as const;
+export type FactorySLAStatus = (typeof FACTORY_SLA_STATUSES)[number];
+
+export const FACTORY_QC_RESULTS = ["PASS", "FAIL", "MISSING"] as const;
+export type FactoryQCResult = (typeof FACTORY_QC_RESULTS)[number];
+
+export interface FactoryDashboardException {
+  exception_id?: string;
+  manifest_id?: string;
+  transfer_id?: string;
+  reason?: string;
+  escalated?: boolean;
+}
+
+export interface FactoryDashboardResponse {
+  source?: "spanner" | "memory" | "empty" | string;
+  plane?: "factory_trucks" | string;
+  pending_transfers?: number;
+  loading_transfers?: number;
+  active_manifests?: number;
+  dispatched_today?: number;
+  dispatched_transfers?: number;
+  vehicles_total?: number;
+  vehicles_available?: number;
+  staff_on_shift?: number;
+  staff_total?: number;
+  critical_insights?: number;
+  transfers_by_state?: Record<string, number>;
+  manifests_by_state?: Record<string, number>;
+  vehicles_by_state?: Record<string, number>;
+  driver_duty?: Record<string, number>;
+  sla_by_status?: Record<string, number>;
+  qc_by_result?: Record<string, number>;
+  qc_available?: boolean;
+  bay_loading_transfers?: number;
+  bay_loading_manifests?: number;
+  exceptions?: FactoryDashboardException[];
+  supplier_id?: string;
+  factory_id?: string;
+  updated_at?: string;
+}
+
+export type TruckDutyStatus =
+  | "AVAILABLE"
+  | "IN_TRANSIT"
+  | "RETURNING_TO_WAREHOUSE"
+  | "OFF_SHIFT"
+  | "UNASSIGNED"
+  | "VEHICLE_INACTIVE"
+  | "UNAVAILABLE"
+  | "INACTIVE";
+
+export const TRUCK_DUTY_STATUSES = [
+  "AVAILABLE",
+  "IN_TRANSIT",
+  "RETURNING_TO_WAREHOUSE",
+  "OFF_SHIFT",
+  "UNASSIGNED",
+  "VEHICLE_INACTIVE",
+  "UNAVAILABLE",
+  "INACTIVE",
+] as const satisfies readonly TruckDutyStatus[];
+
+export type TruckDutyFunnel = (typeof TRUCK_DUTY_STATUSES)[number];
+
+export function emptyTruckDutyCounts(): Record<TruckDutyFunnel, number> {
+  return Object.fromEntries(TRUCK_DUTY_STATUSES.map((key) => [key, 0])) as Record<TruckDutyFunnel, number>;
+}
+
+export function canonicalizeTruckDuty(status: string): string {
+  const key = String(status || "").trim().toUpperCase();
+  if (key === "RETURNING" || key === "RETURNING_TO_WH") return "RETURNING_TO_WAREHOUSE";
+  if (key === "IDLE") return "AVAILABLE";
+  if (key === "FULL" || key === "NEEDS_RESCUE") return "UNAVAILABLE";
+  return key;
+}
+
+export const FISCAL_STATUSES = [
+  "NONE",
+  "PENDING",
+  "SUCCESS",
+  "FAILED",
+  "FORCE_SKIPPED",
+] as const satisfies readonly FiscalStatus[];
+
+export type PlaybookRunStatus = "SUGGESTED" | "APPROVED" | "EXECUTED" | "FAILED" | "SKIPPED";
+
+export const PLAYBOOK_RUN_STATUSES = [
+  "SUGGESTED",
+  "APPROVED",
+  "EXECUTED",
+  "FAILED",
+  "SKIPPED",
+] as const satisfies readonly PlaybookRunStatus[];
+
+export type HistorySeriesSource = "live" | "empty" | "unavailable";
+
+export interface HistorySeries {
+  points: number[];
+  source: HistorySeriesSource;
+  available: boolean;
+  generated_at?: string;
+}
+
+export type DashboardHistoryRange = "today" | "7d" | "30d";
+
+export function historyRangeDays(range: DashboardHistoryRange): number {
+  if (range === "today") return 1;
+  if (range === "7d") return 7;
+  return 30;
+}
+
+export function sliceDatedSeries<T extends { date: string }>(
+  rows: T[] | null | undefined,
+  range: DashboardHistoryRange,
+  now: Date,
+): T[] {
+  const days = historyRangeDays(range);
+  const end = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  const startKey = start.toISOString().slice(0, 10);
+  return (rows ?? []).filter((row) => String(row.date ?? "").slice(0, 10) >= startKey);
+}
+
+/** Δ vs yesterday only when both today and the previous calendar day exist and yesterday ≠ 0. */
+export function yesterdayRevenueDeltaPct(
+  series: { date: string; revenue_minor: number }[] | null | undefined,
+  todayDate: string,
+): number | null {
+  if (!series || series.length < 2) return null;
+  const todayKey = String(todayDate || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(todayKey)) return null;
+  const today = series.find((point) => String(point.date).slice(0, 10) === todayKey);
+  const prevDate = new Date(`${todayKey}T00:00:00.000Z`);
+  if (!today || Number.isNaN(prevDate.getTime())) return null;
+  prevDate.setUTCDate(prevDate.getUTCDate() - 1);
+  const prevKey = prevDate.toISOString().slice(0, 10);
+  const prev = series.find((point) => String(point.date).slice(0, 10) === prevKey);
+  if (!prev || !Number.isFinite(prev.revenue_minor) || prev.revenue_minor === 0) return null;
+  if (!Number.isFinite(today.revenue_minor)) return null;
+  return ((today.revenue_minor - prev.revenue_minor) / Math.abs(prev.revenue_minor)) * 100;
+}
+
+export function historySeriesFromValues(
+  values: number[] | undefined,
+  available: boolean,
+): HistorySeries {
+  const points = (values ?? []).filter((n) => Number.isFinite(n));
+  if (!available) {
+    return { points: [], source: "unavailable", available: false };
+  }
+  if (points.length === 0) {
+    return { points: [], source: "empty", available: true };
+  }
+  return { points, source: "live", available: true };
+}
+
+/** Draw a spark only when the series is live and has at least two points. */
+export function guardHistorySeries(series?: HistorySeries | null): HistorySeries | null {
+  if (!series || series.available !== true) return null;
+  if (series.source === "unavailable" || series.source === "empty") return null;
+  if (!Array.isArray(series.points) || series.points.length < 2) return null;
+  if (series.points.some((n) => !Number.isFinite(n))) return null;
+  return series;
+}
+
+export type StatusStackMode = "empty" | "zero" | "live" | "unavailable";
+
+export type StatusStackRow = {
+  key: string;
+  count: number | null;
+  share: number;
+};
+
+export type StatusStackModel = {
+  mode: StatusStackMode;
+  rows: StatusStackRow[];
+  total: number;
+};
+
+/** Empty ≠ zero ≠ unavailable. Dictionary keys stay visible on zero/live. */
+export function statusStackModel(
+  dictionary: readonly string[],
+  counts?: Record<string, number> | null,
+  available = true,
+): StatusStackModel {
+  if (!available) {
+    return {
+      mode: "unavailable",
+      total: 0,
+      rows: dictionary.map((key) => ({ key, count: null, share: 0 })),
+    };
+  }
+  if (counts == null) {
+    return { mode: "empty", total: 0, rows: [] };
+  }
+  const rows: StatusStackRow[] = dictionary.map((key) => ({
+    key,
+    count: Number.isFinite(Number(counts[key])) ? Number(counts[key]) : 0,
+    share: 0,
+  }));
+  const total = rows.reduce((sum, row) => sum + (row.count ?? 0), 0);
+  if (total > 0) {
+    for (const row of rows) {
+      row.share = (row.count ?? 0) / total;
+    }
+  }
+  return { mode: total === 0 ? "zero" : "live", rows, total };
+}
+
 export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER" | "BACKORDER";
 
 export type DeliveryMode = "STANDARD" | "SCHEDULED";
@@ -504,8 +833,12 @@ export interface SupplierDashboardResponse {
   retailers_ordered_today?: number;
   total_retailers?: number;
   delivery_completion_rate_pct?: number;
+  deliveries_completed_today?: number;
+  deliveries_attempted_today?: number;
+  manifests_by_state?: Record<string, number>;
   fleet_vu_used?: number;
   fleet_vu_total?: number;
+  fleet_vu_available?: boolean;
   recent_manifests?: SupplierManifestRow[];
   activity_events?: SupplierActivityEvent[];
 }
@@ -1058,6 +1391,7 @@ export interface PlanningSAndOPSnapshot {
   utilization_pct: number;
   capacity_alert: boolean;
   capacity_model?: string;
+  capacity_source?: "factories_column" | "env_default" | string;
 }
 
 export interface KnowledgeGraphNode {
@@ -2285,6 +2619,105 @@ export interface SupplierTopologyResponse {
   factories: SupplierTopologyFactory[];
   updated_at: string;
 }
+
+export type ServicePinTargetType = "LOCATION" | "RETAILER" | "REGION" | "CITY";
+export type CoverageMode = "PINNED" | "CITY_CELLS" | "COUNTRY_CLOSEST";
+
+export interface ServicePin {
+  warehouse_id?: string;
+  target_type: ServicePinTargetType;
+  target_id: string;
+  priority?: number;
+}
+
+export interface WarehouseCoverageResponse {
+  warehouse_id: string;
+  mode: CoverageMode;
+  cities?: SupplierTopologyCoverageCity[];
+  pins?: ServicePin[];
+  country_code?: string;
+}
+
+export interface WarehouseOpsSupplyFactoryResponse {
+  warehouse_id: string;
+  factory_id?: string;
+  transfer_mode?: string;
+  source: "engine";
+  country_code: string;
+}
+
+export interface WarehouseOpsLocationResponse {
+  warehouse_id: string;
+  name: string;
+  address?: string;
+  place_id?: string;
+  lat: number;
+  lng: number;
+  gln?: string;
+  country_code?: string;
+  pack_country_code?: string;
+  currency_code?: string;
+  timezone?: string;
+  updated_at?: string;
+}
+
+export interface WarehouseOpsPaymentConfigResponse {
+  gateways?: Array<{
+    gateway_name: string;
+    provider: string;
+    is_active: boolean;
+    mode: string;
+    status?: string;
+    selectable?: boolean;
+  }>;
+  selected_gateways?: string[];
+  catalog: PSPListing[];
+  currency_code: string;
+  market_code?: string;
+  payment_acceptor?: string;
+  payment_config_id?: string;
+}
+
+export interface WarehouseCoverageRequest {
+  cities: SupplierTopologyCoverageCity[];
+  pins: Array<Pick<ServicePin, "target_type" | "target_id" | "priority">>;
+}
+
+export interface WarehousePinsResponse {
+  warehouse_id: string;
+  mode: CoverageMode;
+  pins?: ServicePin[];
+}
+
+export interface SupplierRegion {
+  region_id: string;
+  name: string;
+  country_code: string;
+}
+
+export interface SupplierRegionsResponse {
+  items: SupplierRegion[];
+}
+
+export interface SupplierRegionsReplaceRequest {
+  items: Array<{ region_id?: string; name: string; country_code?: string }>;
+}
+
+export interface PSPListing {
+  code: string;
+  status: string;
+  selectable: boolean;
+  national_cards?: boolean;
+}
+
+export interface SupplierPaymentCatalogResponse {
+  currency_code: string;
+  market_code?: string;
+  catalog: PSPListing[];
+}
+
+/** GET /v1/retailer/payment-catalog — same pack ∩ registry shape as supplier. */
+export type RetailerPaymentCatalogResponse = SupplierPaymentCatalogResponse;
 
 export interface SupplierOrgMemberCreateRequest {
   name: string;
@@ -3684,6 +4117,15 @@ export interface RetailerAssistTicketsResponse {
   items: RetailerAssistTicket[];
 }
 
+export interface RetailerSupplierOrderFacet {
+  supplier_id: string;
+  orders_by_status: Record<string, number>;
+}
+
+export interface RetailerPulseLoyalty {
+  enrolled: boolean;
+}
+
 /** Retail OS Phase 7 — honest ops pulse (never demo) */
 export interface RetailerControlTowerPulse {
   retailer_id: string;
@@ -3699,6 +4141,10 @@ export interface RetailerControlTowerPulse {
   sales_minor_7d: number;
   capabilities: string[];
   empty: boolean;
+  source?: "spanner" | "memory" | "empty" | string;
+  orders_by_status?: Record<string, number>;
+  orders_by_supplier?: RetailerSupplierOrderFacet[];
+  loyalty?: RetailerPulseLoyalty;
 }
 
 export type EventType =
@@ -4374,15 +4820,34 @@ export interface WarehouseDemandForecastResponse {
   series: WarehouseDemandForecastDay[];
   /** Portal parity: product-level 4-source breakdown (pegasus warehouse-portal). */
   products?: WarehouseDemandForecastProduct[];
+  /** empty | spanner | scaffold — never invent a series when empty. */
+  source?: string;
+}
+
+export interface WarehouseHoldReason {
+  code: string;
+  count: number;
 }
 
 export interface WarehouseOpsDashboardResponse {
-  supplier_id?: SupplierId;
-  inventory_skus: number;
-  orders_open: number;
-  dispatch_locks: number;
-  supply_requests: number;
-  updated_at: string;
+  warehouse_id?: WarehouseId;
+  active_orders?: number;
+  pending_dispatch?: number;
+  drivers_on_route?: number;
+  drivers_idle?: number;
+  total_drivers?: number;
+  total_vehicles?: number;
+  low_stock_count?: number;
+  total_staff?: number;
+  completed_today_available?: boolean;
+  today_revenue_available?: boolean;
+  history_available?: boolean;
+  currency?: string;
+  orders_by_status?: Record<string, number>;
+  truck_duty?: Record<string, number>;
+  hold_reasons?: WarehouseHoldReason[];
+  demand_source?: string;
+  fleet_status?: Array<{ status: string; count: number }>;
 }
 
 export interface WarehouseInventoryRow {

@@ -138,6 +138,13 @@ locals {
     google_secret_manager_secret.apple_notarize_app_password.secret_id,
     google_secret_manager_secret.maps_android_api_key.secret_id,
     google_secret_manager_secret.maps_ios_api_key.secret_id,
+    google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_base_url"].secret_id,
+    google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_api_key"].secret_id,
+    google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_tin"].secret_id,
+    google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_signer"].secret_id,
+    google_secret_manager_secret.fiscal_sms["fiscal_my_soliq_pkcs12_password"].secret_id,
+    google_secret_manager_secret.fiscal_sms["playmobile_login"].secret_id,
+    google_secret_manager_secret.fiscal_sms["playmobile_password"].secret_id,
   ])
 }
 

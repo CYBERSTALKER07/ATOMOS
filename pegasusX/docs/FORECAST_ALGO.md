@@ -2,6 +2,8 @@
 
 Croston (Syntetos–Boylan), SES, and Holt–Winters baselines for `DemandForecastBaseline`.
 
+**Next planning slice (plan, not status):** persist/show SBC class already computed at fit time — [`DEMAND_CLASS_IBP_SLICE.md`](./DEMAND_CLASS_IBP_SLICE.md). Parent o9 catalog: [`PegasusX_o9_Digital_Brain_Feature_Extraction_Integration_Blueprint.md`](./PegasusX_o9_Digital_Brain_Feature_Extraction_Integration_Blueprint.md). Do not treat those files as wired.
+
 ## Flags
 
 | Env | Default | Meaning |

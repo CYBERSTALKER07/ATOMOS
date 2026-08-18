@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -46,9 +45,9 @@ type Invite struct {
 // NodeOwnedFunc reports whether nodeID belongs to supplierID for role.
 type NodeOwnedFunc func(ctx context.Context, supplierID, role, nodeID string) (bool, error)
 
-// DemoScaffoldAllowed is true only in the SSMR sandbox.
+// DemoScaffoldAllowed is true only in the isolated sandbox (PEGASUSX_ENV=sandbox|ssmr).
 func DemoScaffoldAllowed() bool {
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")
+	return auth.IsSandbox()
 }
 
 // NormalizeRole maps factory/warehouse role strings to invite roles.

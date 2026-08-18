@@ -75,6 +75,15 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
+	geo, err := stampWarehouseCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
 	mutations := make([]*spanner.Mutation, 0, 2)
 
 	if warehouseID == "" {
@@ -85,7 +94,7 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		warehouseID = "wh-" + uuid.NewString()[:8]
 		mutations = append(mutations, spanner.Insert("Warehouses",
-			[]string{"WarehouseId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CoverageRadiusKm", "PrimaryFactoryId", "IsActive", "IsOnShift", "CreatedAt", "UpdatedAt"},
+			[]string{"WarehouseId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CoverageRadiusKm", "PrimaryFactoryId", "CountryCode", "H3Cell", "IsActive", "IsOnShift", "CreatedAt", "UpdatedAt"},
 			[]any{
 				warehouseID,
 				supplierID,
@@ -96,6 +105,8 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 				req.Lng,
 				req.CoverageRadiusKm,
 				strings.TrimSpace(req.PrimaryFactoryID),
+				geo.CountryCode,
+				geo.H3Cell,
 				true,
 				false,
 				now,
@@ -114,6 +125,8 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 			"PlaceId":     nullableString(strings.TrimSpace(req.PlaceID)),
 			"Lat":         req.Lat,
 			"Lng":         req.Lng,
+			"CountryCode": geo.CountryCode,
+			"H3Cell":      geo.H3Cell,
 			"UpdatedAt":   now,
 		}
 		if name := strings.TrimSpace(req.Name); name != "" {
@@ -155,11 +168,11 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"warehouse_id":   warehouseID,
-		"supplier_id":    supplierID,
-		"token":          token,
-		"refresh_token":  refresh,
-		"is_configured":  isConfigured,
+		"warehouse_id":  warehouseID,
+		"supplier_id":   supplierID,
+		"token":         token,
+		"refresh_token": refresh,
+		"is_configured": isConfigured,
 	})
 }
 

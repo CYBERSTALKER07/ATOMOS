@@ -145,11 +145,16 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 			}
 			continue
 		}
-		// No reservations: FEFO-allocate from available lots for line items.
 		lines, err := loadOrderLineQtys(ctx, txn, oid)
 		if err != nil {
 			return nil, err
 		}
+		// Lots off: bag-of-SKU tasks. Confirm does not deplete StockLots.
+		if !EffectiveLots(ctx, warehouseID, supplierID) {
+			drafts = append(drafts, skuPickDraftsFromLines(oid, lines)...)
+			continue
+		}
+		// Lots on: FEFO-allocate from available lots for line items.
 		for _, line := range lines {
 			cands, err := loadAvailableLots(ctx, txn, supplierID, warehouseID, line.SKU)
 			if err != nil {
@@ -308,32 +313,34 @@ func ConfirmPickTaskInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction
 		quantityPicked = requested
 	}
 
-	lotRow, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID},
-		[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "Status"})
-	if err != nil {
-		return nil, err
-	}
-	var sid, wid, pid, lotStatus string
-	var qoh, qr int64
-	if err := lotRow.Columns(&sid, &wid, &pid, &qoh, &qr, &lotStatus); err != nil {
-		return nil, err
-	}
-	nextQoH, nextQR, depleted := applyLotDepletion(qoh, qr, quantityPicked)
-	lotStatusOut := lotStatus
-	if depleted {
-		lotStatusOut = "DEPLETED"
-	}
-	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
-		"LotId":            lotID,
-		"QuantityOnHand":   nextQoH,
-		"QuantityReserved": nextQR,
-		"Status":           lotStatusOut,
-		"UpdatedAt":        spanner.CommitTimestamp,
-	})}); err != nil {
-		return nil, err
-	}
-	if err := RollupInventoryV2InTxn(ctx, txn, sid, wid, pid); err != nil {
-		return nil, err
+	if shouldDepleteLot(lotID) {
+		lotRow, err := txn.ReadRow(ctx, "StockLots", spanner.Key{lotID},
+			[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "Status"})
+		if err != nil {
+			return nil, err
+		}
+		var sid, wid, pid, lotStatus string
+		var qoh, qr int64
+		if err := lotRow.Columns(&sid, &wid, &pid, &qoh, &qr, &lotStatus); err != nil {
+			return nil, err
+		}
+		nextQoH, nextQR, depleted := applyLotDepletion(qoh, qr, quantityPicked)
+		lotStatusOut := lotStatus
+		if depleted {
+			lotStatusOut = "DEPLETED"
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
+			"LotId":            lotID,
+			"QuantityOnHand":   nextQoH,
+			"QuantityReserved": nextQR,
+			"Status":           lotStatusOut,
+			"UpdatedAt":        spanner.CommitTimestamp,
+		})}); err != nil {
+			return nil, err
+		}
+		if err := RollupInventoryV2InTxn(ctx, txn, sid, wid, pid); err != nil {
+			return nil, err
+		}
 	}
 
 	cols := map[string]any{
@@ -365,10 +372,27 @@ func ConfirmPickTaskInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction
 			return nil, err
 		}
 	}
-	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID); err != nil {
+	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID, taskID, newStatus); err != nil {
 		return nil, err
 	}
-	return GetPickWaveInTxn(ctx, txn, waveID, true)
+	view, err := GetPickWaveInTxn(ctx, txn, waveID, true)
+	if err != nil {
+		return nil, err
+	}
+	if view != nil {
+		for i := range view.Tasks {
+			if view.Tasks[i].TaskID == taskID {
+				view.Tasks[i].Status = newStatus
+				view.Tasks[i].QuantityPicked = quantityPicked
+			}
+		}
+		if waveReadyFromTasks(view.Tasks) {
+			view.Status = "READY_TO_SEAL"
+		} else if strings.EqualFold(view.Status, "OPEN") {
+			view.Status = "PICKING"
+		}
+	}
+	return view, nil
 }
 
 // WaiveShortsInTxn marks SHORT tasks as SHORT_WAIVED and advances to READY_TO_SEAL when eligible.
@@ -404,21 +428,19 @@ func WaiveShortsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, wa
 			return nil, err
 		}
 	}
-	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID); err != nil {
+	if err := maybeMarkWaveReadyInTxn(ctx, txn, waveID, "", ""); err != nil {
 		return nil, err
 	}
 	return GetPickWaveInTxn(ctx, txn, waveID, true)
 }
 
-func maybeMarkWaveReadyInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID string) error {
+func maybeMarkWaveReadyInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, waveID, overrideTaskID, overrideStatus string) error {
 	iter := txn.Query(ctx, spanner.Statement{
-		SQL:    `SELECT Status FROM PickTasks WHERE WaveId = @wid`,
+		SQL:    `SELECT TaskId, Status FROM PickTasks@{FORCE_INDEX=_BASE_TABLE} WHERE WaveId = @wid`,
 		Params: map[string]any{"wid": waveID},
 	})
 	defer iter.Stop()
-	pending := false
-	short := false
-	anyTask := false
+	var tasks []PickTaskView
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -427,31 +449,39 @@ func maybeMarkWaveReadyInTxn(ctx context.Context, txn *spanner.ReadWriteTransact
 		if err != nil {
 			return err
 		}
-		anyTask = true
-		var st string
-		if err := row.Columns(&st); err != nil {
+		var tid, st string
+		if err := row.Columns(&tid, &st); err != nil {
 			return err
 		}
-		st = strings.ToUpper(strings.TrimSpace(st))
-		switch st {
-		case "PENDING":
-			pending = true
-		case "SHORT":
-			short = true
-		case "CONFIRMED", "SHORT_WAIVED":
-		default:
-			pending = true
+		if overrideTaskID != "" && tid == overrideTaskID && strings.TrimSpace(overrideStatus) != "" {
+			st = overrideStatus
 		}
+		tasks = append(tasks, PickTaskView{TaskID: tid, Status: st})
 	}
-	if !anyTask || pending || short {
+	if !waveReadyFromTasks(tasks) {
 		return nil
 	}
 	return txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PickWaves", map[string]any{
 		"WaveId":    waveID,
 		"Status":    "READY_TO_SEAL",
-		"ReadyAt":   spanner.CommitTimestamp,
+		"ReadyAt":   time.Now().UTC(),
 		"UpdatedAt": spanner.CommitTimestamp,
 	})})
+}
+
+func waveReadyFromTasks(tasks []PickTaskView) bool {
+	if len(tasks) == 0 {
+		return false
+	}
+	for _, t := range tasks {
+		st := strings.ToUpper(strings.TrimSpace(t.Status))
+		switch st {
+		case "CONFIRMED", "SHORT_WAIVED":
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // GetPickWave loads a wave (optionally with tasks).
@@ -657,6 +687,33 @@ func loadOrderLotReservations(ctx context.Context, txn *spanner.ReadWriteTransac
 	return out, nil
 }
 
+// skuPickDraftsFromLines builds bag-of-SKU pick tasks when lots are off.
+func skuPickDraftsFromLines(orderID string, lines []LineQty) []pickTaskDraft {
+	if len(lines) == 0 {
+		return nil
+	}
+	out := make([]pickTaskDraft, 0, len(lines))
+	for _, line := range lines {
+		sku := strings.TrimSpace(line.SKU)
+		if sku == "" || line.Quantity <= 0 {
+			continue
+		}
+		out = append(out, pickTaskDraft{
+			OrderID:    orderID,
+			ProductID:  sku,
+			LotID:      "",
+			LocationID: "",
+			Qty:        line.Quantity,
+		})
+	}
+	return out
+}
+
+// shouldDepleteLot is false for bag-of-SKU tasks (empty LotId).
+func shouldDepleteLot(lotID string) bool {
+	return strings.TrimSpace(lotID) != ""
+}
+
 func loadOrderLineQtys(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) ([]LineQty, error) {
 	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"LineItemsJson"})
 	if err != nil {
@@ -666,9 +723,15 @@ func loadOrderLineQtys(ctx context.Context, txn *spanner.ReadWriteTransaction, o
 	if err := row.Columns(&raw); err != nil {
 		return nil, err
 	}
+	return parseOrderLineQtys(raw)
+}
+
+func parseOrderLineQtys(raw []byte) ([]LineQty, error) {
 	var items []struct {
-		SKU      string `json:"sku"`
-		Quantity int64  `json:"quantity"`
+		SKU       string `json:"sku"`
+		SKUID     string `json:"sku_id"`
+		ProductID string `json:"product_id"`
+		Quantity  int64  `json:"quantity"`
 	}
 	if len(raw) > 0 {
 		if err := json.Unmarshal(raw, &items); err != nil {
@@ -678,6 +741,12 @@ func loadOrderLineQtys(ctx context.Context, txn *spanner.ReadWriteTransaction, o
 	out := make([]LineQty, 0, len(items))
 	for _, it := range items {
 		sku := strings.TrimSpace(it.SKU)
+		if sku == "" {
+			sku = strings.TrimSpace(it.SKUID)
+		}
+		if sku == "" {
+			sku = strings.TrimSpace(it.ProductID)
+		}
 		if sku == "" || it.Quantity <= 0 {
 			continue
 		}

@@ -21,6 +21,12 @@ var ErrGatewayMismatch = errors.New("gateway mismatch")
 // ErrCurrencyMismatch is returned when request currency differs from the order currency.
 var ErrCurrencyMismatch = errors.New("currency_mismatch")
 
+// ErrOrderSnapshotRequired is returned when card checkout cannot load the order total.
+var ErrOrderSnapshotRequired = errors.New("order_snapshot_required")
+
+// ErrCheckoutAmountMismatch is returned when a client amount disagrees with the order total.
+var ErrCheckoutAmountMismatch = errors.New("amount_mismatch")
+
 // OrderCheckoutReader loads persisted order totals for retailer payment flows.
 type OrderCheckoutReader interface {
 	CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error)
@@ -122,28 +128,30 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	amountMinor := req.AmountMinor
-	if amountMinor <= 0 {
-		amountMinor = req.Amount
+	if s.orderReader == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "order_snapshot_required", "order snapshot required for card checkout", "/v1/order/card-checkout", false, "")
+		return
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if amountMinor <= 0 && s.orderReader != nil {
-		total, orderCurrency, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
-		if snapErr != nil {
-			s.writeOrderCheckoutError(w, "/v1/order/card-checkout", snapErr)
+	snapTotal, orderCurrency, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
+	if snapErr != nil {
+		s.writeOrderCheckoutError(w, "/v1/order/card-checkout", snapErr)
+		return
+	}
+	amountMinor, amtErr := resolveCardCheckoutAmount(req.AmountMinor, req.Amount, snapTotal)
+	if amtErr != nil {
+		if errors.Is(amtErr, ErrCheckoutAmountMismatch) {
+			writeJSONError(w, http.StatusUnprocessableEntity, "amount_mismatch", "amount_minor must match order total", "/v1/order/card-checkout", false, "")
 			return
 		}
-		amountMinor = total
-		if currency == "" && strings.TrimSpace(orderCurrency) != "" {
-			currency = orderCurrency
-		}
+		writeJSONError(w, http.StatusUnprocessableEntity, "order_snapshot_required", "order total is required", "/v1/order/card-checkout", false, "")
+		return
+	}
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" && strings.TrimSpace(orderCurrency) != "" {
+		currency = orderCurrency
 	}
 	if currency == "" {
 		currency = s.currency
-	}
-	if amountMinor <= 0 {
-		writeJSONError(w, http.StatusBadRequest, "invalid_request", "amount is required", "/v1/order/card-checkout", false, "")
-		return
 	}
 
 	checkoutReq := CheckoutRequest{
@@ -285,6 +293,22 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(respBytes)
+}
+
+// resolveCardCheckoutAmount uses the persisted order total. A positive client
+// amount is accepted only when it matches the snapshot.
+func resolveCardCheckoutAmount(clientMinor, clientLegacy, snapTotal int64) (int64, error) {
+	if snapTotal <= 0 {
+		return 0, ErrOrderSnapshotRequired
+	}
+	client := clientMinor
+	if client <= 0 {
+		client = clientLegacy
+	}
+	if client > 0 && client != snapTotal {
+		return 0, ErrCheckoutAmountMismatch
+	}
+	return snapTotal, nil
 }
 
 func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string, err error) {

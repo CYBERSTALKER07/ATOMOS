@@ -22,7 +22,8 @@ fun AddFactoryDialog(
     onSave: (String, AddressLocationValue) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf(AddressLocationValue(lat = 41.3111, lng = 69.2797)) }
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    var location by remember { mutableStateOf(AddressLocationValue(lat = packCenter?.lat ?: 0.0, lng = packCenter?.lng ?: 0.0)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

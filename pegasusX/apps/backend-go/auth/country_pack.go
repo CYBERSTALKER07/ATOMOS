@@ -31,3 +31,21 @@ func CountryFromContext(ctx context.Context, supplierID string) (string, error) 
 func NormalizeCountryCode(code string) string {
 	return strings.ToUpper(strings.TrimSpace(code))
 }
+
+// AssertSameMarket fails closed when any non-empty country disagrees with pack country.
+func AssertSameMarket(packCountry string, countries ...string) error {
+	packCountry = NormalizeCountryCode(packCountry)
+	if packCountry == "" {
+		return ErrGeographyIncomplete
+	}
+	for _, raw := range countries {
+		c := NormalizeCountryCode(raw)
+		if c == "" {
+			continue
+		}
+		if c != packCountry {
+			return ErrCrossMarketDeferred
+		}
+	}
+	return nil
+}

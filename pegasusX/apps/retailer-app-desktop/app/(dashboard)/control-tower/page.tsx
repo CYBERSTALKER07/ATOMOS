@@ -50,7 +50,6 @@ export default function ControlTowerPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await apiFetch("/v1/retailer/control-tower/pulse");
       if (!res.ok) {
@@ -58,9 +57,9 @@ export default function ControlTowerPage() {
         throw new Error((body as { error?: string }).error || `pulse_${res.status}`);
       }
       setPulse((await res.json()) as Pulse);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_pulse"));
-      setPulse(null);
+      setError(null);
+    } catch {
+      setError("control_tower_pulse_failed");
     } finally {
       setLoading(false);
     }
@@ -147,7 +146,7 @@ export default function ControlTowerPage() {
         </div>
       )}
 
-      {pulse?.empty && !loading && (
+      {pulse?.empty && !loading && !error && (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-16 text-center">
           <Activity className="mb-4 h-10 w-10 text-emerald-400/80" />
           <h2 className="text-lg font-semibold">{t("retailer_desktop.control_tower.text.no_live_ops_signals_yet")}</h2>

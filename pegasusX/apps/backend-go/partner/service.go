@@ -437,14 +437,14 @@ func (s *Service) PingWebhook(ctx context.Context, p Principal, subscriptionID s
 		return errNotFound("subscription")
 	}
 	payload := map[string]any{
-		"type":       "PARTNER_WEBHOOK_PING",
+		"type":        EventPartnerWebhookPing,
 		"tenant_type": p.TenantType,
-		"tenant_id":  p.TenantID,
-		"timestamp":  s.now().Format(time.RFC3339),
+		"tenant_id":   p.TenantID,
+		"timestamp":   s.now().Format(time.RFC3339),
 	}
 	body, _ := json.Marshal(payload)
 	eventID := "ping-" + uuid.NewString()
-	return deliver(ctx, sub, eventID, "PARTNER_WEBHOOK_PING", body)
+	return deliver(ctx, sub, eventID, EventPartnerWebhookPing, body)
 }
 
 // ListWebhooks returns subscriptions for the tenant (signing secret omitted by callers).

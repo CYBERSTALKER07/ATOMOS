@@ -8,6 +8,8 @@ struct MarketPack: Sendable, Equatable {
     var currencyCode: String
     var fiscalAdapter: String
     var mapsAdapter: String
+    var mapCenterLat: Double
+    var mapCenterLng: Double
     var checkoutReadsThis: Bool
 
     var receiptLabel: String { fiscalReceiptLabel(fiscalAdapter) }
@@ -34,6 +36,46 @@ func fiscalReceiptLabel(_ adapter: String?) -> String {
 func packCurrency(_ pack: MarketPack?, fallback: String = "") -> String {
     let code = pack?.currencyCode.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     return code.isEmpty ? fallback : code.uppercased()
+}
+
+/// Stored/event currency, else session pack. Empty pack does not invent UZS.
+func displayPackCurrency(_ raw: String?, pack: MarketPack? = MarketPackStore.pack) -> String {
+    let fromEvent = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !fromEvent.isEmpty { return fromEvent.uppercased() }
+    return packCurrency(pack)
+}
+
+/// Shipped pack camera. Empty/planned pack does not invent Tashkent.
+func packMapCenter(_ pack: MarketPack?) -> (lat: Double, lng: Double)? {
+    guard let pack else { return nil }
+    if pack.mapCenterLat == 0 && pack.mapCenterLng == 0 { return nil }
+    return (pack.mapCenterLat, pack.mapCenterLng)
+}
+
+func packMapCoordinate(_ pack: MarketPack? = MarketPackStore.pack) -> (lat: Double, lng: Double) {
+    packMapCenter(pack) ?? (0, 0)
+}
+
+/// Card rails the retailer may tap. Empty catalog never invents Adyen/Stripe.
+func filterRetailerCardGateways(incoming: [String], catalog: [String]) -> [String] {
+    let foreign: Set<String> = ["STRIPE", "ADYEN", "AIRWALLEX"]
+    let allowed = catalog
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+        .filter { !$0.isEmpty && $0 != "CASH" }
+    let raw = incoming
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+        .filter { !$0.isEmpty }
+    if !allowed.isEmpty {
+        return raw.isEmpty ? allowed : raw.filter { allowed.contains($0) }
+    }
+    return raw.filter { !foreign.contains($0) }
+}
+
+func selectableRetailerCatalogCodes(_ catalog: [PSPListing]) -> [String] {
+    catalog
+        .filter(\.selectable)
+        .map { $0.code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+        .filter { !$0.isEmpty && $0 != "STRIPE" && $0 != "ADYEN" && $0 != "AIRWALLEX" }
 }
 
 func pinnedAPIBaseURL(bootstrap: URL) -> URL {
@@ -112,6 +154,8 @@ enum MarketPackBinder {
                 currencyCode: obj["currency_code"] as? String ?? "",
                 fiscalAdapter: obj["fiscal_adapter"] as? String ?? "",
                 mapsAdapter: obj["maps_adapter"] as? String ?? "",
+                mapCenterLat: (obj["map_center_lat"] as? NSNumber)?.doubleValue ?? 0,
+                mapCenterLng: (obj["map_center_lng"] as? NSNumber)?.doubleValue ?? 0,
                 checkoutReadsThis: obj["checkout_reads_this"] as? Bool ?? false
             )
         }

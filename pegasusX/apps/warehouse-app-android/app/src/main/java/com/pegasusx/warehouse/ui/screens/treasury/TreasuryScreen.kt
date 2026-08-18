@@ -115,12 +115,12 @@ fun TreasuryScreen(
                                 ) {
                                     WarehouseMetricTile(
                                         label = stringResource(R.string.warehouse_portal_residual_text_outstanding),
-                                        value = "${fmt.format(o.totalOutstanding)} UZS",
+                                        value = "${fmt.format(o.totalOutstanding)} ${com.pegasus.design.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                     WarehouseMetricTile(
                                         label = stringResource(R.string.mobile_warehouse_ui_invoiced),
-                                        value = "${fmt.format(o.totalInvoiced)} UZS",
+                                        value = "${fmt.format(o.totalInvoiced)} ${com.pegasus.design.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -128,7 +128,7 @@ fun TreasuryScreen(
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 WarehouseMetricTile(
                                     label = stringResource(R.string.warehouse_portal_residual_text_paid),
-                                    value = "${fmt.format(o.totalPaid)} UZS",
+                                    value = "${fmt.format(o.totalPaid)} ${com.pegasus.design.sessionPackCurrency()}",
                                     modifier = Modifier.fillMaxWidth(0.5f),
                                 )
                             }

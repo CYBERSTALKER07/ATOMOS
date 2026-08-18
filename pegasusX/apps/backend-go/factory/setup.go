@@ -67,6 +67,15 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
+	geo, err := stampFactoryCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
 	mutations := make([]*spanner.Mutation, 0, 2)
 
 	if factoryID == "" {
@@ -80,7 +89,7 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		}
 		factoryID = "fac-" + uuid.NewString()[:8]
 		mutations = append(mutations, spanner.Insert("Factories",
-			[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "IsActive", "CreatedAt", "UpdatedAt"},
+			[]string{"FactoryId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CountryCode", "H3Cell", "IsActive", "CreatedAt", "UpdatedAt"},
 			[]any{
 				factoryID,
 				supplierID,
@@ -89,6 +98,8 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 				factoryNullableString(strings.TrimSpace(req.PlaceID)),
 				req.Lat,
 				req.Lng,
+				geo.CountryCode,
+				geo.H3Cell,
 				true,
 				now,
 				now,
@@ -101,12 +112,14 @@ func (s *Service) HandleFactorySetup(w http.ResponseWriter, r *http.Request) {
 		}))
 	} else {
 		update := map[string]any{
-			"FactoryId": factoryID,
-			"Address":   strings.TrimSpace(req.Address),
-			"PlaceId":   factoryNullableString(strings.TrimSpace(req.PlaceID)),
-			"Lat":       req.Lat,
-			"Lng":       req.Lng,
-			"UpdatedAt": now,
+			"FactoryId":   factoryID,
+			"Address":     strings.TrimSpace(req.Address),
+			"PlaceId":     factoryNullableString(strings.TrimSpace(req.PlaceID)),
+			"Lat":         req.Lat,
+			"Lng":         req.Lng,
+			"CountryCode": geo.CountryCode,
+			"H3Cell":      geo.H3Cell,
+			"UpdatedAt":   now,
 		}
 		if name := strings.TrimSpace(req.Name); name != "" {
 			update["Name"] = name

@@ -21,13 +21,29 @@ export default function WarehousesPage() {
   useSupplierSessionReconcile(() => setRefreshTick(t => t + 1));
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [modes, setModes] = useState<Record<string, string>>({});
 
   const load = () => {
     setLoading(true);
     setError(null);
     api
       .getSupplierTopology()
-      .then((t) => setTopology(t))
+      .then(async (topo) => {
+        setTopology(topo);
+        const next: Record<string, string> = {};
+        await Promise.all(
+          (topo.warehouses ?? []).map(async (row) => {
+            if (!row.warehouse_id) return;
+            try {
+              const cov = await api.getWarehouseCoverage(row.warehouse_id);
+              next[row.warehouse_id] = cov.mode;
+            } catch {
+              next[row.warehouse_id] = "COUNTRY_CLOSEST";
+            }
+          }),
+        );
+        setModes(next);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_warehouses_failed")))
       .finally(() => setLoading(false));
   };
@@ -97,9 +113,10 @@ export default function WarehousesPage() {
       )}
 
       {!showForm && (
-        <WarehouseList 
-          warehouses={warehouses} 
-          onAddFirst={() => setShowForm(true)} 
+        <WarehouseList
+          warehouses={warehouses}
+          modes={modes}
+          onAddFirst={() => setShowForm(true)}
         />
       )}
     </PageChrome>

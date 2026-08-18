@@ -252,6 +252,7 @@ final class AuthManager {
         needsSetup = !configured
         needsOrgSelect = false
         pendingMemberships = nil
+        Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
     }
 }
 

@@ -51,6 +51,7 @@ struct DispatchView: View {
     @State private var detailRoute: DispatchOrderDetailRoute?
     @State private var handoffEvents: [WarehousePulseEvent] = []
     @State private var handoffLoading = true
+    @State private var handoffError: String?
 
     private var capacitySuggestedUnselect: [String] {
         Array(Set(capacityWarnings.flatMap(\.suggestedUnselectOrderIds)))
@@ -287,7 +288,7 @@ struct DispatchView: View {
                 .padding(.horizontal)
                 .padding(.top, LabTheme.spacingSM)
 
-            HandoffTimelineSection(events: handoffEvents, loading: handoffLoading)
+            HandoffTimelineSection(events: handoffEvents, loading: handoffLoading, error: handoffError)
                 .padding(.horizontal)
                 .padding(.bottom, LabTheme.spacingSM)
 
@@ -516,18 +517,26 @@ struct DispatchView: View {
                 supplyRequests = try await supplyData
                 dispatchLocks = try await lockData
                 fleetVehicles = try await fleetData.vehicles
-                handoffLoading = true
-                if let pulse = try? await WarehouseService.pulse() {
-                    handoffEvents = HandoffPulseSupport.filter(pulse.events)
-                } else {
-                    handoffEvents = []
-                }
-                handoffLoading = false
             } catch {
                 if !silent { self.error = describe(error, fallback: "Failed to load dispatch data") }
-                handoffEvents = []
-                handoffLoading = false
             }
+            handoffLoading = true
+            handoffError = nil
+            do {
+                let pulse = try await WarehouseService.pulse()
+                let result = PulseHonesty.apply(
+                    ok: true,
+                    incoming: HandoffPulseSupport.filter(pulse.events),
+                    previous: handoffEvents
+                )
+                handoffEvents = result.events
+                handoffError = result.error
+            } catch {
+                let result = PulseHonesty.apply(ok: false, incoming: nil, previous: handoffEvents)
+                handoffEvents = result.events
+                handoffError = result.error
+            }
+            handoffLoading = false
             if !silent { loading = false }
         }
     }
@@ -865,8 +874,10 @@ private struct DispatchStatusBanner: View {
 private struct HandoffTimelineSection: View {
     let events: [WarehousePulseEvent]
     let loading: Bool
+    var error: String? = nil
 
     private var subtitle: String {
+        if let error, !error.isEmpty { return error }
         if loading && events.isEmpty { return "Loading handoff chain…" }
         if events.isEmpty { return "No preorder → dispatch → seal events in the recent pulse window." }
         return "\(events.count) handoff event(s) in recent pulse."
@@ -878,23 +889,25 @@ private struct HandoffTimelineSection: View {
                 .font(.headline)
             Text(subtitle)
                 .font(.caption)
-                .foregroundStyle(.secondary)
-            ForEach(events.prefix(8)) { event in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(event.title)
-                        .font(.subheadline.bold())
-                        .lineLimit(2)
-                    if let description = event.description, !description.isEmpty {
-                        Text(description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
+                .foregroundStyle((error ?? "").isEmpty ? Color.secondary : Color.red)
+            if (error ?? "").isEmpty {
+                ForEach(events.prefix(8)) { event in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(event.title)
+                            .font(.subheadline.bold())
+                            .lineLimit(2)
+                        if let description = event.description, !description.isEmpty {
+                            Text(description)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(3)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(LabTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(LabTheme.card)
-                .clipShape(RoundedRectangle(cornerRadius: LabTheme.radiusMD))
             }
         }
     }

@@ -86,7 +86,7 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 		OrderLineMaxQuantity       *int64           `json:"order_line_max_quantity"`
 		ClearOrderLineMinQuantity  *bool            `json:"clear_order_line_min_quantity"`
 		ClearOrderLineMaxQuantity  *bool            `json:"clear_order_line_max_quantity"`
-		DeliveryFeeRules         *json.RawMessage `json:"delivery_fee_rules"`
+		DeliveryFeeRules           *json.RawMessage `json:"delivery_fee_rules"`
 		ClearDeliveryFeeRules      *bool            `json:"clear_delivery_fee_rules"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -113,7 +113,15 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 		update["OperatingSchedule"] = spanner.NullJSON{Value: *req.OperatingSchedule, Valid: true}
 	}
 	if req.RegionID != nil {
-		update["RegionId"] = strings.TrimSpace(*req.RegionID)
+		regionID := strings.TrimSpace(*req.RegionID)
+		if regionID == "" {
+			update["RegionId"] = nil
+		} else if !s.supplierRegionOwned(r.Context(), warehouseID, regionID) {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "unknown_supplier_region"})
+			return
+		} else {
+			update["RegionId"] = regionID
+		}
 	}
 	if req.IsOnShift != nil {
 		update["IsOnShift"] = *req.IsOnShift
@@ -172,8 +180,25 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		update["DeliveryFeeRules"] = spanner.NullJSON{Value: *req.DeliveryFeeRules, Valid: true}
-		_ = rules
+		pack, packErr := auth.CheckoutPackFromContext(r.Context())
+		if packErr != nil {
+			if writeMarketLaw(w, packErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": packErr.Error()})
+			return
+		}
+		if err := lockDeliveryFeeCurrency(pack, rules); err != nil {
+			status, code := auth.CheckoutPackHTTPStatus(err)
+			writeJSON(w, status, map[string]string{"error": code})
+			return
+		}
+		lockedJSON, err := json.Marshal(rules)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_delivery_fee_rules"})
+			return
+		}
+		update["DeliveryFeeRules"] = spanner.NullJSON{Value: json.RawMessage(lockedJSON), Valid: true}
 	}
 	if req.ExpressEnabled != nil || req.ExpressStockFloor != nil {
 		schedJSON := loadOperatingScheduleJSON(r.Context(), s.spannerClient, warehouseID)
@@ -211,4 +236,57 @@ func (s *Service) handlePatchOpsSettings(w http.ResponseWriter, r *http.Request,
 	s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
 	idemCommitted = true
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// supplierRegionOwned is W14: Warehouses.RegionId may only point at SupplierRegions,
+// never the unused global Regions table.
+func (s *Service) supplierRegionOwned(ctx context.Context, warehouseID, regionID string) bool {
+	if s.spannerClient == nil || strings.TrimSpace(regionID) == "" {
+		return false
+	}
+	row, err := s.spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
+	if err != nil {
+		return false
+	}
+	var supplierID string
+	if err := row.Columns(&supplierID); err != nil || strings.TrimSpace(supplierID) == "" {
+		return false
+	}
+	return s.supplierRegionExistsForSupplier(ctx, supplierID, regionID)
+}
+
+func (s *Service) supplierRegionExistsForSupplier(ctx context.Context, supplierID, regionID string) bool {
+	if s == nil || s.spannerClient == nil {
+		return false
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	regionID = strings.TrimSpace(regionID)
+	if supplierID == "" || regionID == "" {
+		return false
+	}
+	_, err := s.spannerClient.Single().ReadRow(ctx, "SupplierRegions", spanner.Key{supplierID, regionID}, []string{"RegionId"})
+	return err == nil
+}
+
+func lockDeliveryFeeCurrency(pack auth.MarketPack, rules *DeliveryFeeRules) error {
+	if rules == nil {
+		return nil
+	}
+	locked, err := auth.ResolveCheckoutCurrency(pack, rules.Currency)
+	if err != nil {
+		return err
+	}
+	rules.Currency = locked
+	return nil
+}
+
+func (s *Service) rejectUnknownSupplierRegion(w http.ResponseWriter, ctx context.Context, supplierID string, regionID *string) bool {
+	if regionID == nil || strings.TrimSpace(*regionID) == "" {
+		return false
+	}
+	if s.supplierRegionExistsForSupplier(ctx, supplierID, *regionID) {
+		return false
+	}
+	writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "unknown_supplier_region"})
+	return true
 }

@@ -135,7 +135,16 @@ func TestPayoutExport_FailClosedBankDetails(t *testing.T) {
 		t.Fatalf("generate: %v", err)
 	}
 	// No SupplierProfiles row: bank details resolution must fail, no file.
-	if _, _, err := svc.ExportBankFile(ctx, b.BatchID); err == nil {
+	if _, _, err := svc.ExportBankFile(ctx, supplierID, b.BatchID); err == nil {
 		t.Fatal("export without bank details must fail closed")
+	}
+	if _, _, err := svc.ExportBankFile(ctx, "sup-other", b.BatchID); err != ErrBatchNotFound {
+		t.Fatalf("foreign export: %v", err)
+	}
+	if err := svc.MarkPaid(ctx, "sup-other", b.BatchID); err != ErrBatchNotFound {
+		t.Fatalf("foreign mark-paid: %v", err)
+	}
+	if _, err := svc.SubmitForDispatch(ctx, "sup-other", b.BatchID, false); err != ErrBatchNotFound {
+		t.Fatalf("foreign dispatch: %v", err)
 	}
 }

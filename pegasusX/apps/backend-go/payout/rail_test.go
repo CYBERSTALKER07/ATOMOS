@@ -69,7 +69,7 @@ func TestPayoutRail_DispatchThenSettlementConfirm(t *testing.T) {
 	}
 
 	// Live dispatch moves DRAFT -> SUBMITTED and records the rail reference.
-	b, err = svc.SubmitForDispatch(ctx, b.BatchID, true)
+	b, err = svc.SubmitForDispatch(ctx, supplierID, b.BatchID, true)
 	if err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestPayoutRail_LiveDispatchOnFileRailFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
-	if _, err := svc.SubmitForDispatch(ctx, b.BatchID, true); err == nil {
+	if _, err := svc.SubmitForDispatch(ctx, supplierID, b.BatchID, true); err == nil {
 		t.Fatal("live dispatch on non-live rail must fail closed")
 	}
 	got, _, _ := svc.repo.Get(ctx, b.BatchID)
@@ -127,7 +127,7 @@ func TestPayoutRail_LiveDispatchOnFileRailFailsClosed(t *testing.T) {
 		t.Fatalf("batch stranded in SUBMITTED with empty rail ref; status = %s", got.Status)
 	}
 	// Still dispatchable as a file export.
-	if _, err := svc.SubmitForDispatch(ctx, b.BatchID, false); err != nil {
+	if _, err := svc.SubmitForDispatch(ctx, supplierID, b.BatchID, false); err != nil {
 		t.Fatalf("file export after fail-closed live attempt: %v", err)
 	}
 }

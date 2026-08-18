@@ -36,7 +36,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [preorders, setPreorders] = useState<RetailerOrderLifecycleResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(searchParams.get('state') ?? '');
   const [actingId, setActingId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{
     orderId: string;

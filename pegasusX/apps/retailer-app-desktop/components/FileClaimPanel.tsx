@@ -13,6 +13,7 @@ import {
   type ClaimEligibility,
   type RetailerClaim,
 } from "../lib/api";
+import { moneyCurrency } from "../lib/payment-catalog";
 import type { Order } from "../lib/types";
 
 function formatEligibleUntil(endsAt: string | null | undefined): string | null {
@@ -387,7 +388,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
             <p key={c.claim_id} className="text-xs text-[var(--desk-text-secondary)]">
               {c.claim_type} · {c.status}
               {c.amount_minor != null
-                ? ` · ${c.amount_minor} ${c.currency ?? "UZS"}`
+                ? ` · ${c.amount_minor} ${moneyCurrency(c.currency)}`
                 : ""}
             </p>
           ))}

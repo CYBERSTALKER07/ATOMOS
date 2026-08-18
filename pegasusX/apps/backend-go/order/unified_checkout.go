@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"cloud.google.com/go/spanner"
 	h3 "github.com/uber/h3-go/v4"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -185,7 +184,8 @@ func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
-			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch):
+			errors.Is(err, auth.ErrPackGatewayForbidden), errors.Is(err, auth.ErrPackCurrencyMismatch),
+			errors.Is(err, auth.ErrGeographyIncomplete), errors.Is(err, auth.ErrCrossMarketDeferred):
 			st, code := auth.CheckoutPackHTTPStatus(err)
 			writeJSON(w, st, map[string]string{"error": code})
 		default:
@@ -235,10 +235,11 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		return UnifiedCheckoutResponse{}, err
 	}
 
-	lat, lng, err := s.resolveRetailerCoordinates(ctx, retailerID, req.Latitude, req.Longitude)
+	store, err := s.resolveCheckoutStore(ctx, retailerID, req.Latitude, req.Longitude)
 	if err != nil {
 		return UnifiedCheckoutResponse{}, err
 	}
+	lat, lng := store.Lat, store.Lng
 	h3Cell, err := h3CellFromLatLng(lat, lng)
 	if err != nil {
 		return UnifiedCheckoutResponse{}, fmt.Errorf("derive h3 cell: %w", err)
@@ -328,6 +329,9 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 	}
 	if len(groups) == 0 {
 		return UnifiedCheckoutResponse{}, errors.New("items must not be empty")
+	}
+	if err := assertChildSuppliersSameMarket(ctx, pack, groups); err != nil {
+		return UnifiedCheckoutResponse{}, err
 	}
 
 	parentID := strings.Replace(s.newID(), "ord_", "par_", 1)
@@ -432,27 +436,11 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 }
 
 func (s *Service) resolveRetailerCoordinates(ctx context.Context, retailerID string, lat, lng float64) (float64, float64, error) {
-	if lat != 0 || lng != 0 {
-		return lat, lng, nil
-	}
-	if s.spannerClient == nil {
-		return 0, 0, errors.New("lat/lng required")
-	}
-	row, err := s.spannerClient.Single().ReadRow(ctx, "Retailers",
-		spanner.Key{retailerID},
-		[]string{"Latitude", "Longitude"},
-	)
+	store, err := s.resolveCheckoutStore(ctx, retailerID, lat, lng)
 	if err != nil {
-		return 0, 0, fmt.Errorf("load retailer coordinates: %w", err)
+		return 0, 0, err
 	}
-	var storedLat, storedLng spanner.NullFloat64
-	if err := row.Columns(&storedLat, &storedLng); err != nil {
-		return 0, 0, fmt.Errorf("decode retailer coordinates: %w", err)
-	}
-	if storedLat.Valid && storedLng.Valid && (storedLat.Float64 != 0 || storedLng.Float64 != 0) {
-		return storedLat.Float64, storedLng.Float64, nil
-	}
-	return 0, 0, errors.New("lat/lng required")
+	return store.Lat, store.Lng, nil
 }
 
 func h3CellFromLatLng(lat, lng float64) (string, error) {

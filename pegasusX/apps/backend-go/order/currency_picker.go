@@ -136,3 +136,16 @@ func (s *Service) HandleOrderCurrencies(w http.ResponseWriter, r *http.Request) 
 	}
 	writeJSON(w, http.StatusOK, opts)
 }
+
+// fiscalCurrency is empty-currency law for receipts: stored ISO code, else the
+// shipped pack. Planned/unknown packs fail closed — never invent UZS.
+func fiscalCurrency(ctx context.Context, supplierID, stored string) (string, error) {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, stored)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(c) == "" {
+		return "", auth.ErrMarketPackNotShipped
+	}
+	return c, nil
+}

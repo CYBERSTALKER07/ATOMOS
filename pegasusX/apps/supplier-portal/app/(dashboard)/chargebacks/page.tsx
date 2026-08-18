@@ -6,6 +6,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { supplierFetch } from "@/lib/auth";
 import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
 
 export default function ChargebacksPage() {
   const t = usePortalT();
@@ -15,16 +16,17 @@ export default function ChargebacksPage() {
   // Chargeback state
   const [orderId, setOrderId] = useState("");
   const [retailerId, setRetailerId] = useState("");
-  const [gateway, setGateway] = useState("ADYEN");
+  const [gateway, setGateway] = useState("CASH");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("UZS");
+  const { gateways, currency: packCurrency } = useSupplierPaymentCatalog();
+  const currency = packCurrency;
   const [chargebackMessage, setChargebackMessage] = useState<string | null>(null);
 
   // Reversal state
   const [sessionId, setSessionId] = useState("");
   const [reversalMessage, setReversalMessage] = useState<string | null>(null);
 
-  const gateways = ["ADYEN", "GLOBAL_PAY", "STRIPE", "PAYME", "CLICK", "CASH"];
+  const gatewayOptions = gateways.length ? gateways : ["CASH"];
 
   const submitChargeback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,7 +150,7 @@ export default function ChargebacksPage() {
                     onChange={(e) => setGateway(e.target.value)}
                     className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
                   >
-                    {gateways.map(g => <option key={g} value={g}>{g}</option>)}
+                    {gatewayOptions.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -168,9 +170,9 @@ export default function ChargebacksPage() {
                     <input
                       type="text"
                       value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)] uppercase"
-                      placeholder="UZS"
+                      readOnly
+                      className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none text-[var(--desk-text-primary)] uppercase"
+                      placeholder="pack currency"
                       required
                     />
                   </div>

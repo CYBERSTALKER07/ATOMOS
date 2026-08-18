@@ -15,6 +15,14 @@ export default defineConfig({
         find: "@pegasusx/api-client",
         replacement: path.resolve(__dirname, "../../packages/api-client/index.ts"),
       },
+      {
+        find: "@pegasusx/ui-kit/portal",
+        replacement: path.resolve(__dirname, "../../packages/ui-kit/src/portal/index.ts"),
+      },
+      {
+        find: "@pegasusx/ws-refresh-contract",
+        replacement: path.resolve(__dirname, "../../packages/ws-refresh-contract/index.ts"),
+      },
     ],
   },
   test: {

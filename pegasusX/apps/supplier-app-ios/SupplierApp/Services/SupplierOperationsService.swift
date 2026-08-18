@@ -348,6 +348,10 @@ enum SupplierOperationsService {
         )
     }
 
+    static func planningSparsity(retailerId: String) async throws -> SparsityGateResult {
+        try await APIClient.shared.get("v1/supplier/planning/sparsity/\(retailerId)")
+    }
+
     static func planningPredictivePush(idempotencyKey: String) async throws -> PredictivePushResponse {
         struct EmptyBody: Encodable {}
         return try await APIClient.shared.post(

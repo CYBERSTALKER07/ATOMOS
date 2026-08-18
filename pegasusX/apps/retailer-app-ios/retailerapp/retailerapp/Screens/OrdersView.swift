@@ -25,6 +25,8 @@ enum OrderTab: String, CaseIterable {
 
 struct OrdersView: View {
     @Environment(\.modelContext) private var modelContext
+    var initialCommandStatus: String? = nil
+    var initialSupplierId: String? = nil
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var vm = OrdersViewModel()
     @State private var selectedTab: OrderTab = .active
@@ -39,20 +41,28 @@ struct OrdersView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Top Tabs
-                topTabs
+                if vm.commandStatus != nil {
+                    commandFilterBanner
+                    commandFilteredContent
+                } else {
+                    topTabs
 
-                Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
+                    Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 
-                // Tab Content
-                TabView(selection: $selectedTab) {
-                    activeContent.tag(OrderTab.active)
-                    pendingContent.tag(OrderTab.pending)
-                    aiPlannedContent.tag(OrderTab.aiPlanned)
+                    TabView(selection: $selectedTab) {
+                        activeContent.tag(OrderTab.active)
+                        pendingContent.tag(OrderTab.pending)
+                        aiPlannedContent.tag(OrderTab.aiPlanned)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .background(AppTheme.background)
+            .onAppear {
+                if let initialCommandStatus {
+                    vm.applyCommandFilter(status: initialCommandStatus, supplierId: initialSupplierId)
+                }
+            }
             .task { await vm.loadData() }
             .task { await vm.listenWebSocket(modelContext: modelContext) }
             .task { await vm.flushPendingOrders(modelContext: modelContext) }
@@ -106,6 +116,66 @@ struct OrdersView: View {
             }
         }
         .animation(AnimationConstants.fluid, value: qrOverlayOrder?.id)
+    }
+
+    private var commandFilterBanner: some View {
+        HStack {
+            Text("Filtered by \((vm.commandStatus ?? "").replacingOccurrences(of: "_", with: " "))")
+                .font(.footnote)
+                .accessibilityIdentifier("gs-u-command-filter")
+            if let supplier = vm.commandSupplierId, !supplier.isEmpty {
+                Text(supplier)
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.textTertiary)
+            }
+            Spacer()
+            Button("Clear") { vm.clearCommandFilter() }
+                .font(.footnote.bold())
+        }
+        .padding(.horizontal, AppTheme.spacingLG)
+        .padding(.vertical, AppTheme.spacingSM)
+        .background(AppTheme.cardBackground)
+    }
+
+    private var commandFilteredContent: some View {
+        ScrollView {
+            let orders = vm.commandFilteredOrders
+            if vm.isLoading && orders.isEmpty {
+                SkeletonOrderList()
+            } else if orders.isEmpty {
+                tabEmptyState(icon: "line.3.horizontal.decrease", title: "No matching orders", message: "Nothing in this status filter")
+            } else {
+                LazyVStack(spacing: AppTheme.spacingMD) {
+                    ForEach(orders) { order in
+                        OrderCardView(
+                            order: order,
+                            onCancel: order.status.canCancel ? {
+                                RetailerAsync.run { await vm.cancelOrder(order) }
+                            } : nil,
+                            onConfirmAi: order.status == .pendingReview ? {
+                                RetailerAsync.run { await vm.confirmAiOrder(order.id) }
+                            } : nil,
+                            onRejectAi: order.status == .pendingReview ? {
+                                RetailerAsync.run { await vm.rejectAiOrder(order.id) }
+                            } : nil,
+                            onConfirmPreorder: order.needsManualPreorderAction ? {
+                                RetailerAsync.run { await vm.confirmPreorder(order.id) }
+                            } : nil,
+                            onEditPreorder: order.needsManualPreorderAction ? {
+                                RetailerAsync.run { await vm.editPreorder(order) }
+                            } : nil,
+                            onReviewDeliveryProposal: order.needsDeliveryProposalReview ? {
+                                deliveryProposalOrder = order
+                            } : nil
+                        )
+                    }
+                }
+                .padding(.horizontal, AppTheme.spacingLG)
+                .padding(.top, AppTheme.spacingMD)
+                .padding(.bottom, AppTheme.spacingHuge)
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     // MARK: - Top Tabs

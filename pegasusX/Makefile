@@ -1,14 +1,17 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
+|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
 
 help:
 	@echo "pegasusX make targets"
 	@echo "  infra-up              start Spanner emulator, Redis, Kafka via docker-compose"
 	@echo "  infra-down            stop infra"
-	@echo "  ssmr-infra-up         start the isolated SSMR sandbox stack"
-	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
-	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
-	@echo "  test-ssmr-lifecycle   Phase 6: create→dispatch→seal→complete vertical only"
-	@echo "  test-ssmr-fiscal      ADR-009 fiscal hard-gate markers (cash/fail/force/shortfall/shift-freeze)"
+	@echo "  sandbox-infra-up      start the isolated sandbox stack"
+	@echo "  sandbox-infra-down    stop the isolated sandbox stack"
+	@echo "  test-sandbox-infra    run isolated sandbox smoke + full-ecosystem PX_E2E marker gate"
+	@echo "  test-sandbox-lifecycle Phase 6: create→dispatch→seal→complete vertical only"
+	@echo "  test-sandbox-fiscal   ADR-009 fiscal hard-gate markers (cash/fail/force/shortfall/shift-freeze)"
+	@echo "  ssmr-infra-up         alias of sandbox-infra-up (deprecated name)"
+	@echo "  ssmr-infra-down       alias of sandbox-infra-down"
+	@echo "  test-ssmr-infra       alias of test-sandbox-infra"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
 	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
 	@echo "  planning-export-local-cron  PX-LC-2 daily export+validate; appends artifacts/planning-export-audit.log"
@@ -21,7 +24,8 @@ help:
 	@echo "  phase0-sync-secrets       sync .env.staging.secrets → GSM (post-apply)"
 	@echo "  phase0-migrate            apply Spanner migrations through 20260702 on cloud"
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
-	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
+	@echo "  sandbox-ecosystem-marker-gate validate PX_E2E log against contracts/sandbox_ecosystem_markers.json"
+	@echo "  ssmr-ecosystem-marker-gate alias of sandbox-ecosystem-marker-gate"
 	@echo "  schema-drift-gate         EH0.3 fail if shop-closed Spanner columns/tables missing"
 	@echo "  money-path-gate           Phase-0 money-path + hygiene greps + gitleaks"
 	@echo "  kafka-ha-gate             Phase-0 Kafka HA contracts (Strimzi RF=3, Managed Kafka RF=3, DLQ)"
@@ -86,23 +90,41 @@ infra-up:
 infra-down:
 	docker compose -f infra/docker-compose.yml down
 
-ssmr-infra-up:
-	docker compose -f infra/docker-compose.ssmr.yml up -d
+sandbox-infra-up:
+	docker compose -f infra/docker-compose.sandbox.yml up -d
 
-ssmr-infra-down:
-	docker compose -f infra/docker-compose.ssmr.yml down
+sandbox-infra-down:
+	docker compose -f infra/docker-compose.sandbox.yml down
 
-ssmr-infra-reset:
-	docker compose -f infra/docker-compose.ssmr.yml down -v --remove-orphans
+sandbox-infra-reset:
+	docker compose -f infra/docker-compose.sandbox.yml down -v --remove-orphans
 
-test-ssmr-infra:
-	bash scripts/smoke_ssmr.sh
+test-sandbox-infra:
+	bash scripts/smoke_sandbox.sh
 
-test-ssmr-lifecycle:
-	bash scripts/smoke_ssmr_lifecycle.sh
+test-sandbox-lifecycle:
+	bash scripts/smoke_sandbox_lifecycle.sh
 
-test-ssmr-fiscal:
-	bash scripts/smoke_ssmr_fiscal.sh
+test-sandbox-fiscal:
+	bash scripts/smoke_sandbox_fiscal.sh
+
+sandbox-ecosystem-marker-gate:
+	@test -n "$(LOG)" || (echo "usage: make sandbox-ecosystem-marker-gate LOG=path/to/sandbox-e2e.log" >&2; exit 1)
+	bash scripts/parity/sandbox_ecosystem_marker_gate.sh "$(LOG)"
+
+ssmr-infra-up: sandbox-infra-up
+
+ssmr-infra-down: sandbox-infra-down
+
+ssmr-infra-reset: sandbox-infra-reset
+
+test-ssmr-infra: test-sandbox-infra
+
+test-ssmr-lifecycle: test-sandbox-lifecycle
+
+test-ssmr-fiscal: test-sandbox-fiscal
+
+ssmr-ecosystem-marker-gate: sandbox-ecosystem-marker-gate
 
 planning-training-export:
 	bash scripts/planning_training_export.sh
@@ -139,10 +161,6 @@ phase0-sync-secrets:
 
 phase0-migrate:
 	bash scripts/phase0_apply_spanner_migrations.sh
-
-ssmr-ecosystem-marker-gate:
-	@test -n "$(LOG)" || (echo "usage: make ssmr-ecosystem-marker-gate LOG=path/to/ssmr-e2e.log" >&2; exit 1)
-	bash scripts/parity/ssmr_ecosystem_marker_gate.sh "$(LOG)"
 
 schema-drift-gate:
 	bash scripts/ci_schema_drift_gate.sh

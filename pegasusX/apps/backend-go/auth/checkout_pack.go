@@ -12,6 +12,8 @@ var (
 	ErrMarketPackNotShipped = errors.New("market_pack_not_shipped")
 	ErrPackGatewayForbidden = errors.New("pack_gateway_forbidden")
 	ErrPackCurrencyMismatch = errors.New("pack_currency_mismatch")
+	ErrGeographyIncomplete  = errors.New("geography_incomplete")
+	ErrCrossMarketDeferred  = errors.New("cross_market_deferred")
 )
 
 // CheckoutPackFromContext returns the shipped pack checkout must use (GS-M1).
@@ -109,7 +111,8 @@ func CheckoutPackHTTPStatus(err error) (int, string) {
 	switch {
 	case errors.Is(err, ErrMarketPackUnknown), errors.Is(err, ErrMarketPackNotShipped):
 		return http.StatusNotFound, err.Error()
-	case errors.Is(err, ErrPackGatewayForbidden), errors.Is(err, ErrPackCurrencyMismatch):
+	case errors.Is(err, ErrPackGatewayForbidden), errors.Is(err, ErrPackCurrencyMismatch),
+		errors.Is(err, ErrGeographyIncomplete), errors.Is(err, ErrCrossMarketDeferred):
 		return http.StatusUnprocessableEntity, err.Error()
 	default:
 		return http.StatusUnprocessableEntity, err.Error()

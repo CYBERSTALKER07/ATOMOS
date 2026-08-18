@@ -101,7 +101,7 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 		go func(m kafka.Message, e events.InventoryImportEvent) {
 			defer func() { <-importSem }()
 
-			processErr := r.repo.ProcessImportUploaded(ctx, r.opener, e.SupplierID, e.SessionID, e.GCSPath)
+			processErr := r.repo.ProcessImportUploaded(ctx, r.opener, e.SupplierID, e.SessionID, e.GCSPath, nil)
 			if processErr != nil {
 				r.logger.Error("inventory import processing failed",
 					"session_id", e.SessionID,

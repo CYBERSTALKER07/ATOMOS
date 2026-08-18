@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -55,7 +54,16 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 	if req.DefaultOutOfStockPolicy == "" {
 		req.DefaultOutOfStockPolicy = "REJECT"
 	}
-	req.CountryCode = strings.ToUpper(strings.TrimSpace(req.CountryCode))
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
@@ -135,7 +143,16 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	req.SupplierID = supplierID
-	req.CountryCode = strings.ToUpper(strings.TrimSpace(req.CountryCode))
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{

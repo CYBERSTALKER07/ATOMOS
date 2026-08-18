@@ -10,12 +10,9 @@ import SwiftUI
 
 @main
 struct retailerappApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var cartManager = CartManager()
     @State private var authManager = AuthManager.shared
-
-    init() {
-        FirebaseAuthHelper.shared.configure()
-    }
 
     var body: some Scene {
         WindowGroup {

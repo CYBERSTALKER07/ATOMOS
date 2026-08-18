@@ -127,6 +127,9 @@ func IssueWSTicket(session Claims, opts IssueOptions) (token string, expiresAt t
 		opts.Now = func() time.Time { return time.Now().UTC() }
 	}
 	now := opts.Now()
+	if IsWSTicket(session) || IsPendingOrgSelect(session) {
+		return "", time.Time{}, errors.New("jwt: cannot mint websocket ticket from restricted token")
+	}
 	ticket := session
 	ticket.TokenUse = TokenUseWS
 	ticket.JTI = ""
@@ -144,7 +147,7 @@ func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
 		return Claims{}, false
 	}
 	claims, err := Parse(token, secret)
-	if err != nil || tokenRevoked(r.Context(), claims) {
+	if err != nil || tokenRevoked(r.Context(), claims) || IsWSTicket(claims) {
 		return Claims{}, false
 	}
 	return claims, true
@@ -243,12 +246,12 @@ func SessionAuth(secret string) func(http.Handler) http.Handler {
 
 func attachSessionClaims(r *http.Request, secret string) *http.Request {
 	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
-		if claims, err := Parse(c.Value, secret); err == nil && !tokenRevoked(r.Context(), claims) {
+		if claims, err := Parse(c.Value, secret); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}
 	if token := BearerToken(r); token != "" {
-		if claims, err := Parse(token, secret); err == nil && !tokenRevoked(r.Context(), claims) {
+		if claims, err := Parse(token, secret); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}
@@ -256,18 +259,18 @@ func attachSessionClaims(r *http.Request, secret string) *http.Request {
 }
 
 func tokenRevoked(ctx context.Context, claims Claims) bool {
+	revoked, err := checkTokenRevoked(ctx, claims)
+	// Store errors fail closed so a Redis blip cannot revive a denylisted jti.
+	return err != nil || revoked
+}
+
+func checkTokenRevoked(ctx context.Context, claims Claims) (revoked bool, err error) {
 	jti := strings.TrimSpace(claims.JTI)
 	if jti == "" {
 		// Legacy tokens without jti cannot be denylisted; still accept until they expire.
-		return false
+		return false, nil
 	}
-	revoked, err := GetRevocationStore().IsRevoked(ctx, jti)
-	if err != nil {
-		// Fail open on store errors so Redis blips do not mass-logout; logout still
-		// works when Redis is healthy. Tighten to fail-closed once dual-store lands.
-		return false
-	}
-	return revoked
+	return GetRevocationStore().IsRevoked(ctx, jti)
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

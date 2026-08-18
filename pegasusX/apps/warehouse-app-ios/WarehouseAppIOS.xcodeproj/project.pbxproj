@@ -53,6 +53,7 @@
 		74040992C244ADCBC029836B /* AnalyticsChartGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67373CCC7EAD11B9DD9E8CF8 /* AnalyticsChartGrid.swift */; };
 		790DE066913716D49FAA7265 /* VehiclesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099B6981BACDB5CF1D58C323 /* VehiclesView.swift */; };
 		7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */; };
+		B16B0002C0DE0002COV00001 /* CoverageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16B0002C0DE0002COV00001 /* CoverageView.swift */; };
 		83EEB6CA24987B9942F3B483 /* PegasusMonochromeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80E3F28874367381DEDC9487 /* PegasusMonochromeTheme.swift */; };
 		847FEAD79E9D1F03DBBEBD44 /* WarehouseSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A38306625F489B4D906CF07 /* WarehouseSection.swift */; };
 		87CDE0C61906C3696F97D7A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1526416176EC1A52A2487036 /* RootView.swift */; };
@@ -90,6 +91,7 @@
 		CF11DBFBE8D5897341720DEA /* ReturnPolicySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDCC7749D915F7B03D42FEA /* ReturnPolicySettingsView.swift */; };
 		CF5BFE1B9756F27FDA763C24 /* ClientPolicyBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AAC0004822220E1F3A889B /* ClientPolicyBanner.swift */; };
 		CF8337D641A91779C0F79517 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = A5D9CE6DBACDE4ABB90D44E4 /* FirebaseAuth */; };
+		FC0000000000000000000001 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FC0000000000000000000002 /* FirebaseMessaging */; };
 		D03E70A76CBFEA79900DCDB1 /* ProductsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B4415599F87770EB09AE1 /* ProductsView.swift */; };
 		D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */; };
 		D79918203A3815B141303368 /* DispatchPreviewMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D3F9071290B8729D26669BF /* DispatchPreviewMapView.swift */; };
@@ -122,6 +124,7 @@
 		0082A56E3C64024A01089CA8 /* ForecastConfidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastConfidenceView.swift; sourceTree = "<group>"; };
 		0101A3B8233E0C365615F34B /* InventoryStockList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryStockList.swift; sourceTree = "<group>"; };
 		05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentConfigView.swift; sourceTree = "<group>"; };
+		A16B0002C0DE0002COV00001 /* CoverageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverageView.swift; sourceTree = "<group>"; };
 		0721B54C1B62500CACA4B2C4 /* VehicleDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleDetailView.swift; sourceTree = "<group>"; };
 		07A64AD811E451A8DAFB8448 /* DriversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriversView.swift; sourceTree = "<group>"; };
 		08AAC0004822220E1F3A889B /* ClientPolicyBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientPolicyBanner.swift; sourceTree = "<group>"; };
@@ -238,6 +241,7 @@
 			files = (
 				CF8337D641A91779C0F79517 /* FirebaseAuth in Frameworks */,
 				8BB302FE0527A0541C5D0C1B /* FirebaseCore in Frameworks */,
+				FC0000000000000000000001 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -459,6 +463,7 @@
 				C5E0372E57895937D9F01382 /* Notifications */,
 				91CDA53AF406A307964B2293 /* Operations */,
 				420412FE46599C30C20E49F9 /* Orders */,
+				C16B0002C0DE0002COV00001 /* Coverage */,
 				AFF85A15CC7B254482613B5C /* PaymentConfig */,
 				6CB01CD37BAF420EADDA6950 /* Portal */,
 				F76888BC5A430F065843EFA6 /* Preorders */,
@@ -582,6 +587,14 @@
 				05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */,
 			);
 			path = PaymentConfig;
+			sourceTree = "<group>";
+		};
+		C16B0002C0DE0002COV00001 /* Coverage */ = {
+			isa = PBXGroup;
+			children = (
+				A16B0002C0DE0002COV00001 /* CoverageView.swift */,
+			);
+			path = Coverage;
 			sourceTree = "<group>";
 		};
 		B014CBB6E9DE464E448ABA03 /* Components */ = {
@@ -788,6 +801,7 @@
 			packageProductDependencies = (
 				A5D9CE6DBACDE4ABB90D44E4 /* FirebaseAuth */,
 				F00CFF576EF02B2163C0B3F2 /* FirebaseCore */,
+				FC0000000000000000000002 /* FirebaseMessaging */,
 			);
 			productName = WarehouseAppIOS;
 			productReference = B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */;
@@ -904,6 +918,7 @@
 				5F3E0CFFC1C7B968B0A84BCF /* OrdersList.swift in Sources */,
 				555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */,
 				7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */,
+				B16B0002C0DE0002COV00001 /* CoverageView.swift in Sources */,
 				83EEB6CA24987B9942F3B483 /* PegasusMonochromeTheme.swift in Sources */,
 				DAD81FCD1DF205DE39CABC82 /* PegasusMotion.swift in Sources */,
 				A2CBD459EF223EF8AB98E199 /* PegasusStateViews.swift in Sources */,
@@ -1183,6 +1198,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 10AD835A3D7C7319CEB0375C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		FC0000000000000000000002 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 10AD835A3D7C7319CEB0375C /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
