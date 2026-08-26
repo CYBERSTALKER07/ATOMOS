@@ -28,6 +28,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -348,9 +349,10 @@ type Service struct {
 	paymentCapturer PaymentCapturer
 	paymentRefunder PaymentRefunder
 	promotions      *promotion.Service
-	credit          *credit.Service
-	ar              *ar.Service
-	replanner       RouteReplanner
+	credit             *credit.Service
+	ar                 *ar.Service
+	replanner          RouteReplanner
+	commissionResolver payout.CommissionResolver
 
 	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierScope.
 	seedSupplierID     string
@@ -399,9 +401,10 @@ type ServiceConfig struct {
 	Repo       Repository
 	Cache      *cache.Cache
 	Warehouse  WarehouseResolver
-	Promotions *promotion.Service
-	Credit     *credit.Service
-	Replanner  RouteReplanner
+	Promotions         *promotion.Service
+	Credit             *credit.Service
+	Replanner          RouteReplanner
+	CommissionResolver payout.CommissionResolver
 	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11). Prefer TenantContext.
 	SeedSupplierID string
 	// SupplierID is deprecated; use SeedSupplierID. Kept for bootstrap/test call sites.
@@ -464,6 +467,7 @@ func NewService(c ServiceConfig) *Service {
 		warehouse:             c.Warehouse,
 		promotions:            c.Promotions,
 		replanner:             c.Replanner,
+		commissionResolver:    c.CommissionResolver,
 		seedSupplierID:        seedID,
 		supplierName:          strings.TrimSpace(c.SupplierName),
 		currency:              c.Currency,

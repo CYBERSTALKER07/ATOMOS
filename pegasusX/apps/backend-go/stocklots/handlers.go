@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
@@ -859,4 +860,184 @@ func (h *Handler) HandleTemperatureReadings(w http.ResponseWriter, r *http.Reque
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandleQuarantineLot POST /v1/warehouse/ops/lots/{lotID}/quarantine
+func (h *Handler) HandleQuarantineLot(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	lotID := chi.URLParam(r, "lotID")
+	if lotID == "" {
+		lotID = chi.URLParam(r, "id")
+	}
+	if lotID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lot_id_required"})
+		return
+	}
+	whID := warehouseID(r)
+	actor := auth.ActorFromContext(r.Context())
+
+	var body struct {
+		ReasonCode string `json:"reason_code"`
+		Notes      string `json:"notes"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+
+	var updated *StockLotView
+	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		var err error
+		updated, err = QuarantineLotInTxn(ctx, txn, buf, lotID, whID, body.ReasonCode, actor, body.Notes)
+		if err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+// HandleReleaseLot POST /v1/warehouse/ops/lots/{lotID}/release
+func (h *Handler) HandleReleaseLot(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	lotID := chi.URLParam(r, "lotID")
+	if lotID == "" {
+		lotID = chi.URLParam(r, "id")
+	}
+	if lotID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lot_id_required"})
+		return
+	}
+	whID := warehouseID(r)
+	actor := auth.ActorFromContext(r.Context())
+
+	var body struct {
+		ReasonCode string `json:"reason_code"`
+		Notes      string `json:"notes"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&body)
+	}
+
+	var updated *StockLotView
+	err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		var err error
+		updated, err = ReleaseLotInTxn(ctx, txn, buf, lotID, whID, body.ReasonCode, actor, body.Notes)
+		if err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+// HandleTraceLot GET /v1/warehouse/ops/lots/{lotID}/trace
+func (h *Handler) HandleTraceLot(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	lotID := chi.URLParam(r, "lotID")
+	if lotID == "" {
+		lotID = chi.URLParam(r, "id")
+	}
+	if lotID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lot_id_required"})
+		return
+	}
+
+	genealogy, err := TraceLotGenealogy(r.Context(), h.Spanner, lotID)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "lot_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, genealogy)
+}
+
+// HandleRecalls GET/POST /v1/supplier/recalls or /v1/warehouse/ops/recalls
+func (h *Handler) HandleRecalls(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	sid := supplierID(r, h.SupplierID)
+
+	switch r.Method {
+	case http.MethodGet:
+		status := r.URL.Query().Get("status")
+		campaigns, err := ListRecallCampaigns(r.Context(), h.Spanner, sid, status, 50)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "list_recalls_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"campaigns": campaigns})
+	case http.MethodPost:
+		var req InitiateRecallRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		if req.SupplierID == "" {
+			req.SupplierID = sid
+		}
+		if req.InitiatedBy == "" {
+			req.InitiatedBy = auth.ActorFromContext(r.Context())
+		}
+
+		var campaign *RecallCampaignView
+		err := spannerutils.RunReadWriteTransaction(r.Context(), h.Spanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			var err error
+			campaign, err = InitiateRecallInTxn(ctx, txn, buf, req)
+			if err != nil {
+				return err
+			}
+			return buf.Flush(ctx)
+		})
+		if err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusCreated, campaign)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+// HandleRecallByID GET /v1/supplier/recalls/{campaignID} or /v1/warehouse/ops/recalls/{campaignID}
+func (h *Handler) HandleRecallByID(w http.ResponseWriter, r *http.Request) {
+	if h == nil || h.Spanner == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+		return
+	}
+	campaignID := chi.URLParam(r, "campaignID")
+	if campaignID == "" {
+		campaignID = chi.URLParam(r, "id")
+	}
+	if campaignID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "campaign_id_required"})
+		return
+	}
+
+	campaign, err := GetRecallCampaign(r.Context(), h.Spanner, campaignID)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "campaign_not_found"})
+		return
+	}
+	writeJSON(w, http.StatusOK, campaign)
 }

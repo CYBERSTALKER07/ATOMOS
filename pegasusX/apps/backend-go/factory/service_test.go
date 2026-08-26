@@ -1243,3 +1243,61 @@ func (d *dummyFactoryTx) ResolveException(ctx context.Context, row ManifestExcep
 	}
 	return nil
 }
+
+func TestHandleFleet_DemoFallbackAndStructure(t *testing.T) {
+	repo := &factoryRepoSpy{}
+	cacheBackend := &factoryCacheBackendSpy{}
+	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/factory/fleet", nil)
+	rr := httptest.NewRecorder()
+
+	svc.HandleFleet(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp struct {
+		Vehicles []map[string]any `json:"vehicles"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Vehicles) == 0 {
+		t.Fatalf("expected non-empty vehicles list")
+	}
+	first := resp.Vehicles[0]
+	if first["id"] == "" || first["plate_number"] == "" {
+		t.Fatalf("expected id and plate_number in vehicle payload: %#v", first)
+	}
+}
+
+func TestHandleFleetVehicles_DemoFallbackAndStructure(t *testing.T) {
+	repo := &factoryRepoSpy{}
+	cacheBackend := &factoryCacheBackendSpy{}
+	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/factory/fleet/vehicles", nil)
+	rr := httptest.NewRecorder()
+
+	svc.HandleFleetVehicles(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var resp struct {
+		Vehicles []FleetVehicle `json:"vehicles"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if len(resp.Vehicles) == 0 {
+		t.Fatalf("expected non-empty fleet vehicles list")
+	}
+	if resp.Vehicles[0].VehicleID == "" || resp.Vehicles[0].PlateNo == "" {
+		t.Fatalf("expected VehicleID and PlateNo in fleet vehicle: %#v", resp.Vehicles[0])
+	}
+}
+

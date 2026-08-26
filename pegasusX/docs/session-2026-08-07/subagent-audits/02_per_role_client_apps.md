@@ -23,7 +23,7 @@ _Source: subagent `bd693ff3-85c7-447f-97b6-3ab4479a9319` from End-Product Realit
 ### App sizes (real source files, excluding build checkouts/node_modules)
 | App | Files | Note |
 |---|---|---|
-| retailer-app-ios | 1,533 total Swift but **only 144 real** (`retailerapp/reatilerapp/**`); ~1,380 are checked-in SPM build artifacts under `retailerapp/build/SourcePackages/checkouts/` (firebase-ios-sdk, swift-protobuf) | size inflated; also dir name typo `reatilerapp` |
+| retailer-app-ios | 1,533 total Swift but **only 144 real** (`retailerapp/retailerapp/**`); ~1,380 are checked-in SPM build artifacts under `retailerapp/build/SourcePackages/checkouts/` (firebase-ios-sdk, swift-protobuf) | size inflated; also dir name typo `retailerapp` |
 | supplier-portal | 882 | Next.js + Tauri (`src-tauri/` present) |
 | warehouse-portal | 597 | Next.js + Tauri |
 | retailer-app-desktop | 578 (136 ts/tsx) | Next.js + Tauri |
@@ -86,7 +86,7 @@ Variants: `retailer-app-android` (187 kt), `retailer-app-ios` (144 swift real), 
 ### 1.2 Broken/incomplete
 - `MySuppliersScreen.kt:291` — auto-order indicator is a placeholder icon ("always show icon if supplier has orders"). Cosmetic only.
 - No other TODO/mock/hardcoded-data hits in any of the three variants (all "placeholder" grep hits are Compose `TextField` hint labels, e.g. `AuthScreen.kt:260,445`).
-- iOS repo hygiene: checked-in `build/SourcePackages` artifacts; typo dir `reatilerapp`.
+- iOS repo hygiene: checked-in `build/SourcePackages` artifacts; typo dir `retailerapp`.
 
 ### 1.3 Auth / Offline
 - Auth: **JWT primary + Firebase phone/custom-token hybrid** with graceful degradation (`data/auth/FirebaseAuthHelper.kt:23-25,58,120`; iOS `Services/FirebaseAuthHelper.swift:32-33` emulator config `demo-pegasus` is emulator-only). Token in `TokenManager.kt:65` (`KEY_JWT`) android; Keychain iOS (`AuthManager.swift:222-233`); OS keyring desktop.
@@ -324,7 +324,7 @@ Variant parity notes: iOS matches or exceeds Android on Retailer/Supplier/Driver
 10. **supplier-app-desktop retired** — suppliers on desktop get a Tauri shell of the web portal; fine functionally, but it's not a distinct app.
 11. **Retailer android auto-order indicator is decorative** (`MySuppliersScreen.kt:291`).
 12. **Driver navigation is cue-overlays, not turn-by-turn** (`NavigationCueBanner.kt` + backend geometry only).
-13. **retailer-app-ios repo hygiene**: ~1,380 vendored `build/SourcePackages` files checked into the app tree + typo'd source dir `reatilerapp`.
+13. **retailer-app-ios repo hygiene**: ~1,380 vendored `build/SourcePackages` files checked into the app tree + typo'd source dir `retailerapp`.
 14. **Duplicated iOS target files** (supplier: `CreateDriverSheet.swift` ×2 etc.; driver: `AutoUpdater.swift` ×2) — drift risk between targets.
 15. **No audit-log / system-health surface in any client** — compliance/observability UIs are backend-only.
 

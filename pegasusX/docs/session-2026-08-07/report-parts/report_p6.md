@@ -33,7 +33,7 @@ Method: static code audit of every app under `apps/`, verified against the backe
 ### Incomplete / decorative / broken
 
 - **Auto-order indicator on My Suppliers is a placeholder** — always shows the icon if the supplier has orders (`MySuppliersScreen.kt:291`). Cosmetic.
-- **Retailer-iOS repo hygiene**: ~1,380 vendored SPM build checkouts committed under the app tree, in a directory misspelled `reatilerapp` — build-reproducibility and review-noise hazard.
+- **Retailer-iOS repo hygiene**: ~1,380 vendored SPM build checkouts committed under the app tree, in a directory misspelled `retailerapp` — build-reproducibility and review-noise hazard.
 - **Offline POS contradiction**: client-side offline POS queues are wired (Room/file), yet the project's own status docs list offline POS as product-deferred — the unresolved half is server-side: fiscalization and idempotent acceptance of replayed POS sales. Treat end-to-end offline POS as PARTIAL.
 - No E2E-visible refund/return initiation from the retailer side (claims only); HQ export is CSV-only.
 - Desktop Control Tower is a simpler surface than mobile parity.

@@ -314,8 +314,8 @@ final class RetailerWebSocket {
                     emit(.orderCompleted(event))
                 }
             }
-        case "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED", "PAYMENT_CLEARED", "FISCAL_RECEIPT_REQUESTED":
-            if type == "FISCAL_RECEIPT_REQUESTED" || type == "PAYMENT_CLEARED" {
+        case "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED", "PAYMENT_CLEARED", "SPLIT_PAYMENT_CREATED", "FISCAL_RECEIPT_REQUESTED":
+            if type == "FISCAL_RECEIPT_REQUESTED" || type == "PAYMENT_CLEARED" || type == "SPLIT_PAYMENT_CREATED" {
                 if let orderId = json["order_id"] as? String {
                     emit(.fiscalizing(orderId: orderId))
                 }

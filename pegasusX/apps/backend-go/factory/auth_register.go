@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -145,7 +146,9 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 		}))
 	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), muts); err != nil {
+	if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(muts)
+	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to register factory user", "err", err)
 		web.JSONError(w, "Failed to register factory user", http.StatusInternalServerError)
 		return

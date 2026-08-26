@@ -76,6 +76,12 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 	if err != nil {
 		return QuoteResult{}, fmt.Errorf("load promotions: %w", err)
 	}
+	promotions, err = s.repo.FilterEligibleCampaignPromotions(ctx, retailerID, promotions)
+	if err != nil {
+		// Degradation: if campaign check fails, fallback to standard active promotions
+		// but since campaign could be exhausted, it's safer to strip all campaigned promos or just return err
+		return QuoteResult{}, fmt.Errorf("filter campaign promotions: %w", err)
+	}
 	quote, err := ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
 	if err != nil {
 		return QuoteResult{}, err
@@ -211,8 +217,16 @@ func validatePromotion(p Promotion) error {
 	if strings.TrimSpace(p.Name) == "" {
 		return fmt.Errorf("name required")
 	}
-	if p.DiscountBps <= 0 || p.DiscountBps > maxDiscountBps {
-		return fmt.Errorf("discount_bps out of range")
+	if len(p.Tiers) == 0 {
+		return fmt.Errorf("at least one promotion tier required")
+	}
+	for i, tier := range p.Tiers {
+		if tier.DiscountBps <= 0 || tier.DiscountBps > maxDiscountBps {
+			return fmt.Errorf("tier %d discount_bps out of range", i)
+		}
+		if tier.MinQuantity < 0 {
+			return fmt.Errorf("tier %d min_quantity cannot be negative", i)
+		}
 	}
 	switch p.ScopeType {
 	case ScopeTypeProduct:

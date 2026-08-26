@@ -53,12 +53,13 @@ func TestMatchAndLink_FuzzyQueueAmbiguous(t *testing.T) {
 	svc := NewService(repo, nil)
 
 	// Seed two similar globals manually so a third SKU is ambiguous.
+	_ = repo.UpsertBrand(context.Background(), GlobalBrand{BrandID: "b-acme", Name: "Acme", NormalizedName: "acme"})
 	_ = repo.UpsertGlobal(context.Background(), GlobalProduct{
-		GlobalProductID: "gp-a", Brand: "Acme", Name: "Widget Blue", PackQty: 12, BaseUomID: UomEachID,
+		GlobalProductID: "gp-a", BrandID: "b-acme", Name: "Widget Blue", PackQty: 12, BaseUomID: UomEachID,
 		NormalizedKey: BuildNormalizedKey("Acme", "Widget Blue", 12, "EACH"),
 	})
 	_ = repo.UpsertGlobal(context.Background(), GlobalProduct{
-		GlobalProductID: "gp-b", Brand: "Acme", Name: "Widget Blue Extra", PackQty: 12, BaseUomID: UomEachID,
+		GlobalProductID: "gp-b", BrandID: "b-acme", Name: "Widget Blue Extra", PackQty: 12, BaseUomID: UomEachID,
 		NormalizedKey: BuildNormalizedKey("Acme", "Widget Blue Extra", 12, "EACH"),
 	})
 
@@ -162,8 +163,9 @@ func TestResolveMatch_AcceptUsesPackCurrency(t *testing.T) {
 	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	repo := NewMemoryRepository()
 	svc := NewService(repo, nil)
+	_ = repo.UpsertBrand(context.Background(), GlobalBrand{BrandID: "b-acme", Name: "Acme", NormalizedName: "acme"})
 	_ = repo.UpsertGlobal(context.Background(), GlobalProduct{
-		GlobalProductID: "gp-acc", Brand: "Acme", Name: "Widget", PackQty: 1, BaseUomID: UomEachID,
+		GlobalProductID: "gp-acc", BrandID: "b-acme", Name: "Widget", PackQty: 1, BaseUomID: UomEachID,
 		NormalizedKey: BuildNormalizedKey("Acme", "Widget", 1, "EACH"),
 	})
 	_ = repo.EnqueueMatch(context.Background(), MatchQueueItem{

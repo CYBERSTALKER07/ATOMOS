@@ -987,3 +987,8 @@ func claimCurrency(ctx context.Context, supplierID, stored string) (string, erro
 	}
 	return c, nil
 }
+
+// OrderLookup returns the order lookup interface.
+func (s *Service) OrderLookup() OrderLookup {
+	return s.orders
+}

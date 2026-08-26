@@ -18,9 +18,10 @@ func PickBestPromotion(
 	listUnitPrice int64,
 	orderSubtotalMinor int64,
 	promotions []Promotion,
-) (*Promotion, int64) {
+) (*Promotion, int64, int64) {
 	var best *Promotion
 	var bestUnit int64
+	var bestDiscountBps int64
 	for i := range promotions {
 		p := &promotions[i]
 		if !promotionActiveAt(p, now) {
@@ -32,22 +33,32 @@ func PickBestPromotion(
 		if !scopeMatches(p, productID, categoryID) {
 			continue
 		}
-		if p.MinLineQuantity > 0 && quantity < p.MinLineQuantity {
-			continue
-		}
 		if p.MinOrderAmountMinor > 0 && orderSubtotalMinor < p.MinOrderAmountMinor {
 			continue
 		}
-		unit := discountedUnit(listUnitPrice, p.DiscountBps)
+		var bestTier *PromotionTier
+		for j := range p.Tiers {
+			t := &p.Tiers[j]
+			if quantity >= t.MinQuantity {
+				if bestTier == nil || t.DiscountBps > bestTier.DiscountBps {
+					bestTier = t
+				}
+			}
+		}
+		if bestTier == nil {
+			continue
+		}
+		unit := discountedUnit(listUnitPrice, bestTier.DiscountBps)
 		if best == nil || unit < bestUnit || (unit == bestUnit && p.Priority > best.Priority) {
 			best = p
 			bestUnit = unit
+			bestDiscountBps = bestTier.DiscountBps
 		}
 	}
 	if best == nil {
-		return nil, listUnitPrice
+		return nil, listUnitPrice, 0
 	}
-	return best, bestUnit
+	return best, bestUnit, bestDiscountBps
 }
 
 // ApplyQuote prices all lines for a supplier cart slice.
@@ -88,7 +99,7 @@ func ApplyQuote(
 			})
 			continue
 		}
-		best, unit := PickBestPromotion(
+		best, unit, appliedBps := PickBestPromotion(
 			now,
 			retailerID,
 			line.ProductID,
@@ -113,10 +124,10 @@ func ApplyQuote(
 			Currency:      line.Currency,
 		}
 		if best != nil {
-			q.DiscountBps = best.DiscountBps
+			q.DiscountBps = appliedBps
 			q.PromotionID = best.PromotionID
 			q.PromotionName = best.Name
-			q.PromotionLabel = formatPromotionLabel(best)
+			q.PromotionLabel = formatPromotionLabel(best, appliedBps)
 		}
 		quoted = append(quoted, q)
 	}
@@ -145,25 +156,33 @@ func CatalogOffer(
 		ProductID:      productID,
 		ListPriceMinor: listPriceMinor,
 	}
-	best, unit := PickBestPromotion(now, retailerID, productID, categoryID, 1, listPriceMinor, listPriceMinor, promotions)
+	best, unit, appliedBps := PickBestPromotion(now, retailerID, productID, categoryID, 1, listPriceMinor, listPriceMinor, promotions)
 	if best == nil || unit >= listPriceMinor {
-		if best != nil && best.MinLineQuantity > 1 {
-			label := formatPromotionLabel(best)
-			offer.PromotionLabel = &label
-			offer.PromotionID = &best.PromotionID
-			offer.PromotionName = &best.Name
-			if best.EndsAt != nil {
-				ends := best.EndsAt.UTC().Format(time.RFC3339)
-				offer.PromotionEndsAt = &ends
+		if best != nil && len(best.Tiers) > 0 {
+			lowestTier := best.Tiers[0]
+			for _, t := range best.Tiers {
+				if t.MinQuantity < lowestTier.MinQuantity {
+					lowestTier = t
+				}
+			}
+			if lowestTier.MinQuantity > 1 {
+				label := formatPromotionLabel(best, lowestTier.DiscountBps)
+				offer.PromotionLabel = &label
+				offer.PromotionID = &best.PromotionID
+				offer.PromotionName = &best.Name
+				if best.EndsAt != nil {
+					ends := best.EndsAt.UTC().Format(time.RFC3339)
+					offer.PromotionEndsAt = &ends
+				}
 			}
 		}
 		return offer
 	}
 	offer.SalePriceMinor = &unit
-	offer.DiscountBps = &best.DiscountBps
+	offer.DiscountBps = &appliedBps
 	offer.PromotionID = &best.PromotionID
 	offer.PromotionName = &best.Name
-	label := formatPromotionLabel(best)
+	label := formatPromotionLabel(best, appliedBps)
 	offer.PromotionLabel = &label
 	if best.EndsAt != nil {
 		ends := best.EndsAt.UTC().Format(time.RFC3339)
@@ -173,7 +192,7 @@ func CatalogOffer(
 }
 
 func promotionActiveAt(p *Promotion, now time.Time) bool {
-	if p == nil || !p.IsActive || p.DiscountBps <= 0 || p.DiscountBps > maxDiscountBps {
+	if p == nil || !p.IsActive || len(p.Tiers) == 0 {
 		return false
 	}
 	if p.StartsAt != nil && now.Before(p.StartsAt.UTC()) {
@@ -220,10 +239,17 @@ func discountedUnit(listUnitPrice int64, discountBps int64) int64 {
 	return (listUnitPrice * (maxDiscountBps - discountBps)) / maxDiscountBps
 }
 
-func formatPromotionLabel(p *Promotion) string {
-	pct := float64(p.DiscountBps) / 100.0
-	if p.MinLineQuantity > 1 {
-		return fmt.Sprintf("%.2g%% off when you buy %d+", pct, p.MinLineQuantity)
+func formatPromotionLabel(p *Promotion, appliedBps int64) string {
+	pct := float64(appliedBps) / 100.0
+	minQ := int64(1)
+	for _, t := range p.Tiers {
+		if t.DiscountBps == appliedBps {
+			minQ = t.MinQuantity
+			break
+		}
+	}
+	if minQ > 1 {
+		return fmt.Sprintf("%.2g%% off when you buy %d+", pct, minQ)
 	}
 	if p.MinOrderAmountMinor > 0 {
 		return fmt.Sprintf("%.2g%% off orders over %d", pct, p.MinOrderAmountMinor)

@@ -33,7 +33,7 @@ const XCODEGEN_IOS = [
 const XCODEPROJ_IOS = [
   {
     app: "retailer-app-ios",
-    dest: "retailerapp/reatilerapp",
+    dest: "retailerapp/retailerapp",
   },
   {
     app: "driver-app-ios",

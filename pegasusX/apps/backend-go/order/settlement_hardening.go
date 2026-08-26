@@ -13,24 +13,28 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payout"
 )
 
 type PaymentMethod string
 
 const (
-	MethodCard   PaymentMethod = "CARD"
-	MethodCash   PaymentMethod = "CASH"
-	MethodCredit PaymentMethod = "CREDIT"
-	MethodRefund PaymentMethod = "REFUND"
+	MethodCard       PaymentMethod = "CARD"
+	MethodCash       PaymentMethod = "CASH"
+	MethodCredit     PaymentMethod = "CREDIT"
+	MethodWallet     PaymentMethod = "WALLET"
+	MethodRefund     PaymentMethod = "REFUND"
+	MethodCreditNote PaymentMethod = "CREDIT_NOTE"
 )
 
 type PaymentStatus string
 
 const (
-	PaymentStatusPending  PaymentStatus = "PENDING"
-	PaymentStatusCaptured PaymentStatus = "CAPTURED"
-	PaymentStatusFailed   PaymentStatus = "FAILED"
-	PaymentStatusReversed PaymentStatus = "REVERSED"
+	PaymentStatusPending    PaymentStatus = "PENDING"
+	PaymentStatusAuthorized PaymentStatus = "AUTHORIZED"
+	PaymentStatusCaptured   PaymentStatus = "CAPTURED"
+	PaymentStatusFailed     PaymentStatus = "FAILED"
+	PaymentStatusReversed   PaymentStatus = "REVERSED"
 )
 
 type PaymentLeg struct {
@@ -227,7 +231,36 @@ func (s *Service) RecordPaymentLeg(ctx context.Context, txn *spanner.ReadWriteTr
 	if err != nil {
 		return err
 	}
-	return txn.BufferWrite([]*spanner.Mutation{m})
+	muts := []*spanner.Mutation{m}
+
+	if leg.Status == PaymentStatusCaptured {
+		if s.commissionResolver == nil {
+			return fmt.Errorf("commission resolver not configured")
+		}
+		
+		// Fetch order for SupplierID and Currency
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{leg.OrderID}, []string{"SupplierId", "Currency"})
+		if err != nil {
+			return fmt.Errorf("failed to read order %s for settlement slice: %w", leg.OrderID, err)
+		}
+		var supplierID, currency string
+		if err := row.Columns(&supplierID, &currency); err != nil {
+			return err
+		}
+
+		amount := leg.AmountMinor
+		if leg.Method == MethodRefund {
+			amount = -amount
+		}
+
+		_, sliceM, err := payout.GenerateSettlementSlice(ctx, s.commissionResolver, s.newID(), leg.OrderID, supplierID, leg.LegID, amount, currency, leg.CapturedAt.Time)
+		if err != nil {
+			return err
+		}
+		muts = append(muts, sliceM)
+	}
+
+	return txn.BufferWrite(muts)
 }
 
 // RecordSettlementException writes a settlement exception to the database within a transaction.

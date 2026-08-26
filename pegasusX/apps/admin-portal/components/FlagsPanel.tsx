@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api, type FlagEval, type FlagOverride } from "@/lib/api";
+import { PortalField, PortalInput, PortalSelect, FormAlert } from "@pegasusx/ui-kit/portal";
 
 // Mirrors featureflags.MoneyAffectingFlags on the backend.
 const MONEY_FLAGS = [
@@ -96,27 +97,27 @@ export default function FlagsPanel({ token }: { token: string }) {
         )}
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Tenant type">
-          <select value={tenantType} onChange={(e) => setTenantType(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm">
+        <PortalField id="flag-tenant-type" label="Tenant type">
+          <PortalSelect id="flag-tenant-type" value={tenantType} onChange={(e) => setTenantType(e.target.value)}>
             <option>SUPPLIER</option>
             <option>RETAILER</option>
-          </select>
-        </Field>
-        <Field label="Tenant ID">
-          <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="sup_…" className="w-full rounded border px-2 py-1.5 text-sm" />
-        </Field>
+          </PortalSelect>
+        </PortalField>
+        <PortalField id="flag-tenant-id" label="Tenant ID">
+          <PortalInput id="flag-tenant-id" value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="sup_…" />
+        </PortalField>
       </div>
-      <Field label="Flag">
-        <select value={flagKey} onChange={(e) => setFlagKey(e.target.value)} className="w-full rounded border px-2 py-1.5 text-sm">
+      <PortalField id="flag-key" label="Flag">
+        <PortalSelect id="flag-key" value={flagKey} onChange={(e) => setFlagKey(e.target.value)}>
           {MONEY_FLAGS.map((f) => (
             <option key={f}>{f}</option>
           ))}
-        </select>
-      </Field>
+        </PortalSelect>
+      </PortalField>
       {isMoney && (
-        <Field label="Reason (required for money-affecting flags)">
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this change" className="w-full rounded border px-2 py-1.5 text-sm" />
-        </Field>
+        <PortalField id="flag-reason" label="Reason (required for money-affecting flags)">
+          <PortalInput id="flag-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why this change" />
+        </PortalField>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -142,8 +143,8 @@ export default function FlagsPanel({ token }: { token: string }) {
           request and approve.
         </p>
       )}
-      {message && <p className="rounded bg-green-50 px-3 py-2 text-sm text-green-700">{message}</p>}
-      {error && <p className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {message && <FormAlert variant="info">{message}</FormAlert>}
+      {error && <FormAlert variant="error">{error}</FormAlert>}
 
       {result && (
         <div className="rounded border bg-white p-4 text-sm">
@@ -154,15 +155,6 @@ export default function FlagsPanel({ token }: { token: string }) {
         </div>
       )}
     </section>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-600">{label}</span>
-      {children}
-    </label>
   );
 }
 

@@ -37,11 +37,22 @@ type UnitOfMeasure struct {
 	ParentUomID  string `json:"parent_uom_id,omitempty"`
 }
 
+// GlobalBrand represents a canonical brand entity.
+type GlobalBrand struct {
+	BrandID         string    `json:"brand_id"`
+	Name            string    `json:"name"`
+	NormalizedName  string    `json:"normalized_name"`
+	OwnerSupplierID string    `json:"owner_supplier_id,omitempty"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
 // GlobalProduct is the cross-supplier product master.
 type GlobalProduct struct {
 	GlobalProductID string    `json:"global_product_id"`
 	Gtin            string    `json:"gtin,omitempty"`
-	Brand           string    `json:"brand,omitempty"`
+	BrandID         string    `json:"brand_id"`
 	Manufacturer    string    `json:"manufacturer,omitempty"`
 	Name            string    `json:"name"`
 	PackQty         int64     `json:"pack_qty"`

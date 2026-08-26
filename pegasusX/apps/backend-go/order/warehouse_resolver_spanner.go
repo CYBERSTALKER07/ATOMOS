@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/redis/go-redis/v9"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
@@ -13,11 +14,12 @@ import (
 // SpannerWarehouseResolver resolves the nearest covering warehouse for a supplier.
 type SpannerWarehouseResolver struct {
 	client *spanner.Client
+	redis  *redis.Client
 }
 
 // NewSpannerWarehouseResolver builds a Spanner-backed warehouse resolver.
-func NewSpannerWarehouseResolver(client *spanner.Client) *SpannerWarehouseResolver {
-	return &SpannerWarehouseResolver{client: client}
+func NewSpannerWarehouseResolver(client *spanner.Client, rdb *redis.Client) *SpannerWarehouseResolver {
+	return &SpannerWarehouseResolver{client: client, redis: rdb}
 }
 
 // ResolveNearestWarehouseID returns the closest warehouse that covers the retailer.
@@ -50,6 +52,21 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 		return "", err
 	}
 
+	if store.H3Cell == "" {
+		store.H3Cell = proximity.MatchingH3Cell(store.Lat, store.Lng)
+	}
+
+	if r.redis != nil {
+		key := fmt.Sprintf("perimeter:supplier:%s", supplierID)
+		exists, err := r.redis.Exists(ctx, key).Result()
+		if err == nil && exists > 0 {
+			isMem, err := r.redis.SIsMember(ctx, key, store.H3Cell).Result()
+			if err == nil && !isMem {
+				return "", proximity.ErrZoneMiss
+			}
+		}
+	}
+
 	cov := proximity.CoverageStore{Client: r.client}
 	warehouses, err := cov.ListWarehouses(ctx, supplierID)
 	if err != nil {
@@ -58,9 +75,6 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	pins, err := cov.ListPins(ctx, supplierID)
 	if err != nil {
 		return "", err
-	}
-	if store.H3Cell == "" {
-		store.H3Cell = proximity.MatchingH3Cell(store.Lat, store.Lng)
 	}
 	return proximity.ResolveServingWarehouse(packCountry, store, warehouses, pins)
 }

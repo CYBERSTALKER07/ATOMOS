@@ -1,4 +1,7 @@
 # Backend Parity — A5 FACTORY_ADMIN
+> **POINT-IN-TIME SNAPSHOT (2026-08-12) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Date:** 2026-08-12  
 **Agent:** A5-FACTORY  

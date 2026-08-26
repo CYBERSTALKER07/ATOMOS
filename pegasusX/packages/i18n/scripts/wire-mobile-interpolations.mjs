@@ -35,7 +35,7 @@ const IOS_L10N_DEST = [
   "apps/factory-app-ios/FactoryApp/L10n.swift",
   "apps/warehouse-app-ios/WarehouseApp/L10n.swift",
   "apps/payload-app-ios/payload-app-ios/L10n.swift",
-  "apps/retailer-app-ios/retailerapp/reatilerapp/L10n.swift",
+  "apps/retailer-app-ios/retailerapp/retailerapp/L10n.swift",
   "apps/driver-app-ios/driverappios/driverappios/L10n.swift",
 ];
 

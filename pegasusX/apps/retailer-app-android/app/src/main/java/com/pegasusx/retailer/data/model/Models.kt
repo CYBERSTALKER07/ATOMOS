@@ -158,7 +158,7 @@ data class Variant(
     @SerialName("pack") val pack: String,
     @SerialName("pack_count") val packCount: Int,
     @SerialName("weight_per_unit") val weightPerUnit: String,
-    @SerialName("price") val price: Double,
+    @SerialName("price") val price: Long = 0L,
 )
 
 // ── Product (iOS: Product) ──
@@ -394,8 +394,8 @@ data class OrderLineItem(
     @SerialName("variant_id") val variantId: String = "",
     @SerialName("variant_size") val variantSize: String = "",
     @SerialName("quantity") val quantity: Int,
-    @SerialName("unit_price") val unitPrice: Double = 0.0,
-    @SerialName("total_price") val totalPrice: Double = 0.0,
+    @SerialName("unit_price") val unitPrice: Long = 0L,
+    @SerialName("total_price") val totalPrice: Long = 0L,
 )
 
 // ── Order ──
@@ -631,7 +631,7 @@ data class CartItem(
     val variant: Variant,
     var quantity: Int,
 ) {
-    val totalPrice: Double get() = quantity * variant.price
+    val totalPrice: Long get() = quantity * variant.price
 }
 
 // ── User ──

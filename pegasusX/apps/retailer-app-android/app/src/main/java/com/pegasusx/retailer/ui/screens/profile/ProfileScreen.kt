@@ -78,7 +78,6 @@ import com.pegasusx.retailer.R
 @Composable
 fun ProfileScreen(
     onAccountClick: () -> Unit = {},
-    onSavedCardsClick: () -> Unit = {},
     onFamilyMembersClick: () -> Unit = {},
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
@@ -195,7 +194,6 @@ fun ProfileScreen(
         item {
             SettingsSection(
                 onAccountClick = onAccountClick,
-                onSavedCardsClick = onSavedCardsClick,
                 onFamilyMembersClick = onFamilyMembersClick,
                 onCapabilitiesClick = onCapabilitiesClick,
                 onTeamClick = onTeamClick,

@@ -115,6 +115,10 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			}
 		}
 
+		if promiseMut, err := snapshotServicePromiseInTxn(ctx, txn, o); err == nil && promiseMut != nil {
+			mutations = append(mutations, promiseMut)
+		}
+
 		orderInsert := map[string]any{
 			"OrderId":                o.OrderID,
 			"SupplierId":             o.SupplierID,

@@ -15,7 +15,7 @@
 VERDICT: PARTIAL
 EVIDENCE: .github/workflows/pegasusx-ci.yml vs pegasusX/.github/workflows/ci.yml
 DOCS vs CODE: nested ci.yml looks like the full program; GitHub never runs it
-NEXT: copy nested-only gates into root; fix reatilerapp; gate docker-push on Gate-0. Not terraform apply.
+NEXT: copy nested-only gates into root; fix retailerapp; gate docker-push on Gate-0. Not terraform apply.
 ```
 
 ---
@@ -73,8 +73,8 @@ Sandbox-infra compose is smoke, not the nested emulator integration suite.
 
 Live matrix (`pegasusx-native-mobile-build.yml:94-96`):
 
-- scheme `reatilerapp`
-- project `.../reatilerapp.xcodeproj`
+- scheme `retailerapp`
+- project `.../retailerapp.xcodeproj`
 
 On disk: `apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj`. Same typo in `scripts/ci_ios_apps.sh`. That matrix cell **cannot** succeed.
 
@@ -126,4 +126,4 @@ Do not add Firebase Hosting or Vercel pipelines for Class A.
 
 ## 7. Next slice (when asked)
 
-Fix `reatilerapp` → `retailerapp` in the live native workflow + `ci_ios_apps.sh`. Then promote nested money-path job into root. Not Layer B keys.
+Fix `retailerapp` in the live native workflow + `ci_ios_apps.sh`. Then promote nested money-path job into root. Not Layer B keys.

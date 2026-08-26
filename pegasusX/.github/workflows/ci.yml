@@ -224,8 +224,8 @@ jobs:
             scheme: driverappios
             xcodegen_dir: ""
           - name: retailer
-            project: apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj
-            scheme: reatilerapp
+            project: apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj
+            scheme: retailerapp
             xcodegen_dir: ""
     steps:
       - uses: actions/checkout@v4

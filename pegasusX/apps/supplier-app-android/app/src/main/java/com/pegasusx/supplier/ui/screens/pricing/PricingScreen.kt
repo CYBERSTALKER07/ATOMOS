@@ -178,7 +178,11 @@ private fun ProductPricingDialog(
                     scope.launch {
                         saving = true
                         error = null
-                        val priceMinor = priceMajor.replace(',', '.').toDoubleOrNull()?.let { (it * 100).toLong() }
+                        val clean = priceMajor.replace(',', '.')
+                        val parts = clean.split(".")
+                        val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+                        val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
+                        val priceMinor: Long? = if (major > 0 || minor > 0) (major * 100) + minor else null
                         if (priceMinor == null || priceMinor < 0) {
                             error = "Enter a valid list price."
                             saving = false

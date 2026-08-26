@@ -24,6 +24,7 @@ type Repository interface {
 	LookupListPrices(ctx context.Context, productIDs []string) (map[string]int64, error)
 	LookupActivePriceOverrides(ctx context.Context, supplierID, retailerID string, productIDs []string, now time.Time) (map[string]int64, error)
 	RedeemPromotion(ctx context.Context, promotionID string) error
+	FilterEligibleCampaignPromotions(ctx context.Context, retailerID string, promotions []Promotion) ([]Promotion, error)
 }
 
 // SpannerRepository implements Repository.
@@ -39,9 +40,9 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 // ListActiveBySupplier returns promotions that may apply at now.
 func (r *SpannerRepository) ListActiveBySupplier(ctx context.Context, supplierID string, now time.Time) ([]Promotion, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT PromotionId, SupplierId, Name, Description, DiscountBps, ScopeType,
+		SQL: `SELECT PromotionId, SupplierId, Name, Description, TiersJson, ScopeType,
 			ScopeProductId, ScopeCategoryId, RetailerScope, RetailerIdsJson,
-			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
+			MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
 			FROM SupplierPromotions
 			WHERE SupplierId = @sid AND IsActive = TRUE
 			AND (StartsAt IS NULL OR StartsAt <= @now)
@@ -56,9 +57,9 @@ func (r *SpannerRepository) ListActiveBySupplier(ctx context.Context, supplierID
 // ListBySupplier returns all promotions for supplier admin surfaces.
 func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID string) ([]Promotion, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT PromotionId, SupplierId, Name, Description, DiscountBps, ScopeType,
+		SQL: `SELECT PromotionId, SupplierId, Name, Description, TiersJson, ScopeType,
 			ScopeProductId, ScopeCategoryId, RetailerScope, RetailerIdsJson,
-			MinLineQuantity, MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
+			MinOrderAmountMinor, StartsAt, EndsAt, MaxRedemptions, CurrentRedemptions, IsActive, Priority, Version, CreatedAt, UpdatedAt
 			FROM SupplierPromotions
 			WHERE SupplierId = @sid
 			ORDER BY UpdatedAt DESC`,
@@ -70,9 +71,9 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 // GetByID reads one promotion scoped to supplier.
 func (r *SpannerRepository) GetByID(ctx context.Context, supplierID, promotionID string) (Promotion, bool, error) {
 	row, err := r.client.Single().ReadRow(ctx, "SupplierPromotions", spanner.Key{promotionID},
-		[]string{"PromotionId", "SupplierId", "Name", "Description", "DiscountBps", "ScopeType",
+		[]string{"PromotionId", "SupplierId", "Name", "Description", "TiersJson", "ScopeType",
 			"ScopeProductId", "ScopeCategoryId", "RetailerScope", "RetailerIdsJson",
-			"MinLineQuantity", "MinOrderAmountMinor", "StartsAt", "EndsAt", "MaxRedemptions", "CurrentRedemptions", "IsActive", "Priority", "Version", "CreatedAt", "UpdatedAt"})
+			"MinOrderAmountMinor", "StartsAt", "EndsAt", "MaxRedemptions", "CurrentRedemptions", "IsActive", "Priority", "Version", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		if errors.Is(err, spanner.ErrRowNotFound) {
 			return Promotion{}, false, nil
@@ -113,18 +114,18 @@ func (r *SpannerRepository) Upsert(ctx context.Context, p Promotion, emit func(*
 				return err
 			}
 		}
+		tiersJSON, _ := json.Marshal(p.Tiers)
 		m := spanner.InsertOrUpdateMap("SupplierPromotions", map[string]any{
 			"PromotionId":         p.PromotionID,
 			"SupplierId":          p.SupplierID,
 			"Name":                p.Name,
 			"Description":         spanner.NullString{StringVal: p.Description, Valid: p.Description != ""},
-			"DiscountBps":         p.DiscountBps,
+			"TiersJson":           tiersJSON,
 			"ScopeType":           string(p.ScopeType),
 			"ScopeProductId":      nullString(p.ScopeProductID),
 			"ScopeCategoryId":     nullString(p.ScopeCategoryID),
 			"RetailerScope":       string(p.RetailerScope),
 			"RetailerIdsJson":     retailerJSON,
-			"MinLineQuantity":     nullInt64(p.MinLineQuantity),
 			"MinOrderAmountMinor": nullInt64(p.MinOrderAmountMinor),
 			"StartsAt":            nullTime(p.StartsAt),
 			"EndsAt":              nullTime(p.EndsAt),
@@ -234,13 +235,14 @@ func scanPromotionRow(row *spanner.Row) (Promotion, error) {
 	var scopeProduct, scopeCategory spanner.NullString
 	var retailerScope string
 	var retailerJSON []byte
-	var minQty, minOrder spanner.NullInt64
+	var tiersJSON spanner.NullJSON
+	var minOrder spanner.NullInt64
 	var startsAt, endsAt spanner.NullTime
 	var maxRedemptions, currentRedemptions spanner.NullInt64
 	if err := row.Columns(
-		&p.PromotionID, &p.SupplierID, &p.Name, &desc, &p.DiscountBps, &p.ScopeType,
+		&p.PromotionID, &p.SupplierID, &p.Name, &desc, &tiersJSON, &p.ScopeType,
 		&scopeProduct, &scopeCategory, &retailerScope, &retailerJSON,
-		&minQty, &minOrder, &startsAt, &endsAt, &maxRedemptions, &currentRedemptions, &p.IsActive, &p.Priority, &p.Version, &p.CreatedAt, &p.UpdatedAt,
+		&minOrder, &startsAt, &endsAt, &maxRedemptions, &currentRedemptions, &p.IsActive, &p.Priority, &p.Version, &p.CreatedAt, &p.UpdatedAt,
 	); err != nil {
 		return Promotion{}, err
 	}
@@ -251,8 +253,9 @@ func scanPromotionRow(row *spanner.Row) (Promotion, error) {
 	if len(retailerJSON) > 0 {
 		_ = json.Unmarshal(retailerJSON, &p.RetailerIDs)
 	}
-	if minQty.Valid {
-		p.MinLineQuantity = minQty.Int64
+	if tiersJSON.Valid && tiersJSON.Value != nil {
+		b, _ := json.Marshal(tiersJSON.Value)
+		_ = json.Unmarshal(b, &p.Tiers)
 	}
 	if minOrder.Valid {
 		p.MinOrderAmountMinor = minOrder.Int64
@@ -386,4 +389,62 @@ func (r *SpannerRepository) LookupActivePriceOverrides(
 		out[productID] = price
 	}
 	return out, nil
+}
+func (r *SpannerRepository) FilterEligibleCampaignPromotions(ctx context.Context, retailerID string, promotions []Promotion) ([]Promotion, error) {
+	if len(promotions) == 0 {
+		return promotions, nil
+	}
+	var campaignIDs []string
+	for _, p := range promotions {
+		if p.CampaignID != "" {
+			campaignIDs = append(campaignIDs, p.CampaignID)
+		}
+	}
+	if len(campaignIDs) == 0 {
+		return promotions, nil // No campaigns to check
+	}
+
+	// We need to check if campaigns are ACTIVE and Retailer is ENROLLED.
+	stmt := spanner.Statement{
+		SQL: `SELECT c.CampaignId 
+			  FROM SupplierPromotionCampaigns c
+			  JOIN RetailerPromotionEnrollments e ON c.CampaignId = e.CampaignId
+			  WHERE c.CampaignId IN UNNEST(@cids) 
+			  AND c.Status = 'ACTIVE' 
+			  AND e.RetailerId = @r 
+			  AND e.Status = 'ENROLLED'`,
+		Params: map[string]interface{}{
+			"cids": campaignIDs,
+			"r":    retailerID,
+		},
+	}
+	
+	validCampaigns := make(map[string]bool)
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var cid string
+		if err := row.Columns(&cid); err != nil {
+			return nil, err
+		}
+		validCampaigns[cid] = true
+	}
+
+	var filtered []Promotion
+	for _, p := range promotions {
+		if p.CampaignID != "" {
+			if !validCampaigns[p.CampaignID] {
+				continue
+			}
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered, nil
 }

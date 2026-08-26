@@ -384,8 +384,6 @@ interface SupplierApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<JsonElement>
 
-    @GET("v1/supplier/inventory/audit")
-    suspend fun getInventoryAudit(): Response<JsonElement>
 
     @GET("v1/supplier/earnings")
     suspend fun getEarnings(): Response<SupplierEarnings>

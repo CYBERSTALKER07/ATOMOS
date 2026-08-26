@@ -69,9 +69,14 @@ func runGlobalProductsSmokeCheck(ctx context.Context, cfg *bootstrap.Config) err
 
 	// Ambiguous fuzzy: seed two similar masters then match a third SKU without GTIN.
 	keyBrand := "FuzzyBrand" + suffix
+	_ = repo.UpsertBrand(ctx, globalproducts.GlobalBrand{
+		BrandID:        "b-fz-" + suffix,
+		Name:           keyBrand,
+		NormalizedName: globalproducts.NormalizeBrandToken(keyBrand),
+	})
 	_ = repo.UpsertGlobal(ctx, globalproducts.GlobalProduct{
 		GlobalProductID: "gp-fz-a-" + suffix,
-		Brand:           keyBrand,
+		BrandID:         "b-fz-" + suffix,
 		Name:            "Widget Blue",
 		PackQty:         12,
 		BaseUomID:       globalproducts.UomEachID,
@@ -80,7 +85,7 @@ func runGlobalProductsSmokeCheck(ctx context.Context, cfg *bootstrap.Config) err
 	})
 	_ = repo.UpsertGlobal(ctx, globalproducts.GlobalProduct{
 		GlobalProductID: "gp-fz-b-" + suffix,
-		Brand:           keyBrand,
+		BrandID:         "b-fz-" + suffix,
 		Name:            "Widget Blue Extra",
 		PackQty:         12,
 		BaseUomID:       globalproducts.UomEachID,

@@ -92,8 +92,8 @@ jobs:
       matrix:
         include:
           - name: retailer
-            scheme: reatilerapp
-            project: pegasusX/apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj
+            scheme: retailerapp
+            project: pegasusX/apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj
             xcodegen_dir: ""
           - name: supplier
             scheme: SupplierAppIOS

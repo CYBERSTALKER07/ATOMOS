@@ -171,6 +171,22 @@ func (s *Service) HandleFleet(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	factoryID, _ := s.scopedFactoryID(r)
+	if factoryID == "" {
+		factoryID = s.factoryNodeID
+	}
+	if s.spannerClient != nil {
+		res, err := s.loadFactoryFleetFromSpanner(r.Context(), factoryID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory fleet spanner failed", "err", err, "factory_id", factoryID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fleet_failed"})
+			return
+		}
+		if res != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"vehicles": res.IOSVehicles})
+			return
+		}
+	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	vehicles := s.iosFleetVehiclesLocked()

@@ -15,6 +15,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type fleetReorderRequest struct {
@@ -933,27 +936,91 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current, okRow, err := s.repo.GetOrder(r.Context(), req.OrderID)
-	if err != nil || !okRow {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
-		return
-	}
+	var current Order
 	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = current.Currency
-	}
-	if err := s.emitDriverEdgeEvent(r.Context(), current, map[string]any{
-		"type":        events.EventSplitPaymentCreated,
-		"order_id":    req.OrderID,
-		"driver_id":   claims.Subject,
-		"supplier_id": current.SupplierID,
-		"retailer_id": current.RetailerID,
-		"cash_minor":  req.CashMinor,
-		"card_minor":  req.CardMinor,
-		"currency":    currency,
-		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
-	}); err != nil {
-		s.log.ErrorContext(r.Context(), "split payment event failed", "err", err)
+
+	_, err = s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		orderRow, okRow, txnErr := s.repo.GetOrderTxn(ctx, txn, req.OrderID)
+		if txnErr != nil || !okRow {
+			return status.Error(codes.NotFound, "order_not_found")
+		}
+		current = orderRow
+
+		outstanding := deliveredGrossFromOrder(current)
+		captured, capErr := s.getCapturedPaymentMinorTxn(ctx, txn, current.OrderID)
+		if capErr != nil {
+			return capErr
+		}
+		due := outstanding - captured
+		if due <= 0 {
+			return status.Error(codes.FailedPrecondition, "already_paid")
+		}
+		if req.CashMinor+req.CardMinor != due {
+			return status.Error(codes.InvalidArgument, "split_amount_mismatch")
+		}
+
+		if currency == "" {
+			currency = current.Currency
+		}
+
+		now := s.now().UTC()
+		if req.CashMinor > 0 {
+			if errLeg := s.RecordPaymentLeg(ctx, txn, PaymentLeg{
+				OrderID:        current.OrderID,
+				LegID:          uuid.New().String(),
+				Method:         MethodCash,
+				AmountMinor:    req.CashMinor,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("split-%s-cash-%d", current.OrderID, now.UnixNano()),
+				CreatedAt:      now,
+				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
+			}); errLeg != nil {
+				return errLeg
+			}
+		}
+		if req.CardMinor > 0 {
+			if errLeg := s.RecordPaymentLeg(ctx, txn, PaymentLeg{
+				OrderID:        current.OrderID,
+				LegID:          uuid.New().String(),
+				Method:         MethodCard,
+				AmountMinor:    req.CardMinor,
+				Status:         PaymentStatusCaptured,
+				IdempotencyKey: fmt.Sprintf("split-%s-card-%d", current.OrderID, now.UnixNano()),
+				CreatedAt:      now,
+				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
+			}); errLeg != nil {
+				return errLeg
+			}
+		}
+
+		buf := &spannerTxnBuffer{}
+		if errOutbox := outbox.EmitJSON(ctx, buf, events.AggregateOrder, current.OrderID, events.TopicMain, map[string]any{
+			"type":        events.EventSplitPaymentCreated,
+			"order_id":    req.OrderID,
+			"driver_id":   claims.Subject,
+			"supplier_id": current.SupplierID,
+			"retailer_id": current.RetailerID,
+			"cash_minor":  req.CashMinor,
+			"card_minor":  req.CardMinor,
+			"currency":    currency,
+			"timestamp":   now.Format(time.RFC3339Nano),
+		}); errOutbox != nil {
+			return errOutbox
+		}
+		for _, m := range bufferedOutboxMutations(buf, now) {
+			if errMut := txn.BufferWrite([]*spanner.Mutation{m}); errMut != nil {
+				return errMut
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+			return
+		}
+		s.log.ErrorContext(r.Context(), "split payment txn failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "event_failed"})
 		return
 	}

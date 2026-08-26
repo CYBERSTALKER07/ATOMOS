@@ -1,4 +1,7 @@
 # Wave B3 — Retailer multi-user + parent order bus
+> **POINT-IN-TIME SNAPSHOT (2026-08-12) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Date:** 2026-08-13  
 **Master:** [`BACKEND_PARITY_MASTER.md`](./BACKEND_PARITY_MASTER.md)

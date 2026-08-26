@@ -88,10 +88,10 @@ data class CartUiState(
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
-    val subtotal: Double get() = quotedSubtotalMinor?.toDouble() ?: items.sumOf { it.totalPrice }
-    val shipping: Double get() = if (subtotal > 50_000) 0.0 else 15_000.0
-    val discount: Double get() = quotedDiscountMinor?.toDouble() ?: 0.0
-    val total: Double get() = subtotal + shipping - discount
+    val subtotal: Long get() = quotedSubtotalMinor ?: items.sumOf { it.totalPrice }
+    val shipping: Long get() = if (subtotal > 50_000L) 0L else 15_000L
+    val discount: Long get() = quotedDiscountMinor ?: 0L
+    val total: Long get() = subtotal + shipping - discount
     val displaySubtotal: String get() = "%,.0f".format(subtotal)
     val displayShipping: String get() = if (shipping == 0.0) "Free" else "%,.0f".format(shipping)
     val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
@@ -105,7 +105,7 @@ data class CartUiState(
                 else -> selectedPaymentGateway.trim()
             }
     val displayDeliveryFee: String
-        get() = if (deliveryFeeMinor > 0) "%,.0f".format(deliveryFeeMinor.toDouble()) else "Free"
+        get() = if (deliveryFeeMinor > 0) "%,d".format(deliveryFeeMinor) else "Free"
     val syncMessage: String?
         get() = when (loadIssue) {
             CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
@@ -204,7 +204,7 @@ init {
             if (quantity <= 0) {
                 return@mapNotNull null
             }
-            val unitPrice = raw.longField("unit_price").toDouble()
+            val unitPrice = raw.longField("unit_price")
 
             val existing = existingBySku[skuId]
             if (existing != null) {

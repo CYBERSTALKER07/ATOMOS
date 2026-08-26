@@ -107,7 +107,7 @@ Legend: **Live** (wired, gate/test evidence) · **Partial** (present, incomplete
 
 ### Retailer (Android / iOS / Desktop)
 - Live: catalog, cart, multi-supplier checkout, orders, delivery payment, credit profile (read), POS + sell-through feed, shifts. (`retailer-app-android/…/ui/screens`, `retailer-app-desktop/app/(dashboard)/` 32 pages)
-- Partial: auto-order (shadow default; place gated); iOS scheme/dir typo `reatilerapp` (buildable, sloppy).
+- Partial: auto-order (shadow default; place gated); iOS scheme/dir typo `retailerapp` (buildable, sloppy).
 - Absent: pitch/telesales surface; credit negotiation.
 - Hygiene: `retailer-app-desktop` has `clean.tsx`, `fix_settings.py` debris at app root.
 
@@ -183,7 +183,7 @@ Legend: **Live** (wired, gate/test evidence) · **Partial** (present, incomplete
 
 **Scope/architecture**
 - Keep autonomy evidence-gated (shadow → measured place); do not flip by assertion.
-- Delete repo debris (`refactor*.py`, `patch_*.py`, `mocks/globalpay`, nested CV site) and fix the `reatilerapp` iOS path typo.
+- Delete repo debris (`refactor*.py`, `patch_*.py`, `mocks/globalpay`, nested CV site) and fix the `retailerapp` iOS path typo.
 - Decide the fate of redirect-stub apps (delete or replace) to stop advertising non-existent surfaces.
 
 ---

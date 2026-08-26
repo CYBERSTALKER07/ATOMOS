@@ -52,7 +52,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		}
 		if d.ARService != nil {
 			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/invoices", d.ARService.HandleListRetailerInvoices)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Post("/v1/retailer/ar/invoices/{id}/pay", d.ARService.HandleRetailerPayInvoice)
+			gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/ar/delinquency-lock", d.ARService.HandleCheckDelinquencyLock)
 			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/invoices", d.ARService.HandleListSupplierInvoices)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/aging-summary", d.ARService.HandleSupplierAgingSummary)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/supplier/ar/invoices/{id}/write-off", d.ARService.HandleInvoiceWriteOff)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse)).Get("/v1/supplier/ar/retailers/{retailerId}/delinquency-lock", d.ARService.HandleCheckDelinquencyLock)
 		}
 		if d.DunningWorker != nil {
 			dunning := gr.With(auth.RequireRole(auth.RoleAdmin, auth.RolePlatformAdmin))

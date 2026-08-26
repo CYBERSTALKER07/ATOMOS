@@ -62,6 +62,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storageroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/taxroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
@@ -196,6 +198,7 @@ func main() {
 	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Service:          app.RetailerService,
+		SupplierService:  app.SupplierService,
 		PaymentService:   app.PaymentService,
 		PromotionService: app.PromotionService,
 		OrderService:     app.OrderService,
@@ -223,6 +226,7 @@ func main() {
 	})
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
 		Service:        app.WarehouseService,
+		DriverService:  app.DriverService,
 		OrderService:   app.OrderService,
 		PayloadService: app.PayloadService,
 		WMSHandler: &stocklots.Handler{
@@ -238,6 +242,8 @@ func main() {
 	returnsroutes.RegisterRoutes(r, returnsDeps)
 	returnsroutes.RegisterDriverRoutes(r, returnsDeps)
 	returnsroutes.RegisterSupplierHistory(r, returnsDeps)
+	storageroutes.Mount(r, app.EvidenceVault)
+	taxroutes.Mount(r, app.TaxService)
 	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
 		Service:         app.SupplierService,
 		RetailerService: app.RetailerService,

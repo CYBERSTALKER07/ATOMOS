@@ -57,6 +57,7 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
         "ORDER_REASSIGNED" -> "Order Reassigned"
         "SETTLEMENT_REQUIRED" -> "Settlement Required"
+        "SPLIT_PAYMENT_CREATED" -> "Split Payment Processed"
         "DELIVERY_SESSION_UPDATED" -> "Delivery Session Updated"
         "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
         "FISCAL_RECEIPT_REQUESTED", "PAYMENT_CLEARED" -> "Pending Fiscal Receipt"

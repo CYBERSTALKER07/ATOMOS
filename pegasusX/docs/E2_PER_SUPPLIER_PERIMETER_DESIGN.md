@@ -1,8 +1,11 @@
 # E2 — Per-supplier delivery perimeter (design)
 
-**Status:** Phase C prep (EH1.1 cutover not in this tranche)  
-**Code helper:** `retailer.PerimeterKeyForSupplier` / `PerimeterCompactedKeyForSupplier`  
-**Production reads today:** still `ssmr:delivery_perimeter` (+ `:compacted`)
+**Status:** IMPLEMENTED (2026-08-20)  
+**Implementation:** `warehouse/perimeter.go` (`PublishSupplierPerimeter`, `CheckSupplierPerimeter`) + `warehouse/perimeter_handlers.go` (`HandlePublishPerimeter`)  
+**Route:** `POST /v1/warehouses/publish-perimeter`  
+**Checkout enforcement:** `order/warehouse_resolver_spanner.go` checks `SIsMember` against `perimeter:supplier:{id}` before Spanner coverage query  
+**Tests:** `warehouse/perimeter_test.go` (miniredis-backed)  
+**Legacy reads:** `ssmr:delivery_perimeter` still present in `retailer/proximity_service.go` — migration not yet cutover
 
 ## Goal
 

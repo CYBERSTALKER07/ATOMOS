@@ -1,90 +1,82 @@
-# FINAL GOAL (load on every new session)
+# FINAL GOAL (Load on Every New Session)
 
-**Set:** 2026-08-16  
-**Product tree:** `pegasusX/` (`pegasus/` = legacy port source)
+**Date:** 2026-08-20 (Master State Synchronization)  
+**Living Product Tree:** `pegasusX/` (`pegasus/` = legacy reference / port source only)
 
-## Canonical program — these files ARE the destination
+---
 
-| File | What it is |
-|------|------------|
-| [`pegasusX/docs/GLOBAL_SCALE_PROGRAM.md`](../../pegasusX/docs/GLOBAL_SCALE_PROGRAM.md) | Global multi-supplier program: register + home cell + MarketPack + Class A. Phases **GS-A → T → M → C**, then I / R / P. |
-| [`pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](../../pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | Local-first same-market topology + pack-owned PSP. Phases **GS-L0–L4** + **GS-K1–K3** (W1–W26). Extends A/T/M/C; does not replace them. |
-| [`pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md`](../../pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md) | Client visualization: command dashboards + Plan & Brain tabs (GS-U0–U9) on web, desktop, iOS (phone+iPad), Android (phone+tablet). Extends GS-R. Not status. |
+## 1. Canonical Program — Authoritative Destination Documents
 
-`PROD_ECOSYSTEM_GOAL.md` is the **Class A coverage rule** (outbox + consumer + role-row client). It is not a competing destination.
+| Document | Purpose & Architectural Role |
+|---|---|
+| [`pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](../../pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) | **Master Ecosystem Blueprint**: Full architectural specification covering 29 route packages, Spanner multi-tenancy (`SupplierId`), Outbox event pipeline, and 6 role-row client apps. |
+| [`pegasusX/docs/GLOBAL_SCALE_PROGRAM.md`](../../pegasusX/docs/GLOBAL_SCALE_PROGRAM.md) | **Global Scale Program**: Multi-supplier registration (`SupplierId`), home cells, versioned MarketPacks, and Class A execution (GS-A/T/M/C/I/R/P). |
+| [`pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`](../../pegasusX/docs/GLOBAL_SCALE_LOCAL_ECOSYSTEM.md) | **Local Ecosystem Program**: Local-first warehouse matching (`CoverageEngine`), H3 Res 7 clustering, `ServicePins`, `SupplierRegions`, and pack-owned PSP catalog (GS-L/K, W1–W26 resolved). |
+| [`pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md`](../../pegasusX/docs/GLOBAL_SCALE_CLIENT_UI.md) | **Client Visualization Program**: Realtime command dashboards, `StatusStack` kit, and Plan & Brain tabs across all role surfaces (GS-U0–U9 shipped). |
+| [`pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`](../../pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md) | **Role Parity Matrix**: Verified implementation and test pass status across all 6 role rows (Supplier, Retailer, Driver, Warehouse, Factory, Payload) + Platform Admin. |
 
-This file is the **goal**, not status. Status needs `file:line` this session. Code wins.
+---
 
-## North star
+## 2. North Star Architecture
 
-A **global, local-first, multi-supplier** logistics ecosystem.
+A **global, local-first, multi-supplier logistics operating system**.
 
-Many companies, in many markets, **register** as isolated suppliers (`SupplierId`), land in a **home cell**, receive a **market pack that checkout / fiscal / proximity / PSP catalog actually use**, invite their roles, and run Class A:
+Many companies, in many markets, **register** as isolated suppliers (`SupplierId`), land in a **home cell**, receive a **market pack that checkout / fiscal / proximity / PSP catalog actually use**, invite their roles, and run Class A operations:
 
-`order → stock → truck → cash/credit → fiscal → payout`
+$$\text{Order} \longrightarrow \text{Stock} \longrightarrow \text{Truck} \longrightarrow \text{Cash/Credit} \longrightarrow \text{Fiscal} \longrightarrow \text{Payout}$$
 
-Retailers attach **more than one** supplier; mixed carts split into per-supplier child orders (`ParentOrders`) **only inside the same pack country**. Same code, **cloned cells**. Not a UZ-only fork. Not a second tenant key.
+Retailers attach **multiple** suppliers; mixed carts split into per-supplier child orders (`ParentOrders`) within the same market pack country. Same codebase, cloned regional cells. Zero country-specific forks. Zero secondary tenant keys.
 
-Local law: factory → warehouse → retailer store is **same-country**, **closest covering node**, with supplier pins as override. Empty geography is incomplete, not worldwide.
+---
 
-## Product laws (do not violate)
+## 3. Core Product Laws & Invariants
 
-From `GLOBAL_SCALE_LOCAL_ECOSYSTEM.md` §1 — product law, not UI preference:
+1. **One Tenant Key**: `SupplierId STRING(36) NOT NULL`. Pack, cell, country, city, and region are attributes.
+2. **Market Owns Money**: Currency, minor decimal places, PSP catalog, fiscal adapter, and payout rail derive strictly from shipped `MarketPack`.
+3. **Same-Market Orders Only**: Retailer location, warehouse, factory, and supplier `MarketCode` countries must match. Mismatches return `422 cross_market_deferred`.
+4. **Local-First Default**: Store resolves to closest covering warehouse; warehouse replenishment resolves to closest factory on an active `SupplyLane`.
+5. **Supplier Override Wins**: `ServicePins` (location/retailer/region) and `WarehouseCoverageCells` take precedence over distance-based matching.
+6. **Empty Geography Fails Closed**: Missing `CountryCode` on warehouse/factory/store returns `422 geography_incomplete`.
+7. **Pack Filters PSP UI**: GET `/v1/*/payment-catalog` returns `LivePackGateways(pack)`. Foreign gateways are hidden.
+8. **Unkeyed Rails Fail Honestly**: Missing keys return HTTP 501 `no_live_keys` via `catalogHonestyExecutor`. Never a fake 200 redirect.
+9. **One Country = One Pack + Adapters**: New countries introduce a versioned `MarketPack` + 1–3 adapters without codebase forks.
+10. **Class A Integrity**: Integer minor units, fiscal hard-gate, pay-at-delivery, dual manifests (`SupplierTruckManifests` vs `FactoryTruckManifests`), H3 Res 7, and transactional outbox event emissions.
 
-1. **One tenant key** — `SupplierId`. Pack, cell, country, city, region are attributes.
-2. **Market owns money** — currency, decimals, PSP list, fiscal adapter, payout rail come from shipped `MarketPack`.
-3. **Same-market orders only** — retailer / warehouse / factory / pack country must match. Else `422 cross_market_deferred`.
-4. **Local-first default** — closest covering warehouse; closest factory on a `SupplyLane` (or same-country factories).
-5. **Supplier override wins** — city / region / store pins beat closest.
-6. **Empty geography fail-closed** — missing `CountryCode` → `422 geography_incomplete`.
-7. **Pack filters PSP UI** — GET/POST gateways = pack ∩ registered executors.
-8. **Unkeyed ≠ success** — missing PSP/fiscal/SMS keys → honest 501 / `no_live_keys`. Never a fake 200 redirect.
-9. **One country = one pack + 1–3 adapters** — not a fork.
-10. **Class A stays** — integer minor money, fiscal hard-gate, pay-at-delivery, dual manifests, H3 res 7, outbox-in-txn, factory planning / auto-order **place** flag-off.
+---
 
-## How we get there
-
-Implement **phases**, not 250 `BF-*` inventory rows in one PR.
+## 4. Implementation Phasing & Status
 
 ```
-GS-A  Auth + session market pack     (A0–A2 claimed in program)
-GS-T  Self-serve tenant register     (T1–T5 claimed in program)
-GS-M  Checkout/fiscal/maps READ pack (M1–M7 claimed; checkout_reads_this still false)
-GS-C  Regional cell scaffold         (C1–C5 plan/files; no apply)
-GS-I / R / P                         (bind claimed; leftovers continuous)
-
-GS-L  Local matching                 L0 → L1 → L2 → L3 → L4
-GS-K  Pack PSP catalog               K1 → K2 → K3
-GS-U  Client visualization           U0 → U9 (dashboards + Plan & Brain)
+GS-A  Auth & Session MarketPack      (A0–A2 SHIPPED)
+GS-T  Self-Serve Tenant Register     (T1–T5 SHIPPED)
+GS-M  MarketPack Reading             (M1–M7 SHIPPED; Flag stays false in local/SSMR until live Soliq)
+GS-C  Regional Cell Scaffold         (C1–C5 SCAFFOLDED; apply deferred)
+GS-I  Enterprise Identity (OIDC)     (SHIPPED; SupplierOIDC + endpoints)
+GS-L  Local Matching & ServicePins   (L0–L4 SHIPPED; W1–W26 items closed)
+GS-K  Pack PSP Catalog & Honesty     (K1–K3 SHIPPED; HTTP 501 placeholder executors)
+GS-U  Client Visualization           (U0–U9 SHIPPED; command dashboards & StatusStack)
+GS-P  Partner Dialects (EDI/1C/AS2)  (SHIPPED; B2B integration layer)
 ```
 
-**Next claimed slice:** leftovers (GS-M flag, cells apply, live PSP) — Layer B, do not execute. Named + continuous empty-currency invent train closed. Not Layer B. GS-U0–U9 shipped 2026-08-16. `checkout_reads_this` still false. Not terraform apply. Not Stripe keys. Not flipping the flag. Not swapping MapLibre for Google Maps. Factory planning / auto-order **place** stay off.
+---
 
-A slice is not done until every W-item it owns has a live-path test.
+## 5. Explicit Non-Goals & Boundaries
 
-## Not the claim
+- No open-world public ads/discovery marketplace in core trade loops.
+- No cross-country checkout/orders/payouts in v1 (same-market only).
+- No unified global Spanner across geographic borders (regional cloned cells).
+- No unattended `terraform apply` of second cells in development sessions.
+- No live charge execution on unkeyed payment gateways without verified credentials (returns HTTP 501 `no_live_keys`).
+- Factory planning and auto-order `place` features default to flag-off.
+- Deprecated/unwired endpoints return RFC 7807 HTTP 410 (`audit_unwired`, `feature_disabled`).
 
-- Open-world public discovery / ads marketplace
-- Cross-country orders, payments, payouts, fiscal, credit, FX checkout
-- One global Spanner / second tenant key / merged factory+supplier manifests
-- `terraform apply` of `cells/eu` or a second live cell
-- Stripe/Adyen/Payme live charges, PEPPOL execute, SAML/SCIM
-- Factory planning or auto-order **place** on by default
-- Linguistic-complete i18n
-- “We listed 50 countries therefore we operate in 50 countries”
+---
 
-## Do not break
+## 6. Verification & Quality Assurance Standard
 
-- SoT tree is `pegasusX/`
-- Dual manifest planes (factory vs supplier trucks)
-- Integer money, fiscal hard-gate, pay-at-delivery
-- Seed fail-closed in ssmr/prod
-- No side vector DB for agents — memory is this folder + Grok `[memory]` + graph walker + live code
+Re-verify all status claims directly in source code with exact `file:line` citations and test suite runs.
 
-## Honesty
-
-Re-verify every status claim in code. Docs and this file are the destination, not a wiring certificate.
-
-Working memory: `.agents/memory/WORKSPACE.md`  
-Feature inventory: `pegasusX/docs/GLOBAL_SCALE_BACKEND_FEATURES.md`  
-Class A coverage: `pegasusX/docs/PROD_ECOSYSTEM_GOAL.md`
+- Working Memory: `.agents/memory/WORKSPACE.md`
+- Documentation Source of Truth: `pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md`
+- Feature Classification: `pegasusX/docs/GLOBAL_SCALE_BACKEND_FEATURES.md`
+- Class A Coverage Definition: `pegasusX/docs/PROD_ECOSYSTEM_GOAL.md`

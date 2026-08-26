@@ -45,7 +45,6 @@ import com.pegasusx.retailer.R
 @Composable
 fun SettingsSection(
     onAccountClick: () -> Unit,
-    onSavedCardsClick: () -> Unit,
     onFamilyMembersClick: () -> Unit,
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
@@ -88,7 +87,6 @@ fun SettingsSection(
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.People, title = stringResource(R.string.retailer_desktop_settings_team_text_team), subtitle = "Staff roles and invites", onClick = onTeamClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.CreditCard, title = stringResource(R.string.retailer_desktop_settings_cards_text_saved_cards), subtitle = "Manage payment methods", onClick = onSavedCardsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.People, title = stringResource(R.string.mobile_retailer_ui_family_contacts), subtitle = "Legacy name/phone list", onClick = onFamilyMembersClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))

@@ -588,7 +588,7 @@ export default function CheckoutModal({
                   <div>
                     <h3 className="md-typescale-body-large font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.checkout_modal.text.setup_payment_card")}</h3>
                     <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
-                      Tokenize a card via OTP confirmation (same flow as Settings → Saved Cards).
+                      Tokenize a card via OTP confirmation.
                     </p>
                   </div>
                   {cardSetupError && (

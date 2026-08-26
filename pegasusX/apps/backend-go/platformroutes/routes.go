@@ -36,7 +36,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	)).Get("/v1/media/upload-ticket", d.Handler.HandleMediaUploadTicket)
 	r.Post("/v1/user/device-token", d.Handler.HandleDeviceToken)
 	if d.GeocodeHandler != nil {
-		geolocation.RegisterRoutes(r, d.GeocodeHandler)
+		r.With(auth.RequireAnyAuthenticated()).Group(func(gr chi.Router) {
+			geolocation.RegisterRoutes(gr, d.GeocodeHandler)
+		})
 	}
 	if d.JWTSecret != "" {
 		r.Post("/v1/auth/refresh", auth.HandleTokenRefresh(d.JWTSecret, d.JWTIssuer))

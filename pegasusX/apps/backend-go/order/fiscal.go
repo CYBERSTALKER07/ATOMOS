@@ -752,16 +752,20 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 		return fmt.Errorf("no active tax regime found for country %s", countryCode)
 	}
 
+	var actualVat int64 = 0
+	if len(regime.VatRatesBps) > 0 {
+		actualVat = regime.VatRatesBps[0]
+	}
 	for _, line := range orderRecord.LineItems {
 		net := line.Quantity * line.UnitPrice
-		vat := (net * regime.VatRateBps) / 10000
+		vat := (net * actualVat) / 10000
 		gross := net + vat
 
 		snap := tax.OrderLineFiscalSnapshot{
 			OrderId:     orderRecord.OrderID,
 			OrderLineId: line.SKU,
 			RegimeId:    regime.Id,
-			VatRateBps:  regime.VatRateBps,
+			VatRateBps:  actualVat,
 			NetMinor:    net,
 			VatMinor:    vat,
 			GrossMinor:  gross,

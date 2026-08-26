@@ -76,7 +76,7 @@ Six roles × Android + iOS: supplier, warehouse, factory, retailer, driver, payl
 | Factory fleet UI is a list | Android `FleetScreen.kt` `getFleetLiveMap()` → cards; iOS `FleetView.swift` same. Portal `FleetLiveMap.tsx` MapLibre. Backend geometry **deferred** (`factory/fleet_live_map.go:63`). |
 | Payload no map | Grep MapKit/GoogleMap/MapLibre empty. Board APIs exist. |
 | Retailer Android HTTP | Session JWT only — `TokenManager.httpAuthorizationToken` returns JWT or null (`TokenManager.kt:49-54`). |
-| CI iOS retailer | Workflow points at `reatilerapp.xcodeproj` — [`DEVOPS_CICD_AUDIT.md`](./DEVOPS_CICD_AUDIT.md). |
+| CI iOS retailer | Workflow points at `retailerapp.xcodeproj` — [`DEVOPS_CICD_AUDIT.md`](./DEVOPS_CICD_AUDIT.md). |
 
 GS-U command dashboards (StatusStack, pack money, no invented UZS) shipped in program docs — **re-verify** the specific screen before claiming; this audit does not re-run those tests.
 

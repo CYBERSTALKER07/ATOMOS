@@ -63,10 +63,11 @@ func TestPayoutRail_DispatchThenSettlementConfirm(t *testing.T) {
 	rail := &fakeLiveRail{ref: "rail-ref-123"}
 	svc.SetRail(rail)
 
-	b, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
+	batches, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	b := batches[0]
 
 	// Live dispatch moves DRAFT -> SUBMITTED and records the rail reference.
 	b, err = svc.SubmitForDispatch(ctx, supplierID, b.BatchID, true)
@@ -115,10 +116,11 @@ func TestPayoutRail_LiveDispatchOnFileRailFailsClosed(t *testing.T) {
 		{"LegId": "l1", "Method": "CARD", "AmountMinor": int64(100000), "Status": "CAPTURED", "IdempotencyKey": fmt.Sprintf("cap-fc-%d", suffix), "CreatedAt": legTime, "CapturedAt": legTime},
 	})
 	svc := NewService(NewRepository(client)) // default BankFileRail (not live)
-	b, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
+	batches, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	b := batches[0]
 	if _, err := svc.SubmitForDispatch(ctx, supplierID, b.BatchID, true); err == nil {
 		t.Fatal("live dispatch on non-live rail must fail closed")
 	}
@@ -144,10 +146,11 @@ func TestPayoutRail_ConfirmBeforeSubmitFails(t *testing.T) {
 		{"LegId": "l1", "Method": "CARD", "AmountMinor": int64(100000), "Status": "CAPTURED", "IdempotencyKey": fmt.Sprintf("cap-early-%d", suffix), "CreatedAt": legTime, "CapturedAt": legTime},
 	})
 	svc := NewService(NewRepository(client))
-	b, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
+	batches, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "admin", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	b := batches[0]
 	if err := svc.ConfirmSettlement(ctx, b.BatchID, "ref"); err == nil {
 		t.Fatal("settlement confirm on DRAFT batch must fail")
 	}

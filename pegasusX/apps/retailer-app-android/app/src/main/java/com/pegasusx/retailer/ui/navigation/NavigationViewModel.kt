@@ -446,6 +446,7 @@ class NavigationViewModel @Inject constructor(
                 .filter {
                     it.type == "FISCAL_RECEIPT_REQUESTED" ||
                         it.type == "PAYMENT_CLEARED" ||
+                        it.type == "SPLIT_PAYMENT_CREATED" ||
                         (it.type == "ORDER_STATUS_CHANGED" && it.state.equals("FISCALIZING", true))
                 }
                 .collect { msg ->

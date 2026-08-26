@@ -1,4 +1,7 @@
 # P15 — Cloud apply artifacts (not applied)
+> **POINT-IN-TIME SNAPSHOT (2026-08-13) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Date:** 2026-08-13  
 **Stamp:** **not cloud-ready.** This file inventories in-tree apply targets. No `gcloud` / `terraform apply` / `kubectl apply` was run from this program. Owner GSM secrets were **not** invented.

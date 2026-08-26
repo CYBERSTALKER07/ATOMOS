@@ -1,4 +1,7 @@
 # P16 — Store submit artifacts (not submitted)
+> **POINT-IN-TIME SNAPSHOT (2026-08-13) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Date:** 2026-08-13  
 **Stamp:** **not store.** No App Store Connect or Play Console listing was created from this program.

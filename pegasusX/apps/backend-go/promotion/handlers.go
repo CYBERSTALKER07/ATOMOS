@@ -12,15 +12,14 @@ import (
 )
 
 type createPromotionRequest struct {
-	Name                string   `json:"name"`
-	Description         string   `json:"description"`
-	DiscountBps         int64    `json:"discount_bps"`
-	ScopeType           string   `json:"scope_type"`
-	ScopeProductID      string   `json:"scope_product_id"`
-	ScopeCategoryID     string   `json:"scope_category_id"`
-	RetailerScope       string   `json:"retailer_scope"`
-	RetailerIDs         []string `json:"retailer_ids"`
-	MinLineQuantity     int64    `json:"min_line_quantity"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description"`
+	Tiers               []PromotionTier `json:"tiers"`
+	ScopeType           string          `json:"scope_type"`
+	ScopeProductID      string          `json:"scope_product_id"`
+	ScopeCategoryID     string          `json:"scope_category_id"`
+	RetailerScope       string          `json:"retailer_scope"`
+	RetailerIDs         []string        `json:"retailer_ids"`
 	MinOrderAmountMinor int64    `json:"min_order_amount_minor"`
 	StartsAt            *string  `json:"starts_at"`
 	EndsAt              *string  `json:"ends_at"`
@@ -227,13 +226,12 @@ func decodePromotionRequest(supplierID, promotionID string, req createPromotionR
 		SupplierID:          supplierID,
 		Name:                strings.TrimSpace(req.Name),
 		Description:         strings.TrimSpace(req.Description),
-		DiscountBps:         req.DiscountBps,
+		Tiers:               req.Tiers,
 		ScopeType:           ScopeType(strings.ToUpper(strings.TrimSpace(req.ScopeType))),
 		ScopeProductID:      strings.TrimSpace(req.ScopeProductID),
 		ScopeCategoryID:     strings.TrimSpace(req.ScopeCategoryID),
 		RetailerScope:       retailerScope,
 		RetailerIDs:         req.RetailerIDs,
-		MinLineQuantity:     req.MinLineQuantity,
 		MinOrderAmountMinor: req.MinOrderAmountMinor,
 		StartsAt:            parseTimePtr(req.StartsAt),
 		EndsAt:              parseTimePtr(req.EndsAt),
@@ -258,4 +256,15 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+// HandleCreateCampaign handles POST /v1/supplier/campaigns
+func (s *Service) HandleCreateCampaign(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// HandleEnrollRetailer handles POST /v1/retailer/promotions/enroll
+func (s *Service) HandleEnrollRetailer(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

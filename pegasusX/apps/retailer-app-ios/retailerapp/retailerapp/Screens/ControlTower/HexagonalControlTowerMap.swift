@@ -13,17 +13,8 @@ struct HexagonalControlTowerMap: View {
     
     
     var body: some View {
-        Map(position: $cameraPosition) {
-            // Map content wired to API later
-        }
-        .mapStyle(.standard(elevation: .realistic))
-        .onAppear {
-            generateData()
-        }
-    }
-    
-    private func generateData() {
-        // Wired to API
+        Map(position: $cameraPosition)
+            .mapStyle(.standard(elevation: .realistic))
     }
     
     private func colorForDensity(_ density: Double) -> Color {

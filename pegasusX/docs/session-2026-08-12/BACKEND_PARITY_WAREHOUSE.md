@@ -1,4 +1,7 @@
 # Backend Parity — A4 WAREHOUSE (Class A audit)
+> **POINT-IN-TIME SNAPSHOT (2026-08-12) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Agent:** A4-WAREHOUSE  
 **Date:** 2026-08-12  

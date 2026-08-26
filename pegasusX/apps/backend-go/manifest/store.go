@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/api/iterator"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -841,6 +842,10 @@ func resolveOrderPatchVersions(ctx context.Context, txn *spanner.ReadWriteTransa
 		}
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version"})
 		if err != nil {
+			if spanner.ErrCode(err) == codes.NotFound {
+				patches[i].Version = -1
+				continue
+			}
 			return fmt.Errorf("read order %s version: %w", orderID, err)
 		}
 		var stored int64

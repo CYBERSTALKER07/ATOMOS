@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -94,6 +95,7 @@ type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) ma
 // Service keeps additive in-memory driver state for scaffold routes.
 type Service struct {
 	repo              Repository
+	spanner           *spanner.Client
 	cache             *cache.Cache
 	notifSvc          DriverNotificationReader
 	orderList         DriverOrderQuery
@@ -137,6 +139,7 @@ type Service struct {
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
 	Repo                         Repository
+	Spanner                      *spanner.Client
 	Cache                        *cache.Cache
 	NotifSvc                     DriverNotificationReader
 	OrderList                    DriverOrderQuery
@@ -297,6 +300,7 @@ func NewService(c ServiceConfig) *Service {
 		earningsMinor:      make(map[string]int64),
 		pendingCollections: make(map[string][]PendingCollection),
 		repo:               c.Repo,
+		spanner:            c.Spanner,
 		cache:              c.Cache,
 		notifSvc:           c.NotifSvc,
 		orderList:          c.OrderList,

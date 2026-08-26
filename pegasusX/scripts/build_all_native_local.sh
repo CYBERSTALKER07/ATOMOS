@@ -63,7 +63,7 @@ fi
 if [[ "$SKIP_IOS" != "1" ]]; then
   echo "=== iOS (simulator) ==="
   declare -a IOS_BUILDS=(
-    "apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj|reatilerapp"
+    "apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj|retailerapp"
     "apps/supplier-app-ios/SupplierAppIOS.xcodeproj|SupplierAppIOS"
     "apps/driver-app-ios/driverappios/driverappios.xcodeproj|driverappios"
     "apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj|WarehouseAppIOS"

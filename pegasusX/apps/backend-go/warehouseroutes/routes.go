@@ -5,6 +5,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
@@ -14,6 +15,7 @@ import (
 // Deps is the narrow dependency contract for warehouse routes.
 type Deps struct {
 	Service        *warehouse.Service
+	DriverService  *driver.Service
 	OrderService   *order.Service
 	PayloadService *payload.Service
 	WMSHandler     *stocklots.Handler
@@ -44,6 +46,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/warehouses/{warehouseId}", d.Service.HandleGetWarehouse)
 		rr.Put("/v1/warehouses/{warehouseId}", d.Service.HandleUpdateWarehouse)
 		rr.Get("/v1/warehouses", d.Service.HandleListWarehouses)
+		rr.Post("/v1/warehouses/publish-perimeter", d.Service.HandlePublishPerimeter)
 
 		rr.Post("/v1/warehouse/transfers/emergency", d.Service.HandleEmergencyTransfer)
 		rr.Post("/v1/warehouse/transfers/force-receive", d.Service.HandleForceReceive)
@@ -60,6 +63,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Get("/v1/warehouse/ops/lots", d.WMSHandler.HandleLots)
 			rr.Post("/v1/warehouse/ops/lots/putaway", d.WMSHandler.HandlePutaway)
 			rr.Get("/v1/warehouse/ops/lots/{lotID}", d.WMSHandler.HandleLotByID)
+			rr.Get("/v1/warehouse/ops/lots/{lotID}/trace", d.WMSHandler.HandleTraceLot)
+			rr.Post("/v1/warehouse/ops/lots/{lotID}/quarantine", d.WMSHandler.HandleQuarantineLot)
+			rr.Post("/v1/warehouse/ops/lots/{lotID}/release", d.WMSHandler.HandleReleaseLot)
+			rr.Get("/v1/warehouse/ops/recalls", d.WMSHandler.HandleRecalls)
+			rr.Post("/v1/warehouse/ops/recalls", d.WMSHandler.HandleRecalls)
+			rr.Get("/v1/warehouse/ops/recalls/{campaignID}", d.WMSHandler.HandleRecallByID)
 			rr.Get("/v1/warehouse/ops/pick-waves", d.WMSHandler.HandlePickWaves)
 			rr.Post("/v1/warehouse/ops/pick-waves", d.WMSHandler.HandlePickWaves)
 			rr.Get("/v1/warehouse/ops/pick-waves/{waveID}", d.WMSHandler.HandlePickWaveByID)
@@ -78,8 +87,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 				admin.Use(auth.RequireRole(auth.RoleWarehouseAdmin, auth.RoleAdmin))
 				admin.Post("/v1/warehouse/ops/pick-waves/{waveID}/waive-shorts", d.WMSHandler.HandleWaivePickShorts)
 				admin.Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/approve", d.WMSHandler.HandleApproveInventoryAdjustment)
-				admin.Post("/v1/warehouse/ops/inventory-adjustments/{adjustmentID}/reject", d.WMSHandler.HandleRejectInventoryAdjustment)
 			})
+		}
+		if d.DriverService != nil {
+			rr.Get("/v1/warehouse/ops/cash-reconciliations", d.DriverService.HandleListCashReconciliations)
+			rr.Post("/v1/warehouse/ops/cash-reconciliations/{id}/accept", d.DriverService.HandleCashReconciliationAccept)
+			rr.Post("/v1/warehouse/ops/cash-reconciliations/{id}/dispute", d.DriverService.HandleCashReconciliationDispute)
 		}
 		rr.Get("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)
 		rr.Patch("/v1/warehouse/ops/settings", d.Service.HandleOpsSettings)

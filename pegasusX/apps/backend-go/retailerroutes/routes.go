@@ -12,11 +12,13 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service          *retailer.Service
+	SupplierService  *supplier.Service
 	PaymentService   *payment.Service
 	PromotionService *promotion.Service
 	OrderService     interface {
@@ -53,6 +55,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/retailer/capabilities", d.Service.HandleCapabilitiesList)
 		rr.Post("/v1/retailer/capabilities/{packID}/enable", d.Service.HandleCapabilityEnable)
 		rr.Post("/v1/retailer/capabilities/{packID}/disable", d.Service.HandleCapabilityDisable)
+
+		// Phase 4.1 Shelf Intelligence
+		rr.Post("/v1/retailer/shelf/check", d.Service.HandleCheckShelfAlerts)
+		rr.Post("/v1/retailer/shelf/alerts/{alertID}/resolve", d.Service.HandleResolveShelfAlert)
+
+		if d.SupplierService != nil {
+			rr.Get("/v1/retailer/service-promise", d.SupplierService.HandleEvaluateServicePromise)
+			rr.Post("/v1/retailer/service-promise", d.SupplierService.HandleEvaluateServicePromise)
+		}
 
 		// Retail OS Phase 7 — honest ops pulse (no demo supplier)
 		rr.Get("/v1/retailer/control-tower/pulse", d.Service.HandleControlTowerPulse)
@@ -155,6 +166,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/assist/tickets/{ticketID}/claim", d.Service.HandleAssistClaim)
 		rr.Post("/v1/retailer/assist/tickets/{ticketID}/complete", d.Service.HandleAssistComplete)
 		rr.Post("/v1/retailer/assist/tickets/{ticketID}/cancel", d.Service.HandleAssistCancel)
+
+		rr.Post("/v1/retailer/kyc/documents", d.Service.HandleSubmitKyc)
+		rr.Get("/v1/retailer/kyc/documents", d.Service.HandleListKyc)
+		rr.Post("/v1/admin/retailer-kyc/{documentID}/review", d.Service.HandleReviewKyc)
+
+		rr.Post("/v1/retailer/returns", d.Service.HandleSubmitReturn)
+		rr.Get("/v1/retailer/returns", d.Service.HandleListReturns)
 
 		rr.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)

@@ -49,11 +49,12 @@ const (
 	EventRetailerLocationCreated = "RETAILER_LOCATION_CREATED"
 	EventRetailerLocationUpdated = "RETAILER_LOCATION_UPDATED"
 	// Retail OS Phase 3
-	EventStoreStockReceived    = "STORE_STOCK_RECEIVED"
-	EventStoreStockAdjusted    = "STORE_STOCK_ADJUSTED"
-	EventStoreStockTransferred = "STORE_STOCK_TRANSFERRED"
-	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
-	EventStoreStockClaimHold   = "STORE_STOCK_CLAIM_HOLD"
+	EventStoreStockReceived        = "STORE_STOCK_RECEIVED"
+	EventStoreStockAdjusted        = "STORE_STOCK_ADJUSTED"
+	EventStoreStockTransferred     = "STORE_STOCK_TRANSFERRED"
+	EventStoreStockCounted         = "STORE_STOCK_COUNTED"
+	EventReceivingVarianceReported = "RECEIVING_VARIANCE_REPORTED"
+	EventStoreStockClaimHold       = "STORE_STOCK_CLAIM_HOLD"
 	// Retail OS Phase 4
 	EventPosSessionOpened = "POS_SESSION_OPENED"
 	EventPosSessionClosed = "POS_SESSION_CLOSED"
@@ -155,6 +156,13 @@ const (
 	EventRetailerSegmentUpdated     = "RETAILER_SEGMENT_UPDATED"
 	EventSkuClassUpdated            = "SKU_CLASS_UPDATED"
 	EventServicePolicyUpdated       = "SERVICE_POLICY_UPDATED"
+	// @Sync(SupplierServicePromiseEvent)
+	EventSupplierServicePromiseCreated  = "SUPPLIER_SERVICE_PROMISE_CREATED"
+	EventSupplierServicePromiseBreached = "SUPPLIER_SERVICE_PROMISE_BREACHED"
+	// @Sync(LotRecallEvent)
+	EventLotRecallInitiated = "LOT_RECALL_INITIATED"
+	EventLotQuarantined     = "LOT_QUARANTINED"
+	EventLotReleased        = "LOT_RELEASED"
 
 	// B3 M-P0-6: multi-supplier parent rollup lifecycle (same txn as ParentOrders write).
 	EventParentOrderCreated = "PARENT_ORDER_CREATED"
@@ -301,14 +309,14 @@ const (
 	// @Sync(CreditLimitEvent)
 	EventRetailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
 
-	// @Sync(AREvent) accounts-receivable open items
+	// @Sync(ARInvoiceEvent) accounts-receivable open items
 	EventARInvoiceOpened  = "AR_INVOICE_OPENED"
 	EventARInvoicePayment = "AR_INVOICE_PAYMENT"
 	EventARInvoiceDunned  = "AR_INVOICE_DUNNED"
 	EventARInvoiceSettled = "AR_INVOICE_SETTLED"
 	// B6 M-P1-6: aging bucket recompute leaves the bus.
 	EventARInvoiceAgingUpdated = "AR_INVOICE_AGING_UPDATED"
-	// @Sync(PayoutEvent) supplier payout lifecycle
+	// @Sync(PayoutBatchEvent) supplier payout lifecycle
 	EventPayoutBatchGenerated  = "PAYOUT_BATCH_GENERATED"
 	EventPayoutBatchExported   = "PAYOUT_BATCH_EXPORTED"
 	EventPayoutBatchDispatched = "PAYOUT_BATCH_DISPATCHED"
@@ -379,6 +387,7 @@ const (
 	AggregatePayoutBatch           = "PayoutBatch"
 	AggregatePayoutPolicy          = "PayoutPolicy"
 	AggregateCountryOverride       = "CountryOverride"
+	AggregateLotRecall             = "LotRecall"
 )
 
 func topicFromEnv(key string, fallback string) string {

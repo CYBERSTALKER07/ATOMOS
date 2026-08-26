@@ -1,4 +1,7 @@
 # PegasusX — Master Alignment: Docs ↔ Code ↔ Data Flow
+> **POINT-IN-TIME SNAPSHOT (2026-08-07) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 > **Prod goal SoT:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) — what “prod ready” means. This file is docs↔code↔data-flow truth + remaining Class A loops.
 

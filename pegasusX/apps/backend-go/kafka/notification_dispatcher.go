@@ -230,7 +230,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	// B3 M-P1-3: POS + store-stock → retailer room (producers already outbox).
 	case events.EventPosSessionOpened, events.EventPosSessionClosed,
 		events.EventPosSaleCompleted, events.EventPosSaleVoided,
-		events.EventStoreStockReceived, events.EventStoreStockAdjusted,
+		events.EventStoreStockReceived, events.EventReceivingVarianceReported, events.EventStoreStockAdjusted,
 		events.EventStoreStockTransferred, events.EventStoreStockCounted,
 		events.EventStoreStockClaimHold:
 		return d.handleRetailerOpsEvent(ctx, msg.Value, traceID)

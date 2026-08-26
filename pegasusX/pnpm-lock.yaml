@@ -10,6 +10,12 @@ importers:
 
   apps/admin-portal:
     dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@pegasusx/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
       next:
         specifier: ^15.0.0
         version: 15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -24,11 +30,11 @@ importers:
         specifier: ^20.0.0
         version: 20.19.41
       '@types/react':
-        specifier: 19.0.0
-        version: 19.0.0
+        specifier: ^19.0.0
+        version: 19.2.15
       '@types/react-dom':
-        specifier: 19.0.0
-        version: 19.0.0
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.15)
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.0
@@ -870,6 +876,9 @@ importers:
       '@deck.gl/react':
         specifier: ^9.3.5
         version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
+      '@pegasusx/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../types
@@ -919,6 +928,9 @@ importers:
       react:
         specifier: 19.0.0
         version: 19.0.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
   packages/validation:
     dependencies:
@@ -4336,9 +4348,6 @@ packages:
   '@types/polylabel@1.1.3':
     resolution: {integrity: sha512-9Zw2KoDpi+T4PZz2G6pO2xArE0m/GSMTW1MIxF2s8ZY8x9XDO6fv9um0ydRGvcbkFLlaq8yNK6eZxnmMZtDgWQ==}
 
-  '@types/react-dom@19.0.0':
-    resolution: {integrity: sha512-1KfiQKsH1o00p9m5ag12axHQSb3FOU9H20UTrujVSkNhuCrRHiQWFqgEnTNK5ZNfnzZv8UWrnXVqCmCF9fgY3w==}
-
   '@types/react-dom@19.2.3':
     resolution: {integrity: sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ==}
     peerDependencies:
@@ -4351,9 +4360,6 @@ packages:
     resolution: {integrity: sha512-HHM3nxyUZ3zAylX8ZEyrDNd2XZOnQ0D5XfunJF5FLQnZbHHYq4UWvW1QfelQNXv1ICNkwYhfxjwfnqivYB6bFg==}
     peerDependencies:
       '@types/react': '*'
-
-  '@types/react@19.0.0':
-    resolution: {integrity: sha512-MY3oPudxvMYyesqs/kW1Bh8y9VqSmf+tzqw3ae8a9DZW68pUe3zAdHeI1jc6iAysuRdACnVknHP8AhwD4/dxtg==}
 
   '@types/react@19.2.15':
     resolution: {integrity: sha512-eRwcGNHve+E8qtEQSSRl6urh+rFop4v8gm6O8rGv25CodbvFdLjA1vVQ1KkiFE0w0UPOnb8tDiFKL5lp0rtY5Q==}
@@ -14758,10 +14764,6 @@ snapshots:
 
   '@types/polylabel@1.1.3': {}
 
-  '@types/react-dom@19.0.0':
-    dependencies:
-      '@types/react': 19.2.15
-
   '@types/react-dom@19.2.3(@types/react@19.2.15)':
     dependencies:
       '@types/react': 19.2.15
@@ -14776,10 +14778,6 @@ snapshots:
   '@types/react-reconciler@0.28.9(@types/react@19.2.15)':
     dependencies:
       '@types/react': 19.2.15
-
-  '@types/react@19.0.0':
-    dependencies:
-      csstype: 3.2.3
 
   '@types/react@19.2.15':
     dependencies:

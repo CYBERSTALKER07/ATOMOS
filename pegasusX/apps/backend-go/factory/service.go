@@ -1344,6 +1344,130 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
+type factoryFleetSpannerResult struct {
+	IOSVehicles   []map[string]any
+	FleetVehicles []FleetVehicle
+}
+
+func (s *Service) loadFactoryFleetFromSpanner(ctx context.Context, factoryID string) (*factoryFleetSpannerResult, error) {
+	if s.spannerClient == nil {
+		return nil, nil
+	}
+	factoryID = strings.TrimSpace(factoryID)
+	if factoryID == "" {
+		factoryID = s.factoryNodeID
+	}
+	if factoryID == "" {
+		return nil, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT 
+				v.VehicleId,
+				v.LicensePlate,
+				v.MaxVolumeVU,
+				v.IsActive,
+				IFNULL(v.UnavailableReason, ''),
+				IFNULL(m.ManifestId, ''),
+				IFNULL(m.State, ''),
+				IFNULL(m.DriverId, ''),
+				IFNULL(d.Name, '')
+		      FROM Vehicles v
+		      LEFT JOIN FactoryTruckManifests m 
+		        ON m.VehicleId = v.VehicleId 
+		       AND m.FactoryId = @fid 
+		       AND m.State IN ('LOADING', 'SEALED', 'DISPATCHED')
+		      LEFT JOIN Drivers d 
+		        ON d.DriverId = m.DriverId
+		      WHERE v.HomeNodeType = 'FACTORY' 
+		        AND v.HomeNodeId = @fid
+		      ORDER BY v.VehicleId ASC`,
+		Params: map[string]any{"fid": factoryID},
+	}
+	iter := s.spannerClient.Single().
+		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		Query(ctx, stmt)
+	defer iter.Stop()
+
+	iosList := make([]map[string]any, 0, 8)
+	fleetList := make([]FleetVehicle, 0, 8)
+
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query factory fleet spanner: %w", err)
+		}
+		var (
+			vehicleID, licensePlate, unavailReason          string
+			manifestID, manifestState, driverID, driverName string
+			maxVolumeVU                                     float64
+			isActive                                        bool
+		)
+		if err := row.Columns(&vehicleID, &licensePlate, &maxVolumeVU, &isActive, &unavailReason, &manifestID, &manifestState, &driverID, &driverName); err != nil {
+			return nil, fmt.Errorf("scan factory fleet spanner: %w", err)
+		}
+
+		status := "READY"
+		if !isActive {
+			if strings.TrimSpace(unavailReason) != "" {
+				status = strings.ToUpper(strings.TrimSpace(unavailReason))
+			} else {
+				status = "UNAVAILABLE"
+			}
+		} else if strings.TrimSpace(manifestState) != "" {
+			status = strings.ToUpper(strings.TrimSpace(manifestState))
+		}
+
+		fleetList = append(fleetList, FleetVehicle{
+			VehicleID: vehicleID,
+			PlateNo:   licensePlate,
+			State:     status,
+		})
+
+		capM3 := maxVolumeVU * 0.1
+		if capM3 <= 0 {
+			capM3 = 12.0
+		}
+		capKg := maxVolumeVU * 25.0
+		if capKg <= 0 {
+			capKg = 3200.0
+		}
+		capL := maxVolumeVU * 100.0
+		if capL <= 0 {
+			capL = 12000.0
+		}
+
+		routeID := ""
+		currentRoute := ""
+		if strings.TrimSpace(manifestID) != "" {
+			routeID = "route_" + strings.TrimSpace(manifestID)
+			currentRoute = "Manifest " + strings.TrimSpace(manifestID)
+		}
+
+		iosList = append(iosList, map[string]any{
+			"id":               vehicleID,
+			"plate_number":     licensePlate,
+			"capacity_m3":      capM3,
+			"capacity_kg":      capKg,
+			"capacity_l":       capL,
+			"status":           status,
+			"driver_name":      strings.TrimSpace(driverName),
+			"current_route_id": routeID,
+			"current_route":    currentRoute,
+			"manifest_id":      strings.TrimSpace(manifestID),
+			"driver_id":        strings.TrimSpace(driverID),
+		})
+	}
+
+	return &factoryFleetSpannerResult{
+		IOSVehicles:   iosList,
+		FleetVehicles: fleetList,
+	}, nil
+}
+
 // HandleFleetDrivers serves GET /v1/factory/fleet/drivers.
 func (s *Service) HandleFleetDrivers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -1362,6 +1486,22 @@ func (s *Service) HandleFleetVehicles(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
+	}
+	factoryID, _ := s.scopedFactoryID(r)
+	if factoryID == "" {
+		factoryID = s.factoryNodeID
+	}
+	if s.spannerClient != nil {
+		res, err := s.loadFactoryFleetFromSpanner(r.Context(), factoryID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory fleet vehicles spanner failed", "err", err, "factory_id", factoryID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fleet_vehicles_failed"})
+			return
+		}
+		if res != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"vehicles": res.FleetVehicles})
+			return
+		}
 	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()

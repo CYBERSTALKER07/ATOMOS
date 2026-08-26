@@ -38,9 +38,47 @@ func (r *SpannerRepository) EnsureStandardUoM(ctx context.Context) error {
 	return err
 }
 
+func (r *SpannerRepository) GetBrandByNormalizedName(ctx context.Context, normName string) (*GlobalBrand, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT BrandId, Name, NormalizedName, OwnerSupplierId, Status, CreatedAt, UpdatedAt
+		      FROM GlobalBrands WHERE NormalizedName = @n LIMIT 1`,
+		Params: map[string]any{"n": normName},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var b GlobalBrand
+	var owner spanner.NullString
+	if err := row.Columns(&b.BrandID, &b.Name, &b.NormalizedName, &owner, &b.Status, &b.CreatedAt, &b.UpdatedAt); err != nil {
+		return nil, err
+	}
+	b.OwnerSupplierID = owner.StringVal
+	return &b, nil
+}
+
+func (r *SpannerRepository) UpsertBrand(ctx context.Context, b GlobalBrand) error {
+	m := spanner.InsertOrUpdateMap("GlobalBrands", map[string]any{
+		"BrandId":         b.BrandID,
+		"Name":            b.Name,
+		"NormalizedName":  b.NormalizedName,
+		"OwnerSupplierId": nullable(b.OwnerSupplierID),
+		"Status":          b.Status,
+		"CreatedAt":       spanner.CommitTimestamp,
+		"UpdatedAt":       spanner.CommitTimestamp,
+	})
+	_, err := r.client.Apply(ctx, []*spanner.Mutation{m})
+	return err
+}
+
 func (r *SpannerRepository) GetByGtin(ctx context.Context, gtin string) (*GlobalProduct, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT GlobalProductId, Gtin, Brand, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt
+		SQL: `SELECT GlobalProductId, Gtin, BrandId, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt
 		      FROM GlobalProducts WHERE Gtin = @gtin LIMIT 1`,
 		Params: map[string]any{"gtin": gtin},
 	}
@@ -49,7 +87,7 @@ func (r *SpannerRepository) GetByGtin(ctx context.Context, gtin string) (*Global
 
 func (r *SpannerRepository) GetByID(ctx context.Context, id string) (*GlobalProduct, error) {
 	row, err := r.client.Single().ReadRow(ctx, "GlobalProducts", spanner.Key{id},
-		[]string{"GlobalProductId", "Gtin", "Brand", "Manufacturer", "Name", "PackQty", "BaseUomId", "NormalizedKey", "Version", "CreatedAt", "UpdatedAt"})
+		[]string{"GlobalProductId", "Gtin", "BrandId", "Manufacturer", "Name", "PackQty", "BaseUomId", "NormalizedKey", "Version", "CreatedAt", "UpdatedAt"})
 	if err != nil {
 		if isNotFound(err) {
 			return nil, nil
@@ -78,12 +116,11 @@ func (r *SpannerRepository) queryOne(ctx context.Context, stmt spanner.Statement
 
 func scanGlobal(row *spanner.Row) (*GlobalProduct, error) {
 	var gp GlobalProduct
-	var gtin, brand, mfr, key spanner.NullString
-	if err := row.Columns(&gp.GlobalProductID, &gtin, &brand, &mfr, &gp.Name, &gp.PackQty, &gp.BaseUomID, &key, &gp.Version, &gp.CreatedAt, &gp.UpdatedAt); err != nil {
+	var gtin, mfr, key spanner.NullString
+	if err := row.Columns(&gp.GlobalProductID, &gtin, &gp.BrandID, &mfr, &gp.Name, &gp.PackQty, &gp.BaseUomID, &key, &gp.Version, &gp.CreatedAt, &gp.UpdatedAt); err != nil {
 		return nil, err
 	}
 	gp.Gtin = gtin.StringVal
-	gp.Brand = brand.StringVal
 	gp.Manufacturer = mfr.StringVal
 	gp.NormalizedKey = key.StringVal
 	return &gp, nil
@@ -91,7 +128,7 @@ func scanGlobal(row *spanner.Row) (*GlobalProduct, error) {
 
 func (r *SpannerRepository) ListByNormalizedKey(ctx context.Context, key string) ([]GlobalProduct, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT GlobalProductId, Gtin, Brand, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt
+		SQL: `SELECT GlobalProductId, Gtin, BrandId, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt
 		      FROM GlobalProducts WHERE NormalizedKey = @k`,
 		Params: map[string]any{"k": key},
 	}
@@ -103,7 +140,7 @@ func (r *SpannerRepository) ListAll(ctx context.Context, limit int) ([]GlobalPro
 		limit = 500
 	}
 	stmt := spanner.Statement{
-		SQL:    `SELECT GlobalProductId, Gtin, Brand, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt FROM GlobalProducts LIMIT @lim`,
+		SQL:    `SELECT GlobalProductId, Gtin, BrandId, Manufacturer, Name, PackQty, BaseUomId, NormalizedKey, Version, CreatedAt, UpdatedAt FROM GlobalProducts LIMIT @lim`,
 		Params: map[string]any{"lim": int64(limit)},
 	}
 	return r.queryMany(ctx, stmt)
@@ -137,7 +174,7 @@ func (r *SpannerRepository) UpsertGlobal(ctx context.Context, gp GlobalProduct) 
 	m := spanner.InsertOrUpdateMap("GlobalProducts", map[string]any{
 		"GlobalProductId": gp.GlobalProductID,
 		"Gtin":            nullable(gp.Gtin),
-		"Brand":           nullable(gp.Brand),
+		"BrandId":         gp.BrandID,
 		"Manufacturer":    nullable(gp.Manufacturer),
 		"Name":            gp.Name,
 		"PackQty":         gp.PackQty,

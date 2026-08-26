@@ -67,6 +67,11 @@ type ProximityUnlockResponse struct {
 	Message             string  `json:"message,omitempty"`
 }
 
+// SettlementH3Cell returns the resolution 9 H3 cell for doorstep settlement / perimeter checks.
+func SettlementH3Cell(lat, lng float64) string {
+	return proximity.SettlementH3Cell(lat, lng)
+}
+
 // EvaluateSettlementProximity returns method + distance if within settlement radius or H3 match.
 // Pure function — no I/O. Used by unlock handler and tests.
 func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float64, orderH3Cell string) (method string, distanceM float64, ok bool) {
@@ -79,9 +84,8 @@ func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float6
 
 	// H3 cell match (preferred when order has cell).
 	if strings.TrimSpace(orderH3Cell) != "" {
-		cell, err := proximity.PanicSafeLatLngToCell(driverLat, driverLng, SettlementH3Resolution)
-		if err == nil {
-			driverCell := cell.String()
+		driverCell := proximity.SettlementH3Cell(driverLat, driverLng)
+		if driverCell != "" {
 			// Accept exact match at settlement res or prefix match against stored cell.
 			if driverCell == orderH3Cell || h3CellsCompatible(driverCell, orderH3Cell) {
 				if orderLat != 0 || orderLng != 0 {

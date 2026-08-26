@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -159,6 +160,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory/policy", d.Service.HandleInventoryPolicy)
+		gr.Get("/v1/supplier/service-policy", d.Service.HandleGetServicePolicy)
+		gr.Put("/v1/supplier/service-policy", d.Service.HandleUpsertServicePolicy)
+		gr.Post("/v1/supplier/service-policy", d.Service.HandleUpsertServicePolicy)
+		gr.Get("/v1/supplier/service-promises/breaches", d.Service.HandleListBreachedPromises)
+		gr.Get("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
+		gr.Post("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
+		gr.Get("/v1/supplier/recalls/{campaignID}", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecallByID)
 		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
 		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
 			Spanner:      d.Spanner,

@@ -14,7 +14,12 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./*"] }
+    "paths": {
+      "@/*": ["./*"],
+      "@pegasusx/types": ["../../packages/types/index.ts"],
+      "@pegasusx/ui-kit": ["../../packages/ui-kit/src/index.ts"],
+      "@pegasusx/ui-kit/*": ["../../packages/ui-kit/src/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

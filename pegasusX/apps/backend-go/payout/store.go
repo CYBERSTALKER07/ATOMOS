@@ -43,6 +43,26 @@ func (r *Repository) Insert(ctx context.Context, b Batch) error {
 		}); err != nil {
 			return err
 		}
+
+		// Phase 2.2: Link and lock the immutable settlement slices for this batch
+		stmt := spanner.Statement{
+			SQL: `UPDATE InvoiceSettlementSlices
+			      SET Status = 'BATCHED', PayoutBatchId = @b
+			      WHERE SupplierId = @s AND Currency = @c AND Status = 'UNSETTLED'
+			        AND CreatedAt >= @start AND CreatedAt < @end`,
+			Params: map[string]any{
+				"b":     b.BatchID,
+				"s":     b.SupplierID,
+				"c":     b.Currency,
+				"start": b.PeriodStart,
+				"end":   b.PeriodEnd,
+			},
+		}
+		_, err := txn.Update(ctx, stmt)
+		if err != nil {
+			return err
+		}
+
 		return buf.Flush(ctx)
 	})
 }
@@ -74,10 +94,28 @@ func (r *Repository) Get(ctx context.Context, batchID string) (Batch, bool, erro
 	return b, err == nil, err
 }
 
-func (r *Repository) GetBySupplierPeriod(ctx context.Context, supplierID string, start, end time.Time) (Batch, bool, error) {
-	return r.findOne(ctx, `SELECT `+batchColumnList()+` FROM PayoutBatches
-		WHERE SupplierId = @sid AND PeriodStart = @s AND PeriodEnd = @e`,
-		map[string]any{"sid": supplierID, "s": civilDateOf(start), "e": civilDateOf(end)})
+func (r *Repository) ListBySupplierPeriod(ctx context.Context, supplierID string, start, end time.Time) ([]Batch, error) {
+	rows := []Batch{}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT ` + batchColumnList() + ` FROM PayoutBatches WHERE SupplierId = @sid AND PeriodStart = @s AND PeriodEnd = @e`,
+		Params: map[string]any{"sid": supplierID, "s": civilDateOf(start), "e": civilDateOf(end)},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		b, err := scanBatch(row)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, b)
+	}
+	return rows, nil
 }
 
 func civilDateOf(t time.Time) civil.Date {

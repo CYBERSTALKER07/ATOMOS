@@ -1,25 +1,26 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import Map from "react-map-gl/mapbox";
+import MapGL from "react-map-gl/maplibre";
+import maplibregl from "maplibre-gl";
 import DeckGL from "@deck.gl/react";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
 import { Map3DViewToggle } from "../desktop/map-chrome";
-import "mapbox-gl/dist/mapbox-gl.css";
-
-const MAPBOX_ACCESS_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-  "pk.eyJ1IjoiZGVmYXVsdCIsImEiOiJjbHg1bW14Mm0wMTI2MmpxaXV3eWY2bmM2In0.default";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
+import type { MarketPack } from "@pegasusx/types";
 
 export interface HexagonalControlTowerMapProps {
   data: { hex: string; count: number }[];
   /** Optional extruded hex view — off by default (PX-DESK-3B). */
   show3DViewToggle?: boolean;
+  pack?: MarketPack | null;
 }
 
 export function HexagonalControlTowerMap({
   data,
   show3DViewToggle = true,
+  pack,
 }: HexagonalControlTowerMapProps) {
   const [view3D, setView3D] = useState(false);
 
@@ -40,10 +41,9 @@ export function HexagonalControlTowerMap({
     [data, view3D],
   );
 
+  const packCenter = mapInitialViewState(pack ?? readCachedAuthSession()?.pack, 11);
   const initialViewState = {
-    longitude: -122.4,
-    latitude: 37.74,
-    zoom: 11,
+    ...packCenter,
     maxZoom: 20,
     pitch: view3D ? 30 : 0,
     bearing: 0,
@@ -62,9 +62,11 @@ export function HexagonalControlTowerMap({
         layers={[layer]}
         initialViewState={initialViewState}
         controller={true}
-        viewState={initialViewState}
       >
-        <Map mapboxAccessToken={MAPBOX_ACCESS_TOKEN} mapStyle="mapbox://styles/mapbox/dark-v11" />
+        <MapGL
+          mapLib={maplibregl}
+          mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        />
       </DeckGL>
     </div>
   );

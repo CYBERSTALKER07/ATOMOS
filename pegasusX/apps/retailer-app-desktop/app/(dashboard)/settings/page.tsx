@@ -646,26 +646,6 @@ export default function SettingsPage() {
                 <div className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl p-2 shadow-[var(--shadow-sm)]">
                   <button
                     type="button"
-                    onClick={() => router.push("/settings/cards")}
-                    className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
-                  >
-                    <div className="flex items-center gap-3 text-left">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)]">
-                        <CreditCard size={18} />
-                      </div>
-                      <div>
-                        <span className="md-typescale-body-medium font-light text-[var(--desk-text-primary)] block">
-                          Saved Cards
-                        </span>
-                        <span className="text-[10px] font-light text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                          Manage payment methods
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="text-[var(--desk-text-tertiary)]" />
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => router.push("/settings/capabilities")}
                     className="w-full flex items-center justify-between px-4 py-4 rounded-xl hover:bg-[var(--desk-surface-subtle)] transition-colors"
                   >

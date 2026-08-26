@@ -56,7 +56,7 @@
 | Go backend | ~213,719 LOC, 1,077 files (812 non-test / 265 test, ~25% test ratio), 644 handler funcs | `apps/backend-go` |
 | HTTP surface | ~731 route registrations across role routers + partner API | `apps/backend-go/*routes/`, `main.go:145-400` |
 | Schema | 155 tables, 2,624-line DDL + 87 migrations; 13 unique indexes; 1 CHECK constraint | `apps/backend-go/schema/` |
-| Mobile | Kotlin ~694 files, Swift ~635 real files (retailer-iOS inflated by ~1,380 vendored SPM checkouts under a typo'd dir `retailerapp/reatilerapp/`) | `apps/*-app-android`, `apps/*-app-ios` |
+| Mobile | Kotlin ~694 files, Swift ~635 real files (retailer-iOS inflated by ~1,380 vendored SPM checkouts under a typo'd dir `retailerapp/retailerapp/`) | `apps/*-app-android`, `apps/*-app-ios` |
 | Web/desktop | ~815 TS/TSX files across 4 Next.js portals (Tauri-wrapped), retailer desktop, marketing site | `apps/*-portal`, `apps/retailer-app-desktop` |
 | Shared typed client | 164 methods, 255 unique `/v1/*` paths, hand-written (not generated) | `packages/api-client/index.ts` |
 | Event catalog | 155 event types declared in `contracts/events.schema.json`; 148 referenced from real code | `contracts/events.schema.json`, `apps/backend-go/events/events.go` |
@@ -270,7 +270,7 @@ Method: static code audit of every app under `apps/`, verified against the backe
 ### Incomplete / decorative / broken
 
 - **Auto-order indicator on My Suppliers is a placeholder** — always shows the icon if the supplier has orders (`MySuppliersScreen.kt:291`). Cosmetic.
-- **Retailer-iOS repo hygiene**: ~1,380 vendored SPM build checkouts committed under the app tree, in a directory misspelled `reatilerapp` — build-reproducibility and review-noise hazard.
+- **Retailer-iOS repo hygiene**: ~1,380 vendored SPM build checkouts committed under the app tree, in a directory misspelled `retailerapp` — build-reproducibility and review-noise hazard.
 - **Offline POS contradiction**: client-side offline POS queues are wired (Room/file), yet the project's own status docs list offline POS as product-deferred — the unresolved half is server-side: fiscalization and idempotent acceptance of replayed POS sales. Treat end-to-end offline POS as PARTIAL.
 - No E2E-visible refund/return initiation from the retailer side (claims only); HQ export is CSV-only.
 - Desktop Control Tower is a simpler surface than mobile parity.

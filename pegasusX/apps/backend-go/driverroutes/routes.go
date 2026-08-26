@@ -75,6 +75,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/fleet/orders", d.Service.HandleFleetOrders)
 		rr.Get("/v1/fleet/route/{routeID}/geometry", d.Service.HandleRouteGeometry)
 		rr.Post("/v1/fleet/driver/depart", d.Service.HandleDriverDepart)
+		rr.Get("/v1/fleet/driver/cash-bag/summary", d.Service.HandleCashBagSummary)
+		rr.Post("/v1/fleet/driver/cash-bag/turn-in", d.Service.HandleCashBagTurnIn)
 		rr.Post("/v1/fleet/driver/return-complete", d.Service.HandleDriverReturnComplete)
 
 		if d.WarehouseSvc != nil {

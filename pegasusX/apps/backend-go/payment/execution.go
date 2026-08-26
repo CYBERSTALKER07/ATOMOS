@@ -225,6 +225,10 @@ func (r *ProviderExecutionRouter) Execute(ctx context.Context, req ExecutionRequ
 
 	executeWithRetries := func(targetGateway string, execReq ExecutionRequest) (ExecutionResult, error) {
 		targetGateway = strings.ToUpper(strings.TrimSpace(targetGateway))
+		if targetGateway == "GLOBALPAY" || targetGateway == "GP" {
+			targetGateway = "GLOBAL_PAY"
+		}
+
 		if targetGateway == "" {
 			return ExecutionResult{}, &GatewayPolicyError{
 				Code:         "gateway_required",

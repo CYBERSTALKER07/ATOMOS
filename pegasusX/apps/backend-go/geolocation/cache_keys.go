@@ -13,6 +13,14 @@ const (
 	cachePrefixPlace        = "geo:place:"
 )
 
+func normalizeCountryCode(cc string) string {
+	c := strings.ToLower(strings.TrimSpace(cc))
+	if c == "" {
+		return "uz"
+	}
+	return c
+}
+
 func normalizeAutocompleteInput(input string) string {
 	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(input)), " "))
 }
@@ -21,20 +29,20 @@ func normalizeForwardAddress(address string) string {
 	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(address)), " "))
 }
 
-func reverseCacheKey(lat, lng float64) string {
-	return cachePrefixReverse + fmt.Sprintf("%.5f,%.5f", lat, lng)
+func reverseCacheKey(cc string, lat, lng float64) string {
+	return fmt.Sprintf("%s%s:%.5f,%.5f", cachePrefixReverse, normalizeCountryCode(cc), lat, lng)
 }
 
-func autocompleteCacheKey(input string) string {
-	return cachePrefixAutocomplete + normalizeAutocompleteInput(input)
+func autocompleteCacheKey(cc, input string) string {
+	return fmt.Sprintf("%s%s:%s", cachePrefixAutocomplete, normalizeCountryCode(cc), normalizeAutocompleteInput(input))
 }
 
-func forwardCacheKey(address string) string {
-	return cachePrefixForward + normalizeForwardAddress(address)
+func forwardCacheKey(cc, address string) string {
+	return fmt.Sprintf("%s%s:%s", cachePrefixForward, normalizeCountryCode(cc), normalizeForwardAddress(address))
 }
 
-func placeCacheKey(placeID string) string {
-	return cachePrefixPlace + strings.TrimSpace(placeID)
+func placeCacheKey(cc, placeID string) string {
+	return fmt.Sprintf("%s%s:%s", cachePrefixPlace, normalizeCountryCode(cc), strings.TrimSpace(placeID))
 }
 
 func roundCoord(v float64) float64 {
@@ -42,3 +50,4 @@ func roundCoord(v float64) float64 {
 	out, _ := strconv.ParseFloat(s, 64)
 	return out
 }
+

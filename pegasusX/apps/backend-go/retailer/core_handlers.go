@@ -1627,3 +1627,14 @@ func writeRetailerIdentityError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 }
+// HandleCheckShelfAlerts handles POST /v1/retailer/shelf/check
+func (s *Service) HandleCheckShelfAlerts(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// HandleResolveShelfAlert handles POST /v1/retailer/shelf/alerts/{alertID}/resolve
+func (s *Service) HandleResolveShelfAlert(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}

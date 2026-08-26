@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // Supplier payout batches: NetPayout = Σcaptured − Σrefunds − commission,
@@ -59,9 +60,6 @@ type Batch struct {
 // CommissionResolver prices the platform commission for a batch. Implemented
 // by the billing fee schedule; the zero resolver keeps staging honest (0
 // commission, explicitly recorded).
-type CommissionResolver interface {
-	CommissionMinor(ctx context.Context, supplierID string, grossCapturedMinor int64, currency string) (int64, error)
-}
 
 type zeroCommission struct{}
 
@@ -110,13 +108,13 @@ func (s *Service) SetCache(c *cache.Cache) {
 
 // GenerateBatch computes and persists a DRAFT payout batch. Re-generation of
 // the same (supplier, period) returns the existing batch (replay-safe).
-func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodStart, periodEnd time.Time, actor, idemKey string) (Batch, error) {
+func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodStart, periodEnd time.Time, actor, idemKey string) ([]Batch, error) {
 	if s == nil || s.repo == nil {
-		return Batch{}, fmt.Errorf("payout service unavailable")
+		return nil, fmt.Errorf("payout service unavailable")
 	}
 	supplierID = strings.TrimSpace(supplierID)
 	if supplierID == "" || !periodStart.Before(periodEnd) {
-		return Batch{}, fmt.Errorf("supplier_id and a valid period required")
+		return nil, fmt.Errorf("supplier_id and a valid period required")
 	}
 	actor = strings.TrimSpace(actor)
 	if actor == "" {
@@ -127,52 +125,64 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 		idemKey = fmt.Sprintf("payout-%s-%s-%s", supplierID, periodStart.Format("2006-01-02"), periodEnd.Format("2006-01-02"))
 	}
 
-	if existing, found, err := s.repo.GetBySupplierPeriod(ctx, supplierID, periodStart, periodEnd); err != nil {
-		return Batch{}, err
-	} else if found {
-		return existing, nil
+	existingList, err := s.repo.ListBySupplierPeriod(ctx, supplierID, periodStart, periodEnd)
+	if err != nil {
+		return nil, err
 	}
-	if existing, found, err := s.repo.GetByIdempotencyKey(ctx, idemKey); err != nil {
-		return Batch{}, err
-	} else if found {
-		return existing, nil
+	if len(existingList) > 0 {
+		return existingList, nil
 	}
 
-	captured, refunded, currency, err := s.repo.SumLegs(ctx, supplierID, periodStart, periodEnd)
+	sums, err := s.repo.SumLegsByCurrency(ctx, supplierID, periodStart, periodEnd)
 	if err != nil {
-		return Batch{}, err
+		return nil, err
 	}
-	currency, err = coalescePayoutCurrency(ctx, supplierID, currency)
-	if err != nil {
-		return Batch{}, err
-	}
-	commission, err := s.commission.CommissionMinor(ctx, supplierID, captured, currency)
-	if err != nil {
-		return Batch{}, fmt.Errorf("commission: %w", err)
-	}
-	net := captured - refunded - commission
-	if net <= 0 {
-		return Batch{}, fmt.Errorf("%w: captured=%d refunded=%d commission=%d", ErrNothingPayable, captured, refunded, commission)
+	if len(sums) == 0 {
+		return nil, ErrNothingPayable
 	}
 
-	b := Batch{
-		BatchID:            s.newID(),
-		SupplierID:         supplierID,
-		PeriodStart:        periodStart,
-		PeriodEnd:          periodEnd,
-		GrossCapturedMinor: captured,
-		RefundedMinor:      refunded,
-		CommissionMinor:    commission,
-		NetPayoutMinor:     net,
-		Currency:           currency,
-		Status:             StatusDraft,
-		IdempotencyKey:     idemKey,
-		CreatedBy:          actor,
+	var batches []Batch
+	for _, sum := range sums {
+		currency, err := coalescePayoutCurrency(ctx, supplierID, sum.Currency)
+		if err != nil {
+			return nil, err
+		}
+		// Commission is now pre-calculated via InvoiceSettlementSlices
+		commission := sum.Commission
+		net := sum.NetPayout
+		if net <= 0 {
+			continue
+		}
+
+		b := Batch{
+			BatchID:            s.newID(),
+			SupplierID:         supplierID,
+			PeriodStart:        periodStart,
+			PeriodEnd:          periodEnd,
+			GrossCapturedMinor: sum.Captured,
+			RefundedMinor:      sum.Refunded,
+			CommissionMinor:    commission,
+			NetPayoutMinor:     net,
+			Currency:           currency,
+			Status:             StatusDraft,
+			IdempotencyKey:     fmt.Sprintf("%s-%s", idemKey, currency),
+			CreatedBy:          actor,
+		}
+		
+		if err := s.repo.Insert(ctx, b); err != nil {
+			if spanner.ErrCode(err) == codes.AlreadyExists {
+				if existingList, err2 := s.repo.ListBySupplierPeriod(ctx, supplierID, periodStart, periodEnd); err2 == nil && len(existingList) > 0 {
+					return existingList, nil
+				}
+			}
+			return nil, err
+		}
+		batches = append(batches, b)
 	}
-	if err := s.repo.Insert(ctx, b); err != nil {
-		return Batch{}, err
+	if len(batches) == 0 {
+		return nil, ErrNothingPayable
 	}
-	return b, nil
+	return batches, nil
 }
 
 // ExportBankFile renders the CSV payment instruction for the batch and marks
@@ -255,38 +265,57 @@ func NewRepository(client *spanner.Client) *Repository {
 
 // SumLegs aggregates provider-confirmed legs for the supplier over the period
 // (captured vs refunded reversal legs). Period bounds: [start, end).
-func (r *Repository) SumLegs(ctx context.Context, supplierID string, start, end time.Time) (captured, refunded int64, currency string, err error) {
+type SumLegsResult struct {
+	Currency   string
+	Captured   int64
+	Refunded   int64
+	Commission int64
+	NetPayout  int64
+}
+
+// SumLegsByCurrency aggregates provider-confirmed legs for the supplier over the period
+// (captured vs refunded reversal legs). Period bounds: [start, end).
+func (r *Repository) SumLegsByCurrency(ctx context.Context, supplierID string, start, end time.Time) ([]SumLegsResult, error) {
 	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT l.Method, l.AmountMinor, o.Currency
-		      FROM OrderPaymentLegs l
-		      JOIN Orders o ON o.OrderId = l.OrderId
-		      WHERE o.SupplierId = @sid AND l.Status = 'CAPTURED'
-		        AND l.CapturedAt >= @start AND l.CapturedAt < @end`,
+		SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor
+		      FROM InvoiceSettlementSlices
+		      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
+		        AND CreatedAt >= @start AND CreatedAt < @end`,
 		Params: map[string]any{"sid": supplierID, "start": start, "end": end},
 	})
 	defer iter.Stop()
+	
+	sums := make(map[string]*SumLegsResult)
 	for {
 		row, e := iter.Next()
 		if e == iterator.Done {
-			return captured, refunded, currency, nil
+			break
 		}
 		if e != nil {
-			return 0, 0, "", e
+			return nil, e
 		}
-		var method, cur string
-		var amount int64
-		if e := row.Columns(&method, &amount, &cur); e != nil {
-			return 0, 0, "", e
+		var cur string
+		var gross, comm, net int64
+		if e := row.Columns(&cur, &gross, &comm, &net); e != nil {
+			return nil, e
 		}
-		if currency == "" {
-			currency = cur
+		if sums[cur] == nil {
+			sums[cur] = &SumLegsResult{Currency: cur}
 		}
-		if method == "REFUND" {
-			refunded += amount
+		
+		if gross >= 0 {
+			sums[cur].Captured += gross
 		} else {
-			captured += amount
+			sums[cur].Refunded += -gross
 		}
+		sums[cur].Commission += comm
+		sums[cur].NetPayout += net
 	}
+	var res []SumLegsResult
+	for _, s := range sums {
+		res = append(res, *s)
+	}
+	return res, nil
 }
 
 // coalescePayoutCurrency uses stored ISO code from payment legs, else the shipped pack.

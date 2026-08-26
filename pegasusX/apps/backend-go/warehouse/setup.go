@@ -1,6 +1,7 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -135,7 +136,9 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		mutations = append(mutations, spanner.UpdateMap("Warehouses", update))
 	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), mutations); err != nil {
+	if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to complete warehouse setup", "err", err)
 		web.JSONError(w, "Failed to complete warehouse setup", http.StatusInternalServerError)
 		return

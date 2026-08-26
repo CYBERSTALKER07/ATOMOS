@@ -16,6 +16,10 @@ type Repository interface {
 	ListByNormalizedKey(ctx context.Context, key string) ([]GlobalProduct, error)
 	ListAll(ctx context.Context, limit int) ([]GlobalProduct, error)
 	UpsertGlobal(ctx context.Context, gp GlobalProduct) error
+	
+	GetBrandByNormalizedName(ctx context.Context, normName string) (*GlobalBrand, error)
+	UpsertBrand(ctx context.Context, b GlobalBrand) error
+
 	UpsertOffer(ctx context.Context, o Offer) error
 	GetOffer(ctx context.Context, supplierID, productID string) (*Offer, error)
 	ListOffersByGlobal(ctx context.Context, globalProductID string) ([]Offer, error)
@@ -29,6 +33,7 @@ type Repository interface {
 type MemoryRepository struct {
 	mu       sync.Mutex
 	byID     map[string]GlobalProduct
+	brands   map[string]GlobalBrand
 	byGtin   map[string]string
 	byKey    map[string][]string
 	offers   map[string]Offer // supplier|product
@@ -39,11 +44,33 @@ type MemoryRepository struct {
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
 		byID:   map[string]GlobalProduct{},
+		brands: map[string]GlobalBrand{},
 		byGtin: map[string]string{},
 		byKey:  map[string][]string{},
 		offers: map[string]Offer{},
 		queue:  map[string]MatchQueueItem{},
 	}
+}
+
+func (r *MemoryRepository) GetBrandByNormalizedName(ctx context.Context, normName string) (*GlobalBrand, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, b := range r.brands {
+		if b.NormalizedName == normName {
+			return &b, nil
+		}
+	}
+	return nil, nil
+}
+
+func (r *MemoryRepository) UpsertBrand(ctx context.Context, b GlobalBrand) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if b.BrandID == "" {
+		b.BrandID = uuid.NewString()
+	}
+	r.brands[b.BrandID] = b
+	return nil
 }
 
 func (r *MemoryRepository) EnsureStandardUoM(_ context.Context) error {

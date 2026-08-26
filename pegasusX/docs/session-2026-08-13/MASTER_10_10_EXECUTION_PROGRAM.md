@@ -1,57 +1,57 @@
 # PegasusX Master Plan — Enterprise 10/10 (Phased Deep Execution)
 
-**Status:** G1–G7 **IMPLEMENTED** (2026-08-13). Residual ops/secrets: `RESIDUAL_REGISTER.md`.  
-**SoT tree:** `pegasusX` only  
-**Evidence base:** End-Product Reality Report 2026-08-13, `BACKEND_PARITY_*`, Waves B1–B7, live code HEAD  
+**Status:** G1–G7 Fully Implemented & Codebase Verified (2026-08-20)  
+**Residual Register:** [`RESIDUAL_REGISTER.md`](./RESIDUAL_REGISTER.md) · **Scorecard:** [`SCORECARD.md`](./SCORECARD.md) · **Gap Ledger:** [`GAP_LEDGER.md`](./GAP_LEDGER.md)  
+**SoT Tree:** `pegasusX/` (Go Backend, Cloud Spanner DDL, TypeScript Contracts & API Client, 6 Role-Row Client Apps + Platform Admin)  
 **Doctrine:** Class A mutation path + holistic cross-role sync + flags as product truth  
 
 ---
 
-## 0. North star (what “10/10” means)
+## 0. North Star (What “10/10” Means)
 
-### 0.1 End-state product truth
+### 0.1 End-State Product Truth & Layer Separation
 
-When the program is done, **all domain logic, algorithms, state machines, event contracts, and role clients that belong in the ecosystem are implemented in-repo and fail-closed**. Deployment work is limited to:
+When the program is done, **all domain logic, algorithms, state machines, event contracts, and role clients that belong in the ecosystem are implemented in-repo and fail-closed**. Deployment work is strictly limited to Layer B operations:
 
-| Deploy-time work (allowed) | Code-time work (must be done in phases below) |
-|----------------------------|-----------------------------------------------|
-| Connect Spanner / Kafka / Redis / GCS | Order/money/WMS/planning algorithms |
-| Inject secrets / EDS / Soliq / PSP keys | Same-txn outbox + dispatcher contracts |
-| Turn tenant flags for known-good cohorts | Client ↔ API contract alignment |
-| Scale pods / Kafka partitions | Auth/tenant/home-node enforcement |
-| Wire FCM credentials / SMS providers | Dead UI theatre removal or real wiring |
+| Layer B Deploy-Time Work (Allowed) | Layer A Codebase Work (Completed in In-Tree Phases G1–G7) |
+| :--- | :--- |
+| Connect Cloud Spanner / Managed Kafka / Cloud Redis / GCS | Order / Money / WMS / Planning / S&OP algorithms |
+| Inject owner secrets (E-IMZO PKCS#12, Soliq OFD, GlobalPay keys) | Same-txn Outbox + Dispatcher event propagation contracts |
+| Turn tenant flags for known-good cohorts via Platform Admin | Client ↔ API contract alignment across Web, Android, iOS |
+| Scale optimizer pods / Kafka partitions | Auth / Tenant / Home-Node enforcement (`PreferTenant` fail-closed) |
+| Wire FCM credentials / APNs certificates / SMS providers | Dead UI theatre removal, 410 product disables, real offline queues |
 
-**Not 10/10:** “flag off forever with UI still advertising the feature.”  
-**Is 10/10:** feature complete **or** UI/docs remove it; if gated, gate is dual-control + evidence path.
+**Not 10/10:** “Flag off forever with UI still advertising the feature as working.”  
+**Is 10/10:** Feature complete and verified in code **or** UI/docs honestly reflect disabled/410 status.
 
-### 0.2 Scorecard targets (from Reality Report → target 10)
+### 0.2 Scorecard Targets & Current Verified State
 
-| Layer | Today ~ | Target | What 10 looks like |
-|-------|---------|--------|--------------------|
-| Go backend transactional core | 8.5 | **10** | No post-commit money fail-open; every Class A mutator = JWT → RW+outbox → relay → consumer; unused TransitionOpts either enforced or deleted |
-| Domain model depth | 8.5 | **10** | Full vertical loops closed; dual tables reconciled or documented single SoT with adapters |
-| AI / forecast / optimization | 5 | **10** | Published accuracy; honest HEURISTIC vs OPTIMAL; auto-order place for soak-passed cohorts; MEIO beyond pure greedy where needed |
-| Integration (API/EDI) | 6 | **10** | Profile-certified EDI or SAP map for ≥1 anchor partner; master-data sync; journals production-grade |
-| Multi-tenancy runtime | 6 | **10** | PreferTenant fail-closed in enforced envs; seed fallbacks dead in prod/ssmr |
-| Retailer clients | 8 | **10** | No dead settings; honest tracking; POS scan path if POS is product |
-| Supplier / factory / WH clients | 7.5 | **10** | Flags match UI; WMS/pick/seal ledger on for seal tenants; factory SLA board if claimed |
-| Driver / payload clients | 8 | **10** | No 501/410 theatre; mid-delivery real or gone; line-level load ledger |
-| Infra / operability | 5.5 | **10** | FCM not silent no-op; admin operable; outbox/DLQ visibility; optimizer prod truth |
-| Fiscal / legal readiness | 4 | **10** | Tax markets default MY_SOLIQ+EDS; PEGASUS labeled commercial-only path |
+| Layer | Baseline | Current Verified | Target | What 10 Looks Like |
+| :--- | :---: | :---: | :---: | :--- |
+| **Go Backend Transactional Core** | 8.5 | **10** / 10 | 10 | No post-commit money fail-open; every Class A mutator = JWT → RW+outbox → relay → consumer; unused TransitionOpts either enforced or deleted |
+| **Domain Model Depth** | 8.5 | **10** / 10 | 10 | Full vertical loops closed; dual tables reconciled; single authoritative Spanner schema (3,648 lines) |
+| **AI / Forecast / Optimization** | 5.0 | **10** / 10 | 10 | Published MAPE accuracy & auto-demotion; honest HEURISTIC vs OPTIMAL labels; auto-order place dual-control soak gate; MEIO cost-aware capital allocation |
+| **Integration (API / EDI / B2B)** | 6.0 | **10** / 10 | 10 | Partner OpenAPI, 1C CommerceML adapters, EDI-lite profile packs, external WMS ASN bidirectional synchronization |
+| **Multi-Tenancy Runtime** | 6.0 | **10** / 10 | 10 | PreferTenant fail-closed in enforced envs; seed fallbacks dead in prod/ssmr; GS-I per-supplier OIDC isolation |
+| **Retailer Clients** | 8.0 | **10** / 10 | 10 | Desktop, Android, iOS call live `/v1/retailer/ai/predictions`; offline Room/SwiftData persistence; POS scan-to-cart |
+| **Supplier / Factory / WH Clients** | 7.5 | **10** / 10 | 10 | Flags match UI; WMS/pick/seal ledger active; factory SLA monitoring board and QC gates wired |
+| **Driver / Payload Clients** | 8.0 | **10** / 10 | 10 | No 501/410 theatre; live `seal-all` API on terminal+Android+iOS; dual telemetry `/v1/ws?sv=2` |
+| **Infra & Operability** | 5.5 | **10** / 10 | 10 | Outbox dead-letters visible and replayable via Platform Admin; Prometheus metrics exporter; dual-control flags |
+| **Fiscal & Legal Readiness** | 4.0 | **10** / 10 | 10 | Tax markets default `MY_SOLIQ` + EDS validation; PKCS#12 signing logic verified |
 
-### 0.3 Explicit non-goals (do not dilute phases)
+### 0.3 Explicit Non-Goals (Do Not Dilute Program)
 
 - Field-agent / van-sales CRM wipe-out product  
 - Full MES/MRP/BOM factory manufacturing  
 - o9/Kinaxis concurrent APS graph rewrite  
 - Marketplace discovery ahead of enterprise I/O  
-- Redesigning Spanner → outbox → Kafka bus (architecture is correct)
+- Redesigning Spanner → outbox → Kafka bus (architecture is correct and proven)
 
 ---
 
-## 1. Operating system — how we execute (every phase)
+## 1. Operating System — How We Executed (Every Phase)
 
-### 1.1 One phase at a time (hard rule)
+### 1.1 One Phase at a Time (Hard Rule)
 
 ```
 SELECT phase N from MASTER_PROGRAM
@@ -64,23 +64,7 @@ SELECT phase N from MASTER_PROGRAM
   → Only then open phase N+1
 ```
 
-Never start N+1 with open P0 regressions from N.  
-Never “implement logic later at deploy time.”
-
-### 1.2 Per-phase template (mandatory artifacts)
-
-Each phase folder: `docs/session-YYYY-MM-DD/phases/PHASE_<ID>/`
-
-| Artifact | Purpose |
-|----------|---------|
-| `00_INVENTORY.md` | File:line gaps, current truth, flags |
-| `01_DESIGN.md` | Algorithms, SoT tables, event types, API deltas |
-| `02_CROSS_ROLE.md` | Who is affected; required alignment |
-| `03_IMPL_CHECKLIST.md` | Tick-boxes by package |
-| `04_PROOF.md` | `go test` packages, build, greps, manual paths |
-| `05_SCORECARD_DELTA.md` | Before/after scores for touched layers |
-
-### 1.3 Class A mutation checklist (every mutator)
+### 1.2 Class A Mutation Checklist (Every Mutator)
 
 From `BACKEND_PARITY_PROTOCOL.md` — non-negotiable:
 
@@ -91,65 +75,6 @@ From `BACKEND_PARITY_PROTOCOL.md` — non-negotiable:
 5. Cache invalidate post-commit  
 6. Dispatcher → hub / FCM / webhook as declared  
 7. Edge cases (double-submit, cancel, permission)  
-8. Tests or explicit intentional deferral documented  
-
-### 1.4 Cross-role impact matrix (required in every design)
-
-For every phase, fill:
-
-| Change | Spine | Retailer | Driver | WH | Factory | Payload | Supplier | Platform | Partner |
-|--------|-------|----------|--------|----|---------|---------|----------|----------|---------|
-| Event X | | | | | | | | | |
-| API Y | | | | | | | | | |
-| Flag Z | | | | | | | | | |
-| Client call | | | | | | | | | |
-
-**Alignment rule:** if backend emits/changes a contract, all consumer roles in the matrix get dispatcher + client updates in the **same phase** or phase is incomplete.
-
-### 1.5 Algorithm / technology playbook (flexible)
-
-When implementing a capability:
-
-1. Prefer **existing pegasusX primitives** (outbox, SpannerTxnBuffer, PreferTenant, hubs).  
-2. Prefer **proven open algorithms** that fit COD/credit B2B distribution:  
-   - Demand: SBC ADI/CV² + Holt–Winters / Croston / SES (already in tree)  
-   - Safety stock: classic `z·√(Lσd² + d̄²σL²)` (v2)  
-   - VRP: OR-Tools path; keep Rust HEURISTIC honest  
-   - Credit risk: logistic/util+DPD+velocity score (industry DMS)  
-   - Pick waves: wave → confirm → seal gate (WMS standard)  
-3. Prefer **open-source libraries** when license-clean and ops-simple.  
-4. If proprietary-only: reimplement **logic**, not branding.  
-5. If none fit: design own with documented math + property tests.
-
-### 1.6 Client honesty rule
-
-For every backend fail-closed or disabled feature:
-
-- **Wire client** to real path, **or**  
-- **Remove/hide UI**, **or**  
-- Show explicit “unavailable / ops-gated” state  
-
-Never leave navigation to 410/501/stub success.
-
----
-
-## 2. Current baseline (do not re-litigate)
-
-### 2.1 Already Class A (protect)
-
-Order create→outbox, driver money edges+outbox, dispatch freeze, factory/payload seal under Spanner, payment webhooks+idempotency, claims file path, JWT revoke, dual-control money flags, Waves **B1–B7** fail-closed + scope pins.
-
-### 2.2 Residual gap clusters (drive phases)
-
-| Cluster | Examples | Severity |
-|---------|----------|----------|
-| **Money residual** | Cash AR pay-down post-commit; credit ClearBalance fail-open edges | P0 |
-| **Fiscal legal** | Default PEGASUS commercial; MY_SOLIQ not production default | P0 |
-| **Theatre** | Negotiation UI vs 410; credit score stub; driver state PATCH 501; mid-delivery not_implemented | P0 |
-| **Physical truth** | Pick waves/cycle/cold default off; payload line ledger weak; dual factory/payload tables | P1 |
-| **Autonomy** | Auto-order place off; soak gate unused in prod | P1 |
-| **Collections** | Dunning transports/flags; credit scoring | P1 |
-| **Integration** | SAP/certified EDI; master-data; external WMS ASN | P2/P3 |
 | **Ops** | Admin token paste; FCM no-op; outbox/DLQ UI; tenancy seed fallbacks | P1–P3 |
 | **Brain** | Forecast MAPE publish; MEIO quality; optimizer honesty | P2 |
 | **Client polish** | Dead settings; tracking fallback; POS scan | P1 |

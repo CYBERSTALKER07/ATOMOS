@@ -24,5 +24,5 @@ Deploy time = wire infra/secrets only; all product logic lands in phases.
 ## Related
 
 - Waves B1–B7: `../session-2026-08-12/WAVE_B*_*.md`  
-- Parity protocol: `../session-2026-08-12/BACKEND_PARITY_PROTOCOL.md`  
-- Reality Report: `../../artifacts/PegasusX_End_Product_Reality_Report_2026-08-13.docx`  
+- Reality Report: `../../artifacts/PegasusX_End_Product_Reality_Report_2026-08-13.md` (archived docx: `../../archive/docx/PegasusX_End_Product_Reality_Report_2026-08-13.docx`)  
+

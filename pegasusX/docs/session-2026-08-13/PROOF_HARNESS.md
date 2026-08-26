@@ -1,4 +1,7 @@
 # Proof harness — contract greps + standard tests
+> **POINT-IN-TIME SNAPSHOT (2026-08-13) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 Run from `pegasusX/apps/backend-go` unless noted.  
 Baselines recorded at Phase 0 kickoff (2026-08-13). Counts **drift** — interpret, do not treat raw count=0 as always required.

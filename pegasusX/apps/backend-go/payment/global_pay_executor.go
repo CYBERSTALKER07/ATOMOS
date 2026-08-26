@@ -146,16 +146,8 @@ type gpTokenResponse struct {
 // env-overridable (GLOBAL_PAY_REFUND_ACTION, default "RF") until merchant docs confirm.
 func (e *globalpayProviderExecutor) executeRefund(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
 	if e.username == "" || e.password == "" {
-		if !e.stubMode() {
 			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
-		return ExecutionResult{
-			ResolvedGateway: "GLOBAL_PAY",
-			Mode:            ExecutionModeDirect,
-			PolicySource:    "GLOBAL_PAY_STUB",
-			ProviderRef:     "gp_refund_stub_" + req.OrderID,
-		}, nil
-	}
 	token, err := e.authenticate(ctx)
 	if err != nil {
 		return ExecutionResult{}, err
@@ -287,15 +279,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	if req.Action == ExecutionActionCheckoutCapture {
 		if e.username == "" || e.password == "" {
-			if !e.stubMode() {
-				return ExecutionResult{}, errGlobalPayUnkeyed()
-			}
-			return ExecutionResult{
-				ResolvedGateway: "GLOBAL_PAY",
-				Mode:            ExecutionModeDirect,
-				PolicySource:    "GLOBAL_PAY_STUB",
-				ProviderRef:     "gp_capture_stub_" + req.OrderID,
-			}, nil
+			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
 		token, err := e.authenticate(ctx)
 		if err != nil {
@@ -352,15 +336,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	if req.Action == ExecutionActionStatusCheck {
 		if e.username == "" || e.password == "" {
-			if !e.stubMode() {
-				return ExecutionResult{}, errGlobalPayUnkeyed()
-			}
-			return ExecutionResult{
-				ResolvedGateway: "GLOBAL_PAY",
-				Mode:            ExecutionModeDirect,
-				PolicySource:    "GLOBAL_PAY_STUB",
-				ProviderRef:     "gp_status_stub_paid", // Stub paid status (load-test only)
-			}, nil
+			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
 		token, err := e.authenticate(ctx)
 		if err != nil {
@@ -407,16 +383,8 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	// allow non-production load testing without a real gateway contract. Must be
 	// explicitly enabled via GLOBAL_PAY_STUB_MODE; never available in production.
 	if e.username == "" || e.password == "" {
-		if !e.stubMode() {
 			return ExecutionResult{}, errGlobalPayUnkeyed()
 		}
-		return ExecutionResult{
-			ResolvedGateway: "GLOBAL_PAY",
-			Mode:            ExecutionModeHostedRedirect,
-			PolicySource:    "GLOBAL_PAY_STUB",
-			RedirectURL:     fmt.Sprintf("https://test.globalpay.uz/checkout-stub/%s", req.OrderID),
-		}, nil
-	}
 
 	// 1. Authenticate to get access token
 	token, err := e.authenticate(ctx)

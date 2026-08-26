@@ -63,7 +63,6 @@ import com.pegasusx.retailer.ui.screens.cart.CartViewModel
 import com.pegasusx.retailer.ui.screens.profile.AccountProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.ProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.FamilyMembersScreen
-import com.pegasusx.retailer.ui.screens.profile.SavedCardsScreen
 import com.pegasusx.retailer.ui.screens.settings.CapabilitiesScreen
 import com.pegasusx.retailer.ui.screens.settings.TeamScreen
 import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
@@ -433,7 +432,6 @@ fun RetailerNavigation(
                     Box(Modifier.fillMaxSize()) {
                         ProfileScreen(
                             onAccountClick = { navController.navigate("ACCOUNT_PROFILE") },
-                            onSavedCardsClick = { navController.navigate("SAVED_CARDS") },
                             onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
                             onCapabilitiesClick = { navController.navigate("CAPABILITIES") },
                             onTeamClick = { navController.navigate("TEAM") },
@@ -488,9 +486,6 @@ fun RetailerNavigation(
                         LocalSkusScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
-                composable("SAVED_CARDS") {
-                    Box(Modifier.fillMaxSize()) {
-                        SavedCardsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("CAPABILITIES") {
@@ -513,20 +508,7 @@ fun RetailerNavigation(
                         AccountProfileScreen(onBack = { navController.popBackStack() })
                     }
                 }
-                composable("SAVED_CARDS_DELIVERY_PAYMENT/{orderId}/{sessionId}") {
-                    Box(Modifier.fillMaxSize()) {
-                        SavedCardsScreen(
-                            returnTo = "delivery_payment",
-                            onNavigateBack = { navController.popBackStack() },
-                            onReturnToDeliveryPayment = {
-                                navigationViewModel.loadPendingPayments()
-                                paymentPhase = PaymentPhase.CHOOSE
-                                paymentError = null
-                                navController.popBackStack()
-                            },
-                        )
-                    }
-                }
+
                 composable(PegasusTab.SUPPLIERS.name) {
                     Box(Modifier.fillMaxSize()) {
                         MySuppliersScreen(

@@ -1,4 +1,7 @@
 # Wave B1 — Money integrity implementation
+> **POINT-IN-TIME SNAPSHOT (2026-08-12) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 **Date:** 2026-08-12  
 **Master:** [`BACKEND_PARITY_MASTER.md`](./BACKEND_PARITY_MASTER.md)

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -85,6 +86,7 @@ type Service struct {
 	cache                 *cache.Cache
 	idem                  idempotency.Store
 	spannerClient         *spanner.Client
+	redisClient           *redis.Client
 	manifestStore         *manifest.Store
 	routeGeometryBuilder  *routing.GeometryBuilder
 	locations             telemetry.LastLocationReader
@@ -135,6 +137,7 @@ type ServiceConfig struct {
 	Cache                *cache.Cache
 	Idem                 idempotency.Store
 	Spanner              *spanner.Client
+	RedisClient          *redis.Client
 	ManifestStore        *manifest.Store
 	RouteGeometryBuilder *routing.GeometryBuilder
 	Locations            telemetry.LastLocationReader
@@ -232,6 +235,7 @@ func NewService(c ServiceConfig) *Service {
 		cache:                c.Cache,
 		idem:                 c.Idem,
 		spannerClient:        c.Spanner,
+		redisClient:          c.RedisClient,
 		manifestStore:        c.ManifestStore,
 		routeGeometryBuilder: c.RouteGeometryBuilder,
 		locations:            c.Locations,

@@ -53,7 +53,7 @@ func itoa(n int64) string {
 }
 
 // FuzzyScore returns 0..1 similarity for brand+name+pack+uom.
-func FuzzyScore(aBrand, aName string, aPack int64, aUom, bBrand, bName string, bPack int64, bUom string) float64 {
+func FuzzyScore(aBrandID, aName string, aPack int64, aUom, bBrandID, bName string, bPack int64, bUom string) float64 {
 	if aPack <= 0 {
 		aPack = 1
 	}
@@ -67,15 +67,13 @@ func FuzzyScore(aBrand, aName string, aPack int64, aUom, bBrand, bName string, b
 		strings.TrimSpace(aUom) != "" && strings.TrimSpace(bUom) != "" {
 		return 0
 	}
-	ab := NormalizeBrandToken(aBrand)
-	bb := NormalizeBrandToken(bBrand)
 	an := NormalizeBrandToken(aName)
 	bn := NormalizeBrandToken(bName)
-	if ab == "" && an == "" {
+	if aBrandID == "" && an == "" {
 		return 0
 	}
 	score := 0.0
-	if ab != "" && ab == bb {
+	if aBrandID != "" && aBrandID == bBrandID {
 		score += 0.45
 	}
 	if an != "" && an == bn {

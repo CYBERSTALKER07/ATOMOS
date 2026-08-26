@@ -80,7 +80,7 @@ func (s *Service) Evaluate(ctx context.Context, role, platform, channel, clientV
 	if !ok {
 		policy = PolicyRow{
 			Role: role, Platform: platform, Channel: channel,
-			MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+			MinimumVersion: "1.0.0", RecommendedVersion: "1.0.1",
 		}
 	}
 

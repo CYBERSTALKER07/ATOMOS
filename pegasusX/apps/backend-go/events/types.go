@@ -45,6 +45,44 @@ type PayoutBatchEvent struct {
 	RailReference  string `json:"rail_reference,omitempty"`
 }
 
+// SupplierServicePromiseEvent handles supplier promise snapshots and breach alerts.
+type SupplierServicePromiseEvent struct {
+	BaseEvent
+	OrderID                string `json:"order_id"`
+	SupplierID             string `json:"supplier_id"`
+	RetailerID             string `json:"retailer_id"`
+	WarehouseID            string `json:"warehouse_id,omitempty"`
+	PromiseType            string `json:"promise_type"`
+	GuaranteedDeliveryDate string `json:"guaranteed_delivery_date"`
+	CutoffAppliedAt        string `json:"cutoff_applied_at,omitempty"`
+	FillRateTargetBps      int64  `json:"fill_rate_target_bps"`
+	MinOrderMinor          int64  `json:"min_order_minor"`
+	Currency               string `json:"currency"`
+	SLAHours               int64  `json:"sla_hours"`
+	Status                 string `json:"status"`
+	BreachedAt             string `json:"breached_at,omitempty"`
+	BreachReason           string `json:"breach_reason,omitempty"`
+}
+
+// LotRecallEvent handles lot recall campaign lifecycle and quarantine actions.
+type LotRecallEvent struct {
+	BaseEvent
+	CampaignID         string `json:"campaign_id,omitempty"`
+	SupplierID         string `json:"supplier_id"`
+	ProductID          string `json:"product_id"`
+	LotCode            string `json:"lot_code,omitempty"`
+	LotID              string `json:"lot_id,omitempty"`
+	WarehouseID        string `json:"warehouse_id,omitempty"`
+	RecallReason       string `json:"recall_reason,omitempty"`
+	Severity           string `json:"severity,omitempty"`
+	Status             string `json:"status,omitempty"`
+	ImpactedLotCount   int64  `json:"impacted_lot_count,omitempty"`
+	ImpactedUnitsCount int64  `json:"impacted_units_count,omitempty"`
+	ImpactedOrderCount int64  `json:"impacted_order_count,omitempty"`
+	Action             string `json:"action,omitempty"`
+	Actor              string `json:"actor,omitempty"`
+}
+
 // SupplierEvent handles generic supplier operations.
 type SupplierEvent struct {
 	BaseEvent
@@ -364,9 +402,12 @@ type FinanceEvent struct {
 	PolicySource      string `json:"policy_source,omitempty"`
 	ProviderReference string `json:"provider_reference,omitempty"`
 	AmountMinor       int64  `json:"amount_minor,omitempty"`
+	CashMinor         int64  `json:"cash_minor,omitempty"`
+	CardMinor         int64  `json:"card_minor,omitempty"`
 	Currency          string `json:"currency,omitempty"`
 	TransactionID     string `json:"transaction_id,omitempty"`
 	Source            string `json:"source,omitempty"`
+	DriverID          string `json:"driver_id,omitempty"`
 }
 
 // AIRecommendationEvent handles AI decisions.

@@ -2099,6 +2099,64 @@ export interface SupplierReturnPolicy {
   policy_source_hint?: string;
 }
 
+/** GET/PUT /v1/supplier/service-policy */
+export interface SupplierServicePolicy {
+  supplier_id: string;
+  lead_time_days: number;
+  same_day_cutoff_time?: string;
+  next_day_cutoff_time?: string;
+  min_order_minor: number;
+  currency: string;
+  fill_rate_guarantee_bps: number;
+  allow_scheduled_delivery: boolean;
+  max_schedule_advance_days: number;
+  assigned_manager_name?: string;
+  assigned_manager_phone?: string;
+  updated_at?: string;
+  updated_by_user_id?: string;
+}
+
+/** GET/POST /v1/retailer/service-promise */
+export interface PromiseEvaluationRequest {
+  supplier_id: string;
+  retailer_id?: string;
+  warehouse_id?: string;
+  total_minor?: number;
+  currency?: string;
+  requested_delivery_date?: string;
+}
+
+export interface PromiseEvaluationResult {
+  eligible: boolean;
+  promise_type: "SAME_DAY" | "NEXT_DAY" | "SCHEDULED" | string;
+  guaranteed_delivery_date: string;
+  sla_hours: number;
+  fill_rate_target_bps: number;
+  min_order_minor: number;
+  currency: string;
+  cutoff_time?: string;
+  reason?: string;
+}
+
+export interface OrderServicePromiseSnapshot {
+  order_id: string;
+  supplier_id: string;
+  retailer_id: string;
+  warehouse_id: string;
+  promise_type: string;
+  guaranteed_delivery_date: string;
+  cutoff_applied_at?: string;
+  fill_rate_target_bps: number;
+  min_order_minor: number;
+  currency: string;
+  sla_hours: number;
+  status: "PENDING" | "MET" | "BREACHED" | string;
+  breached_at?: string;
+  breach_reason?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 /** GET/PUT /v1/warehouse/return-policy */
 export interface WarehouseReturnPolicy {
   supplier_id: string;
@@ -2869,18 +2927,23 @@ export interface CreateRetailerPriceOverrideResponse {
 export type SupplierPromotionScopeType = "PRODUCT" | "CATEGORY" | "ALL_PRODUCTS";
 export type SupplierPromotionRetailerScope = "ALL" | "ALLOWLIST";
 
+export interface PromotionTier {
+  min_quantity: number;
+  discount_bps: number;
+}
+
 export interface SupplierPromotion {
   promotion_id: string;
   supplier_id: SupplierId;
+  campaign_id?: string;
   name: string;
   description?: string;
-  discount_bps: number;
+  tiers: PromotionTier[];
   scope_type: SupplierPromotionScopeType;
   scope_product_id?: string;
   scope_category_id?: string;
   retailer_scope: SupplierPromotionRetailerScope;
   retailer_ids?: RetailerId[];
-  min_line_quantity?: number;
   min_order_amount_minor?: number;
   starts_at?: string;
   ends_at?: string;
@@ -2894,13 +2957,12 @@ export interface SupplierPromotion {
 export interface SupplierPromotionUpsertRequest {
   name: string;
   description?: string;
-  discount_bps: number;
+  tiers: PromotionTier[];
   scope_type: SupplierPromotionScopeType;
   scope_product_id?: string;
   scope_category_id?: string;
   retailer_scope?: SupplierPromotionRetailerScope;
   retailer_ids?: RetailerId[];
-  min_line_quantity?: number;
   min_order_amount_minor?: number;
   starts_at?: string | null;
   ends_at?: string | null;
@@ -3881,6 +3943,8 @@ export interface RetailerReceiveLine {
   product_name?: string;
   ordered_qty: number;
   accepted_qty: number;
+  damaged_qty?: number;
+  missing_qty?: number;
 }
 
 export interface RetailerReceiveSession {
@@ -3899,7 +3963,7 @@ export interface CreateRetailerReceiveSessionRequest {
   location_id?: string;
   confirm?: boolean;
   stock_bin?: RetailerStockBin | string;
-  lines?: { sku: string; accepted_qty: number }[];
+  lines?: { sku: string; accepted_qty: number; damaged_qty?: number; missing_qty?: number }[];
 }
 
 export interface RetailerStockTransferRequest {
@@ -4154,6 +4218,8 @@ export type EventType =
   | "SUPPLIER_BILLING_UPDATED"
   | "SUPPLIER_BILLING_CONFIGURED"
   | "SUPPLIER_MEMBER_ADDED"
+  | "SUPPLIER_SERVICE_PROMISE_CREATED"
+  | "SUPPLIER_SERVICE_PROMISE_BREACHED"
   | "SUPPLIER_BROADCAST"
   | "RETAILER_REGISTERED"
   | "RETAILER_STAFF_CREATED"
@@ -5004,6 +5070,78 @@ export interface ArInvoice {
   updated_at?: string;
 }
 
+export interface AgingSummaryResponse {
+  supplier_id: string;
+  currency: string;
+  total_open_minor: number;
+  total_overdue_minor: number;
+  bucket_current_minor: number;
+  bucket_1_30_minor: number;
+  bucket_31_60_minor: number;
+  bucket_61_90_minor: number;
+  bucket_90_plus_minor: number;
+  total_invoices_count: number;
+  delinquent_retailers_count: number;
+  high_risk_invoice_count: number;
+  computed_at: string;
+}
+
+export interface DelinquencyLockStatus {
+  retailer_id: string;
+  supplier_id?: string;
+  is_locked: boolean;
+  reason?: string;
+  overdue_amount_minor: number;
+  overdue_count: number;
+  checked_at: string;
+}
+
+export interface RetailerPayInvoiceRequest {
+  amount_minor: number;
+  payment_method: "WALLET" | "CARD" | "BANK_TRANSFER" | string;
+  payment_reference?: string;
+}
+
+export interface WriteOffRequest {
+  reason: string;
+}
+
+export interface CashBagSummaryResponse {
+  driver_id: string;
+  shift_date: string;
+  expected_cash_minor: number;
+  collected_cash_minor: number;
+  declared_cash_minor: number;
+  difference_minor: number;
+  reconciliation_id?: string;
+  reconciliation_status: "PENDING_TURN_IN" | "SUBMITTED" | "BALANCED" | "ACCEPTED" | "DISPUTED" | string;
+  driver_note?: string;
+  finance_note?: string;
+  pending_orders?: { order_id: string; retailer_id?: string; amount: number; state: string }[];
+}
+
+export interface CashBagTurnInRequest {
+  declared_cash_minor: number;
+  driver_note?: string;
+  route_id?: string;
+}
+
+export interface CashReconciliation {
+  reconciliation_id: string;
+  driver_id: string;
+  route_id?: string;
+  shift_date: string;
+  expected_cash_minor: number;
+  declared_cash_minor: number;
+  difference_minor: number;
+  status: "PENDING" | "SUBMITTED" | "BALANCED" | "ACCEPTED" | "DISPUTED" | string;
+  driver_note?: string;
+  finance_note?: string;
+  created_at: string;
+  resolved_at?: string;
+  resolved_by?: string;
+}
+
 export interface OrderTimelineEntry {
   transition_id: string;
   order_id: OrderId;
@@ -5198,6 +5336,18 @@ export interface OrderFinalized {
   net_payout_amount?: number;
 }
 
+export interface SplitPaymentCreated {
+  order_id: OrderId;
+  driver_id?: DriverId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  cash_minor?: number;
+  card_minor?: number;
+  currency?: string;
+  transaction_id?: string;
+  source?: string;
+}
+
 export interface PaymentRequired {
   order_id: OrderId;
   supplier_id?: SupplierId;
@@ -5380,6 +5530,7 @@ export type WsEvent =
   | WsEventEnvelope<"ORDER_ASSIGNED", OrderAssigned>
   | WsEventEnvelope<"ORDER_REASSIGNED", OrderReassigned>
   | WsEventEnvelope<"ORDER_FINALIZED", OrderFinalized>
+  | WsEventEnvelope<"SPLIT_PAYMENT_CREATED", SplitPaymentCreated>
   | WsEventEnvelope<"PAYMENT_REQUIRED", PaymentRequired>
   | WsEventEnvelope<"PAYMENT_CLEARED", PaymentCleared>
   | WsEventEnvelope<"SETTLEMENT_REQUIRED", SettlementRequired>
@@ -6182,6 +6333,77 @@ export interface StockLotPutawayResponse {
   received_at?: string;
 }
 
+export interface QuarantineLotRequest {
+  reason_code?: string;
+  notes?: string;
+}
+
+export interface ReleaseLotRequest {
+  reason_code?: string;
+  notes?: string;
+}
+
+export interface LotQuarantineEventView {
+  event_id: string;
+  lot_id: string;
+  warehouse_id: string;
+  supplier_id: string;
+  product_id: string;
+  from_status: string;
+  to_status: string;
+  reason_code: string;
+  actor: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface RecallImpactedOrderView {
+  campaign_id: string;
+  order_id: string;
+  retailer_id: string;
+  warehouse_id: string;
+  lot_id: string;
+  sku: string;
+  quantity: number;
+  order_status: string;
+  customer_notified: boolean;
+  created_at?: string;
+}
+
+export interface RecallCampaignView {
+  campaign_id: string;
+  supplier_id: string;
+  product_id: string;
+  lot_code?: string;
+  lot_id?: string;
+  recall_reason: string;
+  severity: "CRITICAL" | "WARNING" | string;
+  status: "INITIATED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" | string;
+  initiated_by: string;
+  impacted_lot_count: number;
+  impacted_units_count: number;
+  impacted_order_count: number;
+  created_at: string;
+  updated_at: string;
+  impacted_orders?: RecallImpactedOrderView[];
+}
+
+export interface InitiateRecallRequest {
+  supplier_id?: string;
+  product_id: string;
+  lot_code?: string;
+  lot_id?: string;
+  recall_reason: string;
+  severity?: "CRITICAL" | "WARNING" | string;
+  initiated_by?: string;
+}
+
+export interface LotGenealogyView {
+  lot: StockLot;
+  quarantine_events: LotQuarantineEventView[];
+  impacted_orders: RecallImpactedOrderView[];
+}
+
 /** §8.7 Wave 1B pick wave (manifest strategy). */
 export interface PickWave {
   wave_id: string;
@@ -6273,3 +6495,305 @@ export interface InventoryAdjustmentListResponse {
   adjustments: InventoryAdjustment[];
   cycle_counts_enabled?: boolean;
 }
+
+// --- Phase 2.3: Evidence Vault ---
+
+export interface EvidenceItem {
+  dossier_id: string;
+  item_id: string;
+  item_type: string;
+  storage_uri: string;
+  file_hash: string;
+  mime_type: string;
+  size_bytes: number;
+  uploader_user_id: string;
+  captured_at?: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
+}
+
+export interface EvidenceDossier {
+  dossier_id: string;
+  target_id: string;
+  target_type: string;
+  status: 'OPEN' | 'SEALED';
+  sealed_at?: string;
+  sealed_hash?: string;
+  created_at: string;
+}
+
+export interface CreateDossierRequest {
+  target_id: string;
+  target_type: string;
+}
+
+export interface AddEvidenceItemRequest {
+  item_type: string;
+  file_hash: string;
+  mime_type: string;
+  size_bytes: number;
+  captured_at?: string;
+  latitude?: number;
+  longitude?: number;
+  extension: string; // Used to generate the upload ticket
+}
+
+export interface AddEvidenceItemResponse {
+  item: EvidenceItem;
+  upload_url: string; // The signed PUT URL for the client to upload the file
+  public_url: string; // The resulting public URL
+}
+
+export interface GetDossierResponse {
+  dossier: EvidenceDossier;
+  items: EvidenceItem[];
+}
+
+
+export interface TaxRegimeVersion {
+  id: string;
+  country_code: string;
+  effective_from: string;
+  effective_to?: string;
+  currency: string;
+  vat_rates_bps: number[];
+  simplified_rules?: any;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+}
+
+export interface CreateRegimeRequest {
+  country_code: string;
+  effective_from: string;
+  effective_to?: string;
+  currency: string;
+  vat_rates_bps: number[];
+  simplified_rules?: any;
+}
+
+export interface OrderLineFiscalSnapshot {
+  order_id: string;
+  order_line_id: string;
+  regime_id: string;
+  vat_rate_bps: number;
+  net_minor: number;
+  vat_minor: number;
+  gross_minor: number;
+  snapshot_at: string;
+  created_at: string;
+}
+
+export interface SupplierPromotionCampaign {
+  campaign_id: string;
+  supplier_id: SupplierId;
+  name: string;
+  budget_limit_minor: number;
+  budget_used_minor: number;
+  status: "ACTIVE" | "EXHAUSTED" | "PAUSED";
+  created_at: string;
+}
+
+export interface RetailerPromotionEnrollment {
+  enrollment_id: string;
+  campaign_id: string;
+  retailer_id: RetailerId;
+  status: "ENROLLED" | "OPTED_OUT";
+  enrolled_at: string;
+}
+
+export interface RetailerShelfAlert {
+  alert_id: string;
+  retailer_id: RetailerId;
+  location_id: string;
+  global_product_id: string;
+  status: "OPEN" | "RESOLVED";
+  current_stock: number;
+  capacity_threshold: number;
+  created_at: string;
+  resolved_at?: string;
+}
+
+// ── Phase 4.2: Partner Order Lifecycle Types ──────────────────────────
+
+export interface PartnerCancelOrderRequest {
+  reason?: string;
+}
+
+export interface PartnerUpdateOrderStatusRequest {
+  status: string;
+  reason?: string;
+}
+
+export interface PartnerUpdateOrderStatusResponse {
+  order_id: string;
+  previous_status: string;
+  status: string;
+  version: number;
+  updated_at: string;
+  event_type: string;
+}
+
+export interface KycDocument {
+  document_id: string;
+  retailer_id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  document_type: string;
+  document_url: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  rejection_reason?: string;
+}
+
+export interface KycSubmitRequest {
+  document_type: string;
+  document_url: string;
+}
+
+export interface KycReviewRequest {
+  status: 'APPROVED' | 'REJECTED';
+  rejection_reason?: string;
+}
+
+export interface ReturnLineItem {
+  product_id: string;
+  quantity: number;
+  reason: string;
+}
+
+export interface ReturnRequest {
+  request_id: string;
+  retailer_id: string;
+  order_id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RECEIVED';
+  lines_json: string;
+  reason: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ReturnSubmitRequest {
+  order_id: string;
+  reason: string;
+  lines: ReturnLineItem[];
+}
+
+// ── Market Pack & Geo Types ───────────────────────────────────────────────────
+export interface MarketPack {
+  pack_id: string;
+  country_code: string;
+  currency_code: string;
+  currency_decimal_places?: number;
+  market_code?: string;
+  display_name?: string;
+  default_locale?: string;
+  status: string;
+  map_center_lat?: number;
+  map_center_lng?: number;
+  psp_adapters?: string[];
+  fiscal_provider?: string;
+  enabled?: boolean;
+}
+
+export interface PackMapCenter {
+  lat: number;
+  lng: number;
+}
+
+// ── Platform Admin DTO Types ──────────────────────────────────────────────────
+export interface Tenant {
+  TenantType: string;
+  TenantID: string;
+  Status: string;
+  DisplayName: string;
+  KybNotes: string;
+  market_code?: string;
+  home_cell?: string;
+  CreatedAt: string;
+  UpdatedAt: string;
+  ApprovedAt?: string | null;
+  SuspendedAt?: string | null;
+  OffboardedAt?: string | null;
+}
+
+export interface FlagOverride {
+  FlagKey: string;
+  TenantType: string;
+  TenantID: string;
+  Enabled: boolean;
+  Status: string;
+  Reason?: string;
+  UpdatedBy?: string;
+}
+
+export interface FlagEval {
+  flag_key: string;
+  enabled: boolean;
+  source: string;
+  money_affecting: boolean;
+}
+
+export interface AccuracyRow {
+  supplier_id: string;
+  forecast_date: string;
+  warehouse_id: string;
+  product_id: string;
+  mape28: number;
+  wape28: number;
+  demoted: boolean;
+}
+
+export interface AuditRow {
+  AuditID: string;
+  ActorSubject: string;
+  Action: string;
+  TenantType: string;
+  TenantID: string;
+  DetailJSON: string;
+  CreatedAt: string;
+}
+
+export interface MatchQueueItem {
+  queue_id: string;
+  supplier_id: string;
+  product_id: string;
+  candidate_global_product_id?: string;
+  match_method: string;
+  score: number;
+  status: string;
+  reason?: string;
+}
+
+export interface PartnerKey {
+  key_id: string;
+  tenant_type: string;
+  tenant_id: string;
+  key_prefix: string;
+  scopes: string[];
+  status: string;
+}
+
+export interface BillingInvoice {
+  invoice_id: string;
+  billed_supplier_id: string;
+  order_id: string;
+  status: string;
+  principal_minor: number;
+  balance_minor: number;
+  currency: string;
+  due_at: string;
+  created_at: string;
+}
+
+export interface BillingFeeSchedule {
+  fee_schedule_id: string;
+  supplier_id: string;
+  tier: string;
+  per_order_minor: number;
+  gmv_bps: number;
+  monthly_subscription_minor: number;
+  currency: string;
+}
+

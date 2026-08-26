@@ -763,9 +763,6 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/supplier/claim-chargebacks", query: query)
     }
 
-    static func inventoryAudit() async throws -> [String: String] { // placeholder
-        try await APIClient.shared.get("v1/supplier/inventory/audit")
-    }
 
     static func vetOrder(body: [String: String], idempotencyKey: String) async throws {
         try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body, idempotencyKey: idempotencyKey)

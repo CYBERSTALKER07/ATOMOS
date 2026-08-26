@@ -1,5 +1,9 @@
 # Backend Role Parity — Master Gap Register
 
+> **POINT-IN-TIME SNAPSHOT (2026-08-12) — do not treat as current status.**
+> Re-verify any claim against live code before acting. EH0 and EH1 have shipped since this audit.
+> Current SoT: [`FEATURES_BY_APP_ROLE.md`](../FEATURES_BY_APP_ROLE.md) · [`ROLE_ROW_PARITY_MATRIX.md`](../ROLE_ROW_PARITY_MATRIX.md).
+
 **Date:** 2026-08-12  
 **Source:** Parallel agents A0–A7 (read-only audits)  
 **Protocol:** [`BACKEND_PARITY_PROTOCOL.md`](./BACKEND_PARITY_PROTOCOL.md)  

@@ -1,4 +1,7 @@
 # PegasusX — Consolidated Ecosystem Gap Register & Data-Flow Blueprint
+> **POINT-IN-TIME SNAPSHOT (2026-08-07) — do not treat as current status.**
+> Re-verify any claim against live code before acting. Multiple ecosystem hardening phases have shipped since this audit.
+
 
 > **Prod goal SoT:** [`../PROD_ECOSYSTEM_GOAL.md`](../PROD_ECOSYSTEM_GOAL.md) — north star, pillars, coverage rule, and wave order. This register is the evidence backlog, not the goal.
 

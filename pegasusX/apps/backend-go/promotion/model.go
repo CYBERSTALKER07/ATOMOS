@@ -19,20 +19,26 @@ const (
 	RetailerScopeAllowlist RetailerScope = "ALLOWLIST"
 )
 
+// PromotionTier defines a volume-based discount bracket.
+type PromotionTier struct {
+	MinQuantity int64 `json:"min_quantity"`
+	DiscountBps int64 `json:"discount_bps"`
+}
+
 // Promotion is the supplier promotion aggregate persisted in Spanner.
 type Promotion struct {
-	PromotionID         string        `json:"promotion_id"`
-	SupplierID          string        `json:"supplier_id"`
-	Name                string        `json:"name"`
-	Description         string        `json:"description,omitempty"`
-	DiscountBps         int64         `json:"discount_bps"`
-	ScopeType           ScopeType     `json:"scope_type"`
-	ScopeProductID      string        `json:"scope_product_id,omitempty"`
-	ScopeCategoryID     string        `json:"scope_category_id,omitempty"`
-	RetailerScope       RetailerScope `json:"retailer_scope"`
-	RetailerIDs         []string      `json:"retailer_ids,omitempty"`
-	MinLineQuantity     int64         `json:"min_line_quantity,omitempty"`
-	MinOrderAmountMinor int64         `json:"min_order_amount_minor,omitempty"`
+	PromotionID         string          `json:"promotion_id"`
+	SupplierID          string          `json:"supplier_id"`
+	CampaignID          string          `json:"campaign_id,omitempty"`
+	Name                string          `json:"name"`
+	Description         string          `json:"description,omitempty"`
+	Tiers               []PromotionTier `json:"tiers"`
+	ScopeType           ScopeType       `json:"scope_type"`
+	ScopeProductID      string          `json:"scope_product_id,omitempty"`
+	ScopeCategoryID     string          `json:"scope_category_id,omitempty"`
+	RetailerScope       RetailerScope   `json:"retailer_scope"`
+	RetailerIDs         []string        `json:"retailer_ids,omitempty"`
+	MinOrderAmountMinor int64           `json:"min_order_amount_minor,omitempty"`
 	StartsAt            *time.Time    `json:"starts_at,omitempty"`
 	EndsAt              *time.Time    `json:"ends_at,omitempty"`
 	MaxRedemptions      int64         `json:"max_redemptions,omitempty"`

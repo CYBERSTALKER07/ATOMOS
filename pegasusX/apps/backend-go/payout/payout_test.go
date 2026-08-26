@@ -96,10 +96,11 @@ func TestPayoutBatch_NetMathAndIdempotency(t *testing.T) {
 
 	svc := NewService(NewRepository(client))
 	svc.SetCommissionResolver(fixedCommission{minor: 5000})
-	b, err := svc.GenerateBatch(ctx, supplierID, start, end, "admin-1", "")
+	batches, err := svc.GenerateBatch(ctx, supplierID, start, end, "admin-1", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	b := batches[0]
 	if b.GrossCapturedMinor != 150000 || b.RefundedMinor != 20000 || b.CommissionMinor != 5000 {
 		t.Fatalf("batch math = %d/%d/%d, want 150000/20000/5000", b.GrossCapturedMinor, b.RefundedMinor, b.CommissionMinor)
 	}
@@ -108,10 +109,11 @@ func TestPayoutBatch_NetMathAndIdempotency(t *testing.T) {
 	}
 
 	// Replay: same period returns the existing batch.
-	b2, err := svc.GenerateBatch(ctx, supplierID, start, end, "admin-1", "")
+	batches2, err := svc.GenerateBatch(ctx, supplierID, start, end, "admin-1", "")
 	if err != nil {
 		t.Fatalf("regenerate: %v", err)
 	}
+	b2 := batches2[0]
 	if b2.BatchID != b.BatchID {
 		t.Fatalf("replay created new batch %s, want %s", b2.BatchID, b.BatchID)
 	}
@@ -130,10 +132,11 @@ func TestPayoutExport_FailClosedBankDetails(t *testing.T) {
 	})
 
 	svc := NewService(NewRepository(client))
-	b, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "a", "")
+	batches, err := svc.GenerateBatch(ctx, supplierID, legTime.Add(-time.Hour), legTime.Add(time.Hour), "a", "")
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
+	b := batches[0]
 	// No SupplierProfiles row: bank details resolution must fail, no file.
 	if _, _, err := svc.ExportBankFile(ctx, supplierID, b.BatchID); err == nil {
 		t.Fatal("export without bank details must fail closed")

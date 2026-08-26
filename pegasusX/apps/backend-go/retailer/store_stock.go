@@ -77,6 +77,8 @@ type ReceiveLine struct {
 	ProductName string `json:"product_name,omitempty"`
 	OrderedQty  int64  `json:"ordered_qty"`
 	AcceptedQty int64  `json:"accepted_qty"`
+	DamagedQty  int64  `json:"damaged_qty,omitempty"`
+	MissingQty  int64  `json:"missing_qty,omitempty"`
 }
 
 // ReceiveSessionDTO wire shape.
@@ -232,6 +234,8 @@ func (s *Service) HandleStockReceiveSession(w http.ResponseWriter, r *http.Reque
 		Lines      []struct {
 			Sku         string `json:"sku"`
 			AcceptedQty int64  `json:"accepted_qty"`
+			DamagedQty  int64  `json:"damaged_qty"`
+			MissingQty  int64  `json:"missing_qty"`
 		} `json:"lines"`
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -285,13 +289,24 @@ func (s *Service) HandleStockReceiveSession(w http.ResponseWriter, r *http.Reque
 	}
 	// Apply accepted qty overrides.
 	if len(req.Lines) > 0 {
-		bySKU := map[string]int64{}
+		bySKU := map[string]*struct {
+			AcceptedQty int64
+			DamagedQty  int64
+			MissingQty  int64
+		}{}
 		for _, l := range req.Lines {
-			bySKU[strings.TrimSpace(l.Sku)] = l.AcceptedQty
+			lCopy := l
+			bySKU[strings.TrimSpace(l.Sku)] = &struct {
+				AcceptedQty int64
+				DamagedQty  int64
+				MissingQty  int64
+			}{lCopy.AcceptedQty, lCopy.DamagedQty, lCopy.MissingQty}
 		}
 		for i := range lines {
-			if q, ok := bySKU[lines[i].Sku]; ok {
-				lines[i].AcceptedQty = q
+			if data, ok := bySKU[lines[i].Sku]; ok {
+				lines[i].AcceptedQty = data.AcceptedQty
+				lines[i].DamagedQty = data.DamagedQty
+				lines[i].MissingQty = data.MissingQty
 			}
 		}
 	}
@@ -361,17 +376,30 @@ func (s *Service) HandleStockReceiveConfirm(w http.ResponseWriter, r *http.Reque
 		Lines    []struct {
 			Sku         string `json:"sku"`
 			AcceptedQty int64  `json:"accepted_qty"`
+			DamagedQty  int64  `json:"damaged_qty"`
+			MissingQty  int64  `json:"missing_qty"`
 		} `json:"lines"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	if len(req.Lines) > 0 {
-		bySKU := map[string]int64{}
+		bySKU := map[string]*struct {
+			AcceptedQty int64
+			DamagedQty  int64
+			MissingQty  int64
+		}{}
 		for _, l := range req.Lines {
-			bySKU[strings.TrimSpace(l.Sku)] = l.AcceptedQty
+			lCopy := l
+			bySKU[strings.TrimSpace(l.Sku)] = &struct {
+				AcceptedQty int64
+				DamagedQty  int64
+				MissingQty  int64
+			}{lCopy.AcceptedQty, lCopy.DamagedQty, lCopy.MissingQty}
 		}
 		for i := range session.Lines {
-			if q, ok := bySKU[session.Lines[i].Sku]; ok {
-				session.Lines[i].AcceptedQty = q
+			if data, ok := bySKU[session.Lines[i].Sku]; ok {
+				session.Lines[i].AcceptedQty = data.AcceptedQty
+				session.Lines[i].DamagedQty = data.DamagedQty
+				session.Lines[i].MissingQty = data.MissingQty
 			}
 		}
 	}
@@ -1101,15 +1129,64 @@ func (s *Service) applyAdjust(ctx context.Context, retailerID, locationID, bin, 
 
 func (s *Service) confirmReceiveSession(ctx context.Context, session ReceiveSessionDTO, bin, actor string) error {
 	// Persist session as confirmed and apply RECEIVE deltas.
+	buf := &spannerTxnBuffer{}
 	for _, line := range session.Lines {
-		if line.AcceptedQty <= 0 {
-			continue
+		if line.AcceptedQty > 0 {
+			if err := s.applyDelta(ctx, session.RetailerID, session.LocationID, bin, line.Sku, line.AcceptedQty, MoveReceive, "ORDER", session.OrderID, actor, "receive:accepted"); err != nil {
+				return err
+			}
 		}
-		if err := s.applyDelta(ctx, session.RetailerID, session.LocationID, bin, line.Sku, line.AcceptedQty, MoveReceive, "ORDER", session.OrderID, actor, "receive"); err != nil {
-			return err
+		
+		varianceQty := int64(0)
+		if line.DamagedQty > 0 {
+			varianceQty += line.DamagedQty
+			// Route damage direct to QUARANTINE bin so the claim system can evaluate it
+			if err := s.applyDelta(ctx, session.RetailerID, session.LocationID, BinQuarantine, line.Sku, line.DamagedQty, MoveReceive, "ORDER", session.OrderID, actor, "receive:damaged"); err != nil {
+				return err
+			}
+			
+			// Bridge to claims/quarantine via Outbox event
+			_ = outbox.EmitJSON(ctx, buf, events.AggregateRetailer, session.RetailerID, events.TopicMain, map[string]any{
+				"type":        events.EventReceivingVarianceReported,
+				"timestamp":   s.now().Format(time.RFC3339Nano),
+				"retailer_id": session.RetailerID,
+				"location_id": session.LocationID,
+				"order_id":    session.OrderID,
+				"sku":         line.Sku,
+				"qty":         line.DamagedQty,
+				"condition":   "DAMAGED",
+				"reported_by": actor,
+			})
 		}
+		
+		if line.MissingQty > 0 {
+			varianceQty += line.MissingQty
+			// Missing goods don't enter inventory, but we must report the variance
+			_ = outbox.EmitJSON(ctx, buf, events.AggregateRetailer, session.RetailerID, events.TopicMain, map[string]any{
+				"type":        events.EventReceivingVarianceReported,
+				"timestamp":   s.now().Format(time.RFC3339Nano),
+				"retailer_id": session.RetailerID,
+				"location_id": session.LocationID,
+				"order_id":    session.OrderID,
+				"sku":         line.Sku,
+				"qty":         line.MissingQty,
+				"condition":   "MISSING",
+				"reported_by": actor,
+			})
+		}
+		
 		_ = s.syncReorderCurrentStock(ctx, session.RetailerID, line.Sku)
 	}
+	
+	if s.spannerClient != nil && (len(buf.events) > 0 || len(buf.audits) > 0) {
+		_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return buf.Flush(txn)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	
 	session.Status = "CONFIRMED"
 	return s.saveReceiveSession(ctx, session, actor)
 }

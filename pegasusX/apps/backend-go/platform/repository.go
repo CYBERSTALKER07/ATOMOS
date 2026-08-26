@@ -58,13 +58,13 @@ func NewMemoryPolicyRepository() *MemoryPolicyRepository {
 			key := policyKey(role, platform, "production")
 			r.rows[key] = PolicyRow{
 				Role: role, Platform: platform, Channel: "production",
-				MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+				MinimumVersion: "1.0.0", RecommendedVersion: "1.0.1",
 			}
 			// Website-only enterprise channel defaults (manifest URL filled at evaluate).
 			entKey := policyKey(role, platform, EnterpriseChannel)
 			r.rows[entKey] = PolicyRow{
 				Role: role, Platform: platform, Channel: EnterpriseChannel,
-				MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+				MinimumVersion: "1.0.0", RecommendedVersion: "1.0.1",
 				UpdateURL: DefaultEnterpriseManifestURL(role, platform),
 			}
 		}

@@ -47,7 +47,7 @@ Kafka event-contracts + kafka-development · Redis Inc suite (`redis-core`, conn
 ## Cross-cutting ranked next (when asked to implement)
 
 1. Control-tower MapLibre + pack camera ([`MAPS_AUDIT.md`](./MAPS_AUDIT.md)).
-2. Copy nested-only CI jobs into **root** `.github/workflows/pegasusx-ci.yml`; fix `reatilerapp` → `retailerapp` ([`DEVOPS_CICD_AUDIT.md`](./DEVOPS_CICD_AUDIT.md)).
+2. Copy nested-only CI jobs into **root** `.github/workflows/pegasusx-ci.yml`; fix `retailerapp` ([`DEVOPS_CICD_AUDIT.md`](./DEVOPS_CICD_AUDIT.md)).
 3. Do not treat Redis perimeter / payment-bypass as SoT ([`REDIS_AUDIT.md`](./REDIS_AUDIT.md)).
 4. Keep outbox-in-txn; do not flip `KAFKA_TOPIC_CONSUME_DOMAIN` without dual-write + topics ([`KAFKA_AUDIT.md`](./KAFKA_AUDIT.md)).
 5. Firebase stays OTP + FCM sidecar; JWT is HTTP session ([`FIREBASE_AUDIT.md`](./FIREBASE_AUDIT.md)).

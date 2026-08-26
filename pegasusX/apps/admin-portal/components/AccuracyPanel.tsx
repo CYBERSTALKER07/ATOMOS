@@ -22,7 +22,7 @@ export default function AccuracyPanel({ token }: { token: string }) {
     try {
       const r = await api.listPlanningAccuracy(token, id);
       setRows(r.items || []);
-      setDemote(r.demote_enabled);
+      setDemote(r.demote_enabled ?? null);
     } catch (e) {
       setRows(null);
       setErr(e instanceof Error ? e.message : "accuracy_load_failed");

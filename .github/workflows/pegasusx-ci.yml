@@ -205,6 +205,26 @@ jobs:
           ALLOW_DEV_UPDATER_PUBKEY: "1"
         run: bash scripts/validate_desktop_updater.sh
 
+  sandbox-infra:
+    name: pegasusX sandbox smoke gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+          cache-dependency-path: |
+            pegasusX/apps/backend-go/go.sum
+            pegasusX/go.work.sum
+      - name: Sync Go workspace
+        working-directory: pegasusX
+        run: go work sync
+      - name: Run isolated sandbox smoke gate
+        working-directory: pegasusX
+        run: make test-sandbox-infra
+
   mobile-gate-hint:
     name: Mobile gate (see pegasusx-native-mobile-build)
     runs-on: ubuntu-latest

@@ -196,6 +196,18 @@ export default function PaymentModal() {
   );
 
   useWsEvent(
+    "SPLIT_PAYMENT_CREATED",
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState((prev) => (prev === "success" ? prev : "fiscalizing"));
+        }
+      },
+      [event],
+    ),
+  );
+
+  useWsEvent(
     "FISCAL_RECEIPT_REQUESTED",
     useCallback(
       (msg: WsMessage) => {

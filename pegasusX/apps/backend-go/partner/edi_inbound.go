@@ -426,6 +426,25 @@ func (w *EdiInboundWorker) ingestORDRSP(ctx context.Context, cfg SftpConfig, rem
 		return err
 	}
 	w.emitAcks(ctx, cfg, msg.ExternalDocID, msg.RefOrderID, msg.Accepted, doc.Error)
+
+	// Phase 4.2: ORDRSP side-effects — transition the referenced order.
+	if w.svc != nil && w.svc.orders != nil && strings.TrimSpace(msg.RefOrderID) != "" {
+		if msg.Accepted {
+			if _, sErr := w.svc.orders.PartnerUpdateStatus(ctx, msg.RefOrderID, order.UpdateStatusRequest{
+				Status: "CONFIRMED",
+				Reason: "edi_ordrsp_accepted:" + msg.ResponseCode,
+			}); sErr != nil {
+				w.log.Warn("ordrsp accepted but order status transition failed",
+					"order_id", msg.RefOrderID, "err", sErr)
+			}
+		} else {
+			if _, sErr := w.svc.orders.PartnerCancelOrder(ctx, msg.RefOrderID,
+				"edi_ordrsp_rejected:"+msg.ResponseCode); sErr != nil {
+				w.log.Warn("ordrsp rejected but order cancel failed",
+					"order_id", msg.RefOrderID, "err", sErr)
+			}
+		}
+	}
 	return nil
 }
 
@@ -472,6 +491,18 @@ func (w *EdiInboundWorker) ingestINVOIC(ctx context.Context, cfg SftpConfig, rem
 		return err
 	}
 	w.emitAcks(ctx, cfg, msg.ExternalDocID, msg.RefOrderID, true, "")
+
+	// Phase 4.2: INVOIC side-effect — log invoice receipt for audit.
+	// Fiscal flow (FISCALIZING → COMPLETED) is handled by the fiscal subsystem;
+	// we do not trigger a generic status transition here.
+	if strings.TrimSpace(msg.RefOrderID) != "" {
+		w.log.Info("edi invoic received for order",
+			"order_id", msg.RefOrderID,
+			"amount_minor", msg.PrincipalMinor,
+			"currency", msg.Currency,
+			"external_doc_id", msg.ExternalDocID,
+		)
+	}
 	return nil
 }
 

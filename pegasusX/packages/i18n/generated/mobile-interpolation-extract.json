@@ -331,154 +331,154 @@
       "platform": "android"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/AnimatedNumberText.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
       "line": 9,
       "reason": "data_only",
       "text": "\\(value)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/AnimatedNumberText.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
       "line": 23,
       "reason": "data_only",
       "text": "\\(Int(value).formatted())",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/AutoOrder/AutoOrderPredictionsSection.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AutoOrder/AutoOrderPredictionsSection.swift",
       "line": 38,
       "reason": "data_only",
       "text": "\\(forecast.predictedQuantity)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/Dashboard/AiPredictionSection.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/Dashboard/AiPredictionSection.swift",
       "line": 68,
       "reason": "data_only",
       "text": "\\(forecast.predictedQuantity)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/QuantityStepper.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/QuantityStepper.swift",
       "line": 20,
       "reason": "data_only",
       "text": "\\(quantity)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/RetailerSectionHeader.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/RetailerSectionHeader.swift",
       "line": 29,
       "reason": "data_only",
       "text": "\\(count)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 633,
       "reason": "data_only",
       "text": "\\(cart.totalItems)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 653,
       "reason": "data_only",
       "text": "\\(notificationCount)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 493,
       "reason": "too_many_args",
       "text": "Latest: \\(lastRun.mode) · draft \\(lastRun.draftLines)\\(placed > 0 ? \" · placed \\(placed)\" : \"\") · \\(lastRun.status)\\(via)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 547,
       "reason": "complex_arg",
       "text": "\\(row.sku) · qty \\(row.suggestedQty)\\(row.currentStock.map { \" · stock \\($0)\" } ?? \"\")",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 110,
       "reason": "data_only",
       "text": "\\(Int(item.totalPrice).formatted())",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 285,
       "reason": "complex_arg",
       "text": "Choose \\(scheduledMinDate)\\(scheduledMaxDate.map { \" to \\($0)\" } ?? \" or later\")",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 292,
       "reason": "complex_arg",
       "text": "Delivery fee: \\(Int(fee).formatted()) UZS\\(preview?.deliveryDistanceKm.map { \" · \\(String(format: \"%.1f\", $0)) km\" } ?? \"\")",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 403,
       "reason": "data_only",
       "text": "\\(Int(item.totalPrice).formatted())",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FileClaimView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FileClaimView.swift",
       "line": 137,
       "reason": "complex_arg",
       "text": "\\(c.amountMinor ?? 0) \\(c.currency ?? \"UZS\") · \\(c.claimId)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 157,
       "reason": "data_only",
       "text": "\\(forecast.predictedQuantity)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LocalSkusView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LocalSkusView.swift",
       "line": 29,
       "reason": "complex_arg",
       "text": "\\(row.id) · \\(row.priceMinor) · \\(row.active ? \"active\" : \"inactive\")",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 130,
       "reason": "data_only",
       "text": "\\(count)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 62,
       "reason": "data_only",
       "text": "\\(forecasts.count)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 72,
       "reason": "data_only",
       "text": "\\(selectedItems.count)",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 185,
       "reason": "data_only",
       "text": "\\(Int(variant.price).formatted())",
       "platform": "ios"
     },
     {
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 122,
       "reason": "data_only",
       "text": "\\(supplier.catalogSubtitle)",

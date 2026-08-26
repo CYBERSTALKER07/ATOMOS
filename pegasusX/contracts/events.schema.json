@@ -1,8 +1,1862 @@
 {
   "$defs": {
+    "AIRecommendationPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "aggregate_id": {
+          "type": "string"
+        },
+        "aggregate_type": {
+          "type": "string"
+        },
+        "base_event": {},
+        "decided_by": {
+          "type": "string"
+        },
+        "decision": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "recommendation_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "recommendation_id",
+        "supplier_id"
+      ],
+      "title": "AIRecommendationPayload",
+      "type": "object"
+    },
+    "BuyerAcceptancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "deadline": {
+          "type": "string"
+        },
+        "ehf_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "status",
+        "supplier_id"
+      ],
+      "title": "BuyerAcceptancePayload",
+      "type": "object"
+    },
+    "CashVariancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "expected_minor": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "overage_minor": {
+          "type": "integer"
+        },
+        "received_minor": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "shortfall_minor": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "expected_minor",
+        "order_id",
+        "received_minor",
+        "supplier_id"
+      ],
+      "title": "CashVariancePayload",
+      "type": "object"
+    },
+    "CommandPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "command_id": {
+          "type": "string"
+        },
+        "contact_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "command_id",
+        "supplier_id"
+      ],
+      "title": "CommandPayload",
+      "type": "object"
+    },
+    "ConditionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "condition_type": {
+          "type": "string"
+        },
+        "gcs_paths": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "report_id": {
+          "type": "string"
+        },
+        "reporter_id": {
+          "type": "string"
+        },
+        "reporter_role": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "sku": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "condition_type",
+        "order_id",
+        "report_id",
+        "reporter_id",
+        "reporter_role"
+      ],
+      "title": "ConditionPayload",
+      "type": "object"
+    },
+    "CreditDeliveryPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "photo_proof_url": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "signature_url": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "order_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "CreditDeliveryPayload",
+      "type": "object"
+    },
+    "CreditLimitPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "credit_limit_minor": {
+          "type": "integer"
+        },
+        "current_balance": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "requested_amount": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "credit_limit_minor",
+        "current_balance",
+        "order_id",
+        "requested_amount",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "CreditLimitPayload",
+      "type": "object"
+    },
+    "CreditProfilePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "credit_limit_minor": {
+          "type": "integer"
+        },
+        "current_balance": {
+          "type": "integer"
+        },
+        "delinquent": {
+          "type": "boolean"
+        },
+        "profile_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "risk_tier": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "credit_limit_minor",
+        "current_balance",
+        "delinquent",
+        "profile_id",
+        "retailer_id",
+        "risk_tier",
+        "supplier_id"
+      ],
+      "title": "CreditProfilePayload",
+      "type": "object"
+    },
+    "DeliverySessionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "session_id"
+      ],
+      "title": "DeliverySessionPayload",
+      "type": "object"
+    },
+    "DriverPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "home_node_id": {
+          "type": "string"
+        },
+        "home_node_type": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "on_shift": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "supplier_id"
+      ],
+      "title": "DriverPayload",
+      "type": "object"
+    },
+    "FactoryPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "contact_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "h3_cell": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "factory_id",
+        "supplier_id"
+      ],
+      "title": "FactoryPayload",
+      "type": "object"
+    },
+    "FinancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "contact_name": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "execution_action": {
+          "type": "string"
+        },
+        "execution_mode": {
+          "type": "string"
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "policy_source": {
+          "type": "string"
+        },
+        "provider_reference": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "transaction_id": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "supplier_id"
+      ],
+      "title": "FinancePayload",
+      "type": "object"
+    },
+    "FiscalReceiptPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount_minor": {
+          "type": "integer"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "currency": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "error_message": {
+          "type": "string"
+        },
+        "fiscal_qr": {
+          "type": "string"
+        },
+        "fiscal_receipt_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "payment_method": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount_minor",
+        "attempt_id",
+        "base_event",
+        "currency",
+        "order_id",
+        "supplier_id"
+      ],
+      "title": "FiscalReceiptPayload",
+      "type": "object"
+    },
+    "InventoryImportPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "gcs_path": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "suggested_mappings": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "session_id",
+        "supplier_id"
+      ],
+      "title": "InventoryImportPayload",
+      "type": "object"
+    },
+    "LogisticsExceptionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "chargeback_id": {
+          "type": "string"
+        },
+        "claim_id": {
+          "type": "string"
+        },
+        "claim_type": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "photo_urls": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_note": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "settlement_mode": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event"
+      ],
+      "title": "LogisticsExceptionPayload",
+      "type": "object"
+    },
+    "ManifestPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "attempt_count": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "depth": {
+          "type": "integer"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "escalated": {
+          "type": "boolean"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "from_driver_id": {
+          "type": "string"
+        },
+        "from_manifest_id": {
+          "type": "string"
+        },
+        "from_route_id": {
+          "type": "string"
+        },
+        "from_vehicle_id": {
+          "type": "string"
+        },
+        "manifest_domain": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_count": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "stop_count": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "to_driver_id": {
+          "type": "string"
+        },
+        "to_manifest_id": {
+          "type": "string"
+        },
+        "to_route_id": {
+          "type": "string"
+        },
+        "to_vehicle_id": {
+          "type": "string"
+        },
+        "total_volume_vu": {
+          "type": "integer"
+        },
+        "transfer_count": {
+          "type": "integer"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "vehicle_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "manifest_id",
+        "supplier_id"
+      ],
+      "title": "ManifestPayload",
+      "type": "object"
+    },
+    "NegotiationPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "negotiation_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "negotiation_id",
+        "order_id",
+        "retailer_id"
+      ],
+      "title": "NegotiationPayload",
+      "type": "object"
+    },
+    "OrderForceCompletedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "actor_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "order_id": {
+          "type": "string"
+        },
+        "reason_code": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "base_event",
+        "order_id",
+        "reason_code",
+        "supplier_id"
+      ],
+      "title": "OrderForceCompletedPayload",
+      "type": "object"
+    },
+    "OrderPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor_id": {
+          "type": "string"
+        },
+        "actor_role": {
+          "type": "string"
+        },
+        "attempt_id": {
+          "type": "string"
+        },
+        "base_event": {},
+        "confirmation_status": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "escalated_to": {
+          "type": "string"
+        },
+        "from_driver_id": {
+          "type": "string"
+        },
+        "from_route_id": {
+          "type": "string"
+        },
+        "gps_lat": {
+          "type": "number"
+        },
+        "gps_lng": {
+          "type": "number"
+        },
+        "h3_cell": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "license_plate": {
+          "type": "string"
+        },
+        "line_items": {},
+        "lng": {
+          "type": "number"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "negotiation_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "order_source": {
+          "type": "string"
+        },
+        "payment_method": {
+          "type": "string"
+        },
+        "previous_status": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "proposed_price_minor": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "receiving_window_close": {
+          "type": "string"
+        },
+        "receiving_window_open": {
+          "type": "string"
+        },
+        "requested_delivery_date": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "response": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "to_driver_id": {
+          "type": "string"
+        },
+        "to_route_id": {
+          "type": "string"
+        },
+        "total_minor": {
+          "type": "integer"
+        },
+        "vehicle_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "supplier_id"
+      ],
+      "title": "OrderPayload",
+      "type": "object"
+    },
+    "PlanningPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "base_event": {},
+        "baseline_qty": {
+          "type": "integer"
+        },
+        "baseline_source": {
+          "type": "string"
+        },
+        "blocked_reason": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number"
+        },
+        "confidence_pct": {
+          "type": "integer"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "high_units": {
+          "type": "integer"
+        },
+        "insight_id": {
+          "type": "string"
+        },
+        "low_units": {
+          "type": "integer"
+        },
+        "network_nodes": {
+          "type": "integer"
+        },
+        "override_id": {
+          "type": "string"
+        },
+        "polygon_geojson": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "published_by": {
+          "type": "string"
+        },
+        "scenario_id": {
+          "type": "string"
+        },
+        "signal_id": {
+          "type": "string"
+        },
+        "simulation_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "transfer_recommendations": {
+          "type": "integer"
+        },
+        "ttl_seconds": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id"
+      ],
+      "title": "PlanningPayload",
+      "type": "object"
+    },
+    "PreOrderPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "pre_order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "pre_order_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "PreOrderPayload",
+      "type": "object"
+    },
+    "ProductPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "handling_class": {
+          "type": "string"
+        },
+        "is_hazardous": {
+          "type": "boolean"
+        },
+        "is_perishable": {
+          "type": "boolean"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "requires_cold_chain": {
+          "type": "boolean"
+        },
+        "storage_temp_max_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "storage_temp_min_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "handling_class",
+        "is_hazardous",
+        "is_perishable",
+        "product_id",
+        "requires_cold_chain",
+        "supplier_id"
+      ],
+      "title": "ProductPayload",
+      "type": "object"
+    },
+    "PromotionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "base_event": {},
+        "promotion_id": {
+          "type": "string"
+        },
+        "retailer_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retailer_scope": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "base_event",
+        "promotion_id",
+        "retailer_scope",
+        "supplier_id"
+      ],
+      "title": "PromotionPayload",
+      "type": "object"
+    },
+    "RetailerPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "contact_name": {
+          "type": "string"
+        },
+        "country_code": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "h3_cell": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "RetailerPayload",
+      "type": "object"
+    },
+    "RetailerPriceOverridePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "base_event": {},
+        "override_id": {
+          "type": "string"
+        },
+        "price_minor": {
+          "type": "integer"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "set_by": {
+          "type": "string"
+        },
+        "set_by_role": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "base_event",
+        "override_id",
+        "price_minor",
+        "product_id",
+        "retailer_id",
+        "set_by",
+        "set_by_role",
+        "supplier_id"
+      ],
+      "title": "RetailerPriceOverridePayload",
+      "type": "object"
+    },
+    "ReturnPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "return_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "retailer_id",
+        "return_id"
+      ],
+      "title": "ReturnPayload",
+      "type": "object"
+    },
+    "RoutePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_count": {
+          "type": "integer"
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "vehicle_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "route_id",
+        "supplier_id"
+      ],
+      "title": "RoutePayload",
+      "type": "object"
+    },
+    "ShopClosedBypassOffloadPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "order_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "ShopClosedBypassOffloadPayload",
+      "type": "object"
+    },
+    "ShopClosedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_id": {
+          "type": "string"
+        },
+        "report_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "driver_id",
+        "report_id",
+        "retailer_id"
+      ],
+      "title": "ShopClosedPayload",
+      "type": "object"
+    },
+    "SplitShipmentPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "driver_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "manifest_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "shared_route_id": {
+          "type": "string"
+        },
+        "split_group_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "total_volume_vu": {
+          "type": "number"
+        },
+        "truck_count": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "retailer_id",
+        "shared_route_id",
+        "split_group_id",
+        "supplier_id",
+        "total_volume_vu",
+        "truck_count"
+      ],
+      "title": "SplitShipmentPayload",
+      "type": "object"
+    },
+    "SupplierPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "assigned_factory_id": {
+          "type": "string"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "categories": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "contact_name": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "is_configured": {
+          "type": "boolean"
+        },
+        "is_registered": {
+          "type": "boolean"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id"
+      ],
+      "title": "SupplierPayload",
+      "type": "object"
+    },
+    "SupplyRequestPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "factory_id": {
+          "type": "string"
+        },
+        "item_count": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "request_id"
+      ],
+      "title": "SupplyRequestPayload",
+      "type": "object"
+    },
+    "SyncPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_holder": {
+          "type": "string"
+        },
+        "assigned_warehouse_id": {
+          "type": "string"
+        },
+        "bank_name": {
+          "type": "string"
+        },
+        "base_event": {},
+        "contact_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "legal_name": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "selected_gateways": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "supplier_role": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id"
+      ],
+      "title": "SyncPayload",
+      "type": "object"
+    },
+    "SystemPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "lock_name": {
+          "type": "string"
+        },
+        "system_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event"
+      ],
+      "title": "SystemPayload",
+      "type": "object"
+    },
     "UnknownEventPayload": {
       "additionalProperties": true,
       "title": "UnknownEventPayload",
+      "type": "object"
+    },
+    "VehiclePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "home_node_id": {
+          "type": "string"
+        },
+        "home_node_type": {
+          "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "unavailable_note": {
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "type": "string"
+        },
+        "vehicle_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id",
+        "vehicle_id"
+      ],
+      "title": "VehiclePayload",
+      "type": "object"
+    },
+    "WarehousePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "base_event": {},
+        "committed_units": {
+          "type": "integer"
+        },
+        "coverage_days": {
+          "type": "integer"
+        },
+        "coverage_start_date": {
+          "type": "string"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "linked_transfer_id": {
+          "type": "string"
+        },
+        "lock_id": {
+          "type": "string"
+        },
+        "pending_confirmation_units": {
+          "type": "integer"
+        },
+        "projected_units": {
+          "type": "integer"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "requested_units": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "transfer_mode": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "supplier_id",
+        "warehouse_id"
+      ],
+      "title": "WarehousePayload",
+      "type": "object"
+    },
+    "WarehouseTransferPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "factory_id": {
+          "type": "string"
+        },
+        "from_warehouse": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "to_warehouse": {
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "transfer_id"
+      ],
+      "title": "WarehouseTransferPayload",
       "type": "object"
     }
   },
@@ -11,7 +1865,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/AIRecommendationPayload"
         },
         {
           "properties": {
@@ -30,7 +1884,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/AIRecommendationPayload"
         },
         {
           "properties": {
@@ -49,7 +1903,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -68,7 +1922,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -182,7 +2036,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/BuyerAcceptancePayload"
         },
         {
           "properties": {
@@ -201,7 +2055,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/BuyerAcceptancePayload"
         },
         {
           "properties": {
@@ -220,7 +2074,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/BuyerAcceptancePayload"
         },
         {
           "properties": {
@@ -239,7 +2093,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/BuyerAcceptancePayload"
         },
         {
           "properties": {
@@ -258,7 +2112,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SyncPayload"
         },
         {
           "properties": {
@@ -277,7 +2131,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CashVariancePayload"
         },
         {
           "properties": {
@@ -296,7 +2150,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CashVariancePayload"
         },
         {
           "properties": {
@@ -315,7 +2169,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -334,7 +2188,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -353,7 +2207,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -372,7 +2226,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CommandPayload"
         },
         {
           "properties": {
@@ -391,7 +2245,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CommandPayload"
         },
         {
           "properties": {
@@ -410,7 +2264,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CommandPayload"
         },
         {
           "properties": {
@@ -429,7 +2283,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -448,7 +2302,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -467,7 +2321,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -486,7 +2340,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CreditDeliveryPayload"
         },
         {
           "properties": {
@@ -505,7 +2359,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CreditDeliveryPayload"
         },
         {
           "properties": {
@@ -524,7 +2378,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
           "properties": {
@@ -543,7 +2397,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/DeliverySessionPayload"
         },
         {
           "properties": {
@@ -562,7 +2416,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/DeliverySessionPayload"
         },
         {
           "properties": {
@@ -581,7 +2435,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -600,7 +2454,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -619,7 +2473,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -638,7 +2492,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/DriverPayload"
         },
         {
           "properties": {
@@ -657,7 +2511,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/DriverPayload"
         },
         {
           "properties": {
@@ -676,7 +2530,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/DriverPayload"
         },
         {
           "properties": {
@@ -695,7 +2549,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ReturnPayload"
         },
         {
           "properties": {
@@ -714,7 +2568,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FactoryPayload"
         },
         {
           "properties": {
@@ -733,7 +2587,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FactoryPayload"
         },
         {
           "properties": {
@@ -752,7 +2606,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -771,7 +2625,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FactoryPayload"
         },
         {
           "properties": {
@@ -790,7 +2644,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FactoryPayload"
         },
         {
           "properties": {
@@ -809,7 +2663,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -828,7 +2682,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FiscalReceiptPayload"
         },
         {
           "properties": {
@@ -847,7 +2701,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FiscalReceiptPayload"
         },
         {
           "properties": {
@@ -866,7 +2720,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FiscalReceiptPayload"
         },
         {
           "properties": {
@@ -885,7 +2739,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FiscalReceiptPayload"
         },
         {
           "properties": {
@@ -904,7 +2758,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SystemPayload"
         },
         {
           "properties": {
@@ -923,7 +2777,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SystemPayload"
         },
         {
           "properties": {
@@ -942,7 +2796,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/InventoryImportPayload"
         },
         {
           "properties": {
@@ -961,7 +2815,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/InventoryImportPayload"
         },
         {
           "properties": {
@@ -1018,7 +2872,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SyncPayload"
         },
         {
           "properties": {
@@ -1037,7 +2891,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -1056,7 +2910,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -1075,7 +2929,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -1094,7 +2948,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -1113,7 +2967,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1132,7 +2986,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1151,7 +3005,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1170,7 +3024,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1189,7 +3043,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1208,7 +3062,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1227,7 +3081,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1246,7 +3100,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1265,7 +3119,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1284,7 +3138,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1303,7 +3157,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ManifestPayload"
         },
         {
           "properties": {
@@ -1322,7 +3176,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1341,7 +3195,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/NegotiationPayload"
         },
         {
           "properties": {
@@ -1360,7 +3214,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/NegotiationPayload"
         },
         {
           "properties": {
@@ -1379,7 +3233,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -1398,7 +3252,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1417,7 +3271,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1436,7 +3290,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1455,7 +3309,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SplitShipmentPayload"
         },
         {
           "properties": {
@@ -1474,7 +3328,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ConditionPayload"
         },
         {
           "properties": {
@@ -1493,7 +3347,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1512,7 +3366,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1531,7 +3385,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderForceCompletedPayload"
         },
         {
           "properties": {
@@ -1550,7 +3404,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1569,7 +3423,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1588,7 +3442,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1607,7 +3461,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1626,7 +3480,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -1645,7 +3499,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
           "properties": {
@@ -1664,7 +3518,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -1683,7 +3537,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -1702,7 +3556,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -1816,7 +3670,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -1835,7 +3689,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -1854,7 +3708,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -1873,7 +3727,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -1892,7 +3746,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -1911,7 +3765,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -1930,7 +3784,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -1949,7 +3803,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -1968,7 +3822,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -1987,7 +3841,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2006,7 +3860,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2025,7 +3879,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2044,7 +3898,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2063,7 +3917,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2082,7 +3936,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2101,7 +3955,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2120,7 +3974,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2139,7 +3993,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PreOrderPayload"
         },
         {
           "properties": {
@@ -2158,7 +4012,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ProductPayload"
         },
         {
           "properties": {
@@ -2177,7 +4031,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PromotionPayload"
         },
         {
           "properties": {
@@ -2196,7 +4050,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
           "properties": {
@@ -2215,7 +4069,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -2234,7 +4088,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -2253,7 +4107,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -2272,7 +4126,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -2291,7 +4145,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -2310,7 +4164,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -2329,7 +4183,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -2348,7 +4202,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2367,7 +4221,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2386,7 +4240,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2405,7 +4259,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2424,7 +4278,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2443,7 +4297,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2462,7 +4316,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2481,7 +4335,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2500,7 +4354,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2519,7 +4373,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CreditLimitPayload"
         },
         {
           "properties": {
@@ -2538,7 +4392,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/CreditProfilePayload"
         },
         {
           "properties": {
@@ -2557,7 +4411,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2576,7 +4430,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2595,7 +4449,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPriceOverridePayload"
         },
         {
           "properties": {
@@ -2614,7 +4468,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2633,7 +4487,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2652,7 +4506,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2671,7 +4525,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2690,7 +4544,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -2709,7 +4563,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2728,7 +4582,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2747,7 +4601,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2766,7 +4620,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2785,7 +4639,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2804,7 +4658,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2823,7 +4677,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ReturnPayload"
         },
         {
           "properties": {
@@ -2842,7 +4696,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ReturnPayload"
         },
         {
           "properties": {
@@ -2861,7 +4715,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/LogisticsExceptionPayload"
         },
         {
           "properties": {
@@ -2880,7 +4734,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RoutePayload"
         },
         {
           "properties": {
@@ -2899,7 +4753,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RoutePayload"
         },
         {
           "properties": {
@@ -2918,7 +4772,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -2937,7 +4791,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -2956,7 +4810,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedPayload"
         },
         {
           "properties": {
@@ -2975,7 +4829,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
           "properties": {
@@ -2994,7 +4848,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedPayload"
         },
         {
           "properties": {
@@ -3013,7 +4867,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedPayload"
         },
         {
           "properties": {
@@ -3032,7 +4886,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedPayload"
         },
         {
           "properties": {
@@ -3051,7 +4905,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
           "properties": {
@@ -3070,7 +4924,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -3089,7 +4943,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/FinancePayload"
         },
         {
           "properties": {
@@ -3108,7 +4962,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SplitShipmentPayload"
         },
         {
           "properties": {
@@ -3127,7 +4981,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -3146,7 +5000,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -3165,7 +5019,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -3184,7 +5038,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -3203,7 +5057,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -3222,7 +5076,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3241,7 +5095,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3260,7 +5114,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -3279,7 +5133,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3298,7 +5152,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -3317,7 +5171,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/OrderPayload"
         },
         {
           "properties": {
@@ -3336,7 +5190,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3355,7 +5209,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3374,7 +5228,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ReturnPayload"
         },
         {
           "properties": {
@@ -3393,7 +5247,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ReturnPayload"
         },
         {
           "properties": {
@@ -3412,7 +5266,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplierPayload"
         },
         {
           "properties": {
@@ -3431,7 +5285,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -3450,7 +5304,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -3469,7 +5323,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehouseTransferPayload"
         },
         {
           "properties": {
@@ -3488,7 +5342,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehouseTransferPayload"
         },
         {
           "properties": {
@@ -3507,7 +5361,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SystemPayload"
         },
         {
           "properties": {
@@ -3526,7 +5380,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehouseTransferPayload"
         },
         {
           "properties": {
@@ -3545,7 +5399,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/VehiclePayload"
         },
         {
           "properties": {
@@ -3564,7 +5418,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/VehiclePayload"
         },
         {
           "properties": {
@@ -3583,7 +5437,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -3602,7 +5456,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -3621,7 +5475,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -3640,7 +5494,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -3659,7 +5513,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/SupplyRequestPayload"
         },
         {
           "properties": {
@@ -3678,7 +5532,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehouseTransferPayload"
         },
         {
           "properties": {
@@ -3697,7 +5551,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehouseTransferPayload"
         },
         {
           "properties": {
@@ -3792,7 +5646,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -3811,7 +5665,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -3830,7 +5684,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PlanningPayload"
         },
         {
           "properties": {
@@ -4062,207 +5916,207 @@
   "title": "PegasusWSEventEnvelope",
   "type": "object",
   "x-event-payload-map": {
-    "AI_RECOMMENDATION_CREATED": "UnknownEventPayload",
-    "AI_RECOMMENDATION_DECIDED": "UnknownEventPayload",
-    "ALLOCATION_FAIR_SHARE_APPLIED": "UnknownEventPayload",
-    "ALLOCATION_POLICY_APPLIED": "UnknownEventPayload",
+    "AI_RECOMMENDATION_CREATED": "AIRecommendationPayload",
+    "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
+    "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
+    "ALLOCATION_POLICY_APPLIED": "OrderPayload",
     "AR_INVOICE_AGING_UPDATED": "UnknownEventPayload",
     "AR_INVOICE_DUNNED": "UnknownEventPayload",
     "AR_INVOICE_OPENED": "UnknownEventPayload",
     "AR_INVOICE_PAYMENT": "UnknownEventPayload",
     "AR_INVOICE_SETTLED": "UnknownEventPayload",
-    "BUYER_ACCEPTANCE_ACCEPTED": "UnknownEventPayload",
-    "BUYER_ACCEPTANCE_EXPIRED": "UnknownEventPayload",
-    "BUYER_ACCEPTANCE_PENDING": "UnknownEventPayload",
-    "BUYER_ACCEPTANCE_REJECTED": "UnknownEventPayload",
-    "CART_SYNC_UPDATED": "UnknownEventPayload",
-    "CASH_OVERAGE": "UnknownEventPayload",
-    "CASH_SHORTFALL": "UnknownEventPayload",
-    "CLAIM_FILED": "UnknownEventPayload",
-    "CLAIM_RESOLVED": "UnknownEventPayload",
-    "CLAIM_UNDER_REVIEW": "UnknownEventPayload",
-    "COMMAND_DISPATCHED": "UnknownEventPayload",
-    "COMMAND_RECEIVED": "UnknownEventPayload",
-    "COMMAND_SETTLED": "UnknownEventPayload",
-    "CONTROL_TOWER_PLAYBOOK_CHANGED": "UnknownEventPayload",
-    "CONTROL_TOWER_RUN_CREATED": "UnknownEventPayload",
-    "CONTROL_TOWER_RUN_UPDATED": "UnknownEventPayload",
-    "CREDIT_DELIVERY_MARKED": "UnknownEventPayload",
-    "CREDIT_DELIVERY_RESOLVED": "UnknownEventPayload",
-    "CREDIT_LEAVE": "UnknownEventPayload",
-    "DELIVERY_DISPUTED": "UnknownEventPayload",
-    "DELIVERY_SESSION_UPDATED": "UnknownEventPayload",
-    "DEMAND_BASELINE_UPDATED": "UnknownEventPayload",
-    "DEMAND_SIGNAL": "UnknownEventPayload",
-    "DISPATCH_ZONE_OVERRIDE": "UnknownEventPayload",
-    "DRIVER_AVAILABILITY_CHANGED": "UnknownEventPayload",
-    "DRIVER_CREATED": "UnknownEventPayload",
-    "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
-    "DRIVER_RETURN_APPROACHING": "UnknownEventPayload",
-    "FACTORY_CREATED": "UnknownEventPayload",
-    "FACTORY_LOCATION_UPDATED": "UnknownEventPayload",
-    "FACTORY_SLA_BREACH": "UnknownEventPayload",
-    "FACTORY_STAFF_CREATED": "UnknownEventPayload",
-    "FACTORY_STAFF_PASSWORD_SET": "UnknownEventPayload",
-    "FACTORY_SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
-    "FISCAL_CORRECTIVE_REQUESTED": "UnknownEventPayload",
-    "FISCAL_RECEIPT_FAILED": "UnknownEventPayload",
-    "FISCAL_RECEIPT_REQUESTED": "UnknownEventPayload",
-    "FISCAL_RECEIPT_SUCCEEDED": "UnknownEventPayload",
-    "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
-    "FREEZE_LOCK_RELEASED": "UnknownEventPayload",
-    "INVENTORY_IMPORT_STATUS_UPDATE": "UnknownEventPayload",
-    "INVENTORY_IMPORT_UPLOADED": "UnknownEventPayload",
+    "BUYER_ACCEPTANCE_ACCEPTED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_EXPIRED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_REJECTED": "BuyerAcceptancePayload",
+    "CART_SYNC_UPDATED": "SyncPayload",
+    "CASH_OVERAGE": "CashVariancePayload",
+    "CASH_SHORTFALL": "CashVariancePayload",
+    "CLAIM_FILED": "LogisticsExceptionPayload",
+    "CLAIM_RESOLVED": "LogisticsExceptionPayload",
+    "CLAIM_UNDER_REVIEW": "LogisticsExceptionPayload",
+    "COMMAND_DISPATCHED": "CommandPayload",
+    "COMMAND_RECEIVED": "CommandPayload",
+    "COMMAND_SETTLED": "CommandPayload",
+    "CONTROL_TOWER_PLAYBOOK_CHANGED": "OrderPayload",
+    "CONTROL_TOWER_RUN_CREATED": "OrderPayload",
+    "CONTROL_TOWER_RUN_UPDATED": "OrderPayload",
+    "CREDIT_DELIVERY_MARKED": "CreditDeliveryPayload",
+    "CREDIT_DELIVERY_RESOLVED": "CreditDeliveryPayload",
+    "CREDIT_LEAVE": "ShopClosedBypassOffloadPayload",
+    "DELIVERY_DISPUTED": "DeliverySessionPayload",
+    "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
+    "DEMAND_BASELINE_UPDATED": "PlanningPayload",
+    "DEMAND_SIGNAL": "RetailerPayload",
+    "DISPATCH_ZONE_OVERRIDE": "PlanningPayload",
+    "DRIVER_AVAILABILITY_CHANGED": "DriverPayload",
+    "DRIVER_CREATED": "DriverPayload",
+    "DRIVER_LOCATION_UPDATED": "DriverPayload",
+    "DRIVER_RETURN_APPROACHING": "ReturnPayload",
+    "FACTORY_CREATED": "FactoryPayload",
+    "FACTORY_LOCATION_UPDATED": "FactoryPayload",
+    "FACTORY_SLA_BREACH": "SupplyRequestPayload",
+    "FACTORY_STAFF_CREATED": "FactoryPayload",
+    "FACTORY_STAFF_PASSWORD_SET": "FactoryPayload",
+    "FACTORY_SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
+    "FISCAL_CORRECTIVE_REQUESTED": "FiscalReceiptPayload",
+    "FISCAL_RECEIPT_FAILED": "FiscalReceiptPayload",
+    "FISCAL_RECEIPT_REQUESTED": "FiscalReceiptPayload",
+    "FISCAL_RECEIPT_SUCCEEDED": "FiscalReceiptPayload",
+    "FREEZE_LOCK_ACQUIRED": "SystemPayload",
+    "FREEZE_LOCK_RELEASED": "SystemPayload",
+    "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportPayload",
+    "INVENTORY_IMPORT_UPLOADED": "InventoryImportPayload",
     "INVENTORY_POLICY_UPDATED": "UnknownEventPayload",
     "INVENTORY_QUANTITY_UPDATED": "UnknownEventPayload",
-    "INVENTORY_SYNC_COMPLETE": "UnknownEventPayload",
-    "LOGISTICS_EXCEPTION_REPORTED": "UnknownEventPayload",
-    "LOGISTICS_TELEMETRY": "UnknownEventPayload",
-    "LOOK_AHEAD_COMPLETED": "UnknownEventPayload",
-    "LOYALTY_POINTS_EARNED": "UnknownEventPayload",
-    "MANIFEST_CANCELLED": "UnknownEventPayload",
-    "MANIFEST_COMPLETED": "UnknownEventPayload",
-    "MANIFEST_DISPATCHED": "UnknownEventPayload",
-    "MANIFEST_DLQ_ESCALATION": "UnknownEventPayload",
-    "MANIFEST_DRAFT_CREATED": "UnknownEventPayload",
-    "MANIFEST_EXCEPTION_RESOLVED": "UnknownEventPayload",
-    "MANIFEST_LOADING_STARTED": "UnknownEventPayload",
-    "MANIFEST_ORDER_EXCEPTION": "UnknownEventPayload",
-    "MANIFEST_ORDER_INJECTED": "UnknownEventPayload",
-    "MANIFEST_REBALANCED": "UnknownEventPayload",
-    "MANIFEST_SEALED": "UnknownEventPayload",
-    "MISSING_ITEMS_REPORTED": "UnknownEventPayload",
-    "NEGOTIATION_PROPOSED": "UnknownEventPayload",
-    "NEGOTIATION_RESOLVED": "UnknownEventPayload",
-    "NETWORK_MODE_CHANGED": "UnknownEventPayload",
-    "ORDER_ALLOCATED": "UnknownEventPayload",
-    "ORDER_AMENDED": "UnknownEventPayload",
-    "ORDER_ASSIGNED": "UnknownEventPayload",
-    "ORDER_CAPACITY_OVERFLOW": "UnknownEventPayload",
-    "ORDER_CONDITION_REPORTED": "UnknownEventPayload",
-    "ORDER_CREATED": "UnknownEventPayload",
-    "ORDER_FINALIZED": "UnknownEventPayload",
-    "ORDER_FORCE_COMPLETED": "UnknownEventPayload",
-    "ORDER_REASSIGNED": "UnknownEventPayload",
-    "ORDER_STATUS_CHANGED": "UnknownEventPayload",
-    "ORDER_VALIDATION_FAILED": "UnknownEventPayload",
-    "PARENT_ORDER_CREATED": "UnknownEventPayload",
-    "PARENT_ORDER_UPDATED": "UnknownEventPayload",
-    "PARTIAL_OFFLOAD": "UnknownEventPayload",
-    "PAYMENT_CLEARED": "UnknownEventPayload",
-    "PAYMENT_FAILED": "UnknownEventPayload",
-    "PAYMENT_REQUIRED": "UnknownEventPayload",
+    "INVENTORY_SYNC_COMPLETE": "SyncPayload",
+    "LOGISTICS_EXCEPTION_REPORTED": "LogisticsExceptionPayload",
+    "LOGISTICS_TELEMETRY": "LogisticsExceptionPayload",
+    "LOOK_AHEAD_COMPLETED": "SupplyRequestPayload",
+    "LOYALTY_POINTS_EARNED": "SupplyRequestPayload",
+    "MANIFEST_CANCELLED": "ManifestPayload",
+    "MANIFEST_COMPLETED": "ManifestPayload",
+    "MANIFEST_DISPATCHED": "ManifestPayload",
+    "MANIFEST_DLQ_ESCALATION": "ManifestPayload",
+    "MANIFEST_DRAFT_CREATED": "ManifestPayload",
+    "MANIFEST_EXCEPTION_RESOLVED": "ManifestPayload",
+    "MANIFEST_LOADING_STARTED": "ManifestPayload",
+    "MANIFEST_ORDER_EXCEPTION": "ManifestPayload",
+    "MANIFEST_ORDER_INJECTED": "ManifestPayload",
+    "MANIFEST_REBALANCED": "ManifestPayload",
+    "MANIFEST_SEALED": "ManifestPayload",
+    "MISSING_ITEMS_REPORTED": "OrderPayload",
+    "NEGOTIATION_PROPOSED": "NegotiationPayload",
+    "NEGOTIATION_RESOLVED": "NegotiationPayload",
+    "NETWORK_MODE_CHANGED": "SupplyRequestPayload",
+    "ORDER_ALLOCATED": "OrderPayload",
+    "ORDER_AMENDED": "OrderPayload",
+    "ORDER_ASSIGNED": "OrderPayload",
+    "ORDER_CAPACITY_OVERFLOW": "SplitShipmentPayload",
+    "ORDER_CONDITION_REPORTED": "ConditionPayload",
+    "ORDER_CREATED": "OrderPayload",
+    "ORDER_FINALIZED": "OrderPayload",
+    "ORDER_FORCE_COMPLETED": "OrderForceCompletedPayload",
+    "ORDER_REASSIGNED": "OrderPayload",
+    "ORDER_STATUS_CHANGED": "OrderPayload",
+    "ORDER_VALIDATION_FAILED": "OrderPayload",
+    "PARENT_ORDER_CREATED": "OrderPayload",
+    "PARENT_ORDER_UPDATED": "OrderPayload",
+    "PARTIAL_OFFLOAD": "ShopClosedBypassOffloadPayload",
+    "PAYMENT_CLEARED": "FinancePayload",
+    "PAYMENT_FAILED": "FinancePayload",
+    "PAYMENT_REQUIRED": "FinancePayload",
     "PAYOUT_BATCH_DISPATCHED": "UnknownEventPayload",
     "PAYOUT_BATCH_EXPORTED": "UnknownEventPayload",
     "PAYOUT_BATCH_GENERATED": "UnknownEventPayload",
     "PAYOUT_BATCH_PAID": "UnknownEventPayload",
     "PAYOUT_POLICY_UPDATED": "UnknownEventPayload",
-    "PLANNING_AGENT_BROADCAST": "UnknownEventPayload",
-    "PLANNING_CONFIDENCE_DOWNGRADED": "UnknownEventPayload",
-    "PLANNING_FORECAST_UPDATED": "UnknownEventPayload",
-    "PLANNING_PROMO_SIMULATION_READY": "UnknownEventPayload",
-    "POS_SALE_COMPLETED": "UnknownEventPayload",
-    "POS_SALE_VOIDED": "UnknownEventPayload",
-    "POS_SESSION_CLOSED": "UnknownEventPayload",
-    "POS_SESSION_OPENED": "UnknownEventPayload",
-    "PRE_ORDER_AUTO_ACCEPTED": "UnknownEventPayload",
-    "PRE_ORDER_CANCELLED": "UnknownEventPayload",
-    "PRE_ORDER_CONFIRMATION": "UnknownEventPayload",
-    "PRE_ORDER_CONFIRMED": "UnknownEventPayload",
-    "PRE_ORDER_DATE_ACCEPTED": "UnknownEventPayload",
-    "PRE_ORDER_DATE_PROPOSED": "UnknownEventPayload",
-    "PRE_ORDER_DATE_REJECTED": "UnknownEventPayload",
-    "PRE_ORDER_EDITED": "UnknownEventPayload",
-    "PRE_ORDER_NOTIFIED": "UnknownEventPayload",
-    "PRE_ORDER_NUDGE": "UnknownEventPayload",
-    "PRODUCT_HANDLING_UPDATED": "UnknownEventPayload",
-    "PROMOTION_CHANGED": "UnknownEventPayload",
-    "PROXIMITY_UNLOCKED": "UnknownEventPayload",
-    "PULL_MATRIX_COMPLETED": "UnknownEventPayload",
-    "REFUND_FAILED": "UnknownEventPayload",
-    "REFUND_REQUESTED": "UnknownEventPayload",
-    "REFUND_SUCCEEDED": "UnknownEventPayload",
-    "REPLENISHMENT_AUTO_APPROVED": "UnknownEventPayload",
-    "REPLENISHMENT_INSIGHT_CREATED": "UnknownEventPayload",
-    "REPLENISHMENT_POLICY_UPDATED": "UnknownEventPayload",
-    "RETAILER_ASSIST_SLA_BREACHED": "UnknownEventPayload",
-    "RETAILER_ASSIST_TICKET_CANCELLED": "UnknownEventPayload",
-    "RETAILER_ASSIST_TICKET_CLAIMED": "UnknownEventPayload",
-    "RETAILER_ASSIST_TICKET_COMPLETED": "UnknownEventPayload",
-    "RETAILER_ASSIST_TICKET_OPENED": "UnknownEventPayload",
-    "RETAILER_AUTO_ORDER_UPDATED": "UnknownEventPayload",
-    "RETAILER_CAPABILITY_PACK_CHANGED": "UnknownEventPayload",
-    "RETAILER_CLOCK_IN": "UnknownEventPayload",
-    "RETAILER_CLOCK_OUT": "UnknownEventPayload",
-    "RETAILER_CREDIT_LIMIT_BREACHED": "UnknownEventPayload",
-    "RETAILER_CREDIT_PROFILE_CHANGED": "UnknownEventPayload",
-    "RETAILER_LOCATION_CREATED": "UnknownEventPayload",
-    "RETAILER_LOCATION_UPDATED": "UnknownEventPayload",
-    "RETAILER_PRICE_OVERRIDE": "UnknownEventPayload",
-    "RETAILER_REGISTERED": "UnknownEventPayload",
-    "RETAILER_SECTION_CREATED": "UnknownEventPayload",
-    "RETAILER_SECTION_SKU_MAPPED": "UnknownEventPayload",
-    "RETAILER_SECTION_UPDATED": "UnknownEventPayload",
-    "RETAILER_SEGMENT_UPDATED": "UnknownEventPayload",
-    "RETAILER_SELL_THROUGH_UPDATED": "UnknownEventPayload",
-    "RETAILER_SHIFT_CASH_VARIANCE": "UnknownEventPayload",
-    "RETAILER_SHIFT_CLOSED": "UnknownEventPayload",
-    "RETAILER_SHIFT_OPENED": "UnknownEventPayload",
-    "RETAILER_STAFF_CREATED": "UnknownEventPayload",
-    "RETAILER_STAFF_SECTION_ASSIGNED": "UnknownEventPayload",
-    "RETURN_RECEIVED_AT_WAREHOUSE": "UnknownEventPayload",
-    "RETURN_SCAN_RECEIVED": "UnknownEventPayload",
-    "REVERSE_LOGISTICS_REQUIRED": "UnknownEventPayload",
-    "ROUTE_CREATED": "UnknownEventPayload",
-    "ROUTE_REORDERED": "UnknownEventPayload",
-    "SERVICE_POLICY_UPDATED": "UnknownEventPayload",
-    "SETTLEMENT_REQUIRED": "UnknownEventPayload",
-    "SHOP_CLOSED": "UnknownEventPayload",
-    "SHOP_CLOSED_BYPASS_OFFLOAD": "UnknownEventPayload",
-    "SHOP_CLOSED_ESCALATED": "UnknownEventPayload",
-    "SHOP_CLOSED_RESOLVED": "UnknownEventPayload",
-    "SHOP_CLOSED_RESPONSE": "UnknownEventPayload",
-    "SHOP_CLOSED_TIMEOUT": "UnknownEventPayload",
-    "SKU_CLASS_UPDATED": "UnknownEventPayload",
-    "SPLIT_PAYMENT_CREATED": "UnknownEventPayload",
-    "SPLIT_SHIPMENT_CREATED": "UnknownEventPayload",
-    "STORE_STOCK_ADJUSTED": "UnknownEventPayload",
-    "STORE_STOCK_CLAIM_HOLD": "UnknownEventPayload",
-    "STORE_STOCK_COUNTED": "UnknownEventPayload",
-    "STORE_STOCK_RECEIVED": "UnknownEventPayload",
-    "STORE_STOCK_TRANSFERRED": "UnknownEventPayload",
-    "SUPPLIER_BILLING_CONFIGURED": "UnknownEventPayload",
-    "SUPPLIER_BILLING_UPDATED": "UnknownEventPayload",
-    "SUPPLIER_BROADCAST": "UnknownEventPayload",
-    "SUPPLIER_CREATED": "UnknownEventPayload",
-    "SUPPLIER_CREDIT_PROGRAM_CHANGED": "UnknownEventPayload",
-    "SUPPLIER_CREDIT_TERMS_CHANGED": "UnknownEventPayload",
-    "SUPPLIER_MEMBER_ADDED": "UnknownEventPayload",
-    "SUPPLIER_PROFILE_UPDATED": "UnknownEventPayload",
-    "SUPPLIER_RETURN_CREATED": "UnknownEventPayload",
-    "SUPPLIER_RETURN_RESOLVED": "UnknownEventPayload",
-    "SUPPLIER_UPDATED": "UnknownEventPayload",
-    "SUPPLY_REQUEST_ACCEPTED": "UnknownEventPayload",
-    "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
-    "SUPPLY_TRANSFER_APPROACHING": "UnknownEventPayload",
-    "SUPPLY_TRANSFER_ARRIVED": "UnknownEventPayload",
-    "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
-    "TRANSFER_CREATED": "UnknownEventPayload",
-    "VEHICLE_AVAILABILITY_CHANGED": "UnknownEventPayload",
-    "VEHICLE_CREATED": "UnknownEventPayload",
-    "WAREHOUSE_BROADCAST": "UnknownEventPayload",
-    "WAREHOUSE_CREATED": "UnknownEventPayload",
-    "WAREHOUSE_DISPATCH_LOCK_CHANGED": "UnknownEventPayload",
-    "WAREHOUSE_LOCATION_UPDATED": "UnknownEventPayload",
-    "WAREHOUSE_SUPPLY_REQUEST_OPENED": "UnknownEventPayload",
-    "WAREHOUSE_TRANSFER_CREATED": "UnknownEventPayload",
-    "WAREHOUSE_TRANSFER_RECEIVED": "UnknownEventPayload",
+    "PLANNING_AGENT_BROADCAST": "PlanningPayload",
+    "PLANNING_CONFIDENCE_DOWNGRADED": "PlanningPayload",
+    "PLANNING_FORECAST_UPDATED": "PlanningPayload",
+    "PLANNING_PROMO_SIMULATION_READY": "PlanningPayload",
+    "POS_SALE_COMPLETED": "RetailerPayload",
+    "POS_SALE_VOIDED": "RetailerPayload",
+    "POS_SESSION_CLOSED": "RetailerPayload",
+    "POS_SESSION_OPENED": "RetailerPayload",
+    "PRE_ORDER_AUTO_ACCEPTED": "PreOrderPayload",
+    "PRE_ORDER_CANCELLED": "PreOrderPayload",
+    "PRE_ORDER_CONFIRMATION": "PreOrderPayload",
+    "PRE_ORDER_CONFIRMED": "PreOrderPayload",
+    "PRE_ORDER_DATE_ACCEPTED": "PreOrderPayload",
+    "PRE_ORDER_DATE_PROPOSED": "PreOrderPayload",
+    "PRE_ORDER_DATE_REJECTED": "PreOrderPayload",
+    "PRE_ORDER_EDITED": "PreOrderPayload",
+    "PRE_ORDER_NOTIFIED": "PreOrderPayload",
+    "PRE_ORDER_NUDGE": "PreOrderPayload",
+    "PRODUCT_HANDLING_UPDATED": "ProductPayload",
+    "PROMOTION_CHANGED": "PromotionPayload",
+    "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
+    "PULL_MATRIX_COMPLETED": "SupplyRequestPayload",
+    "REFUND_FAILED": "FinancePayload",
+    "REFUND_REQUESTED": "FinancePayload",
+    "REFUND_SUCCEEDED": "FinancePayload",
+    "REPLENISHMENT_AUTO_APPROVED": "PlanningPayload",
+    "REPLENISHMENT_INSIGHT_CREATED": "PlanningPayload",
+    "REPLENISHMENT_POLICY_UPDATED": "PlanningPayload",
+    "RETAILER_ASSIST_SLA_BREACHED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_CANCELLED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_CLAIMED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_COMPLETED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_OPENED": "RetailerPayload",
+    "RETAILER_AUTO_ORDER_UPDATED": "RetailerPayload",
+    "RETAILER_CAPABILITY_PACK_CHANGED": "RetailerPayload",
+    "RETAILER_CLOCK_IN": "RetailerPayload",
+    "RETAILER_CLOCK_OUT": "RetailerPayload",
+    "RETAILER_CREDIT_LIMIT_BREACHED": "CreditLimitPayload",
+    "RETAILER_CREDIT_PROFILE_CHANGED": "CreditProfilePayload",
+    "RETAILER_LOCATION_CREATED": "RetailerPayload",
+    "RETAILER_LOCATION_UPDATED": "RetailerPayload",
+    "RETAILER_PRICE_OVERRIDE": "RetailerPriceOverridePayload",
+    "RETAILER_REGISTERED": "RetailerPayload",
+    "RETAILER_SECTION_CREATED": "RetailerPayload",
+    "RETAILER_SECTION_SKU_MAPPED": "RetailerPayload",
+    "RETAILER_SECTION_UPDATED": "RetailerPayload",
+    "RETAILER_SEGMENT_UPDATED": "OrderPayload",
+    "RETAILER_SELL_THROUGH_UPDATED": "RetailerPayload",
+    "RETAILER_SHIFT_CASH_VARIANCE": "RetailerPayload",
+    "RETAILER_SHIFT_CLOSED": "RetailerPayload",
+    "RETAILER_SHIFT_OPENED": "RetailerPayload",
+    "RETAILER_STAFF_CREATED": "RetailerPayload",
+    "RETAILER_STAFF_SECTION_ASSIGNED": "RetailerPayload",
+    "RETURN_RECEIVED_AT_WAREHOUSE": "ReturnPayload",
+    "RETURN_SCAN_RECEIVED": "ReturnPayload",
+    "REVERSE_LOGISTICS_REQUIRED": "LogisticsExceptionPayload",
+    "ROUTE_CREATED": "RoutePayload",
+    "ROUTE_REORDERED": "RoutePayload",
+    "SERVICE_POLICY_UPDATED": "OrderPayload",
+    "SETTLEMENT_REQUIRED": "FinancePayload",
+    "SHOP_CLOSED": "ShopClosedPayload",
+    "SHOP_CLOSED_BYPASS_OFFLOAD": "ShopClosedBypassOffloadPayload",
+    "SHOP_CLOSED_ESCALATED": "ShopClosedPayload",
+    "SHOP_CLOSED_RESOLVED": "ShopClosedPayload",
+    "SHOP_CLOSED_RESPONSE": "ShopClosedPayload",
+    "SHOP_CLOSED_TIMEOUT": "ShopClosedBypassOffloadPayload",
+    "SKU_CLASS_UPDATED": "OrderPayload",
+    "SPLIT_PAYMENT_CREATED": "FinancePayload",
+    "SPLIT_SHIPMENT_CREATED": "SplitShipmentPayload",
+    "STORE_STOCK_ADJUSTED": "RetailerPayload",
+    "STORE_STOCK_CLAIM_HOLD": "RetailerPayload",
+    "STORE_STOCK_COUNTED": "RetailerPayload",
+    "STORE_STOCK_RECEIVED": "RetailerPayload",
+    "STORE_STOCK_TRANSFERRED": "RetailerPayload",
+    "SUPPLIER_BILLING_CONFIGURED": "SupplierPayload",
+    "SUPPLIER_BILLING_UPDATED": "SupplierPayload",
+    "SUPPLIER_BROADCAST": "WarehousePayload",
+    "SUPPLIER_CREATED": "SupplierPayload",
+    "SUPPLIER_CREDIT_PROGRAM_CHANGED": "OrderPayload",
+    "SUPPLIER_CREDIT_TERMS_CHANGED": "OrderPayload",
+    "SUPPLIER_MEMBER_ADDED": "SupplierPayload",
+    "SUPPLIER_PROFILE_UPDATED": "SupplierPayload",
+    "SUPPLIER_RETURN_CREATED": "ReturnPayload",
+    "SUPPLIER_RETURN_RESOLVED": "ReturnPayload",
+    "SUPPLIER_UPDATED": "SupplierPayload",
+    "SUPPLY_REQUEST_ACCEPTED": "SupplyRequestPayload",
+    "SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
+    "SUPPLY_TRANSFER_APPROACHING": "WarehouseTransferPayload",
+    "SUPPLY_TRANSFER_ARRIVED": "WarehouseTransferPayload",
+    "SYSTEM_APP_OUTDATED": "SystemPayload",
+    "TRANSFER_CREATED": "WarehouseTransferPayload",
+    "VEHICLE_AVAILABILITY_CHANGED": "VehiclePayload",
+    "VEHICLE_CREATED": "VehiclePayload",
+    "WAREHOUSE_BROADCAST": "WarehousePayload",
+    "WAREHOUSE_CREATED": "WarehousePayload",
+    "WAREHOUSE_DISPATCH_LOCK_CHANGED": "WarehousePayload",
+    "WAREHOUSE_LOCATION_UPDATED": "WarehousePayload",
+    "WAREHOUSE_SUPPLY_REQUEST_OPENED": "SupplyRequestPayload",
+    "WAREHOUSE_TRANSFER_CREATED": "WarehouseTransferPayload",
+    "WAREHOUSE_TRANSFER_RECEIVED": "WarehouseTransferPayload",
     "WMS_CYCLE_APPROVED": "UnknownEventPayload",
     "WMS_PICK_CONFIRMED": "UnknownEventPayload",
     "WMS_PUTAWAY": "UnknownEventPayload",
     "WMS_TEMPERATURE_BREACH": "UnknownEventPayload",
-    "planning.meio.recommendation.v1": "UnknownEventPayload",
-    "planning.scenario.published.v1": "UnknownEventPayload",
-    "planning.signal.ingest.v1": "UnknownEventPayload"
+    "planning.meio.recommendation.v1": "PlanningPayload",
+    "planning.scenario.published.v1": "PlanningPayload",
+    "planning.signal.ingest.v1": "PlanningPayload"
   }
 }

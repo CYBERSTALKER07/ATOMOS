@@ -8,9 +8,9 @@ import {
 } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'demo-key',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'demo-pegasus.firebaseapp.com',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'demo-pegasus',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? '1:000000000000:web:0000000000000001',
 };
 
@@ -31,6 +31,14 @@ class EmulatorRecaptchaVerifier {
 
 function getFirebaseAuth(): Auth {
   if (authInstance) return authInstance;
+  
+  if (!firebaseConfig.apiKey && typeof process !== "undefined" && process.env.NODE_ENV === "development") {
+    firebaseConfig.apiKey = "demo-key";
+    firebaseConfig.authDomain = "demo-pegasus.firebaseapp.com";
+    firebaseConfig.projectId = "demo-pegasus";
+  } else if (!firebaseConfig.apiKey) {
+    throw new Error("Firebase config missing in production");
+  }
   const app: FirebaseApp = getApps().length > 0 ? getApps()[0]! : initializeApp(firebaseConfig);
   authInstance = getAuth(app);
   const emulatorHost = (process.env.EXPO_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST ?? '').trim();

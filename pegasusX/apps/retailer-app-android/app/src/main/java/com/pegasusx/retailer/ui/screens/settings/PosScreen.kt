@@ -345,7 +345,11 @@ fun PosScreen(
                             OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("Qty") }, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(value = priceMajor, onValueChange = { priceMajor = it }, label = { Text("Price (major)") }, modifier = Modifier.fillMaxWidth())
                             Button(onClick = {
-                                val unit = ((priceMajor.toDoubleOrNull() ?: 0.0) * 100).toLong()
+                                val clean = priceMajor.replace(',', '.')
+                                val parts = clean.split(".")
+                                val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+                                val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
+                                val unit = (major * 100) + minor
                                 val q = qty.toLongOrNull() ?: 1L
                                 if (sku.isBlank()) return@Button
                                 val existing = cart.indexOfFirst { it.sku == sku.trim() }

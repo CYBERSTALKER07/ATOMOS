@@ -603,7 +603,9 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 				[]string{"UserId", "SupplierId", "Phone", "Name", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
 				[]any{staffID, s.resolveSupplierScope(r.Context()), strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), string(pinHash), role, warehouseIDFromRequest(r), true, now, now},
 			)
-			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+			if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{m})
+			}); err != nil {
 				s.log.ErrorContext(r.Context(), "failed to create staff", "err", err)
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_staff"})
 				return

@@ -473,7 +473,9 @@ func (p *PlanningService) SeedDefaultLanes(ctx context.Context, supplierID strin
 	if len(muts) == 0 {
 		return nil
 	}
-	_, err := p.Spanner.Apply(ctx, muts)
+	_, err := p.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 

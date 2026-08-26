@@ -1,6 +1,6 @@
 [package]
 name = "pegasus-factory-desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pegasus — Factory Portal Desktop Shell"
 authors = ["Pegasus"]
 license = "proprietary"

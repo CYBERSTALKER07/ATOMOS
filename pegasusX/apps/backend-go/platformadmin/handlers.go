@@ -187,6 +187,8 @@ func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http
 		pr.Get("/tenants", h.HandleListTenants)
 		pr.Get("/tenants/{tenantType}/{tenantID}", h.HandleGetTenant)
 		pr.Post("/tenants/{tenantType}/{tenantID}/transition", h.HandleTransitionTenant)
+		pr.Get("/tenants/{tenantType}/{tenantID}/flags", h.HandleListFeatureFlags)
+		pr.Put("/tenants/{tenantType}/{tenantID}/flags/{flagKey}", h.HandleSetFeatureFlag)
 		pr.Get("/audit", h.HandleListAudit)
 		pr.Get("/ws-session", h.HandleWebSocketSession)
 		// G4.B2 ops visibility

@@ -167,7 +167,7 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "period_start/period_end must be YYYY-MM-DD"})
 		return
 	}
-	b, err := h.Svc.GenerateBatch(r.Context(), supplierID, start, end, claims.Subject, body.IdempotencyKey)
+	batches, err := h.Svc.GenerateBatch(r.Context(), supplierID, start, end, claims.Subject, body.IdempotencyKey)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, ErrNothingPayable) {
@@ -176,7 +176,7 @@ func (h *Handlers) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, status, map[string]string{"error": err.Error()})
 		return
 	}
-	resp := map[string]any{"batch": b}
+	resp := map[string]any{"batches": batches}
 	if info, railErr := h.Svc.RailInfoContext(r.Context(), supplierID); railErr == nil {
 		resp["rail"] = info
 	}

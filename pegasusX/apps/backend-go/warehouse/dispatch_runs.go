@@ -42,20 +42,22 @@ func (s *Service) persistDispatchRun(ctx context.Context, result DispatchExecute
 	}
 	warningsRaw, _ := json.Marshal(result.Warnings)
 	manifestsRaw, _ := json.Marshal(manifestIDs)
-	_, _ = s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("DispatchRuns", map[string]any{
-			"RunId":          runID,
-			"WarehouseId":    result.WarehouseID,
-			"SupplierId":     result.SupplierID,
-			"ActorId":        strings.TrimSpace(actorID),
-			"Mode":           strings.TrimSpace(mode),
-			"Status":         strings.TrimSpace(result.Status),
-			"ManifestCount":  int64(result.ManifestsCreated),
-			"OrdersAssigned": int64(result.OrdersAssigned),
-			"WarningsJson":   warningsRaw,
-			"ManifestsJson":  manifestsRaw,
-			"CreatedAt":      spanner.CommitTimestamp,
-		}),
+	_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertMap("DispatchRuns", map[string]any{
+				"RunId":          runID,
+				"WarehouseId":    result.WarehouseID,
+				"SupplierId":     result.SupplierID,
+				"ActorId":        strings.TrimSpace(actorID),
+				"Mode":           strings.TrimSpace(mode),
+				"Status":         strings.TrimSpace(result.Status),
+				"ManifestCount":  int64(result.ManifestsCreated),
+				"OrdersAssigned": int64(result.OrdersAssigned),
+				"WarningsJson":   warningsRaw,
+				"ManifestsJson":  manifestsRaw,
+				"CreatedAt":      spanner.CommitTimestamp,
+			}),
+		})
 	})
 }
 

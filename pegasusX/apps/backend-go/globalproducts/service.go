@@ -96,9 +96,30 @@ func (s *Service) MatchAndLink(ctx context.Context, in ProductInput) (MatchResul
 		}
 	}
 
+	// Brand Governance: Resolve brand ID implicitly before fuzzy
+	normBrand := NormalizeBrandToken(brand)
+	gb, err := s.repo.GetBrandByNormalizedName(ctx, normBrand)
+	if err != nil {
+		return MatchResult{}, err
+	}
+	brandID := ""
+	if gb != nil {
+		brandID = gb.BrandID
+	} else {
+		brandID = uuid.NewString()
+		if err := s.repo.UpsertBrand(ctx, GlobalBrand{
+			BrandID:        brandID,
+			Name:           brand,
+			NormalizedName: normBrand,
+			Status:         "ACTIVE",
+		}); err != nil {
+			return MatchResult{}, err
+		}
+	}
+
 	// Fuzzy against existing masters (by normalized key + score scan).
 	key := BuildNormalizedKey(brand, in.Name, pack, uom)
-	candidates, err := s.collectFuzzyCandidates(ctx, brand, in.Name, pack, uom, key)
+	candidates, err := s.collectFuzzyCandidates(ctx, brandID, in.Name, pack, uom, key)
 	if err != nil {
 		return MatchResult{}, err
 	}
@@ -131,11 +152,12 @@ func (s *Service) MatchAndLink(ctx context.Context, in ProductInput) (MatchResul
 	}
 
 	// Create new global product.
+	
 	gpID := uuid.NewString()
 	gp := GlobalProduct{
 		GlobalProductID: gpID,
 		Gtin:            gtin,
-		Brand:           brand,
+		BrandID:         brandID,
 		Name:            in.Name,
 		PackQty:         pack,
 		BaseUomID:       baseUom,
@@ -155,7 +177,7 @@ func (s *Service) MatchAndLink(ctx context.Context, in ProductInput) (MatchResul
 	return MatchResult{GlobalProductID: gpID, Method: method, Created: true}, nil
 }
 
-func (s *Service) collectFuzzyCandidates(ctx context.Context, brand, name string, pack int64, uom, key string) ([]scoredCandidate, error) {
+func (s *Service) collectFuzzyCandidates(ctx context.Context, brandID, name string, pack int64, uom, key string) ([]scoredCandidate, error) {
 	byKey, err := s.repo.ListByNormalizedKey(ctx, key)
 	if err != nil {
 		return nil, err
@@ -180,7 +202,7 @@ func (s *Service) collectFuzzyCandidates(ctx context.Context, brand, name string
 		case UomPalletID:
 			gpUom = "PALLET"
 		}
-		sc := FuzzyScore(brand, name, pack, uom, gp.Brand, gp.Name, gp.PackQty, gpUom)
+		sc := FuzzyScore(brandID, name, pack, uom, gp.BrandID, gp.Name, gp.PackQty, gpUom)
 		if sc > 0 {
 			scored = append(scored, scoredCandidate{GlobalProductID: gp.GlobalProductID, Score: sc})
 		}

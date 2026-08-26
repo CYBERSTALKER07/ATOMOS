@@ -80,8 +80,8 @@ private fun TrackingOrder.toClaimOrder(): Order {
                 productId = item.productId,
                 productName = item.productName,
                 quantity = item.quantity.toInt().coerceAtLeast(0),
-                unitPrice = item.unitPrice.toDouble(),
-                totalPrice = item.lineTotal.toDouble(),
+                unitPrice = item.unitPrice.toLong(),
+                totalPrice = item.lineTotal.toLong(),
             )
         },
         totalAmount = totalAmount,

@@ -63,6 +63,10 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   ShopClosedReportResponse,
   SupplierReturnPolicy,
   WarehouseReturnPolicy,
+  SupplierServicePolicy,
+  PromiseEvaluationRequest,
+  PromiseEvaluationResult,
+  OrderServicePromiseSnapshot,
   ProximityUnlockRequest,
   ProximityUnlockResponse,
   PartialOffloadRequest,
@@ -71,6 +75,13 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   SupplierCreditProgram,
   RetailerPaymentTerms,
   ArInvoice,
+  AgingSummaryResponse,
+  DelinquencyLockStatus,
+  RetailerPayInvoiceRequest,
+  WriteOffRequest,
+  CashBagSummaryResponse,
+  CashBagTurnInRequest,
+  CashReconciliation,
   PartnerDeadLetterAttempt,
   PartnerEdiDocument,
   PartnerExportJob,
@@ -253,6 +264,11 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   StockLotListResponse,
   StockLotPutawayRequest,
   StockLotPutawayResponse,
+  QuarantineLotRequest,
+  ReleaseLotRequest,
+  LotGenealogyView,
+  InitiateRecallRequest,
+  RecallCampaignView,
   PickWave,
   PickWaveListResponse,
   PickWaveCreateRequest,
@@ -1119,9 +1135,6 @@ export class ApiClient {
     });
   }
 
-  async getSupplierInventoryAudit(): Promise<unknown> {
-    return this.request<unknown>("/v1/supplier/inventory/audit", "GET");
-  }
 
   async getSupplierManifests(): Promise<SupplierManifestsResponse> {
     return this.request<SupplierManifestsResponse>("/v1/supplier/manifests", "GET");
@@ -1546,6 +1559,75 @@ export class ApiClient {
     if (params?.status) q.set("status", params.status);
     const suffix = q.toString() ? `?${q.toString()}` : "";
     return this.request(`/v1/supplier/ar/invoices${suffix}`, "GET");
+  }
+
+  async getSupplierAgingSummary(params?: { supplier_id?: string }): Promise<AgingSummaryResponse> {
+    const q = new URLSearchParams();
+    if (params?.supplier_id) q.set("supplier_id", params.supplier_id);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/supplier/ar/aging-summary${suffix}`, "GET");
+  }
+
+  async writeOffInvoice(invoiceId: string, body: WriteOffRequest): Promise<ArInvoice> {
+    return this.request(
+      `/v1/supplier/ar/invoices/${encodeURIComponent(invoiceId)}/write-off`,
+      "POST",
+      { body },
+    );
+  }
+
+  async retailerPayInvoice(
+    invoiceId: string,
+    body: RetailerPayInvoiceRequest,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<ArInvoice> {
+    return this.request(
+      `/v1/retailer/ar/invoices/${encodeURIComponent(invoiceId)}/pay`,
+      "POST",
+      { body, idempotencyKey: options.idempotencyKey },
+    );
+  }
+
+  async checkRetailerDelinquencyLock(params?: {
+    retailer_id?: string;
+    supplier_id?: string;
+  }): Promise<DelinquencyLockStatus> {
+    const q = new URLSearchParams();
+    if (params?.retailer_id) q.set("retailer_id", params.retailer_id);
+    if (params?.supplier_id) q.set("supplier_id", params.supplier_id);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/retailer/ar/delinquency-lock${suffix}`, "GET");
+  }
+
+  async getCashBagSummary(): Promise<CashBagSummaryResponse> {
+    return this.request("/v1/fleet/driver/cash-bag/summary", "GET");
+  }
+
+  async turnInCashBag(body: CashBagTurnInRequest): Promise<CashReconciliation> {
+    return this.request("/v1/fleet/driver/cash-bag/turn-in", "POST", { body });
+  }
+
+  async listCashReconciliations(params?: { status?: string }): Promise<{ reconciliations: CashReconciliation[] }> {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    const suffix = q.toString() ? `?${q.toString()}` : "";
+    return this.request(`/v1/warehouse/ops/cash-reconciliations${suffix}`, "GET");
+  }
+
+  async acceptCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
+    return this.request(
+      `/v1/warehouse/ops/cash-reconciliations/${encodeURIComponent(id)}/accept`,
+      "POST",
+      { body: body || {} },
+    );
+  }
+
+  async disputeCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
+    return this.request(
+      `/v1/warehouse/ops/cash-reconciliations/${encodeURIComponent(id)}/dispute`,
+      "POST",
+      { body: body || {} },
+    );
   }
 
     async adminDisableCreditRelationship(
@@ -2256,6 +2338,33 @@ export class ApiClient {
     );
   }
 
+  async createRetailerReceiveSession(
+    request: CreateRetailerReceiveSessionRequest,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<RetailerReceiveSession> {
+    return this.request<RetailerReceiveSession>(
+      "/v1/retailer/stock/receive-sessions",
+      "POST",
+      {
+        body: request,
+        idempotencyKey: options.idempotencyKey,
+      },
+    );
+  }
+
+  async confirmRetailerReceiveSession(
+    sessionId: string,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<RetailerReceiveSession> {
+    return this.request<RetailerReceiveSession>(
+      `/v1/retailer/stock/receive-sessions/${encodeURIComponent(sessionId)}/confirm`,
+      "POST",
+      {
+        idempotencyKey: options.idempotencyKey,
+      },
+    );
+  }
+
   async commitStockCount(
     request: RetailerStockCountCommitRequest,
     options: { idempotencyKey?: string } = {},
@@ -2360,6 +2469,67 @@ export class ApiClient {
       appendQuery("/v1/warehouse/ops/lots/putaway", query as Record<string, unknown>),
       "POST",
       { body: request, idempotencyKey },
+    );
+  }
+
+  async quarantineStockLot(
+    lotId: string,
+    request: QuarantineLotRequest = {},
+    query: { warehouse_id?: string } = {},
+  ): Promise<StockLot> {
+    return this.request<StockLot>(
+      appendQuery(`/v1/warehouse/ops/lots/${encodeURIComponent(lotId)}/quarantine`, query as Record<string, unknown>),
+      "POST",
+      { body: request },
+    );
+  }
+
+  async releaseStockLot(
+    lotId: string,
+    request: ReleaseLotRequest = {},
+    query: { warehouse_id?: string } = {},
+  ): Promise<StockLot> {
+    return this.request<StockLot>(
+      appendQuery(`/v1/warehouse/ops/lots/${encodeURIComponent(lotId)}/release`, query as Record<string, unknown>),
+      "POST",
+      { body: request },
+    );
+  }
+
+  async traceStockLot(
+    lotId: string,
+    query: { warehouse_id?: string } = {},
+  ): Promise<LotGenealogyView> {
+    return this.request<LotGenealogyView>(
+      appendQuery(`/v1/warehouse/ops/lots/${encodeURIComponent(lotId)}/trace`, query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async initiateRecallCampaign(
+    request: InitiateRecallRequest,
+    options: { idempotencyKey?: string } = {},
+  ): Promise<RecallCampaignView> {
+    return this.request<RecallCampaignView>(
+      "/v1/supplier/recalls",
+      "POST",
+      { body: request, idempotencyKey: options.idempotencyKey },
+    );
+  }
+
+  async listRecallCampaigns(
+    query: { status?: string } = {},
+  ): Promise<{ campaigns: RecallCampaignView[] }> {
+    return this.request<{ campaigns: RecallCampaignView[] }>(
+      appendQuery("/v1/supplier/recalls", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  async getRecallCampaign(campaignId: string): Promise<RecallCampaignView> {
+    return this.request<RecallCampaignView>(
+      `/v1/supplier/recalls/${encodeURIComponent(campaignId)}`,
+      "GET",
     );
   }
 
@@ -3015,6 +3185,40 @@ export class ApiClient {
   /** GET /v1/supplier/return-policy */
   async getSupplierReturnPolicy(): Promise<SupplierReturnPolicy> {
     return this.request<SupplierReturnPolicy>("/v1/supplier/return-policy", "GET");
+  }
+
+  /** GET /v1/supplier/service-policy */
+  async getSupplierServicePolicy(): Promise<SupplierServicePolicy> {
+    return this.request<SupplierServicePolicy>("/v1/supplier/service-policy", "GET");
+  }
+
+  /** PUT /v1/supplier/service-policy */
+  async putSupplierServicePolicy(
+    body: Partial<SupplierServicePolicy>,
+    idempotencyKey?: string,
+  ): Promise<SupplierServicePolicy> {
+    return this.request<SupplierServicePolicy>("/v1/supplier/service-policy", "PUT", {
+      body,
+      idempotencyKey,
+    });
+  }
+
+  /** GET /v1/retailer/service-promise */
+  async evaluateServicePromise(
+    query: PromiseEvaluationRequest,
+  ): Promise<PromiseEvaluationResult> {
+    return this.request<PromiseEvaluationResult>(
+      appendQuery("/v1/retailer/service-promise", query as Record<string, unknown>),
+      "GET",
+    );
+  }
+
+  /** GET /v1/supplier/service-promises/breaches */
+  async listBreachedServicePromises(limit: number = 50): Promise<{ breaches: OrderServicePromiseSnapshot[]; total: number }> {
+    return this.request<{ breaches: OrderServicePromiseSnapshot[]; total: number }>(
+      appendQuery("/v1/supplier/service-promises/breaches", { limit }),
+      "GET",
+    );
   }
 
   /** PUT /v1/supplier/return-policy */

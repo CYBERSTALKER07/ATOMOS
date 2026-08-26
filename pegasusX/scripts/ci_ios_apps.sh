@@ -68,8 +68,8 @@ build_one driver \
   "" || failed=1
 
 build_one retailer \
-  "$ROOT/apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj" \
-  reatilerapp \
+  "$ROOT/apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj" \
+  retailerapp \
   "" || failed=1
 
 if [[ "$failed" -ne 0 ]]; then

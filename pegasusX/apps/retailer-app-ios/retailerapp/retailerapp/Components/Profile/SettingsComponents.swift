@@ -63,10 +63,6 @@ struct SettingsRow: View {
                 NavigationLink(destination: AccountProfileView()) {
                     SettingsRowContent(item: item)
                 }
-            } else if item.view == "SavedCards" {
-                NavigationLink(destination: SavedCardsView()) {
-                    SettingsRowContent(item: item)
-                }
             } else if item.view == "Capabilities" {
                 NavigationLink(destination: CapabilitiesView()) {
                     SettingsRowContent(item: item)
