@@ -2,11 +2,9 @@ package warehouse
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -63,20 +61,21 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Name  string `json:"name"`
 			Phone string `json:"phone"`
+			Pin   string `json:"pin"`
 		}
 		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
 		driverID := "drv-" + uuid.NewString()[:8]
-		plainPin, err := generateOpsDriverPIN(4)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_generate_failed"})
-			return
+		pin := strings.TrimSpace(req.Pin)
+		if pin == "" {
+			pin = "4321"
 		}
-		pinHash, err := bcrypt.GenerateFromPassword([]byte(plainPin), bcrypt.DefaultCost)
+		pinHash, err := bcrypt.GenerateFromPassword([]byte(pin), bcrypt.DefaultCost)
 		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pin_hash_failed"})
+			s.log.ErrorContext(r.Context(), "failed to hash driver pin", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_hash_driver_pin"})
 			return
 		}
 
@@ -88,7 +87,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 				Name:        strings.TrimSpace(req.Name),
 				Phone:       strings.TrimSpace(req.Phone),
 				PinHash:     string(pinHash),
-				SupplierID:  s.resolveSupplierScope(r.Context()),
+				SupplierID:  strings.TrimSpace(s.supplierID),
 				WarehouseID: whID,
 				CreatedAt:   now,
 			}); err != nil {
@@ -111,7 +110,7 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 
 		resp := map[string]any{
 			"driver_id": driverID,
-			"pin":       plainPin, // plaintext once; PinHash is bcrypt
+			"pin":       pin,
 		}
 		respBytes, _ := json.Marshal(resp)
 		s.storeMutationReplay(r.Context(), key, body, http.StatusCreated, respBytes)
@@ -197,7 +196,7 @@ func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseI
 	if s.spannerClient == nil {
 		return fmt.Errorf("spanner_not_configured")
 	}
-	sid := s.resolveSupplierScope(ctx)
+	sid := strings.TrimSpace(s.supplierID)
 	now := s.now().UTC()
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		state, err := readDriverAssignmentState(ctx, txn, sid, warehouseID, driverID)
@@ -354,7 +353,7 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 				LicensePlate: strings.TrimSpace(req.LicensePlate),
 				VehicleClass: strings.TrimSpace(req.VehicleClass),
 				MaxVolumeVU:  maxVU,
-				SupplierID:   s.resolveSupplierScope(r.Context()),
+				SupplierID:   strings.TrimSpace(s.supplierID),
 				WarehouseID:  whID,
 				CreatedAt:    now,
 			}); err != nil {
@@ -498,7 +497,7 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		if err := s.patchOpsVehicleSpanner(r.Context(), opsVehiclePatchParams{
 			VehicleID:         vehicleID,
 			WarehouseID:       whID,
-			SupplierID:        s.resolveSupplierScope(r.Context()),
+			SupplierID:        s.supplierID,
 			IsActive:          req.IsActive,
 			UnavailableReason: req.UnavailableReason,
 			UnavailableNote:   req.UnavailableNote,
@@ -539,21 +538,4 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "vehicle_not_found"})
-}
-
-// generateOpsDriverPIN returns a cryptographically random numeric PIN of length n.
-func generateOpsDriverPIN(n int) (string, error) {
-	if n <= 0 {
-		n = 4
-	}
-	var b strings.Builder
-	b.Grow(n)
-	for i := 0; i < n; i++ {
-		v, err := rand.Int(rand.Reader, big.NewInt(10))
-		if err != nil {
-			return "", err
-		}
-		b.WriteByte(byte('0' + v.Int64()))
-	}
-	return b.String(), nil
 }

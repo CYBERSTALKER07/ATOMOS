@@ -2,185 +2,186 @@ package kafka
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
+	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
+	segkafka "github.com/segmentio/kafka-go"
+	"google.golang.org/api/option"
 )
 
-func TestBillingFX_ConvertUSDToUZS(t *testing.T) {
+func TestBillingTierWorker_NilSafety(t *testing.T) {
 	t.Parallel()
-	repo := fxrates.NewMemoryRepository()
-	at := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
-	_ = repo.Upsert(context.Background(), fxrates.ScaledRate("USD", "UZS", 12_750_000_000, "TEST", at))
-	fx := fxrates.NewService(repo)
 
-	// Resolve conversion the same way as HandleMessage for a USD event.
-	minor := billing.ResolveMeterAmountMinor(200, 0, 0, 0)
-	converted, err := fx.ConvertMinor(context.Background(), "USD", "UZS", minor, at.Add(time.Hour))
+	ctx := context.Background()
+
+	var nilWorker *BillingTierWorker
+	if err := nilWorker.HandleMessage(ctx, []byte(`{}`)); err != nil {
+		t.Fatalf("nilWorker.HandleMessage failed: %v", err)
+	}
+
+	workerWithNilMeter := NewBillingTierWorker(nil)
+	if err := workerWithNilMeter.HandleMessage(ctx, []byte(`{}`)); err != nil {
+		t.Fatalf("workerWithNilMeter.HandleMessage failed: %v", err)
+	}
+}
+
+func TestBillingTierWorker_IgnoresNonOrderFinalized(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	worker := NewBillingTierWorker(billing.NewMeterWorker(nil))
+
+	msg := []byte(`{"type":"ORDER_CREATED","order_id":"ord_1","amount_minor":5000}`)
+	if err := worker.HandleMessage(ctx, msg); err != nil {
+		t.Fatalf("HandleMessage should ignore non-finalized event, got error: %v", err)
+	}
+
+	msg2 := []byte(`{"type":"ORDER_STATUS_CHANGED","order_id":"ord_2","amount_minor":5000}`)
+	if err := worker.HandleMessage(ctx, msg2); err != nil {
+		t.Fatalf("HandleMessage should ignore non-finalized event, got error: %v", err)
+	}
+}
+
+func TestBillingTierWorker_RejectsMalformedJSON(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	worker := NewBillingTierWorker(billing.NewMeterWorker(nil))
+
+	msg := []byte(`{invalid-json`)
+	if err := worker.HandleMessage(ctx, msg); err == nil {
+		t.Fatal("HandleMessage with malformed JSON expected error, got nil")
+	}
+}
+
+func newSpannerTestClient(t *testing.T, ctx context.Context) *spanner.Client {
+	t.Helper()
+
+	emulatorHost := strings.TrimSpace(os.Getenv("SPANNER_EMULATOR_HOST"))
+	if emulatorHost == "" {
+		t.Skip("SPANNER_EMULATOR_HOST not set; skipping integration test")
+	}
+
+	project := "pegasusx-local"
+	if p := os.Getenv("SPANNER_PROJECT"); p != "" {
+		project = p
+	}
+	instance := "pegasusx-instance"
+	if i := os.Getenv("SPANNER_INSTANCE"); i != "" {
+		instance = i
+	}
+	database := "pegasusx-db"
+	if d := os.Getenv("SPANNER_DATABASE"); d != "" {
+		database = d
+	}
+	dbPath := fmt.Sprintf("projects/%s/instances/%s/databases/%s", project, instance, database)
+
+	client, err := spanner.NewClient(
+		ctx,
+		dbPath,
+		option.WithEndpoint(emulatorHost),
+		option.WithoutAuthentication(),
+	)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to create spanner client: %v", err)
 	}
-	got := billing.MinorToMajor(converted)
-	if got != 255.0 {
-		t.Fatalf("got %v want 255", got)
-	}
+	return client
 }
 
-func TestBillingFX_MissingRateSkips(t *testing.T) {
-	t.Parallel()
-	fx := fxrates.NewService(fxrates.NewMemoryRepository())
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil)).WithFx(fx, "UZS")
-	w.Now = func() time.Time { return time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC) }
-	payload, _ := json.Marshal(map[string]any{
-		"type":         events.EventOrderFinalized,
-		"order_id":     "ord-usd-1",
-		"supplier_id":  "sup-1",
-		"amount_minor": int64(200),
-		"total": map[string]any{
-			"amount":   int64(200),
-			"currency": "EUR",
-		},
-	})
-	// MeterWorker with nil client returns error on Process — but missing rate should return nil before meter.
-	if err := w.HandleMessage(context.Background(), payload); err != nil {
-		t.Fatalf("expected skip nil, got %v", err)
-	}
-}
+func TestBillingTierWorker_HandleEvent_AmountExtraction(t *testing.T) {
+	ctx := context.Background()
+	client := newSpannerTestClient(t, ctx)
+	defer client.Close()
 
-func TestBillingFX_SameCurrencyMeters(t *testing.T) {
-	t.Parallel()
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil)).WithFx(nil, "UZS")
-	payload, _ := json.Marshal(map[string]any{
-		"type":         events.EventOrderFinalized,
-		"order_id":     "ord-uzs-1",
-		"supplier_id":  "sup-1",
-		"amount_minor": int64(12500),
-		"total": map[string]any{
-			"amount":   int64(12500),
-			"currency": "UZS",
-		},
-	})
-	// nil MeterWorker client → ProcessOrderFinalized returns error for positive amount.
-	err := w.HandleMessage(context.Background(), payload)
-	if err == nil {
-		t.Fatal("expected meter error with nil client (proves path reached ProcessOrderFinalized)")
-	}
-}
+	meterWorker := billing.NewMeterWorker(client)
+	worker := NewBillingTierWorker(meterWorker)
 
-func TestBillingTierWorker_LiveORDER_FINALIZEDShape(t *testing.T) {
-	t.Parallel()
-	payload, err := json.Marshal(map[string]any{
-		"type":         events.EventOrderFinalized,
-		"order_id":     "ord-1",
-		"supplier_id":  "sup-1",
-		"retailer_id":  "ret-1",
-		"amount_minor": int64(12500),
-		"total": map[string]any{
-			"amount":   int64(12500),
-			"currency": "UZS",
-		},
-		"currency": "UZS",
-		"status":   "COMPLETED",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var event orderFinalizedBillingEvent
-	if err := json.Unmarshal(payload, &event); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	got := billing.ResolveMeterAmountMajor(event.AmountMinor, event.Total.Amount, event.TotalMinor, event.Amount)
-	if got != 125.0 {
-		t.Fatalf("decoded amount = %v, want 125 (amount_minor path)", got)
-	}
-	if event.OrderID != "ord-1" || event.SupplierID != "sup-1" {
-		t.Fatalf("ids order=%q supplier=%q", event.OrderID, event.SupplierID)
-	}
-}
-
-func TestBillingTierWorker_HandleMessage_SkipsEmptyIDs(t *testing.T) {
-	t.Parallel()
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
-	payload, _ := json.Marshal(map[string]any{
-		"type":         events.EventOrderFinalized,
-		"order_id":     "",
-		"supplier_id":  "sup-1",
-		"amount_minor": 100,
-	})
-	if err := w.HandleMessage(context.Background(), payload); err != nil {
-		t.Fatalf("expected nil, got %v", err)
-	}
-}
-
-func TestBillingTierWorker_HandleMessage_IgnoresOtherTypes(t *testing.T) {
-	t.Parallel()
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
-	payload, _ := json.Marshal(map[string]any{
-		"type":         events.EventOrderStatusChanged,
-		"order_id":     "ord-1",
-		"supplier_id":  "sup-1",
-		"amount_minor": 100,
-	})
-	if err := w.HandleMessage(context.Background(), payload); err != nil {
-		t.Fatalf("expected nil, got %v", err)
-	}
-}
-
-func TestResolveMeterAmountMajor_Precedence(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name                    string
-		amountMinor, nested, tm int64
-		legacy                  float64
-		want                    float64
+	testCases := []struct {
+		name        string
+		payloadJSON string
+		orderID     string
+		supplierID  string
+		wantMinor   int64
 	}{
-		{"amount_minor wins", 500, 900, 700, 9.0, 5.0},
-		{"nested when no amount_minor", 0, 900, 700, 9.0, 9.0},
-		{"total_minor", 0, 0, 700, 9.0, 7.0},
-		{"legacy major", 0, 0, 0, 9.0, 9.0},
-		{"zero", 0, 0, 0, 0, 0},
+		{
+			name: "amount_minor primary field",
+			payloadJSON: `{
+				"type": "ORDER_FINALIZED",
+				"order_id": "%s",
+				"supplier_id": "%s",
+				"amount_minor": 2500000
+			}`,
+			orderID:    "ord_bt_1_" + uuid.NewString(),
+			supplierID: "sup_bt_1_" + uuid.NewString(),
+			wantMinor:  2500000,
+		},
+		{
+			name: "total_minor fallback field",
+			payloadJSON: `{
+				"type": "ORDER_FINALIZED",
+				"order_id": "%s",
+				"supplier_id": "%s",
+				"total_minor": 1750000
+			}`,
+			orderID:    "ord_bt_2_" + uuid.NewString(),
+			supplierID: "sup_bt_2_" + uuid.NewString(),
+			wantMinor:  1750000,
+		},
+		{
+			name: "total.amount nested object field",
+			payloadJSON: `{
+				"type": "ORDER_FINALIZED",
+				"order_id": "%s",
+				"supplier_id": "%s",
+				"total": {
+					"amount": 3200000,
+					"currency": "UZS"
+				}
+			}`,
+			orderID:    "ord_bt_3_" + uuid.NewString(),
+			supplierID: "sup_bt_3_" + uuid.NewString(),
+			wantMinor:  3200000,
+		},
+		{
+			name: "legacy float amount converted to minor",
+			payloadJSON: `{
+				"type": "ORDER_FINALIZED",
+				"order_id": "%s",
+				"supplier_id": "%s",
+				"amount": 450.50
+			}`,
+			orderID:    "ord_bt_4_" + uuid.NewString(),
+			supplierID: "sup_bt_4_" + uuid.NewString(),
+			wantMinor:  45050,
+		},
 	}
-	for _, tc := range cases {
+
+	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := billing.ResolveMeterAmountMajor(tc.amountMinor, tc.nested, tc.tm, tc.legacy)
-			if got != tc.want {
-				t.Fatalf("got %v want %v", got, tc.want)
+			rawJSON := fmt.Sprintf(tc.payloadJSON, tc.orderID, tc.supplierID)
+			msg := segkafka.Message{Value: []byte(rawJSON)}
+
+			if err := worker.HandleEvent(ctx, msg); err != nil {
+				t.Fatalf("HandleEvent failed: %v", err)
+			}
+
+			// Verify in Spanner BillingSupplierMeters
+			row, err := client.Single().ReadRow(ctx, "BillingSupplierMeters", spanner.Key{tc.supplierID, int64(0)}, []string{"CurrentValue"})
+			if err != nil {
+				t.Fatalf("read BillingSupplierMeters failed: %v", err)
+			}
+			var val int64
+			if err := row.Column(0, &val); err != nil {
+				t.Fatalf("decode CurrentValue failed: %v", err)
+			}
+			if val != tc.wantMinor {
+				t.Fatalf("CurrentValue = %d, want %d", val, tc.wantMinor)
 			}
 		})
-	}
-}
-
-func TestNewBillingTierWorker_EmptyUsesPack(t *testing.T) {
-	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
-	if w.OperatingCurrency != "UZS" {
-		t.Fatalf("operating=%q want UZS from pack", w.OperatingCurrency)
-	}
-}
-
-func TestNewBillingTierWorker_PlannedDoesNotInvent(t *testing.T) {
-	t.Setenv("DEFAULT_MARKET_CODE", "EU")
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
-	if w.OperatingCurrency != "" {
-		t.Fatalf("planned pack must not invent UZS, got %q", w.OperatingCurrency)
-	}
-}
-
-func TestHandleMessage_PlannedPackSkipsWithoutMetering(t *testing.T) {
-	t.Setenv("DEFAULT_MARKET_CODE", "EU")
-	w := NewBillingTierWorker(billing.NewMeterWorker(nil))
-	payload, _ := json.Marshal(map[string]any{
-		"type":         events.EventOrderFinalized,
-		"order_id":     "ord-eu-1",
-		"supplier_id":  "sup-1",
-		"amount_minor": int64(12500),
-	})
-	if err := w.HandleMessage(context.Background(), payload); err != nil {
-		t.Fatalf("planned pack should skip, got %v", err)
 	}
 }

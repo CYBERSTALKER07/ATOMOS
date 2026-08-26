@@ -1,7 +1,5 @@
 package com.pegasusx.retailer.ui.screens.profile
 
-import androidx.compose.ui.res.stringResource
-
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -72,12 +70,12 @@ import com.pegasusx.retailer.ui.screens.profile.components.ProfileHeaderCard
 import com.pegasusx.retailer.ui.screens.profile.components.StatsRow
 import com.pegasusx.retailer.ui.screens.profile.components.EmpathyEngineCard
 import com.pegasusx.retailer.ui.screens.profile.components.SettingsSection
-import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onAccountClick: () -> Unit = {},
+    onSavedCardsClick: () -> Unit = {},
     onFamilyMembersClick: () -> Unit = {},
     onCapabilitiesClick: () -> Unit = {},
     onTeamClick: () -> Unit = {},
@@ -87,6 +85,7 @@ fun ProfileScreen(
     onPosClick: () -> Unit = {},
     onShiftsClick: () -> Unit = {},
     onSectionsClick: () -> Unit = {},
+    onPlanogramsClick: () -> Unit = {},
     onReportsClick: () -> Unit = {},
     onAssistClick: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -165,21 +164,7 @@ fun ProfileScreen(
         uiState.pricingRulesSummary?.let { summary ->
             item {
                 Column(modifier = Modifier.padding(horizontal = PegasusSpacing.lg)) {
-                    RetailerSectionHeader(title = stringResource(R.string.mobile_retailer_ui_pricing_rules))
-                    Spacer(modifier = Modifier.height(PegasusSpacing.xs))
-                    Text(
-                        summary,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-
-        uiState.loyaltySummary?.let { summary ->
-            item {
-                Column(modifier = Modifier.padding(horizontal = PegasusSpacing.lg)) {
-                    RetailerSectionHeader(title = "Loyalty")
+                    RetailerSectionHeader(title = "Pricing rules")
                     Spacer(modifier = Modifier.height(PegasusSpacing.xs))
                     Text(
                         summary,
@@ -194,6 +179,7 @@ fun ProfileScreen(
         item {
             SettingsSection(
                 onAccountClick = onAccountClick,
+                onSavedCardsClick = onSavedCardsClick,
                 onFamilyMembersClick = onFamilyMembersClick,
                 onCapabilitiesClick = onCapabilitiesClick,
                 onTeamClick = onTeamClick,
@@ -203,6 +189,7 @@ fun ProfileScreen(
                 onPosClick = onPosClick,
                 onShiftsClick = onShiftsClick,
                 onSectionsClick = onSectionsClick,
+                onPlanogramsClick = onPlanogramsClick,
                 onReportsClick = onReportsClick,
                 onAssistClick = onAssistClick,
             )

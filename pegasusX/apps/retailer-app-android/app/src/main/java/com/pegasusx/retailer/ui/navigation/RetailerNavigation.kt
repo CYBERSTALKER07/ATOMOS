@@ -21,7 +21,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,7 +48,6 @@ import com.pegasusx.retailer.ui.components.PegasusBottomBar
 import com.pegasusx.retailer.ui.components.PegasusTab
 import com.pegasusx.retailer.ui.components.PegasusTopBar
 import com.pegasusx.retailer.ui.components.FileClaimHost
-import com.pegasusx.retailer.ui.components.FileClaimDepsViewModel
 import com.pegasusx.retailer.ui.components.OrderDetailSheet
 import com.pegasusx.retailer.ui.components.PaymentPhase
 import com.pegasusx.retailer.ui.components.QROverlay
@@ -63,6 +61,7 @@ import com.pegasusx.retailer.ui.screens.cart.CartViewModel
 import com.pegasusx.retailer.ui.screens.profile.AccountProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.ProfileScreen
 import com.pegasusx.retailer.ui.screens.profile.FamilyMembersScreen
+import com.pegasusx.retailer.ui.screens.profile.SavedCardsScreen
 import com.pegasusx.retailer.ui.screens.settings.CapabilitiesScreen
 import com.pegasusx.retailer.ui.screens.settings.TeamScreen
 import com.pegasusx.retailer.ui.screens.settings.LocationsScreen
@@ -70,13 +69,12 @@ import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
 import com.pegasusx.retailer.ui.screens.settings.PosScreen
 import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
 import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.PlanogramScreen
 import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
 import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
 import com.pegasusx.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasusx.retailer.ui.screens.catalog.CategorySuppliersScreen
-import com.pegasusx.retailer.ui.CommandFilterState
-import com.pegasusx.retailer.ui.LocalCommandFilter
 import com.pegasusx.retailer.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.retailer.ui.screens.orders.OrdersScreen
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementScreen
@@ -126,9 +124,7 @@ fun RetailerNavigation(
     val showFloatingBar = currentTab in listOf(PegasusTab.HOME, PegasusTab.CATALOG, PegasusTab.ORDERS, PegasusTab.MAP)
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
     val topBarTitle = if (currentTab in PegasusTab.PrimaryTabs) currentTab.label else "Retailer"
-    val commandFilter = remember { CommandFilterState() }
 
-    CompositionLocalProvider(LocalCommandFilter provides commandFilter) {
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
             if (!isCompact) {
@@ -341,16 +337,6 @@ fun RetailerNavigation(
                                 }
                             },
                             onOpenOrders = {
-                                commandFilter.clear()
-                                currentTab = PegasusTab.ORDERS
-                                navController.navigate(PegasusTab.ORDERS.name) {
-                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            onOpenOrderStatus = { status, supplierId ->
-                                commandFilter.jump(status, supplierId)
                                 currentTab = PegasusTab.ORDERS
                                 navController.navigate(PegasusTab.ORDERS.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
@@ -432,6 +418,7 @@ fun RetailerNavigation(
                     Box(Modifier.fillMaxSize()) {
                         ProfileScreen(
                             onAccountClick = { navController.navigate("ACCOUNT_PROFILE") },
+                            onSavedCardsClick = { navController.navigate("SAVED_CARDS") },
                             onFamilyMembersClick = { navController.navigate("FAMILY_MEMBERS") },
                             onCapabilitiesClick = { navController.navigate("CAPABILITIES") },
                             onTeamClick = { navController.navigate("TEAM") },
@@ -441,8 +428,17 @@ fun RetailerNavigation(
                             onPosClick = { navController.navigate("POS") },
                             onShiftsClick = { navController.navigate("SHIFTS") },
                             onSectionsClick = { navController.navigate("SECTIONS") },
+                            onPlanogramsClick = { navController.navigate("PLANOGRAM") },
                             onReportsClick = { navController.navigate("REPORTS_PRO") },
                             onAssistClick = { navController.navigate("ASSIST") },
+                        )
+                    }
+                }
+                composable("PLANOGRAM") {
+                    Box(Modifier.fillMaxSize()) {
+                        PlanogramScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToStoreStock = { navController.navigate("STORE_STOCK") },
                         )
                     }
                 }
@@ -486,6 +482,9 @@ fun RetailerNavigation(
                         LocalSkusScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
+                composable("SAVED_CARDS") {
+                    Box(Modifier.fillMaxSize()) {
+                        SavedCardsScreen(onNavigateBack = { navController.popBackStack() })
                     }
                 }
                 composable("CAPABILITIES") {
@@ -508,7 +507,20 @@ fun RetailerNavigation(
                         AccountProfileScreen(onBack = { navController.popBackStack() })
                     }
                 }
-
+                composable("SAVED_CARDS_DELIVERY_PAYMENT/{orderId}/{sessionId}") {
+                    Box(Modifier.fillMaxSize()) {
+                        SavedCardsScreen(
+                            returnTo = "delivery_payment",
+                            onNavigateBack = { navController.popBackStack() },
+                            onReturnToDeliveryPayment = {
+                                navigationViewModel.loadPendingPayments()
+                                paymentPhase = PaymentPhase.CHOOSE
+                                paymentError = null
+                                navController.popBackStack()
+                            },
+                        )
+                    }
+                }
                 composable(PegasusTab.SUPPLIERS.name) {
                     Box(Modifier.fillMaxSize()) {
                         MySuppliersScreen(
@@ -525,33 +537,7 @@ fun RetailerNavigation(
                 composable("ANALYTICS") { Box(Modifier.fillMaxSize()) { AnalyticsScreen() } }
                 composable("PROCUREMENT") { Box(Modifier.fillMaxSize()) { ProcurementScreen() } }
                 composable("AUTO_ORDER") { Box(Modifier.fillMaxSize()) { AutoOrderScreen() } }
-                composable("CONTROL_TOWER") {
-                    Box(Modifier.fillMaxSize()) {
-                        ControlTowerScreen(
-                            onNavigate = { route ->
-                                when (route) {
-                                    PegasusTab.ORDERS.name -> currentTab = PegasusTab.ORDERS
-                                    PegasusTab.MAP.name -> currentTab = PegasusTab.MAP
-                                }
-                                navController.navigate(route)
-                            },
-                        )
-                    }
-                }
-                composable("CREDIT") {
-                    Box(Modifier.fillMaxSize()) {
-                        com.pegasusx.retailer.ui.screens.credit.CreditScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                        )
-                    }
-                }
-                composable("HQ") {
-                    Box(Modifier.fillMaxSize()) {
-                        com.pegasusx.retailer.ui.screens.hq.HqScreen(
-                            onNavigateBack = { navController.popBackStack() },
-                        )
-                    }
-                }
+                composable("CONTROL_TOWER") { Box(Modifier.fillMaxSize()) { ControlTowerScreen() } }
                 composable("FUTURE_DEMAND") {
                     Box(Modifier.fillMaxSize()) {
                         FutureDemandScreen(onBack = { navController.popBackStack() })
@@ -700,18 +686,6 @@ fun RetailerNavigation(
                                 launchSingleTop = true
                             }
                         }
-                        com.pegasusx.retailer.ui.components.SidebarDestination.CREDIT -> {
-                            navController.navigate("CREDIT") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                            }
-                        }
-                        com.pegasusx.retailer.ui.components.SidebarDestination.HQ -> {
-                            navController.navigate("HQ") {
-                                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true
-                            }
-                        }
                         com.pegasusx.retailer.ui.components.SidebarDestination.DOCK -> {
                             currentTab = PegasusTab.MAP
                             navController.navigate("DOCK") {
@@ -784,26 +758,19 @@ fun RetailerNavigation(
         }
 
         if (shopClosedAlert != null) {
-            val shopClosedDeps: FileClaimDepsViewModel = hiltViewModel()
             ShopClosedSheet(
                 alert = shopClosedAlert,
                 isSubmitting = shopClosedSubmitting,
                 errorMessage = shopClosedError,
-                mediaUpload = shopClosedDeps.mediaUpload,
-                onRespond = { option, photoUrl ->
+                onRespond = { option ->
                     if (shopClosedSubmitting) return@ShopClosedSheet
                     shopClosedSubmitting = true
                     shopClosedError = null
                     coroutineScope.launch {
-                        val result = navigationViewModel.respondToShopClosed(
-                            shopClosedAlert.orderId,
-                            option,
-                            photoUrl,
-                        )
+                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
                         shopClosedSubmitting = false
                         if (result.isFailure) {
-                            shopClosedError = result.exceptionOrNull()?.message
-                                ?: "Could not submit response"
+                            shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"
                         }
                     }
                 },
@@ -816,7 +783,6 @@ fun RetailerNavigation(
                 phase = paymentPhase,
                 errorMessage = paymentError,
                 isCompact = isCompact,
-                allowedCardGateways = navState.allowedCardGateways,
                 onSelectCash = {
                     paymentError = null
                     paymentPhase = PaymentPhase.CASH_CONFIRM
@@ -880,7 +846,6 @@ fun RetailerNavigation(
                 },
             )
         }
-    }
     }
 }
 

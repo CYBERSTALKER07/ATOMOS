@@ -13,6 +13,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 const (
@@ -84,7 +86,7 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok {
-		supplierID = s.resolveSupplierScope(r.Context())
+		supplierID = s.supplierID
 	}
 	ctx := r.Context()
 	now := s.now()
@@ -196,8 +198,144 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 	}
 
 	driverID := strings.TrimSpace(claims.Subject)
-	// Gate-0: never write COMPLETED from bypass — open fiscal gate (ADR-009).
-	if err := s.ConfirmPaymentBypass(ctx, req.OrderID, driverID, rec.SupplierID); err != nil {
+	now := s.now()
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
+			[]string{"Status", "Version", "DriverId", "SupplierId", "RetailerId", "WarehouseId", "TotalMinor", "Currency"})
+		if err != nil {
+			return ErrOrderNotFound
+		}
+		var status, supplierID string
+		var version, totalMinor int64
+		var driverCol, retailerCol, warehouseCol, currencyCol spanner.NullString
+		if err := row.Columns(&status, &version, &driverCol, &supplierID, &retailerCol, &warehouseCol, &totalMinor, &currencyCol); err != nil {
+			return err
+		}
+		if status != string(StatusAwaitingPayment) {
+			return fmt.Errorf("order must be AWAITING_PAYMENT, got %s", status)
+		}
+		if !driverCol.Valid || driverCol.StringVal != driverID {
+			return ErrOrderForbidden
+		}
+		if rec.SupplierID != "" && supplierID != rec.SupplierID {
+			return ErrOrderForbidden
+		}
+
+		if err := ValidateStatusTransition(status, string(StatusFiscalizing), TransitionOpts{
+			Actor:  driverID,
+			Reason: "payment_bypass_confirmed",
+		}); err != nil {
+			return err
+		}
+
+		attemptID := ""
+		if s.newID != nil {
+			attemptID = s.newID()
+		}
+		if attemptID == "" {
+			attemptID = defaultOrderID()
+		}
+		retailerID := retailerCol.StringVal
+		currency := currencyCol.StringVal
+		if currency == "" {
+			currency = "UZS"
+		}
+
+		fiscalRow := FiscalReceiptRow{
+			OrderID:       req.OrderID,
+			AttemptID:     attemptID,
+			SupplierID:    supplierID,
+			RetailerID:    retailerID,
+			Provider:      s.ProviderName(),
+			Status:        FiscalAttemptPending,
+			AmountMinor:   totalMinor,
+			Currency:      currency,
+			PaymentMethod: "BYPASS",
+			ReasonCode:    "PAYMENT_BYPASS",
+			ActorID:       driverID,
+			CreatedAt:     now.UTC(),
+			UpdatedAt:     now.UTC(),
+		}
+
+		orderRecord := Order{
+			OrderID:               req.OrderID,
+			SupplierID:            supplierID,
+			RetailerID:            retailerID,
+			WarehouseID:           warehouseCol.StringVal,
+			DriverID:              driverID,
+			Status:                StatusFiscalizing,
+			TotalMinor:            totalMinor,
+			Currency:              currency,
+			FiscalStatus:          FiscalStatusPending,
+			LatestFiscalAttemptID: attemptID,
+			Version:               version + 1,
+			UpdatedAt:             now.UTC(),
+		}
+
+		buf := &spannerTxnBuffer{}
+		if err := emitOrderStatusChanged(ctx, buf, orderStatusEmitParams{
+			Claims:         claims,
+			Order:          orderRecord,
+			PreviousStatus: Status(status),
+			Reason:         "payment_bypass_confirmed",
+			ActorID:        driverID,
+		}); err != nil {
+			return err
+		}
+
+		if err := emitPaymentCaptureFiscal(ctx, buf, orderRecord, fiscalRow, "BYPASS"); err != nil {
+			return err
+		}
+
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, map[string]any{
+			"type":      "PAYMENT_BYPASS_CONFIRMED",
+			"order_id":  req.OrderID,
+			"driver_id": driverID,
+			"timestamp": now.Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.UpdateMap("Orders", map[string]any{
+				"OrderId":               req.OrderID,
+				"Status":                string(StatusFiscalizing),
+				"FiscalStatus":          FiscalStatusPending,
+				"LatestFiscalAttemptId": attemptID,
+				"Version":               version + 1,
+				"UpdatedAt":             now.UTC(),
+			}),
+			spanner.InsertMap("OrderFiscalReceipts", map[string]any{
+				"OrderId":             req.OrderID,
+				"AttemptId":           attemptID,
+				"SupplierId":          supplierID,
+				"RetailerId":          nullableString(retailerID),
+				"Provider":            s.ProviderName(),
+				"Status":              FiscalAttemptPending,
+				"FiscalReceiptId":     spanner.NullString{},
+				"FiscalQR":            spanner.NullString{},
+				"AmountMinor":         totalMinor,
+				"Currency":            currency,
+				"PaymentMethod":       "BYPASS",
+				"ProviderPayloadJSON": []byte(nil),
+				"ErrorCode":           spanner.NullString{},
+				"ErrorMessage":        spanner.NullString{},
+				"ReasonCode":          "PAYMENT_BYPASS",
+				"ActorId":             driverID,
+				"TraceId":             spanner.NullString{},
+				"CreatedAt":           now.UTC(),
+				"UpdatedAt":           now.UTC(),
+			}),
+		}
+		for _, e := range buf.events {
+			mutations = append(mutations, outboxMutation(e))
+		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
 		if errors.Is(err, ErrOrderNotFound) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 			return
@@ -206,17 +344,13 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "order_forbidden"})
 			return
 		}
-		if errors.Is(err, ErrInvalidStatusTransition) {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
-			return
-		}
 		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 		return
 	}
 
 	s.cache.Invalidate(ctx, cacheKeyPaymentBypassPrefix+req.OrderID)
 	s.invalidateOrderCache(ctx, req.OrderID)
-	resp := map[string]any{"status": "FISCALIZING", "order_id": req.OrderID}
+	resp := map[string]any{"status": string(StatusFiscalizing), "order_id": req.OrderID}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)
 	idemCommitted = true
@@ -281,37 +415,83 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 
 	supplierID, _ := auth.ResolveSupplierID(ctx)
 	if supplierID == "" {
-		supplierID = s.resolveSupplierScope(ctx)
+		supplierID = s.supplierID
 	}
-	// Gate-0: early-complete must open fiscalization, never jump to COMPLETED.
+	now := s.now()
 	approved := 0
-	for _, orderID := range rec.OrderIDs {
-		orderID = strings.TrimSpace(orderID)
-		if orderID == "" {
-			continue
+
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		for _, orderID := range rec.OrderIDs {
+			orderID = strings.TrimSpace(orderID)
+			if orderID == "" {
+				continue
+			}
+			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
+				[]string{"Status", "Version", "SupplierId"})
+			if err != nil {
+				continue
+			}
+			var status, oidSupplier string
+			var version int64
+			if err := row.Columns(&status, &version, &oidSupplier); err != nil {
+				continue
+			}
+			if oidSupplier != supplierID {
+				continue
+			}
+			if isTerminalStatus(Status(status)) {
+				continue
+			}
+			if err := ValidateStatusTransition(status, string(StatusCancelled), TransitionOpts{
+				Actor:  claims.Subject,
+				Reason: "early_route_complete_approved",
+			}); err != nil {
+				continue
+			}
+
+			buf := &spannerTxnBuffer{}
+			_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
+				OrderID:        orderID,
+				SupplierID:     supplierID,
+				PreviousStatus: status,
+				Status:         string(StatusCancelled),
+				Reason:         "early_route_complete_approved",
+				ActorRole:      string(claims.Role),
+				ActorID:        claims.Subject,
+				Version:        version + 1,
+			})
+
+			mutations := []*spanner.Mutation{
+				spanner.UpdateMap("Orders", map[string]any{
+					"OrderId":   orderID,
+					"Status":    string(StatusCancelled),
+					"Version":   version + 1,
+					"UpdatedAt": now.UTC(),
+				}),
+			}
+			for _, e := range buf.events {
+				mutations = append(mutations, outboxMutation(e))
+			}
+			for _, a := range buf.audits {
+				mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+			}
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
+			approved++
 		}
-		o, found, gerr := s.repo.GetOrder(ctx, orderID)
-		if gerr != nil || !found {
-			continue
-		}
-		if strings.TrimSpace(o.SupplierID) != supplierID {
-			continue
-		}
-		if o.Status != StatusAwaitingPayment {
-			continue
-		}
-		if err := s.beginFiscalFromAwaitingPayment(ctx, o, "EARLY_COMPLETE", "early_complete_approved", nil); err != nil {
-			s.log.WarnContext(ctx, "early complete fiscal open failed", "order_id", orderID, "err", err)
-			continue
-		}
-		approved++
+		return nil
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "early_complete_failed"})
+		return
 	}
 	s.cache.Invalidate(ctx, cacheKeyEarlyCompletePrefix+req.DriverID)
 	resp := map[string]any{
 		"status":          "approved",
 		"driver_id":       req.DriverID,
 		"orders_approved": approved,
-		"next_status":     "FISCALIZING",
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)

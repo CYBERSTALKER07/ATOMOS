@@ -19,7 +19,7 @@ func isBenignDDLConflict(err error) bool {
 		return false
 	}
 	switch st.Code() {
-	case codes.AlreadyExists, codes.FailedPrecondition:
+	case codes.AlreadyExists:
 		return true
 	case codes.InvalidArgument:
 		msg := strings.ToLower(st.Message())

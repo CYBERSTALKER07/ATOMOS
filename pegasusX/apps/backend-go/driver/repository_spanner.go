@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // Repository is the persistence seam for the driver module.
@@ -70,7 +70,19 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	muts := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
+		createdAt := e.CreatedAt.UTC()
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		row := map[string]any{
+			"EventId":       e.EventID,
+			"AggregateType": e.AggregateType,
+			"AggregateId":   e.AggregateID,
+			"TopicName":     e.TopicName,
+			"Payload":       e.Payload,
+			"CreatedAt":     createdAt,
+		}
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
 	}
 	return muts
 }
@@ -80,24 +92,20 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		return fmt.Errorf("spanner driver repository: nil client")
 	}
 
-	if mutate != nil {
-		if err := mutate(); err != nil {
-			return err
-		}
-	}
-
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
-	}
-
-	if len(buf.events) == 0 {
-		return nil
-	}
-
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if mutate != nil {
+			if err := mutate(); err != nil {
+				return err
+			}
+		}
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
 		var mutations []*spanner.Mutation
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
@@ -121,6 +129,9 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
+		if len(mutations) == 0 {
+			return nil
+		}
 		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
@@ -133,12 +144,6 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner driver repository: nil client")
-	}
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
 	}
 	row := map[string]any{
 		"DriverId":          upd.DriverID,
@@ -156,6 +161,12 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 		}
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		mutations := []*spanner.Mutation{spanner.UpdateMap("Drivers", row)}
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()

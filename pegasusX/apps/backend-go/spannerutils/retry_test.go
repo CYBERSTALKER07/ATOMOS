@@ -39,7 +39,23 @@ func TestRunReadWriteTransactionNilClient(t *testing.T) {
 	err := RunReadWriteTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return errors.New("should not run")
 	})
-	if !errors.Is(err, ErrNilSpannerClient) {
-		t.Fatalf("nil client: got %v, want ErrNilSpannerClient", err)
+	if err == nil {
+		t.Fatal("expected error for nil client, got nil")
+	}
+	if err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got: %v", err)
+	}
+}
+
+func TestRunChunkedTransactionNilClient(t *testing.T) {
+	t.Parallel()
+	err := RunChunkedTransaction(t.Context(), nil, []string{"item1"}, 1, func(ctx context.Context, txn *spanner.ReadWriteTransaction, chunk []string) error {
+		return errors.New("should not run")
+	})
+	if err == nil {
+		t.Fatal("expected error for nil client in chunked transaction, got nil")
+	}
+	if err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got: %v", err)
 	}
 }

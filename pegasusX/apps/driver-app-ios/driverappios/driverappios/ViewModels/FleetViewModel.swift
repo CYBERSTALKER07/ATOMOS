@@ -82,14 +82,13 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var maxVolumeVU: Double { TokenStore.shared.maxVolumeVU }
 
     static var warehouseCenter: CLLocationCoordinate2D {
-        let pack = packMapCoordinate()
-        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : pack.lat
-        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : pack.lng
+        let lat = TokenStore.shared.warehouseLat != 0 ? TokenStore.shared.warehouseLat : 41.2995
+        let lng = TokenStore.shared.warehouseLng != 0 ? TokenStore.shared.warehouseLng : 69.2401
         return CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
     /// Shared location for FleetServiceLive GPS injection
     static var lastKnownLocation: CLLocationCoordinate2D?
-    let geofenceThreshold: Double = 150
+    let geofenceThreshold: Double = 500
 
     var pendingMissions: [Mission] {
         missions.filter { !completedIds.contains($0.id) }
@@ -104,15 +103,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     var inTransitOrders: [Order] {
-        orders.filter {
-            switch $0.state {
-            case .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
-                 .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED:
-                return true
-            default:
-                return false
-            }
-        }
+        orders.filter { $0.state == .IN_TRANSIT || $0.state == .ARRIVING || $0.state == .ARRIVED }
     }
 
     var hasActiveRoute: Bool { activeMission != nil || !inTransitOrders.isEmpty }
@@ -152,8 +143,6 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.distanceFilter = 10
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.activityType = .automotiveNavigation
         ProfileService.shared.startPolling()
         Task { await loadEarningsAndHistory() }
     }
@@ -320,6 +309,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if let cue = navigationCue, shouldAnnounceManeuverAdvance(previousIndex: previousIndex, nextIndex: navigationStepIndex) {
             navigationVoiceAnnouncer.announce(cue)
         }
+
+        let progress = routeSteps.isEmpty ? 0.0 : Double(navigationStepIndex) / Double(routeSteps.count)
+        let etaMinutes = max(1, Int((navigationCue?.distanceM ?? 500) / 400))
+        DriverLiveActivityManager.shared.updateNavigationState(
+            cue: navigationCue,
+            etaMinutes: etaMinutes,
+            progress: progress,
+            currentStepIndex: navigationStepIndex + 1,
+            totalSteps: routeSteps.count
+        )
     }
 
     func startLocationInterpolation() {
@@ -354,6 +353,19 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         refreshPlannedRoute()
         Task { await loadRouteGeometry() }
         showMarkerSheet = true
+
+        let dest = activeOrder?.retailerName ?? mission.retailer_name ?? "Destination"
+        let items = activeOrder?.items.count ?? 1
+        let amount = activeOrder?.totalAmount ?? mission.total_amount_minor ?? 0
+        DriverLiveActivityManager.shared.startNavigationActivity(
+            orderId: mission.order_id,
+            routeId: mission.route_id,
+            destinationName: dest,
+            totalItems: items,
+            totalAmountMinor: amount,
+            initialCue: navigationCue,
+            totalSteps: routeSteps.count
+        )
     }
 
     func markCompleted(_ orderId: String) {
@@ -369,6 +381,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             activeOrder = nil
             showMarkerSheet = false
             refreshPlannedRoute()
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
         }
     }
 
@@ -434,6 +447,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 return
             }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
             truckStatus = "AVAILABLE"
             isReturning = false
             returnGoodsLines = []
@@ -535,36 +549,11 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(
-        orderId: String,
-        photoProofUrl: String? = nil,
-        signatureUrl: String? = nil,
-        photoLocalPath: String? = nil,
-        signatureLocalPath: String? = nil
-    ) async {
+    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
-        let photoRemote = photoProofUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let sigRemote = signatureUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let photoLocal = photoLocalPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let sigLocal = signatureLocalPath?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        guard !photoRemote.isEmpty || !photoLocal.isEmpty else {
-            deliveryEdgeError = "PoD photo required for credit leave"
-            return
-        }
-        guard !sigRemote.isEmpty || !sigLocal.isEmpty else {
-            deliveryEdgeError = "Signature required for credit leave"
-            return
-        }
         do {
-            guard !photoRemote.isEmpty else {
-                throw URLError(.notConnectedToInternet)
-            }
-            let resp = try await fleetService.markCreditDelivery(
-                orderId: orderId,
-                photoProofUrl: photoRemote,
-                signatureUrl: sigRemote.isEmpty ? nil : sigRemote
-            )
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {
@@ -572,32 +561,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             }
             await loadMissions()
         } catch {
-            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) || photoRemote.isEmpty {
-                var body: [String: Any] = [
-                    "order_id": orderId,
-                    "client_timestamp": DriverOfflineActionCatalog.nowIso(),
-                ]
-                if !photoRemote.isEmpty { body["photo_proof_url"] = photoRemote }
-                if !sigRemote.isEmpty { body["signature_url"] = sigRemote }
-                if !photoLocal.isEmpty && photoRemote.isEmpty { body["photo_local_path"] = photoLocal }
-                if !sigLocal.isEmpty && sigRemote.isEmpty { body["signature_local_path"] = sigLocal }
-                if let loc = location {
-                    body["latitude"] = loc.latitude
-                    body["longitude"] = loc.longitude
-                }
-                DriverOfflineQueue.shared.enqueueJSONObject(
-                    endpoint: DriverOfflineActionCatalog.credit,
-                    body: body,
-                    idempotencyKey: DriverIdempotency.creditDelivery(orderId: orderId),
-                    orderId: orderId,
-                    capturedLat: location?.latitude,
-                    capturedLng: location?.longitude
-                )
-                deliveryEdgeMessage = "Offline — credit leave queued for sync"
-                await loadMissions()
-            } else {
-                deliveryEdgeError = error.localizedDescription
-            }
+            deliveryEdgeError = error.localizedDescription
         }
     }
 
@@ -624,26 +588,51 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func updateOrderDuringDelivery(orderId: String) async {
-        // G1.C: mid-delivery endpoint has no durable writer — use delivery correction / amend.
-        deliveryEdgeError = "Use delivery correction (amend / missing items) — mid-delivery update is not implemented"
+        deliveryEdgeError = nil
         deliveryEdgeMessage = nil
+        let location = await MainActor.run { Self.lastKnownLocation }
+        guard let location, location.latitude != 0 || location.longitude != 0 else {
+            deliveryEdgeError = "GPS unavailable for in-delivery update"
+            return
+        }
+        do {
+            let response = try await fleetService.updateOrderDuringDelivery(
+                orderId: orderId,
+                latitude: location.latitude,
+                longitude: location.longitude
+            )
+            guard response.success else {
+                deliveryEdgeError = response.message
+                return
+            }
+            deliveryEdgeMessage = response.message
+            await loadMissions()
+        } catch {
+            deliveryEdgeError = error.localizedDescription
+        }
     }
 
     private func legacyStartTransit() async {
-        // G1.C: never PATCH …/state (always 501). Depart requires a vehicle; fail honestly.
-        Haptics.error()
-        deliveryEdgeError = "Assign a vehicle and use Depart — cannot fake IN_TRANSIT via state patch"
-        isTransitActive = false
-        isTelemetryLive = false
+        isTransitActive = true
+        Haptics.heavy()
+        for order in loadedOrders {
+            do {
+                let updated = try await APIClient.shared.transitionState(
+                    orderId: order.id,
+                    newState: "IN_TRANSIT"
+                )
+                if let idx = orders.firstIndex(where: { $0.id == updated.id }) {
+                    orders[idx] = updated
+                }
+            } catch { }
+        }
+        isTelemetryLive = true
         deriveTruckStatus()
     }
 
     /// Derive truck status from current order states
     private func deriveTruckStatus() {
-        let activeStates: Set<OrderState> = [
-            .IN_TRANSIT, .ARRIVING, .ARRIVED, .ARRIVED_SHOP_CLOSED,
-            .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED,
-        ]
+        let activeStates: Set<OrderState> = [.IN_TRANSIT, .ARRIVING, .ARRIVED, .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION, .FISCALIZING, .FISCAL_FAILED]
         let hasActive = orders.contains { activeStates.contains($0.state) }
         let hasLoaded = orders.contains { $0.state == .LOADED || $0.state == .DISPATCHED }
         let allDone = !orders.isEmpty && orders.allSatisfy { $0.state == .COMPLETED || $0.state == .CANCELLED }

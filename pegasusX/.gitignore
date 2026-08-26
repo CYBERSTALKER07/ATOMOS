@@ -11,16 +11,11 @@ out/
 *.out
 *.exe
 vendor/
-.bin/
-# Local build artifact (never commit; ~59MB)
+# Local build artifacts (never commit)
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*
-**/backend-go/backend-go
-# Compiled binaries must never be tracked
 apps/ai-worker/ai-worker
 apps/handoff-service/handoff-service
-/kustomize
-kustomize.yaml
 
 # env
 .env
@@ -66,26 +61,8 @@ Pods/
 .expo-shared/
 web-build/
 
-# terraform — remote state only (infra/terraform/backend.gcs.tf)
+# terraform
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
-infra/terraform/cells/*/plan.txt
-infra/terraform/cells/*/workdir/
-infra/terraform/cells/*/catalog.tfstate
-infra/terraform/cells/*/jwt.secret
-infra/terraform/cells/*/project/plan.txt
-infra/terraform/cells/*/project/workdir/
-infra/terraform/global/plan.txt
-infra/terraform/global/init.txt
-infra/terraform/global-plan-workdir/
-artifacts/tfstate-archive/**
-!artifacts/tfstate-archive/README.md
-**/.build/
-.ssmr/
-
-# junk / one-off patches
-*.bak
-*.orig
-/patch_*.sh

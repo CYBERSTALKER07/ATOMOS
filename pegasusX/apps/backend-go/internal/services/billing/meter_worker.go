@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/codes"
 )
 
-// MeterWorker handles idempotent per-order metering.
+// MeterWorker handles idempotent per-order metering and dynamic fee milestone checks.
 type MeterWorker struct {
 	client *spanner.Client
 }
@@ -25,24 +23,12 @@ func NewMeterWorker(client *spanner.Client) *MeterWorker {
 }
 
 // ProcessOrderFinalized performs idempotent metering when an order is finalized.
-// amount is major currency units (e.g. 125.00 for 12500 minor). Non-positive amounts are skipped.
-func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount float64, supplierID string) error {
-	orderID = strings.TrimSpace(orderID)
-	supplierID = strings.TrimSpace(supplierID)
-	if orderID == "" || supplierID == "" {
-		return nil
-	}
-	if amount <= 0 {
-		log.Printf("Metering skip ORDER_FINALIZED non-positive amount: orderID=%s amount=%.4f", orderID, amount)
-		return nil
-	}
-	if w == nil || w.client == nil {
-		return fmt.Errorf("billing meter: nil spanner client")
-	}
-
-	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%.2f supplierID=%s", orderID, amount, supplierID)
+// It checks if global billing milestones are crossed and adjusts system fee rates accordingly.
+func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount int64, supplierID string) error {
+	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%d supplierID=%s", orderID, amount, supplierID)
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// 1. Idempotency: skip when this order was already metered.
 		stmt := spanner.Statement{
 			SQL: `SELECT EventId FROM BillingMeterEvents WHERE OrderId = @orderId LIMIT 1`,
 			Params: map[string]interface{}{
@@ -59,13 +45,13 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 		}
 
 		const shardID int64 = 0
-		var current float64
+		var current int64
 		row, err := txn.ReadRow(ctx, "BillingSupplierMeters", spanner.Key{supplierID, shardID}, []string{"CurrentValue"})
 		if err == nil {
 			if err := row.Column(0, &current); err != nil {
 				return fmt.Errorf("billing meter read current: %w", err)
 			}
-		} else if spanner.ErrCode(err) != codes.NotFound {
+		} else if spanner.ErrCode(err) != 5 { // NotFound
 			return fmt.Errorf("billing meter read: %w", err)
 		}
 

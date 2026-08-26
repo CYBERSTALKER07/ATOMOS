@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -73,44 +71,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	rawDDL, err := os.ReadFile(ddlPath)
-	if err != nil {
-		slog.Error("read ddl for checksum", "path", ddlPath, "err", err)
-		os.Exit(1)
-	}
-	version := migrationVersionFromPath(ddlPath)
-	checksum := sha256Hex(rawDDL)
-
-	client, err := spanner.NewClient(ctx, databaseName, spannerClientOptions(cfg)...)
-	if err != nil {
-		slog.Error("spanner client for SchemaMigrations", "err", err)
-		os.Exit(1)
-	}
-	defer client.Close()
-
-	if err := ensureSchemaMigrationsTable(ctx, admin, databaseName); err != nil {
-		slog.Error("ensure SchemaMigrations", "err", err)
-		os.Exit(1)
-	}
-	applied, prevChecksum, err := lookupSchemaMigration(ctx, client, version)
-	if err != nil {
-		slog.Error("lookup SchemaMigrations", "err", err)
-		os.Exit(1)
-	}
-	if applied {
-		if prevChecksum != checksum {
-			slog.Error("schema migration checksum drift — refusing re-apply",
-				"version", version, "stored", prevChecksum, "file", checksum)
-			os.Exit(1)
-		}
-		slog.Info("schema migration already applied (checksum match)", "version", version, "ddl_file", ddlPath)
-		os.Exit(0)
-	}
-
 	slog.Info("applying spanner migration",
 		"database", databaseName,
 		"ddl_file", ddlPath,
-		"version", version,
 		"statement_count", len(statements),
 	)
 
@@ -118,12 +81,8 @@ func main() {
 		slog.Error("apply migration failed", "err", err)
 		os.Exit(1)
 	}
-	if err := recordSchemaMigration(ctx, client, version, checksum); err != nil {
-		slog.Error("record SchemaMigrations", "version", version, "err", err)
-		os.Exit(1)
-	}
 
-	slog.Info("spanner migration applied", "database", databaseName, "ddl_file", ddlPath, "version", version)
+	slog.Info("spanner migration applied", "database", databaseName, "ddl_file", ddlPath)
 
 	if *verifyFlag {
 		if err := verifyWarehouseStockMigration(ctx, cfg); err != nil {
@@ -320,87 +279,15 @@ func isBenignDDLConflict(err error) bool {
 	if !ok {
 		return false
 	}
-	msg := strings.ToLower(st.Message())
 	switch st.Code() {
 	case codes.AlreadyExists:
 		return true
 	case codes.InvalidArgument:
-		// Narrow allowlist — do NOT treat FailedPrecondition as benign (Gate-0).
+		msg := strings.ToLower(st.Message())
 		return strings.Contains(msg, "already exists") ||
-			strings.Contains(msg, "duplicate name") ||
+			strings.Contains(msg, "duplicate") ||
 			strings.Contains(msg, "already has a constraint")
-	case codes.FailedPrecondition:
-		// Only exact "already exists" style precondition messages; real ALTER failures must fail closed.
-		// The emulator reports CREATE-on-existing-object as FailedPrecondition "Duplicate name in schema".
-		return strings.Contains(msg, "already exists") ||
-			strings.Contains(msg, "duplicate name in schema") ||
-			strings.Contains(msg, "duplicate column") ||
-			strings.Contains(msg, "column already")
 	default:
 		return false
 	}
-}
-
-func migrationVersionFromPath(path string) string {
-	base := filepath.Base(path)
-	return strings.TrimSuffix(base, filepath.Ext(base))
-}
-
-func sha256Hex(b []byte) string {
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
-}
-
-func ensureSchemaMigrationsTable(ctx context.Context, admin *database.DatabaseAdminClient, databaseName string) error {
-	op, err := admin.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
-		Database: databaseName,
-		Statements: []string{`CREATE TABLE SchemaMigrations (
-  Version     STRING(128)  NOT NULL,
-  Checksum    STRING(64)   NOT NULL,
-  AppliedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (Version)`},
-	})
-	if err != nil {
-		if isBenignDDLConflict(err) {
-			return nil
-		}
-		return err
-	}
-	if err := op.Wait(ctx); err != nil {
-		if isBenignDDLConflict(err) {
-			return nil
-		}
-		return err
-	}
-	return nil
-}
-
-func lookupSchemaMigration(ctx context.Context, client *spanner.Client, version string) (bool, string, error) {
-	row, err := client.Single().ReadRow(ctx, "SchemaMigrations", spanner.Key{version}, []string{"Checksum"})
-	if err != nil {
-		if status.Code(err) == codes.NotFound {
-			return false, "", nil
-		}
-		// Table missing mid-bootstrap — treat as not applied.
-		if status.Code(err) == codes.InvalidArgument || status.Code(err) == codes.FailedPrecondition {
-			return false, "", nil
-		}
-		return false, "", err
-	}
-	var checksum string
-	if err := row.Column(0, &checksum); err != nil {
-		return false, "", err
-	}
-	return true, checksum, nil
-}
-
-func recordSchemaMigration(ctx context.Context, client *spanner.Client, version, checksum string) error {
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("SchemaMigrations", map[string]interface{}{
-			"Version":   version,
-			"Checksum":  checksum,
-			"AppliedAt": spanner.CommitTimestamp,
-		}),
-	})
-	return err
 }

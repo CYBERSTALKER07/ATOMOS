@@ -2,16 +2,12 @@ package spannerutils
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/grpc/codes"
 )
-
-// ErrNilSpannerClient is returned when a write path is invoked without a client.
-// Fail-loud: silent success under misconfiguration is data loss reported as HTTP 200.
-var ErrNilSpannerClient = errors.New("spanner client is nil")
 
 const (
 	defaultMaxAttempts = 5
@@ -23,7 +19,7 @@ const (
 // transient Aborted and Unavailable errors with bounded exponential backoff.
 func RunReadWriteTransaction(ctx context.Context, client *spanner.Client, fn func(context.Context, *spanner.ReadWriteTransaction) error) error {
 	if client == nil {
-		return ErrNilSpannerClient
+		return fmt.Errorf("spanner: nil client")
 	}
 	backoff := defaultBaseBackoff
 	var lastErr error

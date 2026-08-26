@@ -3,7 +3,8 @@ import UIKit
 
 struct ProfileView: View {
     @State private var refreshCenter = RetailerRefreshCenter.shared
-    @State private var globalAutoOrder = false
+    @AppStorage("aiAutoOrder") private var aiAutoOrder = false
+    @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @State private var showHistoryAlert = false
     @State private var profileName: String = ""
@@ -13,12 +14,11 @@ struct ProfileView: View {
     @State private var pricingRulesSummary: String = ""
     @State private var orderCount: Int = 0
     @State private var totalSpent: Int64 = 0
-    @State private var totalSpentCurrency: String = packCurrency(MarketPackStore.pack)
+    @State private var totalSpentCurrency: String = "UZS"
     @State private var creditProfile: CreditProfile?
     @State private var creditLoading = true
     @State private var creditMissing = false
     @State private var creditError: String?
-    @State private var loyaltySummary: String = ""
 
     @Environment(AuthManager.self) private var auth
 
@@ -43,19 +43,6 @@ struct ProfileView: View {
                     error: creditError
                 ).slideIn(delay: 0.06)
 
-                if !loyaltySummary.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Loyalty")
-                            .font(.system(.subheadline, design: .rounded, weight: .bold))
-                        Text(loyaltySummary)
-                            .font(.system(.caption, design: .rounded))
-                            .foregroundStyle(AppTheme.textSecondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, AppTheme.spacingLG)
-                    .slideIn(delay: 0.065)
-                }
-
                 // Order History link
                 OrderHistoryLink(orderCount: orderCount).slideIn(delay: 0.07)
 
@@ -64,7 +51,7 @@ struct ProfileView: View {
 
                 if !pricingRulesSummary.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("mobile_retailer.ui.pricing_rules")
+                        Text("Pricing rules")
                             .font(.system(.subheadline, design: .rounded, weight: .bold))
                         Text(pricingRulesSummary)
                             .font(.system(.caption, design: .rounded))
@@ -84,24 +71,16 @@ struct ProfileView: View {
                     SettingsItem(icon: "cart.fill", title: "POS", subtitle: "Cashier sales and voids", view: "POS"),
                     SettingsItem(icon: "clock.fill", title: "Shifts", subtitle: "Clock in and cash recon", view: "Shifts"),
                     SettingsItem(icon: "square.grid.2x2.fill", title: "Sections", subtitle: "Departments and SKU map", view: "Sections"),
+                    SettingsItem(icon: "rectangle.split.3x3.fill", title: "Planograms", subtitle: "Shelf layout & vision audits", view: "Planograms"),
                     SettingsItem(icon: "chart.bar.doc.horizontal", title: "Reports Pro", subtitle: "Sales and inventory digest", view: "ReportsPro"),
                     SettingsItem(icon: "hand.raised.fill", title: "Floor assist", subtitle: "Section help tickets", view: "Assist"),
                     SettingsItem(icon: "person.3.fill", title: "Team", subtitle: "Staff roles and invites", view: "Team"),
+                    SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods", view: "SavedCards"),
                     SettingsItem(icon: "key", title: "API Access", subtitle: "Developer settings"),
                     SettingsItem(icon: "person.2.fill", title: "Family contacts", subtitle: "Legacy name/phone list", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
 
-                PreferencesSection(
-                    aiAutoOrder: $globalAutoOrder,
-                    notificationsEnabled: $notificationsEnabled,
-                    onAutoOrderToggle: { enabled in
-                        if enabled {
-                            showHistoryAlert = true
-                        } else {
-                            Task { await toggleGlobalAutoOrder(enabled: false, useHistory: false) }
-                        }
-                    }
-                ).slideIn(delay: 0.15)
+                PreferencesSection(aiAutoOrder: $aiAutoOrder, notificationsEnabled: $notificationsEnabled).slideIn(delay: 0.15)
 
                 SettingsSectionView(title: "Support", icon: "questionmark.circle.fill", items: [
                     SettingsItem(icon: "questionmark.circle", title: "Help Center", subtitle: nil),
@@ -109,7 +88,7 @@ struct ProfileView: View {
                     SettingsItem(icon: "doc.text", title: "Terms of Service", subtitle: nil),
                 ]).slideIn(delay: 0.2)
 
-                Text("mobile_retailer.ui.pegasus_retailer_v1_0_0")
+                Text("Pegasus Retailer v1.0.0")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.top, AppTheme.spacingMD)
@@ -122,18 +101,15 @@ struct ProfileView: View {
         .task { await loadProfile() }
         .task { await loadStats() }
         .task { await loadCreditProfile() }
-        .task { await loadLoyalty() }
         .task(id: refreshCenter.refreshToken) {
             await loadProfile()
             await loadStats()
             await loadCreditProfile()
-            await loadLoyalty()
         }
         .refreshable {
             await loadProfile()
             await loadStats()
             await loadCreditProfile()
-            await loadLoyalty()
         }
     }
 
@@ -173,7 +149,7 @@ struct ProfileView: View {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             orderCount = orders.count
             totalSpent = orders.reduce(0) { $0 + $1.totalAmount }
-            totalSpentCurrency = orders.first?.currency ?? packCurrency(MarketPackStore.pack)
+            totalSpentCurrency = orders.first?.currency ?? "UZS"
             
             // Also fetch settings so toggles are perfectly in sync
             let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")
@@ -199,23 +175,6 @@ struct ProfileView: View {
             creditError = "Credit unavailable"
         }
         creditLoading = false
-    }
-
-    private func loadLoyalty() async {
-        do {
-            let tier = try await api.getLoyaltyTier()
-            if !tier.enrolled {
-                loyaltySummary = "Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet."
-            } else {
-                var text = "\(tier.tier.isEmpty ? "Member" : tier.tier) · \(tier.lifetimePoints) lifetime · \(tier.availablePoints) available"
-                if !tier.nextTier.isEmpty {
-                    text += " · \(tier.pointsToNext) to \(tier.nextTier)"
-                }
-                loyaltySummary = text
-            }
-        } catch {
-            loyaltySummary = "Loyalty unavailable"
-        }
     }
 
     private func toggleGlobalAutoOrder(enabled: Bool, useHistory: Bool) async {
@@ -256,9 +215,9 @@ struct FamilyMembersView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: AppTheme.spacingSM) {
-                    Label("mobile_retailer.ui.migrate_family_team", systemImage: "arrow.left.arrow.right")
+                    Label("Migrate Family → Team", systemImage: "arrow.left.arrow.right")
                         .font(.headline)
-                    Text("mobile_retailer.ui.contacts_with_a_phone_become_team_receiver_accounts_temp_passwor")
+                    Text("Contacts with a phone become Team RECEIVER accounts. Temp passwords show once.")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     Button {
@@ -278,20 +237,20 @@ struct FamilyMembersView: View {
 
             if let migrateResult {
                 Section("Migration result") {
-                    Text(L10n.format("mobile_retailer.ui.count_migrated_count_2_skipped_familyremaining_remaining", "\(migrateResult.migrated.count)", "\(migrateResult.skipped.count)", "\(migrateResult.familyRemaining)"))
+                    Text("\(migrateResult.migrated.count) migrated · \(migrateResult.skipped.count) skipped · \(migrateResult.familyRemaining) remaining")
                         .font(.caption)
                         .foregroundStyle(AppTheme.textSecondary)
                     ForEach(migrateResult.migrated) { m in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(m.name).font(.body.weight(.semibold))
-                            Text(L10n.format("mobile_retailer.ui.phone_retailerrole", "\(m.phone)", "\(m.retailerRole)"))
+                            Text("\(m.phone) · \(m.retailerRole)")
                                 .font(.caption)
                                 .foregroundStyle(AppTheme.textTertiary)
                             if let pw = m.tempPassword {
                                 HStack {
                                     Text(pw).font(.system(.caption, design: .monospaced))
                                     Spacer()
-                                    Button("mobile_retailer.ui.copy") {
+                                    Button("Copy") {
                                         UIPasteboard.general.string = pw
                                     }
                                     .font(.caption)
@@ -300,7 +259,7 @@ struct FamilyMembersView: View {
                         }
                     }
                     ForEach(migrateResult.skipped) { s in
-                        Text(L10n.format("mobile_retailer.ui.memberid_reason", "\(s.phone ?? s.memberId)", "\(s.reason)"))
+                        Text("\(s.phone ?? s.memberId): \(s.reason)")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
@@ -351,12 +310,12 @@ struct FamilyMembersView: View {
                                 if let phone = member.phone, !phone.isEmpty {
                                     Text(phone).font(.caption).foregroundStyle(AppTheme.textTertiary)
                                 } else {
-                                    Text("retailer_desktop.settings.family.text.no_phone_skipped_on_migrate")
+                                    Text("No phone — skipped on migrate")
                                         .font(.caption)
                                         .foregroundStyle(.orange)
                                 }
                                 if let created = member.createdAt {
-                                    Text(L10n.format("mobile_retailer.ui.added_prefix", "\(created.prefix(10))"))
+                                    Text("Added \(created.prefix(10))")
                                         .font(.caption2)
                                         .foregroundStyle(AppTheme.textTertiary)
                                 }
@@ -386,7 +345,7 @@ struct FamilyMembersView: View {
                 }
             }
         }
-        .navigationTitle("retailer_desktop.settings.family.text.family_members")
+        .navigationTitle("Family Members")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -398,12 +357,12 @@ struct FamilyMembersView: View {
         .task { await loadMembers() }
         .refreshable { await loadMembers() }
         .confirmationDialog("Migrate to Team?", isPresented: $showMigrateConfirm, titleVisibility: .visible) {
-            Button("mobile_retailer.ui.migrate") {
+            Button("Migrate") {
                 Task { await migrateToTeam() }
             }
-            Button("common.action.cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("mobile_retailer.ui.temporary_passwords_appear_once_family_add_closes_after_migrate")
+            Text("Temporary passwords appear once. Family add closes after migrate.")
         }
         .sheet(isPresented: $showAddSheet) {
             NavigationStack {
@@ -482,17 +441,17 @@ struct AddFamilyMemberView: View {
     var body: some View {
         Form {
             Section("Details") {
-                TextField("retailer_desktop.pos.text.name", text: $name)
-                TextField("retailer_desktop.settings.family.text.phone_required_for_team_migrate", text: $phone)
+                TextField("Name", text: $name)
+                TextField("Phone (required for Team migrate)", text: $phone)
                     .keyboardType(.phonePad)
             }
         }
-        .navigationTitle("mobile_retailer.ui.add_member")
+        .navigationTitle("Add Member")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
-                Button("common.action.save") {
+                Button("Save") {
                     onAdd(FamilyMemberRequest(
                         name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                         phone: phone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

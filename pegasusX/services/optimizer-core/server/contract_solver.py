@@ -1,8 +1,4 @@
-"""OR-Tools VRP solver for pegasusX optimizer-contract JSON payloads.
-
-Multi-depot layout: one start node per vehicle (optional distinct end), then
-customer stops. Optional distance_matrix_m (meters) from Go/OSRM; else haversine.
-"""
+"""OR-Tools VRP solver for pegasusX optimizer-contract JSON payloads."""
 
 from __future__ import annotations
 
@@ -21,7 +17,7 @@ DEFAULT_TETRIS_BUFFER = 0.95
 DEFAULT_SERVICE_MINUTES = 5
 DEFAULT_AVG_SPEED_KMPH = 30.0
 DEFAULT_MAX_STOPS = 25
-DEFAULT_TIME_LIMIT_MS = 5_000
+DEFAULT_TIME_LIMIT_MS = 2_000
 MAX_TIME_LIMIT_MS = 60_000
 SCALE_FACTOR = 10_000
 
@@ -75,9 +71,6 @@ def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     max_stops = int(raw.get("max_stops_per_route") or 0)
     if max_stops > 0:
         out["max_stops_per_route"] = max_stops
-    time_limit = int(raw.get("time_limit_ms") or 0)
-    if time_limit > 0:
-        out["time_limit_ms"] = min(max(1, time_limit), MAX_TIME_LIMIT_MS)
     return out
 
 
@@ -88,49 +81,6 @@ def _scaled_distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> in
 def _travel_minutes(distance_m: int, speed_kmph: float) -> int:
     speed = speed_kmph if speed_kmph > 0 else DEFAULT_AVG_SPEED_KMPH
     return max(1, int((distance_m / 1000.0) / speed * 60))
-
-
-def _vehicle_end_coords(vehicle: dict[str, Any]) -> tuple[float, float]:
-    start_lat = float(vehicle.get("start_lat") or 0)
-    start_lng = float(vehicle.get("start_lng") or 0)
-    end_lat = float(vehicle.get("end_lat") or 0)
-    end_lng = float(vehicle.get("end_lng") or 0)
-    if end_lat == 0 and end_lng == 0:
-        return start_lat, start_lng
-    return end_lat, end_lng
-
-
-def _route_duration_cap_minutes(vehicle: dict[str, Any]) -> int | None:
-    explicit = int(vehicle.get("max_route_minutes") or 0)
-    if explicit > 0:
-        return explicit
-    start = _parse_hh_mm(str(vehicle.get("shift_start") or ""))
-    end = _parse_hh_mm(str(vehicle.get("shift_end") or ""))
-    if start is not None and end is not None and end > start:
-        return end - start
-    return None
-
-
-def _matrix_ok(matrix: Any, size: int) -> bool:
-    if not isinstance(matrix, list) or len(matrix) != size:
-        return False
-    for row in matrix:
-        if not isinstance(row, list) or len(row) != size:
-            return False
-    return True
-
-
-def _build_haversine_matrix(node_coords: list[tuple[float, float]]) -> list[list[int]]:
-    size = len(node_coords)
-    return [
-        [
-            _scaled_distance_m(
-                node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1]
-            )
-            for j in range(size)
-        ]
-        for i in range(size)
-    ]
 
 
 def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
@@ -144,6 +94,29 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         raise SolverError("EMPTY_FLEET", "fleet is empty")
     if not stops_in:
         raise SolverError("BAD_REQUEST", "stops slice is empty")
+
+    depot_nodes: list[tuple[float, float]] = []
+    depot_map: dict[tuple[float, float], int] = {}
+
+    def get_or_add_depot(lat: float, lng: float) -> int:
+        coord = (round(lat, 6), round(lng, 6))
+        if coord not in depot_map:
+            idx = len(depot_nodes)
+            depot_map[coord] = idx
+            depot_nodes.append((lat, lng))
+        return depot_map[coord]
+
+    starts: list[int] = []
+    ends: list[int] = []
+    for v in vehicles_in:
+        s_lat = float(v.get("start_lat") or 0)
+        s_lng = float(v.get("start_lng") or 0)
+        e_lat = float(v.get("end_lat") or s_lat)
+        e_lng = float(v.get("end_lng") or s_lng)
+        starts.append(get_or_add_depot(s_lat, s_lng))
+        ends.append(get_or_add_depot(e_lat, e_lng))
+
+    num_depots = len(depot_nodes)
 
     stops: list[dict[str, Any]] = []
     orphans: list[dict[str, str]] = []
@@ -161,51 +134,22 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
         return _empty_response(trace_id, len(stops_in), orphans, elapsed_ms)
 
-    num_vehicles = len(vehicles_in)
-    node_coords: list[tuple[float, float]] = []
-    starts: list[int] = []
-    ends: list[int] = []
-    for vehicle in vehicles_in:
-        start_lat = float(vehicle.get("start_lat") or 0)
-        start_lng = float(vehicle.get("start_lng") or 0)
-        end_lat, end_lng = _vehicle_end_coords(vehicle)
-        start_idx = len(node_coords)
-        node_coords.append((start_lat, start_lng))
-        starts.append(start_idx)
-        if abs(end_lat - start_lat) > 1e-9 or abs(end_lng - start_lng) > 1e-9:
-            end_idx = len(node_coords)
-            node_coords.append((end_lat, end_lng))
-            ends.append(end_idx)
-        else:
-            ends.append(start_idx)
-
-    customer_offset = len(node_coords)
-    node_to_stop: dict[int, int] = {}
-    for i, stop in enumerate(stops):
-        idx = len(node_coords)
+    node_coords = list(depot_nodes)
+    for stop in stops:
         node_coords.append((float(stop["lat"]), float(stop["lng"])))
-        node_to_stop[idx] = i
 
     size = len(node_coords)
-    provided = req.get("distance_matrix_m")
-    if _matrix_ok(provided, size):
-        distance_matrix = [[max(0, int(v)) for v in row] for row in provided]
-        # Self-loops and zero arcs still need a positive cost for OR-Tools stability.
-        for i in range(size):
-            for j in range(size):
-                if i != j and distance_matrix[i][j] <= 0:
-                    distance_matrix[i][j] = _scaled_distance_m(
-                        node_coords[i][0], node_coords[i][1],
-                        node_coords[j][0], node_coords[j][1],
-                    )
-                if i == j:
-                    distance_matrix[i][j] = 0
-    else:
-        distance_matrix = _build_haversine_matrix(node_coords)
+    distance_matrix = [
+        [
+            _scaled_distance_m(node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1])
+            for j in range(size)
+        ]
+        for i in range(size)
+    ]
 
-    demands = [0] * size
-    for node_idx, stop_idx in node_to_stop.items():
-        demands[node_idx] = max(1, int(stops[stop_idx]["volume_vu"] * SCALE_FACTOR))
+    demands = [0] * num_depots
+    for stop in stops:
+        demands.append(max(1, int(stop["volume_vu"] * SCALE_FACTOR)))
 
     vehicle_caps = [
         max(1, int(float(v.get("max_volume_vu") or 0) * float(tunables["tetris_buffer"]) * SCALE_FACTOR))
@@ -215,7 +159,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         float(v.get("avg_speed_kmph") or 0) or DEFAULT_AVG_SPEED_KMPH for v in vehicles_in
     ]
 
-    manager = pywrapcp.RoutingIndexManager(size, num_vehicles, starts, ends)
+    manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), starts, ends)
     routing = pywrapcp.RoutingModel(manager)
 
     def distance_callback(from_index: int, to_index: int) -> int:
@@ -233,23 +177,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     demand_idx = routing.RegisterUnaryTransitCallback(demand_callback)
     routing.AddDimensionWithVehicleCapacity(demand_idx, 0, vehicle_caps, True, "Capacity")
 
-    # Count dimension: each customer consumes 1 stop slot; capacity = max_stops.
-    max_stops = int(tunables["max_stops_per_route"])
-
-    def stop_count_callback(from_index: int) -> int:
-        from_node = manager.IndexToNode(from_index)
-        return 1 if from_node in node_to_stop else 0
-
-    stop_count_idx = routing.RegisterUnaryTransitCallback(stop_count_callback)
-    routing.AddDimensionWithVehicleCapacity(
-        stop_count_idx,
-        0,
-        [max_stops] * num_vehicles,
-        True,
-        "StopCount",
-    )
-
-    # Per-vehicle travel time in minutes.
+    # Per-vehicle travel time in minutes (must not reuse the meters cost callback).
     time_callback_indices: list[int] = []
     for vehicle_index, speed in enumerate(vehicle_speeds):
         def make_time_cb(veh_idx: int = vehicle_index, spd: float = speed):
@@ -257,74 +185,50 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 from_node = manager.IndexToNode(from_index)
                 to_node = manager.IndexToNode(to_index)
                 travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
-                if from_node in node_to_stop:
-                    travel += int(stops[node_to_stop[from_node]]["service_minutes"])
+                # Service time is paid when leaving a customer node.
+                if from_node >= num_depots:
+                    travel += int(stops[from_node - num_depots]["service_minutes"])
                 return travel
 
             return time_callback
 
         time_callback_indices.append(routing.RegisterTransitCallback(make_time_cb()))
 
-    time_windows: dict[int, tuple[int, int]] = {}
+    time_windows: list[tuple[int, int] | None] = [None] * num_depots
     has_time_windows = False
-    for node_idx, stop_idx in node_to_stop.items():
-        stop = stops[stop_idx]
+    for stop in stops:
         open_min = _parse_hh_mm(str(stop.get("window_open") or ""))
         close_min = _parse_hh_mm(str(stop.get("window_close") or ""))
         if open_min is not None and close_min is not None and close_min >= open_min:
-            time_windows[node_idx] = (open_min, close_min)
+            time_windows.append((open_min, close_min))
             has_time_windows = True
+        else:
+            time_windows.append(None)
 
-    duration_caps = [_route_duration_cap_minutes(v) for v in vehicles_in]
-    has_duration_caps = any(c is not None for c in duration_caps)
-    max_horizon = 24 * 60
-    for tw in time_windows.values():
-        max_horizon = max(max_horizon, tw[1] + DEFAULT_SERVICE_MINUTES)
-    for cap in duration_caps:
-        if cap is not None:
-            max_horizon = max(max_horizon, cap)
-
-    if has_time_windows or has_duration_caps:
+    if has_time_windows:
+        max_horizon = 24 * 60
+        for tw in time_windows:
+            if tw is not None:
+                max_horizon = max(max_horizon, tw[1] + DEFAULT_SERVICE_MINUTES)
         routing.AddDimensionWithVehicleTransits(
             time_callback_indices, 30, max_horizon, False, "Time"
         )
         time_dim = routing.GetDimensionOrDie("Time")
-        for node_idx, tw in time_windows.items():
-            manager_index = manager.NodeToIndex(node_idx)
-            service = int(stops[node_to_stop[node_idx]]["service_minutes"])
-            time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
-        for vehicle_index, cap in enumerate(duration_caps):
-            if cap is None:
+        for node_index in range(num_depots, size):
+            tw = time_windows[node_index]
+            if tw is None:
                 continue
-            # RouteDuration: end cumul - start cumul ≤ cap.
-            time_dim.SetSpanUpperBoundForVehicle(cap, vehicle_index)
-
-    # Cold-chain / hazmat vehicle eligibility.
-    reefer_vehicles = [
-        i for i, v in enumerate(vehicles_in) if bool(v.get("has_refrigeration"))
-    ]
-    hazmat_vehicles = [
-        i for i, v in enumerate(vehicles_in) if bool(v.get("hazmat_certified"))
-    ]
-    for node_idx, stop_idx in node_to_stop.items():
-        stop = stops[stop_idx]
-        manager_index = manager.NodeToIndex(node_idx)
-        needs_cold = bool(stop.get("requires_cold_chain"))
-        needs_hazmat = bool(stop.get("is_hazardous"))
-        allowed: set[int] | None = None
-        if needs_cold:
-            allowed = set(reefer_vehicles)
-        if needs_hazmat:
-            haz = set(hazmat_vehicles)
-            allowed = haz if allowed is None else allowed & haz
-        if allowed is not None:
-            # VehicleVar.SetValues is the portable SWIG binding for vehicle filters.
-            routing.VehicleVar(manager_index).SetValues(sorted(int(v) for v in allowed))
+            manager_index = manager.NodeToIndex(node_index)
+            service = int(stops[node_index - num_depots]["service_minutes"])
+            time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
 
     # Drop infeasible stops individually instead of collapsing the whole model.
+    # Penalty high enough that assignment is preferred when feasible.
     drop_penalty = 100_000
-    for node_idx in node_to_stop:
-        routing.AddDisjunction([manager.NodeToIndex(node_idx)], drop_penalty)
+    for node_index in range(num_depots, size):
+        routing.AddDisjunction([manager.NodeToIndex(node_index)], drop_penalty)
+
+    max_stops = int(tunables["max_stops_per_route"])
 
     search = pywrapcp.DefaultRoutingSearchParameters()
     search.first_solution_strategy = (
@@ -333,7 +237,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     search.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    time_limit_ms = int(tunables["time_limit_ms"])
+    time_limit_ms = min(max(1, DEFAULT_TIME_LIMIT_MS), MAX_TIME_LIMIT_MS)
     search.time_limit.FromMilliseconds(time_limit_ms)
 
     solution = routing.SolveWithParameters(search)
@@ -355,14 +259,21 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 duration_min += _travel_minutes(
                     distance_matrix[node_index][next_node], vehicle_speeds[vehicle_index]
                 )
-                if node_index in node_to_stop:
-                    stop = stops[node_to_stop[node_index]]
+                if node_index >= num_depots:
+                    stop = stops[node_index - num_depots]
                     ordered_stops.append(stop)
                     total_vu += float(stop["volume_vu"])
                     duration_min += int(stop["service_minutes"])
                 index = next_index
             if not ordered_stops:
                 continue
+            if len(ordered_stops) > max_stops:
+                for stop in ordered_stops[max_stops:]:
+                    orphans.append(
+                        {"order_id": str(stop.get("order_id") or ""), "reason": "max_stops_per_route"}
+                    )
+                ordered_stops = ordered_stops[:max_stops]
+                total_vu = sum(float(s["volume_vu"]) for s in ordered_stops)
             cap = float(vehicle.get("max_volume_vu") or 0)
             util_pct = (total_vu / cap * 100.0) if cap > 0 else 0.0
             wire_stops = [
@@ -377,10 +288,6 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                     "window_close": s.get("window_close") or "",
                     "service_minutes": s.get("service_minutes"),
                     "priority": int(s.get("priority") or 0),
-                    "handling_class": s.get("handling_class") or "",
-                    "requires_cold_chain": bool(s.get("requires_cold_chain")),
-                    "is_hazardous": bool(s.get("is_hazardous")),
-                    "access_restriction": s.get("access_restriction") or "",
                 }
                 for s in ordered_stops
             ]
@@ -406,12 +313,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     for stop in stops:
         oid = str(stop.get("order_id") or "")
         if oid and oid not in assigned_ids and not any(o["order_id"] == oid for o in orphans):
-            reason = "unassigned"
-            if bool(stop.get("requires_cold_chain")) and not reefer_vehicles:
-                reason = "no_refrigerated_vehicle"
-            elif bool(stop.get("is_hazardous")) and not hazmat_vehicles:
-                reason = "no_hazmat_vehicle"
-            orphans.append({"order_id": oid, "reason": reason})
+            orphans.append({"order_id": oid, "reason": "unassigned"})
 
     elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
     util_sum = sum(float(r["util_pct"]) for r in routes)
