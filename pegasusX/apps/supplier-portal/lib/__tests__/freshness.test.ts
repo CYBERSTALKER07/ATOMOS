@@ -40,11 +40,13 @@ describe("GS-UF freshness", () => {
           driver_id: "drv-1",
           route_id: "r1",
           live_location_available: false,
+          driver_location: undefined as { lat?: number; lng?: number; latitude?: number; longitude?: number } | undefined,
         },
         {
           driver_id: "drv-2",
           route_id: "r2",
           live_location_available: false,
+          driver_location: undefined as { lat?: number; lng?: number; latitude?: number; longitude?: number } | undefined,
         },
       ],
       patch!,

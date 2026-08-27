@@ -31,6 +31,8 @@ import type { SupplierSettingsResponse, RecommendReassignRequest, RecommendReass
   RetailerStockCountCommitRequest,
   RetailerStockCountCommitResponse,
   RetailerStockCountVersionResponse,
+  CreateRetailerReceiveSessionRequest,
+  RetailerReceiveSession,
   RetailerProfileUpdateRequest,
   CreateRetailerPriceOverrideRequest,
   CreateRetailerPriceOverrideResponse,
@@ -460,6 +462,7 @@ export {
   payloadInboundScanKey,
   payloadInboundConfirmKey,
   payloadManifestExceptionKey,
+  claimFileKey,
 } from "./idempotency";
 import {
   dispatchBackpressureFromResponse,
@@ -1607,14 +1610,14 @@ export class ApiClient {
     return this.request("/v1/fleet/driver/cash-bag/turn-in", "POST", { body });
   }
 
-  async listCashReconciliations(params?: { status?: string }): Promise<{ reconciliations: CashReconciliation[] }> {
+  async listWarehouseOpsCashReconciliations(params?: { status?: string }): Promise<{ reconciliations: CashReconciliation[] }> {
     const q = new URLSearchParams();
     if (params?.status) q.set("status", params.status);
     const suffix = q.toString() ? `?${q.toString()}` : "";
     return this.request(`/v1/warehouse/ops/cash-reconciliations${suffix}`, "GET");
   }
 
-  async acceptCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
+  async acceptWarehouseOpsCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
     return this.request(
       `/v1/warehouse/ops/cash-reconciliations/${encodeURIComponent(id)}/accept`,
       "POST",
@@ -1622,7 +1625,7 @@ export class ApiClient {
     );
   }
 
-  async disputeCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
+  async disputeWarehouseOpsCashReconciliation(id: string, body?: { finance_note?: string }): Promise<CashReconciliation> {
     return this.request(
       `/v1/warehouse/ops/cash-reconciliations/${encodeURIComponent(id)}/dispute`,
       "POST",
@@ -1722,7 +1725,7 @@ export class ApiClient {
     min_c?: number;
     max_c?: number;
   }): Promise<TemperatureReadingView> {
-    return this.request<TemperatureReadingView>("/v1/warehouse/ops/temperature-readings", "POST", body);
+    return this.request<TemperatureReadingView>("/v1/warehouse/ops/temperature-readings", "POST", { body });
   }
 
   async listLaborZoneCapacity(date?: string): Promise<{ zones: LaborZoneCapacity[] } | LaborZoneCapacity> {
@@ -1744,7 +1747,7 @@ export class ApiClient {
     zoneH3?: string;
     status: string;
   }): Promise<{ status: string }> {
-    return this.request<{ status: string }>("/v1/labor-capacity/driver-availability", "POST", body);
+    return this.request<{ status: string }>("/v1/labor-capacity/driver-availability", "POST", { body });
   }
 
   async getSupplierMEIONetworkSummary(): Promise<SupplierMEIONetworkSummary> {
@@ -3208,7 +3211,7 @@ export class ApiClient {
     query: PromiseEvaluationRequest,
   ): Promise<PromiseEvaluationResult> {
     return this.request<PromiseEvaluationResult>(
-      appendQuery("/v1/retailer/service-promise", query as Record<string, unknown>),
+      appendQuery("/v1/retailer/service-promise", query as unknown as Record<string, unknown>),
       "GET",
     );
   }

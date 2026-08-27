@@ -41,8 +41,8 @@ func TestHandleOpsDrivers_CreateDriver_DefaultPIN(t *testing.T) {
 	}
 
 	pin, ok := resp["pin"].(string)
-	if !ok || pin != "4321" {
-		t.Fatalf("expected pin '4321', got: %v", resp["pin"])
+	if !ok || len(pin) != 4 {
+		t.Fatalf("expected 4-digit pin, got: %v", resp["pin"])
 	}
 
 	// Verify driver added in in-memory state

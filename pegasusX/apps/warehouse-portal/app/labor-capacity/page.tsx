@@ -114,7 +114,7 @@ export default function LaborCapacityPage() {
       title={t('portal.nav.labor_capacity')}
       description="Zone delivery capacity and driver reliability scores (labor-capacity API)."
       loading={loading}
-      skeletonVariant="list"
+      skeletonVariant="table"
     >
       <div className="flex flex-col gap-8">
         <section className="flex flex-wrap gap-3 items-end">
@@ -128,7 +128,7 @@ export default function LaborCapacityPage() {
         </section>
 
         {zones.length === 0 ? (
-          <EmptyState title="No zone capacity rows" description="Workers populate ZoneCapacity after availability is set." />
+          <EmptyState headline="No zone capacity rows" body="Workers populate ZoneCapacity after availability is set." />
         ) : (
           <table className="md-table w-full text-sm">
             <thead>

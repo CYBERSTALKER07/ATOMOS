@@ -396,7 +396,7 @@ struct DashboardView: View {
                 sku: item.productId.isEmpty ? item.id : item.productId,
                 name: item.productName,
                 quantity: Int64(item.quantity),
-                unitPriceMinor: Int64(item.unitPrice.rounded())
+                unitPriceMinor: item.unitPrice
             )
         }
         guard !lineItems.isEmpty else { return }

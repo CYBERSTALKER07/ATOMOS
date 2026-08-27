@@ -92,10 +92,10 @@ data class CartUiState(
     val shipping: Long get() = if (subtotal > 50_000L) 0L else 15_000L
     val discount: Long get() = quotedDiscountMinor ?: 0L
     val total: Long get() = subtotal + shipping - discount
-    val displaySubtotal: String get() = "%,.0f".format(subtotal)
-    val displayShipping: String get() = if (shipping == 0.0) "Free" else "%,.0f".format(shipping)
-    val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
-    val displayTotal: String get() = "%,.0f".format(total)
+    val displaySubtotal: String get() = "%,d".format(subtotal)
+    val displayShipping: String get() = if (shipping == 0L) "Free" else "%,d".format(shipping)
+    val displayDiscount: String get() = if (discount == 0L) "0" else "-%,d".format(discount)
+    val displayTotal: String get() = "%,d".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
     val selectedPaymentLabel: String
         get() = paymentOptions.find { it.gateway.equals(selectedPaymentGateway.trim(), ignoreCase = true) }?.label

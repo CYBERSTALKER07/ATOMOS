@@ -76,11 +76,11 @@ func (s *Service) QuoteCheckout(ctx context.Context, supplierID, retailerID stri
 	if err != nil {
 		return QuoteResult{}, fmt.Errorf("load promotions: %w", err)
 	}
-	promotions, err = s.repo.FilterEligibleCampaignPromotions(ctx, retailerID, promotions)
-	if err != nil {
-		// Degradation: if campaign check fails, fallback to standard active promotions
-		// but since campaign could be exhausted, it's safer to strip all campaigned promos or just return err
-		return QuoteResult{}, fmt.Errorf("filter campaign promotions: %w", err)
+	if s.repo != nil {
+		promotions, err = s.repo.FilterEligibleCampaignPromotions(ctx, retailerID, promotions)
+		if err != nil {
+			return QuoteResult{}, fmt.Errorf("filter campaign promotions: %w", err)
+		}
 	}
 	quote, err := ApplyQuote(s.now(), supplierID, retailerID, lines, promotions)
 	if err != nil {

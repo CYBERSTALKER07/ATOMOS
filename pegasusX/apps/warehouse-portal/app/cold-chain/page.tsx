@@ -109,12 +109,12 @@ export default function ColdChainPage() {
       title={t('portal.nav.cold_chain')}
       description="Manifest temperature readings — excursions quarantine lots and raise system breaches."
       loading={loading}
-      skeletonVariant="list"
+      skeletonVariant="table"
     >
       {!enabled ? (
         <EmptyState
-          title="Cold chain disabled"
-          description="Set WMS_COLD_CHAIN_ENABLED=true on the API to enable temperature ingest."
+          headline="Cold chain disabled"
+          body="Set WMS_COLD_CHAIN_ENABLED=true on the API to enable temperature ingest."
         />
       ) : (
         <div className="flex flex-col gap-6">
@@ -156,7 +156,7 @@ export default function ColdChainPage() {
           </div>
 
           {readings.length === 0 ? (
-            <EmptyState title="No readings" description="Load a manifest or record the first sample." />
+            <EmptyState headline="No readings" body="Load a manifest or record the first sample." />
           ) : (
             <div className="overflow-x-auto">
               <table className="md-table w-full text-sm">

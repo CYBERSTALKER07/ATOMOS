@@ -231,12 +231,13 @@ export default function WarehouseSettingsPage() {
       >
         <div className="max-w-2xl space-y-6">
           <PortalSection icon="warehouse" title={t("warehouse_portal.settings.text.depot_location")} description={t("warehouse_portal.residual.text.delivery_fee_distance_is_measured_warehouse_lat_lng_retailer_del")}>
-            <PortalField label="Pack country">
-              <PortalInput value={packCountry || catalogCountry} readOnly />
+            <PortalField id="pack-country" label="Pack country">
+              <PortalInput id="pack-country" value={packCountry || catalogCountry} readOnly />
             </PortalField>
             <LocationPicker value={location} onChange={setLocation} label={t("warehouse_portal.residual.text.warehouse_address")} />
-            <PortalField label={t("warehouse_portal.residual.text.gln_13_digits")}>
+            <PortalField id="gln-field" label={t("warehouse_portal.residual.text.gln_13_digits")}>
               <PortalInput
+                id="gln-input"
                 value={gln}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setGln(e.target.value)}
                 placeholder={t("warehouse_portal.settings.text.optional_gs1_location_number")}

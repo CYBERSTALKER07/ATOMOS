@@ -42,7 +42,7 @@ func testSvc(t *testing.T, key *rsa.PrivateKey) *Service {
 		JWTSecret: "gs-i-test-secret",
 		JWTIssuer: "pegasusx-test",
 		JWTTTL:    time.Hour,
-		Now:       func() time.Time { return time.Date(2026, 8, 16, 10, 0, 0, 0, time.UTC) },
+		Now:       func() time.Time { return time.Now().UTC() },
 		Keys: func(context.Context, string) (*rsa.PublicKey, error) {
 			return &key.PublicKey, nil
 		},

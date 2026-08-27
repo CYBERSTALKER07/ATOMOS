@@ -2939,6 +2939,8 @@ export interface SupplierPromotion {
   name: string;
   description?: string;
   tiers: PromotionTier[];
+  discount_bps?: number;
+  min_line_quantity?: number;
   scope_type: SupplierPromotionScopeType;
   scope_product_id?: string;
   scope_category_id?: string;
@@ -2957,7 +2959,9 @@ export interface SupplierPromotion {
 export interface SupplierPromotionUpsertRequest {
   name: string;
   description?: string;
-  tiers: PromotionTier[];
+  tiers?: PromotionTier[];
+  discount_bps?: number;
+  min_line_quantity?: number;
   scope_type: SupplierPromotionScopeType;
   scope_product_id?: string;
   scope_category_id?: string;

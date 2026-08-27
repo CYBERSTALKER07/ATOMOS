@@ -70,7 +70,7 @@ export function moneyCurrency(raw?: string | null): string {
 
 /** Shipped pack camera. Empty/planned pack does not invent Tashkent. */
 export function packMapCenter(
-  pack?: Pick<MarketPack, "map_center_lat" | "map_center_lng" | "status"> | null,
+  pack?: { map_center_lat?: number; map_center_lng?: number; status?: string } | null,
 ): PackMapCenter | null {
   if (pack && pack.status && pack.status !== "shipped") return null;
   const lat = Number(pack?.map_center_lat);

@@ -307,27 +307,28 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
               setWarehouses((prev) => {
                 const c = sessionMapCenter();
                 return [
-                ...prev,
-                {
-                  key: `new-wh-${Date.now()}`,
-                  name: `Warehouse ${prev.length + 1}`,
-                  address: "",
-                  lat: c ? String(c.lat) : "",
-                  lng: c ? String(c.lng) : "",
-                  coverage_radius_km: "50",
-                  is_active: true,
-                  is_on_shift: true,
-                  transfer_mode: "TRUCK",
-                  co_locate_with_factory_id: "",
-                  primary_factory_id: "",
-                  secondary_factory_id: "",
-                  assigned_factory_ids: [],
-                  country_code: "",
-                  coverage_cities: [],
-                  default_out_of_stock_policy: "REJECT",
-                  initial_inventory: [],
-                },
-              ])
+                  ...prev,
+                  {
+                    key: `new-wh-${Date.now()}`,
+                    name: `Warehouse ${prev.length + 1}`,
+                    address: "",
+                    lat: c ? String(c.lat) : "",
+                    lng: c ? String(c.lng) : "",
+                    coverage_radius_km: "50",
+                    is_active: true,
+                    is_on_shift: true,
+                    transfer_mode: "TRUCK",
+                    co_locate_with_factory_id: "",
+                    primary_factory_id: "",
+                    secondary_factory_id: "",
+                    assigned_factory_ids: [],
+                    country_code: "",
+                    coverage_cities: [],
+                    default_out_of_stock_policy: "REJECT",
+                    initial_inventory: [],
+                  },
+                ];
+              })
             }
           >
             Add warehouse

@@ -106,7 +106,7 @@ export default function LaborCapacityPage() {
         </section>
 
         {zoneRows.length === 0 ? (
-          <EmptyState title="No zone capacity rows" description="Workers populate ZoneCapacity after availability is set." />
+          <EmptyState headline="No zone capacity rows" body="Workers populate ZoneCapacity after availability is set." />
         ) : (
           <table className="md-table w-full text-sm">
             <thead>

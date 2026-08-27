@@ -1,7 +1,7 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { ApiError } from "@pegasusx/api-client";
 import type { SupplierCRMRetailer, SupplierCRMRetailerDetail } from "@pegasusx/types";
@@ -99,7 +99,7 @@ export default function SupplierCRMPage() {
     >
       {!loading && !error && retailers.length === 0 ? (
         <EmptyState
-          variant="no-data"
+          icon="inventory"
           headline="No retailer orders yet"
           body="Retailers appear here after they place orders with this supplier."
         />
@@ -165,25 +165,27 @@ export default function SupplierCRMPage() {
                   </thead>
                   <tbody>
                     {(detail.orders ?? []).map((order) => (
-                      <tr key={order.order_id} className="border-b border-[var(--border)]">
-                        <td className="py-2 px-3 font-mono text-xs">{order.order_id}</td>
-                        <td className="py-2 px-3">{order.state}</td>
-                        <td className="py-2 px-3 text-right font-mono">{fmtMinor(order.amount)}</td>
-                        <td className="py-2 px-3 text-right font-mono">{order.item_count}</td>
-                        <td className="py-2 px-3 text-right text-[var(--muted)]">
-                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
-                        </td>
-                      </tr>
-                      {(order.lines ?? []).map((line, idx) => (
-                        <tr key={`${order.order_id}-line-${idx}`} className="border-b border-[var(--border)] bg-[var(--surface-2)]">
-                          <td className="py-1 px-3 pl-8 text-xs" colSpan={2}>
-                            {line.product_name || line.sku || "SKU"}
+                      <Fragment key={order.order_id}>
+                        <tr className="border-b border-[var(--border)]">
+                          <td className="py-2 px-3 font-mono text-xs">{order.order_id}</td>
+                          <td className="py-2 px-3">{order.state}</td>
+                          <td className="py-2 px-3 text-right font-mono">{fmtMinor(order.amount)}</td>
+                          <td className="py-2 px-3 text-right font-mono">{order.item_count}</td>
+                          <td className="py-2 px-3 text-right text-[var(--muted)]">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
                           </td>
-                          <td className="py-1 px-3 text-right font-mono text-xs">{fmtMinor(line.amount_minor ?? 0)}</td>
-                          <td className="py-1 px-3 text-right font-mono text-xs">{line.qty}</td>
-                          <td className="py-1 px-3 text-right text-xs text-[var(--muted)]">line</td>
                         </tr>
-                      ))}
+                        {(order.lines ?? []).map((line, idx) => (
+                          <tr key={`${order.order_id}-line-${idx}`} className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                            <td className="py-1 px-3 pl-8 text-xs" colSpan={2}>
+                              {line.product_name || line.sku || "SKU"}
+                            </td>
+                            <td className="py-1 px-3 text-right font-mono text-xs">{fmtMinor(line.amount_minor ?? 0)}</td>
+                            <td className="py-1 px-3 text-right font-mono text-xs">{line.qty}</td>
+                            <td className="py-1 px-3 text-right text-xs text-[var(--muted)]">line</td>
+                          </tr>
+                        ))}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

@@ -404,7 +404,7 @@ private fun CartItemCard(
             // Price + stepper column
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "%,.0f".format(item.totalPrice),
+                    "%,d".format(item.totalPrice),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 )
                 Spacer(modifier = Modifier.height(6.dp))

@@ -194,7 +194,8 @@ export default function ProductPricingPage() {
             <div className="p-6 space-y-4">
               {(() => {
                 const oldList = product.price_minor;
-                const oldSale = activeSale ? oldList * (1 - activeSale.discount_bps / 10000) : oldList;
+                const discountBps = activeSale ? (activeSale.discount_bps ?? activeSale.tiers?.[0]?.discount_bps ?? 0) : 0;
+                const oldSale = activeSale ? oldList * (1 - discountBps / 10000) : oldList;
                 
                 const parsedList = Number.parseFloat(priceMajor.replace(",", "."));
                 const newList = Math.round(parsedList * 100);

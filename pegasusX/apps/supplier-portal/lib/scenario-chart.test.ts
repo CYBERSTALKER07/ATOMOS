@@ -1,3 +1,4 @@
+import { describe, it, expect } from "vitest";
 import { buildScenarioChartRows, pickScenarioPair } from "./scenario-chart";
 import type { PlanningScenarioResult } from "@pegasusx/types";
 

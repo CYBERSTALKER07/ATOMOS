@@ -15,7 +15,7 @@ export function LoyaltyCard() {
       {loading && !tier ? (
         <p className="text-sm text-[var(--desk-text-secondary)]">Loading loyalty…</p>
       ) : error ? (
-        <p className="text-sm text-orange-700">{error}</p>
+        <p className="text-sm text-orange-700">{error.message || String(error)}</p>
       ) : !tier?.enrolled ? (
         <p className="text-sm text-[var(--desk-text-secondary)]">
           Not enrolled. No fake Bronze — the supplier has not configured a program, or you have no points yet.

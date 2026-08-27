@@ -284,7 +284,7 @@ export default function HqPage() {
               )}
             </section>
           </>
-        )}
+        ) : null}
       </div>
     </PageChrome>
   );

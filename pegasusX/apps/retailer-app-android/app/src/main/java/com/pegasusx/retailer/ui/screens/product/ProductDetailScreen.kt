@@ -399,7 +399,7 @@ private fun VariantRow(
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         maxLines = 1,
                     )
-                    Text(stringResource(R.string.mobile_retailer_ui_pack_packcount_weightperunit_format, variant.packCount, variant.weightPerUnit, "%,.0f".format(variant.price)),
+                    Text(stringResource(R.string.mobile_retailer_ui_pack_packcount_weightperunit_format, variant.packCount, variant.weightPerUnit, "%,d".format(variant.price.toLong())),
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     )

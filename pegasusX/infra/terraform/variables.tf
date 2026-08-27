@@ -1,369 +1,212 @@
+/**
+ * Root Terraform Variable Declarations
+ */
+
 variable "project_id" {
-  description = "Google Cloud project ID for pegasusX workloads."
+  description = "The Google Cloud Platform project ID to deploy infrastructure into."
   type        = string
-}
-
-variable "tenant_slug" {
-  description = "Client or sandbox slug used to namespace isolated SSMR resources."
-  type        = string
-  default     = "ssmr"
-}
-
-variable "resource_prefix" {
-  description = "Explicit resource prefix override. When empty, terraform uses pegasusx-<tenant_slug>."
-  type        = string
-  default     = ""
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.project_id))
+    error_message = "The project_id must be between 6 and 30 characters, start with a letter, and contain only lowercase alphanumeric characters or hyphens."
+  }
 }
 
 variable "region" {
-  description = "Primary deployment region."
+  description = "The primary Google Cloud region for regional services."
   type        = string
-  default     = "asia-south1"
+  default     = "europe-west3"
+}
+
+variable "zone" {
+  description = "The primary Google Cloud availability zone."
+  type        = string
+  default     = "europe-west3-a"
 }
 
 variable "environment" {
-  description = "Environment label for resource tagging."
+  description = "The deployment environment tier."
   type        = string
-  default     = "dev"
+  default     = "production"
+  validation {
+    condition     = contains(["production", "staging", "development", "ssmr"], var.environment)
+    error_message = "The environment variable must be one of: 'production', 'staging', 'development', or 'ssmr'."
+  }
 }
 
-variable "vpc_name" {
-  description = "VPC name used by backend workloads and Memorystore."
+# Networking
+variable "network_name" {
+  description = "Name of the VPC network."
   type        = string
-  default     = ""
+  default     = "pegasusx-vpc"
 }
 
-variable "spanner_instance_name" {
-  description = "Cloud Spanner instance name."
+variable "subnet_name" {
+  description = "Name of the primary subnetwork."
   type        = string
-  default     = ""
+  default     = "pegasusx-primary-subnet"
 }
 
-variable "spanner_database_name" {
-  description = "Cloud Spanner database name."
+variable "primary_cidr_block" {
+  description = "CIDR range for primary subnetwork (nodes)."
   type        = string
-  default     = ""
+  default     = "10.10.0.0/20"
 }
 
-variable "spanner_display_name" {
-  description = "Cloud Spanner display name. When empty, derived from the tenant slug."
+variable "pod_cidr_block" {
+  description = "Secondary CIDR range for GKE Pods."
   type        = string
-  default     = ""
+  default     = "10.20.0.0/16"
 }
 
-variable "redis_instance_name" {
-  description = "Memorystore Redis instance name."
+variable "service_cidr_block" {
+  description = "Secondary CIDR range for GKE Services."
   type        = string
-  default     = ""
+  default     = "10.30.0.0/20"
 }
 
-variable "spanner_processing_units_cap" {
-  description = "Target Spanner PU cap for year-1 pilot. Enforced in GCP console / COST_GOVERNANCE_RUNBOOK until Spanner TF supports hard caps."
-  type        = number
-  default     = 100
+# Compute / GKE
+variable "cluster_name" {
+  description = "Name of the GKE cluster."
+  type        = string
+  default     = "pegasusx-prod-gke"
 }
 
-variable "redis_memory_size_gb" {
-  description = "Memorystore Redis memory size in GB."
-  type        = number
-  default     = 1
-}
-
-variable "redis_auth_enabled" {
-  description = "Enable AUTH on Memorystore Redis."
+variable "enable_autopilot" {
+  description = "Whether to use GKE Autopilot mode."
   type        = bool
   default     = true
 }
 
-variable "redis_transit_encryption_mode" {
-  description = "Enable TLS on Memorystore Redis."
+variable "master_ipv4_cidr_block" {
+  description = "CIDR block for GKE master control plane."
   type        = string
-  default     = "SERVER_AUTHENTICATION"
+  default     = "172.16.0.0/28"
 }
 
-variable "kafka_bootstrap_servers" {
-  description = "Kafka bootstrap servers for app env (stored in Secret Manager)."
+# Database & Cache
+variable "spanner_instance_name" {
+  description = "Name of the Cloud Spanner instance."
   type        = string
-  default     = ""
-  sensitive   = true
+  default     = "pegasusx-ssmr-spanner"
 }
 
-variable "kafka_topic_main" {
-  description = "Default Kafka topic used by backend-go outbox relay. Empty derives cell-<cell_id>.events.orders."
+variable "spanner_config" {
+  description = "Instance configuration for Cloud Spanner."
   type        = string
-  default     = ""
+  default     = "regional-europe-west3"
 }
 
-variable "kafka_topic_spatial" {
-  description = "Kafka topic reserved for spatial or H3 fanout. Empty derives cell-<cell_id>.events.spatial."
-  type        = string
-  default     = ""
-}
-
-variable "kafka_topic_realtime" {
-  description = "Kafka topic reserved for realtime socket and fleet fanout. Empty derives cell-<cell_id>.events.realtime."
-  type        = string
-  default     = ""
-}
-
-variable "kafka_topic_webhooks" {
-  description = "Kafka topic reserved for outbound webhook delivery. Empty derives cell-<cell_id>.events.webhooks."
-  type        = string
-  default     = ""
-}
-
-variable "kafka_topic_main_dlq" {
-  description = "Kafka topic for main-topic consumer / outbox poison messages. Empty derives cell-<cell_id>.events.orders-dlq."
-  type        = string
-  default     = ""
-}
-
-variable "kafka_topic_freeze_locks" {
-  description = "Kafka topic for freeze-lock fanout. Empty derives cell-<cell_id>.events.freeze-locks."
-  type        = string
-  default     = ""
-}
-
-variable "kafka_topic_inventory_import" {
-  description = "Kafka topic for inventory import jobs. Empty derives cell-<cell_id>.events.inventory-import."
-  type        = string
-  default     = ""
-}
-
-variable "firebase_project_id" {
-  description = "Firebase project id for ID token verification."
-  type        = string
-  default     = ""
-}
-
-variable "firebase_auth_enabled" {
-  description = "Whether Firebase bearer token verification is enabled at runtime."
-  type        = bool
-  default     = false
-}
-
-variable "enable_observability_resources" {
-  description = "Whether launch-readiness observability resources (dashboard, alerts, optional uptime checks) are provisioned."
-  type        = bool
-  default     = false
-}
-
-variable "alert_notification_channels" {
-  description = "Notification channel ids used by alert policies when observability resources are enabled."
-  type        = list(string)
-  default     = []
-}
-
-variable "ai_worker_monitoring_host" {
-  description = "Resolvable host for ai-worker monitoring uptime checks (for example an ingress hostname or load balancer IP). Leave empty to skip uptime checks."
-  type        = string
-  default     = ""
-}
-
-variable "ai_worker_monitoring_port" {
-  description = "TCP port used for ai-worker health and readiness monitoring."
+variable "spanner_processing_units" {
+  description = "Processing units allocated to Cloud Spanner."
   type        = number
-  default     = 8081
+  default     = 100
 }
 
-variable "ai_worker_monitoring_use_ssl" {
-  description = "Whether the ai-worker monitoring host is exposed over HTTPS."
+variable "spanner_database_name" {
+  description = "Name of the Cloud Spanner database."
+  type        = string
+  default     = "main"
+}
+
+variable "spanner_backup_retention_days" {
+  description = "Retention period in days for Spanner daily backups."
+  type        = number
+  default     = 30
+}
+
+variable "redis_instance_name" {
+  description = "Name of the Cloud Memorystore for Redis instance."
+  type        = string
+  default     = "pegasusx-ssmr-redis"
+}
+
+variable "redis_memory_size_gb" {
+  description = "Redis cache memory capacity in GiB."
+  type        = number
+  default     = 5
+}
+
+# Messaging / Kafka
+variable "kafka_cluster_id" {
+  description = "Identifier for the Google Managed Service for Apache Kafka cluster."
+  type        = string
+  default     = "pegasusx-events-cluster"
+}
+
+variable "kafka_vcpu_count" {
+  description = "Number of vCPUs per Kafka broker."
+  type        = number
+  default     = 3
+}
+
+variable "kafka_memory_bytes" {
+  description = "Memory capacity in bytes per Kafka broker."
+  type        = number
+  default     = 17179869184 # 16 GiB
+}
+
+# Storage & Security
+variable "media_bucket_name" {
+  description = "Name of the GCS bucket for proof-of-delivery and evidence dossiers."
+  type        = string
+  default     = "pegasusx-prod-media"
+}
+
+variable "updates_bucket_name" {
+  description = "Name of the GCS bucket for mobile APKs and desktop OTA updates."
+  type        = string
+  default     = "pegasusx-prod-app-updates"
+}
+
+variable "imports_bucket_name" {
+  description = "Name of the GCS bucket for supplier CSV/XLSX bulk imports and exports."
+  type        = string
+  default     = "pegasusx-prod-imports-exports"
+}
+
+variable "tf_state_bucket_name" {
+  description = "Name of the GCS bucket for Terraform state."
+  type        = string
+  default     = "pegasusx-terraform-state"
+}
+
+variable "k8s_namespace" {
+  description = "Kubernetes namespace for production workloads."
+  type        = string
+  default     = "pegasusx"
+}
+
+# Monitoring
+variable "alert_email_endpoints" {
+  description = "List of recipient email addresses for production SRE alerts."
+  type        = list(string)
+  default     = ["sre-alerts@pegasusx.io"]
+}
+
+variable "slack_webhook_url" {
+  description = "Optional Slack webhook URL for real-time alert notifications."
+  type        = string
+  default     = ""
+}
+
+variable "api_hostname" {
+  description = "Public API hostname for synthetic uptime checks."
+  type        = string
+  default     = "api.pegasusx.io"
+}
+
+variable "deletion_protection" {
+  description = "Whether deletion protection is enabled on critical stateful resources (Spanner)."
   type        = bool
-  default     = false
+  default     = true
 }
 
-variable "jwt_secret" {
-  description = "JWT signing secret for backend-go (stored in Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "global_pay_webhook_secret" {
-  description = "GlobalPay webhook HMAC secret (stored in Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "adyen_webhook_secret" {
-  description = "Adyen webhook secret (stored in Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook secret (stored in Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "google_maps_api_key" {
-  description = "Server-side Google Maps Platform API key (Geocoding, Places, Routes). Restrict to backend egress IPs / GKE NAT. Stored in Secret Manager."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "internal_api_key" {
-  description = "Shared INTERNAL_API_KEY for optimizer-core / ai-worker (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "payme_webhook_secret" {
-  description = "Payme webhook secret. Unused rails may use unused-rail-placeholder via phase0_sync."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "click_webhook_secret" {
-  description = "Click webhook secret. Unused rails may use unused-rail-placeholder via phase0_sync."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "fiscal_my_soliq_base_url" {
-  description = "MY_SOLIQ OFD base URL. Empty = no TF version (phase0 stub later). Never commit live values."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "fiscal_my_soliq_api_key" {
-  description = "MY_SOLIQ API key. Empty = no TF version."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "fiscal_my_soliq_tin" {
-  description = "MY_SOLIQ TIN / STIR. Empty = no TF version."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "fiscal_my_soliq_signer" {
-  description = "MY_SOLIQ signer name (pkcs12). Empty = no TF version. Never set dev-hmac here."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "fiscal_my_soliq_pkcs12_password" {
-  description = "E-IMZO PKCS#12 password. Empty = no TF version. The .p12 file is a volume, not this string."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "playmobile_login" {
-  description = "PlayMobile SMS login. Empty = no TF version."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "playmobile_password" {
-  description = "PlayMobile SMS password. Empty = no TF version."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "global_pay_service_id" {
-  description = "Global Pay merchant service id (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "global_pay_username" {
-  description = "Global Pay merchant username (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "global_pay_password" {
-  description = "Global Pay merchant password (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "redis_auth" {
-  description = "Memorystore AUTH string mirrored into GSM for ExternalSecret redis-password."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "maps_android_api_key" {
-  description = "Optional Android Maps SDK key (package name + SHA-1 restricted). Not used by backend-go."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "maps_ios_api_key" {
-  description = "Optional iOS Maps SDK key (bundle ID restricted). Not used by backend-go."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "tauri_signing_private_key" {
-  description = "Minisign private key for Tauri desktop updater bundles (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "tauri_updater_pubkey" {
-  description = "Minisign public key embedded in desktop tauri.conf.json (Secret Manager)."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "windows_codesign_pfx_b64" {
-  description = "Base64-encoded Authenticode PFX for Windows desktop installers."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "windows_codesign_password" {
-  description = "Password for windows_codesign_pfx_b64."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "apple_notarize_apple_id" {
-  description = "Apple ID for notarytool desktop releases."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "apple_notarize_team_id" {
-  description = "Apple Team ID for notarization."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "apple_notarize_app_password" {
-  description = "App-specific password for notarytool."
-  type        = string
-  default     = ""
-  sensitive   = true
+variable "labels" {
+  description = "Common labels applied to all infrastructure resources."
+  type        = map(string)
+  default = {
+    managed_by  = "terraform"
+    system      = "pegasusx"
+    environment = "production"
+  }
 }

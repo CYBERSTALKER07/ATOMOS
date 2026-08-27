@@ -226,7 +226,7 @@ data class Product(
     val displayPrice: String
         get() {
             offer?.salePriceMinor?.takeIf { it > 0 }?.let { return "%,d".format(it) }
-            defaultVariant?.let { return "%,.0f".format(it.price) }
+            defaultVariant?.let { return "%,d".format(it.price.toLong()) }
             price?.let { return "%,d".format(it) }
             priceMinor?.let { return "%,d".format(it) }
             return "—"

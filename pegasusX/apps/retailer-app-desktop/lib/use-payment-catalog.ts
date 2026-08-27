@@ -49,7 +49,7 @@ export function useRetailerPaymentCatalog() {
   const gateways = retailerCatalogGateways(
     catalog.length
       ? catalog
-      : (pack?.psp_adapters ?? []).map((code) => ({ code, selectable: true })),
+      : (pack?.psp_adapters ?? []).map((code) => ({ code, status: "live", selectable: true })),
   );
 
   return {
@@ -57,7 +57,7 @@ export function useRetailerPaymentCatalog() {
     catalog,
     currency: currency || packCurrency(pack),
     gateways: gateways.length ? gateways : selectablePackPsps(
-      (pack?.psp_adapters ?? []).map((code) => ({ code, selectable: true })),
+      (pack?.psp_adapters ?? []).map((code) => ({ code, status: "live", selectable: true })),
     ),
     allowsCash: gateways.includes("CASH") || gateways.length === 0,
     allowsGlobalPay: gateways.includes("GLOBAL_PAY"),

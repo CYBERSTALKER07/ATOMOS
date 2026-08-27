@@ -101,7 +101,7 @@ export default function WarehouseCoveragePage() {
 
   const saveRegions = async () => {
     const name = regionName.trim();
-    const items = regions.map((row) => ({
+    const items: Array<{ region_id?: string; name: string; country_code?: string }> = regions.map((row) => ({
       region_id: row.region_id,
       name: row.name,
       country_code: row.country_code,

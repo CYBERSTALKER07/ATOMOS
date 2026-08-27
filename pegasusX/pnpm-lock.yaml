@@ -59,6 +59,9 @@ importers:
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
+      '@pegasusx/desktop-cache':
+        specifier: workspace:*
+        version: link:../../packages/desktop-cache
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui

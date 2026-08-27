@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -25,6 +26,19 @@ func NewMeterWorker(client *spanner.Client) *MeterWorker {
 // ProcessOrderFinalized performs idempotent metering when an order is finalized.
 // It checks if global billing milestones are crossed and adjusts system fee rates accordingly.
 func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string, amount int64, supplierID string) error {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return nil
+	}
+	if amount <= 0 {
+		log.Printf("Metering skip ORDER_FINALIZED non-positive amount: orderID=%s amount=%d", orderID, amount)
+		return nil
+	}
+	if w == nil || w.client == nil {
+		return fmt.Errorf("billing meter: nil spanner client")
+	}
+
 	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%d supplierID=%s", orderID, amount, supplierID)
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {

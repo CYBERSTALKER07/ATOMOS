@@ -28,6 +28,7 @@
     "@heroui/styles": "^3.1.0",
     "@pegasusx/api-client": "workspace:*",
     "@pegasusx/desktop-bridge": "workspace:*",
+    "@pegasusx/desktop-cache": "workspace:*",
     "@pegasusx/explain-ui": "workspace:*",
     "@pegasusx/i18n": "workspace:*",
     "@pegasusx/pulse-ui": "workspace:*",

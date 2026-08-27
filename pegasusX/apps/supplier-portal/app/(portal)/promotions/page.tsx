@@ -84,10 +84,11 @@ export default function PromotionsPage() {
     setSimulatingId(promo.promotion_id);
     setError(null);
     try {
+      const discountBps = promo.discount_bps ?? promo.tiers?.[0]?.discount_bps ?? 0;
       const result = await api.simulatePromotionPandL(
         {
           promotion_id: promo.promotion_id,
-          discount_pct: promo.discount_bps / 100,
+          discount_pct: discountBps / 100,
           expected_units: 500,
           avg_unit_margin_minor: 1000,
         },
@@ -377,7 +378,7 @@ export default function PromotionsPage() {
                   <div>
                     <div className="md-typescale-title-small font-semibold">{promo.name}</div>
                     <div className="md-typescale-body-small text-[var(--color-md-outline)]">
-                      {(promo.discount_bps / 100).toFixed(2)}% · {promo.scope_type}
+                      {(((promo.discount_bps ?? promo.tiers?.[0]?.discount_bps ?? 0) / 100)).toFixed(2)}% · {promo.scope_type}
                       {promo.is_active ? "" : " · inactive"}
                     </div>
                   </div>

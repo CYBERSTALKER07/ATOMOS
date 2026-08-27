@@ -149,8 +149,8 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
     let variantId: String
     let variantSize: String
     let quantity: Int
-    let unitPrice: Double
-    let totalPrice: Double
+    let unitPrice: Int64
+    let totalPrice: Int64
 
     enum CodingKeys: String, CodingKey {
         case lineItemID = "line_item_id"
@@ -166,7 +166,7 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         case totalPrice = "total_price"
     }
 
-    init(id: String, productId: String, productName: String, variantId: String, variantSize: String, quantity: Int, unitPrice: Double, totalPrice: Double) {
+    init(id: String, productId: String, productName: String, variantId: String, variantSize: String, quantity: Int, unitPrice: Int64, totalPrice: Int64) {
         self.id = id
         self.productId = productId
         self.productName = productName
@@ -190,10 +190,10 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
             ?? "Unknown"
         self.variantSize = try container.decodeIfPresent(String.self, forKey: .variantSize) ?? ""
         self.quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
-        let basePrice = try container.decodeDoubleLossy(forKey: .unitPrice)
+        let basePrice = try container.decodeInt64Lossy(forKey: .unitPrice)
         self.unitPrice = basePrice
-        let decodedTotal = try container.decodeDoubleLossy(forKey: .totalPrice)
-        self.totalPrice = decodedTotal > 0 ? decodedTotal : basePrice * Double(self.quantity)
+        let decodedTotal = try container.decodeInt64Lossy(forKey: .totalPrice)
+        self.totalPrice = decodedTotal > 0 ? decodedTotal : basePrice * Int64(self.quantity)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -370,8 +370,8 @@ struct TrackingOrderItem: Codable, Identifiable, Hashable {
     let productId: String
     let productName: String
     let quantity: Int
-    let unitPrice: Double
-    let lineTotal: Double
+    let unitPrice: Int64
+    let lineTotal: Int64
 
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
@@ -379,6 +379,25 @@ struct TrackingOrderItem: Codable, Identifiable, Hashable {
         case quantity
         case unitPrice = "unit_price"
         case lineTotal = "line_total"
+    }
+
+    init(productId: String, productName: String, quantity: Int, unitPrice: Int64, lineTotal: Int64) {
+        self.productId = productId
+        self.productName = productName
+        self.quantity = quantity
+        self.unitPrice = unitPrice
+        self.lineTotal = lineTotal
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.productId = try container.decode(String.self, forKey: .productId)
+        self.productName = try container.decodeIfPresent(String.self, forKey: .productName) ?? ""
+        self.quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
+        let basePrice = try container.decodeInt64Lossy(forKey: .unitPrice)
+        self.unitPrice = basePrice
+        let decodedTotal = try container.decodeInt64Lossy(forKey: .lineTotal)
+        self.lineTotal = decodedTotal > 0 ? decodedTotal : basePrice * Int64(self.quantity)
     }
 }
 
@@ -657,8 +676,8 @@ extension Order {
             supplierName: "Fresh Farms Co.",
             status: .inTransit,
             items: [
-                OrderLineItem(id: "li-001", productId: "prod-001", productName: "Organic Whole Milk", variantId: "v-001a", variantSize: "1L", quantity: 3, unitPrice: 3.49, totalPrice: 10.47),
-                OrderLineItem(id: "li-002", productId: "prod-003", productName: "Free-Range Eggs", variantId: "v-003a", variantSize: "12 ct", quantity: 2, unitPrice: 5.99, totalPrice: 11.98)
+                OrderLineItem(id: "li-001", productId: "prod-001", productName: "Organic Whole Milk", variantId: "v-001a", variantSize: "1L", quantity: 3, unitPrice: 3490, totalPrice: 10470),
+                OrderLineItem(id: "li-002", productId: "prod-003", productName: "Free-Range Eggs", variantId: "v-003a", variantSize: "12 ct", quantity: 2, unitPrice: 5990, totalPrice: 11980)
             ],
             totalAmount: 22_450,
             orderSource: "MANUAL",
@@ -674,7 +693,7 @@ extension Order {
             supplierName: "Bakery Express",
             status: .completed,
             items: [
-                OrderLineItem(id: "li-003", productId: "prod-002", productName: "Sourdough Bread", variantId: "v-002b", variantSize: "500g", quantity: 1, unitPrice: 13.49, totalPrice: 13.49)
+                OrderLineItem(id: "li-003", productId: "prod-002", productName: "Sourdough Bread", variantId: "v-002b", variantSize: "500g", quantity: 1, unitPrice: 13490, totalPrice: 13490)
             ],
             totalAmount: 13_490,
             orderSource: "AI_PREDICTED",
@@ -690,7 +709,7 @@ extension Order {
             supplierName: "Mountain Spring Water",
             status: .pending,
             items: [
-                OrderLineItem(id: "li-004", productId: "prod-005", productName: "Sparkling Water", variantId: "v-005b", variantSize: "500ml", quantity: 2, unitPrice: 14.99, totalPrice: 29.98)
+                OrderLineItem(id: "li-004", productId: "prod-005", productName: "Sparkling Water", variantId: "v-005b", variantSize: "500ml", quantity: 2, unitPrice: 14990, totalPrice: 29980)
             ],
             totalAmount: 29_980,
             orderSource: "B2B_CHECKOUT",

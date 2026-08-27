@@ -383,8 +383,21 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 	// allow non-production load testing without a real gateway contract. Must be
 	// explicitly enabled via GLOBAL_PAY_STUB_MODE; never available in production.
 	if e.username == "" || e.password == "" {
-			return ExecutionResult{}, errGlobalPayUnkeyed()
+		if e.stubMode() {
+			stubURL := fmt.Sprintf("%s/v1/payment/checkout/globalpay/stub?order_id=%s", e.getCheckoutBaseURL(), req.OrderID)
+			if e.simulatorBase != "" {
+				stubURL = fmt.Sprintf("%s/pay?order_id=%s", e.simulatorBase, req.OrderID)
+			}
+			return ExecutionResult{
+				ResolvedGateway: "GLOBAL_PAY",
+				Mode:            ExecutionModeHostedRedirect,
+				PolicySource:    "SUPPLIER_DEFAULT",
+				RedirectURL:     stubURL,
+				ProviderRef:     "stub-token-" + req.OrderID,
+			}, nil
 		}
+		return ExecutionResult{}, errGlobalPayUnkeyed()
+	}
 
 	// 1. Authenticate to get access token
 	token, err := e.authenticate(ctx)

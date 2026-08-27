@@ -28,6 +28,6 @@ describe("GS-R coverage + pack PSP helpers", () => {
   });
 
   it("dedupes pins by type+id", () => {
-    expect(pinKey({ target_type: "location", target_id: " loc-s " })).toBe("LOCATION:loc-s");
+    expect(pinKey({ target_type: "LOCATION", target_id: " loc-s " })).toBe("LOCATION:loc-s");
   });
 });

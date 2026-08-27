@@ -120,7 +120,7 @@ struct RetailerServiceTests {
         #expect(item.variantId == "v-1")
         #expect(item.productName == "Milk")
         #expect(item.quantity == 10)
-        #expect(item.totalPrice == 120_000.0)
+        #expect(item.totalPrice == 120_000)
     }
 
     @Test func orderDecodingIncludesRetailerListMetadata() throws {

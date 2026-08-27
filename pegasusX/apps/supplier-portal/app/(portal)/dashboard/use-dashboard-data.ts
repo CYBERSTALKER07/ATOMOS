@@ -65,9 +65,9 @@ type DashboardCacheBundle = {
 const api = createSupplierApi();
 
 function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
-  const ordersByStatus = emptyOrderStatusCounts();
+  const ordersByStatus: Record<string, number> = emptyOrderStatusCounts();
   for (const [key, value] of Object.entries(resp.orders_by_status ?? {})) {
-    const normalized = canonicalizeOrderStatus(key) as OrderStatus;
+    const normalized = canonicalizeOrderStatus(key);
     if (normalized in ordersByStatus) {
       ordersByStatus[normalized] = value;
     }

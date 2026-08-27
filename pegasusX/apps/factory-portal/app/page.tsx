@@ -160,8 +160,7 @@ export default function FactoryDashboard() {
     const unsubscribe = subscribeFactoryWS({
       onMessage: payload => {
         const event = parseFactoryLiveEvent(payload);
-        if (!event) return;
-        if (event.type === 'DRIVER_LOCATION_UPDATED' || !shouldRefetchDashboardRollup(event.type)) {
+        if (!event || !shouldRefetchDashboardRollup(event.type)) {
           return;
         }
         queueLiveRefresh();

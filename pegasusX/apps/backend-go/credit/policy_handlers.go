@@ -333,11 +333,11 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 	}
 	type row struct {
 		RetailerPaymentTerms
-		ResolvedTerms
-		ProfileStatus        string `json:"profile_status,omitempty"`
-		AvailableCreditMinor int64  `json:"available_credit_minor,omitempty"`
-		CurrentBalanceMinor  int64  `json:"current_balance_minor,omitempty"`
-		OnHold               bool   `json:"on_hold"`
+		Resolved             ResolvedTerms `json:"resolved_terms"`
+		ProfileStatus        string        `json:"profile_status,omitempty"`
+		AvailableCreditMinor int64         `json:"available_credit_minor,omitempty"`
+		CurrentBalanceMinor  int64         `json:"current_balance_minor,omitempty"`
+		OnHold               bool          `json:"on_hold"`
 	}
 	out := make([]row, 0, len(list))
 	for _, t := range list {
@@ -345,7 +345,7 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 			continue
 		}
 		resolved, _ := s.ResolveTermsFor(r.Context(), t.RetailerID, t.SupplierID)
-		rr := row{RetailerPaymentTerms: t, ResolvedTerms: resolved}
+		rr := row{RetailerPaymentTerms: t, Resolved: resolved}
 		if s.credit != nil {
 			if p, found, _ := s.credit.GetProfile(r.Context(), t.RetailerID, t.SupplierID); found {
 				rr.ProfileStatus = string(p.Status)
