@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView, Alert, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { PayloadStatePanel } from './PayloadStatePanel';
-import { WorkflowSectionHeader } from './WorkflowSectionHeader';
-import { ExplainStatusBanner } from './ExplainStatusBanner';
+import PayloadStatePanel from './PayloadStatePanel';
+import WorkflowSectionHeader from './WorkflowSectionHeader';
+import { ExplainStatusBanner, type StatusExplain } from '../explainBanner';
 
 export interface ManifestDetailPaneProps {
   selectedOrder: any | null;
@@ -14,7 +14,7 @@ export interface ManifestDetailPaneProps {
   activeTruck: string | null;
   openReDispatch: (orderId: string) => void;
   manifestState: string | null;
-  handleException: (orderId: string, reason: string) => void;
+  handleException: (orderId: string, reason: "OVERFLOW" | "DAMAGED" | "MANUAL") => void;
   exceptionLoading: string | null;
   setShowProductScanner: (show: boolean) => void;
   selectedManifest: any[];
@@ -24,7 +24,7 @@ export interface ManifestDetailPaneProps {
   allChecked: boolean;
   isSealing: boolean;
   setShowInjectOrder: (show: boolean) => void;
-  sealExplain: string | null;
+  sealExplain: StatusExplain | null;
   handleManifestSeal: () => void;
   isSealingManifest: boolean;
   isLoading: boolean;

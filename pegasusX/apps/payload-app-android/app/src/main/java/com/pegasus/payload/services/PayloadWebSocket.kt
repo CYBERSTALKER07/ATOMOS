@@ -94,7 +94,7 @@ class PayloadWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val frame = runCatching { json.decodeFromString(WsMessage.serializer(), text) }
                     .getOrNull() ?: return
-                val isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                val isPayloadSync = frame.type == "PAYLOAD_SYNC" || frame.type?.startsWith("MANIFEST_") == true
                 if (!isPayloadSync && frame.title.isNullOrEmpty() && frame.body.isNullOrEmpty()) return
                 scope.launch { _frames.emit(frame) }
             }

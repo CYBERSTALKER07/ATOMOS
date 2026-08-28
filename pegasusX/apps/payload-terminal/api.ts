@@ -45,7 +45,7 @@ function normalizeManifests(
 
 export const PayloadTerminalApi = {
     getSupplierManifests: async (_token: string, state: string = 'DRAFT') => {
-        const res = await authFetch(`/v1/supplier/manifests?state=${state}`);
+        const res = await authFetch(`/v1/payloader/manifests?state=${state}`);
         if (!res.ok) throw new Error('Failed to fetch supplier manifests');
         return res.json();
     },
@@ -70,7 +70,7 @@ export const PayloadTerminalApi = {
             }
         } else {
             // Legacy alias still mounted for PAYLOAD on payloaderroutes.
-            const supplierRes = await authFetch(`/v1/supplier/manifests?${q}`);
+            const supplierRes = await authFetch(`/v1/payloader/manifests?${q}`);
             if (supplierRes.ok) {
                 for (const m of normalizeManifests(await supplierRes.json(), 'payloader')) {
                     if (seen.has(m.manifest_id)) continue;
@@ -124,7 +124,7 @@ export const PayloadTerminalApi = {
     },
 
     getSupplierManifestDetail: async (_token: string, manifestId: string) => {
-        const res = await authFetch(`/v1/supplier/manifests/${manifestId}`);
+        const res = await authFetch(`/v1/payloader/manifests/${manifestId}`);
         if (!res.ok) throw new Error('Failed to fetch supplier manifest detail');
         return res.json();
     },
@@ -132,7 +132,7 @@ export const PayloadTerminalApi = {
     supplierStartLoading: async (_token: string, manifestId: string, idempotencyKey?: string) => {
         const headers: Record<string, string> = {};
         if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
-        const res = await authFetch(`/v1/supplier/manifests/${manifestId}/start-loading`, {
+        const res = await authFetch(`/v1/payloader/manifests/${manifestId}/start-loading`, {
             method: 'POST',
             headers,
         });
@@ -143,7 +143,7 @@ export const PayloadTerminalApi = {
     supplierInjectOrder: async (_token: string, manifestId: string, orderId: string, idempotencyKey?: string) => {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
-        const res = await authFetch(`/v1/supplier/manifests/${manifestId}/inject-order`, {
+        const res = await authFetch(`/v1/payloader/manifests/${manifestId}/inject-order`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ order_id: orderId }),
@@ -155,7 +155,7 @@ export const PayloadTerminalApi = {
     supplierSealManifest: async (_token: string, manifestId: string, idempotencyKey?: string) => {
         const headers: Record<string, string> = {};
         if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
-        const res = await authFetch(`/v1/supplier/manifests/${manifestId}/seal`, {
+        const res = await authFetch(`/v1/payloader/manifests/${manifestId}/seal`, {
             method: 'POST',
             headers,
         });

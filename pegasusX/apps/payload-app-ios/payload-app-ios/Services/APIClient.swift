@@ -166,16 +166,16 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Supplier Manifests
     func supplierManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
-        return try await get("v1/supplier/manifests?state=\(state)")
+        return try await get("v1/payloader/manifests?state=\(state)")
     }
 
     func supplierManifestDetail(_ manifestId: String) async throws -> Manifest {
-        return try await get("v1/supplier/manifests/\(manifestId)")
+        return try await get("v1/payloader/manifests/\(manifestId)")
     }
 
     func supplierStartLoading(manifestId: String) async throws -> StatusResponse {
         try await post(
-            "v1/supplier/manifests/\(manifestId)/start-loading",
+            "v1/payloader/manifests/\(manifestId)/start-loading",
             body: [String: String](),
             idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
         )
@@ -183,7 +183,7 @@ final class APIClient: @unchecked Sendable {
 
     func supplierSealManifest(manifestId: String) async throws -> SealManifestResponse {
         let key = PayloadIdempotency.key(action: "supplier-seal-manifest", entityId: manifestId)
-        return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+        return try await post("v1/payloader/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
     }
 
     // MARK: - Factory loading-bay (P1-18 / P2-25 parity with Expo terminal)
@@ -258,7 +258,7 @@ final class APIClient: @unchecked Sendable {
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
         let payload = ["order_id": orderId]
         return try await post(
-            "v1/supplier/manifests/\(manifestId)/inject-order",
+            "v1/payloader/manifests/\(manifestId)/inject-order",
             body: payload,
             idempotencyKey: PayloadIdempotency.supplierInjectOrder(manifestId: manifestId, orderId: orderId)
         )

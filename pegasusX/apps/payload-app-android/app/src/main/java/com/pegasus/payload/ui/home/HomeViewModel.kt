@@ -194,7 +194,7 @@ class HomeViewModel @Inject constructor(
             .launchInVm()
         webSocket.frames
             .onEach { frame ->
-                if (frame.type == "PAYLOAD_SYNC") {
+                if (frame.type == "PAYLOAD_SYNC" || frame.type?.startsWith("MANIFEST_") == true) {
                     refreshManifest(silent = _state.value.manifest != null || _state.value.orders.isNotEmpty())
                     return@onEach
                 }

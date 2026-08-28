@@ -375,10 +375,10 @@ export default function ManifestWorkspaceScreen({
             >
               <View>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 0 }}>
-                  {selectedOrder.order_id}
+                  {selectedOrder?.order_id}
                 </Text>
                 <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
-                  {selectedOrder.retailer_id} · {selectedOrder.payment_gateway} · {selectedOrder.amount?.toLocaleString()}
+                  {selectedOrder?.retailer_id} · {selectedOrder?.payment_gateway} · {selectedOrder?.amount?.toLocaleString()}
                 </Text>
               </View>
               <View style={{
@@ -394,7 +394,7 @@ export default function ManifestWorkspaceScreen({
                 </Text>
               </View>
               <Pressable
-                onPress={() => selectedOrderId && openReDispatch(selectedOrderId)}
+                onPress={() => selectedOrderId && openReDispatch(selectedOrderId!)}
                 style={{
                   marginLeft: 10,
                   flexDirection: 'row',
@@ -422,10 +422,10 @@ export default function ManifestWorkspaceScreen({
                       onPress={() => {
                         Alert.alert(
                           `Remove Order (${reason})`,
-                          `Remove ${selectedOrderId.slice(0, 8)} from manifest? It will be re-injected with priority.`,
+                          `Remove ${selectedOrderId!.slice(0, 8)} from manifest? It will be re-injected with priority.`,
                           [
                             { text: 'Cancel', style: 'cancel' },
-                            { text: 'Remove', style: 'destructive', onPress: () => handleException(selectedOrderId, reason) },
+                            { text: 'Remove', style: 'destructive', onPress: () => handleException(selectedOrderId!, reason as "OVERFLOW" | "DAMAGED" | "MANUAL") },
                           ]
                         );
                       }}

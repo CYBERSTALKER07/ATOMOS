@@ -78,7 +78,7 @@ final class WebSocketClient {
                     guard let text, let data = text.data(using: .utf8) else { continue }
                     if let frame = try? JSONDecoder().decode(WsMessage.self, from: data) {
                         let hasContent = !(frame.title ?? "").isEmpty || !(frame.body ?? "").isEmpty
-                        let isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                        let isPayloadSync = frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false)
                         if hasContent || isPayloadSync { self.onFrame?(frame) }
                     }
                 } catch {

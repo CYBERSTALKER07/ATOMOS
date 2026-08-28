@@ -323,7 +323,7 @@ export function useManifestData({
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as LiveNotifFrame;
-          if (msg.type === 'PAYLOAD_SYNC') {
+          if (msg.type === 'PAYLOAD_SYNC' || msg.type?.startsWith('MANIFEST_')) {
             setLiveSyncRevision(prev => prev + 1);
             return;
           }

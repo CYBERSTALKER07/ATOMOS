@@ -694,7 +694,7 @@ final class HomeViewModel {
     }
 
     private func handleFrame(_ frame: WsMessage) {
-        if frame.type == "PAYLOAD_SYNC" {
+        if frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false) {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let silent = self.manifest != nil || !self.orders.isEmpty

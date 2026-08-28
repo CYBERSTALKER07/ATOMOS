@@ -117,27 +117,27 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
-    @GET("v1/supplier/manifests")
+    @GET("v1/payloader/manifests")
     suspend fun supplierManifests(
         @Query("state") state: String = "DRAFT",
     ): ManifestsResponse
 
-    @GET("v1/supplier/manifests/{id}")
+    @GET("v1/payloader/manifests/{id}")
     suspend fun supplierManifestDetail(@Path("id") manifestId: String): Manifest
 
-    @POST("v1/supplier/manifests/{id}/start-loading")
+    @POST("v1/payloader/manifests/{id}/start-loading")
     suspend fun supplierStartLoading(
         @Path("id") manifestId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
-    @POST("v1/supplier/manifests/{id}/seal")
+    @POST("v1/payloader/manifests/{id}/seal")
     suspend fun supplierSealManifest(
         @Path("id") manifestId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): SealManifestResponse
 
-    @POST("v1/supplier/manifests/{id}/inject-order")
+    @POST("v1/payloader/manifests/{id}/inject-order")
     suspend fun supplierInjectOrder(
         @Path("id") manifestId: String,
         @Body req: InjectOrderRequest,

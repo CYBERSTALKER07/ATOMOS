@@ -1,4 +1,4 @@
-import { fetchAuthSession, fiscalReceiptLabel, homeCellFromJwt, pinApiBaseUrl, type MarketPack } from '../../packages/api-client';
+import { fetchAuthSession, fiscalReceiptLabel, homeCellFromJwt, pinApiBaseUrl, type MarketPack } from '../../packages/api-core';
 
 const BOOTSTRAP = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
   (__DEV__ ? 'http://localhost:8180' : (process.env.EXPO_PUBLIC_RELEASE_API_URL?.trim() || 'https://api.pegasusx.app'));
