@@ -531,7 +531,7 @@
 			isa = PBXGroup;
 			children = (
 				60A50E063E538886B030E266 /* mobile-ios-barcode */,
-				AD1A995D1696BC38ED477895 /* mobile-ios-design */,
+				AD1A995D1696BC38ED477895 /* mobile-ios-core */,
 			);
 			path = packages;
 			sourceTree = "<group>";
@@ -569,7 +569,7 @@
 			path = SupplyRequests;
 			sourceTree = "<group>";
 		};
-		AD1A995D1696BC38ED477895 /* mobile-ios-design */ = {
+		AD1A995D1696BC38ED477895 /* mobile-ios-core */ = {
 			isa = PBXGroup;
 			children = (
 				D30C99FD5B076E82219D9ABA /* CollapsibleSidebar.swift */,
@@ -578,7 +578,7 @@
 				125E6918ED632F930D9DA257 /* PegasusStateViews.swift */,
 				F203A7BA99FB20F8A1858129 /* RealtimeRefresh.swift */,
 			);
-			path = "mobile-ios-design";
+			path = "mobile-ios-core";
 			sourceTree = "<group>";
 		};
 		AFF85A15CC7B254482613B5C /* PaymentConfig */ = {

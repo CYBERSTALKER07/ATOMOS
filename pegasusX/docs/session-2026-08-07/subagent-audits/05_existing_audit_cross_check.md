@@ -217,3 +217,14 @@ Status labels below are the docs' own vocabulary: **Wired / Live / Done**, **Par
 The documentation set is **unusually self-critical and mostly accurate at the moment each entry was written** — the PLATFORM_AUDIT'sGate-0/§8.x "WIRED" claims largely check out in code (I confirmed ~30 of them, including every marquee one: outbox leases, FSM fiscal gate repair, claims spine, dunning, partner stack, WMS waves, POS backend). The failures are of three kinds: **(1) temporal layering** — banners and status files were updated Aug 5-7 while the audit's own §0/§7 body, the gap-closure runbooks, the deployment ledger, and the credit-engine plan were not, so the docset argues with itself (C1, C2, C5, C6, C8); **(2) evidence integrity** — a dangling signoff log (C7), wrong relative workflow links (finding 26), and doc-level "Wired" labels for client cells that the project's own Substance Gate records as DEFERRED (C10); **(3) genuinely open substance** — single-supplier runtime, no platform admin, E2 global perimeter, E6 in-memory overlays, owner-blocked GP/Firebase/Soliq, and the un-executed kill-list leftovers. Launch-readiness gates are honest about being unpassed: production flip is self-blocked on payment/OTP secrets, and every client-side verification cell remains DEFERRED.
 
 Now writing the comprehensive report.
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

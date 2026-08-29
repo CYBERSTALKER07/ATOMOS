@@ -10,7 +10,7 @@ import { BulkImportWizard } from "@/components/BulkImportWizard";
 import type { CatalogProduct, CatalogCategory, CreateProductFormState } from "./components/types";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_SIZE } from "./components/types";
 import { CreateProductForm } from "./components/CreateProductForm";
-import { sessionPackCurrency } from "@pegasusx/api-client";
+import { sessionPackCurrency } from "@pegasusx/api-core";
 import { CatalogTable } from "./components/CatalogTable";
 
 export default function CatalogPage() {

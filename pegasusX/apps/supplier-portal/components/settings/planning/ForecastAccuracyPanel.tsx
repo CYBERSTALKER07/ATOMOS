@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { usePortalT } from "@/lib/i18n";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from "@pegasusx/api-core";
 import { createSupplierApi } from "@/lib/api";
 import { sessionSupplierId } from "@/lib/supplier-scope";
 import type { ForecastAccuracyDailyRow } from "@pegasusx/types";

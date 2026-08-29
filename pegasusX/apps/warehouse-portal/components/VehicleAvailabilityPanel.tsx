@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import type { WarehouseFleetVehicle, WarehouseVehicleUnavailableReason } from '@pegasusx/types';
-import { warehouseUpdateVehicleKey } from '@pegasusx/api-client';
+import { warehouseUpdateVehicleKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import {

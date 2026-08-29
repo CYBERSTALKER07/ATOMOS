@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
-import { warehouseCreateStaffKey } from '@pegasusx/api-client';
+import { warehouseCreateStaffKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';

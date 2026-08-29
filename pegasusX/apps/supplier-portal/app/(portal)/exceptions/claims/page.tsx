@@ -13,7 +13,7 @@ import { CLAIM_SETTLEMENT_MODES } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
-import { moneyCurrency } from "@pegasusx/api-client";
+import { moneyCurrency } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
 

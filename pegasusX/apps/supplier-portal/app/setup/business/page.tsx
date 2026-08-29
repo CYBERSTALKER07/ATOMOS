@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierBusinessSetupKey } from "@pegasusx/api-client";
+import { supplierBusinessSetupKey } from "@pegasusx/api-core";
 import {
   SetupCallout,
   SetupField,

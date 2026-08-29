@@ -3,6 +3,8 @@
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
+import { useWarehouseWsRefresh } from '@/lib/use-warehouse-ws-refresh';
+import { WAREHOUSE_DISPATCH_REFRESH_EVENTS } from '@/lib/fleet-ws-events';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -35,6 +37,10 @@ export default function ManifestsPage() {
   }, [date]);
 
   useEffect(() => { load(); }, [load]);
+
+  useWarehouseWsRefresh(() => {
+    void load();
+  }, { eventTypes: WAREHOUSE_DISPATCH_REFRESH_EVENTS });
 
   return (
     <PageTransition>

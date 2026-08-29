@@ -11,7 +11,7 @@ import {
   reverseGeocode,
   type ResolvedLocation,
 } from "@/lib/geocode";
-import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 import MapGL, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';

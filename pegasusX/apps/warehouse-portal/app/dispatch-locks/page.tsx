@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';

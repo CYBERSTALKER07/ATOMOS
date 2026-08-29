@@ -9,7 +9,7 @@ import {
   supplierImportApproveKey,
   supplierImportCreateKey,
   supplierImportIngestKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import type {
   SupplierImportApplyResponse,
   SupplierImportMappingCandidate,

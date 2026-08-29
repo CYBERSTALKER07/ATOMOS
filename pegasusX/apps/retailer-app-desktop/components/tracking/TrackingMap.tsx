@@ -12,7 +12,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { PageSection } from "../PageSection";
 import type { TrackingOrder } from "../../lib/types";
 import { moneyCurrency } from "../../lib/payment-catalog";
-import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";

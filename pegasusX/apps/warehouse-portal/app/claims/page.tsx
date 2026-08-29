@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
 import { PageChrome } from '@/components/PageChrome';
-import { moneyCurrency } from '@pegasusx/api-client';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 type ClaimLine = {
   sku: string;

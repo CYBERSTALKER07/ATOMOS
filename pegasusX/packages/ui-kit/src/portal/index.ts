@@ -40,3 +40,4 @@ export { PlanBrainTabs } from "./PlanBrainTabs";
 export type { PlanBrainTabsProps } from "./PlanBrainTabs";
 
 export { StatusStackPreview } from "./StatusStack.preview";
+export * from './SessionPackChip';

@@ -4,14 +4,15 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useState } from "react";
 import FleetLiveMapPanel from "@/components/FleetLiveMapPanel";
 import { supplierFetch } from "@/lib/auth";
-import { sessionMapCenter } from "@pegasusx/api-client";
+import { sessionMapCenter } from "@pegasusx/api-core";
+import { validateAndSimplifyPolygon } from "@pegasusx/validation";
 
 function packZonePolygon() {
   const c = sessionMapCenter();
   if (!c) return null;
   const d = 0.02;
   return {
-    type: "Polygon",
+    type: "Polygon" as const,
     coordinates: [
       [
         [c.lng - d, c.lat - d],
@@ -39,13 +40,19 @@ export default function ControlTowerCommandPanel({ className = "" }: { className
         setStatus("no pack map center");
         return;
       }
+      const validation = validateAndSimplifyPolygon(polygon);
+      if (!validation.valid) {
+        setStatus("Validation Error: " + validation.error);
+        return;
+      }
+      const payloadPolygon = validation.geojson ?? polygon;
       const res = await supplierFetch("/v1/supplier/control-tower/zone-overrides", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
           ttl_seconds: 1800,
-          polygon_geojson: polygon,
+          polygon_geojson: payloadPolygon,
         }),
       });
       if (!res.ok) {

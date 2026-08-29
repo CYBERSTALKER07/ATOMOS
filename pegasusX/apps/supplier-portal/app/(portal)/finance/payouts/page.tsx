@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { ApiError } from "@pegasusx/api-client";
-import { supplierPayoutGenerateKey } from "@pegasusx/api-client/idempotency";
+import { ApiError } from "@pegasusx/api-core";
+import { supplierPayoutGenerateKey } from "@pegasusx/api-core/idempotency";
 import type { PayoutBatch, PayoutRailInfo, SupplierPayoutPolicy } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "@/components/EmptyState";

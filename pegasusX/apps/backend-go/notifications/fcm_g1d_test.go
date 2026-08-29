@@ -19,3 +19,18 @@ func TestNilFCMClient_IsNoOp(t *testing.T) {
 		t.Fatal("nil client should be no-op")
 	}
 }
+
+func TestPurgeStaleToken_NilAndNoOpClient(t *testing.T) {
+	var nilClient *FCMClient
+	if err := nilClient.PurgeStaleToken(nil, "token-1", "session-1"); err != nil {
+		t.Fatalf("nil client PurgeStaleToken should return nil, got %v", err)
+	}
+
+	noOpClient := NewNoOpFCMClient(nil)
+	if err := noOpClient.PurgeStaleToken(nil, "token-1", "session-1"); err != nil {
+		t.Fatalf("no-op client PurgeStaleToken without spanner should return nil, got %v", err)
+	}
+	if err := noOpClient.PurgeStaleToken(nil, "", ""); err != nil {
+		t.Fatalf("empty token PurgeStaleToken should return nil, got %v", err)
+	}
+}

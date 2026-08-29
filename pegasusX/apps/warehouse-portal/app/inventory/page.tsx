@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
-import { warehouseAdjustInventoryKey, warehouseInventoryPolicyKey } from '@pegasusx/api-client';
+import { warehouseAdjustInventoryKey, warehouseInventoryPolicyKey } from '@pegasusx/api-core';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';

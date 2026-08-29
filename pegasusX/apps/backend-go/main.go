@@ -264,6 +264,7 @@ func main() {
 		Spanner:      app.Spanner,
 		SupplierHub:  app.SupplierHub,
 		WarehouseHub: app.WarehouseHub,
+		TelemetryHub: app.TelemetryHub,
 		OrgOIDC:      app.OrgOIDC,
 	})
 	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{

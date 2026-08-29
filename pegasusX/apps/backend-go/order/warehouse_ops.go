@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -42,7 +43,7 @@ func (s *Service) WarehouseMarkDelayed(ctx context.Context, ops *auth.WarehouseO
 		default:
 			return "", fmt.Errorf("%w: %s cannot be delayed", ErrInvalidStatusTransition, current.Status)
 		}
-	}, false, delayMeta)
+	}, true, delayMeta)
 }
 
 // WarehouseRejectOrder hard-cancels an order scoped to the warehouse (origin rejection).
@@ -119,7 +120,10 @@ func (s *Service) warehouseTransition(
 	prevStatus := current.Status
 	current.Status = nextStatus
 	current.UpdatedAt = s.now()
+
+	var prevManifestID string
 	if clearAssignment {
+		prevManifestID = current.ManifestID
 		current.ManifestID = ""
 		current.DriverID = ""
 		current.VehicleID = ""
@@ -131,7 +135,28 @@ func (s *Service) warehouseTransition(
 		actorID = ops.WarehouseID
 	}
 
-	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
+	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if prevManifestID != "" {
+			stmt := spanner.Statement{
+				SQL: `UPDATE SupplierTruckManifests 
+				      SET StopCount = StopCount - 1,
+				          TotalVolumeVU = TotalVolumeVU - COALESCE((SELECT VolumeVU FROM ManifestOrders WHERE ManifestId = @mid AND OrderId = @oid), 0)
+				      WHERE ManifestId = @mid`,
+				Params: map[string]any{"mid": prevManifestID, "oid": current.OrderID},
+			}
+			if _, err := txn.Update(ctx, stmt); err != nil {
+				return err
+			}
+			if err := txn.BufferWrite([]*spanner.Mutation{
+				spanner.Delete("ManifestOrders", spanner.Key{prevManifestID, current.OrderID}),
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if nextStatus == StatusCancelled && current.Source == OrderSourceManualPreorder {
 			return emitPreorderEvent(ctx, txn, events.EventPreOrderCancelled, current, string(auth.RoleWarehouse), actorID)
 		}
@@ -204,6 +229,9 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
+	}
+	if current.OriginalTotalMinor == 0 {
+		current.OriginalTotalMinor = current.TotalMinor
 	}
 	current.LineItems = lineItems
 	current.TotalMinor = total

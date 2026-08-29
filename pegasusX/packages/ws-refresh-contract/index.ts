@@ -1,4 +1,37 @@
-/** Shared websocket refresh contracts across PegasusX web and native clients. */
+/** Shared websocket and SSE refresh contracts across PegasusX web and native clients. */
+
+export const SSE_RETRY_TIMEOUT_MS = 3000;
+export const SSE_PING_INTERVAL_MS = 15000;
+export const SSE_SUPPLIER_ENDPOINT = "/v1/supplier/events";
+export const SSE_EVENTS_ENDPOINT = "/v1/events";
+
+export interface SSEEvent<T = unknown> {
+  id?: string;
+  event?: string;
+  type?: string;
+  data: T;
+}
+
+export function parseSSEEventData<T = unknown>(raw: unknown): T | null {
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+export function parseSSEEventType(event: MessageEvent | { type?: string; data?: unknown }): string | null {
+  if (event && "type" in event && typeof event.type === "string" && event.type !== "message" && event.type !== "") {
+    return event.type;
+  }
+  if (event && "data" in event) {
+    return parseWsEventType(event.data);
+  }
+  return null;
+}
 
 export const ORDER_STATUS_REFRESH_EVENTS = new Set([
   "ORDER_STATUS_CHANGED",

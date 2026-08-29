@@ -7,7 +7,7 @@ import type { ExceptionMapCell } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createSupplierApi } from "@/lib/api";
-import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
 

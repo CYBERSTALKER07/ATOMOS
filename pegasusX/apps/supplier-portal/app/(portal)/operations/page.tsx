@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-client";
+import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-core";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import { OperatorBroadcast, broadcastRoles, ReplenishmentAction, PaymentBypass } from "@/components/operations";

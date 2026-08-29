@@ -10,7 +10,7 @@ import {
   supplierPromotionCreateKey,
   supplierPromotionDeactivateKey,
   supplierPromotionUpdateKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { PageChrome } from '@/components/PageChrome';
 
 export default function ProductPricingPage() {

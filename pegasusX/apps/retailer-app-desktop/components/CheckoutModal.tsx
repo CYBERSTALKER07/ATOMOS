@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
-import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import { getRetailerProfile } from "@/lib/retailer-profile";
@@ -31,7 +31,7 @@ import type {
   StockWarning,
 } from "../lib/types";
 import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
-import { retailerUnifiedCheckoutKey } from "@pegasusx/api-client";
+import { retailerUnifiedCheckoutKey } from "@pegasusx/api-core";
 import {
   enqueuePendingCheckout,
   pendingCheckoutQueuedMessage,

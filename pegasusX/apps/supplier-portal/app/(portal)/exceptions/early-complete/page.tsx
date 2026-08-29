@@ -4,9 +4,9 @@ import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
-import { supplierApproveEarlyCompleteKey } from "@pegasusx/api-client";
+import { supplierApproveEarlyCompleteKey } from "@pegasusx/api-core";
 import { createSupplierApi } from "@/lib/api";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from "@pegasusx/api-core";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PageChrome } from '@/components/PageChrome';
 

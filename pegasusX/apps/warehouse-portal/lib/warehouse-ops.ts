@@ -8,7 +8,7 @@ import {
   warehouseOrderProposeDeliveryKey,
   warehouseOrderRejectKey,
   warehouseReceiveTransferKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId, warehouseScopeQuery } from '@/lib/warehouse-scope';
 

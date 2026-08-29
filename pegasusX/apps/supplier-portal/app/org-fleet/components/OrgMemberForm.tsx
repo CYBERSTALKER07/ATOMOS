@@ -3,8 +3,8 @@
 import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import type { Role, HomeNodeType } from "@pegasusx/types";
-import { supplierOrgMemberCreateKey } from "@pegasusx/api-client";
-import type { ApiClient } from "@pegasusx/api-client";
+import { supplierOrgMemberCreateKey } from "@pegasusx/api-core";
+import type { ApiClient } from "@pegasusx/api-core";
 import {
   OrgFormState,
   defaultOrgForm,

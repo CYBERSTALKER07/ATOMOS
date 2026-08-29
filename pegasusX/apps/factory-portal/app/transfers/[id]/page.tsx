@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
-import { factoryTransferTransitionKey } from '@pegasusx/api-client';
+import { factoryTransferTransitionKey } from '@pegasusx/api-core';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';

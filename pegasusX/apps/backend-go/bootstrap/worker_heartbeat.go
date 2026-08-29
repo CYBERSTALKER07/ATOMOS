@@ -63,6 +63,9 @@ func StartWorkerHeartbeat(ctx context.Context, client *redis.Client, log *slog.L
 		for {
 			select {
 			case <-ctx.Done():
+				c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				_ = client.Del(c, workerHeartbeatKey).Err()
+				cancel()
 				return
 			case <-ticker.C:
 				beat()

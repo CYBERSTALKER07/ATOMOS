@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { isCatalogBlocked } from "../lib/stock-policy";
 import type { Product, Variant } from "../lib/types";
-import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import {
   productDisplayPrice,
   productListPrice,

@@ -9,7 +9,7 @@ import {
   supplierPromotionCreateKey,
   supplierPromotionDeactivateKey,
   supplierPromotionUpdateKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import type {
   PromoSimulateResult,
   SupplierPromotion,

@@ -1,4 +1,4 @@
-import { packCurrency, readCachedAuthSession, selectablePackPsps } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession, selectablePackPsps } from '@pegasusx/api-core';
 import type { PSPListing } from "@pegasusx/types";
 
 const FOREIGN_RAILS = new Set(["STRIPE", "ADYEN", "AIRWALLEX"]);

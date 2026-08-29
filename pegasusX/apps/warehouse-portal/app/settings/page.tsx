@@ -10,7 +10,7 @@ import { LocationPicker, resolveLocationValue, type LocationValue } from '@/comp
 import { hasValidCoordinates } from '@/lib/geocode';
 import { PortalField, PortalInput, PortalSection } from '@/components/portal';
 import type { DeliveryFeeRules, WarehouseOpsLocationResponse, WarehouseOpsSettings, WarehouseOpsSettingsPatchRequest } from '@pegasusx/types';
-import { warehouseOpsLocationKey, warehouseOpsSettingsKey } from '@pegasusx/api-client';
+import { warehouseOpsLocationKey, warehouseOpsSettingsKey } from '@pegasusx/api-core';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { OpsSettingsForm } from '@/components/settings/OpsSettingsForm';
 import { ReturnPolicySettingsSection } from '@/components/settings/ReturnPolicySettingsSection';

@@ -7,7 +7,7 @@ import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierSeasonalOverrideCreateKey } from "@pegasusx/api-client/idempotency";
+import { supplierSeasonalOverrideCreateKey } from "@pegasusx/api-core/idempotency";
 import type { SeasonalOverrideInput, SeasonalTemplatesResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import SignalIngestOpsPanel from "@/components/SignalIngestOpsPanel";

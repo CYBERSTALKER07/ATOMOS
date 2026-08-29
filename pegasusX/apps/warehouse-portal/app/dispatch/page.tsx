@@ -13,7 +13,7 @@ import type {
   WarehouseUnavailableDispatchDriver,
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
-import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchKey, warehouseUpdateVehicleKey } from '@pegasusx/api-core';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { isTauri } from '@pegasusx/desktop-bridge';

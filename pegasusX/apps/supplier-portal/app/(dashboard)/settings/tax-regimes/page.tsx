@@ -6,7 +6,7 @@ import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { useLiveData } from "@/lib/hooks";
 import { supplierFetch } from "@/lib/auth";
-import { sessionPackCurrency } from "@pegasusx/api-client";
+import { sessionPackCurrency } from "@pegasusx/api-core";
 import {
   RefreshCw,
   Plus,

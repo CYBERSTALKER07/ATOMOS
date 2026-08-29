@@ -6,7 +6,7 @@ import {
   warehouseBroadcastKey,
   warehouseBroadcastTemplateCreateKey,
   warehouseBroadcastTemplateDeleteKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import type { BroadcastTemplate, RetailerOverridePreview } from '@pegasusx/types';
 import { PageChrome } from '@/components/PageChrome';
 import { warehouseApi } from '@/lib/warehouse-api';

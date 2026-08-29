@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { incrementOrderStatusCount, emptyOrderStatusCounts } from "@pegasusx/types";
-import { formatPackMoney } from "@pegasusx/api-client";
+import { formatPackMoney } from '@pegasusx/api-core';
 import { orderStatusFromWsRaw } from "../dashboard-command";
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -113,8 +113,8 @@ describe("GS-U9 role-row + responsive lock", () => {
   });
 
   it("StatusStack chips encode status as a label, not color-only, and stay 44/48 hit targets", () => {
-    const ios = src("packages/mobile-ios-design/StatusStack.swift");
-    const android = src("packages/mobile-android-design/src/main/java/com/pegasus/design/StatusStack.kt");
+    const ios = src("packages/mobile-ios-core/Sources/PegasusUIKit/StatusStack.swift");
+    const android = src("packages/mobile-android-design/src/main/java/com/pegasus/design/ui/StatusStack.kt");
     const web = src("packages/ui-kit/src/portal/StatusStack.tsx");
     expect(ios).toMatch(/var onSelect/);
     expect(ios).toMatch(/minHeight: 44/);

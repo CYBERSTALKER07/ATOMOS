@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
-import { factoryTransferCreateKey } from '@pegasusx/api-client';
+import { factoryTransferCreateKey } from '@pegasusx/api-core';
 import { factoryOperatorId } from '@/lib/factory-scope';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';

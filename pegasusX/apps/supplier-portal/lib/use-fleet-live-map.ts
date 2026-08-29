@@ -1,5 +1,5 @@
+import { usePolling } from '@pegasusx/api-react';
 import { useCallback, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
 import type { SupplierFleetLiveRoute } from "@pegasusx/types";
 import { applyDriverLocationPatch, parseDriverLocationPatch } from "@pegasusx/ws-refresh-contract";
 import { createSupplierApi } from "@/lib/api";

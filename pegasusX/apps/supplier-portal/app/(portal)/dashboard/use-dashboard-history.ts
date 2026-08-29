@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from '@pegasusx/api-core';
 import type { DashboardHistoryRange, HistorySeries } from "@pegasusx/types";
 import {
   historySeriesFromValues,

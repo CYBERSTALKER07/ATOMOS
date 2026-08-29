@@ -51,18 +51,13 @@ func (s *SpannerStore) Append(ctx context.Context, events []Event) error {
 				return fmt.Errorf("outbox spanner store: payload required")
 			}
 
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
 			row := map[string]interface{}{
 				"EventId":       e.EventID,
 				"AggregateType": e.AggregateType,
 				"AggregateId":   e.AggregateID,
 				"TopicName":     e.TopicName,
 				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
+				"CreatedAt":     spanner.CommitTimestamp,
 				"PublishedAt":   nil,
 				"ClaimedBy":     nil,
 				"ClaimedUntil":  nil,
@@ -279,7 +274,7 @@ func (s *SpannerStore) RecordPublishFailures(ctx context.Context, eventIDs []str
 				continue
 			}
 			row, readErr := txn.ReadRow(ctx, "OutboxEvents", spanner.Key{id}, []string{
-				"EventId", "AggregateType", "AggregateId", "TopicName", "Payload", "CreatedAt", "PublishAttempts",
+				"EventId", "AggregateType", "AggregateId", "TopicName", "Payload", "CreatedAt", "PublishAttempts", "SupplierId",
 			})
 			if readErr != nil {
 				if spanner.ErrCode(readErr) == codes.NotFound {
@@ -292,24 +287,35 @@ func (s *SpannerStore) RecordPublishFailures(ctx context.Context, eventIDs []str
 				payload                                      []byte
 				createdAt                                    time.Time
 				attempts                                     int64
+				supplierID                                   spanner.NullString
 			)
-			if scanErr := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &attempts); scanErr != nil {
+			if scanErr := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &attempts, &supplierID); scanErr != nil {
 				return fmt.Errorf("outbox spanner store: scan for failure record %s: %w", id, scanErr)
 			}
 			attempts++
 			if attempts >= maxAttempts {
+				storedSupplier := ""
+				if supplierID.Valid {
+					storedSupplier = supplierID.StringVal
+				}
+				resolvedSupplier := ResolveSupplierID(storedSupplier, payload)
+
+				cols := map[string]interface{}{
+					"EventId":        eventID,
+					"AggregateType":  aggregateType,
+					"AggregateId":    aggregateID,
+					"TopicName":      topicName,
+					"Payload":        payload,
+					"CreatedAt":      createdAt.UTC(),
+					"DeadLetteredAt": spanner.CommitTimestamp,
+					"Attempts":       attempts,
+					"LastError":      lastErr,
+				}
+				if resolvedSupplier != "" {
+					cols["SupplierId"] = resolvedSupplier
+				}
 				mutations = append(mutations,
-					spanner.InsertOrUpdateMap("OutboxDeadLetters", map[string]interface{}{
-						"EventId":        eventID,
-						"AggregateType":  aggregateType,
-						"AggregateId":    aggregateID,
-						"TopicName":      topicName,
-						"Payload":        payload,
-						"CreatedAt":      createdAt.UTC(),
-						"DeadLetteredAt": spanner.CommitTimestamp,
-						"Attempts":       attempts,
-						"LastError":      lastErr,
-					}),
+					spanner.InsertOrUpdateMap("OutboxDeadLetters", cols),
 					spanner.Delete("OutboxEvents", spanner.Key{id}),
 				)
 				deadLettered = append(deadLettered, eventID)

@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
-import { warehouseInboundConfirmKey, warehouseInboundScanKey } from '@pegasusx/api-client';
+import { warehouseInboundConfirmKey, warehouseInboundScanKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconcile';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';

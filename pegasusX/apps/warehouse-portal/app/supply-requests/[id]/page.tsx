@@ -8,7 +8,7 @@ import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/li
 import {
   warehouseReceiveTransferKey,
   warehouseSupplyRequestTransitionKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';

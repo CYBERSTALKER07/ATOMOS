@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { supplierLoyaltyProgramPatchKey } from "@pegasusx/api-client";
+import { supplierLoyaltyProgramPatchKey } from "@pegasusx/api-core";
 import type { LoyaltyProgram } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import { supplierScopeId } from "@/lib/supplier-scope";

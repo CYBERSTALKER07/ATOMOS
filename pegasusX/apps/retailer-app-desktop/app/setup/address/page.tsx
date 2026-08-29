@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { retailerSetupKey } from "@pegasusx/api-client";
+import { retailerSetupKey } from "@pegasusx/api-core";
 import { getRetailerId } from "@/lib/retailer-profile";
 import { PortalField, PortalInput, PortalActions, FormAlert } from "@/components/portal";
 import { SETUP_TAX_KEY } from "@/components/setup/constants";

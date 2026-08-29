@@ -1,74 +1,136 @@
-# Project: PegasusX Enterprise Infrastructure on Google Cloud Platform (GCP)
+# Project: PegasusX Architectural Fixes & System Constraints
 
-## Architecture Overview
-PegasusX is a multi-tier, multi-tenant FMCG supply chain operating system. The production GCP deployment architecture leverages:
-- **Compute Layer**: Google Kubernetes Engine (GKE) Autopilot with Workload Identity, running containerized Go REST/WebSocket API gateways, asynchronous worker daemons, Python OR-Tools VRP solvers, and microservices.
-- **Database Layer**: Cloud Spanner (multi-zone regional instance with 100+ tables, 13 interleaved hierarchies, and strict ACID guarantees) + Cloud Memorystore for Redis 7.0 (low-latency cache, request idempotency, and cross-pod WebSocket pub/sub mesh).
-- **Event & Messaging Layer**: Google Managed Service for Apache Kafka (10 canonical topics with transactional outbox relay and consumer groups) + Redis Pub/Sub for real-time WebSocket fanout.
-- **Object Storage & CDN**: Google Cloud Storage (GCS) buckets for evidence dossiers, app updates, and data imports/exports + Cloud CDN + Cloud Armor WAF for edge caching, DDoS protection, and SSL termination.
-- **Security & Networking**: Private VPC with dual subnets (GKE nodes/pods/services), Cloud NAT for static outbound IP allowlisting (Soliq OFD, banking gateways), Secret Manager + External Secrets Operator, and IAM Workload Identity.
-- **Third-Party Integrations**: Soliq OFD (PKCS#12 digital tax invoicing), Global Pay / Payme / Click payment gateways, PlayMobile / Twilio SMS aggregators, SendGrid email, Google Maps Platform / OSRM routing, and Firebase Phone Auth + FCM push notifications.
+## Architecture
+PegasusX is an enterprise multi-tenant B2B FMCG distribution platform with a Go microservices backend, Spanner database, Kafka messaging, Redis caching, Next.js web portals, and native mobile clients.
+
+This project delivers 4 critical architectural fixes across the backend, frontend, and data layers:
+1. **Kafka DLQ & Spanner Failure Transparency**:
+   - Panic recovery inside the retry loop in `apps/backend-go/kafka/consumer.go`.
+   - 4 consecutive panics / errors route message to DLQ and execute the Spanner failure updater hook to transition the job status to `FAILED`.
+   - Supplier UI (`apps/supplier-portal`) displays `FAILED` job status and error summaries.
+2. **Server-Sent Events (SSE) Migration**:
+   - Backend `GET /v1/supplier/events` streaming endpoint using `text/event-stream`, `X-Accel-Buffering: no`, 15-second keep-alive comments (`: ping\n\n`), and reconnection parameters (`retry: 3000`).
+   - Replaces Supplier WebSocket connections with lightweight `EventSource` in `apps/supplier-portal` and `@pegasusx/ws-refresh-contract`.
+3. **Frontend Geospatial Validation**:
+   - Turf.js integration (`@turf/kinks`, `@turf/simplify`, `@turf/helpers`, `@turf/clean-coords`) in `packages/validation` and `packages/ui-maps`.
+   - Intercepts polygon submission in Mapbox/MapLibre Draw UI (`ControlTowerCommandPanel.tsx`), auto-simplifying polygons with >50 vertices to <50 vertices, and rejecting/blocking self-intersecting (kinked) shapes with descriptive client-side errors.
+4. **FCM Stale Token Race Condition Resolution**:
+   - Schema enhancement to `DeviceTokens` table in `apps/backend-go/schema/spanner.ddl` adding `SessionId STRING(128)` and `DeviceId STRING(128)` with indexes.
+   - Updates `purgeStaleToken` in `apps/backend-go/notifications/fcm.go` and `platform/repository.go` to explicitly match tokens to device sessions, preventing blind deletion of newly issued tokens during rapid re-installs.
+
+---
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Monorepo Service & Dependency Scan | Exhaustive catalog of all Go services, Python optimizer, web portals, mobile apps, database schemas, Kafka topics, GCS buckets, and third-party APIs | M1 | Survey Explorer 1, 2, 3 |
-| 2 | Compute Platform Justification | Comprehensive trade-off analysis justifying GKE (Autopilot/Standard) over Cloud Run / VMs for CGO (h3-go), persistent WebSockets, and OpenMP Python solvers | M2 | Survey Explorer 1, 2, 3 |
-| 3 | Phased GCP Architecture & Service Mapping | End-to-end wiring plan mapping all 25+ services, workers, and storage layers to GCP native resources across 4 rollout phases | M2 | Survey Explorer 1, 2, 3 |
-| 4 | Third-Party Integration Architecture | Technical specs for Soliq OFD (E-IMZO PKCS#12), Payment rails (Global Pay/Payme/Click), SMS (PlayMobile/Twilio), Routing (Google Routes v2 + OSRM), and Firebase | M2 | Survey Explorer 2, 3 |
-| 5 | Monthly TCO & Capacity Sizing Model | Detailed monthly cost breakdown for GCP infrastructure and 3rd-party services scaled for 1000 retailers, 50 suppliers, and 200 drivers | M2 | Survey Explorer 1, 2, 3 |
-| 6 | HA, Autoscaling, DR & Monitoring Plan | Multi-zone SLA (99.99%), HPA rules, Cloud Monitoring dashboards, PromQL alerts, synthetic health probes, and disaster recovery RPO/RTO | M2 | Survey Explorer 1, 2, 3 |
-| 7 | Security Hardening & Zero-Trust IAM | VPC firewall rules, Cloud Armor WAF policies, Cloud NAT static egress, Workload Identity bindings, and Secret Manager rotation | M2 | Survey Explorer 3 |
-| 8 | Modular Terraform Networking Module | VPC, subnets, secondary pod/service IP ranges, Cloud Router, Cloud NAT with static EIPs, and firewall rules | M3 | Survey Explorer 3, IaC |
-| 9 | Modular Terraform Compute / GKE Module | GKE Autopilot / Standard cluster, node pools, Workload Identity, Release Channel, and network policies | M3 | Survey Explorer 1, 3, IaC |
-| 10 | Modular Terraform Database Module | Cloud Spanner instance (PU-based sizing), databases, IAM, and Cloud Memorystore for Redis 7.0 HA instance | M3 | Survey Explorer 1, 3, IaC |
-| 11 | Modular Terraform Messaging / Kafka Module | Google Managed Service for Apache Kafka cluster, capacity sizing, and 10 canonical partitioned topics | M3 | Survey Explorer 2, 3, IaC |
-| 12 | Modular Terraform Storage & Security Module | 4 GCS buckets with lifecycle rules/CORS, Cloud Armor security policies, Secret Manager secrets, and IAM service accounts | M3 | Survey Explorer 2, 3, IaC |
-| 13 | Modular Terraform Monitoring Module | Cloud Monitoring notification channels, alerting policies (Spanner CPU, GKE pod crashloop, Kafka lag, HTTP 5xx, Redis memory), and dashboards | M3 | Survey Explorer 1, 3, IaC |
-| 14 | Root Terraform Configuration & Staging/Prod Environments | Root `main.tf`, `variables.tf`, `outputs.tf`, `terraform.tfvars.example` linking all modules with clean variable passing and documentation | M3 | IaC Architecture |
-| 15 | IaC Validation & Verification | Complete execution of `terraform init -backend=false` and `terraform validate` across all modules and root | M4 | Reviewer / IaC Verification |
-| 16 | Agent-as-Judge Codebase Inventory Verification | Independent review audit verifying 100% fidelity between codebase scan findings and physical repository assets | M4 | Reviewer / Auditor |
+| 1 | Kafka DLQ Retry & Panic Recovery | Per-attempt panic recovery inside retry loop up to MaxAttempts (4) | M1 | ORIGINAL_REQUEST § R1 |
+| 2 | Kafka DLQ Spanner Job Status Update | Write FAILED status to Spanner job tables upon routing to DLQ | M1 | ORIGINAL_REQUEST § R1 |
+| 3 | Supplier UI DLQ Failure Display | Render FAILED alerts and error summaries in Supplier Portal | M1 | ORIGINAL_REQUEST § R1 |
+| 4 | Backend SSE Endpoint | GET /v1/supplier/events streaming handler, keep-alive pings & adapter | M2 | ORIGINAL_REQUEST § R2 |
+| 5 | Supplier Web & Contract SSE Client | Replace WebSocket with EventSource in supplier portal & refresh contract | M2 | ORIGINAL_REQUEST § R2 |
+| 6 | Supplier Native SSE Handlers | Provide SSE client stream adapters for mobile (Android/iOS) | M2 | ORIGINAL_REQUEST § R2 |
+| 7 | Geospatial Turf.js Validation Logic | Auto-simplify >50 vertices to <50 vertices & detect self-intersections | M3 | ORIGINAL_REQUEST § R3 |
+| 8 | Mapbox Draw UI Interception | Intercept polygon submission in ControlTowerCommandPanel.tsx | M3 | ORIGINAL_REQUEST § R3 |
+| 9 | DeviceTokens Schema Session Columns | Add SessionId & DeviceId columns and indexes in Spanner DDL | M4 | ORIGINAL_REQUEST § R4 |
+| 10 | Session-Aware Token Purging | Update purgeStaleToken to match specific session/device | M4 | ORIGINAL_REQUEST § R4 |
+| 11 | E2E & Programmatic Verification Suite | 4 acceptance criteria verification suites (DLQ panic test, SSE curl, Turf validation, FCM session test) | M5 | ORIGINAL_REQUEST § Acceptance Criteria |
+
+---
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Codebase Infrastructure Inventory Document | Produce `INVENTORY.md` containing the exhaustive catalog of every microservice, worker daemon, CLI tool, database schema, cache, Kafka topic, client app, GCS bucket, and 3rd-party API | none | DONE |
-| M2 | Phased GCP Architecture Document | Produce `GCP_ARCHITECTURE_PLAN.md` with compute justification, service mapping, 4-phase rollout, 3rd-party integrations, 1000-retailer cost model, HA/DR, autoscaling, Cloud Monitoring, and security hardening | M1 | DONE |
-| M3 | Modularized Terraform IaC Suite | Build production-ready, modular Terraform templates under `infra/terraform/` (modules: networking, compute, database, messaging, storage_security, monitoring + root orchestration) passing validation | M2 | DONE |
-| M4 | Independent Review & IaC Validation Gate | Run `terraform validate` across all templates, conduct independent Agent-as-Judge inventory review, and synthesize `VALIDATION_REPORT.md` | M3 | DONE |
+| M1 | Kafka DLQ UI Transparency | `apps/backend-go/kafka/consumer.go`, `apps/backend-go/kafka/dlq_spanner.go`, `apps/supplier-portal` | none | DONE |
+| M2 | SSE Migration | `apps/backend-go/ws/sse.go`, `apps/backend-go/ws/handler.go`, `packages/ws-refresh-contract`, `apps/supplier-portal` | none | DONE |
+| M3 | Frontend Geospatial Validation | `packages/validation`, `packages/ui-maps`, `apps/supplier-portal/components/ControlTowerCommandPanel.tsx` | none | DONE |
+| M4 | FCM Stale Token Race Condition Fix | `apps/backend-go/schema/spanner.ddl`, `apps/backend-go/platform/repository.go`, `apps/backend-go/notifications/fcm.go` | none | DONE |
+| M5 | E2E Integration & Verification Suite | End-to-end tests across all 4 acceptance criteria | M1, M2, M3, M4 | DONE |
 
-## Interface Contracts & Module Boundaries
-- **Networking Module (`infra/terraform/modules/networking`)**:
-  - Outputs: `vpc_id`, `vpc_self_link`, `subnet_id`, `subnet_self_link`, `pod_ip_range_name`, `service_ip_range_name`, `nat_ip_addresses`
-- **Database Module (`infra/terraform/modules/database`)**:
-  - Inputs: `vpc_id`, `vpc_self_link`, `spanner_processing_units`, `redis_memory_size_gb`
-  - Outputs: `spanner_instance_name`, `spanner_database_name`, `redis_host`, `redis_port`
-- **Messaging Module (`infra/terraform/modules/messaging`)**:
-  - Inputs: `vpc_id`, `subnet_id`, `kafka_cpu`, `kafka_memory_gib`
-  - Outputs: `kafka_cluster_name`, `kafka_bootstrap_servers`, `topic_names`
-- **Compute Module (`infra/terraform/modules/compute`)**:
-  - Inputs: `vpc_id`, `subnet_id`, `pod_ip_range_name`, `service_ip_range_name`
-  - Outputs: `gke_cluster_id`, `gke_cluster_name`, `gke_endpoint`, `gke_ca_certificate`
-- **Storage & Security Module (`infra/terraform/modules/storage_security`)**:
-  - Inputs: `project_id`, `region`, `environment`
-  - Outputs: `media_bucket_name`, `updates_bucket_name`, `imports_bucket_name`, `cloud_armor_policy_id`, `service_account_emails`
-- **Monitoring Module (`infra/terraform/modules/monitoring`)**:
-  - Inputs: `project_id`, `alert_email_endpoints`, `gke_cluster_name`, `spanner_instance_name`, `redis_instance_name`, `kafka_cluster_name`
-  - Outputs: `alert_policy_ids`, `dashboard_ids`
+
+---
+
+## Interface Contracts
+
+### 1. Kafka DLQ Hook & Spanner Status Update
+- **Hook Signature**:
+  ```go
+  type DLQHook func(ctx context.Context, msg kafka.Message, reason error) error
+  ```
+- **ConsumerDeps**:
+  ```go
+  type ConsumerDeps struct {
+      Brokers     []string
+      GroupID     string
+      Topic       string
+      Topics      []string
+      Handler     EventHandler
+      DLQWriter   DLQWriter
+      OnDLQ       DLQHook
+      MaxAttempts int
+      Auth        kafkautil.ClientAuth
+  }
+  ```
+- **DLQ Reason Headers**:
+  - `dlq_reason`: error message / panic trace
+  - `original_topic`: string
+  - `original_partition`: string
+  - `original_offset`: string
+
+### 2. SSE Server-Sent Events Contract
+- **Endpoint**: `GET /v1/supplier/events` (and `GET /v1/events`)
+- **Headers**:
+  - `Content-Type: text/event-stream; charset=utf-8`
+  - `Cache-Control: no-cache, no-transform`
+  - `Connection: keep-alive`
+  - `X-Accel-Buffering: no`
+- **Stream Framing**:
+  - Initial handshake: `retry: 3000\n\n: connected\n\n`
+  - Periodic keep-alive ping: `: ping\n\n` (every 15 seconds)
+  - Broadcast event: `id: <timestamp_or_event_id>\nevent: <eventType>\ndata: <JSON>\n\n`
+
+### 3. Frontend Geospatial Validation Contract
+- **Function**: `validateAndSimplifyPolygon(geojson: GeoJSON.Polygon | Feature<Polygon> | Coordinates, options?: ValidationOptions)`
+- **Output**:
+  ```typescript
+  export interface PolygonValidationResult {
+    valid: boolean;
+    error?: string;
+    hasKinks?: boolean;
+    vertexCount: number;
+    simplified: boolean;
+    geojson?: GeoJSON.Polygon;
+  }
+  ```
+- **Thresholds**: Max vertices = 50 (auto-simplifies if >50). Kinks / self-intersections strictly rejected.
+
+### 4. FCM Device Token Session Contract
+- **Spanner Schema**:
+  ```sql
+  CREATE TABLE DeviceTokens (
+    Token          STRING(512) NOT NULL,
+    ActorId        STRING(36)  NOT NULL,
+    ActorRole      STRING(20)  NOT NULL,
+    Platform       STRING(20)  NOT NULL,
+    DeviceId       STRING(128),
+    SessionId      STRING(128),
+    UpdatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ) PRIMARY KEY (Token);
+  ```
+- **Purge Method**:
+  ```go
+  func (r *DeviceTokenRepository) PurgeStaleToken(ctx context.Context, token string, sessionID string) error
+  func (r *DeviceTokenRepository) DeleteTokenBySession(ctx context.Context, actorID string, sessionID string) error
+  ```
+
+---
 
 ## Code Layout
-- Documentation:
-  - `INVENTORY.md` — Monorepo infrastructure and service inventory catalog
-  - `GCP_ARCHITECTURE_PLAN.md` — Phased GCP infrastructure architecture and wiring plan
-  - `VALIDATION_REPORT.md` — Independent validation, test logs, and review signoff
-- Terraform IaC:
-  - `infra/terraform/main.tf` — Root configuration calling all modules
-  - `infra/terraform/variables.tf` — Root variable declarations
-  - `infra/terraform/outputs.tf` — Root output declarations
-  - `infra/terraform/terraform.tfvars.example` — Example variables for deployment
-  - `infra/terraform/modules/networking/` — VPC, subnets, Cloud NAT, firewall rules
-  - `infra/terraform/modules/compute/` — GKE Autopilot / Workload Identity
-  - `infra/terraform/modules/database/` — Cloud Spanner & Memorystore Redis
-  - `infra/terraform/modules/messaging/` — Managed Service for Apache Kafka & topics
-  - `infra/terraform/modules/storage_security/` — GCS buckets, Cloud Armor, IAM, Secrets
-  - `infra/terraform/modules/monitoring/` — Alert policies, notification channels, dashboards
+- `apps/backend-go/kafka/`: Kafka consumer, DLQ writer, retry & panic loop, Spanner failure updater
+- `apps/backend-go/ws/`: WebSocket hub and Server-Sent Events (SSE) adapter & handlers
+- `apps/backend-go/notifications/`: FCM notification sender & stale token purger
+- `apps/backend-go/platform/`: Device token repository & HTTP endpoints
+- `apps/backend-go/schema/spanner.ddl`: Canonical Spanner DDL definitions
+- `packages/validation/`: Polygon validation, Turf.js rules, Zod schemas
+- `packages/ui-maps/`: Mapbox/MapLibre map components & draw editors
+- `packages/ws-refresh-contract/`: Real-time SSE / event definitions
+- `apps/supplier-portal/`: Next.js portal with SSE client hooks, DLQ failure alerts, and Mapbox draw controls

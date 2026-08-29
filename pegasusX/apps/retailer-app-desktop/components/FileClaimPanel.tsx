@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
-import { claimFileKey } from "@pegasusx/api-client";
+import { claimFileKey } from "@pegasusx/api-core";
 import {
   claimTypeNeedsPhoto,
   fileOrderClaim,

@@ -78,13 +78,14 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 	threshold := denseBatchThreshold()
 	if client != nil && n >= threshold {
 		in := optimizerclient.SolveInput{
-			TraceID:    job.TraceID,
-			SupplierID: job.SupplierID,
-			HomeNodeID: job.HomeNodeID,
-			DepotLat:   job.DepotLat,
-			DepotLng:   job.DepotLng,
-			Orders:     geoOrdersFromDispatchable(job.Orders),
-			Fleet:      job.Fleet,
+			TraceID:      job.TraceID,
+			SupplierID:   job.SupplierID,
+			HomeNodeID:   job.HomeNodeID,
+			DepotLat:     job.DepotLat,
+			DepotLng:     job.DepotLng,
+			Orders:       geoOrdersFromDispatchable(job.Orders),
+			Fleet:        job.Fleet,
+			TetrisBuffer: maxAcceptableUtilFraction,
 		}
 		solveCtx, cancel := context.WithTimeout(ctx, solverBudget)
 		defer cancel()

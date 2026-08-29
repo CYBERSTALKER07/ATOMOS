@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiClient, ApiError } from "@pegasusx/api-client";
+import { ApiClient, ApiError } from '@pegasusx/api-core';
 import { supplierApiBaseUrl, supplierFetch } from "@/lib/auth";
 import type {
   PaymentLedgerResponse,
@@ -99,58 +99,50 @@ export function useSupplierFinanceLiveRefresh(onSignal: (eventType: string) => v
 
   useEffect(() => {
     let cancelled = false;
-    let socket: WebSocket | null = null;
-    let reconnectTimer: number | undefined;
+    let eventSource: EventSource | null = null;
     let refreshTimer: number | undefined;
-    let attempts = 0;
 
     const clearTimers = () => {
-      if (reconnectTimer !== undefined) {
-        window.clearTimeout(reconnectTimer);
-        reconnectTimer = undefined;
-      }
       if (refreshTimer !== undefined) {
         window.clearTimeout(refreshTimer);
         refreshTimer = undefined;
       }
     };
 
-    const closeSocket = () => {
-      if (!socket) {
+    const closeStream = () => {
+      if (!eventSource) {
         return;
       }
-      socket.onopen = null;
-      socket.onmessage = null;
-      socket.onerror = null;
-      socket.onclose = null;
-      socket.close();
-      socket = null;
+      eventSource.onopen = null;
+      eventSource.onmessage = null;
+      eventSource.onerror = null;
+      eventSource.close();
+      eventSource = null;
     };
 
-    const scheduleReconnect = (reason: string) => {
-      if (cancelled) {
+    const handleEvent = (eventType: string | null) => {
+      if (!eventType || !supplierFinanceRefreshEventTypes.has(eventType)) {
         return;
       }
-      closeSocket();
-      if (reconnectTimer !== undefined) {
-        window.clearTimeout(reconnectTimer);
+      if (refreshTimer !== undefined) {
+        window.clearTimeout(refreshTimer);
       }
-      attempts += 1;
-      const delay = Math.min(1000 * 2 ** Math.min(attempts, 4), 10_000) + Math.floor(Math.random() * 250);
-      setState({
-        status: "degraded",
-        message: `${reason} Retrying live finance updates in ${Math.round(delay / 1000)}s.`,
-        attempts,
-      });
-      reconnectTimer = window.setTimeout(() => {
-        void connect();
-      }, delay);
+      refreshTimer = window.setTimeout(() => {
+        if (cancelled) {
+          return;
+        }
+        onSignalRef.current(eventType);
+        setState((current) => ({
+          status: current.status,
+          message: `Live finance updates connected. Last event: ${eventType}.`,
+          attempts: current.attempts,
+          lastEventType: eventType,
+          lastEventAt: new Date().toISOString(),
+        }));
+      }, 250);
     };
 
-    const connect = async () => {
-      if (cancelled) {
-        return;
-      }
+    try {
       setState((current) => ({
         status: current.attempts > 0 ? "degraded" : "connecting",
         message: current.attempts > 0 ? "Reconnecting live finance updates..." : "Connecting live finance updates...",
@@ -159,80 +151,54 @@ export function useSupplierFinanceLiveRefresh(onSignal: (eventType: string) => v
         lastEventType: current.lastEventType,
       }));
 
-      try {
-        const response = await supplierFetch("/v1/supplier/ws-session", {
-          method: "GET",
-          cache: "no-store",
+      const sseUrl = `${supplierApiBaseUrl()}/v1/supplier/events`;
+      eventSource = new EventSource(sseUrl, { withCredentials: true });
+
+      eventSource.onopen = () => {
+        setState((current) => ({
+          status: "live",
+          message: "Live finance updates connected.",
+          attempts: 0,
+          lastEventAt: current.lastEventAt,
+          lastEventType: current.lastEventType,
+        }));
+      };
+
+      eventSource.onmessage = (event) => {
+        const eventType = parseEventType(event.data);
+        handleEvent(eventType);
+      };
+
+      for (const type of supplierFinanceRefreshEventTypes) {
+        eventSource.addEventListener(type, (event: MessageEvent) => {
+          const eventType = parseEventType(event.data) || type;
+          handleEvent(eventType);
         });
-        const payload = (await response.json().catch(() => null)) as SupplierWebSocketSessionResponse | { error?: string } | null;
-        if (!response.ok || !payload || typeof (payload as SupplierWebSocketSessionResponse).token !== "string") {
-          throw new Error(extractSessionError(payload));
-        }
-
-        const session = payload as SupplierWebSocketSessionResponse;
-        const wsBase = supplierApiBaseUrl().replace(/^http/, "ws");
-        const wsURL = session.websocket_url || `${wsBase}/v1/ws`;
-        const connector = wsURL.includes("?") ? "&" : "?";
-        socket = new WebSocket(`${wsURL}${connector}token=${encodeURIComponent(session.token)}`);
-
-        socket.onopen = () => {
-          attempts = 0;
-          setState((current) => ({
-            status: "live",
-            message: "Live finance updates connected.",
-            attempts,
-            lastEventAt: current.lastEventAt,
-            lastEventType: current.lastEventType,
-          }));
-        };
-
-        socket.onmessage = (event) => {
-          const eventType = parseEventType(event.data);
-          if (!eventType || !supplierFinanceRefreshEventTypes.has(eventType)) {
-            return;
-          }
-          if (refreshTimer !== undefined) {
-            window.clearTimeout(refreshTimer);
-          }
-          refreshTimer = window.setTimeout(() => {
-            if (cancelled) {
-              return;
-            }
-            onSignalRef.current(eventType);
-            setState((current) => ({
-              status: current.status,
-              message: `Live finance updates connected. Last event: ${eventType}.`,
-              attempts: current.attempts,
-              lastEventType: eventType,
-              lastEventAt: new Date().toISOString(),
-            }));
-          }, 250);
-        };
-
-        socket.onerror = () => {
-          setState((current) => ({
-            status: "degraded",
-            message: "Live finance updates interrupted.",
-            attempts: current.attempts,
-            lastEventAt: current.lastEventAt,
-            lastEventType: current.lastEventType,
-          }));
-        };
-
-        socket.onclose = () => {
-          scheduleReconnect("Live finance updates disconnected.");
-        };
-      } catch (error) {
-        scheduleReconnect(errorToMessage(error));
       }
-    };
 
-    void connect();
+      eventSource.onerror = () => {
+        setState((current) => ({
+          status: "degraded",
+          message: "Live finance updates interrupted.",
+          attempts: current.attempts + 1,
+          lastEventAt: current.lastEventAt,
+          lastEventType: current.lastEventType,
+        }));
+      };
+    } catch {
+      setState((current) => ({
+        status: "degraded",
+        message: "Live finance updates unavailable.",
+        attempts: current.attempts + 1,
+        lastEventAt: current.lastEventAt,
+        lastEventType: current.lastEventType,
+      }));
+    }
 
     return () => {
       cancelled = true;
       clearTimers();
-      closeSocket();
+      closeStream();
     };
   }, []);
 

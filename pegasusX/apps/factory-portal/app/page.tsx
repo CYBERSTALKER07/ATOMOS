@@ -1,8 +1,10 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { etagFromResponse, usePolling } from '@pegasusx/api-client';
+import { etagFromResponse } from '@pegasusx/api-core';
 import {
   FACTORY_DRIVER_DUTY,
   FACTORY_QC_RESULTS,

@@ -19,7 +19,7 @@ func NewMultiTopicConsumer(deps ConsumerDeps) *Consumer {
 		return NewConsumer(deps)
 	}
 	if deps.MaxAttempts <= 0 {
-		deps.MaxAttempts = 3
+		deps.MaxAttempts = 4
 	}
 	dialer, err := kafkautil.Dialer(deps.Auth)
 	if err != nil {

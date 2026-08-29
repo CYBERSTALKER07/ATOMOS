@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { PaymentLedgerEntry } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
-import { moneyCurrency } from "@pegasusx/api-client";
+import { moneyCurrency } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
 

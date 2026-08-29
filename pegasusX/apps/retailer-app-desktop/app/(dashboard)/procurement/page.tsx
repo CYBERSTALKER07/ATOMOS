@@ -31,7 +31,7 @@ import { apiFetch } from "../../../lib/auth";
 import {
   retailerSupplierAddKey,
   retailerSupplierRemoveKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Supplier, RetailerAnalytics } from "../../../lib/types";
 

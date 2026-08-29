@@ -8,7 +8,7 @@ import {
   retailerEditPreorderKey,
   retailerSetupKey,
   retailerProfileUpdateKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 
 // ── AI & Preorder Integrations ──
 

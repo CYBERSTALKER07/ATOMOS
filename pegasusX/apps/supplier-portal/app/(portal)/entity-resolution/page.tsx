@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from "@pegasusx/api-core";
 import type { EntityResolutionExplainResponse, EntityResolutionResolveResponse } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 

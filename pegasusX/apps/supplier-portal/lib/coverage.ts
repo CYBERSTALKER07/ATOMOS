@@ -1,5 +1,5 @@
 import type { CoverageMode, PSPListing, ServicePin, ServicePinTargetType } from "@pegasusx/types";
-import { selectablePackPsps } from "@pegasusx/api-client";
+import { selectablePackPsps } from '@pegasusx/api-core';
 
 export const PIN_EDITOR_DESKTOP_DEADLINE = "2026-09-16";
 

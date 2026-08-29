@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { WarehouseOrderDetail } from '@pegasusx/types';
-import { adminForceCompleteKey, ApiError } from '@pegasusx/api-client';
+import { adminForceCompleteKey, ApiError } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import PageTransition from '@/components/PageTransition';

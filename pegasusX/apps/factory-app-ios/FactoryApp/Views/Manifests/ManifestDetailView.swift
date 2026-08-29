@@ -77,7 +77,7 @@ struct ManifestDetailView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard event.eventType == .manifestUpdate else { return }
+                    guard event.type.hasPrefix("MANIFEST_") else { return }
                     Task { await load(silent: true) }
                 },
                 onReconnect: {

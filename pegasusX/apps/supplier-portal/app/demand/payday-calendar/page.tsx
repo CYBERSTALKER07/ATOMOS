@@ -79,7 +79,6 @@ export default function PaydayCalendarPage() {
         throw new Error(d.error || "Failed to create payday signal");
       }
       
-      console.log("Payday window created successfully!");
       setIsModalOpen(false);
       fetchPaydays();
     } catch (err: any) {
@@ -94,7 +93,6 @@ export default function PaydayCalendarPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to remove");
-      console.log("Payday window removed");
       fetchPaydays();
     } catch (err: any) {
       console.error(err.message);

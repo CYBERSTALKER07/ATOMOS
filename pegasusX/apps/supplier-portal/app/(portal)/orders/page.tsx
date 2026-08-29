@@ -2,7 +2,7 @@
 
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from '@pegasusx/desktop-cache';
 import { isTauri } from '@pegasusx/desktop-bridge';
 import type { SupplierOrder } from '@pegasusx/types';

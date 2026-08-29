@@ -1,9 +1,11 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ApiError, moneyCurrency, usePolling } from '@pegasusx/api-client';
+import { ApiError, moneyCurrency } from '@pegasusx/api-core';
 import {
   ORDER_STATUS_FUNNEL,
   TRUCK_DUTY_STATUSES,

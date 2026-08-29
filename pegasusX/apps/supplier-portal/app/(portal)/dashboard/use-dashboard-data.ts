@@ -1,5 +1,5 @@
+import { usePolling } from '@pegasusx/api-react';
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
 import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import type { OrderStatus } from "@pegasusx/types";

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log/slog"
-	"runtime"
 	"strings"
 	"time"
 
@@ -20,7 +19,6 @@ type inventoryImportRuntime struct {
 	repo        *supplier.ImportRepository
 	opener      *supplier.ImportObjectOpener
 	logger      *slog.Logger
-	concurrency int
 }
 
 func newInventoryImportRuntime(
@@ -34,10 +32,6 @@ func newInventoryImportRuntime(
 	}
 	if logger == nil {
 		logger = slog.Default()
-	}
-	concurrency := runtime.GOMAXPROCS(0)
-	if concurrency < 1 {
-		concurrency = 1
 	}
 	return &inventoryImportRuntime{
 		reader: kafka.NewReader(kafka.ReaderConfig{
@@ -57,7 +51,6 @@ func newInventoryImportRuntime(
 		repo:        repo,
 		opener:      opener,
 		logger:      logger,
-		concurrency: concurrency,
 	}
 }
 
@@ -73,7 +66,6 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 		return
 	}
 
-	importSem := make(chan struct{}, r.concurrency)
 	for {
 		msg, err := r.reader.FetchMessage(ctx)
 		if err != nil {
@@ -89,6 +81,7 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 		evt, parseErr := supplier.ParseInventoryImportUploadedEvent(msg.Value)
 		if parseErr != nil {
 			r.logger.Warn("inventory import event parse failed", "err", parseErr)
+			// Unparseable poison pills are safe to commit to unblock the partition
 			_ = r.reader.CommitMessages(ctx, msg)
 			continue
 		}
@@ -97,25 +90,28 @@ func (r *inventoryImportRuntime) Run(ctx context.Context, metrics *consumerLagMe
 			continue
 		}
 
-		importSem <- struct{}{}
-		go func(m kafka.Message, e events.InventoryImportEvent) {
-			defer func() { <-importSem }()
-
-			processErr := r.repo.ProcessImportUploaded(ctx, r.opener, e.SupplierID, e.SessionID, e.GCSPath, nil)
-			if processErr != nil {
-				r.logger.Error("inventory import processing failed",
-					"session_id", e.SessionID,
-					"supplier_id", e.SupplierID,
-					"gcs_path", e.GCSPath,
-					"err", processErr,
-				)
-				// Retry mechanisms or DLQ should be handled by the repo or later.
-				// We commit the message to avoid poison pills blocking the partition.
+		// Process synchronously to guarantee strict offset ordering and prevent
+		// dropping messages on transient/infrastructure failures or pod shutdown.
+		processErr := r.repo.ProcessImportUploaded(ctx, r.opener, evt.SupplierID, evt.SessionID, evt.GCSPath, nil)
+		if processErr != nil {
+			r.logger.Error("inventory import processing failed",
+				"session_id", evt.SessionID,
+				"supplier_id", evt.SupplierID,
+				"gcs_path", evt.GCSPath,
+				"err", processErr,
+			)
+			// Do NOT commit on failure. This ensures infrastructure blips (Spanner/GCS down)
+			// or context cancellations do not silently discard imports.
+			if ctx.Err() != nil {
+				return // Graceful shutdown, leave message uncommitted
 			}
+			// Sleep briefly to avoid tight crash looping on persistent infra failures
+			time.Sleep(2 * time.Second)
+			continue
+		}
 
-			if err := r.reader.CommitMessages(context.Background(), m); err != nil {
-				r.logger.Error("inventory import commit failed", "err", err, "partition", m.Partition, "offset", m.Offset)
-			}
-		}(msg, evt)
+		if err := r.reader.CommitMessages(ctx, msg); err != nil {
+			r.logger.Error("inventory import commit failed", "err", err, "partition", msg.Partition, "offset", msg.Offset)
+		}
 	}
 }

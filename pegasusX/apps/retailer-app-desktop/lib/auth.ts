@@ -1,6 +1,6 @@
 // lib/auth.ts
 import { useState, useEffect } from 'react';
-import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-client';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { createTranslator, detectBrowserLocale, translateProblemDetail } from '@pegasusx/i18n';
 import type { ProblemDetail } from '@pegasusx/types';

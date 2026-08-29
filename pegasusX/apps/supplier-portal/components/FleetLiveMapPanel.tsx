@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
-import { Map3DViewToggle, useLazyMapMount } from '@pegasusx/ui-kit/desktop';
+import { Map3DViewToggle, useLazyMapMount } from '@pegasusx/ui-maps';
 import FleetLiveMap from '@/components/FleetLiveMap';
 import { useFleetLiveMap } from '@/lib/use-fleet-live-map';
 

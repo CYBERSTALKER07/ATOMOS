@@ -4,7 +4,7 @@ set -e
 # Make sure the backend is running before executing this script!
 # Usage: ./scripts/seed_mock_users.sh
 
-BASE_URL="http://localhost:8080"
+BASE_URL="${BASE_URL:-http://localhost:8080}"
 
 echo "=========================================="
 echo "Seeding PegasusX Mock Credentials..."

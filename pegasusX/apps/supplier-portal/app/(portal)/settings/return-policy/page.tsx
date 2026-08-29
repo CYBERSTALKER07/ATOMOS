@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierReturnPolicyPutKey } from "@pegasusx/api-client/idempotency";
+import { supplierReturnPolicyPutKey } from "@pegasusx/api-core/idempotency";
 import type { SupplierReturnPolicy } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";

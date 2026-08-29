@@ -7,7 +7,9 @@ packages:
   - "apps/payload-terminal"
   - "apps/marketing-site"
   - "packages/types"
-  - "packages/api-client"
+  - "packages/api-core"
+  - "packages/api-react"
+
   - "packages/validation"
   - "packages/i18n"
   - "packages/motion-tokens"
@@ -17,3 +19,5 @@ packages:
   - "packages/ws-refresh-contract"
   - "packages/desktop-bridge"
   - "packages/desktop-cache"
+  - "packages/ui-maps"
+  - "packages/ui-charts"

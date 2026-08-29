@@ -2,11 +2,11 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useEffect, useState } from "react";
-import {
-  LiveEKGNetworkGraph,
-  HexagonalControlTowerMap,
-  GlassmorphismPanel,
-  useControlTowerWebSocket,
+import { HexagonalControlTowerMap } from "@pegasusx/ui-maps";
+import { LiveEKGNetworkGraph, type NetworkNode, type NetworkLink } from "@pegasusx/ui-charts";
+import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
+import { GlassmorphismPanel,
+  
 } from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
@@ -34,7 +34,7 @@ export default function ControlTowerPage() {
   const [view, setView] = useState<"network" | "map">("network");
   const [scenariosData, setScenariosData] = useState<ScenarioChartRow[]>([]);
   const supplierId = sessionSupplierId() ?? "";
-  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
+  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerTelemetry(supplierId);
 
   useEffect(() => {
     if (!supplierId) return;

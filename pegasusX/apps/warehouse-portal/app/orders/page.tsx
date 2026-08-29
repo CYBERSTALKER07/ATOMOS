@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { RetailerOrderLifecycleResponse } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
 import { downloadCsv } from '@/lib/csv';

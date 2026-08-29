@@ -1,5 +1,5 @@
 import type { CoverageMode, PSPListing, ServicePin } from "@pegasusx/types";
-import { selectablePackPsps } from "@pegasusx/api-client";
+import { selectablePackPsps } from '@pegasusx/api-core';
 
 export function coverageModeLabel(mode: string | undefined): string {
   switch (String(mode || "").toUpperCase()) {

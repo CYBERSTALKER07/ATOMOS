@@ -5,9 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { TwinOpsRouteView, TwinVehicleInventoryRow } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
-import { useMapLibreTeardown } from "@pegasusx/ui-kit/desktop";
+import { useMapLibreTeardown } from "@pegasusx/ui-maps";
 import { createSupplierApi } from "@/lib/api";
-import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-client";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const LATENESS_COLORS: Record<string, string> = {
   green: "#0f9d58",

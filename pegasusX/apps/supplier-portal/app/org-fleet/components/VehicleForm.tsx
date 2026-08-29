@@ -3,8 +3,8 @@
 import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import type { HomeNodeType, SupplierFleetVehicleCreateRequest } from "@pegasusx/types";
-import { supplierFleetVehicleCreateKey } from "@pegasusx/api-client";
-import type { ApiClient } from "@pegasusx/api-client";
+import { supplierFleetVehicleCreateKey } from "@pegasusx/api-core";
+import type { ApiClient } from "@pegasusx/api-core";
 import {
   VehicleFormState,
   defaultVehicleForm,

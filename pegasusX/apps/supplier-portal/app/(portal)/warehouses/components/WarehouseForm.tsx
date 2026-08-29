@@ -6,7 +6,7 @@ import { LocationPicker, type LocationValue } from "@/components/LocationPicker"
 
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
-import { packMapCenter } from "@pegasusx/api-client";
+import { packMapCenter } from "@pegasusx/api-core";
 import type { SupplierTopologyCoverageCity } from "@pegasusx/types";
 
 interface WarehouseFormProps {

@@ -12,6 +12,7 @@ import (
 	firebase "firebase.google.com/go/v4"
 	"firebase.google.com/go/v4/messaging"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
 )
 
 // FCMClient sends Firebase Cloud Messaging payloads. Runs no-op when credentials are absent.
@@ -124,24 +125,69 @@ func (f *FCMClient) SendDataMessage(ctx context.Context, deviceToken string, dat
 	_, err := f.client.Send(ctx, message)
 	if err != nil {
 		if messaging.IsRegistrationTokenNotRegistered(err) {
-			go f.purgeStaleToken(deviceToken)
+			sessionID := strings.TrimSpace(data["session_id"])
+			go f.purgeStaleTokenWithSession(deviceToken, sessionID)
 		}
 		return fmt.Errorf("fcm send: %w", err)
 	}
 	return nil
 }
 
-func (f *FCMClient) purgeStaleToken(token string) {
-	if f.spannerClient == nil {
-		return
+// PurgeStaleToken removes a stale token conditionally based on sessionID.
+// If sessionID is empty, it removes the token unconditionally using a blind write.
+// If sessionID is non-empty, it reads the current SessionId in Spanner and only deletes
+// the token if the stored SessionId matches sessionID (protecting newer session registrations).
+func (f *FCMClient) PurgeStaleToken(ctx context.Context, token string, sessionID string) error {
+	if f == nil || f.spannerClient == nil || token == "" {
+		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	tctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := f.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		m := spanner.Delete("DeviceTokens", spanner.Key{token})
-		return txn.BufferWrite([]*spanner.Mutation{m})
-	})
-	if err != nil {
-		f.log.Warn("fcm stale token purge failed", "err", err)
+
+	if sessionID == "" {
+		// Blind delete for legacy / non-session-scoped purges
+		_, err := f.spannerClient.Apply(tctx, []*spanner.Mutation{
+			spanner.Delete("DeviceTokens", spanner.Key{token}),
+		})
+		if err != nil && f.log != nil {
+			f.log.Warn("fcm stale token purge failed", "err", err, "token", token)
+		}
+		return err
 	}
+
+	_, err := f.spannerClient.ReadWriteTransaction(tctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "DeviceTokens", spanner.Key{token}, []string{"SessionId"})
+		if err != nil {
+			if spanner.ErrCode(err) == codes.NotFound {
+				return nil
+			}
+			return err
+		}
+		var currentSession spanner.NullString
+		if err := row.Columns(&currentSession); err != nil {
+			return err
+		}
+		if currentSession.Valid && currentSession.StringVal != "" && currentSession.StringVal != sessionID {
+			// Newer session has registered this token; skip purge.
+			return nil
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Delete("DeviceTokens", spanner.Key{token}),
+		})
+	})
+	if err != nil && f.log != nil {
+		f.log.Warn("fcm stale token purge with session failed", "err", err, "token", token, "session_id", sessionID)
+	}
+	return err
+}
+
+func (f *FCMClient) purgeStaleToken(token string) {
+	_ = f.PurgeStaleToken(context.Background(), token, "")
+}
+
+func (f *FCMClient) purgeStaleTokenWithSession(token string, sessionID string) {
+	_ = f.PurgeStaleToken(context.Background(), token, sessionID)
 }

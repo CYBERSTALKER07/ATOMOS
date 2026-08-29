@@ -169,13 +169,7 @@ struct DashboardView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        switch eventType {
-                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
-                            Task { await load(silent: true) }
-                        case .outboxFailed:
-                            break
-                        }
+                        if event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") { Task { await load(silent: true) } }
                     }
                 )
             }

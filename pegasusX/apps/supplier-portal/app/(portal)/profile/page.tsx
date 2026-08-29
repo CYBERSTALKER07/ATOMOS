@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierProfileUpdateKey } from "@pegasusx/api-client";
+import { supplierProfileUpdateKey } from "@pegasusx/api-core";
 import type { SupplierProfile, SupplierProfileUpdateRequest } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 

@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { supplierShopClosedResolveKey } from "@pegasusx/api-client";
+import { supplierShopClosedResolveKey } from "@pegasusx/api-core";
 import type { ShopClosedAttemptRow } from "@pegasusx/types";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PageChrome } from '@/components/PageChrome';

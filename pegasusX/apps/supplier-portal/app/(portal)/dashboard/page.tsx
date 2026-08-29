@@ -12,7 +12,7 @@ import { FormAlert } from "@/components/portal";
 import { usePortalT } from "@/lib/i18n";
 import { useDashboardData } from "./use-dashboard-data";
 import { useDashboardHistory } from "./use-dashboard-history";
-import { formatPackMoney, readCachedAuthSession } from "@pegasusx/api-client";
+import { formatPackMoney, readCachedAuthSession } from "@pegasusx/api-core";
 import { MANIFEST_STATES, ORDER_STATUS_FUNNEL, guardHistorySeries } from "@pegasusx/types";
 import { HealthStrip, KpiStat, RangeToggle, SourceChip, StatusStack } from "@pegasusx/ui-kit/portal";
 

@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
@@ -172,8 +173,10 @@ func (h *Handler) HandleUpsertPolicy(w http.ResponseWriter, r *http.Request) {
 }
 
 type deviceTokenRequest struct {
-	Token    string `json:"token"`
-	Platform string `json:"platform"`
+	Token     string `json:"token"`
+	Platform  string `json:"platform"`
+	DeviceId  string `json:"device_id,omitempty"`
+	SessionId string `json:"session_id,omitempty"`
 }
 
 // HandleDeviceToken serves POST /v1/user/device-token with durable registration.
@@ -211,6 +214,8 @@ func (h *Handler) HandleDeviceToken(w http.ResponseWriter, r *http.Request) {
 		ActorRole: ClaimsRoleForPolicy(claims),
 		Platform:  normalizePlatform(req.Platform),
 		Token:     req.Token,
+		DeviceID:  strings.TrimSpace(req.DeviceId),
+		SessionID: strings.TrimSpace(req.SessionId),
 	}
 	if err := h.tokens.UpsertToken(r.Context(), row); err != nil {
 		h.log.ErrorContext(r.Context(), "device token upsert failed", "err", err)

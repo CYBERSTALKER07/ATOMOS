@@ -1,4 +1,4 @@
-import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from "@pegasusx/api-client";
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from "@/lib/bridge";
 
 const SUPPLIER_JWT_COOKIE = "supplier_jwt";

@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
 import { LocationPicker, type LocationValue } from "@/components/LocationPicker";
-import { sessionMapCenter } from "@pegasusx/api-client";
+import { sessionMapCenter } from "@pegasusx/api-core";
 
 interface FactoryFormProps {
   onSave: (name: string, location: LocationValue, extras: { country_code: string }) => Promise<void>;

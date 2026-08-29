@@ -13,7 +13,7 @@ import type {
   SupplierTopologyWarehouse,
 } from "@pegasusx/types";
 import { AUTH_COUNTRIES } from "@pegasusx/ui-kit/auth";
-import { sessionMapCenter } from "@pegasusx/api-client";
+import { sessionMapCenter } from "@pegasusx/api-core";
 import { CoverageCityChips } from "@/components/CoverageCityChips";
 import { createSupplierApi } from "@/lib/api";
 import { LocationPicker } from "@/components/LocationPicker";

@@ -397,7 +397,7 @@
 			path = Location;
 			sourceTree = "<group>";
 		};
-		7A1F0724879D94659A78E790 /* mobile-ios-design */ = {
+		7A1F0724879D94659A78E790 /* mobile-ios-core */ = {
 			isa = PBXGroup;
 			children = (
 				63B66EA8683D1FB78B47E227 /* CollapsibleSidebar.swift */,
@@ -409,13 +409,13 @@
 				A2B75C8E4F5D81A6E3C0B947 /* CellApi.swift */,
 				682C014A715771016579623C /* RealtimeRefresh.swift */,
 			);
-			path = "mobile-ios-design";
+			path = "mobile-ios-core";
 			sourceTree = "<group>";
 		};
 		8050672726CD4A78C08C9AFA /* packages */ = {
 			isa = PBXGroup;
 			children = (
-				7A1F0724879D94659A78E790 /* mobile-ios-design */,
+				7A1F0724879D94659A78E790 /* mobile-ios-core */,
 			);
 			path = packages;
 			sourceTree = "<group>";

@@ -10,7 +10,7 @@ import type {
   WarehouseFleetVehicleListResponse,
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
-import { warehouseAssignDriverVehicleKey, warehouseCreateDriverKey } from '@pegasusx/api-client';
+import { warehouseAssignDriverVehicleKey, warehouseCreateDriverKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';

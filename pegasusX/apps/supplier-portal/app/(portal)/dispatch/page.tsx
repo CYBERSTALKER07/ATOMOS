@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { decodeJwtPayload, readTokenFromCookie } from "@/lib/auth";
-import { ApiError, supplierDispatchKey } from "@pegasusx/api-client";
+import { ApiError, supplierDispatchKey } from "@pegasusx/api-core";
 import type { SupplierDispatchCapacityWarning, SupplierDispatchPreview, SupplierTopologyWarehouse } from "@pegasusx/types";
 import { useDispatchData, type ManifestData } from "./use-dispatch-data";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";

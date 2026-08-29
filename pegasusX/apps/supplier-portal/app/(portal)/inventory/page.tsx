@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { sessionPackCurrency, supplierInventoryAdjustKey } from "@pegasusx/api-client";
+import { sessionPackCurrency, supplierInventoryAdjustKey } from "@pegasusx/api-core";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";

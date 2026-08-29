@@ -166,3 +166,14 @@ Overall: this is **not** a scaffold — it's a substantially real system with di
 8. **MY_SOLIQ provider cannot work as shipped.** `signer` field never assigned anywhere in the codebase (`order/fiscal_provider.go:129`); `CreateReceipt` always fails `"mysoliq: no EDSSigner configured"` (`:232-234`). Flipping the env flag to go legal yields 100% `FISCAL_FAILED` and halted completions.
 9. **Inventory negative-stock clamp hides shrinkage.** `AdjustStock` silently floors at 0 (`inventory/repository.go:166-169`) — stock drift masked instead of surfaced; downstream reservation math (`qoh-qr`) then trusts the clamped number.
 10. **Fail-open payer authorization + committed secrets.** Payer GET/PUT check ownership only *if claims exist* (`payment/crud_handlers.go:52-57,76-81`) and `POST /v1/payers` has no role gate (`paymentroutes/routes.go:43`) — IDOR-shaped under `ALLOW_AUTH_BYPASS`. Plus hygiene: `.env.local` (with `JWT_SECRET`), `bootstrap.go.bak`, `spanner.ddl.orig`, patch scripts, and a 90 MB compiled `backend-go` binary all committed at repo root.
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

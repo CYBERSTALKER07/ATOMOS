@@ -1,8 +1,9 @@
 "use client";
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
 import type { TwinOpsRouteView } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import LiveOpsMap, { LiveOpsSidePanel } from "@/components/LiveOpsMap";

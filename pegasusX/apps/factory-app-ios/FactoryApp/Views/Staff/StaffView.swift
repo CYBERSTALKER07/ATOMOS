@@ -54,13 +54,7 @@ struct StaffView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        switch eventType {
-                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
-                            load()
-                        case .outboxFailed:
-                            break
-                        }
+                        if event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") { load() }
                     }
                 )
             }
@@ -343,7 +337,7 @@ struct SupplyRequestsView: View {
                         realtimeStatus = status
                     },
                     onEvent: { event in
-                        guard event.eventType == .supplyRequestUpdate else { return }
+                        guard event.type.hasPrefix("FACTORY_SUPPLY_") else { return }
                         if transitioningID == nil {
                             Task { await load(background: !requests.isEmpty) }
                         }

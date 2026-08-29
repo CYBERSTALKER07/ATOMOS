@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from "@pegasusx/api-core";
 import type { SupplierCRMRetailer, SupplierCRMRetailerDetail } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 import EmptyState from "@/components/EmptyState";

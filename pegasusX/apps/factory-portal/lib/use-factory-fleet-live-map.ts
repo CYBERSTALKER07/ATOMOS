@@ -1,7 +1,8 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { useCallback, useEffect, useState } from 'react';
-import { usePolling } from '@pegasusx/api-client';
 import { applyDriverLocationPatch, parseDriverLocationPatch } from '@pegasusx/ws-refresh-contract';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -73,7 +74,7 @@ export function useFactoryFleetLiveMap(pollMs = 15_000) {
         }
         const event = parseFactoryLiveEvent(payload);
         if (!event) return;
-        if (event.type === 'FACTORY_TRANSFER_UPDATE' || event.type === 'FACTORY_MANIFEST_UPDATE') {
+        if (event.type.startsWith('TRANSFER_') || event.type.startsWith('MANIFEST_') || event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           void refresh(true);
         }
       },

@@ -5,7 +5,7 @@ import React from 'react';
 import type { RetailerOrderLifecycleResponse } from '@pegasusx/types';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
-import { moneyCurrency } from '@pegasusx/api-client';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 export interface PreordersListProps {
   loading: boolean;

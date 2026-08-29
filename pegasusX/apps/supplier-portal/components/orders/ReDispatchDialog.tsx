@@ -2,8 +2,8 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useEffect, useState, useCallback } from 'react';
-import { ApiError } from '@pegasusx/api-client';
-import { payloadApplyReassignKey, payloadRecommendReassignKey } from '@pegasusx/api-client/idempotency';
+import { ApiError } from '@pegasusx/api-core';
+import { payloadApplyReassignKey, payloadRecommendReassignKey } from '@pegasusx/api-core/idempotency';
 import type { ReassignmentCandidate } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import Icon from '@/components/Icon';

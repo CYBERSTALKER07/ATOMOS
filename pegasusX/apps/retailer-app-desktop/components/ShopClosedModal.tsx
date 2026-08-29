@@ -6,7 +6,7 @@ import { AlertTriangle, Camera, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "../lib/auth";
 import { uploadClaimPhoto } from "../lib/api";
-import { retailerShopClosedResponseKey } from "@pegasusx/api-client";
+import { retailerShopClosedResponseKey } from "@pegasusx/api-core";
 import { useWebSocket, useWsEvent, type WsMessage } from "../lib/ws";
 
 type ShopClosedAlert = {

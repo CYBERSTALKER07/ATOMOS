@@ -8,7 +8,7 @@ import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import AnalyticsChartGrid from '@/components/analytics/AnalyticsChartGrid';
-import { moneyCurrency } from '@pegasusx/api-client';
+import { moneyCurrency } from '@pegasusx/api-core';
 // VelocityGauge unmounted — no avg-dispatch SoT on warehouse ops analytics
 
 interface AnalyticsData {

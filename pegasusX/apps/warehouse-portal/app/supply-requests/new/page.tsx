@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { createWarehouseApi } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { warehouseCreateSupplyRequestKey, warehouseSupplyRequestTransitionKey } from '@pegasusx/api-client';
+import { warehouseCreateSupplyRequestKey, warehouseSupplyRequestTransitionKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';

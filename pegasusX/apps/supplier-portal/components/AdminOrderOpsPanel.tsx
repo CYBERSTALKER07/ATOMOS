@@ -7,7 +7,7 @@ import {
   adminOrderAssignKey,
   adminOrderStatusPatchKey,
   ApiError,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import StatusChip from '@/components/StatusChip';

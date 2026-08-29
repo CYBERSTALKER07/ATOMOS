@@ -21,13 +21,17 @@ func (s *Service) PublishSupplierPerimeter(ctx context.Context, supplierID strin
 	
 	pipe := s.redisClient.TxPipeline()
 	pipe.Del(ctx, key)
+	var args []interface{}
 	if len(cells) > 0 {
-		var args []interface{}
 		for _, cell := range cells {
 			args = append(args, cell)
 		}
-		pipe.SAdd(ctx, key, args...)
+	} else {
+		// Cache an empty result using a sentinel value to prevent cache stampedes
+		// on suppliers with zero coverage.
+		args = append(args, "__empty__")
 	}
+	pipe.SAdd(ctx, key, args...)
 	// Expire to prevent permanent stale data if never republished
 	pipe.Expire(ctx, key, 7*24*time.Hour)
 	_, err = pipe.Exec(ctx)

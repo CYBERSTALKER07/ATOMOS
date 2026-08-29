@@ -26,7 +26,12 @@ func WithEventDedup(store EventDedupStore, consumerGroup string, handler EventHa
 		if !ok {
 			return nil
 		}
-		return handler(ctx, msg)
+		err = handler(ctx, msg)
+		if err != nil {
+			_ = store.Release(ctx, key)
+			return err
+		}
+		return nil
 	}
 }
 

@@ -107,8 +107,9 @@ func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		conn := dialTestWebSocket(t, server.URL)
 		payload := "driver-location-" + strconv.Itoa(i)
-		telemetryHub.Broadcast(context.Background(), "telemetry:driver:drv-1", []byte(payload))
-		assertWebSocketMessage(t, conn, payload)
+		assertWebSocketMessageWithRetry(t, func() {
+			telemetryHub.Broadcast(context.Background(), "telemetry:driver:drv-1", []byte(payload))
+		}, conn, payload)
 		if err := conn.Close(); err != nil {
 			t.Fatalf("close websocket: %v", err)
 		}
@@ -132,8 +133,9 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 	for i := 0; i < 12; i++ {
 		conn := dialTestWebSocket(t, server.URL)
 		payload := "supplier-location-" + strconv.Itoa(i)
-		telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte(payload))
-		assertWebSocketMessage(t, conn, payload)
+		assertWebSocketMessageWithRetry(t, func() {
+			telemetryHub.Broadcast(context.Background(), "telemetry:supplier:sup-1", []byte(payload))
+		}, conn, payload)
 		if err := conn.Close(); err != nil {
 			t.Fatalf("close websocket: %v", err)
 		}

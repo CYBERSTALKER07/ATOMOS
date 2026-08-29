@@ -68,7 +68,7 @@ export default function ManifestsPage() {
       onMessage: (payload) => {
         const event = parseFactoryLiveEvent(payload);
         if (!event) return;
-        if (event.type === 'FACTORY_MANIFEST_UPDATE' || event.type === 'FACTORY_TRANSFER_UPDATE') {
+        if (event.type.startsWith('TRANSFER_') || event.type.startsWith('MANIFEST_') || event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           void load();
         }
       },

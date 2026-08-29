@@ -6,7 +6,7 @@ import { PageSection } from "@/components/PageSection";
 import { useLiveData } from "@/lib/hooks";
 import { RefreshCw } from "lucide-react";
 import type { FxRateRow, FxRatesListResponse } from "@pegasusx/types";
-import { sessionPackCurrency } from "@pegasusx/api-client";
+import { sessionPackCurrency } from "@pegasusx/api-core";
 
 const DEFAULT_SCALE = 100_000_000;
 

@@ -4,8 +4,8 @@ import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { ReadyState, orgRoleOptions, formatRole, describeMemberNode, toErrorMessage, isErrorMessage, supplierScopeId } from "./utils";
 import type { Role, HomeNodeType } from "@pegasusx/types";
-import { ApiClient } from "@pegasusx/api-client";
-import { supplierOrgMemberDeactivateKey, supplierOrgMemberUpdateKey } from "@pegasusx/api-client";
+import { ApiClient } from "@pegasusx/api-core";
+import { supplierOrgMemberDeactivateKey, supplierOrgMemberUpdateKey } from "@pegasusx/api-core";
 import { StatusText } from "./utils";
 
 export function OrgMemberTable({ 

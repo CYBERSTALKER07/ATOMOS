@@ -1,8 +1,10 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useMemo, useRef, Fragment } from 'react';
-import { usePolling, factorySupplyRequestTransitionKey, factorySupplyRequestQCKey } from '@pegasusx/api-client';
+import { factorySupplyRequestTransitionKey, factorySupplyRequestQCKey } from '@pegasusx/api-core';
 import type { SupplyFulfillOptions } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';

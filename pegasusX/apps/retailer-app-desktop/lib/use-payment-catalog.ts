@@ -1,6 +1,6 @@
 "use client";
 
-import { packCurrency, readCachedAuthSession, selectablePackPsps } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession, selectablePackPsps } from '@pegasusx/api-core';
 import type { PSPListing, RetailerPaymentCatalogResponse } from "@pegasusx/types";
 import { useEffect, useState } from "react";
 import { apiFetch } from "./auth";

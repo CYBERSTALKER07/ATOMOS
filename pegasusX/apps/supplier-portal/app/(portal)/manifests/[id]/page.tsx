@@ -10,7 +10,7 @@ import {
   supplierManifestInjectKey,
   supplierManifestSealKey,
   supplierManifestStartLoadingKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import type { SupplierManifestDetail } from "@pegasusx/types";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from '@/components/PageChrome';

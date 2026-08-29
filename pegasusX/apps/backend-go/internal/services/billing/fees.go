@@ -48,30 +48,44 @@ func NewFeeScheduleResolver(client *spanner.Client) *FeeScheduleResolver {
 	return &FeeScheduleResolver{client: client, now: func() time.Time { return time.Now().UTC() }}
 }
 
+func cleanQueryContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	clean := context.Background()
+	if deadline, ok := ctx.Deadline(); ok {
+		return context.WithDeadline(clean, deadline)
+	}
+	return context.WithTimeout(clean, 10*time.Second)
+}
+
 // Resolve returns the active schedule for the supplier (never errors on
 // missing rows — absence means billing is off for this supplier).
 func (r *FeeScheduleResolver) Resolve(ctx context.Context, supplierID string) (FeeSchedule, error) {
+	cleanCtx, cancel := cleanQueryContext(ctx)
+	defer cancel()
+
 	now := r.now()
-	if sched, found, err := r.find(ctx, `SupplierId = @id`, map[string]any{"id": supplierID}, now); err != nil {
+	if sched, found, err := r.find(cleanCtx, `SupplierId = @id`, map[string]any{"id": supplierID}, now); err != nil {
 		return FeeSchedule{}, err
 	} else if found {
 		return sched, nil
 	}
 	tier := "STANDARD"
-	row, err := r.client.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{supplierID}, []string{"Tier"})
+	row, err := r.client.Single().ReadRow(cleanCtx, "SupplierProfiles", spanner.Key{supplierID}, []string{"Tier"})
 	if err == nil {
 		var t spanner.NullString
 		if cErr := row.Column(0, &t); cErr == nil && strings.TrimSpace(t.StringVal) != "" {
 			tier = strings.ToUpper(strings.TrimSpace(t.StringVal))
 		}
 	}
-	if sched, found, err := r.find(ctx, `SupplierId = '' AND Tier = @tier`, map[string]any{"tier": tier}, now); err != nil {
+	if sched, found, err := r.find(cleanCtx, `SupplierId = '' AND Tier = @tier`, map[string]any{"tier": tier}, now); err != nil {
 		return FeeSchedule{}, err
 	} else if found {
 		return sched, nil
 	}
 	if tier != "STANDARD" {
-		if sched, found, err := r.find(ctx, `SupplierId = '' AND Tier = 'STANDARD'`, nil, now); err != nil {
+		if sched, found, err := r.find(cleanCtx, `SupplierId = '' AND Tier = 'STANDARD'`, nil, now); err != nil {
 			return FeeSchedule{}, err
 		} else if found {
 			return sched, nil
@@ -81,11 +95,14 @@ func (r *FeeScheduleResolver) Resolve(ctx context.Context, supplierID string) (F
 }
 
 func (r *FeeScheduleResolver) find(ctx context.Context, where string, params map[string]any, now time.Time) (FeeSchedule, bool, error) {
+	cleanCtx, cancel := cleanQueryContext(ctx)
+	defer cancel()
+
 	if params == nil {
 		params = map[string]any{}
 	}
 	params["now"] = now
-	iter := r.client.Single().Query(ctx, spanner.Statement{
+	iter := r.client.Single().Query(cleanCtx, spanner.Statement{
 		SQL: `SELECT FeeScheduleId, SupplierId, Tier, PerOrderMinor, GmvBps, MonthlySubscriptionMinor, Currency, EffectiveFrom, EffectiveTo
 		      FROM BillingFeeSchedules
 		      WHERE ` + where + ` AND EffectiveFrom <= @now AND (EffectiveTo IS NULL OR EffectiveTo > @now)

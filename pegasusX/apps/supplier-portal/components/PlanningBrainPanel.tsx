@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { supplierPlanningScenarioKey } from "@pegasusx/api-client/idempotency";
+import { supplierPlanningScenarioKey } from "@pegasusx/api-core/idempotency";
 import type {
   PlanningSAndOPSnapshot,
   PlanningScenarioCompareResult,

@@ -1,8 +1,9 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { usePolling } from '@pegasusx/api-client';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
@@ -129,9 +130,7 @@ export default function PayloadOverridePage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
-          return;
-        }
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_') && !event.type.startsWith('FACTORY_SUPPLY_')) { return; }
         void fetchManifests({ background: true, silent: true });
       },
     });

@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@heroui/react";
-import { supplierResolveReturnKey } from "@pegasusx/api-client";
+import { supplierResolveReturnKey } from "@pegasusx/api-core";
 import { PageChrome } from "@/components/PageChrome";
 import { supplierFetch } from "@/lib/auth";
 

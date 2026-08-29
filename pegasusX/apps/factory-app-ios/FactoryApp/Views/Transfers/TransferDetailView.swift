@@ -123,8 +123,7 @@ struct TransferDetailView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                     if !transitioning {
                         Task { await load(silent: true) }
                     }

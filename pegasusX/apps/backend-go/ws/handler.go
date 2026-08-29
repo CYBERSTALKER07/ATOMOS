@@ -79,6 +79,7 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 	})
 
 	r.Get("/v1/ws", wsHandler)
+	r.Get("/v1/events", HandleSSEEvents(log, jwtSecret, platformSvc, hubs, cfg))
 }
 
 func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) {

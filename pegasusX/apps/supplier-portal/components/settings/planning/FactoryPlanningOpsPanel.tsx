@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { canPatchOrderStatus } from "@/lib/admin-scope";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { ApiError } from "@pegasusx/api-client";
+import { ApiError } from "@pegasusx/api-core";
 import {
   supplierNetworkModePutKey,
   supplierPlanningKillSwitchKey,
   supplierPlanningPullMatrixKey,
   supplierPlanningPredictivePushKey,
-} from "@pegasusx/api-client/idempotency";
+} from "@pegasusx/api-core/idempotency";
 import type { NetworkModeResponse, PullMatrixResponse, KillSwitchResponse } from "@pegasusx/types";
 import { factoryPlanningDisabledCode } from "@pegasusx/types";
 

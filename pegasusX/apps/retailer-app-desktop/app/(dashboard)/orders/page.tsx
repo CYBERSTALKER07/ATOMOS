@@ -49,7 +49,7 @@ import {
 import {
   retailerCancelKey,
   retailerRequestCancelKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import type { Order, TrackingResponse } from "../../../lib/types";

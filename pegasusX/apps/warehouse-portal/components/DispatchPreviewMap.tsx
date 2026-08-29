@@ -6,7 +6,7 @@ import type { WarehouseDispatchProposedRoute } from '@pegasusx/types';
 import MapGL, { Layer, NavigationControl, Source } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-client';
+import { mapInitialViewState, readCachedAuthSession } from '@pegasusx/api-core';
 const ROUTE_COLORS = [
   '#1b6ef3',
   '#0f9d58',

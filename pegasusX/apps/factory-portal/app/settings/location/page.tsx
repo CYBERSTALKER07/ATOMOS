@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
-import { factoryOpsLocationKey } from "@pegasusx/api-client";
+import { factoryOpsLocationKey } from "@pegasusx/api-core";
 import { apiFetch } from "@/lib/auth";
 import { useFactorySessionReconcile } from "@/lib/use-factory-session-reconcile";
 import { factoryOperatorId } from "@/lib/factory-scope";

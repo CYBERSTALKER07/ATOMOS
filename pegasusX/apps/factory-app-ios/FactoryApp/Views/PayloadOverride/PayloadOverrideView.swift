@@ -81,7 +81,7 @@ struct PayloadOverrideView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard event.eventType == .manifestUpdate || event.eventType == .transferUpdate else { return }
+                        guard event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                         Task { await load(silent: true) }
                     },
                     onReconnect: {

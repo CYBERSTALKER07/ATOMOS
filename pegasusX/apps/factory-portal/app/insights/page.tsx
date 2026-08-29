@@ -146,9 +146,7 @@ export default function InsightsPage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_SUPPLY_REQUEST_UPDATE' && event.type !== 'FACTORY_TRANSFER_UPDATE') {
-          return;
-        }
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_') && !event.type.startsWith('FACTORY_SUPPLY_')) { return; }
         void load();
       },
     });

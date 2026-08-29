@@ -146,7 +146,6 @@ export default function SignalsPage() {
         throw new Error(d.error || "Failed to save signal");
       }
       
-      console.log(editingSignal ? "Signal updated" : "Signal created");
       setIsModalOpen(false);
       fetchSignals();
     } catch (err: any) {
@@ -161,7 +160,6 @@ export default function SignalsPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to deactivate");
-      console.log("Signal created successfully");
       fetchSignals();
     } catch (err: any) {
       console.error(err.message);

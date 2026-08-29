@@ -168,7 +168,7 @@ func (s *Service) TurnInCashBag(ctx context.Context, driverID string, req CashBa
 		"DeclaredCashMinor": req.DeclaredCashMinor,
 		"DifferenceMinor":   diff,
 		"Status":            status,
-		"CreatedAt":         spanner.CommitTimestamp,
+		"CreatedAt":         now.UTC(),
 	}
 	if req.RouteID != "" {
 		cols["RouteId"] = req.RouteID
@@ -277,7 +277,7 @@ func (s *Service) ReconcileCashBag(ctx context.Context, reconID, actor, action, 
 		updates := map[string]any{
 			"ReconciliationId": reconID,
 			"Status":           newStatus,
-			"ResolvedAt":       spanner.CommitTimestamp,
+			"ResolvedAt":       now.UTC(),
 			"ResolvedBy":       actor,
 		}
 		if financeNote != "" {

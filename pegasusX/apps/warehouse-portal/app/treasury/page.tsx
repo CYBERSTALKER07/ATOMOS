@@ -13,7 +13,7 @@ import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { HubCard } from '@/components/portal';
 import EmptyState from '@/components/EmptyState';
 import { TreasuryTransactionList } from '@/components/treasury/TreasuryTransactionList';
-import { moneyCurrency } from '@pegasusx/api-client';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 interface TreasuryOverview {
   total_invoiced: number;

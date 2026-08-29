@@ -550,7 +550,7 @@
 			path = Dashboard;
 			sourceTree = "<group>";
 		};
-		A64DA9550B7A191E0195A72A /* mobile-ios-design */ = {
+		A64DA9550B7A191E0195A72A /* mobile-ios-core */ = {
 			isa = PBXGroup;
 			children = (
 				5D9BA90B275EA08AFE41FB0A /* CollapsibleSidebar.swift */,
@@ -562,7 +562,7 @@
 				4D5E6F708192A3B4C5D6E7F8 /* CellApi.swift */,
 				9FC47C91CFB954510516FF1D /* RealtimeRefresh.swift */,
 			);
-			path = "mobile-ios-design";
+			path = "mobile-ios-core";
 			sourceTree = "<group>";
 		};
 		A727F876AEEB7A647B603A60 /* Network */ = {
@@ -777,7 +777,7 @@
 			isa = PBXGroup;
 			children = (
 				8EE6C2521CFD1DF2FF651D05 /* mobile-ios-barcode */,
-				A64DA9550B7A191E0195A72A /* mobile-ios-design */,
+				A64DA9550B7A191E0195A72A /* mobile-ios-core */,
 			);
 			path = packages;
 			sourceTree = "<group>";

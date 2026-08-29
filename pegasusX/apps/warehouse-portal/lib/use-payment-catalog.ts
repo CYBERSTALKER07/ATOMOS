@@ -1,6 +1,8 @@
 "use client";
+import { useMarketPack } from '@pegasusx/api-react';
 
-import { packCurrency, selectablePackPsps, useMarketPack } from "@pegasusx/api-client";
+
+import { packCurrency, selectablePackPsps } from '@pegasusx/api-core';
 import type { PSPListing } from "@pegasusx/types";
 import { useEffect, useState } from "react";
 import { createWarehouseApi } from "@/lib/api";

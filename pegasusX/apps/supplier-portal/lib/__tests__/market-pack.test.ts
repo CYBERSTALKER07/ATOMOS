@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayPackCurrency, fiscalReceiptLabel, formatPackMoney, mapInitialViewState, moneyCurrency, packAllowsPsp, packCurrency, packMapCenter, pinApiBaseUrl, selectablePackPsps } from "@pegasusx/api-client";
+import { displayPackCurrency, fiscalReceiptLabel, formatPackMoney, mapInitialViewState, moneyCurrency, packAllowsPsp, packCurrency, packMapCenter, pinApiBaseUrl, selectablePackPsps } from '@pegasusx/api-core';
 import { canonicalizeOrderStatus, emptyOrderStatusCounts, ORDER_STATUS_FUNNEL } from "@pegasusx/types";
 
 describe("GS-R market pack bind", () => {

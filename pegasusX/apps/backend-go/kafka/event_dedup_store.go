@@ -11,6 +11,7 @@ import (
 // EventDedupStore drops duplicate Kafka events across pods.
 type EventDedupStore interface {
 	ShouldProcess(ctx context.Context, key string) (bool, error)
+	Release(ctx context.Context, key string) error
 }
 
 // DedupKeyForMessage builds a stable dedup key from topic/partition/offset.
@@ -78,4 +79,15 @@ func (d *InMemoryEventDedup) ShouldProcess(_ context.Context, key string) (bool,
 	}
 	d.seen[key] = now.Add(d.ttl)
 	return true, nil
+}
+
+// Release removes the key from the seen map.
+func (d *InMemoryEventDedup) Release(_ context.Context, key string) error {
+	if key == "" {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	delete(d.seen, key)
+	return nil
 }

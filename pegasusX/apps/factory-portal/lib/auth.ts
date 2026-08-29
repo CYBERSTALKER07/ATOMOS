@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-client';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { runFactorySessionReconcile } from './session-reconcile';
 
@@ -32,7 +32,7 @@ const FACTORY_LIVE_EVENT_TYPES = [
 type FactoryLiveEventType = (typeof FACTORY_LIVE_EVENT_TYPES)[number];
 
 export interface FactoryLiveEvent {
-  type: FactoryLiveEventType;
+  type: string;
   [key: string]: unknown;
 }
 
@@ -196,8 +196,12 @@ async function readFactorySocketToken(): Promise<string> {
   return payload.token;
 }
 
-function isFactoryEventType(value: string): value is FactoryLiveEventType {
-  return (FACTORY_LIVE_EVENT_TYPES as readonly string[]).includes(value);
+function isFactoryEventType(value: string): boolean {
+  return value.startsWith('MANIFEST_') || 
+         value.startsWith('WAREHOUSE_TRANSFER_') || 
+         value.startsWith('SUPPLY_TRANSFER_') || 
+         value.startsWith('FACTORY_') || 
+         value.startsWith('TRANSFER_');
 }
 
 export function parseFactoryLiveEvent(rawPayload: string): FactoryLiveEvent | null {

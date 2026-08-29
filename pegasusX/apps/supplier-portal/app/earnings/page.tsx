@@ -1,7 +1,7 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import { ApiClient, supplierChargebackKey, supplierChargebackReversalKey } from "@pegasusx/api-client";
+import { ApiClient, supplierChargebackKey, supplierChargebackReversalKey } from "@pegasusx/api-core";
 import { createSupplierApi } from "@/lib/api";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type { PaymentChargebackRequest, PaymentChargebackReversalRequest, PaymentLedgerEntry } from "@pegasusx/types";

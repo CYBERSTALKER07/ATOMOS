@@ -7,7 +7,7 @@ import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
-import { moneyCurrency } from '@pegasusx/api-client';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('uz-UZ').format(n);

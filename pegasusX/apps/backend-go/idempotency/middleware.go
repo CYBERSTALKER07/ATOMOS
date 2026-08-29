@@ -103,7 +103,15 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				body:           &bytes.Buffer{},
 			}
 
-			next.ServeHTTP(recorder, r)
+			func() {
+				defer func() {
+					if rec := recover(); rec != nil {
+						_ = store.Release(r.Context(), key)
+						panic(rec)
+					}
+				}()
+				next.ServeHTTP(recorder, r)
+			}()
 
 			if recorder.status >= 200 && recorder.status < 300 {
 				_ = store.Save(r.Context(), key, Record{

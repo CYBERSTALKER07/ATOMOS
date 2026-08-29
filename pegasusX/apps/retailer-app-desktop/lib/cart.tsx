@@ -10,7 +10,7 @@ import {
   type StockAwareProduct,
 } from './stock-policy';
 import { getRetailerId } from './retailer-profile';
-import { packCurrency, readCachedAuthSession } from '@pegasusx/api-client';
+import { packCurrency, readCachedAuthSession } from '@pegasusx/api-core';
 import type { CheckoutPreviewResponse, Product } from './types';
 
 function cartCurrency(): string {

@@ -45,8 +45,7 @@ struct InsightsView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        guard eventType == .supplyRequestUpdate || eventType == .transferUpdate else { return }
+                        guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") else { return }
                         load(silent: true)
                     }
                 )

@@ -8,7 +8,7 @@ import { supplierScopeId } from "@/lib/supplier-scope";
 import {
   supplierRetailerPriceOverrideCreateKey,
   supplierRetailerPriceOverrideDeleteKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { supplierFetch } from "@/lib/auth";
 import type { CreateRetailerPriceOverrideRequest, RetailerOverridePreview, RetailerPriceOverride } from "@pegasusx/types";
 import { PageChrome } from '@/components/PageChrome';

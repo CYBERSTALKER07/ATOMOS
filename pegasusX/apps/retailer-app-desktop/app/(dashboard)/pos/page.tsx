@@ -29,7 +29,7 @@ import {
   saveParkedPosCart,
   type PendingPosSale,
 } from "@/lib/pending-pos-sales";
-import { retailerPosSaleKey } from "@pegasusx/api-client";
+import { retailerPosSaleKey } from "@pegasusx/api-core";
 import { moneyCurrency, sessionPackCurrency } from "@/lib/payment-catalog";
 
 type Register = {

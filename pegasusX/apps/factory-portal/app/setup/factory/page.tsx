@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Icon from "@/components/Icon";
 import { PortalField, PortalInput, PortalSelect, PortalSection, FormAlert } from "@/components/portal";
-import { factoryOpsLocationKey } from "@pegasusx/api-client";
+import { factoryOpsLocationKey } from "@pegasusx/api-core";
 import { apiFetch, decodeJwtPayload, persistSession, readTokenFromCookie, refreshFactorySession } from "@/lib/auth";
 import { factoryOperatorId } from "@/lib/factory-scope";
 import { LocationPicker, resolveLocationValue, type LocationValue } from "@/components/LocationPicker";

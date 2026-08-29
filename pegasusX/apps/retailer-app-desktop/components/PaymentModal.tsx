@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequired } from "@pegasusx/types";
-import { retailerConfirmCashKey, retailerCardCheckoutKey } from "@pegasusx/api-client";
+import { retailerConfirmCashKey, retailerCardCheckoutKey } from "@pegasusx/api-core";
 import { useWsEvent, useWebSocket, type WsMessage } from "../lib/ws";
-import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import { apiFetch } from "../lib/auth";
 import { displayPackCurrency, filterRetailerCardGateways } from "../lib/payment-catalog";
 import { useRetailerPaymentCatalog } from "../lib/use-payment-catalog";

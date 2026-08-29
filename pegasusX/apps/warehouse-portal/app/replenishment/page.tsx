@@ -3,7 +3,7 @@
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
-import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-client';
+import { ApiError, warehouseReplenishmentInsightActionKey } from '@pegasusx/api-core';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { parseForecastConfidence } from '@/lib/forecast-confidence';
 import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';

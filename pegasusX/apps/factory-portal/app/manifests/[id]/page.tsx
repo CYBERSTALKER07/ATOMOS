@@ -111,7 +111,7 @@ export default function ManifestDetailPage() {
       onMessage: (payload) => {
         const event = parseFactoryLiveEvent(payload);
         if (!event) return;
-        if (event.type === 'FACTORY_MANIFEST_UPDATE') void load();
+        if (event.type.startsWith('MANIFEST_')) void load();
       },
     });
     return unsubscribe;

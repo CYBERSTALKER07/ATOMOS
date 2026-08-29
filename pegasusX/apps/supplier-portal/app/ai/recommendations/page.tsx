@@ -1,7 +1,7 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import { ApiClient, ApiError } from "@pegasusx/api-client";
+import { ApiClient, ApiError } from "@pegasusx/api-core";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierAIRecommendation, SupplierAIRecommendationDecision } from "@pegasusx/types";

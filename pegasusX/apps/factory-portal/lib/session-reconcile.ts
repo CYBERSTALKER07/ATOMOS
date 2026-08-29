@@ -1,4 +1,4 @@
-import { reconcileSession } from '@pegasusx/api-client';
+import { reconcileSession } from '@pegasusx/api-core';
 import { apiFetch, factoryApiBaseUrl, readTokenFromCookie } from './auth';
 import { notifyFactorySessionReconciled } from './factory-reconnect';
 

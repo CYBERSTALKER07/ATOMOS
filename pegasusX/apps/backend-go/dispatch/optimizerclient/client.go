@@ -75,6 +75,7 @@ type SolveInput struct {
 	DepartureTime time.Time
 	Orders        []dispatch.GeoOrder
 	Fleet         []dispatch.AvailableDriver
+	TetrisBuffer  float64
 }
 
 // Solve calls the optimiser and returns an AssignmentResult mapped from the
@@ -107,7 +108,8 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 		Vehicles:        vehicles,
 		DistanceMatrixM: buildDistanceMatrix(ctx, c.osrm, vehicles, stops),
 		Tunables: &contract.Tunables{
-			TimeLimitMs: DefaultSolverTimeLimitMs,
+			TimeLimitMs:  DefaultSolverTimeLimitMs,
+			TetrisBuffer: in.TetrisBuffer,
 		},
 	}
 
@@ -222,14 +224,12 @@ func buildVehicles(fleet []dispatch.AvailableDriver, depotLat, depotLng float64)
 // solver: one start node per vehicle, optional distinct end node, then
 // customer stops. OSRM /table when available; haversine otherwise.
 func buildDistanceMatrix(ctx context.Context, osrm *routing.OSRMClient, vehicles []contract.Vehicle, stops []contract.Stop) [][]int {
-	points := make([]routing.LatLng, 0, len(vehicles)*2+len(stops))
+	// Strict contract alignment: Exactly 1 node per vehicle (Start), then 1 node per Stop.
+	// Distinct End nodes must NOT be interleaved here as they would shift the Stop indices
+	// which ai-worker hardcodes to len(Vehicles)+j.
+	points := make([]routing.LatLng, 0, len(vehicles)+len(stops))
 	for _, v := range vehicles {
 		points = append(points, routing.LatLng{Lat: v.StartLat, Lng: v.StartLng})
-		if v.EndLat != 0 || v.EndLng != 0 {
-			if absFloat(v.EndLat-v.StartLat) > 1e-9 || absFloat(v.EndLng-v.StartLng) > 1e-9 {
-				points = append(points, routing.LatLng{Lat: v.EndLat, Lng: v.EndLng})
-			}
-		}
 	}
 	for _, s := range stops {
 		points = append(points, routing.LatLng{Lat: s.Lat, Lng: s.Lng})

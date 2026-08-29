@@ -4,6 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
+import StatusChip from "@/components/StatusChip";
 import { OIDCAttachCard } from "@/components/settings/OIDCAttachCard";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import type {
@@ -425,20 +426,40 @@ export default function IntegrationsSettingsPage() {
               )}
             </ul>
             <h3 className="pt-2 text-sm font-semibold">{t("supplier_portal.settings.integrations.text.dead_letter")}</h3>
+            {dead.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <svg className="h-4 w-4 shrink-0 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <span>Dead Letter Queue (DLQ) Alerts ({dead.length})</span>
+                </div>
+                <p className="mt-1">
+                  Deliveries have exhausted maximum retry attempts and routed to the DLQ. Review errors below or click Replay.
+                </p>
+              </div>
+            )}
             <ul className="divide-y border-t">
               {dead.map((a) => (
-                <li key={a.attempt_id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-                  <span className="font-mono text-xs">{a.event_type}</span>
-                  <span className="text-xs text-[var(--desk-text-secondary)]">
-                    {a.last_error || a.status}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-xs underline"
-                    onClick={() => void replayDead(a.attempt_id)}
-                  >
-                    Replay
-                  </button>
+                <li key={a.attempt_id} className="space-y-1.5 py-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">{a.event_type}</span>
+                      <StatusChip status={a.status || "FAILED"} />
+                    </div>
+                    <button
+                      type="button"
+                      className="text-xs underline font-medium text-[var(--color-md-primary)] hover:opacity-80"
+                      onClick={() => void replayDead(a.attempt_id)}
+                    >
+                      Replay
+                    </button>
+                  </div>
+                  {a.last_error && (
+                    <p className="rounded border bg-[var(--desk-canvas,#f8fafc)] p-2 font-mono text-xs text-red-600 break-all">
+                      {a.last_error}
+                    </p>
+                  )}
                 </li>
               ))}
               {dead.length === 0 && (
@@ -537,13 +558,40 @@ export default function IntegrationsSettingsPage() {
             </div>
             <ul className="divide-y border-t">
               {jobs.map((j) => (
-                <li key={j.job_id} className="space-y-1 py-3 text-sm">
-                  <div>
-                    {j.resource}/{j.format} · {j.status}
-                    {j.sftp_status ? ` · sftp:${j.sftp_status}` : ""}
+                <li key={j.job_id} className="space-y-2 py-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-xs">
+                        {j.resource}/{j.format}
+                      </span>
+                      <StatusChip status={j.status} />
+                      {j.sftp_status ? (
+                        <span className="text-xs text-[var(--desk-text-secondary)]">
+                          · sftp:{j.sftp_status}
+                        </span>
+                      ) : null}
+                    </div>
+                    {j.created_at && (
+                      <span className="text-xs text-[var(--desk-text-secondary)]">
+                        {new Date(j.created_at).toLocaleString()}
+                      </span>
+                    )}
                   </div>
+                  {j.status === "FAILED" && (
+                    <div className="rounded-md border border-[var(--desk-danger-soft,#fecaca)] bg-[var(--desk-danger-soft,#fef2f2)] p-2.5 text-xs text-[var(--desk-danger,#b91c1c)]">
+                      <div className="flex items-center gap-1.5 font-semibold">
+                        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Export job failed</span>
+                      </div>
+                      <p className="mt-1 font-mono text-[11px] break-all">
+                        {j.error || "Job processing failed after 4 retries (routed to DLQ)"}
+                      </p>
+                    </div>
+                  )}
                   {j.download_url && (
-                    <a className="text-xs underline break-all" href={j.download_url}>
+                    <a className="text-xs underline break-all text-blue-600 hover:text-blue-800" href={j.download_url}>
                       Download
                     </a>
                   )}

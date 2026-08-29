@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
-import { ApiError, moneyCurrency } from '@pegasusx/api-client';
+import { ApiError, moneyCurrency } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';

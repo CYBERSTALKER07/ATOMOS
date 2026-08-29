@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
-import { warehouseCreateVehicleKey } from '@pegasusx/api-client';
+import { warehouseCreateVehicleKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useWarehouseVehiclesLive } from '@/lib/use-warehouse-vehicles-live';

@@ -12,7 +12,7 @@ import {
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { FormAlert } from "@pegasusx/ui-kit/portal";
 import { storeToken } from "@/lib/bridge";
-import { sessionMapCenter } from "@pegasusx/api-client";
+import { sessionMapCenter } from "@pegasusx/api-core";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import {
   INITIAL_STATE,

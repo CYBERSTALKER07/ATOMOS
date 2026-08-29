@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import type { SupplierOrder } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { orderActionFlags } from '@/lib/order-actions';
 import { supplierWarehouseOps } from '@/lib/supplier-warehouse-ops';
 import { canAdminOrderOps } from '@/lib/admin-scope';

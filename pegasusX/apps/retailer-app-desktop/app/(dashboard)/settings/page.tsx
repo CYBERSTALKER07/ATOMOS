@@ -36,7 +36,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import { getPricingRules } from "../../../lib/api";
-import { retailerProfileUpdateKey } from "@pegasusx/api-client";
+import { retailerProfileUpdateKey } from "@pegasusx/api-core";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import { getRetailerProfile, getRetailerId, mergeRetailerProfile } from "@/lib/retailer-profile";

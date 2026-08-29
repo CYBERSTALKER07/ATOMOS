@@ -3,7 +3,7 @@ import { Package } from "lucide-react";
 import { Skeleton } from "../Skeleton";
 import EmptyState from "../EmptyState";
 import { isCatalogBlocked } from "../../lib/stock-policy";
-import { packCurrency, readCachedAuthSession } from "@pegasusx/api-client";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import { productDisplayPrice, productListPrice, productSalePrice } from "../../lib/types";
 import type { Product } from "../../lib/types";
 

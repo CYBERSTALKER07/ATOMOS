@@ -705,7 +705,10 @@ CREATE TABLE OutboxDeadLetters (
   DeadLetteredAt TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
   Attempts       INT64        NOT NULL,
   LastError      STRING(MAX),
+  SupplierId     STRING(36),
 ) PRIMARY KEY (EventId);
+
+CREATE INDEX Idx_OutboxDeadLetters_Supplier ON OutboxDeadLetters(SupplierId);
 
 -- Migration version ledger: refuse checksum drift on re-apply.
 CREATE TABLE SchemaMigrations (
@@ -794,7 +797,10 @@ CREATE TABLE InventoryLevels (
 ) PRIMARY KEY (InventoryId);
 
 CREATE INDEX Idx_InventoryLevels_ByWarehouseProduct ON InventoryLevels(WarehouseId, ProductId);
-CREATE INDEX Idx_InventoryLevels_BySupplierProduct ON InventoryLevels(SupplierId, ProductId);
+CREATE TABLE ConsumerInbox (
+  DedupKey     STRING(256)  NOT NULL,
+  ProcessedAt  TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (DedupKey);
 
 CREATE TABLE CartItems (
   CartItemId     STRING(36)    NOT NULL,
@@ -1081,10 +1087,14 @@ CREATE TABLE DeviceTokens (
   ActorId   STRING(36)  NOT NULL,
   ActorRole STRING(20)  NOT NULL,
   Platform  STRING(20)  NOT NULL,
+  DeviceId  STRING(128),
+  SessionId STRING(128),
   UpdatedAt TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (Token);
 
 CREATE INDEX Idx_DeviceTokens_ByActor ON DeviceTokens(ActorId, ActorRole);
+CREATE INDEX Idx_DeviceTokens_BySession ON DeviceTokens(SessionId);
+CREATE INDEX Idx_DeviceTokens_ByDevice ON DeviceTokens(DeviceId);
 
 -- ── Vehicles capacity migration (existing clusters) ─────────────────────────
 -- ALTER TABLE Vehicles ADD COLUMN VehicleClass STRING(10) NOT NULL DEFAULT ('CLASS_B');

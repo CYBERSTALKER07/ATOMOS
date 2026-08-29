@@ -74,8 +74,7 @@ struct ManifestExceptionsView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .manifestUpdate || eventType == .transferUpdate else { return }
+                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                     load(silent: true)
                 }
             )

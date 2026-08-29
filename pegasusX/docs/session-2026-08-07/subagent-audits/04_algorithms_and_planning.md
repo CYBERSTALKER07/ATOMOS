@@ -228,3 +228,14 @@ Exact path: `demand.RunDemandSensingWorker` (`demand/worker_sensing.go`) → `af
 12. **Planogram vision / CV absent** — plan only. (`docs/PLANOGRAM_VISION_PLAN.md`)
 
 **Bottom line:** the forecasting → safety-stock → replenishment → auto-order spine is genuinely implemented classical OR/statistics with a working (policy-gated) touchless path — a store *can* receive an auto-generated order untouched by humans when `place` mode is enabled. Dispatch is a solid deterministic heuristic in prod with a real OR-Tools solver built but unshipped. Credit scoring, partial allocation, pricing authority, ML, and CV are the real gaps; the Control Tower's "digital twin" visual is a random-data mock.
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

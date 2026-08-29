@@ -4,7 +4,7 @@ import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
-import { factoryBatchDispatchKey } from '@pegasusx/api-client';
+import { factoryBatchDispatchKey } from '@pegasusx/api-core';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { factoryOperatorId } from '@/lib/factory-scope';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -79,7 +79,7 @@ export default function LoadingBayPage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           return;
         }
         void load();

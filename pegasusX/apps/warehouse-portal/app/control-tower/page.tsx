@@ -2,13 +2,13 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  LiveEKGNetworkGraph,
-  HexagonalControlTowerMap,
-  GlassmorphismPanel,
-  NetworkNode,
-  NetworkLink,
-  useControlTowerWebSocket,
+import { HexagonalControlTowerMap } from "@pegasusx/ui-maps";
+import { LiveEKGNetworkGraph, type NetworkNode, type NetworkLink } from "@pegasusx/ui-charts";
+import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
+import { GlassmorphismPanel,
+  
+  
+  
 } from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
@@ -49,7 +49,7 @@ export default function ControlTowerPage() {
     return sid.trim();
   }, [token]);
   
-  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
+  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerTelemetry(supplierId);
 
   const displayNodes = networkNodes;
   const displayLinks = networkLinks;

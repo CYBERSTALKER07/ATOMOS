@@ -1,8 +1,9 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
+
 
 import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { usePolling } from '@pegasusx/api-client';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
@@ -115,7 +116,7 @@ export default function ManifestExceptionsPage() {
       onMessage: (raw) => {
         const event = parseFactoryLiveEvent(raw);
         if (!event?.type) return;
-        if (event.type === 'FACTORY_MANIFEST_UPDATE' || event.type === 'FACTORY_TRANSFER_UPDATE') {
+        if (event.type.startsWith('TRANSFER_') || event.type.startsWith('MANIFEST_') || event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           void fetchExceptions({ background: true, silent: true });
         }
       },

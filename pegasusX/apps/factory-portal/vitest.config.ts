@@ -24,12 +24,12 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "../../packages/types/$1"),
       },
       {
-        find: "@pegasusx/api-client",
-        replacement: path.resolve(__dirname, "../../packages/api-client/index.ts"),
+        find: '@pegasusx/api-core',
+        replacement: path.resolve(__dirname, "../../packages/api-core/index.ts"),
       },
       {
-        find: /^@pegasusx\/api-client\/(.*)$/,
-        replacement: path.resolve(__dirname, "../../packages/api-client/$1"),
+        find: /^@pegasusx\/api-core\/(.*)$/,
+        replacement: path.resolve(__dirname, "../../packages/api-core/$1"),
       },
     ],
   },

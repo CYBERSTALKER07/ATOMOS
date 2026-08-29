@@ -2,7 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-client';
+import { ApiError, warehouseDispatchSettingsKey } from '@pegasusx/api-core';
 import type { WarehouseDispatchPreview } from '@pegasusx/types';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';

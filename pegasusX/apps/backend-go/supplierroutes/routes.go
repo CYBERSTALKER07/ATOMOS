@@ -34,6 +34,7 @@ type Deps struct {
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
 	WarehouseHub      *ws.Hub
+	TelemetryHub      *ws.Hub
 	OrgOIDC           *orgoidc.Service
 }
 
@@ -48,6 +49,7 @@ type Deps struct {
 //	GET/POST /v1/supplier/org/members  (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/fleet/drivers  (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/fleet/vehicles (requires session cookie, ADMIN role)
+//	GET /v1/supplier/events             (requires session cookie, ADMIN role)
 //	GET /v1/supplier/ws-session         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/dashboard         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/earnings          (requires session cookie, ADMIN role)
@@ -134,6 +136,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/fleet/drivers", d.Service.HandleFleetDrivers)
 		gr.Get("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
 		gr.Post("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
+		gr.Get("/v1/supplier/events", ws.HandleSupplierEvents(nil, d.JWTSecret, d.SupplierHub, d.WarehouseHub, d.TelemetryHub))
 		gr.Get("/v1/supplier/ws-session", d.Service.HandleWebSocketSession)
 		gr.Get("/v1/supplier/dashboard", d.Service.HandleDashboard)
 		gr.Get("/v1/supplier/manifests", d.Service.HandleManifests)
