@@ -304,10 +304,39 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 			Lng: s.fallbackDepotLng,
 		})
 		job := plan.BuildSolveJob(ctx, supplierID, homeNodeID, depot, rows, fleet)
-		assignment, source, err = plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
+		
+		// Emit DISPATCH_REQUESTED for the Python sidecar instead of synchronous execution
+		now := s.now().UTC()
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"type":         "DISPATCH_REQUESTED",
+			"supplier_id":  supplierID,
+			"warehouse_id": warehouseID,
+			"fleet":        fleet,
+			"orders":       rows,
+			"job":          job,
+			"timestamp":    now.UnixMilli(),
+		})
+		
+		err = spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.InsertMap("OutboxEvents", map[string]any{
+					"EventId":       uuid.NewString(),
+					"AggregateType": "Supplier",
+					"AggregateId":   supplierID,
+					"TopicName":     events.TopicMain,
+					"Payload":       payloadBytes,
+					"CreatedAt":     now,
+					"PublishedAt":   nil,
+				}),
+			})
+		})
 		if err != nil {
 			return DispatchExecuteResult{}, err
 		}
+
+		out.Status = "optimizing"
+		out.OptimizerSource = "async_sidecar"
+		return out, nil
 	}
 	out.OptimizerSource = source
 	if assignment != nil {

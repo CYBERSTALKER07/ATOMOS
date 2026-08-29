@@ -13,6 +13,7 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+	"strconv"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -25,6 +26,8 @@ type Backend interface {
 	Get(ctx context.Context, key string) ([]byte, bool, error)
 	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
+	IncrBy(ctx context.Context, key string, amount int64) (int64, error)
+	DecrBy(ctx context.Context, key string, amount int64) (int64, error)
 	Publish(ctx context.Context, channel string, payload []byte) error
 	// Subscribe returns a channel of payloads for the given Pub/Sub channel.
 	// The returned cancel func unsubscribes and closes the channel.
@@ -109,6 +112,20 @@ func (c *Cache) Close() error {
 		return closer.Close()
 	}
 	return nil
+}
+
+func (c *Cache) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if c == nil || c.backend == nil {
+		return 0, nil
+	}
+	return c.backend.IncrBy(ctx, key, amount)
+}
+
+func (c *Cache) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if c == nil || c.backend == nil {
+		return 0, nil
+	}
+	return c.backend.DecrBy(ctx, key, amount)
 }
 
 // Invalidate deletes the given keys locally and publishes them on the
@@ -254,4 +271,45 @@ func (m *InMemoryBackend) Subscribe(_ context.Context, channel string) (<-chan [
 		}
 	}
 	return ch, cancel, nil
+}
+
+
+func (m *InMemoryBackend) IncrBy(_ context.Context, key string, amount int64) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	entry, ok := m.store[key]
+	var current int64
+	if ok {
+		if !entry.expiresAt.IsZero() && time.Now().After(entry.expiresAt) {
+			// expired
+		} else {
+			if v, err := strconv.ParseInt(string(entry.value), 10, 64); err == nil {
+				current = v
+			}
+		}
+	}
+	current += amount
+	entry.value = []byte(strconv.FormatInt(current, 10))
+	m.store[key] = entry
+	return current, nil
+}
+
+func (m *InMemoryBackend) DecrBy(_ context.Context, key string, amount int64) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	entry, ok := m.store[key]
+	var current int64
+	if ok {
+		if !entry.expiresAt.IsZero() && time.Now().After(entry.expiresAt) {
+			// expired
+		} else {
+			if v, err := strconv.ParseInt(string(entry.value), 10, 64); err == nil {
+				current = v
+			}
+		}
+	}
+	current -= amount
+	entry.value = []byte(strconv.FormatInt(current, 10))
+	m.store[key] = entry
+	return current, nil
 }

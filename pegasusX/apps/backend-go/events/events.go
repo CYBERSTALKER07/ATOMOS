@@ -185,6 +185,10 @@ const (
 	EventRouteCreated   = "ROUTE_CREATED"
 	EventRouteReordered = "ROUTE_REORDERED"
 
+	// @Sync(DispatchEvent)
+	EventDispatchRequested = "DISPATCH_REQUESTED"
+	EventDispatchPlanned   = "DISPATCH_PLANNED"
+
 	// @Sync(FinanceEvent)
 	EventSplitPaymentCreated = "SPLIT_PAYMENT_CREATED"
 	EventPaymentCleared      = "PAYMENT_CLEARED"

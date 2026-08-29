@@ -133,6 +133,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleNegotiationEvent(ctx, msg.Value, traceID)
 	case events.EventRouteReordered, events.EventRouteCreated:
 		return d.handleRouteEvent(ctx, msg.Value, traceID)
+	case events.EventDispatchRequested, events.EventDispatchPlanned:
+		return d.handleDispatchEvent(ctx, msg.Value, traceID)
 	case events.EventMissingItemsReported, events.EventSplitPaymentCreated:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
 	case events.EventClaimFiled, events.EventClaimUnderReview, events.EventClaimResolved,
@@ -763,6 +765,27 @@ func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload [
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastDriver(ctx, e.DriverID, payload)
 	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleDispatchEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e struct {
+		Type       string `json:"type"`
+		SupplierID string `json:"supplier_id"`
+		EventID    string `json:"event_id"`
+	}
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode dispatch event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.EventID)
+	if aggregateID == "" {
+		aggregateID = e.SupplierID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	slog.DebugContext(ctx, "fanned out dispatch event", "event_type", e.Type, "supplier_id", e.SupplierID)
 	return nil
 }
 

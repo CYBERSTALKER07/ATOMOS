@@ -1327,6 +1327,42 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			return CreateResponse{}, err
 		}
 		lineItems = invPlan.Fulfillable
+
+		if s.cache != nil {
+			var inflightKeys []string
+			var inflightQtys []int64
+			defer func() {
+				for i, key := range inflightKeys {
+					_, _ = s.cache.DecrBy(context.Background(), key, inflightQtys[i])
+				}
+			}()
+
+			for _, li := range invPlan.Fulfillable {
+				sku := strings.TrimSpace(li.SKU)
+				if sku == "" {
+					continue
+				}
+				key := fmt.Sprintf("inflight_rsv:%s:%s", warehouseID, sku)
+				inflight, cerr := s.cache.IncrBy(ctx, key, li.Quantity)
+				if cerr != nil {
+					continue
+				}
+				inflightKeys = append(inflightKeys, key)
+				inflightQtys = append(inflightQtys, li.Quantity)
+
+				avail := invPlan.AvailableStock[sku]
+				if inflight > avail {
+					return CreateResponse{}, &InventoryCheckoutError{
+						Code:         "PARTIAL_OUT_OF_STOCK_REJECTED",
+						Message:      "inventory_exhausted_concurrent",
+						OOSItems:     []string{sku},
+						RejectedSKUs: []string{sku},
+						Shortfall:    map[string]int64{sku: inflight - avail},
+					}
+				}
+			}
+		}
+
 		total = 0
 		for _, li := range lineItems {
 			total += li.Quantity * li.UnitPrice

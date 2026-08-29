@@ -43,11 +43,12 @@ class DriverOfflineQueue @Inject constructor(
         val lat = capturedLat ?: fromPayload.first
         val lng = capturedLng ?: fromPayload.second
         val at = capturedAtMs ?: if (lat != null && lng != null) System.currentTimeMillis() else null
+        val finalKey = idempotencyKey.ifBlank { UUID.randomUUID().toString() }
         val entity = PendingMutationEntity(
-            id = idempotencyKey.ifBlank { UUID.randomUUID().toString() },
+            id = finalKey,
             endpoint = ep,
             payloadJson = ensureCoordsInPayload(payloadJson, lat, lng),
-            idempotencyKey = idempotencyKey,
+            idempotencyKey = finalKey,
             method = method,
             priority = DriverOfflineActionCatalog.priorityFor(ep),
             clientTimestampIso = clientTimestampIso.ifBlank { Instant.now().toString() },

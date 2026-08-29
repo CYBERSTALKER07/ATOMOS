@@ -77,7 +77,9 @@ func setupKafkaConsumers(
 	}
 
 	var kafkaEventDedup kafka.EventDedupStore = kafka.NewInMemoryEventDedup(7 * 24 * time.Hour)
-	if redisAdapter != nil {
+	if spannerClient != nil {
+		kafkaEventDedup = kafka.NewSpannerEventDedup(spannerClient)
+	} else if redisAdapter != nil {
 		if rc := redisAdapter.Client(); rc != nil {
 			kafkaEventDedup = kafka.NewRedisEventDedup(rc, 7*24*time.Hour)
 		}

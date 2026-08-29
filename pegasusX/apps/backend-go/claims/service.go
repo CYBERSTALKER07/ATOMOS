@@ -860,7 +860,11 @@ func (s *Service) ApproveClaim(ctx context.Context, actor auth.Claims, claimID s
 		}
 	}
 	// Leave quarantine for reverse logistics / waste after money settlement.
-	s.resolveStoreStockForClaim(ctx, c, "RETURN", actor.Subject)
+	disposition := "RETURN"
+	if c.ClaimType == ClaimTypeDamaged || c.ClaimType == ClaimTypeConcealedDamage {
+		disposition = "WASTE"
+	}
+	s.resolveStoreStockForClaim(ctx, c, disposition, actor.Subject)
 	return c, settlement, nil
 }
 

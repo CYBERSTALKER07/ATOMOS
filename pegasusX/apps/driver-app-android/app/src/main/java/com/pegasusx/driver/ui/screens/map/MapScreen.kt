@@ -395,7 +395,6 @@ fun MapScreen(
                 onRequestRescue = { showRescueSheet = true },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp)
             )
         }
 

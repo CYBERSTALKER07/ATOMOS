@@ -2,33 +2,10 @@ package com.pegasusx.driver.ui.screens.map.components
 
 import androidx.compose.ui.res.stringResource
 
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import com.pegasusx.driver.data.model.Order
-import com.pegasusx.driver.ui.screens.map.MapPhase
-import com.pegasusx.driver.ui.screens.map.resolveMapPhase
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
-import com.pegasusx.driver.R
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import com.pegasusx.driver.data.model.OrderState
 
 @Composable
 fun OrderInfoCard(
@@ -40,18 +17,25 @@ fun OrderInfoCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val phaseForCard = resolveMapPhase(activeOrder ?: order)
+
+    // High contrast colors
+    val blueColor = Color(0xFF0A66C2)
+    val greenColor = Color(0xFF198754)
+    val greyColor = Color(0xFF6C757D)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(
                 MaterialTheme.colorScheme.surfaceContainerHigh,
-                RoundedCornerShape(16.dp)
+                RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
             )
-            .padding(16.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp)
     ) {
         Text(
             text = order.retailerName,
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -59,12 +43,12 @@ fun OrderInfoCard(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = order.deliveryAddress,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // ETA row
         val etaText = formatETA(order)
@@ -76,81 +60,93 @@ fun OrderInfoCard(
                 Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(14.dp)
+                    tint = blueColor,
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = etaText,
-                    style = MaterialTheme.typography.labelMedium.copy(
+                    style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace
                     ),
-                    color = MaterialTheme.colorScheme.primary
+                    color = blueColor
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         Text(
             text = stringResource(R.string.mobile_driver_ui_name_size_itemif_s_else_formatamount, order.state.name, order.items.size, if (order.items.size != 1) "s" else "", formatAmount(order.totalAmount)),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(modifier = Modifier.height(16.dp))
 
-        if (order.latitude != null && order.longitude != null) {
-            Spacer(modifier = Modifier.height(12.dp))
-            FilledTonalButton(
-                onClick = {
-                    val uri = Uri.parse("google.navigation:q=${order.latitude},${order.longitude}&mode=d")
-                    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
-                        setPackage("com.google.android.apps.maps")
+        // Actions grid - Thumb Zone
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (order.latitude != null && order.longitude != null && phaseForCard != MapPhase.ARRIVED && phaseForCard != MapPhase.VERIFYING) {
+                Button(
+                    onClick = {
+                        val uri = Uri.parse("google.navigation:q=${order.latitude},${order.longitude}&mode=d")
+                        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                            setPackage("com.google.android.apps.maps")
+                        }
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                        } else {
+                            val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}&travelmode=driving")
+                            context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = blueColor)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Navigation,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Navigate", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+
+            if (phaseForCard == MapPhase.ARRIVED || phaseForCard == MapPhase.VERIFYING) {
+                Button(
+                    onClick = onOpenScanner,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = greenColor)
+                ) {
+                    Text(
+                        if (phaseForCard == MapPhase.VERIFYING) "Scan Proof of Delivery" else "Scan QR",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(
+                        onClick = { onOpenCorrection(order.id, order.retailerName) },
+                        modifier = Modifier.weight(1f).height(48.dp),
+                    ) {
+                        Text("Correction", style = MaterialTheme.typography.labelLarge)
                     }
-                    if (intent.resolveActivity(context.packageManager) != null) {
-                        context.startActivity(intent)
-                    } else {
-                        val webUri = Uri.parse("https://www.google.com/maps/dir/?api=1&destination=${order.latitude},${order.longitude}&travelmode=driving")
-                        context.startActivity(Intent(Intent.ACTION_VIEW, webUri))
+                    FilledTonalButton(
+                        onClick = onRequestRescue,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer)
+                    ) {
+                        Text("Rescue", style = MaterialTheme.typography.labelLarge)
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Navigation,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Navigate", style = MaterialTheme.typography.labelLarge)
+                }
+            } else {
+                FilledTonalButton(
+                    onClick = onRequestRescue,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = greyColor, contentColor = Color.White)
+                ) {
+                    Text("Rescue", style = MaterialTheme.typography.labelLarge)
+                }
             }
-        }
-
-        val phaseForCard = resolveMapPhase(activeOrder ?: order)
-        if (phaseForCard == MapPhase.ARRIVED || phaseForCard == MapPhase.VERIFYING) {
-            Spacer(modifier = Modifier.height(8.dp))
-            FilledTonalButton(
-                onClick = onOpenScanner,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    if (phaseForCard == MapPhase.VERIFYING) "Scan Proof of Delivery" else "Scan QR",
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            FilledTonalButton(
-                onClick = { onOpenCorrection(order.id, order.retailerName) },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text("Delivery Correction", style = MaterialTheme.typography.labelLarge)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        FilledTonalButton(
-            onClick = onRequestRescue,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("Rescue", style = MaterialTheme.typography.labelLarge)
         }
     }
 }
