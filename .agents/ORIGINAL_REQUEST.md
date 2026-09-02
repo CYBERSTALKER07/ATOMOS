@@ -88,3 +88,35 @@ When developing, designing, or planning, always ensure to account for:
 - Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
 - ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
 - Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+
+## 2026-08-30T00:18:00Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: Very large team (Maximal parallel exploration of the codebase)
+
+Use a very large team of agents. Conduct a comprehensive, line-by-line review of the entire PegasusX Go backend. Question every feature, identify architectural gaps, logical bugs, and inconsistencies across the codebase.
+
+Working directory: ~/teamwork_projects/pegasusx_audit
+Integrity mode: development
+
+## Requirements
+
+### R1. Line-by-Line Ecosystem Audit
+Analyze the Go backend codebase (`apps/backend-go/`) line-by-line, focusing on general architecture, logic bugs, and ecosystem consistency. Ensure that role-row parity, Spanner transactions, Kafka outbox events, and WebSocket multi-hub broadcasts are correctly integrated and consistent across domains.
+
+### R2. Comprehensive Report Generation
+Produce a detailed Markdown report (`backend_audit_report.md`) documenting all findings, logical inconsistencies, and open architectural questions for every feature analyzed. Do not implement code fixes; focus entirely on surfacing issues and questions.
+
+## Acceptance Criteria
+
+### Audit Depth & Formatting
+- [ ] The report explicitly covers and analyzes code from at least 5 major role domains (e.g., supplier, retailer, warehouse, factory, driver, payload, order).
+- [ ] Every identified bug or architectural gap cites the exact file path and line number(s).
+- [ ] The report evaluates whether the codebase adheres to the ecosystem alignment rules (e.g., Spanner Tx + Kafka Outbox + WebSocket fanout).
+
+### Architectural Inquiry
+- [ ] The report includes a dedicated "Open Questions" section that surfaces at least 5 deep architectural or edge-case questions regarding unhandled scenarios or state inconsistencies in the codebase.
+
