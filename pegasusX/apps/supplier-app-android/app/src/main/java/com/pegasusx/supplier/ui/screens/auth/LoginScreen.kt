@@ -24,8 +24,8 @@ import com.pegasusx.supplier.data.model.LoginRequest
 import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.ui.PegasusRuntimeBanner
+import com.pegasus.design.ui.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R

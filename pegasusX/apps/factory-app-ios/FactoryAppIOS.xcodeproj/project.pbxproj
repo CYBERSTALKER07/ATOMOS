@@ -135,16 +135,16 @@
 		5E3A9BA40A75ADA7E48A09F3 /* DashboardHeroCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardHeroCard.swift; sourceTree = "<group>"; };
 		61913D058CA383C53FA61DBA /* FactoryMoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryMoreHubView.swift; sourceTree = "<group>"; };
 		6239EC7C0CEFAD20C95B0B21 /* LoadingBayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingBayView.swift; sourceTree = "<group>"; };
-		63B66EA8683D1FB78B47E227 /* CollapsibleSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollapsibleSidebar.swift; sourceTree = "<group>"; };
+		63B66EA8683D1FB78B47E227 /* CollapsibleSidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/PegasusUIKit/CollapsibleSidebar.swift; sourceTree = "<group>"; };
 		C8D31E4A0B1F47C2A9E6D503 /* StatusStack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusStack.swift; sourceTree = "<group>"; };
 		E0F53A6C2D3B69E4C1A8F725 /* MarketPack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketPack.swift; sourceTree = "<group>"; };
 		A2B75C8E4F5D81A6E3C0B947 /* CellApi.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CellApi.swift; sourceTree = "<group>"; };
 		65B6A7D0C790233CDAEDC888 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		67CC6AC4686F542B2B886DE4 /* GeocodeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeService.swift; sourceTree = "<group>"; };
-		682C014A715771016579623C /* RealtimeRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealtimeRefresh.swift; sourceTree = "<group>"; };
+		682C014A715771016579623C /* RealtimeRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/PegasusNetworking/RealtimeRefresh.swift; sourceTree = "<group>"; };
 		7084A880E2936D26F7F2B4DC /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		7252B5BD8E968F94AFEB7D5A /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
-		74B068A2FD4BC508D59C6EA6 /* PegasusMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMotion.swift; sourceTree = "<group>"; };
+		74B068A2FD4BC508D59C6EA6 /* PegasusMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/PegasusUIKit/PegasusMotion.swift; sourceTree = "<group>"; };
 		75C5251859EFAFB4B2107D3E /* FactoryRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryRealtimeClient.swift; sourceTree = "<group>"; };
 		7885E90C63F0AA3F6A265967 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		78C566B4139640B46491571C /* GeocodeLocationSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeocodeLocationSupport.swift; sourceTree = "<group>"; };
@@ -157,7 +157,7 @@
 		961A01FF5CFDB45C17B99746 /* FactorySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactorySection.swift; sourceTree = "<group>"; };
 		98B3229E4C6014D81EF09964 /* TransferListSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferListSummary.swift; sourceTree = "<group>"; };
 		9AABD2CFE44FA64F21B8E21F /* BaySection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaySection.swift; sourceTree = "<group>"; };
-		9BB5114CE3489527DD42F57B /* PegasusMonochromeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusMonochromeTheme.swift; sourceTree = "<group>"; };
+		9BB5114CE3489527DD42F57B /* PegasusMonochromeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/PegasusUIKit/PegasusMonochromeTheme.swift; sourceTree = "<group>"; };
 		9D2F6B034F3FD70146E20705 /* FactoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryService.swift; sourceTree = "<group>"; };
 		9DA186D19599F74294C966A1 /* StaffListContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffListContent.swift; sourceTree = "<group>"; };
 		9E46867427863103A6E92A2D /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
@@ -172,7 +172,7 @@
 		C30E30CF549BA9B629158C18 /* ManifestExceptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestExceptionsView.swift; sourceTree = "<group>"; };
 		C43EECD24BC340D74BB39421 /* ManifestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestDetailView.swift; sourceTree = "<group>"; };
 		CC0573ADB1ECAC9305E1C304 /* FactoryAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = FactoryAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		CC63E30C1ECF5047F20B4DF6 /* PegasusStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusStateViews.swift; sourceTree = "<group>"; };
+		CC63E30C1ECF5047F20B4DF6 /* PegasusStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/PegasusUIKit/PegasusStateViews.swift; sourceTree = "<group>"; };
 		CD60CC9FDEF70B9B7F313A74 /* SupplyRequestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestDetailView.swift; sourceTree = "<group>"; };
 		D25FAB61F03CFFC021BBF1C5 /* FactoryStateViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryStateViews.swift; sourceTree = "<group>"; };
 		D3A15E1B525243BA0F292DAC /* LocationSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSetupView.swift; sourceTree = "<group>"; };

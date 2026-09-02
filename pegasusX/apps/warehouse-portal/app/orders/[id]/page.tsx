@@ -237,6 +237,32 @@ export default function OrderDetailPage() {
                       </button>
                     </div>
                   ) : null}
+                  {state === 'AWAITING_PAYMENT' ? (
+                    <div className="space-y-2 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wider text-[var(--danger)]">
+                        Emergency Payment Bypass
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        Generate bypass code for driver if POS terminal failed.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={acting}
+                        className="portal-btn portal-btn--outline w-full"
+                        style={{ color: 'var(--danger)' }}
+                        onClick={() =>
+                          runMutation('Payment bypass token generated', async () => {
+                            const res = await warehouseOps.issuePaymentBypass(orderId);
+                            // @ts-expect-error
+                            toast(`Token: ${res.bypass_token}`, 'success');
+                            return res;
+                          })
+                        }
+                      >
+                        Issue Bypass Token
+                      </button>
+                    </div>
+                  ) : null}
                   {flags.canDelay ? (
                     <label className="portal-field">
                       <span className="portal-label">{t("warehouse_portal.orders._id_.text.proposed_delivery_date")}</span>

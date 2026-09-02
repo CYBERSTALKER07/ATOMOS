@@ -128,6 +128,27 @@ class WarehouseOperationsRepository @Inject constructor(
             WarehouseIdempotencyKeys.orderOverflow(orderId),
         )
 
+    suspend fun issuePaymentBypass(orderId: String): Response<Map<String, String>> =
+        api.issuePaymentBypass(mapOf("order_id" to orderId))
+
+    suspend fun getEarlyCompleteRequest(driverId: String): Response<Map<String, Any>> =
+        api.getEarlyCompleteRequest(driverId)
+
+    suspend fun approveEarlyComplete(
+        driverId: String,
+        action: String,
+        newWindowStart: String? = null,
+        newWindowEnd: String? = null,
+    ): Response<Map<String, Any>> {
+        val map = mutableMapOf<String, String>(
+            "driver_id" to driverId,
+            "action" to action
+        )
+        if (newWindowStart != null) map["newWindowStart"] = newWindowStart
+        if (newWindowEnd != null) map["newWindowEnd"] = newWindowEnd
+        return api.approveEarlyComplete(map)
+    }
+
     suspend fun recommendReassign(orderId: String): Response<RecommendReassignResponse> =
         api.recommendReassign(
             RecommendReassignRequest(orderId = orderId),

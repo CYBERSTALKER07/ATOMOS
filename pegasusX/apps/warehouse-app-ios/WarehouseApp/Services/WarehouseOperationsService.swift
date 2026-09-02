@@ -133,4 +133,57 @@ enum WarehouseOperationsService {
     static func refreshToken(_ refreshToken: String) async throws -> AuthResponse {
         try await api.post("v1/auth/warehouse/refresh", body: RefreshTokenRequest(refreshToken: refreshToken))
     }
+
+    static func issuePaymentBypass(orderId: String) async throws -> PaymentBypassResponse {
+        try await api.post(
+            "v1/warehouse/ops/orders/payment-bypass",
+            body: PaymentBypassRequest(orderId: orderId)
+        )
+    }
+
+    static func getEarlyCompleteRequest(driverId: String) async throws -> [String: Any] {
+        try await api.get("v1/warehouse/ops/orders/early-complete/\(driverId)")
+    }
+
+    static func approveEarlyComplete(driverId: String, action: String, newWindowStart: String? = nil, newWindowEnd: String? = nil) async throws -> [String: Any] {
+        var body: [String: String] = [
+            "driver_id": driverId,
+            "action": action
+        ]
+        if let s = newWindowStart { body["newWindowStart"] = s }
+        if let e = newWindowEnd { body["newWindowEnd"] = e }
+        return try await api.post("v1/warehouse/ops/orders/early-complete/approve", body: body)
+    }
+}
+
+// Models
+
+
+struct PaymentBypassRequest: Encodable {
+    let orderId: String
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+    }
+}
+
+struct PaymentBypassResponse: Decodable {
+    let status: String?
+    let bypassToken: String?
+    let orderId: String?
+    enum CodingKeys: String, CodingKey {
+        case status
+        case bypassToken = "bypass_token"
+        case orderId = "order_id"
+    }
+}
+
+struct EarlyCompleteRequest: Encodable {
+    let truckId: String
+    enum CodingKeys: String, CodingKey {
+        case truckId = "truck_id"
+    }
+}
+
+struct EarlyCompleteResponse: Decodable {
+    let status: String?
 }

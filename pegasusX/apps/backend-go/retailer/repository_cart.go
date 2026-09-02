@@ -50,7 +50,7 @@ func (r *SpannerCartRepository) ListByRetailer(ctx context.Context, retailerID, 
 		SQL:    "SELECT CartItemId, RetailerId, SupplierId, ProductId, Quantity, PriceSnapshot, Currency, UpdatedAt FROM CartItems@{FORCE_INDEX=Idx_CartItems_ByRetailerSupplier} WHERE RetailerId = @rid AND SupplierId = @sid",
 		Params: map[string]any{"rid": retailerID, "sid": supplierID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5*time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	var items []CartItem
@@ -80,7 +80,7 @@ func (r *SpannerCartRepository) ListByRetailerAll(ctx context.Context, retailerI
 		      ORDER BY UpdatedAt DESC`,
 		Params: map[string]any{"rid": retailerID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	var items []CartItem

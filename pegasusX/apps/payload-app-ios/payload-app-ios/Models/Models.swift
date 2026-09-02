@@ -230,10 +230,12 @@ struct ManifestsResponse: Decodable {
 /// Backend: order/service.go::PayloadSealRequest → {order_id, terminal_id, manifest_cleared}.
 /// terminal_id is the active vehicle/truck id (Expo passes activeTruck).
 struct SealOrderRequest: Encodable {
+    let manifestId: String
     let orderId: String
     let terminalId: String
     let manifestCleared: Bool
     enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
         case orderId = "order_id"
         case terminalId = "terminal_id"
         case manifestCleared = "manifest_cleared"

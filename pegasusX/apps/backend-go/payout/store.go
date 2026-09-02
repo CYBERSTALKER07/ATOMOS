@@ -67,6 +67,115 @@ func (r *Repository) Insert(ctx context.Context, b Batch) error {
 	})
 }
 
+// GenerateBatchesInTxn computes sums and updates slices atomically in a single transaction.
+func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string, start, end time.Time, buildBatch func(SumLegsResult) (Batch, error)) ([]Batch, error) {
+	var batches []Batch
+	err := spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		batches = nil // Reset on retry
+
+		iter := txn.Query(ctx, spanner.Statement{
+			SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor, SliceId
+			      FROM InvoiceSettlementSlices
+			      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
+			        AND CreatedAt >= @start AND CreatedAt < @end`,
+			Params: map[string]any{"sid": supplierID, "start": start, "end": end},
+		})
+		
+		sums := make(map[string]*SumLegsResult)
+		for {
+			row, e := iter.Next()
+			if e == iterator.Done {
+				break
+			}
+			if e != nil {
+				iter.Stop()
+				return e
+			}
+			var cur, sliceID string
+			var gross, comm, net int64
+			if e := row.Columns(&cur, &gross, &comm, &net, &sliceID); e != nil {
+				iter.Stop()
+				return e
+			}
+			if sums[cur] == nil {
+				sums[cur] = &SumLegsResult{Currency: cur}
+			}
+			
+			if gross >= 0 {
+				sums[cur].Captured += gross
+			} else {
+				sums[cur].Refunded += -gross
+			}
+			sums[cur].Commission += comm
+			sums[cur].NetPayout += net
+			sums[cur].SliceIDs = append(sums[cur].SliceIDs, sliceID)
+		}
+		iter.Stop()
+
+		buf := outbox.NewSpannerTxnBuffer(txn)
+
+		for _, s := range sums {
+			if s.NetPayout <= 0 {
+				continue
+			}
+			b, err := buildBatch(*s)
+			if err != nil {
+				return err
+			}
+			
+			if err := emitPayoutEvent(ctx, buf, events.EventPayoutBatchGenerated, b, ""); err != nil {
+				return err
+			}
+			
+			if err := txn.BufferWrite([]*spanner.Mutation{
+				spanner.InsertMap("PayoutBatches", map[string]any{
+					"BatchId":            b.BatchID,
+					"SupplierId":         b.SupplierID,
+					"PeriodStart":        civilDateOf(b.PeriodStart),
+					"PeriodEnd":          civilDateOf(b.PeriodEnd),
+					"GrossCapturedMinor": b.GrossCapturedMinor,
+					"RefundedMinor":      b.RefundedMinor,
+					"CommissionMinor":    b.CommissionMinor,
+					"NetPayoutMinor":     b.NetPayoutMinor,
+					"Currency":           b.Currency,
+					"Status":             b.Status,
+					"IdempotencyKey":     b.IdempotencyKey,
+					"CreatedBy":          b.CreatedBy,
+					"CreatedAt":          spanner.CommitTimestamp,
+					"UpdatedAt":          spanner.CommitTimestamp,
+				}),
+			}); err != nil {
+				return err
+			}
+
+			stmt := spanner.Statement{
+				SQL: `UPDATE InvoiceSettlementSlices
+				      SET Status = 'BATCHED', PayoutBatchId = @b
+				      WHERE SliceId IN UNNEST(@slice_ids)`,
+				Params: map[string]any{
+					"b":         b.BatchID,
+					"slice_ids": s.SliceIDs,
+				},
+			}
+			if _, err := txn.Update(ctx, stmt); err != nil {
+				return err
+			}
+			
+			batches = append(batches, b)
+		}
+
+		return buf.Flush(ctx)
+	})
+	
+	if spanner.ErrCode(err) == codes.AlreadyExists {
+		if existingList, err2 := r.ListBySupplierPeriod(ctx, supplierID, start, end); err2 == nil && len(existingList) > 0 {
+			return existingList, nil
+		}
+	}
+	
+	return batches, err
+}
+
 // emitPayoutEvent buffers a payout lifecycle event. The event type is chosen by
 // the caller so the same status-transition code path can label generate /
 // export / dispatch / paid distinctly.

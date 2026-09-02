@@ -31,12 +31,16 @@ struct OrderOpsActions: View {
                     Button("mobile_warehouse.ui.reassign_order") { onLoadRecommendations() }
                         .disabled(mutating)
                 }
+                if !["COMPLETED", "CANCELLED"].contains(state.uppercased()) {
+                    Button("Emergency Payment Bypass") { pendingAction = .paymentBypass }
+                        .disabled(mutating)
+                }
             }
         }
     }
 
     private func showOps(for state: String) -> Bool {
-        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state)
+        canProposeDate(state) || canReject(state) || canOverflow(state) || canReassign(state) || !["COMPLETED", "CANCELLED"].contains(state.uppercased())
     }
 
     private func canProposeDate(_ state: String) -> Bool {

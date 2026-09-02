@@ -27,11 +27,11 @@ class ScannerViewModel @Inject constructor(
     private val _state = MutableStateFlow(ScannerState.IDLE)
     val state: StateFlow<ScannerState> = _state.asStateFlow()
 
-    private val _lastScannedBinId = MutableStateFlow<String?>(null)
-    val lastScannedBinId: StateFlow<String?> = _lastScannedBinId.asStateFlow()
+    private val _scannedBinIds = MutableStateFlow<List<String>>(emptyList())
+    val scannedBinIds: StateFlow<List<String>> = _scannedBinIds.asStateFlow()
 
-    private val _resolvedBin = MutableStateFlow<WarehouseBinLocation?>(null)
-    val resolvedBin: StateFlow<WarehouseBinLocation?> = _resolvedBin.asStateFlow()
+    private val _resolvedBins = MutableStateFlow<List<WarehouseBinLocation>>(emptyList())
+    val resolvedBins: StateFlow<List<WarehouseBinLocation>> = _resolvedBins.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
@@ -41,38 +41,41 @@ class ScannerViewModel @Inject constructor(
         _errorMessage.value = null
     }
 
-    fun onBarcodeScanned(barcode: String) {
+    fun onMatrixBarcodesScanned(barcodes: List<String>) {
         if (_state.value != ScannerState.SCANNING) return
 
         _state.value = ScannerState.PROCESSING
-        _lastScannedBinId.value = barcode
+        _scannedBinIds.value = barcodes
 
         viewModelScope.launch {
             try {
-                val code = barcode.trim()
                 val response = warehouseApi.listBins()
                 if (!response.isSuccessful) {
                     _state.value = ScannerState.ERROR
                     _errorMessage.value = "Bin lookup failed (${response.code()})"
                     return@launch
                 }
-                val bin = response.body()?.bins?.firstOrNull {
-                    it.locationId.equals(code, ignoreCase = true)
+                
+                val apiBins = response.body()?.bins ?: emptyList()
+                val foundBins = mutableListOf<WarehouseBinLocation>()
+                val missingOrInactive = mutableListOf<String>()
+                
+                for (code in barcodes) {
+                    val cleanCode = code.trim()
+                    val bin = apiBins.firstOrNull { it.locationId.equals(cleanCode, ignoreCase = true) }
+                    if (bin == null || !bin.isActive) {
+                        missingOrInactive.add(cleanCode)
+                    } else {
+                        foundBins.add(bin)
+                    }
                 }
-                when {
-                    bin == null -> {
-                        _state.value = ScannerState.ERROR
-                        _errorMessage.value = "Unknown bin: $code"
-                    }
-                    !bin.isActive -> {
-                        _resolvedBin.value = bin
-                        _state.value = ScannerState.ERROR
-                        _errorMessage.value = "Bin $code is inactive"
-                    }
-                    else -> {
-                        _resolvedBin.value = bin
-                        _state.value = ScannerState.SUCCESS
-                    }
+                
+                if (missingOrInactive.isNotEmpty()) {
+                    _state.value = ScannerState.ERROR
+                    _errorMessage.value = "Invalid or inactive bins: ${missingOrInactive.joinToString()}"
+                } else {
+                    _resolvedBins.value = foundBins
+                    _state.value = ScannerState.SUCCESS
                 }
             } catch (e: Exception) {
                 _state.value = ScannerState.ERROR
@@ -83,8 +86,8 @@ class ScannerViewModel @Inject constructor(
 
     fun reset() {
         _state.value = ScannerState.IDLE
-        _lastScannedBinId.value = null
-        _resolvedBin.value = null
+        _scannedBinIds.value = emptyList()
+        _resolvedBins.value = emptyList()
         _errorMessage.value = null
     }
 }

@@ -218,6 +218,14 @@ type Order struct {
 	ConditionReports []ConditionReport `json:"-"`
 	// PendingFiscalReceipts are inserted in the same UpdateOrder transaction (ADR-009).
 	PendingFiscalReceipts []FiscalReceiptRow `json:"-"`
+
+	// Ephemeral fields for F-05: Status transition buffered into UpdateOrder txn.
+	TransitionReason    string `json:"-"`
+	TransitionActorRole string `json:"-"`
+	TransitionActorID   string `json:"-"`
+	TransitionEventKind string `json:"-"`
+	TransitionMetadata  map[string]any `json:"-"`
+
 	// FiscalReceiptUpdate updates an existing attempt row (PENDING → SUCCESS|FAILED).
 	FiscalReceiptUpdate *FiscalReceiptRow `json:"-"`
 	// PendingFiscalSnapshots are inserted in the same UpdateOrder transaction at COMPLETED time.
@@ -272,6 +280,7 @@ type DeliveryProofArtifact struct {
 // + outbox event commit atomically.
 type Repository interface {
 	CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
+	CreateOrderWithBackorder(ctx context.Context, o *Order, backorder *Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error
 	UpdateOrder(ctx context.Context, o Order, proofs []DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error
 	UpdateOrderWithTxn(ctx context.Context, o Order, proofs []DeliveryProofArtifact, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error) error
 	GetOrder(ctx context.Context, orderID string) (Order, bool, error)
@@ -1317,6 +1326,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	// Auto-order place (and other explicit sources) override ClassifyDelivery provenance.
 	if req.Source != "" {
 		source = req.Source
+		if source == OrderSourceAutoOrder {
+			status = StatusPending
+		}
 	}
 
 	var invPlan InventoryPlan
@@ -1447,7 +1459,54 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		Skip: deferStockReservationAtCreate(s.allocationRequired, status, source, warehouseID, len(lineItems)),
 	}
 
-	err = s.repo.CreateOrder(ctx, &o, func(txn outbox.TxnBuffer) error {
+	var bo *Order
+	if len(invPlan.Backorder) > 0 {
+		var boTotal int64
+		for _, li := range invPlan.Backorder {
+			boTotal += li.Quantity * li.UnitPrice
+		}
+		boCurrency := strings.TrimSpace(o.Currency)
+		if boCurrency == "" {
+			boCurrency = s.currency
+		}
+		bo = &Order{
+			OrderID:            s.newID(),
+			SupplierID:         o.SupplierID,
+			RetailerID:         o.RetailerID,
+			WarehouseID:        o.WarehouseID,
+			Status:             StatusBackordered,
+			Source:             OrderSourceBackorder,
+			ConfirmationStatus: ConfirmationStatusConfirmed,
+			LineItems:          invPlan.Backorder,
+			TotalMinor:         boTotal,
+			Currency:           boCurrency,
+			H3Cell:             o.H3Cell,
+			Lat:                o.Lat,
+			Lng:                o.Lng,
+			DerivedFromOrderID: o.OrderID,
+			Version:            1,
+			CreatedAt:          now,
+			UpdatedAt:          now,
+		}
+	}
+
+		inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
+			check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total)
+			if cerr != nil {
+				return cerr
+			}
+			if !check.Allowed {
+				return ErrCreditLimitBreached
+			}
+			if rerr := s.credit.ReserveOrderInTxn(ctx, txn, retailerID, supplierID, o.OrderID, total); rerr != nil {
+				return fmt.Errorf("credit reserve failed: %w", rerr)
+			}
+		}
+		return nil
+	}
+
+	err = s.repo.CreateOrderWithBackorder(ctx, &o, bo, inTxn, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:             events.BaseEvent{Type: events.EventOrderCreated, Timestamp: o.CreatedAt.Format(time.RFC3339Nano)},
 			OrderID:               o.OrderID,
@@ -1469,6 +1528,23 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		}); err != nil {
 			return err
 		}
+		if bo != nil {
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, bo.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:          events.BaseEvent{Type: events.EventOrderCreated, Timestamp: bo.CreatedAt.Format(time.RFC3339Nano)},
+				OrderID:            bo.OrderID,
+				SupplierID:         bo.SupplierID,
+				RetailerID:         bo.RetailerID,
+				WarehouseID:        bo.WarehouseID,
+				Status:             string(bo.Status),
+				OrderSource:        string(bo.Source),
+				ConfirmationStatus: string(bo.ConfirmationStatus),
+				TotalMinor:         bo.TotalMinor,
+				Currency:           bo.Currency,
+				LineItems:          bo.LineItems,
+			}); err != nil {
+				return err
+			}
+		}
 		if o.Status == StatusScheduled {
 			if err := emitPreorderEvent(ctx, txn, events.EventPreOrderNotified, o, string(auth.RoleRetailer), retailerID); err != nil {
 				return err
@@ -1486,18 +1562,15 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 		return CreateResponse{}, fmt.Errorf("persist order: %w", err)
 	}
 
-	if s.credit != nil && total > 0 && creditReserveAtCreateEnabled() {
-		if check, cerr := s.credit.CheckCreditPath(ctx, retailerID, supplierID, total); cerr == nil && check.Allowed {
-			if rerr := s.credit.Reserve(ctx, retailerID, supplierID, o.OrderID, total); rerr != nil {
-				s.log.Warn("credit reserve at create failed", "order_id", o.OrderID, "err", rerr)
-			}
-		}
-	}
-
 	if stockOpts.Skip && o.Status == StatusPending {
 		if err := s.ConfirmAndAllocate(ctx, o.OrderID); err != nil {
 			if _, cancelErr := s.cancelOrderWithReason(ctx, &o, "system", "SYSTEM", "allocation_failed", ""); cancelErr != nil {
 				s.log.Warn("failed to cancel order after allocation failure", "order_id", o.OrderID, "err", cancelErr)
+			}
+			if bo != nil {
+				if _, cancelErr := s.cancelOrderWithReason(ctx, bo, "system", "SYSTEM", "parent_allocation_failed", ""); cancelErr != nil {
+					s.log.Warn("failed to cancel backorder after allocation failure", "order_id", bo.OrderID, "err", cancelErr)
+				}
 			}
 			return CreateResponse{}, fmt.Errorf("allocation failed: %w", err)
 		}
@@ -1505,11 +1578,8 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	}
 
 	var backorderOrderID string
-	if len(invPlan.Backorder) > 0 {
-		backorderOrderID, err = s.createBackorderOrder(ctx, retailerID, warehouseID, o.OrderID, invPlan.Backorder, o)
-		if err != nil {
-			s.log.Warn("backorder create failed", "parent_order_id", o.OrderID, "err", err)
-		}
+	if bo != nil {
+		backorderOrderID = bo.OrderID
 	}
 
 	// Post-commit cache invalidation: any retailer-orders or supplier-orders
@@ -1691,11 +1761,14 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	if nextStatus == StatusCompleted {
 		_ = s.ApplyClaimWindowSnapshot(ctx, &current, current.UpdatedAt)
 	}
-
 	actorID := claims.Subject
 	if actorID == "" {
 		actorID = claims.SupplierID
 	}
+
+	current.TransitionReason = req.Reason
+	current.TransitionActorRole = string(claims.Role)
+	current.TransitionActorID = actorID
 
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
@@ -1720,8 +1793,6 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	if err != nil {
 		return UpdateStatusResponse{}, fmt.Errorf("update order status %s: %w", orderID, err)
 	}
-
-	s.recordStatusTransitionFromOrder(current, prevStatus, strings.TrimSpace(req.Reason), string(claims.Role), actorID, "", nil)
 
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, append(
@@ -1890,7 +1961,10 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 				}
 			}
 
-			if !req.BypassGeofence && (req.Latitude != 0 || req.Longitude != 0) {
+			if !req.BypassGeofence {
+				if req.Latitude == 0 && req.Longitude == 0 {
+					return errors.New("gps coordinates required for delivery submission")
+				}
 				computedDistance, err := validateOptionalGeofence(ctx, req.Latitude, req.Longitude, orderRecord)
 				if err == nil {
 					distanceM = computedDistance

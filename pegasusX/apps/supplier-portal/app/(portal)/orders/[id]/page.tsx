@@ -208,6 +208,32 @@ export default function SupplierOrderDetailPage() {
               </button>
             </div>
           )}
+          {state === 'AWAITING_PAYMENT' && (
+            <div className="mt-4 p-4 rounded-xl border border-[var(--color-md-error)]/30 bg-[var(--color-md-error)]/10">
+              <p className="text-sm font-semibold text-[var(--color-md-error)] mb-1">
+                Emergency Payment Bypass
+              </p>
+              <p className="text-xs text-[var(--color-md-outline)] mb-3">
+                Generate bypass code for driver if POS terminal failed.
+              </p>
+              <button
+                type="button"
+                className="md-btn md-btn-outlined text-sm px-4 py-2"
+                style={{ color: 'var(--color-md-error)', borderColor: 'var(--color-md-error)' }}
+                disabled={acting}
+                onClick={() =>
+                  runMutation('Payment bypass token generated', async () => {
+                    // @ts-ignore
+                    const res = await supplierApi.issueSupplierPaymentBypass(orderId);
+                    toast(`Token: ${res.bypass_token}`, 'success');
+                    return res;
+                  })
+                }
+              >
+                Issue Bypass Token
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="md-card p-5">

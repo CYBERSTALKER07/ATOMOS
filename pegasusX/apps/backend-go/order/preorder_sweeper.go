@@ -242,6 +242,11 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 	o.Status = StatusPending
 	o.UpdatedAt = now
 
+	o.TransitionReason = "PREORDER_PROMOTED"
+	o.TransitionActorRole = "SYSTEM"
+	o.TransitionActorID = "system:midnight_guard"
+	o.TransitionEventKind = "PROMOTE"
+
 	if s.allocationRequired {
 		err := s.repo.UpdateOrderWithTxn(ctx, o, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return s.allocateAndReserveInTxn(ctx, txn, &o)
@@ -263,7 +268,6 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 			return err
 		}
 		s.afterOrderMutation(ctx, o)
-		s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
 		return nil
 	}
 
@@ -285,7 +289,6 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 		return err
 	}
 	s.afterOrderMutation(ctx, o)
-	s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
 	return nil
 }
 

@@ -88,12 +88,15 @@ func New(cfg Config) (*Pool, error) {
 
 // Run blocks until ctx is cancelled.
 func (p *Pool) Run(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	chans := make([]chan kafka.Message, p.workers)
 	var wg sync.WaitGroup
 	for i := range chans {
 		chans[i] = make(chan kafka.Message, p.queue)
 		wg.Add(1)
-		go p.runWorker(ctx, chans[i], &wg)
+		go p.runWorker(ctx, cancel, chans[i], &wg)
 	}
 	defer func() {
 		for _, c := range chans {
@@ -130,7 +133,7 @@ func (p *Pool) Run(ctx context.Context) error {
 	}
 }
 
-func (p *Pool) runWorker(parent context.Context, in <-chan kafka.Message, wg *sync.WaitGroup) {
+func (p *Pool) runWorker(parent context.Context, cancel context.CancelFunc, in <-chan kafka.Message, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for m := range in {
 		ctx := ContextWithTrace(parent, m)
@@ -143,13 +146,16 @@ func (p *Pool) runWorker(parent context.Context, in <-chan kafka.Message, wg *sy
 			}
 		}
 		if errors.Is(err, ErrSkipCommit) {
-			continue
+			p.log.ErrorContext(ctx, "halting workerpool due to unrecoverable message skip",
+				"partition", m.Partition, "offset", m.Offset)
+			cancel()
+			return
 		}
 		commitCtx := parent
 		if commitCtx.Err() != nil {
-			var cancel context.CancelFunc
-			commitCtx, cancel = context.WithTimeout(context.WithoutCancel(parent), 5*time.Second)
-			defer cancel()
+			var commitCancel context.CancelFunc
+			commitCtx, commitCancel = context.WithTimeout(context.WithoutCancel(parent), 5*time.Second)
+			defer commitCancel()
 		}
 		if cerr := p.cfg.Source.CommitMessages(commitCtx, m); cerr != nil {
 			p.log.ErrorContext(ctx, "commit failed",

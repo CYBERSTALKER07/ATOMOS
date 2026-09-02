@@ -1,8 +1,8 @@
 package com.pegasusx.supplier
 
-import com.pegasus.design.ORDER_STATUS_FUNNEL
-import com.pegasus.design.StatusStackMode
-import com.pegasus.design.formatPackMoney
+import com.pegasus.design.ui.ORDER_STATUS_FUNNEL
+import com.pegasus.design.ui.StatusStackMode
+import com.pegasus.design.network.formatPackMoney
 import com.pegasus.design.incrementOrderStatusCount
 import com.pegasus.design.statusStackModel
 import com.pegasusx.supplier.data.model.SupplierDashboard

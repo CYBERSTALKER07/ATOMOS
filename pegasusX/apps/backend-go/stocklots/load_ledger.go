@@ -3,7 +3,8 @@ package stocklots
 import (
 	"context"
 	"fmt"
-	"strings"
+	"os"
+	"strings" 
 	"sync"
 	"time"
 
@@ -36,6 +37,16 @@ type LoadLineSeed struct {
 	LineItemID  string
 	SkuID       string
 	RequiredQty int64
+}
+
+
+func memoryBlocked() error {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "production") ||
+		strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "sandbox") ||
+		strings.EqualFold(strings.TrimSpace(os.Getenv("REQUIRE_INFRA_ADAPTERS")), "true") {
+		return fmt.Errorf("in-memory load ledger blocked in production/infra mode")
+	}
+	return nil
 }
 
 // memoryLoadLedger is used when Spanner is unavailable (tests / demo overlay).
@@ -126,6 +137,9 @@ func SeedLoadLedgerMemory(manifestID string, seeds []LoadLineSeed) {
 
 // ScanLoadLineMemory increments scanned qty for a line (memory path).
 func ScanLoadLineMemory(manifestID, orderID, lineOrSku string, delta int64) (*LoadLine, error) {
+	if err := memoryBlocked(); err != nil {
+		return nil, err
+	}
 	if delta <= 0 {
 		delta = 1
 	}
@@ -165,6 +179,9 @@ func ScanLoadLineMemory(manifestID, orderID, lineOrSku string, delta int64) (*Lo
 
 // ApproveLoadVarianceMemory marks a line variance-approved.
 func ApproveLoadVarianceMemory(manifestID, orderID, lineID string) (*LoadLine, error) {
+	if err := memoryBlocked(); err != nil {
+		return nil, err
+	}
 	memLoadMu.Lock()
 	defer memLoadMu.Unlock()
 	k := loadKey(manifestID, orderID, lineID)
@@ -191,6 +208,9 @@ func ApproveLoadVarianceMemory(manifestID, orderID, lineID string) (*LoadLine, e
 
 // ListLoadLedgerMemory returns memory lines for a manifest.
 func ListLoadLedgerMemory(manifestID string) []LoadLine {
+	if err := memoryBlocked(); err != nil {
+		return nil
+	}
 	memLoadMu.RLock()
 	defer memLoadMu.RUnlock()
 	out := make([]LoadLine, 0)

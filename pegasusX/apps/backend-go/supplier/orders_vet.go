@@ -245,11 +245,17 @@ func orderPaymentClearedInTxn(ctx context.Context, txn *spanner.ReadWriteTransac
 		          WHERE ple.OrderId = @orderId
 		            AND ple.EntryType IN UNNEST(@clearedEntryTypes)
 		        ) AS ledger_cleared,
-		        EXISTS (
-		          SELECT 1
+		        (
+		          SELECT 
+		            CASE 
+		              WHEN ps.Gateway IN ('CASH', 'CREDIT', 'B2B_CREDIT', 'INTERNAL') THEN true
+		              WHEN ps.Status IN UNNEST(@clearedSessionStatuses) THEN true
+		              ELSE false
+		            END
 		          FROM PaymentSessions ps
 		          WHERE ps.OrderId = @orderId
-		            AND ps.Status IN UNNEST(@clearedSessionStatuses)
+		          ORDER BY ps.CreatedAt DESC
+		          LIMIT 1
 		        ) AS session_cleared`,
 		Params: map[string]any{
 			"orderId":                orderID,
@@ -263,9 +269,16 @@ func orderPaymentClearedInTxn(ctx context.Context, txn *spanner.ReadWriteTransac
 	if err != nil {
 		return false, fmt.Errorf("query payment clearance: %w", err)
 	}
-	var ledgerCleared, sessionCleared bool
+	var ledgerCleared bool
+	var sessionCleared spanner.NullBool
 	if err := row.Columns(&ledgerCleared, &sessionCleared); err != nil {
 		return false, fmt.Errorf("scan payment clearance: %w", err)
 	}
-	return ledgerCleared || sessionCleared, nil
+	
+	sessionIsCleared := true
+	if sessionCleared.Valid {
+		sessionIsCleared = sessionCleared.Bool
+	}
+	return ledgerCleared || sessionIsCleared, nil
 }
+

@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
+
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -71,6 +74,7 @@ private enum class OrderMutationAction {
     ProposeDelivery,
     Reject,
     Overflow,
+    PaymentBypass,
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +140,17 @@ fun OrderDetailScreen(
         mutating = true
         scope.launch {
             try {
+                if (action == OrderMutationAction.PaymentBypass) {
+                    val resp = opsRepository.issuePaymentBypass(orderId)
+                    if (resp.isSuccessful && resp.body() != null) {
+                        val token = resp.body()!!["bypass_token"]
+                        snackbarHostState.showSnackbar("Token: $token")
+                        load()
+                    } else {
+                        snackbarHostState.showSnackbar("Failed to issue token (${resp.code()})")
+                    }
+                    return@launch
+                }
                 val resp = when (action) {
                     OrderMutationAction.ProposeDelivery -> opsRepository.proposeOrderDelivery(
                         orderId,
@@ -144,12 +159,14 @@ fun OrderDetailScreen(
                     )
                     OrderMutationAction.Reject -> opsRepository.rejectOrder(orderId, reason.orEmpty())
                     OrderMutationAction.Overflow -> opsRepository.overflowOrder(orderId, reason)
+                    else -> throw IllegalStateException("Handled above")
                 }
                 if (resp.isSuccessful && resp.body() != null) {
                     val msg = when (action) {
                         OrderMutationAction.ProposeDelivery -> "New delivery date proposed · retailer notified"
                         OrderMutationAction.Reject -> "Order cancelled · retailer notified"
                         OrderMutationAction.Overflow -> "Order updated · ${resp.body()!!.status}"
+                        else -> ""
                     }
                     snackbarHostState.showSnackbar(msg)
                     load()
@@ -192,11 +209,13 @@ fun OrderDetailScreen(
         val title = when (action) {
             OrderMutationAction.ProposeDelivery -> "Reason for new delivery date"
             OrderMutationAction.Reject -> "Cancel order?"
+            OrderMutationAction.PaymentBypass -> "Bypass Payment?"
             OrderMutationAction.Overflow -> "Return to dispatch pool?"
         }
         val confirmLabel = when (action) {
             OrderMutationAction.ProposeDelivery -> "Notify retailer"
             OrderMutationAction.Reject -> "Cancel order"
+            OrderMutationAction.PaymentBypass -> "Bypass"
             OrderMutationAction.Overflow -> "Overflow"
         }
         AlertDialog(
@@ -311,7 +330,7 @@ fun OrderDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             SummaryCard("State", current.state, Modifier.weight(1f))
-                            SummaryCard("Total", "${fmt.format(current.totalUzs)} ${com.pegasus.design.sessionPackCurrency()}", Modifier.weight(1f))
+                            SummaryCard("Total", "${fmt.format(current.totalUzs)} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
                         }
                     }
                     item(span = { GridItemSpan(maxLineSpan) }) {
@@ -329,6 +348,35 @@ fun OrderDetailScreen(
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
                                 Text("View Pegasus receipt")
+                            }
+                        }
+                    }
+                    if (state == "AWAITING_PAYMENT") {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.elevatedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(PegasusSpacing.md)) {
+                                    Text("Emergency Payment Bypass", style = MaterialTheme.typography.titleSmall)
+                                    Spacer(Modifier.height(4.dp))
+                                    Text("Generate bypass code for driver if POS terminal failed.", style = MaterialTheme.typography.bodySmall)
+                                    Spacer(Modifier.height(PegasusSpacing.md))
+                                    Button(
+                                        onClick = { runMutation(OrderMutationAction.PaymentBypass, null) },
+                                        enabled = !mutating,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Issue Bypass Token")
+                                    }
+                                }
                             }
                         }
                     }

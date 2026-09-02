@@ -95,9 +95,8 @@ func IngestTemperatureInTxn(
 		return nil, err
 	}
 	if excursion {
-		if err := quarantineManifestLotsInTxn(ctx, txn, manifestID); err != nil {
-			return nil, err
-		}
+		// Finding TRK6-001: Never quarantine warehouse AVAILABLE stock for truck excursions.
+		// We rely entirely on the temperatureBreachRaiser below to append condition reports.
 		orderIDs, err := loadManifestOrderIDs(ctx, txn, manifestID)
 		if err != nil {
 			return nil, err
@@ -224,67 +223,7 @@ func hydrateBandFromProducts(ctx context.Context, txn *spanner.ReadWriteTransact
 	return minC, maxC, true, nil
 }
 
-func quarantineManifestLotsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) error {
-	mRow, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{manifestID}, []string{"WarehouseId", "SupplierId"})
-	if err != nil {
-		if spanner.ErrCode(err) == 5 {
-			return nil
-		}
-		return err
-	}
-	var wid, sid string
-	if err := mRow.Columns(&wid, &sid); err != nil {
-		return err
-	}
-	orderIDs, err := loadManifestOrderIDs(ctx, txn, manifestID)
-	if err != nil {
-		return err
-	}
-	products := map[string]struct{}{}
-	for _, oid := range orderIDs {
-		lines, err := loadOrderLineQtys(ctx, txn, oid)
-		if err != nil {
-			continue
-		}
-		for _, l := range lines {
-			products[l.SKU] = struct{}{}
-		}
-	}
-	for pid := range products {
-		iter := txn.Query(ctx, spanner.Statement{
-			SQL: `SELECT LotId FROM StockLots WHERE WarehouseId = @wid AND ProductId = @pid AND Status = 'AVAILABLE'`,
-			Params: map[string]any{"wid": wid, "pid": pid},
-		})
-		for {
-			row, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				iter.Stop()
-				return err
-			}
-			var lotID string
-			if err := row.Columns(&lotID); err != nil {
-				iter.Stop()
-				return err
-			}
-			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
-				"LotId":     lotID,
-				"Status":    "QUARANTINE",
-				"UpdatedAt": spanner.CommitTimestamp,
-			})}); err != nil {
-				iter.Stop()
-				return err
-			}
-		}
-		iter.Stop()
-		if err := RollupInventoryV2InTxn(ctx, txn, sid, wid, pid); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// (quarantineManifestLotsInTxn removed to fix TRK6-001)
 
 // ListTemperatureReadings lists recent readings for a manifest.
 func ListTemperatureReadings(ctx context.Context, client *spanner.Client, manifestID string) ([]TemperatureReadingView, error) {

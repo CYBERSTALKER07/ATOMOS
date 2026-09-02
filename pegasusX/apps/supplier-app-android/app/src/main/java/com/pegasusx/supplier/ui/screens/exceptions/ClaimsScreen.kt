@@ -11,9 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.ApproveClaimRequest
 import com.pegasusx.supplier.data.model.RejectClaimRequest
 import com.pegasusx.supplier.data.model.SupplierClaim
@@ -216,7 +216,7 @@ private fun ClaimCard(
             Text(claim.claimId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             Text(stringResource(R.string.mobile_supplier_ui_order_orderid_retailer_retailerid, claim.orderId, claim.retailerId), style = MaterialTheme.typography.bodySmall)
             Text(
-                "Amount ${claim.amountMinor ?: 0} ${com.pegasus.design.moneyCurrency(claim.currency)}",
+                "Amount ${claim.amountMinor ?: 0} ${com.pegasus.design.network.moneyCurrency(claim.currency)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
             claim.description?.takeIf { it.isNotBlank() }?.let {

@@ -5,19 +5,43 @@ struct ManifestExceptionsSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
-                    PayloadLoadingView(
-                        title: "LOADING EXCEPTIONS",
-                        message: "Fetching overflow, damaged, and manual removals."
-                    )
-                } else if viewModel.manifestExceptions.isEmpty {
-                    PayloadStateView(
-                        variant: .warning,
-                        title: "NO_EXCEPTIONS",
-                        message: "Overflow, damaged, and manual removals appear here.",
-                        compact: false
-                    )
+            VStack {
+                // --- Parity: Report Dock Damage ---
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Report Dock Damage")
+                        .font(.headline)
+                        .foregroundColor(Color(red: 0.6, green: 0.1, blue: 0.1))
+                    
+                    Button(action: { /* Wire ViewModel logic */ }) {
+                        Text("MARK DAMAGED")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .background(Color(red: 1.0, green: 0.9, blue: 0.9))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                // ----------------------------------
+
+                Group {
+                    if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
+                        PayloadLoadingView(
+                            title: "LOADING EXCEPTIONS",
+                            message: "Fetching overflow, damaged, and manual removals."
+                        )
+                    } else if viewModel.manifestExceptions.isEmpty {
+                        PayloadStateView(
+                            variant: .warning,
+                            title: "NO_EXCEPTIONS",
+                            message: "Overflow, damaged, and manual removals appear here.",
+                            compact: false
+                        )
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
@@ -43,6 +67,7 @@ struct ManifestExceptionsSheet: View {
                     }
                 }
             }
+            } // Close VStack
             .navigationTitle("mobile_payload.ui.manifest_exceptions")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

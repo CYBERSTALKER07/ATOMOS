@@ -208,8 +208,7 @@ func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (
 		      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
 		      WHERE Phone = @phone
 		        AND IsActive = true
-		        AND SupplierRole IN ('FACTORY', 'FACTORY_ADMIN', 'FACTORY_STAFF')
-		      LIMIT 1`,
+		        AND SupplierRole IN ('FACTORY', 'FACTORY_ADMIN', 'FACTORY_STAFF')`,
 		Params: map[string]any{"phone": phone},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
@@ -236,6 +235,13 @@ func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (
 	); err != nil {
 		return factoryStaffRecord{}, false, fmt.Errorf("scan factory staff: %w", err)
 	}
+
+	// Check for ambiguous multi-tenant collision
+	_, nextErr := iter.Next()
+	if nextErr == nil {
+		return factoryStaffRecord{}, false, fmt.Errorf("ambiguous phone number: belongs to multiple tenants")
+	}
+
 	if !rec.IsActive {
 		return factoryStaffRecord{}, false, nil
 	}

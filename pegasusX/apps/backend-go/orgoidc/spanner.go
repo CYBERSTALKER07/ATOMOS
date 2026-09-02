@@ -21,7 +21,7 @@ func (s *SpannerStore) Get(ctx context.Context, supplierID string) (Config, bool
 		return Config{}, false, nil
 	}
 	row, err := s.client.Single().ReadRow(ctx, "SupplierOIDC", spanner.Key{supplierID},
-		[]string{"SupplierId", "Issuer", "ClientId", "Audience", "AuthorizationEndpoint", "RedirectURI", "Enabled"})
+		[]string{"SupplierId", "Issuer", "ClientId", "Audience", "AuthorizationEndpoint", "RedirectURI", "AdminEmails", "Enabled"})
 	if err != nil {
 		if err == spanner.ErrRowNotFound {
 			return Config{}, false, nil
@@ -30,12 +30,15 @@ func (s *SpannerStore) Get(ctx context.Context, supplierID string) (Config, bool
 	}
 	var c Config
 	var aud, authz, redir spanner.NullString
-	if err := row.Columns(&c.SupplierID, &c.Issuer, &c.ClientID, &aud, &authz, &redir, &c.Enabled); err != nil {
+	if err := row.Columns(&c.SupplierID, &c.Issuer, &c.ClientID, &aud, &authz, &redir, &c.AdminEmails, &c.Enabled); err != nil {
 		return Config{}, false, err
 	}
 	c.Audience = aud.StringVal
 	c.AuthorizationEndpoint = authz.StringVal
 	c.RedirectURI = redir.StringVal
+	if c.AdminEmails == nil {
+		c.AdminEmails = []string{}
+	}
 	return c, true, nil
 }
 

@@ -484,6 +484,21 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
+    @POST("v1/warehouse/ops/orders/payment-bypass")
+    suspend fun issuePaymentBypass(
+        @Body body: Map<String, String>,
+    ): Response<Map<String, String>>
+
+    @GET("v1/warehouse/ops/orders/early-complete/{driverId}")
+    suspend fun getEarlyCompleteRequest(
+        @Path("driverId") driverId: String,
+    ): Response<Map<String, Any>>
+
+    @POST("v1/warehouse/ops/orders/early-complete/approve")
+    suspend fun approveEarlyComplete(
+        @Body body: Map<String, String>,
+    ): Response<Map<String, Any>>
+
     @GET("v1/warehouse/ops/fleet/live-map")
     suspend fun getFleetLiveMap(
         @Query("warehouse_id") warehouseId: String? = null,

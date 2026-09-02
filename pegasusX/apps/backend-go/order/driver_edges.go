@@ -91,13 +91,12 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 				return fmt.Errorf("empty order_id in sequence")
 			}
 			n, err := txn.Update(ctx, spanner.Statement{
-				SQL: `UPDATE Orders SET SequenceIndex = @seq, UpdatedAt = PENDING_COMMIT_TIMESTAMP()
-				      WHERE OrderId = @oid AND RouteId = @rid AND DriverId = @did`,
+				SQL: `UPDATE ManifestOrders SET SequenceIndex = @seq, UpdatedAt = PENDING_COMMIT_TIMESTAMP()
+				      WHERE OrderId = @oid AND ManifestId = @rid`,
 				Params: map[string]any{
 					"seq": int64(i + 1),
 					"oid": orderID,
 					"rid": req.RouteID,
-					"did": driverID,
 				},
 			})
 			if err != nil {
@@ -971,7 +970,7 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 				Method:         MethodCash,
 				AmountMinor:    req.CashMinor,
 				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("split-%s-cash-%d", current.OrderID, now.UnixNano()),
+				IdempotencyKey: fmt.Sprintf("split-%s-cash", current.OrderID),
 				CreatedAt:      now,
 				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
 			}); errLeg != nil {
@@ -985,7 +984,7 @@ func (s *Service) HandleSplitPayment(w http.ResponseWriter, r *http.Request) {
 				Method:         MethodCard,
 				AmountMinor:    req.CardMinor,
 				Status:         PaymentStatusCaptured,
-				IdempotencyKey: fmt.Sprintf("split-%s-card-%d", current.OrderID, now.UnixNano()),
+				IdempotencyKey: fmt.Sprintf("split-%s-card", current.OrderID),
 				CreatedAt:      now,
 				CapturedAt:     spanner.NullTime{Time: now, Valid: true},
 			}); errLeg != nil {

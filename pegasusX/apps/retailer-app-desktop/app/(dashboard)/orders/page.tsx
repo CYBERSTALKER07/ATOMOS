@@ -78,7 +78,8 @@ const chipCfg: Record<
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
-  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+	DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+	SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 type LoadIssue = "restricted" | "offline" | "error";
@@ -793,6 +794,18 @@ function OrdersPageContent() {
                   <MoreVertical size={20} />
                 </button>
               </div>
+
+              {detail.state === "SYNC_CONFLICT" && (
+                <div className="mb-8 p-4 rounded-xl border border-[var(--desk-danger)] bg-[var(--desk-danger)]/10 text-[var(--desk-danger)] flex items-start gap-3">
+                  <AlertTriangle size={20} className="mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-sm">Offline Sync Conflict Detected</h4>
+                    <p className="text-sm opacity-80 mt-1">
+                      This order's state is disputed due to conflicting physical reality reports. It is pending Control Tower manual review.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4 mb-10">
                 <div className="p-5 rounded-2xl bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]">

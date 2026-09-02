@@ -2,7 +2,6 @@ package outbox
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"math/rand"
 	"time"
@@ -222,19 +221,24 @@ func (r *Relay) drainOnce(ctx context.Context) {
 func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
 	topics := events.RelayPublishTopics(e.TopicName, e.Payload)
 	var lastErr error
+	published := make(map[string]bool)
 	for attempt := 1; attempt <= r.cfg.MaxPublishTries; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		attemptErr := error(nil)
 		for _, topic := range topics {
+			if published[topic] {
+				continue
+			}
 			pubCtx, cancel := context.WithTimeout(ctx, r.cfg.PublishTimeout)
-			err := publishOutboxEvent(pubCtx, r.publisher, topic, granularRoutingKey(e), e)
+			err := publishOutboxEvent(pubCtx, r.publisher, topic, []byte(e.AggregateID), e)
 			cancel()
 			if err != nil {
 				attemptErr = err
 				break
 			}
+			published[topic] = true
 		}
 		if attemptErr == nil {
 			return nil
@@ -277,36 +281,3 @@ func publishOutboxEvent(ctx context.Context, pub Publisher, topic string, key []
 	return pub.Publish(ctx, topic, key, e.Payload)
 }
 
-func granularRoutingKey(e Event) []byte {
-	key := []byte(e.AggregateID)
-
-	// Fast path: if the payload isn't JSON or doesn't have common sub-entities, just return AggregateID.
-	if len(e.Payload) == 0 || e.Payload[0] != '{' {
-		return key
-	}
-
-	var envelope struct {
-		OrderID    string `json:"order_id"`
-		ManifestID string `json:"manifest_id"`
-		RouteID    string `json:"route_id"`
-		DriverID   string `json:"driver_id"`
-	}
-
-	// Ignore unmarshal errors, fallback to default key
-	if err := json.Unmarshal(e.Payload, &envelope); err == nil {
-		if envelope.OrderID != "" {
-			return append(key, []byte(":"+envelope.OrderID)...)
-		}
-		if envelope.ManifestID != "" {
-			return append(key, []byte(":"+envelope.ManifestID)...)
-		}
-		if envelope.RouteID != "" {
-			return append(key, []byte(":"+envelope.RouteID)...)
-		}
-		if envelope.DriverID != "" {
-			return append(key, []byte(":"+envelope.DriverID)...)
-		}
-	}
-
-	return key
-}

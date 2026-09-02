@@ -8,6 +8,10 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/grpc/codes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+
 	"google.golang.org/api/iterator"
 )
 
@@ -307,7 +311,94 @@ func (tx *spannerFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) err
 		"CreatedAt":      parseTime(t.CreatedAt),
 		"UpdatedAt":      parseTime(t.UpdatedAt),
 	})
-	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+	if err := tx.txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+		return err
+	}
+	
+	if t.State == "COMPLETED" || t.State == "RECEIVED" {
+		return tx.autoReceiveTransfer(ctx, t.TransferID)
+	}
+	return nil
+}
+
+func (tx *spannerFactoryTx) autoReceiveTransfer(ctx context.Context, transferID string) error {
+	row, err := tx.txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID}, []string{"SupplierId", "WarehouseId", "SupplyRequestId", "State"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	}
+	var supplierID, warehouseID, reqID, state spanner.NullString
+	if err := row.Columns(&supplierID, &warehouseID, &reqID, &state); err != nil {
+		return err
+	}
+	if !reqID.Valid || reqID.StringVal == "" {
+		return nil
+	}
+
+	if err := tx.txn.BufferWrite([]*spanner.Mutation{
+		spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+			"RequestId": reqID.StringVal,
+			"State":     "RECEIVED",
+			"UpdatedAt": spanner.CommitTimestamp,
+		}),
+	}); err != nil {
+		return err
+	}
+
+	iter := tx.txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT ItemId, ProductId, COALESCE(ShippedQuantity, RequestedQuantity)
+		      FROM WarehouseSupplyRequestItems WHERE RequestId = @rid`,
+		Params: map[string]any{"rid": reqID.StringVal},
+	})
+	defer iter.Stop()
+
+	for {
+		irow, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		var itemID, productID string
+		var qty int64
+		if err := irow.Columns(&itemID, &productID, &qty); err != nil {
+			return err
+		}
+		if qty > 0 {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.UpsertBinInTxn(ctx, tx.txn, stocklots.CreateBinRequest{
+					WarehouseID: warehouseID.StringVal, LocationID: "recv-default", Zone: "RECV",
+					LocationType: "STAGE", PickSequence: 0,
+				}); err != nil {
+					return err
+				}
+				if _, err := stocklots.PutawayInTxn(ctx, tx.txn, stocklots.PutawayRequest{
+					SupplierID: supplierID.StringVal, WarehouseID: warehouseID.StringVal, ProductID: productID,
+					LocationID: "recv-default", Quantity: qty,
+				}); err != nil {
+					return err
+				}
+			} else {
+				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, tx.txn, supplierID.StringVal, warehouseID.StringVal, productID, qty); err != nil {
+					return err
+				}
+			}
+			
+			if err := tx.txn.BufferWrite([]*spanner.Mutation{
+				spanner.UpdateMap("WarehouseSupplyRequestItems", map[string]any{
+					"RequestId":        reqID.StringVal,
+					"ItemId":           itemID,
+					"ReceivedQuantity": qty,
+				}),
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func parseTime(s string) time.Time {

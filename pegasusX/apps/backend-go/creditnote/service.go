@@ -141,9 +141,9 @@ func (s *Service) CreateManual(ctx context.Context, req CreateManualCreditNoteRe
 		line.CreditNoteId = cn.CreditNoteId
 		line.LineId = uuid.New().String()
 		line.Qty = qty
-		line.LineNetMinor = (base.LineNetMinor / base.Qty) * qty
-		line.LineVatMinor = (base.LineVatMinor / base.Qty) * qty
-		line.LineGrossMinor = (base.LineGrossMinor / base.Qty) * qty
+		line.LineNetMinor = (base.LineNetMinor * qty) / base.Qty
+		line.LineVatMinor = (base.LineVatMinor * qty) / base.Qty
+		line.LineGrossMinor = (base.LineGrossMinor * qty) / base.Qty
 		cn.Lines = append(cn.Lines, line)
 		cn.TotalNetMinor += line.LineNetMinor
 		cn.TotalVatMinor += line.LineVatMinor

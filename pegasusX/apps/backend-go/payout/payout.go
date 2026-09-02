@@ -10,8 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
-	"google.golang.org/api/iterator"
-	"google.golang.org/grpc/codes"
+
 )
 
 // Supplier payout batches: NetPayout = Σcaptured − Σrefunds − commission,
@@ -133,55 +132,35 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 		return existingList, nil
 	}
 
-	sums, err := s.repo.SumLegsByCurrency(ctx, supplierID, periodStart, periodEnd)
-	if err != nil {
-		return nil, err
-	}
-	if len(sums) == 0 {
-		return nil, ErrNothingPayable
-	}
-
-	var batches []Batch
-	for _, sum := range sums {
+	batches, err := s.repo.GenerateBatchesInTxn(ctx, supplierID, periodStart, periodEnd, func(sum SumLegsResult) (Batch, error) {
 		currency, err := coalescePayoutCurrency(ctx, supplierID, sum.Currency)
 		if err != nil {
-			return nil, err
+			return Batch{}, err
 		}
-		// Commission is now pre-calculated via InvoiceSettlementSlices
-		commission := sum.Commission
-		net := sum.NetPayout
-		if net <= 0 {
-			continue
-		}
-
-		b := Batch{
+		
+		return Batch{
 			BatchID:            s.newID(),
 			SupplierID:         supplierID,
 			PeriodStart:        periodStart,
 			PeriodEnd:          periodEnd,
 			GrossCapturedMinor: sum.Captured,
 			RefundedMinor:      sum.Refunded,
-			CommissionMinor:    commission,
-			NetPayoutMinor:     net,
+			CommissionMinor:    sum.Commission,
+			NetPayoutMinor:     sum.NetPayout,
 			Currency:           currency,
 			Status:             StatusDraft,
 			IdempotencyKey:     fmt.Sprintf("%s-%s", idemKey, currency),
 			CreatedBy:          actor,
-		}
-		
-		if err := s.repo.Insert(ctx, b); err != nil {
-			if spanner.ErrCode(err) == codes.AlreadyExists {
-				if existingList, err2 := s.repo.ListBySupplierPeriod(ctx, supplierID, periodStart, periodEnd); err2 == nil && len(existingList) > 0 {
-					return existingList, nil
-				}
-			}
-			return nil, err
-		}
-		batches = append(batches, b)
+		}, nil
+	})
+	
+	if err != nil {
+		return nil, err
 	}
 	if len(batches) == 0 {
 		return nil, ErrNothingPayable
 	}
+	
 	return batches, nil
 }
 
@@ -271,52 +250,10 @@ type SumLegsResult struct {
 	Refunded   int64
 	Commission int64
 	NetPayout  int64
+	SliceIDs   []string
 }
 
-// SumLegsByCurrency aggregates provider-confirmed legs for the supplier over the period
-// (captured vs refunded reversal legs). Period bounds: [start, end).
-func (r *Repository) SumLegsByCurrency(ctx context.Context, supplierID string, start, end time.Time) ([]SumLegsResult, error) {
-	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT Currency, GrossMinor, CommissionMinor, NetPayoutMinor
-		      FROM InvoiceSettlementSlices
-		      WHERE SupplierId = @sid AND Status = 'UNSETTLED'
-		        AND CreatedAt >= @start AND CreatedAt < @end`,
-		Params: map[string]any{"sid": supplierID, "start": start, "end": end},
-	})
-	defer iter.Stop()
-	
-	sums := make(map[string]*SumLegsResult)
-	for {
-		row, e := iter.Next()
-		if e == iterator.Done {
-			break
-		}
-		if e != nil {
-			return nil, e
-		}
-		var cur string
-		var gross, comm, net int64
-		if e := row.Columns(&cur, &gross, &comm, &net); e != nil {
-			return nil, e
-		}
-		if sums[cur] == nil {
-			sums[cur] = &SumLegsResult{Currency: cur}
-		}
-		
-		if gross >= 0 {
-			sums[cur].Captured += gross
-		} else {
-			sums[cur].Refunded += -gross
-		}
-		sums[cur].Commission += comm
-		sums[cur].NetPayout += net
-	}
-	var res []SumLegsResult
-	for _, s := range sums {
-		res = append(res, *s)
-	}
-	return res, nil
-}
+// SumLegsResult removed unused SumLegsByCurrency
 
 // coalescePayoutCurrency uses stored ISO code from payment legs, else the shipped pack.
 // Planned/unknown packs fail closed — never invent UZS.

@@ -710,8 +710,7 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
               FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone} su
               LEFT JOIN SupplierProfiles sp ON su.SupplierId = sp.SupplierId
               LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
-              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'
-              LIMIT 1`,
+              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'`,
 		Params: map[string]any{"phone": trimmedPhone},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -728,6 +727,12 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 	var rec SupplierAuthRecord
 	if err := row.Columns(&rec.UserID, &rec.SupplierID, &rec.Phone, &rec.PasswordHash, &rec.IsRegistered, &rec.IsConfigured); err != nil {
 		return SupplierAuthRecord{}, false, fmt.Errorf("scan supplier auth by phone: %w", err)
+	}
+	
+	// Check for ambiguous multi-tenant collision
+	_, nextErr := iter.Next()
+	if nextErr == nil {
+		return SupplierAuthRecord{}, false, fmt.Errorf("ambiguous phone number: belongs to multiple tenants")
 	}
 	return rec, true, nil
 }
@@ -914,7 +919,74 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 		}
 
+		// Pre-flight check: prevent removing warehouses with active inventory or orders
+		whIter := txn.Query(ctx, spanner.Statement{
+			SQL: `SELECT WarehouseId FROM Warehouses WHERE SupplierId = @sid`,
+			Params: map[string]any{"sid": supplierID},
+		})
+		var existingWarehouses []string
+		if err := whIter.Do(func(row *spanner.Row) error {
+			var wid string
+			if err := row.Columns(&wid); err == nil {
+				existingWarehouses = append(existingWarehouses, wid)
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("query existing warehouses: %w", err)
+		}
+
+		newWarehouses := make(map[string]bool)
+		for _, w := range topology.Warehouses {
+			newWarehouses[w.WarehouseID] = true
+		}
+
+		var removedWarehouses []string
+		for _, wid := range existingWarehouses {
+			if !newWarehouses[wid] {
+				removedWarehouses = append(removedWarehouses, wid)
+			}
+		}
+
+		if len(removedWarehouses) > 0 {
+			// Check inventory
+			invIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT WarehouseId FROM SupplierInventoryV2
+				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
+				      AND (QuantityOnHand > 0 OR QuantityReserved > 0) LIMIT 1`,
+				Params: map[string]any{
+					"sid": supplierID,
+					"removed": removedWarehouses,
+				},
+			})
+			var hasInv bool
+			if err := invIter.Do(func(*spanner.Row) error { hasInv = true; return nil }); err != nil {
+				return fmt.Errorf("check removed warehouse inventory: %w", err)
+			}
+			if hasInv {
+				return errors.New("cannot remove warehouse with active inventory")
+			}
+
+			// Check orders
+			ordIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT WarehouseId FROM Orders
+				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
+				      AND Status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED') LIMIT 1`,
+				Params: map[string]any{
+					"sid": supplierID,
+					"removed": removedWarehouses,
+				},
+			})
+			var hasOrd bool
+			if err := ordIter.Do(func(*spanner.Row) error { hasOrd = true; return nil }); err != nil {
+				return fmt.Errorf("check removed warehouse orders: %w", err)
+			}
+			if hasOrd {
+				return errors.New("cannot remove warehouse with active orders")
+			}
+		}
+
 		if _, err := txn.Update(ctx, spanner.Statement{
+
 			SQL:    `DELETE FROM WarehouseCoverageCells WHERE SupplierId = @supplierId`,
 			Params: map[string]any{"supplierId": supplierID},
 		}); err != nil {

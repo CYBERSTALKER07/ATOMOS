@@ -43,7 +43,7 @@ func testSvc(t *testing.T, key *rsa.PrivateKey) *Service {
 		JWTIssuer: "pegasusx-test",
 		JWTTTL:    time.Hour,
 		Now:       func() time.Time { return time.Now().UTC() },
-		Keys: func(context.Context, string) (*rsa.PublicKey, error) {
+		Keys: func(ctx context.Context, iss, kid string) (*rsa.PublicKey, error) {
 			return &key.PublicKey, nil
 		},
 	}
@@ -69,6 +69,7 @@ func TestDiscoveryAndExchange(t *testing.T) {
 		Issuer:      "https://idp.example/realms/org",
 		ClientID:    "pegasusx-sup-1",
 		RedirectURI: "https://supplier.pegasusx.app/auth/oidc/callback",
+		AdminEmails: []string{"buyer@example.com"},
 	})
 	if err != nil {
 		t.Fatal(err)

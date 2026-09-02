@@ -63,9 +63,51 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			driverID := s.driverIDForRouteLocked(req.NewRouteID)
+			
+			// Adjust Manifests
+			oldRouteID := s.orders[oIdx].RouteID
+			
+			oldMIdx := s.findManifestIndexLocked(oldRouteID)
+			newMIdx := s.findManifestIndexLocked(req.NewRouteID)
+			
+			// Find volume from ManifestOrders
+			var vol int64
+			oldOrders, _ := tx.ListManifestOrders(ctx, oldRouteID)
+			for _, mo := range oldOrders {
+				if mo.OrderID == orderID {
+					vol = mo.VolumeVU
+					break
+				}
+			}
+			
 			if err := tx.UpdateOrderAssignment(ctx, orderID, req.NewRouteID, driverID); err != nil {
 				return err
 			}
+			
+			if oldMIdx >= 0 {
+				s.manifests[oldMIdx].TotalVolumeVU -= vol
+				if s.manifests[oldMIdx].TotalVolumeVU < 0 {
+					s.manifests[oldMIdx].TotalVolumeVU = 0
+				}
+				s.manifests[oldMIdx].UpdatedAt = now
+				_ = tx.SaveManifest(ctx, s.manifests[oldMIdx])
+				_ = tx.DeleteManifestOrder(ctx, oldRouteID, orderID)
+			}
+			if newMIdx >= 0 {
+				s.manifests[newMIdx].TotalVolumeVU += vol
+				s.manifests[newMIdx].UpdatedAt = now
+				_ = tx.SaveManifest(ctx, s.manifests[newMIdx])
+				
+				mo := ManifestOrder{
+					ManifestID: req.NewRouteID,
+					OrderID:    orderID,
+					State:      s.orders[oIdx].Status,
+					VolumeVU:   vol,
+					UpdatedAt:  now,
+				}
+				_ = tx.SaveManifestOrder(ctx, mo, time.Now().UnixNano())
+			}
+
 			s.orders[oIdx].RouteID = req.NewRouteID
 			s.orders[oIdx].UpdatedAt = now
 			reassigned++

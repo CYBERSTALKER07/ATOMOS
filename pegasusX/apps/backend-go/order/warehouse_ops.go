@@ -156,6 +156,11 @@ func (s *Service) warehouseTransition(
 		return nil
 	}
 
+	current.TransitionReason = reason
+	current.TransitionActorRole = string(auth.RoleWarehouse)
+	current.TransitionActorID = actorID
+	current.TransitionMetadata = transitionMeta
+
 	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, inTxn, func(txn outbox.TxnBuffer) error {
 		if nextStatus == StatusCancelled && current.Source == OrderSourceManualPreorder {
 			return emitPreorderEvent(ctx, txn, events.EventPreOrderCancelled, current, string(auth.RoleWarehouse), actorID)
@@ -182,7 +187,6 @@ func (s *Service) warehouseTransition(
 	}
 
 	s.afterOrderMutation(ctx, current)
-	s.recordStatusTransitionFromOrder(current, prevStatus, reason, string(auth.RoleWarehouse), actorID, "", transitionMeta)
 	return nil
 }
 
@@ -226,26 +230,27 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 			Reason:               strings.TrimSpace(reason),
 		})
 	}
-	lineItems, total, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
+	lineItems, _, err := s.normalizeAndQuoteLineItems(ctx, req.LineItems, nil)
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
 	if current.OriginalTotalMinor == 0 {
 		current.OriginalTotalMinor = current.TotalMinor
 	}
-	current.LineItems = lineItems
-	current.TotalMinor = total
 	current.WarehouseNotes = strings.TrimSpace(reason)
 	current.UpdatedAt = s.now()
 	actorID := strings.TrimSpace(resolvedOps.Subject)
 	if actorID == "" {
 		actorID = resolvedOps.WarehouseID
 	}
-	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, current, "WAREHOUSE_ADMIN", actorID)
-	}); err != nil {
+	
+	updatedOrder, err := s.updatePreorderLines(ctx, current, lineItems, func(txn outbox.TxnBuffer, updated Order) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, updated, "WAREHOUSE_ADMIN", actorID)
+	})
+	if err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
+	current = updatedOrder
 	s.afterOrderMutation(ctx, current)
 	return lifecycleResponse(current, current.Version+1, false), nil
 }

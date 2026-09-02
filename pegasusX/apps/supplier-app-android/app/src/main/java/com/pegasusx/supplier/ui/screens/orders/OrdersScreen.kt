@@ -10,10 +10,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.OrdersViewModel
 import com.pegasusx.supplier.R

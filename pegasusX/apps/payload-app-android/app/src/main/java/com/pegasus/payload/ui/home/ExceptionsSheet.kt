@@ -55,6 +55,29 @@ fun ManifestExceptionsSheet(
                     Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_exceptions))
                 }
             }
+            
+            // --- Parity: Report Dock Damage ---
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .androidx.compose.foundation.background(androidx.compose.ui.graphics.Color(0xFFFEE2E2), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text("Report Dock Damage", color = androidx.compose.ui.graphics.Color(0xFF991B1B), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.material3.Button(
+                        onClick = { /* ViewModel logic wired later */ },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFDC2626)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("MARK DAMAGED", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    }
+                }
+            }
+            // ----------------------------------
+            
             HorizontalDivider()
             when {
                 loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(

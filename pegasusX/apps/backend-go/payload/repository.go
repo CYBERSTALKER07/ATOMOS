@@ -16,9 +16,11 @@ type PayloadTx interface {
 	SaveManifest(ctx context.Context, m ManifestRow) error
 	ListManifestOrders(ctx context.Context, manifestID string) ([]ManifestOrder, error)
 	SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error
+	DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error
 	ListExceptions(ctx context.Context) ([]ManifestException, error)
 	SaveException(ctx context.Context, e ManifestException) error
 	UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error
+	SaveShipUnits(ctx context.Context, units []ShipUnit) error
 }
 
 // Repository is the mutation seam for payload write paths.
@@ -55,6 +57,8 @@ func (emptyPayloadTx) ListManifestOrders(context.Context, string) ([]ManifestOrd
 	return nil, nil
 }
 func (emptyPayloadTx) SaveManifestOrder(context.Context, ManifestOrder, int64) error { return nil }
+func (emptyPayloadTx) DeleteManifestOrder(context.Context, string, string) error { return nil }
+func (emptyPayloadTx) SaveShipUnits(context.Context, []ShipUnit) error { return nil }
 func (emptyPayloadTx) ListExceptions(context.Context) ([]ManifestException, error)   { return nil, nil }
 func (emptyPayloadTx) SaveException(context.Context, ManifestException) error        { return nil }
 func (emptyPayloadTx) UpdateOrderAssignment(context.Context, string, string, string) error {

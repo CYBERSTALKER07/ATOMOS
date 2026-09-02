@@ -1,6 +1,9 @@
 package credit
 
 import (
+	"errors"
+	"cloud.google.com/go/spanner"
+
 	"context"
 	"fmt"
 	"strings"
@@ -319,4 +322,18 @@ func profilePriority(p Profile) int {
 
 func profileID(retailerID, supplierID string) string {
 	return fmt.Sprintf("%s:%s", retailerID, supplierID)
+}
+
+func (s *Service) ReserveOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
+	res := OrderReservation{
+		OrderID:     orderID,
+		RetailerID:  retailerID,
+		SupplierID:  supplierID,
+		AmountMinor: amountMinor,
+		Status:      ReservationReserved,
+	}
+	if r, ok := s.repo.(*SpannerRepository); ok {
+		return r.ReserveOrderInTxn(ctx, txn, res)
+	}
+	return errors.New("not supported")
 }

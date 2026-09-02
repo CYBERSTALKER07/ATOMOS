@@ -52,6 +52,14 @@ func New(backend Backend, log *slog.Logger) *Cache {
 	return &Cache{backend: backend, log: log}
 }
 
+// Backend returns the underlying cache backend.
+func (c *Cache) Backend() Backend {
+	if c == nil {
+		return nil
+	}
+	return c.backend
+}
+
 // Get reads a key. Returns (value, found, error). A nil error with found=false
 // is a clean cache miss.
 func (c *Cache) Get(ctx context.Context, key string) ([]byte, bool, error) {

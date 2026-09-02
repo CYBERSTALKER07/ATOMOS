@@ -3,13 +3,14 @@ package orgoidc
 import (
 	"context"
 	"crypto/rsa"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // KeyFunc returns the IdP public key for an issuer (tests inject a static key).
-type KeyFunc func(ctx context.Context, issuer string) (*rsa.PublicKey, error)
+type KeyFunc func(ctx context.Context, issuer, kid string) (*rsa.PublicKey, error)
 
 // Service attaches IdP config and exchanges an id_token for the cell HS256 JWT.
 type Service struct {
@@ -102,17 +103,27 @@ func (s *Service) Exchange(ctx context.Context, supplierID, idToken, nonce strin
 	if keys == nil {
 		keys = FetchJWKS
 	}
-	key, err := keys(ctx, c.Issuer)
+	kid := ExtractKID(idToken)
+	key, err := keys(ctx, c.Issuer, kid)
 	if err != nil || key == nil {
 		return "", "", ErrInvalidToken
 	}
-	sub, _, err := VerifyIDToken(idToken, c, key, s.now(), nonce)
+	sub, email, err := VerifyIDToken(idToken, c, key, s.now(), nonce)
 	if err != nil {
 		return "", "", err
 	}
+	
+	role := auth.RoleWarehouse // Default non-admin role
+	for _, adminEmail := range c.AdminEmails {
+		if strings.EqualFold(adminEmail, email) {
+			role = auth.RoleAdmin
+			break
+		}
+	}
+
 	claims := auth.Claims{
 		Subject:      sub,
-		Role:         auth.RoleAdmin,
+		Role:         role,
 		SupplierID:   c.SupplierID,
 		IsRegistered: true,
 		IsConfigured: true,

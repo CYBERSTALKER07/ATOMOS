@@ -11,9 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.PaymentLedgerEntry
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
@@ -111,7 +111,7 @@ fun ClaimChargebacksScreen(
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    "${row.amountMinor} ${com.pegasus.design.moneyCurrency(row.currency)}",
+                                    "${row.amountMinor} ${com.pegasus.design.network.moneyCurrency(row.currency)}",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                                 Text(stringResource(R.string.mobile_supplier_ui_order_orderid_2, row.orderId ?: "—"), style = MaterialTheme.typography.bodySmall)

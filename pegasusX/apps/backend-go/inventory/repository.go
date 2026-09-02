@@ -224,12 +224,13 @@ func (r *SpannerRepository) ReserveForOrder(ctx context.Context, inventoryID str
 		if version != expectedVersion {
 			return fmt.Errorf("inventory %s version conflict: expected %d got %d", inventoryID, expectedVersion, version)
 		}
-		if onHand < quantity {
-			return fmt.Errorf("inventory %s insufficient stock: %d available, %d requested", inventoryID, onHand, quantity)
+		available := onHand - reserved
+		if available < quantity {
+			return fmt.Errorf("inventory %s insufficient stock: %d available, %d requested", inventoryID, available, quantity)
 		}
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":      inventoryID,
-			"QuantityOnHand":   onHand - quantity,
+			"QuantityOnHand":   onHand,
 			"QuantityReserved": reserved + quantity,
 			"Version":          version + 1,
 			"UpdatedAt":        spanner.CommitTimestamp,

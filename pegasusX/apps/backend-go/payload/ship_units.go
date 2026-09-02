@@ -2,10 +2,9 @@ package payload
 
 import (
 	"context"
-	"encoding/binary"
+	"sync/atomic"
 	"encoding/json"
 	"fmt"
-	"hash/fnv"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +12,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox" 
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 	"google.golang.org/api/iterator"
 )
@@ -53,7 +54,8 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 	for _, u := range existing {
 		have[u.OrderID] = true
 	}
-	n := 0
+	
+	newUnits := []ShipUnit{}
 	seq := int64(len(existing))
 	for _, oid := range orderIDs {
 		if have[oid] {
@@ -62,7 +64,7 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 		serial := ssccSerial(manifestID, oid, seq)
 		sscc, err := gs1.GenerateSSCC(prefix, serial)
 		if err != nil {
-			return n, err
+			return 0, err
 		}
 		unit := ShipUnit{
 			ManifestID: manifestID,
@@ -72,17 +74,41 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 			Sequence:   seq,
 			CreatedAt:  s.now().UTC(),
 		}
-		if err := s.insertShipUnit(ctx, unit); err != nil {
-			// Unique conflict on (ManifestId, OrderId) → already minted
-			if strings.Contains(err.Error(), "AlreadyExists") || strings.Contains(err.Error(), "UNIQUE") {
-				continue
-			}
-			return n, err
-		}
+		newUnits = append(newUnits, unit)
 		seq++
-		n++
 	}
-	return n, nil
+	
+	if len(newUnits) == 0 {
+		return 0, nil
+	}
+	
+	err = s.repo.RunTx(ctx, func(ctx context.Context, tx PayloadTx) error {
+		if err := tx.SaveShipUnits(ctx, newUnits); err != nil {
+			return err
+		}
+		// Fallback to in-memory
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.shipUnits == nil {
+			s.shipUnits = map[string][]ShipUnit{}
+		}
+		s.shipUnits[manifestID] = append(s.shipUnits[manifestID], newUnits...)
+		return nil
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(ctx, txn, events.AggregateRoute, manifestID, events.TopicMain, map[string]any{
+			"type":          "EventShipUnitsGenerated",
+			"manifest_id":   manifestID,
+			"units_count":   len(newUnits),
+			"supplier_id":   s.resolveSupplierScope(ctx),
+			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		})
+	})
+	
+	if err != nil {
+		return 0, err
+	}
+	
+	return len(newUnits), nil
 }
 
 func (s *Service) manifestOrderIDs(ctx context.Context, manifestID string) []string {
@@ -158,13 +184,10 @@ func (s *Service) spannerClient() *spanner.Client {
 	return nil
 }
 
+var ssccGlobalCounter uint64 = uint64(time.Now().UnixNano())
+
 func ssccSerial(manifestID, orderID string, seq int64) uint64 {
-	h := fnv.New64a()
-	_, _ = h.Write([]byte(manifestID + "|" + orderID))
-	var buf [8]byte
-	binary.BigEndian.PutUint64(buf[:], uint64(seq))
-	_, _ = h.Write(buf[:])
-	return h.Sum64()
+	return atomic.AddUint64(&ssccGlobalCounter, 1)
 }
 
 func (s *Service) insertShipUnit(ctx context.Context, u ShipUnit) error {

@@ -73,6 +73,7 @@ type Repository interface {
 	UpdateDunning(ctx context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error
 	ApplyPayment(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error
 	ApplyCreditNote(ctx context.Context, invoiceID string, amountMinor int64, idempotencyKey string) error
+	VoidInvoice(ctx context.Context, invoiceID string, idempotencyKey string) error
 	RecomputeAging(ctx context.Context, now time.Time, limit int) (int, error)
 }
 
@@ -461,6 +462,23 @@ func (r *MemoryRepository) ApplyCreditNote(ctx context.Context, invoiceID string
 	return r.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey)
 }
 
+func (r *MemoryRepository) VoidInvoice(ctx context.Context, invoiceID string, idempotencyKey string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.ledgerKeys[idempotencyKey] {
+		return nil
+	}
+	inv, ok := r.byID[invoiceID]
+	if !ok {
+		return fmt.Errorf("invoice_not_found")
+	}
+	inv.BalanceMinor = 0
+	inv.Status = StatusVoid
+	r.byID[invoiceID] = inv
+	r.ledgerKeys[idempotencyKey] = true
+	return nil
+}
+
 func (r *MemoryRepository) ListOpenForDunning(_ context.Context, limit int) ([]Invoice, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -810,6 +828,77 @@ func (r *SpannerRepository) ApplyCreditNote(ctx context.Context, invoiceID strin
 	return r.ApplyPayment(ctx, invoiceID, amountMinor, idempotencyKey)
 }
 
+func (r *SpannerRepository) VoidInvoice(ctx context.Context, invoiceID string, idempotencyKey string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		iter := txn.Query(ctx, spanner.Statement{
+			SQL:    `SELECT 1 FROM ArLedgerEntries WHERE IdempotencyKey = @key LIMIT 1`,
+			Params: map[string]any{"key": idempotencyKey},
+		})
+		_, qerr := iter.Next()
+		iter.Stop()
+		if qerr == nil {
+			return nil // already applied
+		}
+		if qerr != iterator.Done {
+			return qerr
+		}
+
+		row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID},
+			[]string{"SupplierId", "RetailerId", "BalanceMinor", "Version"})
+		if err != nil {
+			return err
+		}
+		var sid, rid string
+		var bal, ver int64
+		if err := row.Columns(&sid, &rid, &bal, &ver); err != nil {
+			return err
+		}
+
+		entryID := "arl-void:" + idempotencyKey
+		if len(entryID) > 128 {
+			entryID = entryID[:128]
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		
+		// Optional: emit VOID event if needed
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
+			BaseEvent:    events.BaseEvent{Type: "AR_INVOICE_VOIDED", Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+			InvoiceID:    invoiceID,
+			SupplierID:   sid,
+			RetailerID:   rid,
+			AmountMinor:  0,
+			BalanceMinor: 0,
+			Status:       StatusVoid,
+		}); err != nil {
+			return err
+		}
+
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.UpdateMap("ArInvoices", map[string]any{
+				"InvoiceId":    invoiceID,
+				"BalanceMinor": 0,
+				"Status":       StatusVoid,
+				"Version":      ver + 1,
+				"UpdatedAt":    spanner.CommitTimestamp,
+			}),
+			spanner.InsertOrUpdateMap("ArLedgerEntries", map[string]any{
+				"EntryId":        entryID,
+				"InvoiceId":      invoiceID,
+				"SupplierId":     sid,
+				"RetailerId":     rid,
+				"EntryType":      "VOID",
+				"AmountMinor":    -bal, // Adjust balance to zero in ledger
+				"IdempotencyKey": idempotencyKey,
+				"CreatedAt":      spanner.CommitTimestamp,
+			}),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
+	})
+	return err
+}
+
 func (r *SpannerRepository) ListOpenForDunning(ctx context.Context, limit int) ([]Invoice, error) {
 	if limit <= 0 {
 		limit = 200
@@ -840,9 +929,18 @@ FROM ArInvoices WHERE Status IN ('OPEN','PARTIAL') ORDER BY DueAt ASC LIMIT %d`,
 
 func (r *SpannerRepository) UpdateDunning(ctx context.Context, invoiceID string, step int64, agingBucket string, lastDunnedAt time.Time, version int64) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		var sid, rid string
-		if row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID}, []string{"SupplierId", "RetailerId"}); err == nil {
-			_ = row.Columns(&sid, &rid)
+		var sid, rid, status string
+		var currentVersion int64
+		row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{invoiceID}, []string{"SupplierId", "RetailerId", "Version", "Status"})
+		if err != nil {
+			return err
+		}
+		if err := row.Columns(&sid, &rid, &currentVersion, &status); err != nil {
+			return err
+		}
+		if currentVersion != version || status == StatusPaid || status == StatusVoid {
+			// Version mismatch or invoice no longer open; silently abort this dunning step
+			return nil
 		}
 		buf := outbox.NewSpannerTxnBuffer(txn)
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateARInvoice, invoiceID, events.TopicMain, events.ARInvoiceEvent{
@@ -916,6 +1014,20 @@ func (r *SpannerRepository) RecomputeAging(ctx context.Context, now time.Time, l
 	n := 0
 	for _, rec := range rows {
 		_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			var currentVersion int64
+			var status string
+			row, err := txn.ReadRow(ctx, "ArInvoices", spanner.Key{rec.id}, []string{"Version", "Status"})
+			if err != nil {
+				return err
+			}
+			if err := row.Columns(&currentVersion, &status); err != nil {
+				return err
+			}
+			if currentVersion != rec.ver || status == StatusPaid || status == StatusVoid {
+				// Abort silently: concurrent payment modified it since the snapshot read
+				return nil
+			}
+
 			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.UpdateMap("ArInvoices", map[string]any{
 					"InvoiceId":   rec.id,

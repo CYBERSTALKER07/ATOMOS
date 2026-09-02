@@ -185,15 +185,15 @@ func (s *Service) WriteOffInvoice(ctx context.Context, invoiceID, approverID str
 		return nil, fmt.Errorf("cannot write off invoice with status %s", inv.Status)
 	}
 
+	// Ensure the invoice status and balance are persisted using VoidInvoice
+	idemKey := fmt.Sprintf("writeoff_%s_%d", invoiceID, s.now().UnixNano())
+	if err := s.repo.VoidInvoice(ctx, invoiceID, idemKey); err != nil {
+		return nil, err
+	}
+
 	inv.Status = StatusVoid
 	inv.BalanceMinor = 0
 	inv.UpdatedAt = s.now().UTC()
-
-	// Apply credit note / adjustment to clear balance in repo
-	idemKey := fmt.Sprintf("writeoff_%s_%d", invoiceID, s.now().UnixNano())
-	if err := s.repo.ApplyCreditNote(ctx, invoiceID, inv.BalanceMinor, idemKey); err != nil {
-		// Even if already 0, ensure status update
-	}
 
 	return &inv, nil
 }

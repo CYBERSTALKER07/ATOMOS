@@ -253,7 +253,17 @@ func (s *Service) RecordPaymentLeg(ctx context.Context, txn *spanner.ReadWriteTr
 			amount = -amount
 		}
 
-		_, sliceM, err := payout.GenerateSettlementSlice(ctx, s.commissionResolver, s.newID(), leg.OrderID, supplierID, leg.LegID, amount, currency, leg.CapturedAt.Time)
+		
+		sliceTime := leg.CapturedAt.Time
+		if !leg.CapturedAt.Valid || sliceTime.IsZero() {
+			if !leg.CreatedAt.IsZero() {
+				sliceTime = leg.CreatedAt
+			} else {
+				sliceTime = time.Now().UTC()
+			}
+		}
+
+		_, sliceM, err := payout.GenerateSettlementSlice(ctx, s.commissionResolver, s.newID(), leg.OrderID, supplierID, leg.LegID, amount, currency, sliceTime)
 		if err != nil {
 			return err
 		}

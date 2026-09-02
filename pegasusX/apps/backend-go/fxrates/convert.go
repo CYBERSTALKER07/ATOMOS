@@ -96,7 +96,7 @@ func (s *Service) ConvertMinor(ctx context.Context, from, to string, amountMinor
 		return 0, err
 	}
 	if ok {
-		return applyRate(amountMinor, rate.RateScaled, rate.Scale, false)
+		return applyRate(amountMinor, rate.RateScaled, rate.Scale, false, CurrencyExponent(from), CurrencyExponent(to))
 	}
 	if s.AllowInverse {
 		inv, okInv, err := s.repo.GetAsOf(ctx, to, from, at)
@@ -104,14 +104,29 @@ func (s *Service) ConvertMinor(ctx context.Context, from, to string, amountMinor
 			return 0, err
 		}
 		if okInv {
-			return applyRate(amountMinor, inv.RateScaled, inv.Scale, true)
+			return applyRate(amountMinor, inv.RateScaled, inv.Scale, true, CurrencyExponent(from), CurrencyExponent(to))
 		}
 	}
 	return 0, ErrRateMissing
 }
 
+// CurrencyExponent returns the number of minor units for ISO-4217 currencies.
+func CurrencyExponent(code string) int {
+	switch NormalizeCurrency(code) {
+	case "BHD", "IQD", "KWD", "LYD", "OMR", "TND":
+		return 3
+	case "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF", "UGX", "VUV", "VND", "XAF", "XOF", "XPF":
+		return 0
+	case "MGA", "MRU":
+		return 1 // non-decimal, 1/5th
+	default:
+		return 2
+	}
+}
+
 // applyRate: forward amount*rate/scale; inverse amount*scale/rate. Half away from zero.
-func applyRate(amount, rateScaled, scale int64, inverse bool) (int64, error) {
+func applyRate(amount, rateScaled, scale int64, inverse bool, expFrom, expTo int) (int64, error) {
+
 	if rateScaled <= 0 || scale <= 0 {
 		return 0, ErrInvalidRate
 	}
@@ -120,6 +135,9 @@ func applyRate(amount, rateScaled, scale int64, inverse bool) (int64, error) {
 	sc := big.NewInt(scale)
 	num := new(big.Int)
 	den := new(big.Int)
+	
+	// Exponent scaling: result_minor = (source_minor * rate * 10^expTo) / (scale * 10^expFrom)
+	expDiff := expTo - expFrom
 	if inverse {
 		num.Mul(a, sc)
 		den.Set(r)
@@ -127,6 +145,13 @@ func applyRate(amount, rateScaled, scale int64, inverse bool) (int64, error) {
 		num.Mul(a, r)
 		den.Set(sc)
 	}
+
+	if expDiff > 0 {
+		num.Mul(num, big.NewInt(int64(math.Pow10(expDiff))))
+	} else if expDiff < 0 {
+		den.Mul(den, big.NewInt(int64(math.Pow10(-expDiff))))
+	}
+
 	// half away from zero: (num + den/2 * sign) / den
 	half := new(big.Int).Div(den, big.NewInt(2))
 	if num.Sign() >= 0 {

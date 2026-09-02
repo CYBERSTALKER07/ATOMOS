@@ -23,7 +23,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 
-	r.Post("/v1/auth/payloader/login", d.Service.HandlePayloaderLogin)
+	r.With(auth.RequireDeviceCert).Post("/v1/auth/payloader/login", d.Service.HandlePayloaderLogin)
 	r.Post("/v1/auth/payloader/refresh", d.Service.HandlePayloaderRefresh)
 
 	mountProtected := func(rr chi.Router) {

@@ -604,6 +604,27 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 				CreatedAt:     s.now().UTC(),
 				SupplierID:    supplierID,
 			})))
+
+			// TRK4-009: Enqueue automatic credit note generation upon warehouse return confirmation
+			cnPayload, _ := json.Marshal(map[string]any{
+				"type":        "CREDIT_NOTE_REQUESTED",
+				"order_id":    orderID,
+				"return_id":   returnID,
+				"supplier_id": supplierID,
+				"quantity":    creditQty,
+				"sku_id":      skuID,
+				"reason":      reason,
+				"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+			})
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       "cn:" + returnID,
+				AggregateType: events.AggregateOrder,
+				AggregateID:   orderID,
+				TopicName:     events.TopicMain,
+				Payload:       cnPayload,
+				CreatedAt:     s.now().UTC(),
+				SupplierID:    supplierID,
+			})))
 			if err := txn.BufferWrite(mutations); err != nil {
 				return err
 			}

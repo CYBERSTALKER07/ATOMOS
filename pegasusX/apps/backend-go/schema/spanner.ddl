@@ -30,6 +30,7 @@ CREATE TABLE SupplierOIDC (
   AuthorizationEndpoint   STRING(512),
   RedirectURI             STRING(512),
   Enabled                 BOOL        NOT NULL DEFAULT (FALSE),
+  AdminEmails             ARRAY<STRING>,
   UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
@@ -101,6 +102,7 @@ CREATE TABLE RetailerPricingOverrides (
   RetailerId     STRING(36)  NOT NULL,
   ProductId      STRING(36)  NOT NULL,
   OverridePrice  INT64       NOT NULL,
+  Currency       STRING(3),
   SetBy          STRING(128) NOT NULL,
   SetByRole      STRING(32)  NOT NULL,
   IsActive       BOOL        NOT NULL,
@@ -993,6 +995,20 @@ CREATE TABLE ManifestExceptions (
 CREATE INDEX Idx_ManifestExceptions_ByOrder ON ManifestExceptions(OrderId, AttemptCount DESC);
 CREATE INDEX Idx_ManifestExceptions_BySupplier ON ManifestExceptions(SupplierId, CreatedAt DESC);
 
+CREATE TABLE ControlTowerInterventions (
+  InterventionId  STRING(36)  NOT NULL,
+  ManifestId      STRING(36)  NOT NULL,
+  SupplierId      STRING(36)  NOT NULL,
+  CommandType     STRING(50)  NOT NULL,
+  ReasonCode      STRING(50)  NOT NULL,
+  OperatorNotes   STRING(MAX),
+  OperatorId      STRING(128) NOT NULL,
+  Status          STRING(20)  NOT NULL,
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (InterventionId);
+
+CREATE INDEX Idx_ControlTowerInterventions_ByManifest ON ControlTowerInterventions(ManifestId, CreatedAt DESC);
+
 -- Factory outbound truck manifests (inter-hub / factory loading).
 CREATE TABLE FactoryTruckManifests (
   ManifestId        STRING(36)  NOT NULL,
@@ -1865,6 +1881,7 @@ CREATE INDEX ReverseLogisticsTasks_ByStatus ON ReverseLogisticsTasks(Status);
 
 CREATE TABLE CashReconciliations (
   ReconciliationId    STRING(36) NOT NULL,
+  SupplierId          STRING(36) NOT NULL,
   DriverId            STRING(36) NOT NULL,
   RouteId             STRING(36),
   ShiftDate           DATE NOT NULL,
@@ -2987,6 +3004,7 @@ CREATE INDEX Idx_FeatureFlagOverrides_ByTenant
 -- 20260731_digital_twin.ddl
 CREATE TABLE RouteTwins (
   RouteId             STRING(36) NOT NULL,
+  SupplierId          STRING(36) NOT NULL,
   DriverId            STRING(36) NOT NULL,
   Status              STRING(32) NOT NULL,
   CurrentLat          FLOAT64,
@@ -3655,3 +3673,66 @@ CREATE TABLE RetailerReturnRequests (
 
 CREATE INDEX Idx_RetailerReturnRequests_ByRetailer ON RetailerReturnRequests(RetailerId, CreatedAt DESC);
 CREATE INDEX Idx_RetailerReturnRequests_ByOrder ON RetailerReturnRequests(OrderId);
+
+CREATE TABLE PhysicalReconciliationQueue (
+  DisputeId       STRING(36)  NOT NULL,
+  SupplierId      STRING(36)  NOT NULL,
+  AggregateId     STRING(36)  NOT NULL,
+  AggregateType   STRING(50)  NOT NULL,
+  ConflictingData STRING(MAX) NOT NULL,
+  SourceRole      STRING(50)  NOT NULL,
+  Status          STRING(20)  NOT NULL DEFAULT ('PENDING_REVIEW'),
+  ResolvedBy      STRING(128),
+  ResolutionNotes STRING(MAX),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ResolvedAt      TIMESTAMP,
+) PRIMARY KEY (DisputeId);
+
+CREATE INDEX Idx_PhysicalReconciliationQueue_BySupplier ON PhysicalReconciliationQueue(SupplierId, Status, CreatedAt DESC);
+
+CREATE TABLE DraftAdjustments (
+  DraftId         STRING(36)  NOT NULL,
+  SupplierId      STRING(36)  NOT NULL,
+  OrderId         STRING(36)  NOT NULL,
+  ProposedAmount  NUMERIC     NOT NULL,
+  ReasonCode      STRING(50)  NOT NULL,
+  OperatorId      STRING(128) NOT NULL,
+  Status          STRING(20)  NOT NULL DEFAULT ('PENDING_APPROVAL'),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ReviewedAt      TIMESTAMP,
+  ReviewedBy      STRING(128),
+) PRIMARY KEY (DraftId);
+
+CREATE INDEX Idx_DraftAdjustments_ByOrder ON DraftAdjustments(OrderId, Status);
+
+CREATE TABLE DraftCreditNotes (
+  DraftId         STRING(36)  NOT NULL,
+  SupplierId      STRING(36)  NOT NULL,
+  RetailerId      STRING(36)  NOT NULL,
+  OrderId         STRING(36)  NOT NULL,
+  ProposedAmount  NUMERIC     NOT NULL,
+  ReasonCode      STRING(50)  NOT NULL,
+  OperatorId      STRING(128) NOT NULL,
+  Status          STRING(20)  NOT NULL DEFAULT ('PENDING_APPROVAL'),
+  CreatedAt       TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ReviewedAt      TIMESTAMP,
+  ReviewedBy      STRING(128),
+) PRIMARY KEY (DraftId);
+
+CREATE INDEX Idx_DraftCreditNotes_ByRetailer ON DraftCreditNotes(RetailerId, Status);
+
+-- Added for Finding 3.2 (BOM & Factory Raw Inventory)
+CREATE TABLE BillOfMaterials (
+  FinishedProductId       STRING(36)  NOT NULL,
+  RawMaterialId           STRING(36)  NOT NULL,
+  QuantityRequired        FLOAT64     NOT NULL,
+  Version                 INT64       NOT NULL DEFAULT (1),
+) PRIMARY KEY (FinishedProductId, RawMaterialId);
+
+CREATE TABLE FactoryRawInventory (
+  FactoryId               STRING(36)  NOT NULL,
+  RawMaterialId           STRING(36)  NOT NULL,
+  QuantityOnHand          FLOAT64     NOT NULL DEFAULT (0.0),
+  QuantityReserved        FLOAT64     NOT NULL DEFAULT (0.0),
+  UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (FactoryId, RawMaterialId);

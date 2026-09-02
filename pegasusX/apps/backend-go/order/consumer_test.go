@@ -188,3 +188,7 @@ func (r *consumerRepoStub) FindPendingBuyerAcceptance(_ context.Context, _ int) 
 func (r *consumerRepoStub) UpdateOrderWithTxn(_ context.Context, o Order, _ []DeliveryProofArtifact, _ func(context.Context, *spanner.ReadWriteTransaction) error, _ func(outbox.TxnBuffer) error) error {
 	return nil
 }
+
+func (s *consumerRepoStub) CreateOrderWithBackorder(ctx context.Context, o *Order, bo *Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
+	return nil
+}

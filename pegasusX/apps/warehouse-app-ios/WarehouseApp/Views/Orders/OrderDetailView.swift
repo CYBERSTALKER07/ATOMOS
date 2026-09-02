@@ -4,6 +4,7 @@ import UIKit
 enum OrderMutationAction: String, Identifiable {
     case reject
     case overflow
+    case paymentBypass
 
     var id: String { rawValue }
 }
@@ -226,6 +227,12 @@ struct OrderDetailView: View {
         Task {
             defer { mutating = false }
             do {
+                if action == .paymentBypass {
+                    let response = try await WarehouseOperationsService.issuePaymentBypass(orderId: orderId)
+                    statusMessage = "Token: \(response.bypassToken ?? "Unknown")"
+                    return
+                }
+
                 let response: WarehouseOrderMutationResponse
                 switch action {
                 case .reject:
@@ -237,6 +244,8 @@ struct OrderDetailView: View {
                     response = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reason)
                 case .overflow:
                     response = try await WarehouseOperationsService.overflowOrder(orderId: orderId, reason: reasonInput.isEmpty ? nil : reasonInput)
+                case .paymentBypass:
+                    fatalError("Handled above")
                 }
                 statusMessage = "Order updated · \(response.status)"
                 reasonInput = ""
@@ -253,6 +262,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Cancel order?"
         case .overflow: return "Return to dispatch pool?"
+        case .paymentBypass: return "Issue Payment Bypass?"
         }
     }
 
@@ -260,6 +270,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Enter a cancellation reason in the field above before confirming."
         case .overflow: return "Optional reason can be entered above."
+        case .paymentBypass: return "Generate a token for the driver if the POS terminal failed."
         }
     }
 
@@ -267,6 +278,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Cancel order"
         case .overflow: return "Return to pool"
+        case .paymentBypass: return "Issue Bypass Token"
         }
     }
 

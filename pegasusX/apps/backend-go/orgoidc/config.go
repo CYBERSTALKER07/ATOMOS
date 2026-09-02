@@ -28,8 +28,9 @@ type Config struct {
 	ClientID                string `json:"client_id"`
 	Audience                string `json:"audience,omitempty"`
 	AuthorizationEndpoint   string `json:"authorization_endpoint,omitempty"`
-	RedirectURI             string `json:"redirect_uri,omitempty"`
-	Enabled                 bool   `json:"enabled"`
+	RedirectURI             string   `json:"redirect_uri,omitempty"`
+	AdminEmails             []string `json:"admin_emails,omitempty"`
+	Enabled                 bool     `json:"enabled"`
 }
 
 func (c Config) audience() string {

@@ -42,6 +42,23 @@ func (c idClaims) audiences() []string {
 	}
 }
 
+// ExtractKID extracts the Key ID from the JWT header.
+func ExtractKID(idToken string) string {
+	parts := strings.Split(idToken, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	headerJSON, err := b64JSON(parts[0])
+	if err != nil {
+		return ""
+	}
+	var header struct {
+		KID string `json:"kid"`
+	}
+	_ = json.Unmarshal(headerJSON, &header)
+	return header.KID
+}
+
 // VerifyIDToken checks RS256 signature + iss/aud/exp. key must be the IdP public key.
 func VerifyIDToken(idToken string, cfg Config, key *rsa.PublicKey, now time.Time, nonce string) (subject, email string, err error) {
 	if key == nil {

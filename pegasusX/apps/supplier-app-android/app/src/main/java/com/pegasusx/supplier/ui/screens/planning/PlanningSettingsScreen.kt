@@ -19,10 +19,10 @@ import com.pegasusx.supplier.data.model.SeasonalTemplatesResponse
 import com.pegasusx.supplier.data.model.KillSwitchRequest
 import com.pegasusx.supplier.data.model.NetworkModeUpdateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch

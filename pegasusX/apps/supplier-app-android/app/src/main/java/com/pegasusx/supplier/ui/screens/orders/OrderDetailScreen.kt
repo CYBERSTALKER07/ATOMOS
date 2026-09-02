@@ -17,6 +17,9 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierStatusChip
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
+
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 import com.pegasusx.supplier.R
@@ -201,6 +204,51 @@ fun OrderDetailScreen(
                                 Text(formatMinorAmount(it.totalMinor, it.currency), style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(orderId, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            
+                            if ((detail?.state ?: detail?.status ?: listOrder?.status.orEmpty()) == "AWAITING_PAYMENT") {
+                                Spacer(Modifier.height(PegasusSpacing.md))
+                                ElevatedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.elevatedCardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(PegasusSpacing.md)) {
+                                        Text("Emergency Payment Bypass", style = MaterialTheme.typography.titleSmall)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("Generate bypass code for driver if POS terminal failed.", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(Modifier.height(PegasusSpacing.md))
+                                        Button(
+                                            onClick = {
+                                                acting = true
+                                                scope.launch {
+                                                    try {
+                                                        val resp = ops.issuePaymentBypass(com.pegasusx.supplier.data.model.PaymentBypassRequest(orderId = orderId), java.util.UUID.randomUUID().toString())
+                                                        if (resp.isSuccessful && resp.body() != null) {
+                                                            error = "Token: ${resp.body()!!.bypassToken}"
+                                                        } else {
+                                                            error = "Failed to issue token (${resp.code()})"
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        error = e.message
+                                                    } finally {
+                                                        acting = false
+                                                    }
+                                                }
+                                            },
+                                            enabled = !acting,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error,
+                                                contentColor = MaterialTheme.colorScheme.onError
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Issue Bypass Token")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

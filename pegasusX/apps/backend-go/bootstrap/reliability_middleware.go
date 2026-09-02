@@ -465,11 +465,29 @@ type fixedWindowRateLimiter struct {
 
 type rateBucket struct {
 	windowStart time.Time
+	window      time.Duration
 	count       int
 }
 
 func newFixedWindowRateLimiter() *fixedWindowRateLimiter {
-	return &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
+	l := &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
+	go l.sweep()
+	return l
+}
+
+func (l *fixedWindowRateLimiter) sweep() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		l.mu.Lock()
+		for k, b := range l.buckets {
+			if now.Sub(b.windowStart) >= b.window*2 {
+				delete(l.buckets, k)
+			}
+		}
+		l.mu.Unlock()
+	}
 }
 
 func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int, int) {
@@ -485,7 +503,7 @@ func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration
 
 	bucket := l.buckets[key]
 	if bucket.windowStart.IsZero() || now.Sub(bucket.windowStart) >= window {
-		bucket = rateBucket{windowStart: now, count: 0}
+		bucket = rateBucket{windowStart: now, window: window, count: 0}
 	}
 
 	if bucket.count >= max {

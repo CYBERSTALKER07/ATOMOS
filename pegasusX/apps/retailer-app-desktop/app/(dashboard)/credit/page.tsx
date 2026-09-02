@@ -73,6 +73,15 @@ export default function RetailerCreditPartnersPage() {
       {loading ? <p className="mt-4 text-sm">{t("retailer_desktop.credit.text.loading")}</p> : null}
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
 
+      <section className="mt-8 mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 flex items-start gap-3">
+        <div>
+          <h4 className="font-semibold text-sm">Pending Finance Approval</h4>
+          <p className="text-sm opacity-80 mt-1">
+            There is 1 disputed delivery adjustment awaiting Finance review. It is explicitly excluded from your available balance calculations until finalized.
+          </p>
+        </div>
+      </section>
+
       <section className="mt-8">
         <h2 className="text-base font-medium mb-3">{t("retailer_desktop.credit.text.relationships")}</h2>
         <ul className="space-y-3">

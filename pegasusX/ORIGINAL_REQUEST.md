@@ -40,3 +40,30 @@ Update the `purgeStaleToken` logic in `apps/backend-go/notifications/fcm.go` (an
 
 ### FCM Token Fix
 - [ ] A Go unit/integration test verifies that executing `purgeStaleToken` on an expired session does *not* delete a newer token registration for the same user.
+
+## 2026-08-30T06:34:29+05:00
+
+Use a very large team of agents. The team will comprehensively audit the recently built 4-phase ecosystem adaptability system, identify unhandled real-world edge cases (math loops, offline chaos), and implement defensive code to secure the system.
+
+Working directory: /Users/shakhzod/Desktop/V.O.I.D/pegasusX
+Integrity mode: development
+
+## Requirements
+
+### R1. Audit Existing Adaptability Phases
+Review the offline sync engine, Control Tower Redis tracking, semantic reconciliation queue, and financial draft logic. Identify gaps, race conditions, or missing validation in the current implementation.
+
+### R2. Stress Test & Defensive Implementation
+Simulate extreme edge cases (e.g., continuous math recalculation loops, out-of-order offline pushes, conflicting manual fallbacks). Write defensive business logic and tests to handle these scenarios gracefully.
+
+## Verification Resources
+- Existing test suites in the `apps/backend-go` monorepo.
+- `ssmr-smokecheck` suite for cross-role ecosystem assertions.
+
+## Acceptance Criteria
+
+### Audit & Stability
+- [ ] A written audit report is produced detailing at least 3 concrete edge cases or vulnerabilities found in the current adaptability implementation.
+- [ ] Code is implemented to address the identified edge cases.
+- [ ] Running `go test ./...` in the backend monorepo passes with no regressions.
+- [ ] The system does not hang or panic when simulated out-of-order commands are pushed to the sync engine.

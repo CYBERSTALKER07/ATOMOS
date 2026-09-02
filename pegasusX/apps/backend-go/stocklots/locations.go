@@ -176,6 +176,50 @@ func PatchBinInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, wareh
 	if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("WarehouseLocations", cols)}); err != nil {
 		return nil, err
 	}
+
+	// When a bin transitions to QUARANTINE or is deactivated, quarantine all
+	// child StockLots and re-rollup SupplierInventoryV2 so quarantined goods
+	// are excluded from available-to-promise calculations.
+	if locType == "QUARANTINE" || !active {
+		lotStmt := spanner.Statement{
+			SQL: `SELECT LotId, SupplierId, ProductId FROM StockLots
+			      WHERE WarehouseId = @wid AND LocationId = @lid AND Status = 'AVAILABLE'`,
+			Params: map[string]any{"wid": warehouseID, "lid": locationID},
+		}
+		lotIter := txn.Query(ctx, lotStmt)
+		type lotRef struct {
+			LotID, SupplierID, ProductID string
+		}
+		var affected []lotRef
+		if err := lotIter.Do(func(row *spanner.Row) error {
+			var lr lotRef
+			if err := row.Columns(&lr.LotID, &lr.SupplierID, &lr.ProductID); err != nil {
+				return err
+			}
+			affected = append(affected, lr)
+			return nil
+		}); err != nil {
+			return nil, fmt.Errorf("query child lots for quarantine: %w", err)
+		}
+		rollupKeys := map[string]lotRef{}
+		for _, lr := range affected {
+			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
+				"LotId":     lr.LotID,
+				"Status":    "QUARANTINED",
+				"UpdatedAt": spanner.CommitTimestamp,
+			})}); err != nil {
+				return nil, err
+			}
+			key := lr.SupplierID + "|" + lr.ProductID
+			rollupKeys[key] = lr
+		}
+		for _, lr := range rollupKeys {
+			if err := RollupInventoryV2InTxn(ctx, txn, lr.SupplierID, warehouseID, lr.ProductID); err != nil {
+				return nil, fmt.Errorf("rollup after quarantine: %w", err)
+			}
+		}
+	}
+
 	return &BinLocation{
 		WarehouseID: warehouseID, LocationID: locationID, Zone: zone, Aisle: aisle, Rack: rack,
 		Level: level, Bin: bin, LocationType: locType, PickSequence: pickSeq, MaxVolumeVU: vu, IsActive: active,

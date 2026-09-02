@@ -267,10 +267,10 @@ final class APIClient: @unchecked Sendable {
     // MARK: - Per-order seal / exception
     /// Backend wants {order_id, terminal_id, manifest_cleared}. Per Expo,
     /// terminal_id is the active vehicle/truck id.
-    func sealOrder(orderId: String, terminalId: String) async throws -> SealOrderResponse {
+    func sealOrder(manifestId: String, orderId: String, terminalId: String) async throws -> SealOrderResponse {
         try await post(
             "v1/payload/seal",
-            body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true),
+            body: SealOrderRequest(manifestId: manifestId, orderId: orderId, terminalId: terminalId, manifestCleared: true),
             headers: ["Idempotency-Key": PayloadIdempotency.orderSeal(orderId: orderId)]
         )
     }

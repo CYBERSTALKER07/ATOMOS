@@ -42,10 +42,10 @@ import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.DispatchDriverList
 import com.pegasusx.warehouse.ui.components.FleetLiveMapSection
 import com.pegasusx.warehouse.ui.components.HandoffTimelineSection
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.PulseHonesty
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
+import com.pegasus.design.ui.PulseHonesty
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeStatus
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
@@ -115,6 +115,17 @@ fun DispatchScreen(
     var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var handoffLoading by remember { mutableStateOf(true) }
     var handoffError by remember { mutableStateOf<String?>(null) }
+    
+    // Early complete / Rescue state
+    var lookupDriverId by remember { mutableStateOf("") }
+    var earlyCompleteReq by remember { mutableStateOf<Map<String, Any>?>(null) }
+    var lookupLoading by remember { mutableStateOf(false) }
+    var lookupError by remember { mutableStateOf<String?>(null) }
+    var rescueAction by remember { mutableStateOf<String?>(null) }
+    var rescueWindowStart by remember { mutableStateOf("") }
+    var rescueWindowEnd by remember { mutableStateOf("") }
+    var rescueMutating by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
@@ -496,6 +507,70 @@ fun DispatchScreen(
         realtimeSignals.refreshTick.collect { load(silent = true) }
     }
 
+
+
+    if (rescueAction != null) {
+        val isReschedule = rescueAction == "RESCHEDULE"
+        AlertDialog(
+            onDismissRequest = { if (!rescueMutating) rescueAction = null },
+            title = { Text(if (isReschedule) "Reschedule Orders" else "Cancel Orders") },
+            text = {
+                Column {
+                    if (isReschedule) {
+                        OutlinedTextField(
+                            value = rescueWindowStart,
+                            onValueChange = { rescueWindowStart = it },
+                            label = { Text("New Start (e.g. 2026-08-01T09:00:00Z)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = rescueWindowEnd,
+                            onValueChange = { rescueWindowEnd = it },
+                            label = { Text("New End (e.g. 2026-08-01T17:00:00Z)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Text("Are you sure you want to cancel all remaining active orders for this route? This will release reserved inventory.")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        rescueMutating = true
+                        scope.launch {
+                            try {
+                                val s = rescueWindowStart.takeIf { it.isNotBlank() }
+                                val e = rescueWindowEnd.takeIf { it.isNotBlank() }
+                                val resp = opsRepository.approveEarlyComplete(lookupDriverId, rescueAction!!, s, e)
+                                if (resp.isSuccessful) {
+                                    earlyCompleteReq = null
+                                    rescueAction = null
+                                    rescueWindowStart = ""
+                                    rescueWindowEnd = ""
+                                    load()
+                                } else {
+                                    lookupError = "Failed to approve (${resp.code()})"
+                                    rescueAction = null
+                                }
+                            } catch (err: Exception) {
+                                lookupError = err.message
+                                rescueAction = null
+                            } finally {
+                                rescueMutating = false
+                            }
+                        }
+                    },
+                    enabled = !rescueMutating
+                ) { Text("Confirm") }
+            },
+            dismissButton = {
+                TextButton(onClick = { rescueAction = null }, enabled = !rescueMutating) { Text("Close") }
+            }
+        )
+    }
+
     WarehouseReconnectRecoveryEffect(
         realtimeSignals = realtimeSignals,
         isBusy = { executing },
@@ -717,6 +792,97 @@ fun DispatchScreen(
 
                 when (tab) {
                     0 -> {
+                        // Driver Rescue Card
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm)
+                        ) {
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(modifier = Modifier.padding(PegasusSpacing.md)) {
+                                    Text(
+                                        "Active Driver Rescue Requests",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(Modifier.height(PegasusSpacing.sm))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        OutlinedTextField(
+                                            value = lookupDriverId,
+                                            onValueChange = { lookupDriverId = it },
+                                            label = { Text("Driver ID") },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !lookupLoading
+                                        )
+                                        Spacer(Modifier.width(PegasusSpacing.md))
+                                        Button(
+                                            onClick = {
+                                                lookupLoading = true
+                                                lookupError = null
+                                                scope.launch {
+                                                    try {
+                                                        val resp = opsRepository.getEarlyCompleteRequest(lookupDriverId.trim())
+                                                        if (resp.isSuccessful && resp.body() != null) {
+                                                            earlyCompleteReq = resp.body()
+                                                        } else {
+                                                            lookupError = "No request found or error (${resp.code()})"
+                                                            earlyCompleteReq = null
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        lookupError = e.message
+                                                    } finally {
+                                                        lookupLoading = false
+                                                    }
+                                                }
+                                            },
+                                            enabled = !lookupLoading && lookupDriverId.isNotBlank()
+                                        ) {
+                                            Text("Lookup")
+                                        }
+                                    }
+                                    if (lookupError != null) {
+                                        Spacer(Modifier.height(PegasusSpacing.xs))
+                                        Text(lookupError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                    if (earlyCompleteReq != null) {
+                                        Spacer(Modifier.height(PegasusSpacing.md))
+                                        HorizontalDivider()
+                                        Spacer(Modifier.height(PegasusSpacing.md))
+                                        Text("Request for Driver: $lookupDriverId", style = MaterialTheme.typography.bodyMedium)
+                                        Spacer(Modifier.height(PegasusSpacing.sm))
+                                        Text("Reason: ${earlyCompleteReq!!["reason"]}", style = MaterialTheme.typography.bodySmall)
+                                        Text("Status: ${earlyCompleteReq!!["status"]}", style = MaterialTheme.typography.bodySmall)
+                                        
+                                        Spacer(Modifier.height(PegasusSpacing.md))
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = { rescueAction = "CANCEL" },
+                                                enabled = !rescueMutating,
+                                                colors = ButtonDefaults.outlinedButtonColors(
+                                                    contentColor = MaterialTheme.colorScheme.error
+                                                ),
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Cancel Orders")
+                                            }
+                                            OutlinedButton(
+                                                onClick = { rescueAction = "RESCHEDULE" },
+                                                enabled = !rescueMutating,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text("Reschedule")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
                         DispatchOrderList(
                             preview = preview!!,
                             fleetVehicles = fleetVehicles,

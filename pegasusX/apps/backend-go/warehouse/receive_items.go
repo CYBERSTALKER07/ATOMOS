@@ -66,6 +66,8 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 			}
 		}
 
+		var shortShippedItems []map[string]any
+		
 		if supplyRequestID != "" {
 			itemStmt := spanner.Statement{
 				SQL: `SELECT ItemId, ProductId, COALESCE(ShippedQuantity, RequestedQuantity), COALESCE(ReceivedQuantity, 0)
@@ -91,6 +93,20 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 				if v, ok := receivedByID[itemID]; ok && v > 0 {
 					received = v
 				}
+				
+				// Handle Short Shipments (Discrepancy) -> Auto-Backorder
+				if received < shipped {
+					shortShippedItems = append(shortShippedItems, map[string]any{
+						"ItemId":              fmt.Sprintf("backorder-%s-%s", supplyRequestID, itemID),
+						"ProductId":           productID,
+						"RequestedQuantity":   shipped - received,
+						"RecommendedQuantity": int64(0),
+						"UnitVolumeVU":        float64(0),
+						"ShippedQuantity":     int64(0),
+						"CreatedAt":           spanner.CommitTimestamp,
+					})
+				}
+
 				if received <= 0 {
 					continue
 				}
@@ -98,9 +114,18 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 					locID := strings.TrimSpace(receivedByLocation[itemID])
 					if locID == "" {
 						locID = "recv-default"
+					}
+					
+					// Edge Case: QA Quarantine handling
+					locationType := "STAGE"
+					if strings.ToUpper(locID) == "QA_HOLD" {
+					    locationType = "QUARANTINE"
+					}
+
+					if locID == "recv-default" || locationType == "QUARANTINE" {
 						if _, err := stocklots.UpsertBinInTxn(ctx, txn, stocklots.CreateBinRequest{
 							WarehouseID: warehouseID, LocationID: locID, Zone: "RECV",
-							LocationType: "STAGE", PickSequence: 0,
+							LocationType: locationType, PickSequence: 0,
 						}); err != nil {
 							return err
 						}
@@ -132,6 +157,35 @@ func (s *Service) receiveTransferWithItems(ctx context.Context, ops *auth.Wareho
 					return err
 				}
 			}
+			
+			// Auto-Backorder Creation
+			if len(shortShippedItems) > 0 {
+				newReqID := "REQ-BO-" + transferID
+				muts := []*spanner.Mutation{
+					spanner.InsertMap("WarehouseSupplyRequests", map[string]any{
+						"RequestId":                newReqID,
+						"WarehouseId":              warehouseID,
+						"SupplierId":               supplierID,
+						"State":                    "BACKORDERED",
+						"CoverageStartDate":        time.Now().UTC().Format("2006-01-02"),
+						"CoverageDays":             int64(0),
+						"ProjectedUnits":           int64(0),
+						"CommittedUnits":           int64(0),
+						"PendingConfirmationUnits": int64(0),
+						"TotalVolumeVU":            float64(0),
+						"CreatedAt":                spanner.CommitTimestamp,
+						"UpdatedAt":                spanner.CommitTimestamp,
+					}),
+				}
+				for _, item := range shortShippedItems {
+					item["RequestId"] = newReqID
+					muts = append(muts, spanner.InsertMap("WarehouseSupplyRequestItems", item))
+				}
+				if err := txn.BufferWrite(muts); err != nil {
+					return err
+				}
+			}
+
 			if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
 				"RequestId": supplyRequestID,
 				"State":     "RECEIVED",

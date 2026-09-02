@@ -155,6 +155,15 @@ func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
 
 // Parse verifies signature + exp and returns the embedded Claims.
 func Parse(token, secret string) (Claims, error) {
+	return parse(token, secret, false)
+}
+
+// ParseIgnoreExpiry verifies signature but allows expired tokens (used for token refresh).
+func ParseIgnoreExpiry(token, secret string) (Claims, error) {
+	return parse(token, secret, true)
+}
+
+func parse(token, secret string, ignoreExpiry bool) (Claims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return Claims{}, ErrInvalidToken
@@ -171,7 +180,7 @@ func Parse(token, secret string) (Claims, error) {
 	if err := json.Unmarshal(pb, &p); err != nil {
 		return Claims{}, fmt.Errorf("jwt: payload json: %w", err)
 	}
-	if p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
+	if !ignoreExpiry && p.Exp > 0 && time.Now().UTC().Unix() > p.Exp {
 		return Claims{}, fmt.Errorf("jwt: %w (expired)", ErrInvalidToken)
 	}
 	var expAt time.Time

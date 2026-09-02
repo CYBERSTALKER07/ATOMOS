@@ -253,6 +253,7 @@ type OrderEvent struct {
 	EscalatedTo           string  `json:"escalated_to,omitempty"`
 	GPSLat                float64 `json:"gps_lat,omitempty"`
 	GPSLng                float64 `json:"gps_lng,omitempty"`
+	Message               string  `json:"message,omitempty"`
 }
 
 // ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6).

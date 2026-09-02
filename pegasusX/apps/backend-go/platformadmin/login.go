@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -142,27 +143,43 @@ func (d *LoginDeps) lookupAdmin(ctx context.Context, subject, email string) (sub
 
 // envBootstrapAdmin allows PLATFORM_ADMIN_SUBJECT + PLATFORM_ADMIN_PASSWORD (plaintext)
 // for first-boot SSMR. Hash is generated in-process; not for multi-admin production.
+var (
+	envAdminHash   string
+	envAdminInit   sync.Once
+	envAdminSub    string
+	envAdminEmail  string
+	envAdminOk     bool
+)
+
 func envBootstrapAdmin(subject, email string) (sub, hash string, ok bool) {
-	envSub := strings.TrimSpace(os.Getenv("PLATFORM_ADMIN_SUBJECT"))
-	envPass := os.Getenv("PLATFORM_ADMIN_PASSWORD")
-	if envSub == "" || envPass == "" {
+	envAdminInit.Do(func() {
+		envAdminSub = strings.TrimSpace(os.Getenv("PLATFORM_ADMIN_SUBJECT"))
+		envPass := os.Getenv("PLATFORM_ADMIN_PASSWORD")
+		envAdminEmail = strings.TrimSpace(os.Getenv("PLATFORM_ADMIN_EMAIL"))
+		if envAdminSub != "" && envPass != "" {
+			h, err := bcrypt.GenerateFromPassword([]byte(envPass), bcrypt.DefaultCost)
+			if err == nil {
+				envAdminHash = string(h)
+				envAdminOk = true
+			}
+		}
+	})
+
+	if !envAdminOk {
 		return "", "", false
 	}
-	want := envSub
-	if subject != "" && subject != envSub {
+
+	want := envAdminSub
+	if subject != "" && subject != envAdminSub {
 		return "", "", false
 	}
-	if email != "" && !strings.EqualFold(email, envSub) && !strings.EqualFold(email, os.Getenv("PLATFORM_ADMIN_EMAIL")) {
+	if email != "" && !strings.EqualFold(email, envAdminSub) && !strings.EqualFold(email, envAdminEmail) {
 		return "", "", false
 	}
-	if subject == "" && email != "" && !strings.EqualFold(email, envSub) && !strings.EqualFold(email, os.Getenv("PLATFORM_ADMIN_EMAIL")) {
+	if subject == "" && email != "" && !strings.EqualFold(email, envAdminSub) && !strings.EqualFold(email, envAdminEmail) {
 		return "", "", false
 	}
-	h, err := bcrypt.GenerateFromPassword([]byte(envPass), bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", false
-	}
-	return want, string(h), true
+	return want, envAdminHash, true
 }
 
 // EnsureAdminFromEnv upserts PlatformAdminUsers from PLATFORM_ADMIN_* env (optional).

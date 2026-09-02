@@ -25,7 +25,7 @@ func HandleTokenRefresh(secret, issuer string) http.HandlerFunc {
 			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "authorization_required"})
 			return
 		}
-		claims, err := Parse(token, secret)
+		claims, err := ParseIgnoreExpiry(token, secret)
 		if err != nil {
 			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_token"})
 			return
@@ -51,6 +51,19 @@ func HandleTokenRefresh(secret, issuer string) http.HandlerFunc {
 			writeRefreshJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "code": "ORG_SELECT_REQUIRED"})
 			return
 		}
+		
+		jti := strings.TrimSpace(claims.JTI)
+		if jti != "" {
+			ttl := time.Until(claims.ExpiresAt)
+			if ttl < time.Second {
+				ttl = time.Second
+			}
+			if err := GetRevocationStore().Revoke(r.Context(), jti, ttl); err != nil {
+				writeRefreshJSON(w, http.StatusInternalServerError, map[string]string{"error": "revoke_failed"})
+				return
+			}
+		}
+
 		// New jti on every refresh so the previous token can be denylisted independently.
 		claims.JTI = ""
 		claims.TokenUse = TokenUseFull

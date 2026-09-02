@@ -38,3 +38,10 @@ export {
   type PendingPosSale,
   type PendingPosSaleStatus,
 } from "./pending-pos-sales";
+export {
+  deleteCommand,
+  getPendingCommands,
+  insertPendingCommand,
+  markCommandFailed,
+  type PendingCommand,
+} from "./pending-commands";

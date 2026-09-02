@@ -272,11 +272,14 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 
 			inventoryID := uuid.NewString()
 			existingInventoryID := ""
+			var existingReserved int64 = 0
 			invStmt := spanner.Statement{
-				SQL: `SELECT InventoryId FROM InventoryLevels
-				      WHERE WarehouseId = @warehouseId AND ProductId = @productId
-				      LIMIT 1`,
+				SQL: `SELECT 
+						(SELECT InventoryId FROM InventoryLevels WHERE WarehouseId = @warehouseId AND ProductId = @productId LIMIT 1),
+						(SELECT QuantityReserved FROM SupplierInventoryV2 WHERE SupplierId = @supplierId AND WarehouseId = @warehouseId AND ProductId = @productId LIMIT 1)
+				`,
 				Params: map[string]any{
+					"supplierId":  supplierID,
 					"warehouseId": warehouseID,
 					"productId":   productID,
 				},
@@ -285,13 +288,22 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 			invRow, invErr := invIter.Next()
 			invIter.Stop()
 			if invErr == nil {
-				if err := invRow.Columns(&existingInventoryID); err != nil {
-					return fmt.Errorf("parse inventory id: %w", err)
+				var existingInvID spanner.NullString
+				var existingRes spanner.NullInt64
+				if err := invRow.Columns(&existingInvID, &existingRes); err != nil {
+					return fmt.Errorf("parse inventory state: %w", err)
+				}
+				if existingInvID.Valid {
+					existingInventoryID = existingInvID.StringVal
+				}
+				if existingRes.Valid {
+					existingReserved = existingRes.Int64
 				}
 			} else if invErr != iterator.Done {
 				return fmt.Errorf("lookup inventory level: %w", invErr)
 			}
 			if existingInventoryID != "" {
+
 				inventoryID = existingInventoryID
 			}
 
@@ -304,13 +316,13 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 					},
 					[]any{
 						inventoryID, productID, warehouseID, supplierID,
-						qty, int64(0), reorderThreshold, int64(1), spanner.CommitTimestamp,
+						qty, existingReserved, reorderThreshold, int64(1), spanner.CommitTimestamp,
 					},
 				),
 				spanner.InsertOrUpdate(
 					"SupplierInventoryV2",
 					[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "UpdatedAt"},
-					[]any{supplierID, warehouseID, productID, qty, int64(0), spanner.CommitTimestamp},
+					[]any{supplierID, warehouseID, productID, qty, existingReserved, spanner.CommitTimestamp},
 				),
 			)
 

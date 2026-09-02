@@ -38,7 +38,7 @@ func (o *driverOwnershipRepo) CreateVehicle(ctx context.Context, v Vehicle, emit
 func (o *driverOwnershipRepo) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) {
 	return o.vehicle, nil
 }
-func (o *driverOwnershipRepo) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
+func (o *driverOwnershipRepo) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (o *driverOwnershipRepo) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {

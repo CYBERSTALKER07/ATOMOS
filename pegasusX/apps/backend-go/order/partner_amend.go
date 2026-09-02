@@ -98,6 +98,10 @@ func (s *Service) PartnerUpdateStatus(ctx context.Context, orderID string, req U
 	current.UpdatedAt = s.now()
 	s.applyHandoffLifecycle(&current, prevStatus, previousDriverID)
 
+	current.TransitionReason = req.Reason
+	current.TransitionActorRole = "PARTNER"
+	current.TransitionActorID = "partner_api"
+
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
 			BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
@@ -121,8 +125,6 @@ func (s *Service) PartnerUpdateStatus(ctx context.Context, orderID string, req U
 	if err != nil {
 		return UpdateStatusResponse{}, fmt.Errorf("apply partner update status %s: %w", orderID, err)
 	}
-
-	s.recordStatusTransitionFromOrder(current, prevStatus, strings.TrimSpace(req.Reason), "PARTNER", "partner_api", "", nil)
 
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, append(

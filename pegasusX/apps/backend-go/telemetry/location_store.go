@@ -44,6 +44,10 @@ type DriverLocation struct {
 	Longitude         float64   `json:"longitude"`
 	Velocity          *float64  `json:"velocity,omitempty"`
 	Heading           *float64  `json:"heading,omitempty"`
+	Humidity          *float64  `json:"humidity,omitempty"`
+	ShockG            *float64  `json:"shock_g,omitempty"`
+	Tilt              *float64  `json:"tilt,omitempty"`
+	Tampered          *bool     `json:"tampered,omitempty"`
 	ReportedAt        time.Time `json:"reported_at"`
 	ReceivedAt        time.Time `json:"received_at"`
 	StaleAfterSeconds int       `json:"stale_after_seconds"`

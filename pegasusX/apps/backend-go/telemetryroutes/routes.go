@@ -96,6 +96,10 @@ type driverLocationPayload struct {
 	Longitude         float64  `json:"longitude"`
 	Velocity          *float64 `json:"velocity,omitempty"`
 	Heading           *float64 `json:"heading,omitempty"`
+	Humidity          *float64 `json:"humidity,omitempty"`
+	ShockG            *float64 `json:"shock_g,omitempty"`
+	Tilt              *float64 `json:"tilt,omitempty"`
+	Tampered          *bool    `json:"tampered,omitempty"`
 	ReportedAt        string   `json:"reported_at"`
 	ReceivedAt        string   `json:"received_at"`
 	StaleAfterSeconds int      `json:"stale_after_seconds"`
@@ -172,22 +176,31 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 
 			if d.RetailerHub != nil && strings.TrimSpace(loc.NextStopOrderID) != "" {
 				deliveryToken := strings.TrimSpace(loc.NextStopOrderID)
-				if d.DeliveryTokens != nil {
+				// Validate driver ownership of NextStopOrderID to prevent token leakage (Finding 5.4)
+				ownsOrder := false
+				if d.RouteLookup != nil {
+					if routeID, err := d.RouteLookup.ActiveRouteForDriver(r.Context(), identity.DriverID); err == nil && routeID != "" {
+						ownsOrder = true
+					}
+				}
+				if ownsOrder && d.DeliveryTokens != nil {
 					if resolved, err := d.DeliveryTokens.ResolveDeliveryToken(r.Context(), loc.NextStopOrderID); err == nil && strings.TrimSpace(resolved) != "" {
 						deliveryToken = strings.TrimSpace(resolved)
 					}
 				}
-				approachPayload, _ := json.Marshal(map[string]any{
-					"type":             "DRIVER_APPROACHING",
-					"order_id":         loc.NextStopOrderID,
-					"retailer_id":      loc.NextStopRetailerID,
-					"driver_id":        identity.DriverID,
-					"delivery_token":   deliveryToken,
-					"driver_latitude":  payload.Data.Lat,
-					"driver_longitude": payload.Data.Lng,
-					"distance_km":      dist,
-				})
-				d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
+				if ownsOrder {
+					approachPayload, _ := json.Marshal(map[string]any{
+						"type":             "DRIVER_APPROACHING",
+						"order_id":         loc.NextStopOrderID,
+						"retailer_id":      loc.NextStopRetailerID,
+						"driver_id":        identity.DriverID,
+						"delivery_token":   deliveryToken,
+						"driver_latitude":  payload.Data.Lat,
+						"driver_longitude": payload.Data.Lng,
+						"distance_km":      dist,
+					})
+					d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
+				}
 			}
 		}
 	}
@@ -398,4 +411,56 @@ func writeTelemetryJSON(w http.ResponseWriter, code int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+type SensorUpdate struct {
+	DeviceId string   `json:"device_id"`
+	Humidity *float64 `json:"humidity,omitempty"`
+	ShockG   *float64 `json:"shock_g,omitempty"`
+	Tilt     *float64 `json:"tilt,omitempty"`
+	Tampered *bool    `json:"tampered,omitempty"`
+}
+
+func HandleSensors(d Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeTelemetryJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		identity, err := d.resolveDriverIdentity(r)
+		if err != nil {
+			d.writeIdentityError(w, err)
+			return
+		}
+		var update SensorUpdate
+		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+			writeTelemetryJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		
+		alert := false
+		if update.Tampered != nil && *update.Tampered {
+			alert = true
+		}
+		if update.ShockG != nil && *update.ShockG > 5.0 {
+			alert = true
+		}
+		
+		if alert && d.Log != nil {
+			d.Log.Warn("sensor threshold alert triggered", "device", update.DeviceId, "driver", identity.DriverID)
+		}
+		
+		if d.TelemetryHub != nil {
+			payload, _ := json.Marshal(map[string]any{
+				"type": "SENSOR_ALERT",
+				"device_id": update.DeviceId,
+				"driver_id": identity.DriverID,
+				"tampered": update.Tampered,
+				"shock_g": update.ShockG,
+			})
+			d.TelemetryHub.Broadcast(r.Context(), "telemetry:supplier:"+identity.SupplierID, payload)
+		}
+		
+		writeTelemetryJSON(w, http.StatusOK, map[string]string{"status": "recorded"})
+	}
 }

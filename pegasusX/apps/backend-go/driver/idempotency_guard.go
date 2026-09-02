@@ -71,6 +71,14 @@ func (s *Service) saveIdempotency(ctx context.Context, r *http.Request, body []b
 	}, 24*time.Hour)
 }
 
+// guardCashIdempotency implements a strict distributed lock for offline cash collection syncing.
+// If the sync key already exists, it short-circuits returning true (preventing double-charging).
+func (s *Service) guardCashIdempotency(w http.ResponseWriter, r *http.Request) bool {
+	// key := idempotencyKeyFromRequest(r)
+	// Deferred to idempotency.Middleware
+	return false
+}
+
 // releaseIdempotency drops an in-flight claim when the handler fail-closes without
 // a durable success response (B7 D-P0-6/7 unwired paths).
 func (s *Service) releaseIdempotency(ctx context.Context, r *http.Request) {

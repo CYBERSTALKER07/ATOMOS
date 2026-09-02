@@ -855,7 +855,7 @@ func (r *driverRepoSpy) GetVehicle(ctx context.Context, vehicleID string) (Vehic
 	return Vehicle{}, nil
 }
 
-func (r *driverRepoSpy) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
+func (r *driverRepoSpy) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 
@@ -915,4 +915,12 @@ func (c *driverWSConnSpy) Send(_ context.Context, payload []byte) error {
 	copyPayload := append([]byte(nil), payload...)
 	c.messages = append(c.messages, copyPayload)
 	return nil
+}
+
+func (c *driverCacheBackendSpy) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (c *driverCacheBackendSpy) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
 }

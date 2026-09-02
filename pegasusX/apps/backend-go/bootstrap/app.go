@@ -1141,7 +1141,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		platformAdminHandlers.Ops.Outbox = outbox.NewSpannerStore(spannerClient)
 		_ = platformadmin.EnsureAdminFromEnv(ctx, spannerClient)
 	}
-	mfaSvc := mfa.NewService(mfaRepo, cfg.JWTIssuer, cfg.PlatformAdminMFARequired, platformAdminSvc)
+	mfaCache := mfa.NewRedisReplayCache(redisClientOrNil(redisAdapter))
+	mfaSvc := mfa.NewService(mfaRepo, cfg.JWTIssuer, cfg.PlatformAdminMFARequired, platformAdminSvc, mfaCache)
 	mfaHandlers := &mfa.Handlers{Svc: mfaSvc, JWTSecret: cfg.JWTSecret, JWTIssuer: cfg.JWTIssuer}
 	featureFlagSvc := featureflags.NewService(featureFlagRepo)
 	featureFlagHandlers := &featureflags.Handlers{Svc: featureFlagSvc, Audit: platformAdminSvc}

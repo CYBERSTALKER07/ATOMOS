@@ -135,6 +135,13 @@ export default function DispatchPage() {
   const [opsProposedDate, setOpsProposedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [opsActingId, setOpsActingId] = useState<string | null>(null);
 
+  // Early Complete
+  const [rescueDriverId, setRescueDriverId] = useState('');
+  const [rescueRequest, setRescueRequest] = useState<{ order_count: number; status: string; reason?: string } | null>(null);
+  const [rescueLoading, setRescueLoading] = useState(false);
+  const [rescueAction, setRescueAction] = useState<'CANCEL' | 'RESCHEDULE'>('CANCEL');
+  const [rescueNewDate, setRescueNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+
   const selectedOrderList = useMemo(() => [...selectedOrderIds].sort(), [selectedOrderIds]);
 
   const closeOpsDialog = () => {
@@ -169,10 +176,51 @@ export default function DispatchPage() {
       }
       closeOpsDialog();
       await load();
-    } catch (err) {
+    } catch (err: unknown) {
       toast(err instanceof ApiError ? err.message : 'Action failed', 'error');
     } finally {
       setOpsActingId(null);
+    }
+  }
+
+  async function handleLookupRescue() {
+    if (!rescueDriverId) return;
+    setRescueLoading(true);
+    setRescueRequest(null);
+    try {
+      const res = await warehouseOps.getEarlyCompleteRequest(rescueDriverId);
+      setRescueRequest(res);
+    } catch (err: unknown) {
+      toast('No active rescue request found for this driver', 'error');
+    } finally {
+      setRescueLoading(false);
+    }
+  }
+
+  async function handleApproveRescue() {
+    if (!rescueDriverId) return;
+    setRescueLoading(true);
+    try {
+      if (rescueAction === 'RESCHEDULE' && !rescueNewDate) {
+        toast('Date required for reschedule', 'error');
+        setRescueLoading(false);
+        return;
+      }
+      const isoStart = isoDeliveryDate(rescueNewDate);
+      await warehouseOps.approveEarlyComplete(
+        rescueDriverId,
+        rescueAction,
+        rescueAction === 'RESCHEDULE' ? isoStart : undefined,
+        rescueAction === 'RESCHEDULE' ? isoStart : undefined,
+      );
+      toast('Rescue request approved successfully', 'success');
+      setRescueRequest(null);
+      setRescueDriverId('');
+      await loadAll();
+    } catch (err: unknown) {
+      toast(err instanceof ApiError ? err.message : 'Failed to approve rescue', 'error');
+    } finally {
+      setRescueLoading(false);
     }
   }
 
@@ -222,7 +270,7 @@ export default function DispatchPage() {
         void setDispatchPreviewCache(cacheKey, snapshot);
       }
       setRestricted(false);
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof ApiError && err.status === 403) {
         setRestricted(true);
         if (!hydratedFromCache) {
@@ -464,7 +512,7 @@ export default function DispatchPage() {
       } else {
         setExecuteError('Dispatch did not commit. Refresh and try again.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setExecuteError(err instanceof ApiError ? err.message : 'Dispatch execute failed');
     } finally {
       setExecuting(false);
@@ -503,7 +551,7 @@ export default function DispatchPage() {
         ? `${vehicle.label || vehicle.license_plate} restored for dispatch`
         : `${vehicle.label || vehicle.license_plate} marked unavailable`);
       await loadAll();
-    } catch (err) {
+    } catch (err: unknown) {
       setExecuteError(err instanceof Error ? err.message : 'Vehicle update failed');
     } finally {
       setMutatingVehicleId('');
@@ -566,7 +614,7 @@ export default function DispatchPage() {
       } else {
         setExecuteError('Smart dispatch did not commit. Refresh and try again.');
       }
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
         setExecuteError(err.message);
         setExecuteExplain(explainFromApiError(err.payload));
@@ -792,6 +840,80 @@ export default function DispatchPage() {
             sub={optimizerSource ? `Source: ${optimizerSource}` : 'Optimizer preview'}
           />
         </KpiStatGrid>
+
+        <PageSection
+          title="Active Driver Rescue Requests"
+          description="Drivers requesting early complete due to breakdowns. Approve to cancel or reschedule their remaining manifest."
+          className="mt-6"
+        >
+          <div className="rounded-xl border p-5" style={{ borderColor: 'var(--border)', background: 'var(--background)' }}>
+            <div className="flex gap-3 max-w-lg mb-4">
+              <input
+                type="text"
+                placeholder="Driver ID (e.g. driver-123)"
+                className="portal-input flex-1"
+                value={rescueDriverId}
+                onChange={e => setRescueDriverId(e.target.value)}
+              />
+              <button
+                type="button"
+                className="portal-btn portal-btn--secondary"
+                disabled={rescueLoading || !rescueDriverId}
+                onClick={handleLookupRescue}
+              >
+                Lookup Request
+              </button>
+            </div>
+            {rescueRequest ? (
+              <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/10 p-4 max-w-lg">
+                <p className="font-semibold mb-2 text-[var(--warning)]">
+                  Rescue Requested! ({rescueRequest.order_count} orders pending)
+                </p>
+                <div className="space-y-3 mt-4">
+                  <label className="portal-field">
+                    <span className="portal-label">Action</span>
+                    <select
+                      className="portal-input"
+                      value={rescueAction}
+                      onChange={e => setRescueAction(e.target.value as 'CANCEL'|'RESCHEDULE')}
+                    >
+                      <option value="CANCEL">Cancel Remaining Orders</option>
+                      <option value="RESCHEDULE">Reschedule Remaining Orders</option>
+                    </select>
+                  </label>
+                  {rescueAction === 'RESCHEDULE' && (
+                    <label className="portal-field">
+                      <span className="portal-label">Proposed Date</span>
+                      <input
+                        type="date"
+                        className="portal-input"
+                        value={rescueNewDate}
+                        onChange={e => setRescueNewDate(e.target.value)}
+                      />
+                    </label>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--primary w-full"
+                      disabled={rescueLoading}
+                      onClick={handleApproveRescue}
+                    >
+                      Approve Rescue
+                    </button>
+                    <button
+                      type="button"
+                      className="portal-btn portal-btn--outline w-full"
+                      onClick={() => setRescueRequest(null)}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </PageSection>
 
         <PageSection
           title={t("warehouse_portal.dispatch.text.recent_dispatch_commits")}

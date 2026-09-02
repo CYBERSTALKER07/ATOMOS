@@ -1167,6 +1167,14 @@ func (b *factoryCacheBackendSpy) Set(context.Context, string, []byte, time.Durat
 	return nil
 }
 
+func (b *factoryCacheBackendSpy) DecrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
+func (b *factoryCacheBackendSpy) IncrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
 func (b *factoryCacheBackendSpy) Delete(_ context.Context, keys ...string) error {
 	copyKeys := append([]string(nil), keys...)
 	b.deletedKeys = append(b.deletedKeys, copyKeys)

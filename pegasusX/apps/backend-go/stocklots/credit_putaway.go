@@ -51,12 +51,30 @@ func CreditViaDefaultPutawayInTxn(
 		return nil, err
 	}
 	lotCode := fmt.Sprintf("AUTO-%s-%s", productID, time.Now().UTC().Format("20060102"))
-	return PutawayInTxn(ctx, txn, PutawayRequest{
+	var isPerishable bool
+	var minShelfLife spanner.NullInt64
+	row, err := txn.ReadRow(ctx, "Products", spanner.Key{productID}, []string{"IsPerishable", "MinShelfLifeDays"})
+	if err == nil {
+		row.Columns(&isPerishable, &minShelfLife)
+	}
+
+	req := PutawayRequest{
 		SupplierID:  supplierID,
 		WarehouseID: warehouseID,
 		ProductID:   productID,
 		LocationID:  locationID,
 		LotCode:     lotCode,
 		Quantity:    qty,
-	})
+	}
+
+	if isPerishable {
+		days := int64(30)
+		if minShelfLife.Valid && minShelfLife.Int64 > 0 {
+			days = minShelfLife.Int64
+		}
+		expDate := time.Now().UTC().AddDate(0, 0, int(days))
+		req.ExpiryDate = &expDate
+	}
+
+	return PutawayInTxn(ctx, txn, req)
 }

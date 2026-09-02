@@ -1177,3 +1177,28 @@ func (r *testRepo) UpdateOrderWithTxn(_ context.Context, o Order, proofs []Deliv
 	}
 	return nil
 }
+
+func (r *testRepo) CreateOrderWithBackorder(ctx context.Context, o *Order, bo *Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
+	if r.createErr != nil {
+		return r.createErr
+	}
+	if o == nil {
+		return errors.New("nil order")
+	}
+	r.createCalls++
+	if r.retailerWindowOpen != "" || r.retailerWindowClose != "" {
+		if err := SnapshotReceivingWindowsOnOrder(o, r.retailerWindowOpen, r.retailerWindowClose); err != nil {
+			return err
+		}
+	}
+	if emit != nil {
+		buf := &testTxnBuffer{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.bufferedEvents += len(buf.events)
+		r.lastEvents = append(r.lastEvents, buf.events...)
+	}
+	r.created = *o
+	return nil
+}

@@ -24,10 +24,10 @@ import com.pegasusx.supplier.util.factoryPlanningDisabledCode
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
 import com.pegasusx.supplier.util.planBrainTabFromQuery
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch

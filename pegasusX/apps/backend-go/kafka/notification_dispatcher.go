@@ -175,7 +175,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleCommandEvent(ctx, msg.Value, traceID)
 	case events.EventSystemAppOutdated:
 		return d.handlePlatformOutdated(ctx, msg.Value, traceID)
-	case events.EventOrderValidationFailed:
+	case events.EventOrderValidationFailed, events.EventReassignHandshakeCompleted:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
 	case events.EventDriverLocationUpdated:
 		return d.handleTelemetryLocation(ctx, msg.Value, traceID)

@@ -245,12 +245,48 @@ func startNotificationConsumerIfNoWorker(ctx context.Context, app *bootstrap.App
 	if app.Config != nil && app.Config.RunsWorkers() {
 		return
 	}
-	if bootstrap.WorkerLive(ctx, app.RedisClient) {
-		slog.Info("worker tier live; api tier leaving notification consumer to worker")
-		return
-	}
-	go app.NotificationConsumer.Start(ctx)
-	slog.Warn("no worker tier heartbeat detected; api tier started notification consumer (push+inbox safety net)")
+	
+	go func() {
+		var consumerCtx context.Context
+		var cancel context.CancelFunc
+		var isRunning bool
+		
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		
+		// Initial check
+		if !bootstrap.WorkerLive(ctx, app.RedisClient) {
+			consumerCtx, cancel = context.WithCancel(ctx)
+			isRunning = true
+			go app.NotificationConsumer.Start(consumerCtx)
+			slog.Warn("no worker tier heartbeat detected; api tier started notification consumer (push+inbox safety net)")
+		} else {
+			slog.Info("worker tier live; api tier leaving notification consumer to worker")
+		}
+		
+		// Watch loop
+		for {
+			select {
+			case <-ctx.Done():
+				if cancel != nil {
+					cancel()
+				}
+				return
+			case <-ticker.C:
+				live := bootstrap.WorkerLive(ctx, app.RedisClient)
+				if live && isRunning {
+					slog.Info("worker tier heartbeat detected; stopping local notification consumer")
+					cancel()
+					isRunning = false
+				} else if !live && !isRunning {
+					slog.Warn("worker tier heartbeat lost; starting local notification consumer")
+					consumerCtx, cancel = context.WithCancel(ctx)
+					isRunning = true
+					go app.NotificationConsumer.Start(consumerCtx)
+				}
+			}
+		}
+	}()
 }
 
 func hubList(app *bootstrap.App) []*ws.Hub {

@@ -84,7 +84,7 @@ type Repository interface {
 	GetCategory(ctx context.Context, categoryID string) (*Category, error)
 	CreateCategory(ctx context.Context, cat Category) error
 	ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error)
-	ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error)
+	ListDiscoverableProducts(ctx context.Context, categoryID, marketCode string, limit, offset int64) ([]Product, error)
 	GetProduct(ctx context.Context, productID string) (*Product, error)
 	CreateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
 	UpdateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
@@ -253,7 +253,7 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 }
 
 // ListDiscoverableProducts returns active products for retailer browse when no supplier is selected.
-func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error) {
+func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID, marketCode string, limit, offset int64) ([]Product, error) {
 	if limit <= 0 {
 		limit = 500
 	}
@@ -263,13 +263,17 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 	if offset < 0 {
 		offset = 0
 	}
-	sql := "SELECT " + productSelectColumns + " FROM Products WHERE IsActive = TRUE"
+	sql := "SELECT " + productSelectColumns + " FROM Products JOIN Suppliers ON Products.SupplierId = Suppliers.SupplierId WHERE Products.IsActive = TRUE"
 	params := map[string]any{"lim": limit, "off": offset}
+	if marketCode != "" {
+		sql += " AND Suppliers.MarketCode = @marketCode"
+		params["marketCode"] = marketCode
+	}
 	if categoryID != "" {
-		sql += " AND CategoryId = @cid"
+		sql += " AND Products.CategoryId = @cid"
 		params["cid"] = categoryID
 	}
-	sql += " ORDER BY UpdatedAt DESC LIMIT @lim OFFSET @off"
+	sql += " ORDER BY Products.UpdatedAt DESC LIMIT @lim OFFSET @off"
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)

@@ -2,8 +2,8 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.design.ORDER_STATUS_FUNNEL
-import com.pegasus.design.canonicalizeOrderStatus
+import com.pegasus.design.ui.ORDER_STATUS_FUNNEL
+import com.pegasus.design.ui.canonicalizeOrderStatus
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals

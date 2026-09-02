@@ -17,12 +17,12 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Invoice
 import com.pegasusx.warehouse.data.model.TreasuryOverview
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseMetricTile
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -115,12 +115,12 @@ fun TreasuryScreen(
                                 ) {
                                     WarehouseMetricTile(
                                         label = stringResource(R.string.warehouse_portal_residual_text_outstanding),
-                                        value = "${fmt.format(o.totalOutstanding)} ${com.pegasus.design.sessionPackCurrency()}",
+                                        value = "${fmt.format(o.totalOutstanding)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                     WarehouseMetricTile(
                                         label = stringResource(R.string.mobile_warehouse_ui_invoiced),
-                                        value = "${fmt.format(o.totalInvoiced)} ${com.pegasus.design.sessionPackCurrency()}",
+                                        value = "${fmt.format(o.totalInvoiced)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -128,7 +128,7 @@ fun TreasuryScreen(
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 WarehouseMetricTile(
                                     label = stringResource(R.string.warehouse_portal_residual_text_paid),
-                                    value = "${fmt.format(o.totalPaid)} ${com.pegasus.design.sessionPackCurrency()}",
+                                    value = "${fmt.format(o.totalPaid)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                     modifier = Modifier.fillMaxWidth(0.5f),
                                 )
                             }

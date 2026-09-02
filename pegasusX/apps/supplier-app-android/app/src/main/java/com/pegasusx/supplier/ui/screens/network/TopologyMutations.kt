@@ -8,7 +8,7 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 
 fun defaultWarehouseCoordinates(): Pair<Double, Double> {
-    val c = com.pegasus.design.sessionMapCenter()
+    val c = com.pegasus.design.network.sessionMapCenter()
     return (c?.lat ?: 0.0) to (c?.lng ?: 0.0)
 }
 

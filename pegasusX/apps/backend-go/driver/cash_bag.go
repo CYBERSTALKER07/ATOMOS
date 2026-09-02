@@ -132,7 +132,7 @@ func (s *Service) GetCashBagSummary(ctx context.Context, driverID string) (*Cash
 }
 
 // TurnInCashBag creates or updates the driver cash reconciliation entry for today.
-func (s *Service) TurnInCashBag(ctx context.Context, driverID string, req CashBagTurnInRequest) (*CashReconciliation, error) {
+func (s *Service) TurnInCashBag(ctx context.Context, supplierID, driverID string, req CashBagTurnInRequest) (*CashReconciliation, error) {
 	if s.spanner == nil {
 		return nil, fmt.Errorf("spanner required")
 	}
@@ -159,9 +159,11 @@ func (s *Service) TurnInCashBag(ctx context.Context, driverID string, req CashBa
 		status = "BALANCED"
 	}
 
-	reconID := uuid.NewString()
+	// Deterministic UUID to prevent duplicates on network retries
+	reconID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(driverID+":"+shiftDate.String())).String()
 	cols := map[string]any{
 		"ReconciliationId":  reconID,
+		"SupplierId":        supplierID,
 		"DriverId":          driverID,
 		"ShiftDate":         shiftDate,
 		"ExpectedCashMinor": expected,
@@ -331,7 +333,8 @@ func (s *Service) HandleCashBagTurnIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := s.TurnInCashBag(r.Context(), driverID, req)
+	supplierID, _ := auth.ResolveSupplierID(r.Context())
+	res, err := s.TurnInCashBag(r.Context(), supplierID, driverID, req)
 	if err != nil {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
@@ -401,13 +404,18 @@ func (s *Service) HandleListCashReconciliations(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusOK, map[string]any{"reconciliations": []CashReconciliation{}})
 		return
 	}
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing_supplier_scope"})
+		return
+	}
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 
 	sql := `SELECT ReconciliationId, DriverId, RouteId, ShiftDate, ExpectedCashMinor,
 	               DeclaredCashMinor, DifferenceMinor, Status, DriverNote, FinanceNote,
 	               CreatedAt, ResolvedAt, ResolvedBy
-	        FROM CashReconciliations WHERE 1=1`
-	params := map[string]any{}
+	        FROM CashReconciliations WHERE SupplierId = @supplierId`
+	params := map[string]any{"supplierId": supplierID}
 	if status != "" {
 		sql += ` AND Status = @status`
 		params["status"] = strings.ToUpper(status)

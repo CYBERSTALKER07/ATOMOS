@@ -108,6 +108,23 @@ final class OrdersViewModel {
         }
     }
 
+func issuePaymentBypass(orderId: String) async {
+    mutating = true
+    defer { mutating = false }
+    do {
+        let req = PaymentBypassRequest(orderId: orderId)
+        let idempotency = UUID().uuidString
+        let res = try await SupplierOperationsService.issuePaymentBypass(req, idempotencyKey: idempotency)
+        if let token = res.bypassToken {
+            opsError = "Token generated: \(token)"
+        } else {
+            opsError = "Bypass request successful, but no token returned."
+        }
+    } catch {
+        opsError = error.localizedDescription
+    }
+}
+
     func closeReassignDialog() {
         if !isReassigning {
             reassignTarget = nil

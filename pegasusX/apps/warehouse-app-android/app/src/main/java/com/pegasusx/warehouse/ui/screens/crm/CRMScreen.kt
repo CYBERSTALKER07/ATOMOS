@@ -17,9 +17,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Retailer
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale

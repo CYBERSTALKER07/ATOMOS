@@ -76,21 +76,21 @@ fun FleetLiveMapScreen(
         },
     ) { padding ->
         when {
-            loading && routes.isEmpty() -> com.pegasus.design.PegasusLoadingState(
+            loading && routes.isEmpty() -> com.pegasus.design.ui.PegasusLoadingState(
                 title = stringResource(R.string.mobile_warehouse_ui_loading_fleet_map),
                 body = "Fetching live locations and routes",
                 modifier = Modifier.padding(padding),
             )
-            error != null && routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Error,
+            error != null && routes.isEmpty() -> com.pegasus.design.ui.PegasusStatePane(
+                kind = com.pegasus.design.ui.PegasusStateKind.Error,
                 headline = "Failed to load map",
                 body = error!!,
                 actionLabel = "Retry",
                 onAction = { scope.launch { load() } },
                 modifier = Modifier.padding(padding),
             )
-            routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Empty,
+            routes.isEmpty() -> com.pegasus.design.ui.PegasusStatePane(
+                kind = com.pegasus.design.ui.PegasusStateKind.Empty,
                 headline = "No active routes",
                 body = "There are no fleet routes currently active.",
                 modifier = Modifier.padding(padding),

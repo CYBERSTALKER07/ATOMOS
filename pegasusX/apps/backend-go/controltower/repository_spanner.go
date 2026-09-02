@@ -832,3 +832,34 @@ func jsonRawValue(raw []byte) any {
 	}
 	return v
 }
+
+func (r *SpannerRepository) RecordIntervention(ctx context.Context, manifestID, supplierID, operatorID, commandType, reasonCode, notes string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mut := spanner.InsertMap("ControlTowerInterventions", map[string]any{
+			"InterventionId": uuid.NewString(),
+			"ManifestId":     manifestID,
+			"SupplierId":     supplierID,
+			"CommandType":    commandType,
+			"ReasonCode":     reasonCode,
+			"OperatorNotes":  notes,
+			"OperatorId":     operatorID,
+			"Status":         "APPLIED",
+			"CreatedAt":      spanner.CommitTimestamp,
+		})
+		
+		// TODO: Phase 4 Financial Draft Compensations could be hooked here.
+		// For now, we also emit an OutboxEvent so the driver gets the WebSocket broadcast.
+		outboxMut := spanner.InsertMap("OutboxEvents", map[string]any{
+			"EventId":       uuid.NewString(),
+			"AggregateType": "MANIFEST",
+			"AggregateId":   manifestID,
+			"EventType":     "MANIFEST_ABORTED",
+			"Payload":       `{"manifest_id":"` + manifestID + `","reason":"` + reasonCode + `"}`,
+			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    supplierID,
+		})
+		
+		return txn.BufferWrite([]*spanner.Mutation{mut, outboxMut})
+	})
+	return err
+}

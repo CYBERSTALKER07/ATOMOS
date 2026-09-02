@@ -319,12 +319,15 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	rid := claims.Subject
+	var rid string
 	if claims.Role == auth.RoleAdmin {
 		rid = strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 		if rid == "" {
-			rid = claims.Subject
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
+			return
 		}
+	} else {
+		rid = auth.ResolveRetailerOrgID(claims)
 	}
 	list, err := s.ListRetailerRelationships(r.Context(), rid, 100)
 	if err != nil {

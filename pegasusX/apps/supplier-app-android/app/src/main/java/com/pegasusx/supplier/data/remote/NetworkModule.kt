@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.pegasus.design.CellPinInterceptor
+import com.pegasus.design.network.CellPinInterceptor
 import com.pegasusx.supplier.BuildConfig
 import dagger.Module
 import dagger.Provides
@@ -97,7 +97,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
-            .addInterceptor(CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
+            .addInterceptor(com.pegasus.design.network.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

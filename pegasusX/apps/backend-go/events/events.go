@@ -147,6 +147,7 @@ const (
 	EventOrderValidationFailed      = "ORDER_VALIDATION_FAILED"
 	EventOrderAssigned              = "ORDER_ASSIGNED"
 	EventOrderReassigned            = "ORDER_REASSIGNED"
+	EventReassignHandshakeCompleted = "REASSIGN_HANDSHAKE_COMPLETED"
 	EventOrderFinalized             = "ORDER_FINALIZED"
 	EventMissingItemsReported       = "MISSING_ITEMS_REPORTED"
 	EventOrderAmended               = "ORDER_AMENDED"

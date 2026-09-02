@@ -20,10 +20,10 @@ func TestTOTPRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	code := hotpMust(t, secret, time.Now().UTC())
-	if !ValidateCode(secret, code, time.Now().UTC()) {
+	if valid, _ := ValidateCode(secret, code, time.Now().UTC()); !valid {
 		t.Fatal("expected valid code")
 	}
-	if ValidateCode(secret, "000000", time.Now().UTC()) {
+	if valid, _ := ValidateCode(secret, "000000", time.Now().UTC()); valid {
 		t.Fatal("expected invalid code")
 	}
 }
@@ -39,7 +39,7 @@ func hotpMust(t *testing.T, secret string, now time.Time) string {
 
 func TestMFAEnrollConfirmVerifyAndStepUp(t *testing.T) {
 	repo := NewMemoryRepository()
-	svc := NewService(repo, "PegasusX-Test", true, nil)
+	svc := NewService(repo, "Test", true, nil, nil)
 	h := &Handlers{Svc: svc, JWTSecret: "test-secret-mfa", JWTIssuer: "test"}
 
 	r := chi.NewRouter()
@@ -120,7 +120,7 @@ func doAuth(r chi.Router, method, path, token string, body map[string]string) *h
 }
 
 func TestNeedsStepUpOptionalWhenNotRequired(t *testing.T) {
-	svc := NewService(NewMemoryRepository(), "x", false, nil)
+	svc := NewService(NewMemoryRepository(), "x", false, nil, nil)
 	need, err := svc.NeedsStepUp(context.Background(), "anyone")
 	if err != nil || need {
 		t.Fatalf("need=%v err=%v", need, err)

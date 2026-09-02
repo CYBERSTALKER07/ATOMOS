@@ -389,7 +389,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	retailerID := strings.TrimSpace(claims.Subject)
+	retailerID := auth.ResolveRetailerOrgID(claims)
 	s.executeShopClosedRetailerResponse(w, r, body, req, retailerID)
 }
 
@@ -519,7 +519,7 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		case RetailerRespCancel:
 			newStatus = string(StatusCancelled)
 			resolution = ShopClosedResolutionCancelled
-			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+			if err := ReleaseReservationsFromOrderFieldsWithID(ctx, txn, supplierID, warehouseID, req.OrderID, orderSource, lineItemsRaw); err != nil {
 				return err
 			}
 			mutations = append(mutations,
@@ -722,7 +722,7 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 			}))
 		case "RETURN_TO_DEPOT":
 			resolution = "RETURN_TO_DEPOT"
-			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+			if err := ReleaseReservationsFromOrderFieldsWithID(ctx, txn, supplierID, warehouseID, orderID, orderSource, lineItemsRaw); err != nil {
 				return err
 			}
 			mutations = append(mutations,

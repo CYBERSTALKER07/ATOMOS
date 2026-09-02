@@ -20,7 +20,7 @@ type Repository interface {
 	ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error)
 	CreateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
 	GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error)
-	UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
+	UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error
 	ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error)
 	FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error)
 }
@@ -247,7 +247,7 @@ func (r *inMemoryRepository) CreateVehicle(ctx context.Context, v Vehicle, emit 
 func (r *inMemoryRepository) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) {
 	return Vehicle{}, nil
 }
-func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (r *inMemoryRepository) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {

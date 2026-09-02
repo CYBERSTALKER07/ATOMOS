@@ -30,8 +30,11 @@ func rejectForeignCell(c Claims) error {
 		return nil
 	}
 	got := strings.ToLower(strings.TrimSpace(c.HomeCell))
-	if got == "" || got == want {
+	if got == want {
 		return nil
+	}
+	if got == "" {
+		return fmt.Errorf("jwt: %w (missing home_cell claim)", ErrWrongCell)
 	}
 	return fmt.Errorf("jwt: %w (%s != %s)", ErrWrongCell, got, want)
 }

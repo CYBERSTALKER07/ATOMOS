@@ -48,31 +48,32 @@ func OTPAuthURL(issuer, accountName, secret string) string {
 	return "otpauth://totp/" + label + "?" + q.Encode()
 }
 
-// ValidateCode checks a TOTP code against secret with ±skew windows.
-func ValidateCode(secret, code string, now time.Time) bool {
+// ValidateCode checks a TOTP code against secret with ±skew windows and returns the matching time step.
+func ValidateCode(secret, code string, now time.Time) (bool, uint64) {
 	code = strings.TrimSpace(code)
 	if len(code) != totpDigits {
-		return false
+		return false, 0
 	}
 	for _, c := range code {
 		if c < '0' || c > '9' {
-			return false
+			return false, 0
 		}
 	}
 	key, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ToUpper(strings.TrimSpace(secret)))
 	if err != nil || len(key) == 0 {
-		return false
+		return false, 0
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
 	counter := now.Unix() / totpPeriod
 	for d := int64(-totpSkewWindows); d <= totpSkewWindows; d++ {
-		if hotp(key, uint64(counter+d)) == code {
-			return true
+		step := uint64(counter + d)
+		if hotp(key, step) == code {
+			return true, step
 		}
 	}
-	return false
+	return false, 0
 }
 
 func hotp(key []byte, counter uint64) string {

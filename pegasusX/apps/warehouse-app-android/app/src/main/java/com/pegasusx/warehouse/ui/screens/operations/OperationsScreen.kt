@@ -47,7 +47,7 @@ import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastRequest
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastTemplateCreateRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys

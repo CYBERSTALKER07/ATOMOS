@@ -184,7 +184,7 @@ interface PayloadApi {
         @Query("offset") offset: Int = 0,
     ): ManifestExceptionsResponse
 
-    @POST("v1/delivery/missing-items")
+    @POST("v1/delivery/exception-report")
     suspend fun missingItems(
         @Body req: MissingItemsRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,

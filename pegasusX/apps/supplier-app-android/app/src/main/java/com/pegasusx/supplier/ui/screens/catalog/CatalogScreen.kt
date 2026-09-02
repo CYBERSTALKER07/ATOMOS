@@ -26,8 +26,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.RealtimeRefreshEffect
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasus.barcode.EanBarcode
 import com.pegasusx.supplier.data.model.CatalogCategory
 import com.pegasusx.supplier.data.model.CatalogProduct
@@ -36,9 +36,9 @@ import com.pegasusx.supplier.data.model.CatalogProductUpdateRequest
 import com.pegasusx.supplier.data.remote.CatalogImageUploader
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -56,7 +56,7 @@ fun CatalogScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var products by remember { mutableStateOf(emptyList<CatalogProduct>()) }
     var categories by remember { mutableStateOf(emptyList<CatalogCategory>()) }
-    var currency by remember { mutableStateOf(com.pegasus.design.sessionPackCurrency()) }
+    var currency by remember { mutableStateOf(com.pegasus.design.network.sessionPackCurrency()) }
     
     val draftVU = remember { mutableStateMapOf<String, String>() }
     val draftBarcode = remember { mutableStateMapOf<String, String>() }
@@ -141,7 +141,7 @@ fun CatalogScreen(
             try {
                 val profileResp = api.getProfile()
                 if (profileResp.isSuccessful) {
-                    currency = com.pegasus.design.moneyCurrency(profileResp.body()?.currency)
+                    currency = com.pegasus.design.network.moneyCurrency(profileResp.body()?.currency)
                 }
                 val resp = api.listCatalogProducts()
                 if (resp.isSuccessful) {

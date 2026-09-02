@@ -9,9 +9,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -24,7 +24,7 @@ fun ReconciliationScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var netMinor by remember { mutableLongStateOf(0L) }
-    var currency by remember { mutableStateOf(com.pegasus.design.sessionPackCurrency()) }
+    var currency by remember { mutableStateOf(com.pegasus.design.network.sessionPackCurrency()) }
     var mismatchCount by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
     val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }

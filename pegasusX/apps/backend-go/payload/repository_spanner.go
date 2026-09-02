@@ -366,3 +366,33 @@ func parseNullTime(s string) spanner.NullTime {
 	}
 	return spanner.NullTime{Time: t, Valid: true}
 }
+
+func (tx *spannerPayloadTx) DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error {
+	if tx.txn == nil {
+		return fmt.Errorf("delete manifest order: missing transaction")
+	}
+	m := spanner.Delete("ManifestOrders", spanner.Key{manifestID, orderID})
+	return tx.txn.BufferWrite([]*spanner.Mutation{m})
+}
+
+func (tx *spannerPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit) error {
+	if tx.txn == nil {
+		return fmt.Errorf("missing transaction")
+	}
+	var muts []*spanner.Mutation
+	for _, u := range units {
+		muts = append(muts, spanner.InsertMap("ManifestShipUnits", map[string]any{
+			"ManifestId": u.ManifestID,
+			"ShipUnitId": u.ShipUnitID,
+			"Sscc":       u.SSCC,
+			"OrderId":    u.OrderID,
+			"Sequence":   u.Sequence,
+			"Gtin":       nullableStr(u.GTIN),
+			"CreatedAt":  spanner.CommitTimestamp,
+		}))
+	}
+	if len(muts) > 0 {
+		return tx.txn.BufferWrite(muts)
+	}
+	return nil
+}

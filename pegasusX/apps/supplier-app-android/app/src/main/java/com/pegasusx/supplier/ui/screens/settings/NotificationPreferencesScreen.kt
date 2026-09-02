@@ -9,7 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.data.model.NotificationPreferenceRow
 import com.pegasusx.supplier.data.model.NotificationPreferencesPatchRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository

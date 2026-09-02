@@ -642,8 +642,8 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 		SessionID:   strings.TrimSpace(req.SessionID),
 		SupplierID:  s.resolveSupplierID(r.Context()),
 		Gateway:     executionResult.ResolvedGateway,
-		AmountMinor: 0,
-		Currency:    s.currency,
+		AmountMinor: session.AmountMinor,
+		Currency:    session.Currency,
 		CreatedAt:   now,
 	}
 	if err := s.repo.SaveReversal(r.Context(), rev, func(txn outbox.TxnBuffer) error {

@@ -20,6 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cashreconroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
@@ -66,6 +67,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/taxroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/syncroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
@@ -364,6 +366,17 @@ func main() {
 
 	demandroutes.RegisterRoutes(r, demandroutes.Deps{
 		Service: app.DemandService,
+	})
+	
+	var syncCache cache.Backend
+	if app.Cache != nil {
+		syncCache = app.Cache.Backend()
+	}
+	syncroutes.RegisterRoutes(r, syncroutes.Deps{
+		Engine: &syncroutes.SemanticEngine{
+			Spanner: app.Spanner,
+		},
+		Cache: syncCache,
 	})
 
 	laborcapacityroutes.RegisterRoutes(r, laborcapacityroutes.Deps{

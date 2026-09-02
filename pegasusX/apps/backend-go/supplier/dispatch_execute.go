@@ -327,6 +327,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					"Payload":       payloadBytes,
 					"CreatedAt":     now,
 					"PublishedAt":   nil,
+					"SupplierId":    supplierID,
 				}),
 			})
 		})
@@ -688,6 +689,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 				"Payload":       manifestPayload,
 				"CreatedAt":     now,
 				"PublishedAt":   nil,
+				"SupplierId":    supplierID,
 			}))
 
 			for _, oid := range r.OrderIDs {
@@ -717,6 +719,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 					"Payload":       orderPayload,
 					"CreatedAt":     now,
 					"PublishedAt":   nil,
+					"SupplierId":    supplierID,
 				}))
 			}
 		}

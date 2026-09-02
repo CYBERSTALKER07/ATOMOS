@@ -1,7 +1,7 @@
 package com.pegasusx.warehouse
 
-import com.pegasus.design.ORDER_STATUS_FUNNEL
-import com.pegasus.design.TRUCK_DUTY_STATUSES
+import com.pegasus.design.ui.ORDER_STATUS_FUNNEL
+import com.pegasus.design.ui.TRUCK_DUTY_STATUSES
 import com.pegasus.design.incrementOrderStatusCount
 import com.pegasus.design.statusStackModel
 import com.pegasusx.warehouse.data.model.DashboardData

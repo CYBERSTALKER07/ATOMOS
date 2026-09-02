@@ -585,6 +585,10 @@ func (s *Service) HandlePosSale(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
+		
+		// [Phase 2] Real-time Shelf Intelligence
+		onHand, _ := s.getOnHand(r.Context(), sess.LocationID, bin, l.Sku)
+		_ = s.CheckAndGenerateOOSAlerts(r.Context(), orgID, sess.LocationID, l.Sku, onHand, 10)
 	}
 
 	currency, err := stampPackCurrency(r.Context(), firstNonEmpty(req.Currency, sess.Currency))

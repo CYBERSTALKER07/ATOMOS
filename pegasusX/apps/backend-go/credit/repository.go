@@ -425,6 +425,61 @@ func (r *SpannerRepository) ConvertOrderReservation(ctx context.Context, orderID
 	})
 }
 
+// AdjustReserveInTxn updates an order's reservation and adjusts the retailer's ReservedMinor.
+func (r *SpannerRepository) AdjustReserveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, newAmountMinor int64) error {
+	row, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{orderID},
+		[]string{"RetailerId", "SupplierId", "AmountMinor", "Status"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	}
+	var retailerID, supplierID, status string
+	var currentAmount int64
+	if err := row.Columns(&retailerID, &supplierID, &currentAmount, &status); err != nil {
+		return err
+	}
+	if status != string(ReservationReserved) || currentAmount == newAmountMinor {
+		return nil
+	}
+
+	delta := currentAmount - newAmountMinor
+	prof, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Version"})
+	if err != nil {
+		return err
+	}
+	var limit, balance, reserved, version int64
+	if err := prof.Columns(&limit, &balance, &reserved, &version); err != nil {
+		return err
+	}
+	newReserved := reserved - delta
+	if newReserved < 0 {
+		newReserved = 0
+	}
+	available := limit - balance - newReserved
+	if available < 0 {
+		available = 0
+	}
+
+	return txn.BufferWrite([]*spanner.Mutation{
+		spanner.UpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":     orderID,
+			"AmountMinor": newAmountMinor,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":           retailerID,
+			"SupplierId":           supplierID,
+			"ReservedMinor":        newReserved,
+			"AvailableCreditMinor": available,
+			"Version":              version + 1,
+			"UpdatedAt":            spanner.CommitTimestamp,
+		}),
+	})
+}
+
 // MarkBalanceInTxn converts reservation or marks balance in the same txn as credit leave.
 func (r *SpannerRepository) MarkBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
 	return r.convertReservationInTxn(ctx, txn, retailerID, supplierID, orderID, amountMinor, nil)
@@ -705,4 +760,57 @@ func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerI
 	_ = ctx
 	_ = retailerIDs
 	return map[string]RetailerCreditScore{}, nil
+}
+
+func (r *SpannerRepository) ReserveOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, res OrderReservation) error {
+	existing, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{res.OrderID}, []string{"Status", "AmountMinor"})
+	if err == nil {
+		var st string
+		var amt int64
+		_ = existing.Columns(&st, &amt)
+		if st == string(ReservationReserved) || st == string(ReservationConverted) {
+			return nil // idempotent
+		}
+	} else if spanner.ErrCode(err) != 5 {
+		return err
+	}
+
+	row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{res.RetailerID, res.SupplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Status", "Version"})
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			return ErrProfileNotFound
+		}
+		return err
+	}
+	var limit, balance, reserved, version int64
+	var st string
+	_ = row.Columns(&limit, &balance, &reserved, &st, &version)
+	
+	if st != string(StatusActive) {
+		return ErrCreditNotEnabled
+	}
+	if limit-(balance+reserved) < res.AmountMinor {
+		return ErrLimitBreached
+	}
+	
+	muts := []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":     res.OrderID,
+			"RetailerId":  res.RetailerID,
+			"SupplierId":  res.SupplierID,
+			"AmountMinor": res.AmountMinor,
+			"Status":      string(ReservationReserved),
+			"CreatedAt":   spanner.CommitTimestamp,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":    res.RetailerID,
+			"SupplierId":    res.SupplierID,
+			"ReservedMinor": reserved + res.AmountMinor,
+			"Version":       version + 1,
+			"UpdatedAt":     spanner.CommitTimestamp,
+		}),
+	}
+	return txn.BufferWrite(muts)
 }

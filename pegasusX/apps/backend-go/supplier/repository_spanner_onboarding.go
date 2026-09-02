@@ -371,7 +371,7 @@ func ensureSupplierUserPhoneAvailable(ctx context.Context, txn *spanner.ReadWrit
 	if err := row.Columns(&userID, &existingSupplierID, &isActive); err != nil {
 		return fmt.Errorf("scan existing supplier user by phone: %w", err)
 	}
-	if existingSupplierID == supplierID && isActive && userID != "" {
+	if isActive && userID != "" {
 		return errOrgMemberPhoneExists
 	}
 	return nil

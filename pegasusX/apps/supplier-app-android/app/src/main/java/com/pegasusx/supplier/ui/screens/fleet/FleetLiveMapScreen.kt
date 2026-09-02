@@ -20,9 +20,9 @@ import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -225,7 +225,7 @@ fun FleetLiveMapScreen(
 }
 
 private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload? {
-    val c = com.pegasus.design.sessionMapCenter() ?: return null
+    val c = com.pegasus.design.network.sessionMapCenter() ?: return null
     val d = 0.02
     return GeoJSONPolygonPayload(
         coordinates = listOf(

@@ -192,8 +192,8 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
 	toSave := current
-	updated, err := s.updatePreorderLines(ctx, toSave, lineItems, func(txn outbox.TxnBuffer) error {
-		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, toSave, string(auth.RoleRetailer), retailerID)
+	updated, err := s.updatePreorderLines(ctx, toSave, lineItems, func(txn outbox.TxnBuffer, updated Order) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, updated, string(auth.RoleRetailer), retailerID)
 	})
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)

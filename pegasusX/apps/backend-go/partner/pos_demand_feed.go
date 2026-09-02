@@ -165,6 +165,7 @@ func (b *spannerOutboxBuf) BufferOutbox(_ context.Context, e outbox.Event) error
 			"TopicName":     e.TopicName,
 			"Payload":       e.Payload,
 			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    e.SupplierID,
 		}),
 	})
 }

@@ -91,6 +91,15 @@ export default function CreditCollectionsPage() {
       description={t("supplier_portal.residual.text.supplier_scoped_credit_lines_limits_open_balances_freeze_unfreez")}
       loading={loading}
     >
+      <div className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 flex items-start gap-3">
+        <div>
+          <h4 className="font-semibold text-sm">Pending Finance Approval</h4>
+          <p className="text-sm opacity-80 mt-1">
+            You have disputed delivery drafts awaiting final approval. They are excluded from the available balance metrics below until finalized.
+          </p>
+        </div>
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select
           className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm"

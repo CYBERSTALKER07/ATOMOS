@@ -66,7 +66,10 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			ident:    ident,
 			conn:     conn,
 			joinedAt: time.Now(),
+			send:     make(chan []byte, 256),
+			stop:     make(chan struct{}),
 		}
+		go gConn.writePump()
 
 		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs, cfg)
 		if !ok {
@@ -75,7 +78,7 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			return
 		}
 
-		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, log)
+		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, hubs, log)
 	})
 
 	r.Get("/v1/ws", wsHandler)
@@ -159,12 +162,15 @@ func subscribePlatformAdminRooms(_ auth.Claims, conn Connection, hubs roleHubs, 
 }
 
 func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func(), cfg RegisterConfig) []func() {
-	if hubs.retailer != nil && ident.Subject != "" {
-		unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+ident.Subject, conn))
-		if cfg.RetailerPromoSuppliers != nil {
-			for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), ident.Subject) {
-				room := SupplierPromoRoom(supplierID)
-				unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
+	if hubs.retailer != nil {
+		orgID := auth.ResolveRetailerOrgID(ident)
+		if orgID != "" {
+			unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+orgID, conn))
+			if cfg.RetailerPromoSuppliers != nil {
+				for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), orgID) {
+					room := SupplierPromoRoom(supplierID)
+					unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
+				}
 			}
 		}
 	}
@@ -281,20 +287,41 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 	}
 }
 
-func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, log *slog.Logger) {
+func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, hubs roleHubs, log *slog.Logger) {
 	maybeSendOutdated(req, conn, platformSvc, log)
 	done := make(chan struct{})
-	startPingLoop(conn, done, log)
+
+	// Touch presence on initial connect (use Background — req.Context() is
+	// cancelled by the HTTP server after the WebSocket upgrade completes).
+	for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+		if h != nil {
+			h.TouchPresence(context.Background(), conn)
+		}
+	}
+
+	// startPingLoop(conn, done, log) // handled by writePump now
 	defer func() {
 		close(done)
 		for _, unsubscribe := range unsubscribes {
 			unsubscribe()
+		}
+		// Clear presence on disconnect (req.Context() is long dead here).
+		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+			if h != nil {
+				h.ClearPresence(context.Background(), conn)
+			}
 		}
 		conn.close()
 	}()
 	conn.conn.SetReadLimit(1024)
 	_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	conn.conn.SetPongHandler(func(string) error {
+		// Touch presence on pong
+		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+			if h != nil {
+				h.TouchPresence(context.Background(), conn)
+			}
+		}
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	})
 

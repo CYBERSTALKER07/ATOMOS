@@ -27,11 +27,16 @@ func (s *Service) HandleListRetailerInvoices(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	rid := claims.Subject
+	var rid string
 	if claims.Role == auth.RoleAdmin {
-		if q := strings.TrimSpace(r.URL.Query().Get("retailer_id")); q != "" {
-			rid = q
+		q := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
+		if q == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
+			return
 		}
+		rid = q
+	} else {
+		rid = auth.ResolveRetailerOrgID(claims)
 	}
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	limit := 50
@@ -205,9 +210,9 @@ func (s *Service) HandleRetailerPayInvoice(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	retailerID := claims.Subject
-	if claims.Role == auth.RoleAdmin {
-		retailerID = "" // admin can pay on behalf of any
+	var retailerID string
+	if claims.Role != auth.RoleAdmin {
+		retailerID = auth.ResolveRetailerOrgID(claims)
 	}
 
 	idemKey := r.Header.Get("Idempotency-Key")
@@ -230,7 +235,7 @@ func (s *Service) HandleCheckDelinquencyLock(w http.ResponseWriter, r *http.Requ
 	retailerID := chi.URLParam(r, "retailerId")
 	if retailerID == "" {
 		if claims.Role == auth.RoleRetailer {
-			retailerID = claims.Subject
+			retailerID = auth.ResolveRetailerOrgID(claims)
 		} else {
 			retailerID = strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 		}

@@ -368,3 +368,28 @@ type HubStats struct {
 // ErrUnauthorized is returned by helper functions that reject a subscription
 // because the caller's identity is not allowed on the requested room.
 var ErrUnauthorized = errors.New("ws: connection not authorized for room")
+
+func (h *Hub) TouchPresence(ctx context.Context, conn Connection) {
+	if h.relay == nil {
+		return
+	}
+	identity := conn.Identity()
+	if identity.Subject == "" {
+		return
+	}
+	key := "presence:" + string(identity.Role) + ":" + identity.Subject
+	// 3x ping interval for TTL
+	_ = h.relay.Set(ctx, key, []byte("ONLINE"), 45*time.Second)
+}
+
+func (h *Hub) ClearPresence(ctx context.Context, conn Connection) {
+	if h.relay == nil {
+		return
+	}
+	identity := conn.Identity()
+	if identity.Subject == "" {
+		return
+	}
+	key := "presence:" + string(identity.Role) + ":" + identity.Subject
+	_ = h.relay.Delete(ctx, key)
+}

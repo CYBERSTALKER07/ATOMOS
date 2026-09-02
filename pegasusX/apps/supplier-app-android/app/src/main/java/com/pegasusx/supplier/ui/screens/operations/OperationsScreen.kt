@@ -18,7 +18,7 @@ import com.pegasusx.supplier.data.model.SUPPLIER_BROADCAST_TEMPLATES
 import com.pegasusx.supplier.data.model.SupplierBroadcastRequest
 import com.pegasusx.supplier.data.model.SupplierEmpathyAdoption
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierMetricTile
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.theme.PegasusSpacing

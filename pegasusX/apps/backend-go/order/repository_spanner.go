@@ -352,6 +352,27 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			spanner.UpdateMap("Orders", orderMap),
 		}
 
+		if string(o.Status) != prevStatus {
+			metaRaw, _ := json.Marshal(o.TransitionMetadata)
+			eventKind := strings.TrimSpace(o.TransitionEventKind)
+			if eventKind == "" {
+				eventKind = DefaultTransitionEventKind(o.Status)
+			}
+			transitionID := fmt.Sprintf("tr-%s-%d", o.OrderID, o.UpdatedAt.UnixNano())
+			mutations = append(mutations, spanner.InsertMap("OrderStatusTransitions", map[string]any{
+				"OrderId":        o.OrderID,
+				"TransitionId":   transitionID,
+				"PreviousStatus": prevStatus,
+				"NewStatus":      string(o.Status),
+				"Reason":         strings.TrimSpace(o.TransitionReason),
+				"ActorRole":      strings.TrimSpace(o.TransitionActorRole),
+				"ActorId":        strings.TrimSpace(o.TransitionActorID),
+				"EventKind":      eventKind,
+				"MetadataJson":   metaRaw,
+				"CreatedAt":      o.UpdatedAt,
+			}))
+		}
+
 		for _, fr := range o.PendingFiscalReceipts {
 			if strings.TrimSpace(fr.AttemptID) == "" || strings.TrimSpace(fr.OrderID) == "" {
 				continue
@@ -1805,6 +1826,208 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 	})
 	if err != nil {
 		return fmt.Errorf("update order transaction: %w", err)
+	}
+
+	return nil
+}
+
+// CreateOrderWithBackorder writes the main order, an optional backorder, and any emitted outbox events atomically.
+func (r *SpannerRepository) CreateOrderWithBackorder(ctx context.Context, o *Order, backorder *Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts StockReservationOpts) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner order repository: nil client")
+	}
+	if o == nil {
+		return fmt.Errorf("create order: nil aggregate")
+	}
+
+	lineItemsRaw, err := json.Marshal(o.LineItems)
+	if err != nil {
+		return fmt.Errorf("marshal order line items: %w", err)
+	}
+	
+	var boLineItemsRaw []byte
+	if backorder != nil {
+		boLineItemsRaw, err = json.Marshal(backorder.LineItems)
+		if err != nil {
+			return fmt.Errorf("marshal backorder line items: %w", err)
+		}
+	}
+
+	err = spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := snapshotReceivingWindowsInTxn(ctx, txn, o); err != nil {
+			return err
+		}
+		if err := snapshotWarehousePolicyInTxn(ctx, txn, o); err != nil {
+			return err
+		}
+
+		// Reserve on-hand stock for fulfillable quantities (all non-backorder orders, including scheduled pre-orders).
+		if !stockOpts.Skip && len(o.LineItems) > 0 && o.WarehouseID != "" && o.Source != OrderSourceBackorder {
+			expected := time.Time{}
+			if o.RequestedDeliveryDate != nil {
+				expected = o.RequestedDeliveryDate.UTC()
+			} else if o.DeliverBefore != nil {
+				expected = o.DeliverBefore.UTC()
+			}
+			if err := ReserveLineItemsForOrderInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.OrderID, o.RetailerID, expected, o.LineItems); err != nil {
+				return err
+			}
+			if err := insertStockReservationMarkerInTxn(txn, o.OrderID); err != nil {
+				return err
+			}
+		}
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
+		var mutations []*spanner.Mutation
+
+		// Deduplicate and atomically redeem promotions for parent order.
+		promoMap := make(map[string]bool)
+		for _, line := range o.LineItems {
+			if line.PromotionID != "" && !promoMap[line.PromotionID] {
+				promoMap[line.PromotionID] = true
+				row, readErr := txn.ReadRow(ctx, "SupplierPromotions", spanner.Key{line.PromotionID}, []string{"MaxRedemptions", "CurrentRedemptions"})
+				if readErr == nil {
+					var maxR, currR spanner.NullInt64
+					if err := row.Columns(&maxR, &currR); err == nil {
+						if maxR.Valid && maxR.Int64 > 0 && currR.Int64 >= maxR.Int64 {
+							return fmt.Errorf("promotion redemption limit reached for %s", line.PromotionID)
+						}
+						mutations = append(mutations, spanner.UpdateMap("SupplierPromotions", map[string]any{
+							"PromotionId":        line.PromotionID,
+							"CurrentRedemptions": currR.Int64 + 1,
+							"UpdatedAt":          spanner.CommitTimestamp,
+						}))
+					}
+				}
+			}
+		}
+
+		if promiseMut, err := snapshotServicePromiseInTxn(ctx, txn, o); err == nil && promiseMut != nil {
+			mutations = append(mutations, promiseMut)
+		}
+
+		orderInsert := map[string]any{
+			"OrderId":                o.OrderID,
+			"SupplierId":             o.SupplierID,
+			"RetailerId":             o.RetailerID,
+			"WarehouseId":            o.WarehouseID,
+			"DriverId":               nullableString(o.DriverID),
+			"VehicleId":              nullableString(o.VehicleID),
+			"RouteId":                nullableString(o.RouteID),
+			"ManifestId":             nullableString(o.ManifestID),
+			"DeliveryToken":          nullableString(o.QRToken),
+			"Status":                 string(o.Status),
+			"OrderSource":            string(o.Source),
+			"ConfirmationStatus":     string(o.ConfirmationStatus),
+			"LineItemsJson":          lineItemsRaw,
+			"TotalMinor":             o.TotalMinor,
+			"OriginalTotalMinor":     originalTotalMinorForInsert(o),
+			"Currency":               o.Currency,
+			"H3Cell":                 o.H3Cell,
+			"Lat":                    o.Lat,
+			"Lng":                    o.Lng,
+			"RequestedDeliveryDate":  nullableTime(o.RequestedDeliveryDate),
+			"DeliverBefore":          nullableTime(o.DeliverBefore),
+			"DeliveryPriority":       string(o.DeliveryPriority),
+			"DeliveryFeeMinor":       o.DeliveryFeeMinor,
+			"WarehouseNotes":         nullableString(o.WarehouseNotes),
+			"AutoConfirmAt":          nullableTime(o.AutoConfirmAt),
+			"DecisionAt":             nullableTime(o.DecisionAt),
+			"DecisionBy":             nullableString(o.DecisionBy),
+			"DerivedFromOrderId":     nullableString(o.DerivedFromOrderID),
+			"ReceivingWindowOpen":    nullableString(o.ReceivingWindowOpen),
+			"ReceivingWindowClose":   nullableString(o.ReceivingWindowClose),
+			"Timezone":               nullableString(o.Timezone),
+			"PreorderReminderSentAt": nullableTime(o.PreorderReminderSentAt),
+			"NudgeNotifiedAt":        nullableTime(o.NudgeNotifiedAt),
+			"ConfirmationNotifiedAt": nullableTime(o.ConfirmationNotifiedAt),
+			"CancelLockedAt":         nullableTime(o.CancelLockedAt),
+			"CancelLockReason":       nullableString(o.CancelLockReason),
+			"CancelLockExpiresAt":    nullableTime(o.CancelLockExpiresAt),
+			"ProposedDeliveryDate":   nullableTime(o.ProposedDeliveryDate),
+			"DeliveryProposalAt":     nullableTime(o.DeliveryProposalAt),
+			"DeliveryProposalBy":     nullableString(o.DeliveryProposalBy),
+			"DeliveryProposalReason": nullableString(o.DeliveryProposalReason),
+			"Version":                o.Version,
+			"CreatedAt":              o.CreatedAt.UTC(),
+			"UpdatedAt":              o.UpdatedAt.UTC(),
+		}
+		if pid := strings.TrimSpace(o.ParentOrderID); pid != "" {
+			orderInsert["ParentOrderId"] = pid
+		}
+		mutations = append(mutations, spanner.InsertMap("Orders", orderInsert))
+
+		if backorder != nil {
+			boInsert := map[string]any{
+				"OrderId":                backorder.OrderID,
+				"SupplierId":             backorder.SupplierID,
+				"RetailerId":             backorder.RetailerID,
+				"WarehouseId":            backorder.WarehouseID,
+				"DriverId":               nullableString(backorder.DriverID),
+				"VehicleId":              nullableString(backorder.VehicleID),
+				"RouteId":                nullableString(backorder.RouteID),
+				"ManifestId":             nullableString(backorder.ManifestID),
+				"DeliveryToken":          nullableString(backorder.QRToken),
+				"Status":                 string(backorder.Status),
+				"OrderSource":            string(backorder.Source),
+				"ConfirmationStatus":     string(backorder.ConfirmationStatus),
+				"LineItemsJson":          boLineItemsRaw,
+				"TotalMinor":             backorder.TotalMinor,
+				"OriginalTotalMinor":     originalTotalMinorForInsert(backorder),
+				"Currency":               backorder.Currency,
+				"H3Cell":                 backorder.H3Cell,
+				"Lat":                    backorder.Lat,
+				"Lng":                    backorder.Lng,
+				"RequestedDeliveryDate":  nullableTime(backorder.RequestedDeliveryDate),
+				"DeliverBefore":          nullableTime(backorder.DeliverBefore),
+				"DeliveryPriority":       string(backorder.DeliveryPriority),
+				"DeliveryFeeMinor":       backorder.DeliveryFeeMinor,
+				"WarehouseNotes":         nullableString(backorder.WarehouseNotes),
+				"AutoConfirmAt":          nullableTime(backorder.AutoConfirmAt),
+				"DecisionAt":             nullableTime(backorder.DecisionAt),
+				"DecisionBy":             nullableString(backorder.DecisionBy),
+				"DerivedFromOrderId":     nullableString(backorder.DerivedFromOrderID),
+				"ReceivingWindowOpen":    nullableString(backorder.ReceivingWindowOpen),
+				"ReceivingWindowClose":   nullableString(backorder.ReceivingWindowClose),
+				"Timezone":               nullableString(backorder.Timezone),
+				"PreorderReminderSentAt": nullableTime(backorder.PreorderReminderSentAt),
+				"NudgeNotifiedAt":        nullableTime(backorder.NudgeNotifiedAt),
+				"ConfirmationNotifiedAt": nullableTime(backorder.ConfirmationNotifiedAt),
+				"CancelLockedAt":         nullableTime(backorder.CancelLockedAt),
+				"CancelLockReason":       nullableString(backorder.CancelLockReason),
+				"CancelLockExpiresAt":    nullableTime(backorder.CancelLockExpiresAt),
+				"ProposedDeliveryDate":   nullableTime(backorder.ProposedDeliveryDate),
+				"DeliveryProposalAt":     nullableTime(backorder.DeliveryProposalAt),
+				"DeliveryProposalBy":     nullableString(backorder.DeliveryProposalBy),
+				"DeliveryProposalReason": nullableString(backorder.DeliveryProposalReason),
+				"Version":                backorder.Version,
+				"CreatedAt":              backorder.CreatedAt.UTC(),
+				"UpdatedAt":              backorder.UpdatedAt.UTC(),
+			}
+			if pid := strings.TrimSpace(backorder.ParentOrderID); pid != "" {
+				boInsert["ParentOrderId"] = pid
+			}
+			mutations = append(mutations, spanner.InsertMap("Orders", boInsert))
+		}
+
+		for _, e := range buf.events {
+			mutations = append(mutations, outboxEventMutation(e))
+		}
+
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("create order transaction: %w", err)
 	}
 
 	return nil

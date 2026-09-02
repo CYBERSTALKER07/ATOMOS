@@ -62,8 +62,8 @@ func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 	categoryID := strings.TrimSpace(r.URL.Query().Get("category_id"))
 	retailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 	if retailerID == "" {
-		if claims, ok := auth.FromContext(r.Context()); ok {
-			retailerID = strings.TrimSpace(claims.Subject)
+		if claims, ok := auth.FromContext(r.Context()); ok && claims.Role == auth.RoleRetailer {
+			retailerID = auth.ResolveRetailerOrgID(claims)
 		}
 	}
 	if supplierID == "" {
@@ -72,7 +72,14 @@ func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		limit, offset := httppagination.ParseLimitOffset(r, 500, 5000)
-		products, err := s.ListProductsDiscovery(r.Context(), retailerID, categoryID, int64(limit), int64(offset))
+		marketCode := ""
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			marketCode = claims.MarketCode
+		}
+		if marketCode == "" {
+			marketCode = auth.DefaultMarketCodeFromEnv()
+		}
+		products, err := s.ListProductsDiscovery(r.Context(), retailerID, categoryID, marketCode, int64(limit), int64(offset))
 		if err != nil {
 			slog.ErrorContext(r.Context(), "list discovery products failed", "err", err, "retailer_id", retailerID)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})

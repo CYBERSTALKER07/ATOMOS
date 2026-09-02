@@ -100,8 +100,8 @@ func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retai
 }
 
 // ListProductsDiscovery returns active catalog rows across suppliers for retailer browse surfaces.
-func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID string, limit, offset int64) ([]RetailerProduct, error) {
-	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, limit, offset)
+func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID, marketCode string, limit, offset int64) ([]RetailerProduct, error) {
+	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, marketCode, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list discoverable products: %w", err)
 	}

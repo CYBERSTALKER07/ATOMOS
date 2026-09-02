@@ -1635,3 +1635,19 @@ func (d *dummyPayloadTx) UpdateOrderAssignment(ctx context.Context, orderID, rou
 	}
 	return nil
 }
+
+func (c *payloadCacheBackendSpy) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (c *payloadCacheBackendSpy) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (tx *dummyPayloadTx) DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error {
+	return nil
+}
+
+func (tx *dummyPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit) error {
+	return nil
+}

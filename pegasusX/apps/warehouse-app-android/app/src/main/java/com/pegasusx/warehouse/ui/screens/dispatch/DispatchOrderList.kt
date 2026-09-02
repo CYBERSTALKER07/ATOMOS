@@ -14,8 +14,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DispatchPreview
 import com.pegasusx.warehouse.data.model.Vehicle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.DispatchPreviewMapLibre
 import com.pegasusx.warehouse.ui.components.OrderDetailOpenMode
 import com.pegasusx.warehouse.ui.components.OrderOpsCard
@@ -226,7 +226,7 @@ fun DispatchOrderList(
                         retailerName = o.retailerName,
                         orderId = o.orderId,
                         state = "PENDING",
-                        amountLabel = fmt.format(o.totalUzs) + " ${com.pegasus.design.sessionPackCurrency()} · ${"%.1f".format(o.volumeVu)} VU",
+                        amountLabel = fmt.format(o.totalUzs) + " ${com.pegasus.design.network.sessionPackCurrency()} · ${"%.1f".format(o.volumeVu)} VU",
                         showOpsMenu = true,
                         detailOpenMode = OrderDetailOpenMode.Double,
                         canDelay = true,

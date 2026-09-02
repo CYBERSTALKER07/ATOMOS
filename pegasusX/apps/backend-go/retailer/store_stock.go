@@ -670,15 +670,38 @@ func (s *Service) HandleStockCount(w http.ResponseWriter, r *http.Request) {
 	status := "DRAFT"
 	if commit {
 		actor := auth.ResolveRetailerUserID(claims)
-		for _, l := range lines {
-			if l.Variance == 0 {
-				continue
+		if s.spannerClient == nil {
+			for _, l := range lines {
+				if l.Variance == 0 {
+					continue
+				}
+				if err := s.applyAdjust(r.Context(), orgID, locID, bin, l.Sku, l.Variance, actor, "cycle_count:"+countID); err != nil {
+					writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "sku": l.Sku})
+					return
+				}
 			}
-			if err := s.applyAdjust(r.Context(), orgID, locID, bin, l.Sku, l.Variance, actor, "cycle_count:"+countID); err != nil {
-				writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "sku": l.Sku})
+		} else {
+			_, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				for _, l := range lines {
+					if l.Variance == 0 {
+						continue
+					}
+					if err := s.applyDeltaInTxn(ctx, txn, orgID, locID, bin, l.Sku, l.Variance, MoveCountVariance, "ADJUST", "", actor, "cycle_count:"+countID); err != nil {
+						return fmt.Errorf("sku %s: %w", l.Sku, err)
+					}
+				}
+				return nil
+			})
+			if err != nil {
+				writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 				return
 			}
-			_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
+		}
+
+		for _, l := range lines {
+			if l.Variance != 0 {
+				_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
+			}
 		}
 		// Write count movement markers with COUNT_VARIANCE type for audit (adjust already wrote ADJUST).
 		// Also persist count header.
@@ -1532,4 +1555,46 @@ func (s *Service) injectMemoryReceive(orgID, locID, orderID string, lines []Rece
 		Status: "DRAFT", Lines: lines, CreatedAt: s.now().UTC().Format(time.RFC3339Nano),
 	}
 	return s.confirmReceiveSession(context.Background(), session, BinBackroom, "test")
+}
+
+func (s *Service) applyDeltaInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, locationID, bin, sku string, delta int64, moveType, refType, refID, actor, note string) error {
+	var onHand, reserved int64
+	row, err := txn.ReadRow(ctx, "RetailerStockBalances", spanner.Key{locationID, bin, sku},
+		[]string{"OnHand", "Reserved"})
+	if err != nil && !isNotFound(err) {
+		return err
+	}
+	if err == nil {
+		_ = row.Columns(&onHand, &reserved)
+	}
+	next := onHand + delta
+	if next < 0 {
+		return errors.New("insufficient_stock")
+	}
+	muts := []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("RetailerStockBalances", map[string]any{
+			"LocationId": locationID,
+			"StockBin":   bin,
+			"Sku":        sku,
+			"RetailerId": retailerID,
+			"OnHand":     next,
+			"Reserved":   reserved,
+			"UpdatedAt":  spanner.CommitTimestamp,
+		}),
+		spanner.InsertMap("RetailerStockMovements", map[string]any{
+			"MovementId":   s.newID(),
+			"RetailerId":   retailerID,
+			"LocationId":   locationID,
+			"StockBin":     bin,
+			"Sku":          sku,
+			"Qty":          delta,
+			"MovementType": moveType,
+			"RefType":      nullableStr(refType),
+			"RefId":        nullableStr(refID),
+			"ActorUserId":  nullableStr(actor),
+			"Note":         nullableStr(note),
+			"CreatedAt":    spanner.CommitTimestamp,
+		}),
+	}
+	return txn.BufferWrite(muts)
 }

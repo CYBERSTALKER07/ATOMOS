@@ -8,9 +8,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pegasus.design.PegasusCollapsibleRail
-import com.pegasus.design.PegasusRailGroup
-import com.pegasus.design.PegasusRailItem
+import com.pegasus.design.ui.PegasusCollapsibleRail
+import com.pegasus.design.ui.PegasusRailGroup
+import com.pegasus.design.ui.PegasusRailItem
 import com.pegasusx.warehouse.ui.navigation.WarehouseSection
 import com.pegasusx.warehouse.R
 
