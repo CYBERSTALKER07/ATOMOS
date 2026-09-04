@@ -290,7 +290,7 @@ func (r *SpannerRepository) ListMatchQueue(ctx context.Context, status string, l
 	}
 	if status == "" {
 		stmt.SQL = `SELECT QueueId, SupplierId, ProductId, CandidateGlobalProductId, MatchMethod, Score, Status, Reason, Version, CreatedAt, UpdatedAt
-		            FROM ProductMatchQueue ORDER BY CreatedAt LIMIT @lim`
+		            FROM ProductMatchQueue WHERE SupplierId IS NOT NULL ORDER BY CreatedAt LIMIT @lim`
 		stmt.Params = map[string]any{"lim": int64(limit)}
 	}
 	iter := r.client.Single().Query(ctx, stmt)

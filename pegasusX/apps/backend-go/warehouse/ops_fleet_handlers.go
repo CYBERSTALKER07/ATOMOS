@@ -13,6 +13,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
@@ -210,8 +212,10 @@ func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseI
 		state, err := readDriverAssignmentState(ctx, txn, sid, warehouseID, driverID)
 		if err != nil {
 			if errors.Is(err, errDriverNotFound) {
-				return fmt.Errorf("driver_not_found")
+				s.log.WarnContext(ctx, "driver not found for vehicle assignment", "driver_id", driverID, "sid", sid, "warehouse_id", warehouseID)
+				return fmt.Errorf("driver_not_found: %w", err)
 			}
+			s.log.ErrorContext(ctx, "failed to read driver assignment state", "driver_id", driverID, "sid", sid, "warehouse_id", warehouseID, "err", err)
 			return err
 		}
 		activeDriverOrders, err := countActiveOrdersForDriver(ctx, txn, driverID)
@@ -288,6 +292,19 @@ func (s *Service) persistDriverVehicleAssignment(ctx context.Context, warehouseI
 					"UpdatedAt": now,
 				}))
 			}
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "Driver", driverID, events.TopicDispatch, map[string]any{
+			"type":         "DRIVER_VEHICLE_ASSIGNED",
+			"driver_id":    driverID,
+			"vehicle_id":   vehicleID,
+			"warehouse_id": warehouseID,
+			"supplier_id":  sid,
+		}); err != nil {
+			return err
+		}
+		if err := buf.Flush(ctx); err != nil {
+			return err
 		}
 		return txn.BufferWrite(mutations)
 	})

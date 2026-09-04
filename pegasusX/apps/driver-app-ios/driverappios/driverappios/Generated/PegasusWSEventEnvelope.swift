@@ -20,8 +20,8 @@ struct PegasusWSEventEnvelope {
     let licensePlate: String?
     let lineItems: Any?
     let lng: Double?
-    let manifestID, negotiationID, orderID, orderSource: String?
-    let paymentMethod, previousStatus, proposalID: String?
+    let manifestID, message, negotiationID, orderID: String?
+    let orderSource, paymentMethod, previousStatus, proposalID: String?
     let proposedPriceMinor: Int?
     let reason, receivingWindowClose, receivingWindowOpen, requestedDeliveryDate: String?
     let resolution, response, retailerID, routeID: String?
@@ -29,18 +29,24 @@ struct PegasusWSEventEnvelope {
     let totalMinor: Int?
     let vehicleID: String?
     let version: Version?
-    let warehouseID, deadline, ehfID, accountHolder: String?
-    let assignedWarehouseID, bankName, contactName, email: String?
-    let legalName: String?
+    let warehouseID, agingBucket: String?
+    let amountMinor, balanceMinor: Int?
+    let dueAt: String?
+    let dunningStep: Int?
+    let invoiceID, lastDunnedAt: String?
+    let principalMinor: Int?
+    let deadline, ehfID, accountHolder, assignedWarehouseID: String?
+    let bankName, contactName, email, legalName: String?
     let selectedGateways: [String]?
     let supplierRole, userID: String?
     let expectedMinor, overageMinor, receivedMinor, shortfallMinor: Int?
-    let traceID: String?
-    let amountMinor: Int?
-    let chargebackID, claimID, claimType: String?
+    let traceID, chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
-    let photoProofURL, signatureURL, sessionID: String?
+    let actor, campaignID: String?
+    let impactedLotCount, impactedOrderCount, impactedUnitsCount: Int?
+    let lotCode, lotID, productID, recallReason: String?
+    let severity, photoProofURL, signatureURL, sessionID: String?
     let baselineQty: Int?
     let baselineSource, blockedReason: String?
     let confidence: Double?
@@ -49,10 +55,12 @@ struct PegasusWSEventEnvelope {
     let highUnits: Int?
     let insightID: String?
     let lowUnits, networkNodes: Int?
-    let overrideID, polygonGeojson, productID, publishedBy: String?
-    let scenarioID, signalID, simulationID: String?
+    let overrideID, polygonGeojson, publishedBy, scenarioID: String?
+    let signalID, simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
     let countryCode, name, phone: String?
+    let orderCount: Int?
+    let orderIDS: [String]?
     let available: Bool?
     let homeNodeID, homeNodeType: String?
     let onShift: Bool?
@@ -61,17 +69,20 @@ struct PegasusWSEventEnvelope {
     let requestID, errorCode, errorMessage, fiscalQr: String?
     let fiscalReceiptID, provider, lockName, systemID: String?
     let gcsPath: String?
-    let suggestedMappings, attemptCount, depth: Int?
+    let suggestedMappings, committedUnits, coverageDays: Int?
+    let coverageStartDate, linkedTransferID, lockID: String?
+    let pendingConfirmationUnits, projectedUnits: Int?
+    let requestedBy: String?
+    let requestedUnits: Int?
+    let state, transferID, transferMode: String?
+    let attemptCount, depth: Int?
     let escalated: Bool?
     let fromManifestID, fromVehicleID, manifestDomain: String?
-    let orderCount: Int?
-    let state: String?
     let stopCount: Int?
     let toManifestID, toVehicleID: String?
     let totalVolumeVu: TotalVolumeVu?
     let transferCount: Int?
-    let transferID: String?
-    let driverIDS, manifestIDS, orderIDS: [String]?
+    let driverIDS, manifestIDS: [String]?
     let sharedRouteID, splitGroupID: String?
     let truckCount: Int?
     let conditionType: String?
@@ -79,9 +90,12 @@ struct PegasusWSEventEnvelope {
     let notes: String?
     let quantity: Int?
     let reportID, reporterID, reporterRole, sku: String?
-    let reasonCode, executionAction, executionMode, gateway: String?
-    let policySource, providerReference, transactionID, preOrderID: String?
-    let handlingClass: String?
+    let reasonCode: String?
+    let cardMinor, cashMinor: Int?
+    let executionAction, executionMode, gateway, policySource: String?
+    let providerReference, transactionID, batchID: String?
+    let netPayoutMinor: Int?
+    let railReference, preOrderID, handlingClass: String?
     let isHazardous, isPerishable, requiresColdChain: Bool?
     let storageTempMaxC, storageTempMinC: Double?
     let promotionID: String?
@@ -95,12 +109,13 @@ struct PegasusWSEventEnvelope {
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
-    let committedUnits, coverageDays: Int?
-    let coverageStartDate, linkedTransferID, lockID: String?
-    let pendingConfirmationUnits, projectedUnits: Int?
-    let requestedBy: String?
-    let requestedUnits: Int?
-    let transferMode, fromWarehouse, toWarehouse: String?
+    let breachReason, breachedAt, cutoffAppliedAt: String?
+    let fillRateTargetBps: Int?
+    let guaranteedDeliveryDate: String?
+    let minOrderMinor: Int?
+    let promiseType: String?
+    let slaHours: Int?
+    let fromWarehouse, toWarehouse: String?
     let isActive: Bool?
     let unavailableNote, unavailableReason: String?
 }
@@ -143,6 +158,8 @@ enum TypeEnum: String {
     case deliverySessionUpdated
     case demandBaselineUpdated
     case demandSignal
+    case dispatchPlanned
+    case dispatchRequested
     case dispatchZoneOverride
     case driverAvailabilityChanged
     case driverCreated
@@ -168,6 +185,9 @@ enum TypeEnum: String {
     case logisticsExceptionReported
     case logisticsTelemetry
     case lookAheadCompleted
+    case lotQuarantined
+    case lotRecallInitiated
+    case lotReleased
     case loyaltyPointsEarned
     case manifestCancelled
     case manifestCompleted
@@ -231,6 +251,8 @@ enum TypeEnum: String {
     case promotionChanged
     case proximityUnlocked
     case pullMatrixCompleted
+    case reassignHandshakeCompleted
+    case receivingVarianceReported
     case refundFailed
     case refundRequested
     case refundSucceeded
@@ -293,6 +315,8 @@ enum TypeEnum: String {
     case supplierProfileUpdated
     case supplierReturnCreated
     case supplierReturnResolved
+    case supplierServicePromiseBreached
+    case supplierServicePromiseCreated
     case supplierUpdated
     case supplyRequestAccepted
     case supplyRequestUpdate

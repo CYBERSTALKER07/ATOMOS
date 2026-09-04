@@ -181,14 +181,18 @@ func (s *Service) insertParentOrder(ctx context.Context, parentID, retailerID, c
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.InsertMap("ParentOrders", map[string]any{
-				"ParentOrderId": parentID,
-				"RetailerId":    retailerID,
-				"Status":        parentStatusPending,
-				"Currency":      currency,
-				"TotalMinor":    int64(0),
-				"ChildCount":    int64(childCount),
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
+				"ParentOrderId":        parentID,
+				"RetailerId":           retailerID,
+				"Status":               parentStatusPending,
+				"Currency":             currency,
+				"TotalMinor":           int64(0),
+				"ChildCount":           int64(childCount),
+				"SagaState":            SagaStatePending,
+				"ExpectedChildCount":   int64(childCount),
+				"CreatedChildOrderIds": []string{},
+				"LeaseExpiresAt":       time.Now().UTC().Add(SagaLeaseDuration),
+				"CreatedAt":            spanner.CommitTimestamp,
+				"UpdatedAt":            spanner.CommitTimestamp,
 			}),
 		}); err != nil {
 			return err
@@ -202,6 +206,7 @@ func (s *Service) insertParentOrder(ctx context.Context, parentID, retailerID, c
 			Currency:      currency,
 			TotalMinor:    0,
 			ChildCount:    childCount,
+			SagaState:     SagaStatePending,
 		}); err != nil {
 			return err
 		}

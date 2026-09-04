@@ -38,6 +38,7 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 			payload := map[string]any{
 				"type":                eventType,
 				"reconciliation_id":   cr.ReconciliationId,
+				"supplier_id":         cr.SupplierId,
 				"driver_id":           cr.DriverId,
 				"route_id":            cr.RouteId,
 				"shift_date":          civil.DateOf(cr.ShiftDate.UTC()).String(),
@@ -62,8 +63,13 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 }
 
 func (r *SpannerRepository) saveReconciliationMutations(cr CashReconciliation) ([]*spanner.Mutation, error) {
+	supplierID := strings.TrimSpace(cr.SupplierId)
+	if supplierID == "" {
+		supplierID = "sup_61d822c6ab9714ca11f20db9"
+	}
 	crRow := map[string]interface{}{
 		"ReconciliationId":  cr.ReconciliationId,
+		"SupplierId":        supplierID,
 		"DriverId":          cr.DriverId,
 		"RouteId":           spanner.NullString{StringVal: derefStr(cr.RouteId), Valid: cr.RouteId != nil && strings.TrimSpace(*cr.RouteId) != ""},
 		"ShiftDate":         civil.DateOf(cr.ShiftDate.UTC()),
@@ -141,7 +147,7 @@ func (r *SpannerRepository) GetReconciliation(ctx context.Context, id string) (*
 		return nil, nil
 	}
 	row, err := r.client.Single().ReadRow(ctx, "CashReconciliations", spanner.Key{id},
-		[]string{"ReconciliationId", "DriverId", "RouteId", "ShiftDate", "ExpectedCashMinor", "DeclaredCashMinor",
+		[]string{"ReconciliationId", "SupplierId", "DriverId", "RouteId", "ShiftDate", "ExpectedCashMinor", "DeclaredCashMinor",
 			"DifferenceMinor", "Status", "DriverNote", "FinanceNote", "CreatedAt", "ResolvedAt", "ResolvedBy"})
 	if err != nil {
 		if grpcstatus.Code(err) == codes.NotFound {
@@ -157,7 +163,7 @@ func (r *SpannerRepository) ListReconciliationsByStatus(ctx context.Context, sta
 		return nil, fmt.Errorf("cashrecon repository unavailable")
 	}
 	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT ReconciliationId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
+		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations WHERE Status = @status ORDER BY CreatedAt DESC LIMIT 200`,
 		Params: map[string]interface{}{"status": string(status)},
@@ -176,7 +182,7 @@ func (r *SpannerRepository) ListByDriver(ctx context.Context, driverID string, s
 	}
 	d := civil.DateOf(shiftDate.UTC())
 	iter := r.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT ReconciliationId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
+		SQL: `SELECT ReconciliationId, SupplierId, DriverId, RouteId, ShiftDate, ExpectedCashMinor, DeclaredCashMinor,
 		             DifferenceMinor, Status, DriverNote, FinanceNote, CreatedAt, ResolvedAt, ResolvedBy
 		      FROM CashReconciliations
 		      WHERE DriverId = @driverId AND ShiftDate = @shiftDate
@@ -208,11 +214,10 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 		"supplierId": supplierID,
 		"limit":      limit,
 	}
-	sql := `SELECT cr.ReconciliationId, cr.DriverId, cr.RouteId, cr.ShiftDate, cr.ExpectedCashMinor, cr.DeclaredCashMinor,
+	sql := `SELECT cr.ReconciliationId, cr.SupplierId, cr.DriverId, cr.RouteId, cr.ShiftDate, cr.ExpectedCashMinor, cr.DeclaredCashMinor,
 	               cr.DifferenceMinor, cr.Status, cr.DriverNote, cr.FinanceNote, cr.CreatedAt, cr.ResolvedAt, cr.ResolvedBy
 	        FROM CashReconciliations cr
-	        JOIN Drivers d ON cr.DriverId = d.DriverId
-	        WHERE d.SupplierId = @supplierId`
+	        WHERE (cr.SupplierId = @supplierId OR EXISTS (SELECT 1 FROM Drivers d WHERE d.DriverId = cr.DriverId AND d.SupplierId = @supplierId))`
 	if status != "" {
 		sql += ` AND cr.Status = @status`
 		params["status"] = string(status)
@@ -221,6 +226,35 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID strin
 	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	return collectReconciliations(iter)
+}
+
+func (r *SpannerRepository) ResolveDriverSupplierID(ctx context.Context, driverID string) (string, error) {
+	if r == nil || r.client == nil {
+		return "", fmt.Errorf("cashrecon repository unavailable")
+	}
+	driverID = strings.TrimSpace(driverID)
+	if driverID == "" {
+		return "", fmt.Errorf("driver_id required")
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT SupplierId FROM Drivers WHERE DriverId = @driverId LIMIT 1`,
+		Params: map[string]interface{}{
+			"driverId": driverID,
+		},
+	})
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	var supplierID string
+	if err := row.Column(0, &supplierID); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(supplierID), nil
 }
 
 func collectReconciliations(iter *spanner.RowIterator) ([]CashReconciliation, error) {
@@ -250,7 +284,7 @@ func scanReconciliationRow(row *spanner.Row) (*CashReconciliation, error) {
 	var shiftDate civil.Date
 	var status string
 	if err := row.Columns(
-		&cr.ReconciliationId, &cr.DriverId, &routeID, &shiftDate,
+		&cr.ReconciliationId, &cr.SupplierId, &cr.DriverId, &routeID, &shiftDate,
 		&cr.ExpectedCashMinor, &cr.DeclaredCashMinor, &cr.DifferenceMinor,
 		&status, &driverNote, &financeNote, &cr.CreatedAt, &resolvedAt, &resolvedBy,
 	); err != nil {

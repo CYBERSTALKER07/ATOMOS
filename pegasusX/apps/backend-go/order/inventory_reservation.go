@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
@@ -172,7 +174,19 @@ func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) 
 			if err := ReserveLineItemsInTxn(ctx, txn, c.supplierID, c.warehouseID, c.lineItems); err != nil {
 				return err
 			}
-			return insertStockReservationMarkerInTxn(txn, c.orderID)
+			if err := insertStockReservationMarkerInTxn(txn, c.orderID); err != nil {
+				return err
+			}
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, c.orderID, events.TopicOrders, map[string]any{
+				"type":         "ORDER_INVENTORY_RESERVED",
+				"order_id":     c.orderID,
+				"supplier_id":  c.supplierID,
+				"warehouse_id": c.warehouseID,
+			}); err != nil {
+				return err
+			}
+			return buf.Flush(ctx)
 		})
 		if err != nil {
 			if s.log != nil {

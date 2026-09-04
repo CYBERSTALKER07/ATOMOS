@@ -8,9 +8,11 @@ import (
 )
 
 type twinRepoStub struct {
-	lastRouteID string
-	lastLat     float64
-	lastLng     float64
+	lastRouteID    string
+	lastSupplierID string
+	lastDriverID   string
+	lastLat        float64
+	lastLng        float64
 }
 
 func (s *twinRepoStub) GetRouteTwin(ctx context.Context, routeID string) (*RouteTwinView, error) {
@@ -27,6 +29,8 @@ func (s *twinRepoStub) GetStopTwin(ctx context.Context, routeID, stopID string) 
 }
 func (s *twinRepoStub) SaveRouteTwin(ctx context.Context, rt RouteTwin) error {
 	s.lastRouteID = rt.RouteID
+	s.lastSupplierID = rt.SupplierID
+	s.lastDriverID = rt.DriverID
 	s.lastLat = rt.CurrentLat
 	s.lastLng = rt.CurrentLng
 	return nil
@@ -56,6 +60,31 @@ func TestHandleEvent_DriverLocationTelemetryEnvelope(t *testing.T) {
 	}
 	if repo.lastLat != 41.3 || repo.lastLng != 69.2 {
 		t.Fatalf("coords=(%v,%v)", repo.lastLat, repo.lastLng)
+	}
+}
+
+func TestHandleEvent_RouteCreated(t *testing.T) {
+	repo := &twinRepoStub{}
+	svc := NewService(ServiceConfig{Repo: repo})
+	c := NewEventConsumer(svc, nil)
+	raw := []byte(`{
+		"type":"ROUTE_CREATED",
+		"route_id":"route-42",
+		"supplier_id":"sup-test",
+		"driver_id":"drv-test",
+		"order_count":5
+	}`)
+	if err := c.HandleEvent(context.Background(), kafka.Message{Value: raw}); err != nil {
+		t.Fatal(err)
+	}
+	if repo.lastRouteID != "route-42" {
+		t.Fatalf("route_id=%q want route-42", repo.lastRouteID)
+	}
+	if repo.lastSupplierID != "sup-test" {
+		t.Fatalf("supplier_id=%q want sup-test", repo.lastSupplierID)
+	}
+	if repo.lastDriverID != "drv-test" {
+		t.Fatalf("driver_id=%q want drv-test", repo.lastDriverID)
 	}
 }
 

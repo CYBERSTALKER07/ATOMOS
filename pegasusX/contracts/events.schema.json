@@ -37,6 +37,56 @@
       "title": "AIRecommendationPayload",
       "type": "object"
     },
+    "ARInvoicePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "aging_bucket": {
+          "type": "string"
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "balance_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "due_at": {
+          "type": "string"
+        },
+        "dunning_step": {
+          "type": "integer"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "last_dunned_at": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "principal_minor": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "invoice_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "ARInvoicePayload",
+      "type": "object"
+    },
     "BuyerAcceptancePayload": {
       "additionalProperties": true,
       "properties": {
@@ -489,10 +539,19 @@
           "type": "string"
         },
         "base_event": {},
+        "card_minor": {
+          "type": "integer"
+        },
+        "cash_minor": {
+          "type": "integer"
+        },
         "contact_name": {
           "type": "string"
         },
         "currency": {
+          "type": "string"
+        },
+        "driver_id": {
           "type": "string"
         },
         "email": {
@@ -720,6 +779,61 @@
       "title": "LogisticsExceptionPayload",
       "type": "object"
     },
+    "LotRecallPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "base_event": {},
+        "campaign_id": {
+          "type": "string"
+        },
+        "impacted_lot_count": {
+          "type": "integer"
+        },
+        "impacted_order_count": {
+          "type": "integer"
+        },
+        "impacted_units_count": {
+          "type": "integer"
+        },
+        "lot_code": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "recall_reason": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "product_id",
+        "supplier_id"
+      ],
+      "title": "LotRecallPayload",
+      "type": "object"
+    },
     "ManifestPayload": {
       "additionalProperties": true,
       "properties": {
@@ -932,6 +1046,9 @@
         "manifest_id": {
           "type": "string"
         },
+        "message": {
+          "type": "string"
+        },
         "negotiation_id": {
           "type": "string"
         },
@@ -1008,6 +1125,40 @@
         "supplier_id"
       ],
       "title": "OrderPayload",
+      "type": "object"
+    },
+    "PayoutBatchPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "batch_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "net_payout_minor": {
+          "type": "integer"
+        },
+        "rail_reference": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "batch_id",
+        "currency",
+        "net_payout_minor",
+        "status",
+        "supplier_id"
+      ],
+      "title": "PayoutBatchPayload",
       "type": "object"
     },
     "PlanningPayload": {
@@ -1618,6 +1769,69 @@
       "title": "SupplierPayload",
       "type": "object"
     },
+    "SupplierServicePromisePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "breach_reason": {
+          "type": "string"
+        },
+        "breached_at": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "cutoff_applied_at": {
+          "type": "string"
+        },
+        "fill_rate_target_bps": {
+          "type": "integer"
+        },
+        "guaranteed_delivery_date": {
+          "type": "string"
+        },
+        "min_order_minor": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "promise_type": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "sla_hours": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "fill_rate_target_bps",
+        "guaranteed_delivery_date",
+        "min_order_minor",
+        "order_id",
+        "promise_type",
+        "retailer_id",
+        "sla_hours",
+        "status",
+        "supplier_id"
+      ],
+      "title": "SupplierServicePromisePayload",
+      "type": "object"
+    },
     "SupplyRequestPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1718,11 +1932,6 @@
         "base_event"
       ],
       "title": "SystemPayload",
-      "type": "object"
-    },
-    "UnknownEventPayload": {
-      "additionalProperties": true,
-      "title": "UnknownEventPayload",
       "type": "object"
     },
     "VehiclePayload": {
@@ -1941,7 +2150,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ARInvoicePayload"
         },
         {
           "properties": {
@@ -1960,7 +2169,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ARInvoicePayload"
         },
         {
           "properties": {
@@ -1979,7 +2188,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ARInvoicePayload"
         },
         {
           "properties": {
@@ -1998,7 +2207,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ARInvoicePayload"
         },
         {
           "properties": {
@@ -2017,7 +2226,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/ARInvoicePayload"
         },
         {
           "properties": {
@@ -2283,7 +2492,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -2302,7 +2511,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -2321,7 +2530,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -2469,6 +2678,44 @@
         }
       ],
       "title": "DemandSignalEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoutePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_PLANNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchPlannedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoutePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchRequestedEnvelope"
     },
     {
       "allOf": [
@@ -2834,7 +3081,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -2853,7 +3100,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -2944,6 +3191,63 @@
         }
       ],
       "title": "LookAheadCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_QUARANTINED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotQuarantinedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_RECALL_INITIATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotRecallInitiatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotReleasedEnvelope"
     },
     {
       "allOf": [
@@ -3461,7 +3765,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -3480,7 +3784,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -3575,7 +3879,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PayoutBatchPayload"
         },
         {
           "properties": {
@@ -3594,7 +3898,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PayoutBatchPayload"
         },
         {
           "properties": {
@@ -3613,7 +3917,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PayoutBatchPayload"
         },
         {
           "properties": {
@@ -3632,7 +3936,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PayoutBatchPayload"
         },
         {
           "properties": {
@@ -3651,7 +3955,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/PayoutBatchPayload"
         },
         {
           "properties": {
@@ -4084,6 +4388,44 @@
         }
       ],
       "title": "PullMatrixCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REASSIGN_HANDSHAKE_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReassignHandshakeCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RECEIVING_VARIANCE_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReceivingVarianceReportedEnvelope"
     },
     {
       "allOf": [
@@ -5152,7 +5494,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -5171,7 +5513,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/OrderPayload"
+          "$ref": "#/$defs/LotRecallPayload"
         },
         {
           "properties": {
@@ -5262,6 +5604,44 @@
         }
       ],
       "title": "SupplierReturnResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplierServicePromisePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_SERVICE_PROMISE_BREACHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierServicePromiseBreachedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplierServicePromisePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_SERVICE_PROMISE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierServicePromiseCreatedEnvelope"
     },
     {
       "allOf": [
@@ -5570,7 +5950,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -5589,7 +5969,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -5608,7 +5988,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -5627,7 +6007,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/UnknownEventPayload"
+          "$ref": "#/$defs/WarehousePayload"
         },
         {
           "properties": {
@@ -5736,6 +6116,8 @@
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_BASELINE_UPDATED",
         "DEMAND_SIGNAL",
+        "DISPATCH_PLANNED",
+        "DISPATCH_REQUESTED",
         "DISPATCH_ZONE_OVERRIDE",
         "DRIVER_AVAILABILITY_CHANGED",
         "DRIVER_CREATED",
@@ -5761,6 +6143,9 @@
         "LOGISTICS_EXCEPTION_REPORTED",
         "LOGISTICS_TELEMETRY",
         "LOOK_AHEAD_COMPLETED",
+        "LOT_QUARANTINED",
+        "LOT_RECALL_INITIATED",
+        "LOT_RELEASED",
         "LOYALTY_POINTS_EARNED",
         "MANIFEST_CANCELLED",
         "MANIFEST_COMPLETED",
@@ -5821,6 +6206,8 @@
         "PROMOTION_CHANGED",
         "PROXIMITY_UNLOCKED",
         "PULL_MATRIX_COMPLETED",
+        "REASSIGN_HANDSHAKE_COMPLETED",
+        "RECEIVING_VARIANCE_REPORTED",
         "REFUND_FAILED",
         "REFUND_REQUESTED",
         "REFUND_SUCCEEDED",
@@ -5883,6 +6270,8 @@
         "SUPPLIER_PROFILE_UPDATED",
         "SUPPLIER_RETURN_CREATED",
         "SUPPLIER_RETURN_RESOLVED",
+        "SUPPLIER_SERVICE_PROMISE_BREACHED",
+        "SUPPLIER_SERVICE_PROMISE_CREATED",
         "SUPPLIER_UPDATED",
         "SUPPLY_REQUEST_ACCEPTED",
         "SUPPLY_REQUEST_UPDATE",
@@ -5920,11 +6309,11 @@
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
     "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
     "ALLOCATION_POLICY_APPLIED": "OrderPayload",
-    "AR_INVOICE_AGING_UPDATED": "UnknownEventPayload",
-    "AR_INVOICE_DUNNED": "UnknownEventPayload",
-    "AR_INVOICE_OPENED": "UnknownEventPayload",
-    "AR_INVOICE_PAYMENT": "UnknownEventPayload",
-    "AR_INVOICE_SETTLED": "UnknownEventPayload",
+    "AR_INVOICE_AGING_UPDATED": "ARInvoicePayload",
+    "AR_INVOICE_DUNNED": "ARInvoicePayload",
+    "AR_INVOICE_OPENED": "ARInvoicePayload",
+    "AR_INVOICE_PAYMENT": "ARInvoicePayload",
+    "AR_INVOICE_SETTLED": "ARInvoicePayload",
     "BUYER_ACCEPTANCE_ACCEPTED": "BuyerAcceptancePayload",
     "BUYER_ACCEPTANCE_EXPIRED": "BuyerAcceptancePayload",
     "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
@@ -5938,9 +6327,9 @@
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",
-    "CONTROL_TOWER_PLAYBOOK_CHANGED": "OrderPayload",
-    "CONTROL_TOWER_RUN_CREATED": "OrderPayload",
-    "CONTROL_TOWER_RUN_UPDATED": "OrderPayload",
+    "CONTROL_TOWER_PLAYBOOK_CHANGED": "LotRecallPayload",
+    "CONTROL_TOWER_RUN_CREATED": "LotRecallPayload",
+    "CONTROL_TOWER_RUN_UPDATED": "LotRecallPayload",
     "CREDIT_DELIVERY_MARKED": "CreditDeliveryPayload",
     "CREDIT_DELIVERY_RESOLVED": "CreditDeliveryPayload",
     "CREDIT_LEAVE": "ShopClosedBypassOffloadPayload",
@@ -5948,6 +6337,8 @@
     "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
     "DEMAND_BASELINE_UPDATED": "PlanningPayload",
     "DEMAND_SIGNAL": "RetailerPayload",
+    "DISPATCH_PLANNED": "RoutePayload",
+    "DISPATCH_REQUESTED": "RoutePayload",
     "DISPATCH_ZONE_OVERRIDE": "PlanningPayload",
     "DRIVER_AVAILABILITY_CHANGED": "DriverPayload",
     "DRIVER_CREATED": "DriverPayload",
@@ -5967,12 +6358,15 @@
     "FREEZE_LOCK_RELEASED": "SystemPayload",
     "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportPayload",
     "INVENTORY_IMPORT_UPLOADED": "InventoryImportPayload",
-    "INVENTORY_POLICY_UPDATED": "UnknownEventPayload",
-    "INVENTORY_QUANTITY_UPDATED": "UnknownEventPayload",
+    "INVENTORY_POLICY_UPDATED": "WarehousePayload",
+    "INVENTORY_QUANTITY_UPDATED": "WarehousePayload",
     "INVENTORY_SYNC_COMPLETE": "SyncPayload",
     "LOGISTICS_EXCEPTION_REPORTED": "LogisticsExceptionPayload",
     "LOGISTICS_TELEMETRY": "LogisticsExceptionPayload",
     "LOOK_AHEAD_COMPLETED": "SupplyRequestPayload",
+    "LOT_QUARANTINED": "LotRecallPayload",
+    "LOT_RECALL_INITIATED": "LotRecallPayload",
+    "LOT_RELEASED": "LotRecallPayload",
     "LOYALTY_POINTS_EARNED": "SupplyRequestPayload",
     "MANIFEST_CANCELLED": "ManifestPayload",
     "MANIFEST_COMPLETED": "ManifestPayload",
@@ -6000,17 +6394,17 @@
     "ORDER_REASSIGNED": "OrderPayload",
     "ORDER_STATUS_CHANGED": "OrderPayload",
     "ORDER_VALIDATION_FAILED": "OrderPayload",
-    "PARENT_ORDER_CREATED": "OrderPayload",
-    "PARENT_ORDER_UPDATED": "OrderPayload",
+    "PARENT_ORDER_CREATED": "LotRecallPayload",
+    "PARENT_ORDER_UPDATED": "LotRecallPayload",
     "PARTIAL_OFFLOAD": "ShopClosedBypassOffloadPayload",
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_FAILED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",
-    "PAYOUT_BATCH_DISPATCHED": "UnknownEventPayload",
-    "PAYOUT_BATCH_EXPORTED": "UnknownEventPayload",
-    "PAYOUT_BATCH_GENERATED": "UnknownEventPayload",
-    "PAYOUT_BATCH_PAID": "UnknownEventPayload",
-    "PAYOUT_POLICY_UPDATED": "UnknownEventPayload",
+    "PAYOUT_BATCH_DISPATCHED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_EXPORTED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_GENERATED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_PAID": "PayoutBatchPayload",
+    "PAYOUT_POLICY_UPDATED": "PayoutBatchPayload",
     "PLANNING_AGENT_BROADCAST": "PlanningPayload",
     "PLANNING_CONFIDENCE_DOWNGRADED": "PlanningPayload",
     "PLANNING_FORECAST_UPDATED": "PlanningPayload",
@@ -6033,6 +6427,8 @@
     "PROMOTION_CHANGED": "PromotionPayload",
     "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
     "PULL_MATRIX_COMPLETED": "SupplyRequestPayload",
+    "REASSIGN_HANDSHAKE_COMPLETED": "OrderPayload",
+    "RECEIVING_VARIANCE_REPORTED": "RetailerPayload",
     "REFUND_FAILED": "FinancePayload",
     "REFUND_REQUESTED": "FinancePayload",
     "REFUND_SUCCEEDED": "FinancePayload",
@@ -6089,12 +6485,14 @@
     "SUPPLIER_BILLING_UPDATED": "SupplierPayload",
     "SUPPLIER_BROADCAST": "WarehousePayload",
     "SUPPLIER_CREATED": "SupplierPayload",
-    "SUPPLIER_CREDIT_PROGRAM_CHANGED": "OrderPayload",
-    "SUPPLIER_CREDIT_TERMS_CHANGED": "OrderPayload",
+    "SUPPLIER_CREDIT_PROGRAM_CHANGED": "LotRecallPayload",
+    "SUPPLIER_CREDIT_TERMS_CHANGED": "LotRecallPayload",
     "SUPPLIER_MEMBER_ADDED": "SupplierPayload",
     "SUPPLIER_PROFILE_UPDATED": "SupplierPayload",
     "SUPPLIER_RETURN_CREATED": "ReturnPayload",
     "SUPPLIER_RETURN_RESOLVED": "ReturnPayload",
+    "SUPPLIER_SERVICE_PROMISE_BREACHED": "SupplierServicePromisePayload",
+    "SUPPLIER_SERVICE_PROMISE_CREATED": "SupplierServicePromisePayload",
     "SUPPLIER_UPDATED": "SupplierPayload",
     "SUPPLY_REQUEST_ACCEPTED": "SupplyRequestPayload",
     "SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
@@ -6111,10 +6509,10 @@
     "WAREHOUSE_SUPPLY_REQUEST_OPENED": "SupplyRequestPayload",
     "WAREHOUSE_TRANSFER_CREATED": "WarehouseTransferPayload",
     "WAREHOUSE_TRANSFER_RECEIVED": "WarehouseTransferPayload",
-    "WMS_CYCLE_APPROVED": "UnknownEventPayload",
-    "WMS_PICK_CONFIRMED": "UnknownEventPayload",
-    "WMS_PUTAWAY": "UnknownEventPayload",
-    "WMS_TEMPERATURE_BREACH": "UnknownEventPayload",
+    "WMS_CYCLE_APPROVED": "WarehousePayload",
+    "WMS_PICK_CONFIRMED": "WarehousePayload",
+    "WMS_PUTAWAY": "WarehousePayload",
+    "WMS_TEMPERATURE_BREACH": "WarehousePayload",
     "planning.meio.recommendation.v1": "PlanningPayload",
     "planning.scenario.published.v1": "PlanningPayload",
     "planning.signal.ingest.v1": "PlanningPayload"

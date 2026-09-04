@@ -168,6 +168,9 @@ func (r *Relay) drainOnce(ctx context.Context) {
 			continue
 		}
 		published = append(published, e.EventID)
+		if !e.CreatedAt.IsZero() {
+			RecordPublishLag(time.Since(e.CreatedAt).Seconds())
+		}
 	}
 	if len(published) > 0 {
 		markCtx, cancelMark := context.WithTimeout(ctx, r.cfg.StoreTimeout)

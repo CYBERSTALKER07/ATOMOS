@@ -59,3 +59,21 @@ func TestRunChunkedTransactionNilClient(t *testing.T) {
 		t.Fatalf("expected 'spanner: nil client', got: %v", err)
 	}
 }
+
+func TestRunReadOnlyTransactionNilClient(t *testing.T) {
+	t.Parallel()
+	err := RunReadOnlyTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadOnlyTransaction) error {
+		return nil
+	})
+	if err == nil || err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got %v", err)
+	}
+}
+
+func TestReadOnlyTxnFromContext_Nil(t *testing.T) {
+	t.Parallel()
+	txn := ReadOnlyTxnFromContext(context.Background())
+	if txn != nil {
+		t.Fatalf("expected nil txn from empty context, got %v", txn)
+	}
+}

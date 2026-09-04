@@ -52,3 +52,50 @@ func TestInjectRouteID(t *testing.T) {
 		t.Fatalf("data.route_id = %v, want route-9", data["route_id"])
 	}
 }
+
+type fakeHeaderPublisher struct {
+	topic   string
+	key     string
+	headers map[string][]byte
+	value   []byte
+}
+
+func (f *fakeHeaderPublisher) Publish(_ context.Context, topic string, key, value []byte) error {
+	f.topic = topic
+	f.key = string(key)
+	f.value = value
+	return nil
+}
+
+func (f *fakeHeaderPublisher) PublishWithHeaders(_ context.Context, topic string, key, value []byte, headers map[string][]byte) error {
+	f.topic = topic
+	f.key = string(key)
+	f.value = value
+	f.headers = headers
+	return nil
+}
+
+func TestDirectKafkaLocationBusEmitter_StreamsDirectlyToKafka(t *testing.T) {
+	pub := &fakeHeaderPublisher{}
+	emitter := NewDirectKafkaLocationBusEmitter(pub, nil)
+
+	ctx := context.Background()
+	payload := []byte(`{"type":"DRIVER_LOCATION_UPDATED","data":{"driver_id":"drv-direct-1"}}`)
+	err := emitter.EmitDriverLocation(ctx, "sup-1", "drv-direct-1", "rt-100", payload)
+	if err != nil {
+		t.Fatalf("expected nil err, got %v", err)
+	}
+
+	if pub.topic != "pegasusx-realtime" {
+		t.Errorf("expected topic pegasusx-realtime, got %s", pub.topic)
+	}
+	if pub.key != "drv-direct-1" {
+		t.Errorf("expected key drv-direct-1, got %s", pub.key)
+	}
+	if string(pub.headers["driver_id"]) != "drv-direct-1" {
+		t.Errorf("expected header driver_id drv-direct-1, got %s", string(pub.headers["driver_id"]))
+	}
+	if string(pub.headers["route_id"]) != "rt-100" {
+		t.Errorf("expected header route_id rt-100, got %s", string(pub.headers["route_id"]))
+	}
+}

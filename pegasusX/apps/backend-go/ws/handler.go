@@ -78,11 +78,79 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			return
 		}
 
+		replayMissedEvents(req, ident, gConn, hubs, cfg)
+
 		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, hubs, log)
 	})
 
 	r.Get("/v1/ws", wsHandler)
 	r.Get("/v1/events", HandleSSEEvents(log, jwtSecret, platformSvc, hubs, cfg))
+}
+
+func parseReconnectParams(req *http.Request) (int64, string) {
+	if req == nil {
+		return 0, ""
+	}
+	lastEventID := strings.TrimSpace(req.Header.Get("Last-Event-ID"))
+	if lastEventID == "" {
+		lastEventID = strings.TrimSpace(req.URL.Query().Get("last_event_id"))
+	}
+	var sinceSeq int64
+	if seqStr := strings.TrimSpace(req.URL.Query().Get("since_seq")); seqStr != "" {
+		if s, err := strconv.ParseInt(seqStr, 10, 64); err == nil {
+			sinceSeq = s
+		}
+	}
+	return sinceSeq, lastEventID
+}
+
+// replayMissedEvents inspects reconnect headers/params and replays buffered messages from subscribed hubs.
+func replayMissedEvents(req *http.Request, ident auth.Claims, conn Connection, hubs roleHubs, cfg RegisterConfig) {
+	sinceSeq, lastEventID := parseReconnectParams(req)
+	if sinceSeq <= 0 && lastEventID == "" {
+		return
+	}
+	ctx := req.Context()
+	switch ident.Role {
+	case auth.RoleDriver:
+		if hubs.driver != nil && ident.Subject != "" {
+			hubs.driver.ReplaySince(ctx, "driver:"+ident.Subject, sinceSeq, lastEventID, conn)
+		}
+		if hubs.telemetry != nil && ident.Subject != "" {
+			hubs.telemetry.ReplaySince(ctx, "telemetry:driver:"+ident.Subject, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleRetailer:
+		if hubs.retailer != nil {
+			orgID := auth.ResolveRetailerOrgID(ident)
+			if orgID != "" {
+				hubs.retailer.ReplaySince(ctx, "retailer:"+orgID, sinceSeq, lastEventID, conn)
+			}
+		}
+	case auth.RoleAdmin:
+		if hubs.supplier != nil && ident.SupplierID != "" {
+			hubs.supplier.ReplaySince(ctx, "supplier:"+ident.SupplierID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
+		if hubs.warehouse != nil && ident.HomeNodeID != "" {
+			hubs.warehouse.ReplaySince(ctx, "warehouse:"+ident.HomeNodeID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleFactoryAdmin, auth.RoleFactory:
+		if hubs.factory != nil && ident.HomeNodeID != "" {
+			hubs.factory.ReplaySince(ctx, "factory:"+ident.HomeNodeID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RolePayload:
+		if hubs.payload != nil {
+			for _, roomID := range []string{ident.Subject, ident.SupplierID} {
+				if roomID != "" {
+					hubs.payload.ReplaySince(ctx, "payload:"+roomID, sinceSeq, lastEventID, conn)
+				}
+			}
+		}
+	case auth.RolePlatformAdmin:
+		if hubs.platformAdmin != nil {
+			hubs.platformAdmin.ReplaySince(ctx, PlatformAdminRoom(), sinceSeq, lastEventID, conn)
+		}
+	}
 }
 
 func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) {

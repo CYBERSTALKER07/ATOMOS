@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -182,10 +184,6 @@ func (s *Service) collectFuzzyCandidates(ctx context.Context, brandID, name stri
 	if err != nil {
 		return nil, err
 	}
-	all, err := s.repo.ListAll(ctx, 500)
-	if err != nil {
-		return nil, err
-	}
 	seen := map[string]bool{}
 	var scored []scoredCandidate
 	add := func(gp GlobalProduct) {
@@ -203,6 +201,19 @@ func (s *Service) collectFuzzyCandidates(ctx context.Context, brandID, name stri
 			gpUom = "PALLET"
 		}
 		sc := FuzzyScore(brandID, name, pack, uom, gp.BrandID, gp.Name, gp.PackQty, gpUom)
+		// Trigram blend for sub-string and partial typo resilience
+		triSim := TrigramSimilarity(name, gp.Name)
+		if triSim > 0.4 {
+			brandBonus := 0.0
+			if brandID != "" && brandID == gp.BrandID {
+				brandBonus = 0.45
+			}
+			packBonus := 0.0
+			if pack == gp.PackQty {
+				packBonus = 0.1
+			}
+			sc = math.Max(sc, 0.45*triSim+brandBonus+packBonus)
+		}
 		if sc > 0 {
 			scored = append(scored, scoredCandidate{GlobalProductID: gp.GlobalProductID, Score: sc})
 		}
@@ -210,17 +221,22 @@ func (s *Service) collectFuzzyCandidates(ctx context.Context, brandID, name stri
 	for _, gp := range byKey {
 		add(gp)
 	}
-	for _, gp := range all {
-		add(gp)
-	}
-	// sort desc
-	for i := 0; i < len(scored); i++ {
-		for j := i + 1; j < len(scored); j++ {
-			if scored[j].Score > scored[i].Score {
-				scored[i], scored[j] = scored[j], scored[i]
+
+	all, err := s.repo.ListAll(ctx, 100)
+	if err == nil {
+		for _, gp := range all {
+			// Fast pre-filter: skip items with completely mismatched pack
+			if gp.PackQty > 0 && pack > 0 && gp.PackQty != pack {
+				continue
 			}
+			add(gp)
 		}
 	}
+
+	// Sort desc O(N log N)
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].Score > scored[j].Score
+	})
 	return scored, nil
 }
 

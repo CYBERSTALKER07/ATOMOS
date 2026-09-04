@@ -192,7 +192,8 @@ func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error
 	cutoff := today.AddDate(0, 0, 1)
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
-		      WHERE Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
+		      WHERE SupplierId IS NOT NULL
+		        AND Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
 		        AND OrderSource = @src
 		        AND RequestedDeliveryDate <= @cutoff
 		      LIMIT 100`,
@@ -309,7 +310,8 @@ func (s *Service) listScheduledPreorders(ctx context.Context, limit int) ([]Orde
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
-		      WHERE Status = 'SCHEDULED' AND OrderSource = @src
+		      WHERE SupplierId IS NOT NULL
+		        AND Status = 'SCHEDULED' AND OrderSource = @src
 		      ORDER BY RequestedDeliveryDate ASC LIMIT @lim`,
 		Params: map[string]any{"src": string(OrderSourceManualPreorder), "lim": limit},
 	}

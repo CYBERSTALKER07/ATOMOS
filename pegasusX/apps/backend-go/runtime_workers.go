@@ -9,6 +9,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
@@ -108,6 +109,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.RouteAnalyticsWorker != nil {
 		go app.RouteAnalyticsWorker.RunNightlyWorker(ctx, 24*time.Hour)
 		slog.Info("route analytics worker started")
+	}
+	if app.OrderService != nil {
+		go order.StartSagaRecoveryWorker(ctx, app.OrderService, 15*time.Second)
+		slog.Info("order saga recovery worker started", "interval", "15s")
 	}
 	supplierID := ""
 	if app.Supplier.SupplierID != "" {
@@ -302,11 +307,18 @@ func hubList(app *bootstrap.App) []*ws.Hub {
 	}
 }
 
-// locationBusEmitter returns the throttled outbox emitter for driver location
-// when Spanner is available, else nil (bus emit disabled, WS/Redis unaffected).
+// locationBusEmitter returns the direct Kafka emitter for driver location when available,
+// falling back to Spanner outbox only when Kafka publisher is unconfigured.
+// This decouples high-frequency driver GPS telemetry from Spanner write mutations.
 func locationBusEmitter(app *bootstrap.App) telemetryroutes.LocationBusEmitter {
-	if app == nil || app.Spanner == nil {
+	if app == nil {
 		return nil
 	}
-	return telemetryroutes.NewSpannerLocationBusEmitter(app.Spanner)
+	if app.OutboxPublisher != nil {
+		return telemetryroutes.NewDirectKafkaLocationBusEmitter(app.OutboxPublisher, slog.Default())
+	}
+	if app.Spanner != nil {
+		return telemetryroutes.NewSpannerLocationBusEmitter(app.Spanner)
+	}
+	return nil
 }

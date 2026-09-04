@@ -3,18 +3,19 @@ package twin
 import "time"
 
 type RouteTwin struct {
-	RouteID            string
-	DriverID           string
-	Status             string
-	CurrentLat         float64
-	CurrentLng         float64
-	CurrentH3          string
-	LocationAt         time.Time
-	RemainingStops     int64
-	CapacityUsedWeight float64
-	CapacityUsedVolume float64
-	LastEventAt        time.Time
-	UpdatedAt          time.Time
+	RouteID            string    `json:"route_id" spanner:"RouteId"`
+	SupplierID         string    `json:"supplier_id" spanner:"SupplierId"`
+	DriverID           string    `json:"driver_id" spanner:"DriverId"`
+	Status             string    `json:"status" spanner:"Status"`
+	CurrentLat         float64   `json:"current_lat" spanner:"CurrentLat"`
+	CurrentLng         float64   `json:"current_lng" spanner:"CurrentLng"`
+	CurrentH3          string    `json:"current_h3" spanner:"CurrentH3"`
+	LocationAt         time.Time `json:"location_at" spanner:"LocationAt"`
+	RemainingStops     int64     `json:"remaining_stops" spanner:"RemainingStops"`
+	CapacityUsedWeight float64   `json:"capacity_used_weight" spanner:"CapacityUsedWeight"`
+	CapacityUsedVolume float64   `json:"capacity_used_volume" spanner:"CapacityUsedVolume"`
+	LastEventAt        time.Time `json:"last_event_at" spanner:"LastEventAt"`
+	UpdatedAt          time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
 
 type StopTwin struct {

@@ -273,3 +273,11 @@ async function compressImageToJpeg(file: File, quality: number): Promise<Blob> {
   );
   return blob ?? file;
 }
+
+/**
+ * Live fleet tracking for active retailer deliveries.
+ * Contract reference: getRetailerTracking (/v1/retailer/tracking).
+ */
+export async function getRetailerTracking(): Promise<Response> {
+  return apiFetch('/v1/retailer/tracking', { method: 'GET' });
+}

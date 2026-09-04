@@ -57,7 +57,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 	case events.EventRouteCreated:
 		var payload events.RouteEvent
 		if err := json.Unmarshal(msg.Value, &payload); err == nil && payload.RouteID != "" {
-			handleErr = c.service.HandleRouteStarted(ctx, payload.RouteID, payload.DriverID, int64(payload.OrderCount))
+			handleErr = c.service.HandleRouteStarted(ctx, payload.RouteID, payload.DriverID, payload.SupplierID, int64(payload.OrderCount))
 		}
 	case events.EventDriverLocationUpdated:
 		routeID, lat, lng, h3 := parseDriverLocationPayload(msg.Value)

@@ -30,7 +30,7 @@ CREATE TABLE SupplierOIDC (
   AuthorizationEndpoint   STRING(512),
   RedirectURI             STRING(512),
   Enabled                 BOOL        NOT NULL DEFAULT (FALSE),
-  AdminEmails             ARRAY<STRING>,
+  AdminEmails             ARRAY<STRING(320)>,
   UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
@@ -219,19 +219,23 @@ CREATE INDEX Idx_Orders_ByDerivedSource ON Orders(DerivedFromOrderId, OrderSourc
 CREATE INDEX Idx_Orders_ByDriverCreated ON Orders(DriverId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByParentOrder ON Orders(ParentOrderId, CreatedAt DESC);
 
--- Gate 5 Phase 2: retailer-facing rollup for multi-supplier checkout.
 CREATE TABLE ParentOrders (
-  ParentOrderId  STRING(36)    NOT NULL,
-  RetailerId     STRING(36)    NOT NULL,
-  Status         STRING(32)    NOT NULL,
-  Currency       STRING(3)     NOT NULL,
-  TotalMinor     INT64         NOT NULL DEFAULT (0),
-  ChildCount     INT64         NOT NULL DEFAULT (0),
-  CreatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
-  UpdatedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  ParentOrderId        STRING(36)    NOT NULL,
+  RetailerId           STRING(36)    NOT NULL,
+  Status               STRING(32)    NOT NULL,
+  Currency             STRING(3)     NOT NULL,
+  TotalMinor           INT64         NOT NULL DEFAULT (0),
+  ChildCount           INT64         NOT NULL DEFAULT (0),
+  SagaState            STRING(32)    NOT NULL DEFAULT ('PENDING'),
+  ExpectedChildCount   INT64         NOT NULL DEFAULT (0),
+  CreatedChildOrderIds ARRAY<STRING(64)>,
+  LeaseExpiresAt       TIMESTAMP,
+  CreatedAt            TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt            TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (ParentOrderId);
 
 CREATE INDEX Idx_ParentOrders_ByRetailerCreated ON ParentOrders(RetailerId, CreatedAt DESC);
+CREATE INDEX Idx_ParentOrders_SagaRecovery ON ParentOrders(SagaState, LeaseExpiresAt);
 CREATE INDEX Idx_Orders_ByRouteCreated ON Orders(RouteId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByManifestCreated ON Orders(ManifestId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByH3Cell ON Orders(H3Cell, Status, CreatedAt DESC);
@@ -3736,3 +3740,10 @@ CREATE TABLE FactoryRawInventory (
   QuantityReserved        FLOAT64     NOT NULL DEFAULT (0.0),
   UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (FactoryId, RawMaterialId);
+
+CREATE TABLE FactoryMachineTelemetry (
+  MachineId               STRING(64)  NOT NULL,
+  RecordedAt              TIMESTAMP   NOT NULL,
+  UnitsProduced           INT64       NOT NULL,
+  CreatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (MachineId, RecordedAt DESC);

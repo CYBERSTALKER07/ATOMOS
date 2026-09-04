@@ -3,12 +3,58 @@ package telemetryroutes
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
+
+// DirectKafkaLocationBusEmitter streams throttled driver location events directly
+// to Kafka TopicRealtime via outbox.Publisher, bypassing Cloud Spanner OutboxEvents
+// commits for high-frequency ephemeral telemetry.
+type DirectKafkaLocationBusEmitter struct {
+	publisher outbox.Publisher
+	log       *slog.Logger
+}
+
+func NewDirectKafkaLocationBusEmitter(publisher outbox.Publisher, log *slog.Logger) *DirectKafkaLocationBusEmitter {
+	if log == nil {
+		log = slog.Default()
+	}
+	return &DirectKafkaLocationBusEmitter{
+		publisher: publisher,
+		log:       log,
+	}
+}
+
+func (e *DirectKafkaLocationBusEmitter) EmitDriverLocation(ctx context.Context, supplierID, driverID, routeID string, payload []byte) error {
+	if e == nil || e.publisher == nil {
+		return nil
+	}
+	if driverID == "" {
+		return nil
+	}
+	body := payload
+	if routeID != "" {
+		body = injectRouteID(payload, routeID)
+	}
+
+	if hp, ok := e.publisher.(outbox.HeaderPublisher); ok {
+		headers := map[string][]byte{
+			"driver_id":      []byte(driverID),
+			"supplier_id":    []byte(supplierID),
+			"aggregate_type": []byte(events.AggregateDriver),
+		}
+		if routeID != "" {
+			headers["route_id"] = []byte(routeID)
+		}
+		return hp.PublishWithHeaders(ctx, events.TopicRealtime, []byte(driverID), body, headers)
+	}
+
+	return e.publisher.Publish(ctx, events.TopicRealtime, []byte(driverID), body)
+}
 
 // SpannerLocationBusEmitter is the production LocationBusEmitter: it writes a
 // DRIVER_LOCATION_UPDATED row to OutboxEvents (TopicRealtime) so the relay

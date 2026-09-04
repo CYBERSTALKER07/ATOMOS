@@ -348,7 +348,7 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 		row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
 			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason", "OrderId"})
 		if err != nil {
-			return fmt.Errorf("return_not_found")
+			return fmt.Errorf("read return %s: %w", returnID, err)
 		}
 		var sku, reason, physical, orderID string
 		var expectedNull spanner.NullInt64
@@ -516,7 +516,7 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 			row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
 				[]string{"OrderId", "SkuId", "RejectedQty", "ReceivedQty", "Status", "PhysicalStatus", "WarehouseId", "Reason"})
 			if err != nil {
-				return fmt.Errorf("return %s not found", returnID)
+				return fmt.Errorf("read return %s: %w", returnID, err)
 			}
 			var orderID, skuID, finStatus, physical, reason string
 			var rejected, received int64

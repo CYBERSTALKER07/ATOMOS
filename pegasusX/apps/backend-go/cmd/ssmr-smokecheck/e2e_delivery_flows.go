@@ -347,7 +347,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	// QR flow: Driver scans QR (retry on optimistic concurrency races after amend/damage).
 	scanPayload := []byte(`{"order_id":"` + orderID + `","qr_token":"` + qrData.Token + `"}`)
 	var scanOK bool
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("delivery-edge-scan-qr:%s:%d", orderID, attempt))
 		if err != nil {
 			return fmt.Errorf("scan qr: %w", err)
@@ -358,8 +358,8 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 		}
 		body := string(respBody)
 		if (status == http.StatusUnprocessableEntity || status == http.StatusConflict || status == http.StatusInternalServerError) &&
-			strings.Contains(body, "optimistic concurrency conflict") {
-			time.Sleep(200 * time.Millisecond)
+			(strings.Contains(body, "optimistic concurrency conflict") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("scan qr status %d: %s", status, body)

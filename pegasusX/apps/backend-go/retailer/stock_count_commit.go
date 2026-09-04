@@ -11,6 +11,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // Wave C3.3 offline count commit with base_version conflict protocol.
@@ -309,6 +311,7 @@ func (s *Service) HandleStockCountCommit(w http.ResponseWriter, r *http.Request)
 		}
 	} else {
 		_, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			buf := outbox.NewSpannerTxnBuffer(txn)
 			for _, l := range lines {
 				if l.Variance == 0 {
 					continue
@@ -317,7 +320,16 @@ func (s *Service) HandleStockCountCommit(w http.ResponseWriter, r *http.Request)
 					return fmt.Errorf("sku %s: %w", l.Sku, err)
 				}
 			}
-			return nil
+			if err := outbox.EmitJSON(ctx, buf, "RetailerStockCount", countID, events.TopicOrders, map[string]any{
+				"type":        "RETAILER_STOCK_COUNT_COMMITTED",
+				"retailer_id": orgID,
+				"location_id": locID,
+				"stock_bin":   bin,
+				"count_id":    countID,
+			}); err != nil {
+				return err
+			}
+			return buf.Flush(ctx)
 		})
 		if err != nil {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})

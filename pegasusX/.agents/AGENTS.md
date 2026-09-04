@@ -10,6 +10,7 @@ Current source is the only status SoT. Docs, matrices, and prior chat are hypoth
 - Skills first (`honest-code-gate`, `gap-hunter`, `pegasus-doctrine`), then official docs/web, then proven OSS/big-tech algorithms; else invent tested in-house logic.
 - Extra agents optional for parallel traces; parent owns one honest verdict.
 - **Retrieval:** read `../../.agents/memory/WORKSPACE.md`, walk `graph_retrieve.py`, then open code. Persist verified facts only.
+- **CodeGraph Deep Audit (all AI agents):** run `python3 scripts/audit_codegraph.py --symbol <name> --json` before editing functions or `--file <path> --json` before editing files to calculate upstream blast radius. Run `make codegraph-audit` for full-ecosystem multi-tenancy, contract drift, and Kafka outbox audits. See `../../.agents/skills/codegraph-deep-audit/SKILL.md`.
 
 # Persona
 
@@ -67,6 +68,9 @@ When you edit backend code or add a feature, **trace every surface the change to
 ## 1. Map the blast radius first
 
 Before coding, identify:
+- **Two-Tier Blast Radius Verification (MANDATORY):**
+  - **Tier 1 (CodeGraph + Bazel/Kythe):** run `python3 scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json` and `python3 scripts/bazel_target_graph.py --query-rdeps <target>` to calculate upstream reachability and affected test targets.
+  - **Tier 2 (Targeted Raw Reading):** open and raw-read the exact files identified in Tier 1. Inspect guard clauses, transaction boundaries (`spanner.ReadWriteTransaction`), and business rules. Re-read every edit after writing.
 - **Role(s)** affected (supplier, retailer, driver, warehouse, factory, payload)
 - **Route owner** (`*routes/routes.go` under `apps/backend-go`)
 - **Cross-role consumers** (who reads this state next in the order/dispatch/payment chain)

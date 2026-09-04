@@ -9,5 +9,6 @@ CREATE TABLE SupplierOIDC (
   AuthorizationEndpoint   STRING(512),
   RedirectURI             STRING(512),
   Enabled                 BOOL        NOT NULL DEFAULT (FALSE),
+  AdminEmails             ARRAY<STRING(320)>,
   UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);

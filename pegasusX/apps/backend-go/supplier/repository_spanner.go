@@ -1221,7 +1221,7 @@ func (r *SpannerRepository) CountSuppliers(ctx context.Context) (int64, error) {
 	if r == nil || r.client == nil {
 		return 0, fmt.Errorf("spanner supplier repository: nil client")
 	}
-	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers`}
+	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers WHERE SupplierId IS NOT NULL`}
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()

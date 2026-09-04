@@ -143,6 +143,7 @@ type App struct {
 	TelemetryHub           *ws.Hub
 	PlatformAdminHub       *ws.Hub
 	OutboxRelay            *outbox.Relay
+	OutboxPublisher        outbox.Publisher
 	NotificationConsumer   *kafka.Consumer
 	OrderEventConsumer     *kafka.Consumer
 	WarehouseEventConsumer *kafka.Consumer
@@ -1426,6 +1427,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PlatformAdminHub:        platformAdminHub,
 		RedisClient:             redisClientOrNil(redisAdapter),
 		OutboxRelay:             outboxRelay,
+		OutboxPublisher:         outboxPublisher,
 		Reliability:             reliabilityMiddleware,
 		InfraHealth:             infraHealth,
 		OutboundCircuits:        outboundCircuits,

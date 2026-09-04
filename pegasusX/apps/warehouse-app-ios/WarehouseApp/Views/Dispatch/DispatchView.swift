@@ -42,7 +42,7 @@ struct DispatchView: View {
     @State private var lookupDriverId = ""
     @State private var lookupLoading = false
     @State private var lookupError: String? = nil
-    @State private var earlyCompleteReq: [String: Any]? = nil
+    @State private var earlyCompleteReq: [String: String]? = nil
     @State private var rescueAction: String? = nil
     @State private var rescueWindowStart = ""
     @State private var rescueWindowEnd = ""

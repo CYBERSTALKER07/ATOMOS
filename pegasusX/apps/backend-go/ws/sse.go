@@ -252,6 +252,8 @@ func HandleSSEEvents(log *slog.Logger, jwtSecret string, platformSvc *platform.S
 			conn.Close()
 		}()
 
+		replayMissedEvents(req, ident, conn, hubs, cfg)
+
 		ticker := time.NewTicker(SSEPingInterval)
 		defer ticker.Stop()
 
@@ -343,6 +345,19 @@ func HandleSupplierEvents(log *slog.Logger, jwtSecret string, supplierHub *Hub, 
 			}
 			conn.Close()
 		}()
+
+		sinceSeq, lastEventID := parseReconnectParams(req)
+		if sinceSeq > 0 || lastEventID != "" {
+			if supplierHub != nil && ident.SupplierID != "" {
+				supplierHub.ReplaySince(req.Context(), "supplier:"+ident.SupplierID, sinceSeq, lastEventID, conn)
+			}
+			if warehouseHub != nil && ident.HomeNodeID != "" {
+				warehouseHub.ReplaySince(req.Context(), "warehouse:"+ident.HomeNodeID, sinceSeq, lastEventID, conn)
+			}
+			if telemetryHub != nil && ident.SupplierID != "" {
+				telemetryHub.ReplaySince(req.Context(), "telemetry:supplier:"+ident.SupplierID, sinceSeq, lastEventID, conn)
+			}
+		}
 
 		ticker := time.NewTicker(SSEPingInterval)
 		defer ticker.Stop()

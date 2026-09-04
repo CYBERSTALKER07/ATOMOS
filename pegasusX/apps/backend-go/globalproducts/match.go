@@ -87,6 +87,43 @@ func FuzzyScore(aBrandID, aName string, aPack int64, aUom, bBrandID, bName strin
 	return score
 }
 
+// TrigramSimilarity calculates similarity score between 0.0 and 1.0 using character 3-grams.
+func TrigramSimilarity(a, b string) float64 {
+	an := NormalizeBrandToken(a)
+	bn := NormalizeBrandToken(b)
+	if an == "" || bn == "" {
+		if an == bn {
+			return 1.0
+		}
+		return 0.0
+	}
+	if an == bn {
+		return 1.0
+	}
+	if len(an) < 3 || len(bn) < 3 {
+		if strings.Contains(an, bn) || strings.Contains(bn, an) {
+			return 0.75
+		}
+		return 0.0
+	}
+	trigramsA := make(map[string]struct{})
+	for i := 0; i <= len(an)-3; i++ {
+		trigramsA[an[i:i+3]] = struct{}{}
+	}
+	matches := 0
+	for i := 0; i <= len(bn)-3; i++ {
+		tri := bn[i : i+3]
+		if _, ok := trigramsA[tri]; ok {
+			matches++
+		}
+	}
+	total := len(trigramsA) + (len(bn) - 2)
+	if total == 0 {
+		return 0
+	}
+	return (2.0 * float64(matches)) / float64(total)
+}
+
 const fuzzyAutoLinkThreshold = 0.8
 const fuzzyQueueThreshold = 0.55
 

@@ -3,10 +3,12 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	kafka "github.com/segmentio/kafka-go"
 )
 
@@ -89,13 +91,37 @@ func (i *IotIngestor) startBatchProcessor() {
 }
 
 func (i *IotIngestor) flushBatch(batch map[string]int64) {
-	// i.svc.redisClient undefined.
-	// Pipelining for enterprise-scale performance deferred until cache exposes native pipelining.
-	// for machineID, units := range batch {
-	// 	key := fmt.Sprintf("factory:iot:%s:units", machineID)
-	// 	_ = key
-	// 	_ = units
-	// }
+	if len(batch) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// 1. Hot cache increment in Redis
+	if i.svc != nil && i.svc.cache != nil {
+		for machineID, units := range batch {
+			key := fmt.Sprintf("factory:iot:%s:units", machineID)
+			_, _ = i.svc.cache.IncrBy(ctx, key, units)
+		}
+	}
+
+	// 2. Persistent storage in Spanner FactoryMachineTelemetry to survive Redis restarts
+	if i.svc != nil && i.svc.spannerClient != nil {
+		now := time.Now().UTC()
+		mutations := make([]*spanner.Mutation, 0, len(batch))
+		for machineID, units := range batch {
+			m := spanner.InsertOrUpdate("FactoryMachineTelemetry",
+				[]string{"MachineId", "RecordedAt", "UnitsProduced", "CreatedAt"},
+				[]interface{}{machineID, now, units, spanner.CommitTimestamp},
+			)
+			mutations = append(mutations, m)
+		}
+		if len(mutations) > 0 {
+			if _, err := i.svc.spannerClient.Apply(ctx, mutations); err != nil {
+				i.log.Error("failed to persist IoT telemetry batch to Spanner", "count", len(mutations), "err", err)
+			}
+		}
+	}
 }
 
 func (i *IotIngestor) broadcastMachineAlert(event IoTTelemetryEvent) {

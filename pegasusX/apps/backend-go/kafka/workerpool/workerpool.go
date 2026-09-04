@@ -33,13 +33,15 @@ type MessageSource interface {
 
 // Config wires a Pool. Source and Handler are required.
 type Config struct {
-	Source     MessageSource
-	Handler    Handler
-	OnFailure  FailureHandler
-	Workers    int
-	QueueDepth int
-	Logger     *slog.Logger
-	Name       string
+	Source      MessageSource
+	Handler     Handler
+	OnFailure   FailureHandler
+	Workers     int
+	QueueDepth  int
+	MaxRetries  int           // Max retry attempts before routing to DLQ (default 3)
+	RetryDelay  time.Duration // Delay between retries (default 50ms)
+	Logger      *slog.Logger
+	Name        string
 }
 
 // Pool is a partition-parallel Kafka consumer.
@@ -47,7 +49,37 @@ type Pool struct {
 	cfg     Config
 	workers int
 	queue   int
+	offsets *OffsetTracker
 	log     *slog.Logger
+}
+
+// OffsetTracker ensures that partition offset commits are strictly monotonic.
+type OffsetTracker struct {
+	mu        sync.Mutex
+	committed map[int]int64
+}
+
+func NewOffsetTracker() *OffsetTracker {
+	return &OffsetTracker{
+		committed: make(map[int]int64),
+	}
+}
+
+// ShouldCommit returns true if msg.Offset is strictly greater than the highest committed offset
+// for msg.Partition, and records msg.Offset.
+func (t *OffsetTracker) ShouldCommit(msg kafka.Message) bool {
+	if t == nil {
+		return true
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	last, exists := t.committed[msg.Partition]
+	if exists && msg.Offset <= last {
+		return false
+	}
+	t.committed[msg.Partition] = msg.Offset
+	return true
 }
 
 // New validates cfg and returns a ready Pool.
@@ -79,9 +111,10 @@ func New(cfg Config) (*Pool, error) {
 		}
 	}
 	return &Pool{
-		cfg:     Config{Source: cfg.Source, Handler: cfg.Handler, OnFailure: cfg.OnFailure, Name: name},
+		cfg:     Config{Source: cfg.Source, Handler: cfg.Handler, OnFailure: cfg.OnFailure, MaxRetries: cfg.MaxRetries, RetryDelay: cfg.RetryDelay, Name: name},
 		workers: workers,
 		queue:   queue,
+		offsets: NewOffsetTracker(),
 		log:     log.With("consumer", name, "workers", workers),
 	}, nil
 }
@@ -135,12 +168,37 @@ func (p *Pool) Run(ctx context.Context) error {
 
 func (p *Pool) runWorker(parent context.Context, cancel context.CancelFunc, in <-chan kafka.Message, wg *sync.WaitGroup) {
 	defer wg.Done()
+	maxRetries := p.cfg.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = 3
+	}
+	retryDelay := p.cfg.RetryDelay
+	if retryDelay <= 0 {
+		retryDelay = 50 * time.Millisecond
+	}
+
 	for m := range in {
 		ctx := ContextWithTrace(parent, m)
-		err := p.cfg.Handler(ctx, m)
+		var err error
+		var attempt int
+
+		for attempt = 1; attempt <= maxRetries; attempt++ {
+			err = p.cfg.Handler(ctx, m)
+			if err == nil || errors.Is(err, ErrSkipCommit) {
+				break
+			}
+			if attempt < maxRetries {
+				select {
+				case <-parent.Done():
+					return
+				case <-time.After(retryDelay * time.Duration(attempt)):
+				}
+			}
+		}
+
 		if err != nil && !errors.Is(err, ErrSkipCommit) {
-			p.log.ErrorContext(ctx, "handler error",
-				"partition", m.Partition, "offset", m.Offset, "err", err)
+			p.log.ErrorContext(ctx, "handler exhausted retries; routing poison pill to DLQ failure handler",
+				"partition", m.Partition, "offset", m.Offset, "attempts", attempt, "err", err)
 			if p.cfg.OnFailure != nil {
 				p.cfg.OnFailure(ctx, m, err)
 			}
@@ -151,6 +209,13 @@ func (p *Pool) runWorker(parent context.Context, cancel context.CancelFunc, in <
 			cancel()
 			return
 		}
+
+		if !p.offsets.ShouldCommit(m) {
+			p.log.WarnContext(ctx, "skipping non-monotonic offset commit",
+				"partition", m.Partition, "offset", m.Offset)
+			continue
+		}
+
 		commitCtx := parent
 		if commitCtx.Err() != nil {
 			var commitCancel context.CancelFunc

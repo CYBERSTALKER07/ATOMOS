@@ -174,7 +174,7 @@ func completeLifecycleDelivery(
 		"qr_token": qrData.Token,
 	})
 	scanOK := false
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("lifecycle-scan-qr:%s:%d", orderID, attempt))
 		if err != nil {
 			return fmt.Errorf("scan qr: %w", err)
@@ -183,8 +183,10 @@ func completeLifecycleDelivery(
 			scanOK = true
 			break
 		}
-		if strings.Contains(string(respBody), "optimistic concurrency") {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusConflict || status == http.StatusUnprocessableEntity || status == http.StatusInternalServerError) &&
+			(strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("scan qr status %d: %s", status, string(respBody))
@@ -196,7 +198,7 @@ func completeLifecycleDelivery(
 	// Retailer selects cash collection (must be AWAITING_PAYMENT).
 	cashPayload, _ := json.Marshal(map[string]string{"order_id": orderID})
 	confirmOK := false
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		idemKey := fmt.Sprintf("lifecycle-confirm-cash:%s:%d", orderID, attempt)
 		status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", cashPayload, retailerToken, idemKey)
 		if err != nil {
@@ -206,11 +208,13 @@ func completeLifecycleDelivery(
 			confirmOK = true
 			break
 		}
-		if status == http.StatusInternalServerError && (strings.Contains(string(respBody), "update_failed") || strings.Contains(string(respBody), "optimistic concurrency")) {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusInternalServerError || status == http.StatusConflict) &&
+			(strings.Contains(body, "update_failed") || strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
-		if status == http.StatusConflict && strings.Contains(string(respBody), "PENDING_CASH") {
+		if status == http.StatusConflict && strings.Contains(body, "PENDING_CASH") {
 			confirmOK = true
 			break
 		}

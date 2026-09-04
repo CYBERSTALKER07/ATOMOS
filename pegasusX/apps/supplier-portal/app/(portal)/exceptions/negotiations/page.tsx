@@ -8,6 +8,7 @@ import { PageChrome } from "@/components/PageChrome";
 /**
  * Quantity negotiation is product-disabled ecosystem-wide.
  * Delivery-time driver propose → supplier resolve is gated off (410 / empty list).
+ * Contract hooks: getSupplierNegotiationsPending, resolveSupplierNegotiation.
  * Not a substitute for claims, shop-closed, missing-items, or partial offload.
  */
 export default function NegotiationsExceptionsPage() {

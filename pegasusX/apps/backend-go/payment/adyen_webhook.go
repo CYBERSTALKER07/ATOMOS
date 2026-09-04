@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -172,22 +171,12 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp := map[string]string{
-			"status":         "accepted",
-			"gateway":        "adyen",
-			"transaction_id": row.TransactionID,
-		}
-		respBytes, _ := json.Marshal(resp)
-		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, respBytes, 7*24*time.Hour)
+		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, []byte("[accepted]"), 7*24*time.Hour)
 		processed++
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":          "accepted",
-		"gateway":         "adyen",
-		"processed_items": processed,
-	})
+	_, _ = w.Write([]byte("[accepted]"))
 }
 

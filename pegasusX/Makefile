@@ -367,3 +367,48 @@ pack-client-proof:
 
 partner-dialect-proof:
 	bash scripts/partner_dialect_proof.sh
+
+# --- CodeGraph (Memgraph + Tree-sitter + 5 Seams + MCP) ---
+.PHONY: codegraph-up codegraph-down codegraph-seed codegraph-seams codegraph-export codegraph-verify codegraph-mcp codegraph-ui codegraph-audit codegraph-advanced-audit bazel-graph kythe-index codegraph-watch
+
+CODEGRAPH_PYTHON ?= $(shell if [ -f ../.venv/bin/python3 ]; then echo ../.venv/bin/python3; elif [ -f .venv/bin/python3 ]; then echo .venv/bin/python3; else echo python3; fi)
+
+codegraph-up:
+	docker compose -f infra/docker-compose.codegraph.yml up -d
+
+codegraph-down:
+	docker compose -f infra/docker-compose.codegraph.yml down
+
+codegraph-export:
+	$(CODEGRAPH_PYTHON) scripts/seed_architecture_graph.py --dry-run --export-cypher context/architecture_seed.cypher
+	$(CODEGRAPH_PYTHON) scripts/extract_codegraph_seams.py --dry-run --export-cypher context/seams_seed.cypher
+
+codegraph-seed:
+	$(CODEGRAPH_PYTHON) scripts/seed_architecture_graph.py
+
+codegraph-seams:
+	$(CODEGRAPH_PYTHON) scripts/extract_codegraph_seams.py
+
+codegraph-verify:
+	$(CODEGRAPH_PYTHON) scripts/verify_codegraph.py
+
+codegraph-mcp:
+	bash scripts/run_mcp_server.sh
+
+codegraph-ui:
+	bash scripts/run_codegraph_ui.sh
+
+codegraph-audit:
+	$(CODEGRAPH_PYTHON) scripts/audit_codegraph.py
+
+codegraph-advanced-audit:
+	$(CODEGRAPH_PYTHON) scripts/advanced_codegraph_analyzer.py
+
+bazel-graph:
+	$(CODEGRAPH_PYTHON) scripts/bazel_target_graph.py --sync
+
+kythe-index:
+	$(CODEGRAPH_PYTHON) scripts/kythe_semantic_adapter.py --index
+
+codegraph-watch:
+	PYTHONUNBUFFERED=1 $(CODEGRAPH_PYTHON) -u scripts/dynamic_codegraph_watcher.py

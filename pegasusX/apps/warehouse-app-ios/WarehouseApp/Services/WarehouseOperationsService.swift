@@ -141,11 +141,11 @@ enum WarehouseOperationsService {
         )
     }
 
-    static func getEarlyCompleteRequest(driverId: String) async throws -> [String: Any] {
+    static func getEarlyCompleteRequest(driverId: String) async throws -> [String: String] {
         try await api.get("v1/warehouse/ops/orders/early-complete/\(driverId)")
     }
 
-    static func approveEarlyComplete(driverId: String, action: String, newWindowStart: String? = nil, newWindowEnd: String? = nil) async throws -> [String: Any] {
+    static func approveEarlyComplete(driverId: String, action: String, newWindowStart: String? = nil, newWindowEnd: String? = nil) async throws -> [String: String] {
         var body: [String: String] = [
             "driver_id": driverId,
             "action": action

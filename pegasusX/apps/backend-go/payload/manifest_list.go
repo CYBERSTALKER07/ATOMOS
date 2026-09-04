@@ -3,6 +3,7 @@ package payload
 import (
 	"context"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
@@ -18,6 +19,32 @@ type PortalManifestLister interface {
 // SetPortalManifestLister wires the supplier portal projection for ADMIN manifest reads.
 func (s *Service) SetPortalManifestLister(lister PortalManifestLister) {
 	s.portalLister = lister
+}
+
+// resolveRegionCode derives RegionCode dynamically from the node pack / market pack and cell configuration.
+func (s *Service) resolveRegionCode(warehouseID string) string {
+	if reg := strings.TrimSpace(os.Getenv("REGION_CODE")); reg != "" {
+		return reg
+	}
+	marketCode := auth.DefaultMarketCodeFromEnv()
+	homeCell := auth.DefaultHomeCellFromEnv()
+	cell := strings.ToUpper(strings.TrimPrefix(homeCell, "cell-"))
+	if cell != "" && cell != marketCode {
+		return marketCode + "-" + cell
+	}
+	if p, ok := auth.ResolveShippedMarketPack(marketCode); ok {
+		if p.HomeCell != "" {
+			pCell := strings.ToUpper(strings.TrimPrefix(p.HomeCell, "cell-"))
+			if pCell != "" && pCell != p.Code {
+				return p.Code + "-" + pCell
+			}
+		}
+		if marketCode == "UZ" {
+			return "UZ-TAS"
+		}
+		return p.Code
+	}
+	return marketCode
 }
 
 func (s *Service) listManifestWiresLocked(stateFilter, truckFilter, warehouseScope string) []manifest.Wire {
@@ -55,7 +82,7 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter, warehouseSco
 			TotalVolumeVU: m.TotalVolumeVU,
 			MaxVolumeVU:   m.MaxVolumeVU,
 			StopCount:     m.StopCount,
-			RegionCode:    "UZ-TAS",
+			RegionCode:    s.resolveRegionCode(m.WarehouseID),
 			SealedAt:      m.SealedAt,
 			CreatedAt:     m.CreatedAt,
 			UpdatedAt:     m.UpdatedAt,
@@ -100,7 +127,7 @@ func (s *Service) manifestDetailWireLocked(manifestID string) (manifest.Wire, bo
 		TotalVolumeVU: m.TotalVolumeVU,
 		MaxVolumeVU:   m.MaxVolumeVU,
 		StopCount:     m.StopCount,
-		RegionCode:    "UZ-TAS",
+		RegionCode:    s.resolveRegionCode(m.WarehouseID),
 		SealedAt:      m.SealedAt,
 		CreatedAt:     m.CreatedAt,
 		UpdatedAt:     m.UpdatedAt,

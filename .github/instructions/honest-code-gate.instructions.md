@@ -16,6 +16,7 @@ Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are
 7. **Research:** skills (`honest-code-gate`, `gap-hunter`, `pegasus-doctrine`) → official docs/web → proven OSS/big-tech algorithms (cite + license). Else invent tested in-house logic.
 
 Skill: `.cursor/skills/honest-code-gate/` (also `.agents/skills/honest-code-gate/`, `.github/skills/honest-code-gate/`).
+Two-Tier Verification Gate: Tier 1 CodeGraph/Bazel/Kythe (`scripts/advanced_codegraph_analyzer.py`, `scripts/bazel_target_graph.py`) + Tier 2 Targeted Raw Reading (`.agents/skills/codegraph-deep-audit/`).
 Cursor rules: `.cursor/rules/{honesty-code-is-truth,production-cloud-gate,phased-verify-impact,graph-retrieval-memory}.mdc`.
 Shared memory: `.agents/memory/WORKSPACE.md`. Graph retrieve: `.agents/skills/graph-retrieval-memory/`.
 

@@ -10,7 +10,9 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/web"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 )
@@ -147,7 +149,20 @@ func (s *Service) HandleFactoryRegister(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite(muts)
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateFactory, factoryID, events.TopicMain, map[string]any{
+			"type":        "FACTORY_USER_REGISTERED",
+			"user_id":     userID,
+			"factory_id":  factoryID,
+			"supplier_id": supplierID,
+			"role":        "FACTORY",
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to register factory user", "err", err)
 		web.JSONError(w, "Failed to register factory user", http.StatusInternalServerError)

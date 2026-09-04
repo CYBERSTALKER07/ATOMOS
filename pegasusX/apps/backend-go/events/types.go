@@ -256,15 +256,17 @@ type OrderEvent struct {
 	Message               string  `json:"message,omitempty"`
 }
 
-// ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6).
+// ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6 & HARDEN-02).
 type ParentOrderEvent struct {
 	BaseEvent
-	ParentOrderID string `json:"parent_order_id"`
-	RetailerID    string `json:"retailer_id"`
-	Status        string `json:"status,omitempty"`
-	Currency      string `json:"currency,omitempty"`
-	TotalMinor    int64  `json:"total_minor,omitempty"`
-	ChildCount    int    `json:"child_count,omitempty"`
+	ParentOrderID string   `json:"parent_order_id"`
+	RetailerID    string   `json:"retailer_id"`
+	Status        string   `json:"status,omitempty"`
+	Currency      string   `json:"currency,omitempty"`
+	TotalMinor    int64    `json:"total_minor,omitempty"`
+	ChildCount    int      `json:"child_count,omitempty"`
+	SagaState     string   `json:"saga_state,omitempty"`
+	ChildOrderIDs []string `json:"child_order_ids,omitempty"`
 }
 
 // SupplierCreditProgramEvent is org-level credit program enable/patch/disable (B4 M-P1-5).

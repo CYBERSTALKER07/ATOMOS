@@ -8,6 +8,8 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type SemanticEngine struct {
@@ -89,8 +91,9 @@ func (e *SemanticEngine) ProcessCommand(ctx context.Context, supplierID string, 
 			return fmt.Errorf("marshal conflict payload: %w", marshalErr)
 		}
 
+		disputeID := uuid.NewString()
 		mut := spanner.InsertMap("PhysicalReconciliationQueue", map[string]any{
-			"DisputeId":       uuid.NewString(),
+			"DisputeId":       disputeID,
 			"SupplierId":      supplierID,
 			"AggregateId":     cmd.EntityID,
 			"AggregateType":   cmd.CommandType,
@@ -99,7 +102,21 @@ func (e *SemanticEngine) ProcessCommand(ctx context.Context, supplierID string, 
 			"Status":          "PENDING_REVIEW",
 			"CreatedAt":       spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{mut})
+		if err := txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "PhysicalReconciliationQueue", disputeID, events.TopicExceptions, map[string]any{
+			"type":           "PHYSICAL_RECONCILIATION_DISPUTED",
+			"dispute_id":     disputeID,
+			"supplier_id":    supplierID,
+			"aggregate_id":   cmd.EntityID,
+			"aggregate_type": cmd.CommandType,
+			"source_role":    string(claims.Role),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 
 	if err != nil {

@@ -33,6 +33,7 @@ type ParentOrderView struct {
 	Currency      string             `json:"currency"`
 	TotalMinor    int64              `json:"total_minor"`
 	ChildCount    int                `json:"child_count"`
+	SagaState     string             `json:"saga_state,omitempty"`
 	Children      []ParentOrderChild `json:"children"`
 	CreatedAt     string             `json:"created_at,omitempty"`
 	UpdatedAt     string             `json:"updated_at,omitempty"`

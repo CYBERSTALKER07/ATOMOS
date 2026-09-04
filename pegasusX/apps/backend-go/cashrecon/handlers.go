@@ -18,6 +18,7 @@ type Handlers struct {
 
 type wireReconciliation struct {
 	ReconciliationID  string  `json:"reconciliation_id"`
+	SupplierID        string  `json:"supplier_id,omitempty"`
 	DriverID          string  `json:"driver_id"`
 	RouteID           *string `json:"route_id,omitempty"`
 	ShiftDate         string  `json:"shift_date"`
@@ -35,6 +36,7 @@ type wireReconciliation struct {
 func toWire(cr CashReconciliation) wireReconciliation {
 	w := wireReconciliation{
 		ReconciliationID:  cr.ReconciliationId,
+		SupplierID:        cr.SupplierId,
 		DriverID:          cr.DriverId,
 		RouteID:           cr.RouteId,
 		ShiftDate:         civil.DateOf(cr.ShiftDate.UTC()).String(),
@@ -74,6 +76,11 @@ func (h *Handlers) HandleDriverSubmit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	claims, _ := auth.FromContext(r.Context())
+	supplierID := auth.PreferTenantSupplierID(r.Context(), strings.TrimSpace(claims.SupplierID))
+	if supplierID == "" {
+		supplierID = strings.TrimSpace(claims.SupplierID)
+	}
 	var body struct {
 		RouteID           *string `json:"route_id"`
 		ShiftDate         string  `json:"shift_date"`
@@ -94,6 +101,7 @@ func (h *Handlers) HandleDriverSubmit(w http.ResponseWriter, r *http.Request) {
 		shiftDate = d.In(time.UTC)
 	}
 	cr, err := h.Svc.SubmitReconciliation(r.Context(), SubmitReconciliationRequest{
+		SupplierId:        supplierID,
 		DriverId:          driverID,
 		RouteId:           body.RouteID,
 		ShiftDate:         shiftDate,

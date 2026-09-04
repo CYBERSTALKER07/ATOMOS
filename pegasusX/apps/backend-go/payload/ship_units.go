@@ -336,7 +336,28 @@ func (s *Service) labelGLNs(ctx context.Context, manifestID string) (fromGLN, to
 			fromGLN = g.StringVal
 		}
 	}
-	_ = manifestID
+	manifestID = strings.TrimSpace(manifestID)
+	if manifestID != "" {
+		stmt := spanner.Statement{
+			SQL: `SELECT r.Gln
+				FROM Orders o
+				JOIN Retailers r ON o.RetailerId = r.RetailerId
+				WHERE o.ManifestId = @manifestId AND r.Gln IS NOT NULL AND r.Gln != ''
+				LIMIT 1`,
+			Params: map[string]interface{}{
+				"manifestId": manifestID,
+			},
+		}
+		iter := client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+		row, err := iter.Next()
+		if err == nil {
+			var g spanner.NullString
+			if err := row.Columns(&g); err == nil && g.Valid {
+				toGLN = g.StringVal
+			}
+		}
+	}
 	return fromGLN, toGLN
 }
 

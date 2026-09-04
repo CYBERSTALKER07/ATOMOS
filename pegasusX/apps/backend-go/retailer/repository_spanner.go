@@ -308,15 +308,6 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 		return nil, fmt.Errorf("spanner retailer repository: nil client")
 	}
 
-	stmt := spanner.Statement{
-		SQL: `SELECT RetailerId, Phone, Name, CountryCode, Lat, Lng, H3Cell,
-			         ReceivingWindowOpen, ReceivingWindowClose, CreatedAt
-			  FROM Retailers`,
-	}
-
-	iter := r.client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
 	effectiveSupplierID := strings.TrimSpace(supplierID)
 	if effectiveSupplierID == "" {
 		effectiveSupplierID = r.supplierID
@@ -324,6 +315,24 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 	if r.supplierID != "" && effectiveSupplierID != "" && effectiveSupplierID != r.supplierID {
 		return []Retailer{}, nil
 	}
+	if effectiveSupplierID == "" {
+		return []Retailer{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT r.RetailerId, r.Phone, r.Name, r.CountryCode, r.Lat, r.Lng, r.H3Cell,
+			         r.ReceivingWindowOpen, r.ReceivingWindowClose, r.CreatedAt
+			  FROM Retailers r
+			  WHERE r.RetailerId IN (
+			      SELECT DISTINCT o.RetailerId FROM Orders o WHERE o.SupplierId = @SupplierId
+			  )`,
+		Params: map[string]interface{}{
+			"SupplierId": effectiveSupplierID,
+		},
+	}
+
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
 
 	var retailers []Retailer
 	for {

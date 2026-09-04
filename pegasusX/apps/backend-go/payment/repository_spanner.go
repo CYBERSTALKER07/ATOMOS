@@ -365,11 +365,14 @@ func (r *SpannerRepository) ListLedgerEntries(ctx context.Context, q LedgerQuery
 		params["occurred_to"] = q.OccurredTo.UTC()
 	}
 
-	sql := `SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries`
+	whereClause := "SupplierId IS NOT NULL"
 	if len(where) > 0 {
-		sql += " WHERE " + strings.Join(where, " AND ")
+		whereClause = strings.Join(where, " AND ")
 	}
-	sql += " ORDER BY OccurredAt DESC LIMIT @limit"
+	sql := fmt.Sprintf(
+		"SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries WHERE %s ORDER BY OccurredAt DESC LIMIT @limit",
+		whereClause,
+	)
 
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
@@ -466,11 +469,14 @@ func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q Settle
 		params["occurred_to"] = q.OccurredTo.UTC()
 	}
 
-	sql := `SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries`
+	whereClause := "SupplierId IS NOT NULL"
 	if len(where) > 0 {
-		sql += " WHERE " + strings.Join(where, " AND ")
+		whereClause = strings.Join(where, " AND ")
 	}
-	sql += " GROUP BY Gateway, EntryType, Currency ORDER BY Gateway ASC, EntryType ASC, Currency ASC LIMIT @group_limit"
+	sql := fmt.Sprintf(
+		"SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries WHERE %s GROUP BY Gateway, EntryType, Currency ORDER BY Gateway ASC, EntryType ASC, Currency ASC LIMIT @group_limit",
+		whereClause,
+	)
 
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,

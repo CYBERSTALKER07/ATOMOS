@@ -1,9 +1,44 @@
 package outbox
 
 import (
+	"sort"
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+var (
+	lagMu        sync.RWMutex
+	recentLags   []float64
+	maxLagSample = 1000
+)
+
+// RecordPublishLag records the publish lag (in seconds) for a published event.
+func RecordPublishLag(lagSeconds float64) {
+	if lagSeconds < 0 {
+		lagSeconds = 0
+	}
+	lagMu.Lock()
+	defer lagMu.Unlock()
+	recentLags = append(recentLags, lagSeconds)
+	if len(recentLags) > maxLagSample {
+		recentLags = recentLags[len(recentLags)-maxLagSample:]
+	}
+}
+
+// GetOutboxLagP99Seconds calculates the p99 lag in seconds from in-memory samples.
+func GetOutboxLagP99Seconds() float64 {
+	lagMu.RLock()
+	defer lagMu.RUnlock()
+	if len(recentLags) == 0 {
+		return 0
+	}
+	sorted := append([]float64(nil), recentLags...)
+	sort.Float64s(sorted)
+	idx := int(float64(len(sorted)-1) * 0.99)
+	return sorted[idx]
+}
 
 var unpublishedCount = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "void_outbox_unpublished_count",

@@ -205,17 +205,19 @@ func (w *ExportWorker) exportJournalsAR(ctx context.Context, tenantType, tenantI
 }
 
 func creditNotesJournalQuery(tenantType string) (string, error) {
-	const selectSQL = `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
-			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, ''), cn.CreatedAt
-			FROM CreditNotes cn
-			JOIN Orders o ON o.OrderId = cn.OrderId`
 	switch tenantType {
 	case TenantSupplier:
-		return selectSQL + `
+		return `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
+			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, ''), cn.CreatedAt
+			FROM CreditNotes cn
+			JOIN Orders o ON o.OrderId = cn.OrderId
 			WHERE o.SupplierId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
 			ORDER BY cn.CreatedAt DESC LIMIT @lim`, nil
 	case TenantRetailer:
-		return selectSQL + `
+		return `SELECT cn.CreditNoteId, cn.OrderId, o.SupplierId, o.RetailerId,
+			cn.TotalNetMinor, cn.TotalVatMinor, cn.TotalGrossMinor, COALESCE(o.Currency, ''), cn.CreatedAt
+			FROM CreditNotes cn
+			JOIN Orders o ON o.OrderId = cn.OrderId
 			WHERE o.RetailerId = @tid AND cn.CreatedAt >= @from AND cn.CreatedAt <= @to
 			ORDER BY cn.CreatedAt DESC LIMIT @lim`, nil
 	default:

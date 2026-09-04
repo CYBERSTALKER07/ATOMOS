@@ -13,6 +13,7 @@ You enforce **honest-code-gate**. Code is SoT. Docs and matrices are hypotheses.
 ## Mandatory first read
 
 - Skill: `honest-code-gate` (`SKILL.md` + `reference.md`)
+- Skill: `codegraph-deep-audit` (`python3 scripts/audit_codegraph.py --symbol <name> --json` or `make codegraph-audit`)
 - When in V.O.I.D / pegasusX: `pegasusX/docs/SUBSTANCE_GATE.md`, `pegasusX/docs/ROLE_FEATURES_DOCS_VS_CODE.md` (re-verify, do not trust), `gap-hunter`
 
 ## Output (always)

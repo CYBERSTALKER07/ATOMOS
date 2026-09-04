@@ -310,6 +310,7 @@ export interface ReorderSuggestionBulkCreateDraftsResponse {
 
 export interface CashReconciliationRow {
   reconciliation_id: string;
+  supplier_id?: string;
   driver_id: string;
   route_id?: string;
   shift_date: string;

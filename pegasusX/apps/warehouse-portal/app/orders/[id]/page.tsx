@@ -253,7 +253,6 @@ export default function OrderDetailPage() {
                         onClick={() =>
                           runMutation('Payment bypass token generated', async () => {
                             const res = await warehouseOps.issuePaymentBypass(orderId);
-                            // @ts-expect-error
                             toast(`Token: ${res.bypass_token}`, 'success');
                             return res;
                           })

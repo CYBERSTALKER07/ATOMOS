@@ -16,7 +16,10 @@ type Deps struct {
 	Service *laborcapacity.Service
 }
 
-// RegisterRoutes registers labor capacity API endpoints (supplier/warehouse JWT).
+// RegisterRoutes registers labor capacity API endpoints (supplier/warehouse JWT):
+//   GET  "/v1/labor-capacity/driver-score/{driverId}"
+//   GET  "/v1/labor-capacity/zone-capacity"
+//   POST "/v1/labor-capacity/driver-availability"
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.Route("/v1/labor-capacity", func(lr chi.Router) {
 		lr.Use(auth.RequireRole(

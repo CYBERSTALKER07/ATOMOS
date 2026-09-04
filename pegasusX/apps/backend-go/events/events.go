@@ -124,7 +124,7 @@ const (
 	EventSupplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
 	EventSupplyTransferArrived     = "SUPPLY_TRANSFER_ARRIVED"
 
-	// @Sync(WMS stock mutations — Wave B2)
+	// @Sync(WarehouseEvent)
 	EventInventoryQuantityUpdated = "INVENTORY_QUANTITY_UPDATED"
 	EventInventoryPolicyUpdated   = "INVENTORY_POLICY_UPDATED"
 	EventWMSPutaway               = "WMS_PUTAWAY"
@@ -186,7 +186,7 @@ const (
 	EventRouteCreated   = "ROUTE_CREATED"
 	EventRouteReordered = "ROUTE_REORDERED"
 
-	// @Sync(DispatchEvent)
+	// @Sync(RouteEvent)
 	EventDispatchRequested = "DISPATCH_REQUESTED"
 	EventDispatchPlanned   = "DISPATCH_PLANNED"
 

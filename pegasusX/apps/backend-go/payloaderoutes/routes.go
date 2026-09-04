@@ -43,6 +43,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/payloader/manifests/{manifestID}/ship-units", d.Service.HandleListShipUnits)
 		rr.Post("/v1/payloader/manifests/{manifestID}/labels", d.Service.HandleManifestLabels)
 		rr.Post("/v1/payload/manifest-exception", d.Service.HandleManifestException)
+		rr.Post("/v1/payload/exceptions/damaged", d.Service.HandleManifestException)
 		rr.Get("/v1/payloader/manifest-exceptions", d.Service.HandleManifestExceptions)
 		rr.Post("/v1/payloader/recommend-reassign", d.Service.HandleRecommendReassign)
 		rr.Post("/v1/payloader/reassign-order", d.Service.HandleApplyReassign)

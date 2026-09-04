@@ -397,6 +397,20 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 			if existing.Gateway != "" && req.Gateway != "" && !strings.EqualFold(existing.Gateway, req.Gateway) {
 				return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrGatewayMismatch
 			}
+			if existing.AmountMinor == req.AmountMinor && (req.Gateway == "" || strings.EqualFold(existing.Gateway, req.Gateway)) {
+				return existing, PaymentAttemptRecord{
+					SessionID:       existing.SessionID,
+					Gateway:         existing.Gateway,
+					ExecutionAction: string(ExecutionActionCheckoutInit),
+					Status:          "INITIATED",
+					CreatedAt:       existing.CreatedAt,
+					UpdatedAt:       existing.UpdatedAt,
+				}, ExecutionResult{
+					ResolvedGateway: existing.Gateway,
+					Mode:            ExecutionMode(existing.Mode),
+					PolicySource:    policy.PolicySource,
+				}, nil
+			}
 		}
 	}
 

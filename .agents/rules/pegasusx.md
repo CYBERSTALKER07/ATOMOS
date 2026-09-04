@@ -20,6 +20,9 @@ When you edit backend code or add a feature, **trace every surface the change to
 
 Before coding, identify:
 
+- **Blast radius via Two-Tier Verification (MANDATORY):**
+  - **Tier 1 (CodeGraph + Bazel/Kythe):** run `python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json` and `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>` to calculate upstream reachability and affected test targets.
+  - **Tier 2 (Targeted Raw Reading):** open and raw-read the exact files identified in Tier 1. Inspect guard clauses, transaction boundaries (`spanner.ReadWriteTransaction`), and business rules. Re-read every edit after writing.
 - **Role(s)** affected (supplier, retailer, driver, warehouse, factory, payload)
 - **Route owner** (`*routes/routes.go` under `apps/backend-go`)
 - **Cross-role consumers** (who reads this state next in the order/dispatch/payment chain)

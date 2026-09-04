@@ -382,12 +382,13 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 				SupplierID: g.SupplierID,
 				Error:      createErr.Error(),
 			})
-			s.compensateParentCheckout(ctx, parentID, createdOrders)
+			_ = s.CompensateSaga(ctx, parentID, createdOrders, createErr.Error())
 			return UnifiedCheckoutResponse{}, &MultiSupplierCheckoutError{
 				Failures: failures,
 				Message:  fmt.Sprintf("multi_supplier_checkout_failed: supplier %s: %v", g.SupplierID, createErr),
 			}
 		}
+		_ = s.RecordSagaChildCreated(ctx, parentID, created.OrderID)
 		createdOrders = append(createdOrders, Order{
 			OrderID:       created.OrderID,
 			SupplierID:    g.SupplierID,
@@ -416,8 +417,8 @@ func (s *Service) unifiedCheckoutMultiSupplier(
 		}
 	}
 
-	if err := s.updateParentOrderTotals(ctx, parentID, parentStatusPending, currency, totalMinor, len(supplierOrders)); err != nil {
-		s.log.Warn("parent order confirm update failed", "parent_order_id", parentID, "err", err)
+	if err := s.CompleteSaga(ctx, parentID, currency, totalMinor, len(supplierOrders)); err != nil {
+		s.log.Warn("parent order saga complete failed", "parent_order_id", parentID, "err", err)
 	}
 
 	invoiceID := strings.Replace(s.newID(), "ord_", "inv_", 1)

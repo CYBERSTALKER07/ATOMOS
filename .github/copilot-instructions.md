@@ -14,7 +14,9 @@ Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are
 7. **Research:** skills (`honest-code-gate`, `gap-hunter`) → official docs/web → proven OSS/big-tech algorithms. Else invent tested in-house logic.
 
 Full text: `.github/instructions/honest-code-gate.instructions.md`  
-Retrieval: `.github/instructions/graph-retrieval-memory.instructions.md` + `.agents/memory/WORKSPACE.md`
+Two-Tier Verification Gate (MANDATORY on every edit — Bazel/Kythe CodeGraph + Targeted Raw Reading):
+1. Tier 1 — Bazel/Kythe Dynamic CodeGraph (Global Radar): run BEFORE touching code to discover blast radius, reverse dependencies, and taint violations (`python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json`, `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>`, `make codegraph-advanced-audit`).
+2. Tier 2 — Targeted Raw Reading (Local Microscope): NEVER rely on the graph alone. Open and raw-read the exact files identified in Tier 1 to inspect runtime conditionals, guard clauses, transaction closures, and error handling. Re-read every edit after writing. See `.agents/skills/codegraph-deep-audit/SKILL.md`.
 
 ---
 

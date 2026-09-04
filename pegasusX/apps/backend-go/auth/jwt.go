@@ -28,15 +28,18 @@ var ErrInvalidToken = errors.New("invalid token")
 
 // IssueOptions controls token shape.
 type IssueOptions struct {
-	Secret string
-	Issuer string
-	TTL    time.Duration
-	Now    func() time.Time
+	Secret  string
+	Keyring Keyring // optional: if set and Secret is empty, uses Keyring.CurrentKey()
+	KeyID   string  // optional: stamps kid into header
+	Issuer  string
+	TTL     time.Duration
+	Now     func() time.Time
 }
 
 type jwtHeader struct {
 	Alg string `json:"alg"`
 	Typ string `json:"typ"`
+	Kid string `json:"kid,omitempty"`
 }
 
 type jwtPayload struct {
@@ -71,7 +74,12 @@ type jwtPayload struct {
 // GS-A1: every token carries market_code + home_cell (claim → profile → env).
 func Issue(c Claims, opts IssueOptions) (string, error) {
 	c = StampMarketClaims(c)
-	if opts.Secret == "" {
+	secret := opts.Secret
+	kid := opts.KeyID
+	if secret == "" && opts.Keyring != nil {
+		secret, kid = opts.Keyring.CurrentKey()
+	}
+	if secret == "" {
 		return "", errors.New("jwt: empty secret")
 	}
 	if opts.TTL <= 0 {
@@ -85,7 +93,7 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 	if jti == "" {
 		jti = uuid.NewString()
 	}
-	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT"})
+	h, _ := json.Marshal(jwtHeader{Alg: "HS256", Typ: "JWT", Kid: kid})
 	p, _ := json.Marshal(jwtPayload{
 		Sub:              c.Subject,
 		Iss:              opts.Issuer,
@@ -112,7 +120,7 @@ func Issue(c Claims, opts IssueOptions) (string, error) {
 		HomeCell:         c.HomeCell,
 	})
 	head := b64(h) + "." + b64(p)
-	sig := sign(head, opts.Secret)
+	sig := sign(head, secret)
 	return head + "." + sig, nil
 }
 
@@ -142,11 +150,16 @@ func IssueWSTicket(session Claims, opts IssueOptions) (token string, expiresAt t
 
 // ParseBearerClaims extracts and validates Authorization: Bearer (incl. revocation).
 func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
+	return ParseBearerClaimsWithKeyring(r, NewKeyring(secret))
+}
+
+// ParseBearerClaimsWithKeyring extracts and validates Authorization: Bearer against a Keyring.
+func ParseBearerClaimsWithKeyring(r *http.Request, keyring Keyring) (Claims, bool) {
 	token := BearerToken(r)
 	if token == "" {
 		return Claims{}, false
 	}
-	claims, err := Parse(token, secret)
+	claims, err := ParseWithKeyring(token, keyring)
 	if err != nil || tokenRevoked(r.Context(), claims) || IsWSTicket(claims) {
 		return Claims{}, false
 	}
@@ -155,23 +168,60 @@ func ParseBearerClaims(r *http.Request, secret string) (Claims, bool) {
 
 // Parse verifies signature + exp and returns the embedded Claims.
 func Parse(token, secret string) (Claims, error) {
-	return parse(token, secret, false)
+	return parseWithKeyring(token, singleKeyring(secret), false)
 }
 
 // ParseIgnoreExpiry verifies signature but allows expired tokens (used for token refresh).
 func ParseIgnoreExpiry(token, secret string) (Claims, error) {
-	return parse(token, secret, true)
+	return parseWithKeyring(token, singleKeyring(secret), true)
+}
+
+// ParseWithKeyring verifies a token signature against all candidate keys in a Keyring.
+func ParseWithKeyring(token string, keyring Keyring) (Claims, error) {
+	return parseWithKeyring(token, keyring, false)
+}
+
+// ParseWithKeyringIgnoreExpiry verifies signature with a Keyring but allows expired tokens.
+func ParseWithKeyringIgnoreExpiry(token string, keyring Keyring) (Claims, error) {
+	return parseWithKeyring(token, keyring, true)
 }
 
 func parse(token, secret string, ignoreExpiry bool) (Claims, error) {
+	return parseWithKeyring(token, singleKeyring(secret), ignoreExpiry)
+}
+
+func parseWithKeyring(token string, keyring Keyring, ignoreExpiry bool) (Claims, error) {
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
 		return Claims{}, ErrInvalidToken
 	}
-	expected := sign(parts[0]+"."+parts[1], secret)
-	if !hmac.Equal([]byte(expected), []byte(parts[2])) {
+	if keyring == nil || !keyring.HasKeys() {
+		return Claims{}, errors.New("jwt: empty keyring")
+	}
+
+	var h jwtHeader
+	if hb, err := base64.RawURLEncoding.DecodeString(parts[0]); err == nil {
+		_ = json.Unmarshal(hb, &h)
+	}
+
+	candidates := keyring.VerifyCandidateKeys(h.Kid)
+	if len(candidates) == 0 {
 		return Claims{}, ErrInvalidToken
 	}
+
+	target := parts[0] + "." + parts[1]
+	matched := false
+	for _, sec := range candidates {
+		expected := sign(target, sec)
+		if hmac.Equal([]byte(expected), []byte(parts[2])) {
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		return Claims{}, ErrInvalidToken
+	}
+
 	pb, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return Claims{}, fmt.Errorf("jwt: payload decode: %w", err)
@@ -234,9 +284,14 @@ func SetSessionCookie(w http.ResponseWriter, token string, ttl time.Duration, se
 // context when a valid session cookie is present, and passes through silently
 // otherwise. RequireRole performs the actual gating.
 func CookieAuth(secret string) func(http.Handler) http.Handler {
+	return CookieAuthWithKeyring(NewKeyring(secret))
+}
+
+// CookieAuthWithKeyring attaches Claims using a Keyring.
+func CookieAuthWithKeyring(keyring Keyring) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = attachSessionClaims(r, secret)
+			r = attachSessionClaimsWithKeyring(r, keyring)
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -245,22 +300,31 @@ func CookieAuth(secret string) func(http.Handler) http.Handler {
 // SessionAuth attaches Claims from the supplier session cookie or a Bearer JWT.
 // Used for local SSMR smoke and native clients that send Authorization headers.
 func SessionAuth(secret string) func(http.Handler) http.Handler {
+	return SessionAuthWithKeyring(NewKeyring(secret))
+}
+
+// SessionAuthWithKeyring attaches Claims using a Keyring.
+func SessionAuthWithKeyring(keyring Keyring) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			r = attachSessionClaims(r, secret)
+			r = attachSessionClaimsWithKeyring(r, keyring)
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
 func attachSessionClaims(r *http.Request, secret string) *http.Request {
+	return attachSessionClaimsWithKeyring(r, singleKeyring(secret))
+}
+
+func attachSessionClaimsWithKeyring(r *http.Request, keyring Keyring) *http.Request {
 	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
-		if claims, err := Parse(c.Value, secret); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
+		if claims, err := ParseWithKeyring(c.Value, keyring); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}
 	if token := BearerToken(r); token != "" {
-		if claims, err := Parse(token, secret); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
+		if claims, err := ParseWithKeyring(token, keyring); err == nil && !tokenRevoked(r.Context(), claims) && !IsWSTicket(claims) {
 			return r.WithContext(WithClaims(r.Context(), claims))
 		}
 	}

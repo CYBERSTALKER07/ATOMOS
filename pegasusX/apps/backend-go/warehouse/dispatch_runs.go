@@ -11,6 +11,8 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -43,7 +45,7 @@ func (s *Service) persistDispatchRun(ctx context.Context, result DispatchExecute
 	warningsRaw, _ := json.Marshal(result.Warnings)
 	manifestsRaw, _ := json.Marshal(manifestIDs)
 	_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		muts := []*spanner.Mutation{
 			spanner.InsertMap("DispatchRuns", map[string]any{
 				"RunId":          runID,
 				"WarehouseId":    result.WarehouseID,
@@ -57,7 +59,23 @@ func (s *Service) persistDispatchRun(ctx context.Context, result DispatchExecute
 				"ManifestsJson":  manifestsRaw,
 				"CreatedAt":      spanner.CommitTimestamp,
 			}),
-		})
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "DispatchRun", runID, events.TopicDispatch, map[string]any{
+			"type":             "DISPATCH_RUN_EXECUTED",
+			"run_id":           runID,
+			"warehouse_id":     result.WarehouseID,
+			"supplier_id":      result.SupplierID,
+			"mode":             mode,
+			"manifest_count":   result.ManifestsCreated,
+			"orders_assigned":  result.OrdersAssigned,
+		}); err != nil {
+			return err
+		}
+		if err := buf.Flush(ctx); err != nil {
+			return err
+		}
+		return txn.BufferWrite(muts)
 	})
 }
 

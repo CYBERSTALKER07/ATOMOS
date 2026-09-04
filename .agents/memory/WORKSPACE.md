@@ -56,9 +56,36 @@
 - `@pegasusx/ui-kit`: Portal primitives (`StatusStack`, `KpiStat`, `HealthStrip`).
 
 ### 2.5 Quality & Test Execution Status
+- **Backend Audit Report (Tracks 1–8):** 100% remediated across Critical, High, Medium, Low, and Perf items (`backend_remediation_plan.md` checked off).
+- **Backend Go Compilation:** `go build ./...` compiles cleanly across all 29 route domains and cmd entrypoints.
 - **Backend Go Tests:** 80+ packages pass unit and integration tests; `cmd/ssmr-smokecheck` tests pass (80+ steps).
+- **Live Infrastructure & SSMR E2E Smokecheck (`scripts/smoke_sandbox.sh`):** 100% PASSED (`__SANDBOX_OK__`, `__SSMR_OK__`, `sandbox-ecosystem-marker-gate-ok`) against live Docker stack (Spanner emulator, Redis, Kafka, Zookeeper, Optimizer Core, Backend-Go, AI Worker). All 100+ ecosystem `PX_E2E_*` markers passed.
+- **Core CI & Parity Gates:** `make repo-hygiene-gate`, `make gen-contracts-gate`, `make gap-hunter-gate`, `make kafka-ha-gate`, `make partner-openapi-gate`, `make jwt-openapi-gate`, and `cmd/schema-drift -offline` all pass clean.
 - **Client Workspace Vitest Suites:** 128+ tests passing across `@pegasusx/supplier-portal`, `@pegasusx/retailer-app-desktop`, `@pegasusx/warehouse-portal`, `@pegasusx/factory-portal`, `@pegasusx/admin-portal`, `@pegasusx/desktop-bridge`, `@pegasusx/desktop-cache`, and `payload-terminal`.
 - **Native Test Suites:** 39 Kotlin test classes (Android) and 28 Swift test classes (iOS) pass clean.
+
+### 2.6 CodeGraph Knowledge Graph & Deep Audit Infrastructure (Memgraph + AST + 5 Seams)
+- **Engine & Storage:** Containerized Memgraph Platform (`pegasusx-codegraph-memgraph`) running on `bolt://localhost:7687` and Memgraph Lab on `http://localhost:3000` via `infra/docker-compose.codegraph.yml`.
+- **Live Graph Scale (`cgr stats`):** 64,432 nodes (22,365 `Function`/`Method`, 847 `RouteEndpoint`, 549 `ApiClientMethod`, 229 `SpannerTable`, 217 `ServiceMethod`, 180 `RepositoryMethod`, 88 `ArchitectureNode`, 70 `EventDefinition`, 38 `OutboxEmitter`, 18 `ClientApp`, 13 `KafkaTopic`, 7 `KafkaConsumer`, 7 `WSHubRoom`) and 176,106 relationships (162,146 `CALLS`, 571 `CONSUMES_ROUTE`, 238 `EMITS_OUTBOX`, 160 `ARCH_REL`, 147 `READS_TABLE`, 114 `MUTATES_TABLE`, 108 `ROUTED_TO_TOPIC`, 22 `FANOUT_WS_ROOM`, 18 `RECEIVED_BY`, 7 `CONSUMED_BY`).
+- **5 Seam Extraction Automation:** `scripts/extract_codegraph_seams.py` and `scripts/seed_architecture_graph.py` generate and ingest Cypher statements linking AST call hierarchies directly with backend Chi routes, client APIs, Spanner DDL, and Kafka outbox emitters.
+- **Advanced Compiler-Grade Code Intelligence Engine (Big-Tech Class):**
+  - `pegasusX/scripts/advanced_codegraph_analyzer.py` provides industrial static analysis:
+    1. **Spanner SQL Tenant Taint Analysis**: Scans all 704 SQL statements in Go repos, detecting 347 queries lacking explicit `WHERE SupplierId` filtering.
+    2. **Transactional Outbox Dual-Write Verifier**: Identifies 54 Go files mutating Spanner without atomic `outbox.Emit` / `TxnBuffer` pairing.
+    3. **Cross-Language Field-Level DTO Drift**: Discovers 679 Go struct JSON tags omitted from TypeScript `packages/types` client interfaces.
+    4. **NetworkX Monorepo Package Centrality**: Mathematically proves `apps/backend-go/auth` is the #1 single point of failure (betweenness centrality: 0.1411).
+    5. **Transitive Blast-Radius Cone**: Calculates multi-hop upstream reachability closure across AST call chains.
+  - Run via `make codegraph-advanced-audit` (writes `docs/ADVANCED_CODE_AUDIT_REPORT.md`).
+- **Agent Skill & Directives:** Established `.agents/skills/codegraph-deep-audit/SKILL.md` across all agent instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.github/copilot-instructions.md`, `honest-code-gate`) mandating pre-edit blast radius checks.
+- **Interactive Pegasus Studio & REST API:** `tools/codegraph-ui/server.py` serving interactive 3-column Studio interface with live `/api/audit`, `/api/advanced-audit`, `/api/bazel/rdeps`, and `/api/kythe/xref` endpoints on `http://127.0.0.1:3001`.
+- **Google Bazel/Blaze Target DAG & Query Engine:**
+  - `pegasusX/scripts/bazel_target_graph.py` models 234 monorepo targets and 799 `DEPENDS_ON` edges in Memgraph.
+  - Query engine supports `rdeps(//..., target)` to calculate exact transitive test targets (e.g. `order_lib` ➔ 51 test targets). Run via `make bazel-graph`.
+- **Google Kythe Semantic Schema Integration:**
+  - `pegasusX/scripts/kythe_semantic_adapter.py` annotates 22,365 nodes with formal Kythe VNames (`corpus: pegasusx`, `path`, `signature`, `language`) and Kythe standard edges (`/kythe/edge/ref/call`, `/kythe/edge/depends`). Run via `make kythe-index`.
+- **Real-Time Dynamic Incremental Watcher Daemon:**
+  - `pegasusX/scripts/dynamic_codegraph_watcher.py` (running via `make codegraph-watch`) continuously monitors `apps/backend-go/`, `packages/`, and `schema/`.
+  - On any file edit/save: performs sub-50ms incremental Tree-sitter re-parsing, transactional Cypher delta mutations in Memgraph, Kythe VName re-binding, and Bazel affected target calculation without full graph rebuilds.
 
 ---
 

@@ -30,6 +30,9 @@ Backend is shared (`apps/backend-go`). Contracts live in `packages/types` and `p
 - `pegasusX/docs/PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`
 - `pegasusX/contracts/ssmr_ecosystem_markers.json`
 - `pegasusX/.cursor/rules/pegasusx-ecosystem-alignment.mdc`
+- `pegasusX/docs/CODE_AUDIT_REPORT.md` (CodeGraph audit report)
+- CodeGraph Deep Audit: `python3 pegasusX/scripts/audit_codegraph.py --symbol <name> --json` or `make codegraph-audit`
+- Skill: `.cursor/skills/codegraph-deep-audit/SKILL.md`
 
 ## Audit workflow
 

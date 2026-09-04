@@ -155,8 +155,10 @@ type OrderRow struct {
 	DispatchPriority int    `json:"dispatch_priority,omitempty"`
 	OverflowCount    int64  `json:"overflow_count,omitempty"`
 	ReassignDepth    int    `json:"reassign_depth,omitempty"`
-	SplitGroupID     string `json:"split_group_id,omitempty"`
-	UpdatedAt        string `json:"updated_at"`
+	SplitGroupID     string  `json:"split_group_id,omitempty"`
+	Lat              float64 `json:"lat,omitempty"`
+	Lng              float64 `json:"lng,omitempty"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 // ManifestRow represents one payloader-visible manifest.
@@ -410,9 +412,9 @@ func (s *Service) ensureDemoDataLocked() {
 	if len(s.orders) == 0 {
 		now := s.now().Format(time.RFC3339Nano)
 		s.orders = []OrderRow{
-			{OrderID: "ord_payload_1", Status: "PENDING", TotalMinor: 120000, Currency: s.currency, UpdatedAt: now},
-			{OrderID: "ord_payload_2", Status: "PENDING", TotalMinor: 98000, Currency: s.currency, UpdatedAt: now},
-			{OrderID: "ord_payload_3", Status: "PENDING", TotalMinor: 143000, Currency: s.currency, UpdatedAt: now},
+			{OrderID: "ord_payload_1", Status: "PENDING", TotalMinor: 120000, Currency: s.currency, Lat: 41.3111, Lng: 69.2797, UpdatedAt: now},
+			{OrderID: "ord_payload_2", Status: "PENDING", TotalMinor: 98000, Currency: s.currency, Lat: 41.3150, Lng: 69.2850, UpdatedAt: now},
+			{OrderID: "ord_payload_3", Status: "PENDING", TotalMinor: 143000, Currency: s.currency, Lat: 41.3200, Lng: 69.2900, UpdatedAt: now},
 		}
 	}
 	if len(s.manifests) == 0 {
@@ -1313,6 +1315,14 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		return
 	}
 	order := s.orders[oIdx]
+	if (order.Lat == 0 && order.Lng == 0) && s.orderReader != nil {
+		if ord, ok, _ := s.orderReader.GetOrder(r.Context(), order.OrderID); ok {
+			order.Lat = ord.Lat
+			order.Lng = ord.Lng
+			s.orders[oIdx].Lat = ord.Lat
+			s.orders[oIdx].Lng = ord.Lng
+		}
+	}
 
 	recommendations := make([]ReassignRecommendation, 0)
 	for i := range s.manifests {

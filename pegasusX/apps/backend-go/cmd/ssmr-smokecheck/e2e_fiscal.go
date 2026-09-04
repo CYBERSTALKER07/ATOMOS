@@ -344,7 +344,7 @@ func fiscalHandoffCash(ctx context.Context, client *http.Client, base, orderID, 
 		return err
 	}
 	scanPayload, _ := json.Marshal(map[string]string{"order_id": orderID, "qr_token": qrData.Token})
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("fiscal-scan:%s:%d", orderID, attempt))
 		if err != nil {
 			return err
@@ -352,14 +352,16 @@ func fiscalHandoffCash(ctx context.Context, client *http.Client, base, orderID, 
 		if status == http.StatusOK {
 			break
 		}
-		if strings.Contains(string(respBody), "optimistic concurrency") {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusConflict || status == http.StatusUnprocessableEntity || status == http.StatusInternalServerError) &&
+			(strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("scan-qr %d: %s", status, string(respBody))
 	}
 	cashPayload, _ := json.Marshal(map[string]string{"order_id": orderID})
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err := clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", cashPayload, retailerToken, fmt.Sprintf("fiscal-confirm-cash:%s:%d", orderID, attempt))
 		if err != nil {
 			return err
@@ -367,8 +369,10 @@ func fiscalHandoffCash(ctx context.Context, client *http.Client, base, orderID, 
 		if status == http.StatusOK || (status == http.StatusConflict && strings.Contains(string(respBody), "PENDING_CASH")) {
 			return nil
 		}
-		if status == http.StatusInternalServerError && strings.Contains(string(respBody), "optimistic concurrency") {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusInternalServerError || status == http.StatusConflict) &&
+			(strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress") || strings.Contains(body, "update_failed")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("confirm-cash %d: %s", status, string(respBody))

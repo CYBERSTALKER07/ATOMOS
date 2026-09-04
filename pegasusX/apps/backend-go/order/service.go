@@ -3800,7 +3800,7 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 		}
 		if len(pendingReturns) > 0 {
 			for _, pr := range pendingReturns {
-				returnPayload, err := json.Marshal(map[string]any{
+				returnPayload := map[string]any{
 					"type":            events.EventSupplierReturnCreated,
 					"return_id":       pr.ReturnID,
 					"order_id":        current.OrderID,
@@ -3813,9 +3813,6 @@ func (s *Service) applyOrderAmendments(ctx context.Context, current Order, req A
 					"supplier_id":     strings.TrimSpace(current.SupplierID),
 					"physical_status": "PENDING",
 					"timestamp":       current.UpdatedAt.Format(time.RFC3339Nano),
-				})
-				if err != nil {
-					return err
 				}
 				if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, returnPayload); err != nil {
 					return err

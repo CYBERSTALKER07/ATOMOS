@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -358,7 +359,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 			if eventKind == "" {
 				eventKind = DefaultTransitionEventKind(o.Status)
 			}
-			transitionID := fmt.Sprintf("tr-%s-%d", o.OrderID, o.UpdatedAt.UnixNano())
+			transitionID := uuid.NewString()
 			mutations = append(mutations, spanner.InsertMap("OrderStatusTransitions", map[string]any{
 				"OrderId":        o.OrderID,
 				"TransitionId":   transitionID,
@@ -823,7 +824,8 @@ func (r *SpannerRepository) ListDueAutoConfirmOrders(ctx context.Context, before
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + `
 			FROM Orders@{FORCE_INDEX=Idx_Orders_ByConfirmationAutoConfirm}
-			WHERE ConfirmationStatus = @confirmation_status
+			WHERE SupplierId IS NOT NULL
+			AND ConfirmationStatus = @confirmation_status
 			AND AutoConfirmAt IS NOT NULL
 			AND AutoConfirmAt <= @before
 			ORDER BY AutoConfirmAt ASC, UpdatedAt DESC
@@ -1204,7 +1206,7 @@ func (r *SpannerRepository) ListBackorderedOrders(ctx context.Context, limit int
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
-		      WHERE Status = @status
+		      WHERE SupplierId IS NOT NULL AND Status = @status
 		      ORDER BY UpdatedAt ASC
 		      LIMIT @lim`,
 		Params: map[string]any{"status": string(StatusBackordered), "lim": limit},

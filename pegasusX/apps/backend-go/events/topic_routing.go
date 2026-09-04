@@ -49,9 +49,13 @@ func DispatcherConsumerTopics() []string {
 	if !ConsumeDomainTopics() {
 		return []string{TopicMain}
 	}
-	seen := make(map[string]struct{}, 4)
-	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+	seen := make(map[string]struct{}, 10)
+	out := make([]string, 0, 10)
+	for _, t := range []string{
+		TopicMain, TopicOrders, TopicDispatch, TopicRealtime,
+		TopicExceptions, TopicTelemetryLogistics, TopicDemand,
+		"driver.score.updated", "capacity.zone.updated", "demand.adjustment.updated",
+	} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -75,14 +79,14 @@ func DispatchConsumerTopic() string {
 
 // TwinConsumerTopics returns Kafka topics for the digital-twin projector.
 // Always includes TopicMain; when domain consume is on, also fans in orders,
-// dispatch (route created), and realtime (driver location).
+// dispatch (route created), realtime (driver location), and route ETA updates.
 func TwinConsumerTopics() []string {
 	if !ConsumeDomainTopics() {
 		return []string{TopicMain}
 	}
-	seen := make(map[string]struct{}, 4)
-	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+	seen := make(map[string]struct{}, 5)
+	out := make([]string, 0, 5)
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime, "route.eta.updated"} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue

@@ -63,6 +63,14 @@ func (f *fakeRedisAdapter) Subscribe(_ context.Context, _ string) (<-chan []byte
 	return ch, cancel, nil
 }
 
+func (f *fakeRedisAdapter) IncrBy(_ context.Context, _ string, _ int64) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRedisAdapter) DecrBy(_ context.Context, _ string, _ int64) (int64, error) {
+	return 0, nil
+}
+
 type fakeKafkaPublisher struct {
 	closed bool
 }

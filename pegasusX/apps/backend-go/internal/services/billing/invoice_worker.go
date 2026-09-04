@@ -231,6 +231,7 @@ func (w *InvoiceWorker) ListFeeSchedules(ctx context.Context, limit int) ([]FeeS
 	iter := w.client.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT FeeScheduleId, SupplierId, Tier, PerOrderMinor, GmvBps, MonthlySubscriptionMinor, Currency, EffectiveFrom, EffectiveTo
 		      FROM BillingFeeSchedules
+		      WHERE SupplierId IS NOT NULL
 		      ORDER BY EffectiveFrom DESC
 		      LIMIT @limit`,
 		Params: map[string]any{"limit": int64(limit)},

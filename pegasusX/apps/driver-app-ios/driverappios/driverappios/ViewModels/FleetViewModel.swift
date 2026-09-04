@@ -354,12 +354,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         Task { await loadRouteGeometry() }
         showMarkerSheet = true
 
-        let dest = activeOrder?.retailerName ?? mission.retailer_name ?? "Destination"
+        let dest = activeOrder?.retailerName ?? "Destination"
         let items = activeOrder?.items.count ?? 1
-        let amount = activeOrder?.totalAmount ?? mission.total_amount_minor ?? 0
+        let amount = Int64(activeOrder?.totalAmount ?? mission.amount)
         DriverLiveActivityManager.shared.startNavigationActivity(
             orderId: mission.order_id,
-            routeId: mission.route_id,
+            routeId: mission.route_id ?? "",
             destinationName: dest,
             totalItems: items,
             totalAmountMinor: amount,
@@ -549,11 +549,17 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
+        photoLocalPath: String? = nil,
+        signatureLocalPath: String? = nil
+    ) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
         do {
-            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl, signatureUrl: signatureUrl)
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {

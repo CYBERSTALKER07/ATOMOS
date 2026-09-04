@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/api/iterator"
 )
 
 // SLOCollector computes the platform SLO metrics declared in
@@ -137,42 +137,10 @@ func (c *SLOCollector) count(ctx context.Context, sql string) (int64, error) {
 	return n, nil
 }
 
-// outboxLagP99 returns the p99 claim→publish lag in seconds over the trailing
-// hour. Approximates p99 via the 100 most recent published events.
+// outboxLagP99 returns the p99 claim→publish lag in seconds computed in-memory
+// inside the outbox relay, eliminating unindexed Spanner full table scans.
 func (c *SLOCollector) outboxLagP99(ctx context.Context) (float64, error) {
-	iter := c.client.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT TIMESTAMP_DIFF(PublishedAt, CreatedAt, MILLISECOND) AS lag_ms
-			FROM OutboxEvents
-			WHERE PublishedAt IS NOT NULL
-			  AND PublishedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-			ORDER BY lag_ms DESC
-			LIMIT 100`,
-	})
-	defer iter.Stop()
-	var lags []float64
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return 0, err
-		}
-		var ms int64
-		if err := row.Columns(&ms); err != nil {
-			return 0, err
-		}
-		lags = append(lags, float64(ms)/1000.0)
-	}
-	if len(lags) == 0 {
-		return 0, nil
-	}
-	// p99 of the worst-100 sample.
-	idx := int(float64(len(lags)) * 0.99)
-	if idx >= len(lags) {
-		idx = len(lags) - 1
-	}
-	return lags[idx], nil
+	return outbox.GetOutboxLagP99Seconds(), nil
 }
 
 // ratio returns numerator/denominator, or 1.0 when there is no traffic in the
