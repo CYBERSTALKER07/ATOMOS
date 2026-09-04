@@ -1,43 +1,39 @@
+'use client';
+
 import { MOCK_DELIVERIES, MOCK_ORDERS } from '../lib/mockData';
+import { DemoPageHeader, KpiCard } from '../components/DemoUi';
+import { useLanguage } from '@/app/context/LanguageContext';
+
+const STATUS_KEY: Record<string, string> = {
+  'On Route': 'demo_status_on_route',
+  Delayed: 'demo_status_delayed',
+  Delivered: 'demo_status_delivered',
+};
 
 export default function RetailerDashboard() {
+  const { t } = useLanguage();
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-medium tracking-tight mb-2">Retailer Command Center</h1>
-        <p className="text-white/50 text-sm">Inbound shipment tracking, route ETAs, and receiving workflows.</p>
-      </div>
+      <DemoPageHeader
+        title={t('demo_retailer_title')}
+        subtitle={t('demo_retailer_sub')}
+      />
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
-          <div className="text-xs font-mono text-white/40 uppercase mb-4 relative z-10">In-Transit Volume</div>
-          <div className="text-4xl font-light mb-1 relative z-10">4.2M</div>
-          <div className="text-xs text-white/40 font-mono relative z-10">UNITS ARRIVING TODAY</div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded">
-          <div className="text-xs font-mono text-white/40 uppercase mb-4">On-Time Delivery</div>
-          <div className="text-4xl font-light mb-1">96.8%</div>
-          <div className="text-xs text-green-400 font-mono">+1.2% vs trailing 30d</div>
-        </div>
-        <div className="bg-[#0a0a0a] border border-white/5 p-6 rounded">
-          <div className="text-xs font-mono text-white/40 uppercase mb-4">Stockouts Prevented</div>
-          <div className="text-4xl font-light mb-1">24</div>
-          <div className="text-xs text-white/40 font-mono">VIA SMART ROUTING</div>
-        </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <KpiCard label={t('demo_rt_in_transit')} value="4.2M" delta={t('demo_rt_units')} />
+        <KpiCard label={t('demo_rt_on_time')} value="96.8%" delta="+1.2%" />
+        <KpiCard label={t('demo_rt_stockouts')} value="24" delta="Smart routing" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Live Routes Map (Mock visual) */}
         <div className="lg:col-span-2 bg-[#0a0a0a] border border-white/5 rounded overflow-hidden flex flex-col h-[500px]">
           <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
-            <h2 className="text-sm font-medium text-white/90">Live Fleet Telemetry</h2>
+            <h2 className="text-sm font-medium text-white/90">{t('demo_rt_fleet_telemetry')}</h2>
             <div className="flex items-center gap-2 text-xs font-mono text-green-400">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping" />
-              TRACKING ACTIVE
+              {t('demo_rt_tracking_active')}
             </div>
           </div>
           
@@ -61,14 +57,14 @@ export default function RetailerDashboard() {
                       route.status === 'Delayed' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
                       'border-green-500/30 text-green-400 bg-green-500/10'
                     }`}>
-                      {route.status}
+                      {t(STATUS_KEY[route.status] || route.status as any)}
                     </span>
                  </div>
                  
                  <div className="space-y-1">
                    <div className="flex justify-between text-[10px] font-mono text-white/50">
-                     <span>Progress</span>
-                     <span>{route.stopsCompleted} / {route.totalStops} STOPS</span>
+                     <span>{t('demo_rt_progress')}</span>
+                     <span>{route.stopsCompleted} / {route.totalStops} {t('demo_rt_stops')}</span>
                    </div>
                    <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
                      <div 
@@ -85,7 +81,7 @@ export default function RetailerDashboard() {
         {/* Incoming Shipments */}
         <div className="bg-[#0a0a0a] border border-white/5 rounded overflow-hidden flex flex-col h-[500px]">
           <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
-            <h2 className="text-sm font-medium text-white/90">Incoming POs</h2>
+            <h2 className="text-sm font-medium text-white/90">{t('demo_rt_incoming_pos')}</h2>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {MOCK_ORDERS.filter(o => o.destination.includes('Retailer')).map(order => (
@@ -95,15 +91,15 @@ export default function RetailerDashboard() {
                   <div className="text-xs font-mono text-white/60">{order.eta}</div>
                 </div>
                 <div className="flex justify-between items-end">
-                  <div className="text-xs text-white/40">From: {order.origin}</div>
-                  <div className="text-xs font-mono text-white/80">{order.qty} Units</div>
+                  <div className="text-xs text-white/40">{t('demo_rt_from')}: {order.origin}</div>
+                  <div className="text-xs font-mono text-white/80">{order.qty} {t('demo_rt_units')}</div>
                 </div>
               </div>
             ))}
             
             {/* Empty state filler */}
             <div className="p-4 border border-white/5 border-dashed rounded text-center opacity-50">
-               <div className="text-xs text-white/40 py-4">End of incoming manifest</div>
+               <div className="text-xs text-white/40 py-4">{t('demo_rt_end_manifest')}</div>
             </div>
           </div>
         </div>

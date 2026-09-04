@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.autoorder.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun ForecastRow(forecast: DemandForecast) {
@@ -59,7 +62,7 @@ fun ForecastRow(forecast: DemandForecast) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(forecast.productName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), maxLines = 1)
                 Text(
-                    "Order by ${forecast.suggestedOrderDate}",
+                    stringResource(R.string.mobile_retailer_ui_order_by_suggestedorderdate, forecast.suggestedOrderDate),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 )

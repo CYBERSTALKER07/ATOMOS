@@ -1,0 +1,25 @@
+services:
+  memgraph:
+    image: memgraph/memgraph-platform:latest
+    container_name: pegasusx-codegraph-memgraph
+    ports:
+      - "7687:7687" # Bolt Cypher protocol for code-graph-rag & MCP
+      - "3000:3000" # Memgraph Lab visual graph explorer & query console
+      - "7444:7444" # Log streaming / management port
+    environment:
+      - MEMGRAPH="--log-level=WARNING --query-execution-timeout-sec=180"
+    volumes:
+      - memgraph-data:/var/lib/memgraph
+      - memgraph-log:/var/log/memgraph
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 0"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  memgraph-data:
+    name: pegasusx-codegraph-data
+  memgraph-log:
+    name: pegasusx-codegraph-log

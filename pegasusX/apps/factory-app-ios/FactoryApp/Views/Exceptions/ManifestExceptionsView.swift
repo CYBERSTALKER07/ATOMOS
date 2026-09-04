@@ -16,11 +16,11 @@ struct ManifestExceptionsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error, exceptions.isEmpty {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if exceptions.isEmpty {
                 ContentUnavailableView(
@@ -46,11 +46,11 @@ struct ManifestExceptionsView: View {
             }
         }
         .background(LabTheme.background)
-        .navigationTitle("Gate Exceptions")
+        .navigationTitle("portal.nav.gate_exceptions")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Close", systemImage: "xmark") {
+                Button("common.action.close", systemImage: "xmark") {
                     dismiss()
                 }
                 .labelStyle(.iconOnly)
@@ -74,8 +74,7 @@ struct ManifestExceptionsView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .manifestUpdate || eventType == .transferUpdate else { return }
+                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                     load(silent: true)
                 }
             )

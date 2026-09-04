@@ -18,7 +18,7 @@ make phase0-migrate
 
 ## Deploy sequence
 
-1. `backend-go` + workers (outbox relay, notification consumer, cash escalation, credit score, reorder)
+1. `backend-go` + workers (outbox relay, notification consumer, cash escalation, reorder)
 2. `supplier-portal`, `warehouse-portal`
 3. Driver + supplier + warehouse native apps (staging-validated builds)
 
@@ -26,8 +26,9 @@ make phase0-migrate
 
 1. `CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=true`
 2. `CREDIT_NOTE_AUTO_FROM_CLAIM=true`
-3. `CREDIT_SCORE_ENFORCEMENT_ENABLED=true`
-4. `CASH_RECONCILIATION_REQUIRED=true` (last)
+3. `CASH_RECONCILIATION_REQUIRED=true` (last)
+
+Do **not** set `CREDIT_SCORE_ENFORCEMENT_ENABLED` — scoring removed Phase A (dead flag).
 
 Use `scripts/gap_closure_flag_rollout.sh` for operator notes.
 

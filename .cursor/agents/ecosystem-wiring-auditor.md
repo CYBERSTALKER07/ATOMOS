@@ -30,6 +30,9 @@ Backend is shared (`apps/backend-go`). Contracts live in `packages/types` and `p
 - `pegasusX/docs/PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md`
 - `pegasusX/contracts/ssmr_ecosystem_markers.json`
 - `pegasusX/.cursor/rules/pegasusx-ecosystem-alignment.mdc`
+- `pegasusX/docs/CODE_AUDIT_REPORT.md` (CodeGraph audit report)
+- CodeGraph Deep Audit: `python3 pegasusX/scripts/audit_codegraph.py --symbol <name> --json` or `make codegraph-audit`
+- Skill: `.cursor/skills/codegraph-deep-audit/SKILL.md`
 
 ## Audit workflow
 
@@ -133,6 +136,7 @@ go test ./apps/backend-go/<pkg>/... -count=1
 
 ## Rules of engagement
 
+0. Load `honest-code-gate`. **"Wired" in a matrix is not production-ready and not a cloud go-ahead.**
 1. **Read source code** — do not trust docs alone; cross-check `ROLE_ROW_PARITY_MATRIX.md` against actual routes and clients.
 2. **No partial slices** — if you change backend behavior, list every client and contract surface that must move in the same batch (per ecosystem alignment rule).
 3. **Be honest about stubs** — `501`, empty lists, `negotiation_disabled`, in-memory fallbacks, and env-gated SSMR markers must be called out.
@@ -152,3 +156,15 @@ go test ./apps/backend-go/<pkg>/... -count=1
 - Live credential assumptions without `PRODUCTION_CREDENTIAL_VALIDATION_RUNBOOK.md` sign-off
 
 When invoked, name the role row (or feature) you are auditing, then execute the workflow above without waiting for further prompts.
+
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

@@ -83,7 +83,7 @@ class CartUiStateComputedTest {
 
     @Test
     fun `displayShipping shows Free when zero`() {
-        val displayShipping = if (0.0 == 0.0) "Free" else "%,.0f".format(0.0)
+        val displayShipping = if (0L == 0L) "Free" else "%,d".format(0L)
         assertEquals("Free", displayShipping)
     }
 

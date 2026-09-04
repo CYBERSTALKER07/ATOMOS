@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -87,6 +88,7 @@ function formatDemandWhy(
 }
 
 export default function InsightsPage() {
+  const t = usePortalT();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -144,9 +146,7 @@ export default function InsightsPage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_SUPPLY_REQUEST_UPDATE' && event.type !== 'FACTORY_TRANSFER_UPDATE') {
-          return;
-        }
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_') && !event.type.startsWith('FACTORY_SUPPLY_')) { return; }
         void load();
       },
     });
@@ -166,13 +166,13 @@ export default function InsightsPage() {
     <PageTransition>
       <PageChrome
         icon="insights"
-        title="Replenishment insights"
-        description="Stock velocity signals and reorder recommendations across connected warehouses."
+        title={t("factory_portal.insights.text.replenishment_insights")}
+        description={t("factory_portal.residual.text.stock_velocity_signals_and_reorder_recommendations_across_connec")}
         loading={loading}
         skeletonVariant="table"
         error={error && insights.length === 0 ? error : null}
         empty={!loading && !error && insights.length === 0}
-        emptyMessage="No replenishment insights at this time. Insights are generated based on stock velocity."
+        emptyMessage={t("factory_portal.residual.text.no_replenishment_insights_at_this_time_insights_are_generated_ba")}
         actions={
           <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-1.5" onClick={() => void load()}>
             <Icon name="refresh" size={16} /> Refresh
@@ -191,16 +191,16 @@ export default function InsightsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Warehouse</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Product</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Why</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Urgency</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Stock</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Velocity/day</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Days Left</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder Qty</th>
-                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Actions</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.warehouse")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.why")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.urgency")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("portal.nav.stock")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.velocity_day")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.days_left")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.reorder_qty")}</th>
+                <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.fleet.text.status")}</th>
+                <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("factory_portal.insights.text.actions")}</th>
               </tr>
             </thead>
             <tbody>

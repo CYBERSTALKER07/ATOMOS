@@ -1,5 +1,8 @@
 # Workers & Kafka Design
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Processes
 
 | Process | Run mode | Duties |
@@ -7,7 +10,7 @@
 | backend-go API | `api` | HTTP/WS; writes Spanner+outbox; **no** outbox relay |
 | backend-go-worker | `worker` | Outbox relay, order mutator, warehouse mutator, notifications, reconcilers |
 | ai-worker | separate | Import, freeze registry, demand jobs, optional synthesis |
-| optimizer-core | sidecar | OR-Tools solve |
+| optimizer-core | separate Deployment (port 8082) | OR-Tools VRP for supplier/WH dispatch; **in SSMR overlay at `replicas: 1`** (`overlays/ssmr`); prod stays `replicas: 0` until AR image publish |
 
 ## Consumer groups (existing + planned)
 

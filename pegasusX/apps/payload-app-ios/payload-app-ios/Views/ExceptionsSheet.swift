@@ -5,19 +5,43 @@ struct ManifestExceptionsSheet: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
-                    PayloadLoadingView(
-                        title: "LOADING EXCEPTIONS",
-                        message: "Fetching overflow, damaged, and manual removals."
-                    )
-                } else if viewModel.manifestExceptions.isEmpty {
-                    PayloadStateView(
-                        variant: .warning,
-                        title: "NO_EXCEPTIONS",
-                        message: "Overflow, damaged, and manual removals appear here.",
-                        compact: false
-                    )
+            VStack {
+                // --- Parity: Report Dock Damage ---
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Report Dock Damage")
+                        .font(.headline)
+                        .foregroundColor(Color(red: 0.6, green: 0.1, blue: 0.1))
+                    
+                    Button(action: { /* Wire ViewModel logic */ }) {
+                        Text("MARK DAMAGED")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .background(Color(red: 1.0, green: 0.9, blue: 0.9))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                // ----------------------------------
+
+                Group {
+                    if viewModel.loadingExceptions && viewModel.manifestExceptions.isEmpty {
+                        PayloadLoadingView(
+                            title: "LOADING EXCEPTIONS",
+                            message: "Fetching overflow, damaged, and manual removals."
+                        )
+                    } else if viewModel.manifestExceptions.isEmpty {
+                        PayloadStateView(
+                            variant: .warning,
+                            title: "NO_EXCEPTIONS",
+                            message: "Overflow, damaged, and manual removals appear here.",
+                            compact: false
+                        )
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
@@ -29,10 +53,10 @@ struct ManifestExceptionsSheet: View {
                                             PayloadStatusBadge(text: "ESCALATED", tint: TermTheme.alert)
                                         }
                                     }
-                                    Text("Order \(row.orderId.prefix(8)) · Manifest \(row.manifestId.prefix(8))")
+                                    Text(L10n.format("mobile_payload.ui.order_prefix_manifest_prefix_2", "\(row.orderId.prefix(8))", "\(row.manifestId.prefix(8))"))
                                         .font(.system(size: 13, weight: .medium, design: .monospaced))
                                         .foregroundStyle(TermTheme.secondary)
-                                    Text("Attempts \(row.attemptCount)")
+                                    Text(L10n.format("mobile_payload.ui.attempts_attemptcount", "\(row.attemptCount)"))
                                         .font(.system(size: 11, weight: .bold, design: .monospaced))
                                         .foregroundStyle(TermTheme.tertiary)
                                 }
@@ -43,10 +67,11 @@ struct ManifestExceptionsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Manifest exceptions")
+            } // Close VStack
+            .navigationTitle("mobile_payload.ui.manifest_exceptions")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { viewModel.toggleExceptionsPanel() }
+                    Button("common.action.close") { viewModel.toggleExceptionsPanel() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {

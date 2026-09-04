@@ -8,6 +8,8 @@ struct DashboardView: View {
     let onOpenManifestExceptions: () -> Void
     let onOpenAnalytics: () -> Void
     let onOpenInsights: () -> Void
+    var onOpenTransfers: (String) -> Void = { _ in }
+    var onOpenLoadingBay: () -> Void = {}
     @State private var showManifests = false
     @State private var showCreateTransfer = false
     @State private var realtimeClient = FactoryRealtimeClient()
@@ -18,7 +20,7 @@ struct DashboardView: View {
     @State private var clientPolicyForce = false
     @State private var pendingManifest: AutoUpdater.Manifest?
     @State private var showNotifications = false
-    private let refreshNanos: UInt64 = 30_000_000_000
+    private let refreshNanos: UInt64 = 60_000_000_000
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 180 : 160
@@ -79,28 +81,77 @@ struct DashboardView: View {
                             }
                         }
                         .padding(.horizontal)
+
+                        HStack {
+                            SourceChip(source: stats.source)
+                            Text(stats.source == "empty" ? "No factory rows yet" : "Dashboard \(stats.source)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("gs-u-factory-source")
+
+                        FactorySectionHeader(
+                            title: "Transfers",
+                            subtitle: "Factory plane only"
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: factoryTransferStates,
+                            counts: stats.transfersByState,
+                            source: stats.source,
+                            onSelect: { onOpenTransfers($0) }
+                        )
+                        .padding(.horizontal)
+
+                        FactorySectionHeader(
+                            title: "Factory trucks",
+                            subtitle: "FactoryTruckManifests. Last-mile retailer IN_TRANSIT is not a factory truck."
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: manifestStates,
+                            counts: stats.manifestsByState,
+                            source: stats.source,
+                            onSelect: { _ in onOpenLoadingBay() }
+                        )
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("gs-u-factory-trucks")
+
+                        StatusStackView(
+                            dictionary: factoryVehicleStates,
+                            counts: stats.vehiclesByState,
+                            source: stats.source
+                        )
+                        .padding(.horizontal)
+                        StatusStackView(
+                            dictionary: factoryDriverDuty,
+                            counts: stats.driverDuty,
+                            source: stats.source
+                        )
+                        .padding(.horizontal)
                     }
                     .labReadableWidth()
                     .padding(.vertical)
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Factory")
+            .navigationTitle("factory_portal.setup.factory.text.factory")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Notifications", systemImage: "bell") {
+                    Button("portal.nav.notifications", systemImage: "bell") {
                         showNotifications = true
                     }
                     .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                    Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                         tokenStore.clear()
                     }
                     .labelStyle(.iconOnly)
@@ -118,13 +169,7 @@ struct DashboardView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        switch eventType {
-                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
-                            Task { await load(silent: true) }
-                        case .outboxFailed:
-                            break
-                        }
+                        if event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") { Task { await load(silent: true) } }
                     }
                 )
             }

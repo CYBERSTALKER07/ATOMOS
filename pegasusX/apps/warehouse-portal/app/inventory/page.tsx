@@ -1,9 +1,10 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
 import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
-import { warehouseAdjustInventoryKey, warehouseInventoryPolicyKey } from '@pegasusx/api-client';
+import { warehouseAdjustInventoryKey, warehouseInventoryPolicyKey } from '@pegasusx/api-core';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -27,6 +28,7 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,13 +222,13 @@ export default function InventoryPage() {
     <PageTransition>
       <PageChrome
         icon="inventory"
-        title="Inventory"
-        description="On-hand stock levels with live sync and quantity adjustments."
+        title={t("portal.nav.inventory")}
+        description={t("warehouse_portal.residual.text.on_hand_stock_levels_with_live_sync_and_quantity_adjustments")}
         error={loadError}
         actions={
           <div className="flex gap-2 items-center">
             <input
-              placeholder="Search products..."
+              placeholder={t("warehouse_portal.inventory.text.search_products")}
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}
               className="px-3 py-1.5 rounded-lg border text-sm w-48 focus:ring-2 focus:ring-[var(--primary)] outline-none"
@@ -295,18 +297,18 @@ export default function InventoryPage() {
               className="w-full max-w-md rounded-xl border p-5 space-y-4 shadow-lg"
               style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
             >
-              <h3 className="text-sm font-semibold">Confirm inventory change</h3>
+              <h3 className="text-sm font-semibold">{t("warehouse_portal.inventory.text.confirm_inventory_change")}</h3>
               <p className="text-sm text-[var(--muted)]">
                 Change {confirmItem.sku || confirmItem.sku_id || confirmItem.product_id} from {confirmItem.quantity} to {confirmQty}?
                 This affects retailer availability immediately.
               </p>
               <label className="block text-sm space-y-1">
-                <span className="text-xs text-[var(--muted)]">Reason (optional)</span>
+                <span className="text-xs text-[var(--muted)]">{t("warehouse_portal.inventory.text.reason_optional")}</span>
                 <input
                   type="text"
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
-                  placeholder="e.g. cycle count, damaged goods"
+                  placeholder={t("warehouse_portal.inventory.text.e_g_cycle_count_damaged_goods")}
                   className="w-full px-3 py-2 rounded-lg border text-sm"
                   style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
                 />

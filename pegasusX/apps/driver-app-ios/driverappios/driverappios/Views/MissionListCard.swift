@@ -66,7 +66,7 @@ struct MissionListCard: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text("ORD-\(mission.order_id.suffix(4).uppercased())")
+                        Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(4).uppercased())"))
                             .font(.system(size: 14, weight: .black, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
 
@@ -116,7 +116,7 @@ struct MissionListCard: View {
                     .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgTertiary)
 
                 if inRange {
-                    Text("In Range")
+                    Text("mobile_driver.ui.in_range")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(LabTheme.success)
                 }

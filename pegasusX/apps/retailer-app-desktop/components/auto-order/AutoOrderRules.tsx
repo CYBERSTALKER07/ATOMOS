@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { Building2, Layers, Package, Box, CheckCircle2 } from "lucide-react";
 import { PageSection } from "@/components/PageSection";
 import type { AutoOrderSettings } from "@/lib/types";
@@ -14,13 +17,14 @@ export function AutoOrderRules({
     id?: string
   ) => void;
 }) {
+  const t = usePortalT();
   return (
     <>
       <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">Global Auto-Order</h3>
-            <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">Auto-order everything from all suppliers</p>
+            <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.global_auto_order")}</h3>
+            <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.auto_order.auto_order_rules.text.auto_order_everything_from_all_suppliers")}</p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -35,13 +39,13 @@ export function AutoOrderRules({
         {settings?.global_enabled && (
           <div className="mt-4 flex items-center gap-2 text-[var(--desk-success)]">
             <CheckCircle2 size={16} />
-            <span className="md-typescale-body-small">Global auto-order active. Overrides all granular settings.</span>
+            <span className="md-typescale-body-small">{t("retailer_desktop.auto_order.auto_order_rules.text.global_on_scoped_off_still_blocks_matching_suppliers_categories_")}</span>
           </div>
         )}
       </div>
 
       {(settings?.supplier_overrides?.length ?? 0) > 0 && (
-        <PageSection title="Supplier Overrides">
+        <PageSection title={t("supplier_portal.admin.empathy.kpi.supplier_overrides")}>
           <div className="space-y-2">
             {settings?.supplier_overrides.map((item) => (
               <div key={item.supplier_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
@@ -49,7 +53,7 @@ export function AutoOrderRules({
                   <Building2 size={18} className="text-[var(--desk-text-tertiary)]" />
                   <div>
                     <div className="md-typescale-body-medium">{item.supplier_id}</div>
-                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Supplier-level override</div>
+                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.supplier_level_override")}</div>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -68,7 +72,7 @@ export function AutoOrderRules({
       )}
 
       {(settings?.category_overrides?.length ?? 0) > 0 && (
-        <PageSection title="Category Overrides">
+        <PageSection title={t("retailer_desktop.settings.text.category_overrides")}>
           <div className="space-y-2">
             {settings?.category_overrides.map((item) => (
               <div key={item.category_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
@@ -76,7 +80,7 @@ export function AutoOrderRules({
                   <Layers size={18} className="text-[var(--desk-text-tertiary)]" />
                   <div>
                     <div className="md-typescale-body-medium">{item.category_id}</div>
-                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Category-level override</div>
+                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.category_level_override")}</div>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -95,7 +99,7 @@ export function AutoOrderRules({
       )}
 
       {(settings?.product_overrides?.length ?? 0) > 0 && (
-        <PageSection title="Product Overrides">
+        <PageSection title={t("supplier_portal.admin.empathy.kpi.product_overrides")}>
           <div className="space-y-2">
             {settings?.product_overrides.map((item) => (
               <div key={item.product_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
@@ -103,7 +107,7 @@ export function AutoOrderRules({
                   <Package size={18} className="text-[var(--desk-text-tertiary)]" />
                   <div>
                     <div className="md-typescale-body-medium">{item.product_id}</div>
-                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Product-level override</div>
+                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.product_level_override")}</div>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -122,7 +126,7 @@ export function AutoOrderRules({
       )}
 
       {(settings?.variant_overrides?.length ?? 0) > 0 && (
-        <PageSection title="Variant / SKU Overrides">
+        <PageSection title={t("retailer_desktop.auto_order.auto_order_rules.text.size_variant_overrides")}>
           <div className="space-y-2">
             {settings?.variant_overrides.map((item) => (
               <div key={item.variant_id} className="flex items-center justify-between p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-xl">
@@ -130,7 +134,7 @@ export function AutoOrderRules({
                   <Box size={18} className="text-[var(--desk-text-tertiary)]" />
                   <div>
                     <div className="md-typescale-body-medium">{item.variant_id}</div>
-                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Variant / SKU override</div>
+                    <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.size_variant_override")}</div>
                   </div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">

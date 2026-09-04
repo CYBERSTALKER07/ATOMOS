@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
@@ -16,6 +17,7 @@ function formatLag(seconds: number): string {
 }
 
 export default function SignalIngestOpsPanel() {
+  const t = usePortalT();
   const [status, setStatus] = useState<PlanningSignalIngestStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function SignalIngestOpsPanel() {
       const resp = await api.getPlanningSignalStatus();
       setStatus(resp);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "signal_status_unavailable");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.signal_status_unavailable"));
     } finally {
       setLoading(false);
     }
@@ -45,7 +47,7 @@ export default function SignalIngestOpsPanel() {
     <section className="desk-card p-6 mt-6">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="bento-card-title">Signal ingest ops</h2>
+          <h2 className="bento-card-title">{t("supplier_portal.signal_ingest_ops_panel.text.signal_ingest_ops")}</h2>
           <p className="md-typescale-body-small mt-1" style={{ color: "var(--desk-text-secondary)" }}>
             Kafka collect → ai-worker projection — no ML inference on the hot path.
           </p>
@@ -66,19 +68,19 @@ export default function SignalIngestOpsPanel() {
       ) : status ? (
         <>
           <KpiStatGrid columns={4}>
-            <KpiStatCard label="Projections" value={status.projection_count} sub="PlanningSignalProjections rows" />
+            <KpiStatCard label={t("supplier_portal.residual.text.projections")} value={status.projection_count} sub="PlanningSignalProjections rows" />
             <KpiStatCard
-              label="Ingest lag"
+              label={t("supplier_portal.residual.text.ingest_lag")}
               value={formatLag(status.lag_seconds)}
               sub={status.last_ingest_at ? `Last ${new Date(status.last_ingest_at).toLocaleString()}` : "No ingests yet"}
             />
             <KpiStatCard
-              label="Baseline rows"
+              label={t("supplier_portal.residual.text.baseline_rows")}
               value={status.baseline_rows_from_signals}
               sub="From signal_ingest source"
             />
             <KpiStatCard
-              label="Pipeline"
+              label={t("supplier_portal.residual.text.pipeline")}
               value={status.healthy ? "Healthy" : "Stale"}
               sub={status.topic}
             />

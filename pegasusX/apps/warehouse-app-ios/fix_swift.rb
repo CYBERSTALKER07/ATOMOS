@@ -1,0 +1,5 @@
+content = File.read("WarehouseApp/Services/WarehouseOperationsService.swift")
+
+content = content.gsub("    static func approveEarlyComplete(truckId: String) async throws -> EarlyCompleteResponse {\n        try await api.post(\n            \"v1/warehouse/ops/orders/early-complete/approve\",\n            body: EarlyCompleteRequest(truckId: truckId)\n        )\n    }", "    static func getEarlyCompleteRequest(driverId: String) async throws -> [String: Any] {\n        try await api.get(\"v1/warehouse/ops/orders/early-complete/\\(driverId)\")\n    }\n\n    static func approveEarlyComplete(driverId: String, action: String, newWindowStart: String? = nil, newWindowEnd: String? = nil) async throws -> [String: Any] {\n        var body: [String: String] = [\n            \"driver_id\": driverId,\n            \"action\": action\n        ]\n        if let s = newWindowStart { body[\"newWindowStart\"] = s }\n        if let e = newWindowEnd { body[\"newWindowEnd\"] = e }\n        return try await api.post(\"v1/warehouse/ops/orders/early-complete/approve\", body: body)\n    }")
+
+File.write("WarehouseApp/Services/WarehouseOperationsService.swift", content)

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
@@ -37,6 +38,7 @@ function formatMoney(minor: number) {
 }
 
 export default function ControlTowerPage() {
+  const t = usePortalT();
   const [pulse, setPulse] = useState<Pulse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,6 @@ export default function ControlTowerPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await apiFetch("/v1/retailer/control-tower/pulse");
       if (!res.ok) {
@@ -56,9 +57,9 @@ export default function ControlTowerPage() {
         throw new Error((body as { error?: string }).error || `pulse_${res.status}`);
       }
       setPulse((await res.json()) as Pulse);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load pulse");
-      setPulse(null);
+      setError(null);
+    } catch {
+      setError("control_tower_pulse_failed");
     } finally {
       setLoading(false);
     }
@@ -70,36 +71,36 @@ export default function ControlTowerPage() {
 
   const tiles: Tile[] = pulse
     ? [
-        { label: "Open orders", value: pulse.open_orders, href: "/orders", icon: Package },
+        { label: t("retailer_desktop.residual.text.open_orders"), value: pulse.open_orders, href: "/orders", icon: Package },
         {
-          label: "Active fulfillment",
+          label: t("retailer_desktop.residual.text.active_fulfillment"),
           value: pulse.active_fulfillments,
           href: "/tracking",
           icon: Activity,
         },
-        { label: "Dock pending", value: pulse.dock_pending, href: "/dock", icon: Package },
+        { label: t("retailer_desktop.residual.text.dock_pending"), value: pulse.dock_pending, href: "/dock", icon: Package },
         {
-          label: "POS open sessions",
+          label: t("retailer_desktop.residual.text.pos_open_sessions"),
           value: pulse.pos_open_sessions,
           href: "/pos",
           icon: ShoppingCart,
         },
-        { label: "Open shifts", value: pulse.open_shifts, href: "/shifts", icon: Clock },
+        { label: t("retailer_desktop.residual.text.open_shifts"), value: pulse.open_shifts, href: "/shifts", icon: Clock },
         {
-          label: "Assist tickets",
+          label: t("retailer_desktop.residual.text.assist_tickets"),
           value: pulse.open_assist_tickets,
           href: "/assist",
           icon: HandHelping,
         },
-        { label: "Low stock bins", value: pulse.low_stock_sku_bins, href: "/stock", icon: Package },
+        { label: t("retailer_desktop.residual.text.low_stock_bins"), value: pulse.low_stock_sku_bins, href: "/stock", icon: Package },
         {
-          label: "Shift variances (closed)",
+          label: t("retailer_desktop.residual.text.shift_variances_closed"),
           value: pulse.shift_variances_7d,
           href: "/shifts",
           icon: Clock,
         },
         {
-          label: "Sales 7d",
+          label: t("retailer_desktop.residual.text.sales_7d"),
           value: formatMoney(pulse.sales_minor_7d),
           href: "/reports",
           icon: Activity,
@@ -111,7 +112,7 @@ export default function ControlTowerPage() {
     <div className="relative flex min-h-[calc(100vh-64px)] flex-col gap-6 overflow-hidden bg-[#0a0a0a] p-6 text-white">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Retailer ops pulse</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("retailer_desktop.control_tower.text.retailer_ops_pulse")}</h1>
           <p className="text-sm text-gray-400">
             Live counts from your shop — empty when quiet, never demo data.
           </p>
@@ -145,10 +146,10 @@ export default function ControlTowerPage() {
         </div>
       )}
 
-      {pulse?.empty && !loading && (
+      {pulse?.empty && !loading && !error && (
         <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.03] px-6 py-16 text-center">
           <Activity className="mb-4 h-10 w-10 text-emerald-400/80" />
-          <h2 className="text-lg font-semibold">No live ops signals yet</h2>
+          <h2 className="text-lg font-semibold">{t("retailer_desktop.control_tower.text.no_live_ops_signals_yet")}</h2>
           <p className="mt-2 max-w-md text-sm text-gray-400">
             Place wholesale orders, enable store stock or POS, open a shift, or create an assist
             ticket. This surface stays empty until real activity exists — it never shows mock

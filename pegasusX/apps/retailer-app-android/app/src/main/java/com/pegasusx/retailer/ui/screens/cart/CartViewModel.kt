@@ -1,5 +1,6 @@
 package com.pegasusx.retailer.ui.screens.cart
 
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
@@ -7,6 +8,8 @@ import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.local.PendingOrderEntity
 import com.pegasusx.retailer.data.local.PendingOrderDao
 import com.pegasusx.retailer.data.local.TokenManager
+import com.pegasusx.retailer.data.model.selectableRetailerCatalogCodes
+import com.pegasusx.retailer.data.model.sessionPackCurrency
 import com.pegasusx.retailer.data.model.CartItem
 import com.pegasusx.retailer.data.model.CheckoutLineItem
 import com.pegasusx.retailer.data.model.CheckoutQuoteLine
@@ -37,7 +40,6 @@ import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.JsonObject
 import retrofit2.HttpException
 import javax.inject.Inject
-
 enum class CartLoadIssue {
     RESTRICTED,
     OFFLINE,
@@ -64,6 +66,11 @@ data class CartUiState(
     val deliveryMode: String = "STANDARD",
     val deliveryDate: String? = null,
     val expressPriority: Boolean = false,
+    val currencyPickerEnabled: Boolean = false,
+    val currencyAllowlist: List<String> = emptyList(),
+    val operatingCurrency: String = "",
+    val orderCurrency: String = "",
+    val catalogCodes: List<String> = emptyList(),
     val preorderMinLeadDays: Long = 3,
     val preorderMaxLeadDays: Long = 0,
     val deliveryFeeMinor: Long = 0,
@@ -81,18 +88,24 @@ data class CartUiState(
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
-    val subtotal: Double get() = quotedSubtotalMinor?.toDouble() ?: items.sumOf { it.totalPrice }
-    val shipping: Double get() = if (subtotal > 50_000) 0.0 else 15_000.0
-    val discount: Double get() = quotedDiscountMinor?.toDouble() ?: 0.0
-    val total: Double get() = subtotal + shipping - discount
-    val displaySubtotal: String get() = "%,.0f".format(subtotal)
-    val displayShipping: String get() = if (shipping == 0.0) "Free" else "%,.0f".format(shipping)
-    val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
-    val displayTotal: String get() = "%,.0f".format(total)
+    val subtotal: Long get() = quotedSubtotalMinor ?: items.sumOf { it.totalPrice }
+    val shipping: Long get() = if (subtotal > 50_000L) 0L else 15_000L
+    val discount: Long get() = quotedDiscountMinor ?: 0L
+    val total: Long get() = subtotal + shipping - discount
+    val displaySubtotal: String get() = "%,d".format(subtotal)
+    val displayShipping: String get() = if (shipping == 0L) "Free" else "%,d".format(shipping)
+    val displayDiscount: String get() = if (discount == 0L) "0" else "-%,d".format(discount)
+    val displayTotal: String get() = "%,d".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
-    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
+    val selectedPaymentLabel: String
+        get() = paymentOptions.find { it.gateway.equals(selectedPaymentGateway.trim(), ignoreCase = true) }?.label
+            ?: when (selectedPaymentGateway.trim().uppercase()) {
+                "GLOBAL_PAY" -> "GlobalPay"
+                "CASH" -> "Cash on Delivery"
+                else -> selectedPaymentGateway.trim()
+            }
     val displayDeliveryFee: String
-        get() = if (deliveryFeeMinor > 0) "%,.0f".format(deliveryFeeMinor.toDouble()) else "Free"
+        get() = if (deliveryFeeMinor > 0) "%,d".format(deliveryFeeMinor) else "Free"
     val syncMessage: String?
         get() = when (loadIssue) {
             CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
@@ -102,25 +115,29 @@ data class CartUiState(
         }
 }
 
-private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
-    return options.find { it.gateway == gateway }?.label ?: when (gateway.trim().uppercase()) {
-        "GLOBAL_PAY" -> "GlobalPay"
-        "ADYEN" -> "Adyen"
-        "CASH" -> "Cash on Delivery"
-        else -> gateway
-    }
-}
-
 private fun com.pegasusx.retailer.data.model.CheckoutPreviewResponse.orderableCaps(): Map<String, Int> {
     val source = orderableQuantities.ifEmpty { maxQuantities }
     return source.mapValues { it.value.toInt() }
 }
 
-private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
-    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
-    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
-)
+private fun standardPaymentOptions(catalogCodes: List<String> = emptyList()): List<CheckoutPaymentOption> {
+    val codes = if (catalogCodes.isEmpty()) listOf("CASH") else catalogCodes
+    return codes.mapNotNull { code ->
+        when (code) {
+            "CASH" -> CheckoutPaymentOption(
+                gateway = "CASH",
+                label = "Cash on Delivery",
+                labelRes = com.pegasusx.retailer.R.string.supplier_portal_billing_setup_gateway_cash_label,
+            )
+            "GLOBAL_PAY" -> CheckoutPaymentOption(
+                gateway = "GLOBAL_PAY",
+                label = "GlobalPay",
+                labelRes = com.pegasusx.retailer.R.string.mobile_retailer_ui_globalpay,
+            )
+            else -> null
+        }
+    }
+}
 
 @HiltViewModel
 class CartViewModel @Inject constructor(
@@ -142,6 +159,7 @@ class CartViewModel @Inject constructor(
 
 init { 
         flushPendingOrders()
+        fetchPaymentCatalog()
         fetchPaymentOptions()
         refreshCartFromServer()
         observeCartSyncUpdates()
@@ -149,6 +167,7 @@ init {
 
     fun retrySync() {
         refreshCartFromServer()
+        fetchPaymentCatalog()
         fetchPaymentOptions()
     }
 
@@ -185,7 +204,7 @@ init {
             if (quantity <= 0) {
                 return@mapNotNull null
             }
-            val unitPrice = raw.longField("unit_price").toDouble()
+            val unitPrice = raw.longField("unit_price")
 
             val existing = existingBySku[skuId]
             if (existing != null) {
@@ -309,7 +328,7 @@ init {
                         "supplier_id" to supplierId,
                         "quantity" to item.quantity,
                         "unit_price" to item.variant.price.toLong(),
-                        "currency" to "UZS",
+                        "currency" to sessionPackCurrency(),
                     )
                 }
             }
@@ -354,15 +373,55 @@ init {
                 CheckoutPaymentOption(gateway = tokenId, label = label)
             }
 
-            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions()) }
+            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions(it.catalogCodes)) }
             _uiState.update { it.copy(syncError = null, loadIssue = null) }
         } catch (e: Exception) {
             val issue = resolveLoadIssue(e)
             _uiState.update {
                 it.copy(
-                    paymentOptions = standardPaymentOptions(),
+                    paymentOptions = standardPaymentOptions(it.catalogCodes),
                     syncError = resolveErrorMessage(e, issue),
                     loadIssue = issue,
+                )
+            }
+        }
+    }
+
+    private fun fetchPaymentCatalog() = viewModelScope.launch {
+        try {
+            val resp = api.getPaymentCatalog()
+            val codes = selectableRetailerCatalogCodes(resp.catalog)
+            val currency = resp.currencyCode.ifBlank { sessionPackCurrency() }
+            _uiState.update {
+                val nextOptions = it.paymentOptions.filter { option ->
+                    option.gateway !in setOf("GLOBAL_PAY", "CASH", "ADYEN", "STRIPE")
+                } + standardPaymentOptions(codes)
+                val selected = when {
+                    nextOptions.any { option -> option.gateway == it.selectedPaymentGateway } -> it.selectedPaymentGateway
+                    nextOptions.any { option -> option.gateway == "CASH" } -> "CASH"
+                    else -> nextOptions.firstOrNull()?.gateway ?: "CASH"
+                }
+                it.copy(
+                    catalogCodes = codes,
+                    currencyPickerEnabled = false,
+                    currencyAllowlist = emptyList(),
+                    operatingCurrency = currency,
+                    orderCurrency = currency,
+                    selectedPaymentGateway = selected,
+                    paymentOptions = nextOptions,
+                )
+            }
+        } catch (_: Exception) {
+            val currency = sessionPackCurrency()
+            _uiState.update {
+                it.copy(
+                    catalogCodes = emptyList(),
+                    currencyPickerEnabled = false,
+                    operatingCurrency = currency,
+                    orderCurrency = currency,
+                    paymentOptions = it.paymentOptions.filter { option ->
+                        option.gateway !in setOf("GLOBAL_PAY", "CASH", "ADYEN", "STRIPE")
+                    } + standardPaymentOptions(emptyList()),
                 )
             }
         }
@@ -530,6 +589,7 @@ init {
                                 productId = skuId,
                                 quantity = item.quantity.toLong(),
                                 unitPriceMinor = item.variant.price.toLong(),
+                                currency = sessionPackCurrency(),
                             )
                         },
                     ),
@@ -649,7 +709,12 @@ init {
             requestedDeliveryDate = if (state.deliveryMode == "SCHEDULED") requestedDeliveryDate else null,
             deliveryPriority = if (state.expressPriority) "EXPRESS" else "STANDARD",
             checkoutPolicyToken = state.checkoutPolicyToken,
+            currency = null,
         )
+    }
+
+    fun setOrderCurrency(code: String) {
+        _uiState.update { it.copy(orderCurrency = code.trim().uppercase()) }
     }
 
     fun setSupplierIsActive(value: Boolean) {
@@ -662,7 +727,8 @@ init {
 
     fun setSelectedPaymentGateway(gateway: String) {
         // Uppercase known gateways, otherwise keep token IDs untouched.
-        val gw = if (gateway.equals("GLOBAL_PAY", ignoreCase=true) || gateway.equals("ADYEN", ignoreCase=true) || gateway.equals("CASH", ignoreCase=true)) gateway.trim().uppercase() else gateway.trim()
+        val known = setOf("GLOBAL_PAY", "CASH")
+        val gw = if (known.any { gateway.equals(it, ignoreCase = true) }) gateway.trim().uppercase() else gateway.trim()
         _uiState.update { it.copy(selectedPaymentGateway = gw) }
     }
 
@@ -674,10 +740,10 @@ init {
                 val state = _uiState.value
                 val retailerId = tokenManager.getUserId() ?: ""
                 var finalGateway = state.selectedPaymentGateway
-                if (finalGateway != "GLOBAL_PAY" && finalGateway != "ADYEN" && finalGateway != "CASH") {
+                if (finalGateway != "GLOBAL_PAY" && finalGateway != "CASH") {
                     try {
                         api.setDefaultCard(mapOf("token_id" to finalGateway))
-                        finalGateway = "GLOBAL_PAY"
+                        finalGateway = if (state.catalogCodes.contains("GLOBAL_PAY")) "GLOBAL_PAY" else "CASH"
                     } catch (e: Exception) {
                         _uiState.update {
                             it.copy(

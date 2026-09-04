@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import com.pegasusx.supplier.ui.screens.manifests.ManifestExceptionsScreen
 import com.pegasusx.supplier.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.settings.NotificationPreferencesScreen
+import com.pegasusx.supplier.ui.screens.settings.ReturnPolicySettingsScreen
 import com.pegasusx.supplier.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrderDetailScreen
@@ -93,6 +95,14 @@ import com.pegasusx.supplier.ui.screens.network.GeoReportScreen
 import com.pegasusx.supplier.ui.screens.network.SupplyLanesScreen
 import com.pegasusx.supplier.ui.screens.network.TopologyScreen
 import com.pegasusx.supplier.ui.screens.network.WarehousesScreen
+import com.pegasusx.supplier.ui.screens.crm.SupplierCRMScreen
+import com.pegasusx.supplier.ui.screens.crm.LoyaltyProgramScreen
+import com.pegasusx.supplier.ui.screens.crm.EntityResolutionScreen
+import com.pegasusx.supplier.ui.screens.ops.CreditAdminDisableScreen
+import com.pegasusx.supplier.ui.screens.ops.PlaybooksScreen
+import com.pegasusx.supplier.ui.screens.ops.ScoredExceptionsScreen
+import com.pegasusx.supplier.ui.screens.ops.SupplierPortalFeedScreen
+import com.pegasusx.supplier.ui.screens.treasury.PayoutsScreen
 import com.pegasusx.supplier.ui.screens.pricing.RetailerOverridesScreen
 import com.pegasusx.supplier.ui.screens.treasury.ChargebacksScreen
 import com.pegasusx.supplier.ui.screens.treasury.TreasuryHubScreen
@@ -104,7 +114,11 @@ object SupplierRoutes {
     const val BILLING = "billing"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDERS_ROUTE = "orders?status={status}"
     const val ORDER_DETAIL = "orders/{orderId}"
+
+    fun orders(status: String? = null): String =
+        if (status.isNullOrBlank()) ORDERS else "$ORDERS?status=${android.net.Uri.encode(status)}"
     const val FLEET = "fleet"
     const val MORE = "more"
     const val INVENTORY = "inventory"
@@ -123,10 +137,23 @@ object SupplierRoutes {
     const val DEMAND_HISTORY = "demand_history"
     const val PLANNING_BRAIN = "planning_brain"
     const val PLANNING_SETTINGS = "planning_settings"
+    const val RETURN_POLICY = "return_policy"
     const val KNOWLEDGE_GRAPH = "knowledge_graph"
     const val REPLENISHMENT_POLICIES = "replenishment_policies"
     const val FACTORIES = "factories"
     const val WAREHOUSES = "warehouses"
+    const val CRM = "crm"
+    const val LOYALTY = "loyalty"
+    const val ENTITY_RESOLUTION = "entity_resolution"
+    const val PAYOUTS = "payouts"
+    const val CONTROL_TOWER = "control_tower"
+    const val PLAYBOOKS = "playbooks"
+    const val SEGMENTATION = "segmentation"
+    const val TAX_REGIMES = "tax_regimes"
+    const val CREDIT_POLICY = "credit_policy"
+    const val CREDIT_ADMIN_DISABLE = "credit_admin_disable"
+    const val FLYWHEEL = "flywheel"
+    const val PAYDAY_CALENDAR = "payday_calendar"
     const val EARLY_COMPLETE = "early_complete"
     const val ORG_FLEET = "org_fleet"
     const val EARNINGS = "earnings"
@@ -208,7 +235,8 @@ fun SupplierNavigation(
     val tabs = listOf(
         SupplierTab(SupplierRoutes.DASHBOARD, "Dashboard", Icons.Default.Dashboard),
         SupplierTab(SupplierRoutes.ORDERS, "Orders", Icons.AutoMirrored.Filled.List),
-        SupplierTab(SupplierRoutes.FLEET, "Fleet", Icons.Default.LocalShipping),
+        SupplierTab(SupplierRoutes.DISPATCH_PREVIEW, "Dispatch", Icons.Default.LocalShipping),
+        SupplierTab(SupplierRoutes.PLANNING_BRAIN, "Plan", Icons.Default.ShowChart),
         SupplierTab(SupplierRoutes.MORE, "More", Icons.Default.MoreHoriz),
     )
     val backStack by navController.currentBackStackEntryAsState()
@@ -318,14 +346,29 @@ fun SupplierNavigation(
                         showBillingBanner = !TokenHolder.isConfigured,
                         onOpenBilling = { navController.navigate(SupplierRoutes.BILLING) },
                         onOpenNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
+                        onOpenOrderStatus = { status ->
+                            navController.navigate(SupplierRoutes.orders(status)) {
+                                launchSingleTop = true
+                            }
+                        },
                     )
                 
             }
-            composable(SupplierRoutes.ORDERS) {
+            composable(
+                route = SupplierRoutes.ORDERS_ROUTE,
+                arguments = listOf(
+                    navArgument("status") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val status = entry.arguments?.getString("status").orEmpty()
                 OrdersHubScreen(
                     ops = ops,
                     realtimeSignals = realtimeSignals,
                     onOrderClick = { order -> navController.navigate(SupplierRoutes.orderDetail(order.orderId)) },
+                    initialStatus = status.takeIf { it.isNotBlank() },
                 )
             }
 
@@ -356,6 +399,7 @@ fun SupplierNavigation(
                     onDispatch = { navController.navigate(SupplierRoutes.DISPATCH_PREVIEW) },
                     onActivity = { navController.navigate(SupplierRoutes.ACTIVITY) },
                     onFleetOrders = { navController.navigate(SupplierRoutes.FLEET_ORDERS) },
+                    onFleet = { navController.navigate(SupplierRoutes.FLEET) },
                     onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                     onOperations = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onReplenishmentPolicies = { navController.navigate(SupplierRoutes.REPLENISHMENT_POLICIES) },
@@ -377,6 +421,7 @@ fun SupplierNavigation(
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onNotifications = { navController.navigate(SupplierRoutes.NOTIFICATIONS) },
                     onNotificationPrefs = { navController.navigate(SupplierRoutes.NOTIFICATION_PREFS) },
+                    onReturnPolicy = { navController.navigate(SupplierRoutes.RETURN_POLICY) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
                     onBusinessSetup = { navController.navigate(SupplierRoutes.BUSINESS_SETUP) },
                     onChargebacks = { navController.navigate(SupplierRoutes.CHARGEBACKS) },
@@ -388,6 +433,18 @@ fun SupplierNavigation(
                     onDemandHistory = { navController.navigate(SupplierRoutes.DEMAND_HISTORY) },
                     onFactories = { navController.navigate(SupplierRoutes.FACTORIES) },
                     onWarehouses = { navController.navigate(SupplierRoutes.WAREHOUSES) },
+                    onCrm = { navController.navigate(SupplierRoutes.CRM) },
+                    onLoyalty = { navController.navigate(SupplierRoutes.LOYALTY) },
+                    onEntityResolution = { navController.navigate(SupplierRoutes.ENTITY_RESOLUTION) },
+                    onPayouts = { navController.navigate(SupplierRoutes.PAYOUTS) },
+                    onControlTower = { navController.navigate(SupplierRoutes.CONTROL_TOWER) },
+                    onPlaybooks = { navController.navigate(SupplierRoutes.PLAYBOOKS) },
+                    onSegmentation = { navController.navigate(SupplierRoutes.SEGMENTATION) },
+                    onTaxRegimes = { navController.navigate(SupplierRoutes.TAX_REGIMES) },
+                    onCreditPolicy = { navController.navigate(SupplierRoutes.CREDIT_POLICY) },
+                    onCreditAdminDisable = { navController.navigate(SupplierRoutes.CREDIT_ADMIN_DISABLE) },
+                    onFlywheel = { navController.navigate(SupplierRoutes.FLYWHEEL) },
+                    onPaydayCalendar = { navController.navigate(SupplierRoutes.PAYDAY_CALENDAR) },
                     onSignOut = {
                         TokenHolder.clear()
                         pendingBusinessSetup = false
@@ -497,6 +554,7 @@ fun SupplierNavigation(
                     onOpenPlanningBrain = { navController.navigate(SupplierRoutes.PLANNING_BRAIN) },
                     onOpenKnowledgeGraph = { navController.navigate(SupplierRoutes.KNOWLEDGE_GRAPH) },
                     onOpenPlanningSettings = { navController.navigate(SupplierRoutes.PLANNING_SETTINGS) },
+                    onOpenReturnPolicy = { navController.navigate(SupplierRoutes.RETURN_POLICY) },
                     onOpenRoutePerformance = { navController.navigate(SupplierRoutes.ROUTE_PERFORMANCE) },
                  )
             }
@@ -605,6 +663,9 @@ fun SupplierNavigation(
             composable(SupplierRoutes.PLANNING_SETTINGS) {
                 PlanningSettingsScreen(ops) { navController.popBackStack() }
             }
+            composable(SupplierRoutes.RETURN_POLICY) {
+                ReturnPolicySettingsScreen(ops) { navController.popBackStack() }
+            }
             composable(SupplierRoutes.KNOWLEDGE_GRAPH) {
                 KnowledgeGraphScreen(ops) { navController.popBackStack() }
             }
@@ -616,6 +677,42 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.WAREHOUSES) {
                  WarehousesScreen(ops, geocodeApi) { navController.popBackStack() } 
+            }
+            composable(SupplierRoutes.CRM) {
+                SupplierCRMScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.LOYALTY) {
+                LoyaltyProgramScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.ENTITY_RESOLUTION) {
+                EntityResolutionScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.PAYOUTS) {
+                PayoutsScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.CONTROL_TOWER) {
+                ScoredExceptionsScreen({ navController.popBackStack() }) { api.scoredControlTower() }
+            }
+            composable(SupplierRoutes.PLAYBOOKS) {
+                PlaybooksScreen({ navController.popBackStack() }) { api.listPlaybooks() }
+            }
+            composable(SupplierRoutes.SEGMENTATION) {
+                SupplierPortalFeedScreen("Segmentation", { navController.popBackStack() }) { api.listRetailerSegments() }
+            }
+            composable(SupplierRoutes.TAX_REGIMES) {
+                SupplierPortalFeedScreen("Tax regimes", { navController.popBackStack() }) { api.listTaxRegimes() }
+            }
+            composable(SupplierRoutes.CREDIT_POLICY) {
+                SupplierPortalFeedScreen("Credit policy", { navController.popBackStack() }) { api.getCreditProgram() }
+            }
+            composable(SupplierRoutes.CREDIT_ADMIN_DISABLE) {
+                CreditAdminDisableScreen(api) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.FLYWHEEL) {
+                SupplierPortalFeedScreen("POS flywheel", { navController.popBackStack() }) { api.getDemandFlywheel() }
+            }
+            composable(SupplierRoutes.PAYDAY_CALENDAR) {
+                SupplierPortalFeedScreen("Payday calendar", { navController.popBackStack() }) { api.getDemandSignals("PAYDAY") }
             }
             composable(SupplierRoutes.EARLY_COMPLETE) {
                  EarlyCompleteScreen(ops, realtimeSignals) { navController.popBackStack() } 

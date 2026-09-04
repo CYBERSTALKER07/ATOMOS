@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,12 +52,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Surface
 import com.pegasusx.retailer.data.api.RetailerWSMessage
+import com.pegasusx.retailer.data.model.filterRetailerCardGateways
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusGreenSoft
 import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusOrangeSoft
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
+import com.pegasusx.retailer.R
 
 enum class PaymentPhase {
     CHOOSE, CASH_CONFIRM, PROCESSING, CASH_PENDING, FISCALIZING, SUCCESS, FAILED
@@ -81,6 +85,7 @@ fun DeliveryPaymentSheet(
     onAddCard: () -> Unit = {},
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
+    allowedCardGateways: List<String> = emptyList(),
 ) {
     if (isCompact) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -96,7 +101,7 @@ fun DeliveryPaymentSheet(
         ) {
             DeliveryPaymentSheetContent(
                 event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice,
-                onSelectCard, onAddCard, onRetry, onDismiss,
+                onSelectCard, onAddCard, onRetry, onDismiss, allowedCardGateways,
             )
         }
     } else {
@@ -111,7 +116,7 @@ fun DeliveryPaymentSheet(
                 Column(Modifier.padding(vertical = 32.dp)) {
                     DeliveryPaymentSheetContent(
                         event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice,
-                        onSelectCard, onAddCard, onRetry, onDismiss,
+                        onSelectCard, onAddCard, onRetry, onDismiss, allowedCardGateways,
                     )
                 }
             }
@@ -131,6 +136,7 @@ fun DeliveryPaymentSheetContent(
     onAddCard: () -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
+    allowedCardGateways: List<String> = emptyList(),
 ) {
     AnimatedContent(
         targetState = phase,
@@ -138,7 +144,7 @@ fun DeliveryPaymentSheetContent(
         label = "payment_phase",
     ) { currentPhase ->
         when (currentPhase) {
-            PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard, onAddCard)
+            PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard, onAddCard, allowedCardGateways)
             PaymentPhase.CASH_CONFIRM -> CashConfirmContent(event, onConfirmCash, onBackToPaymentChoice)
             PaymentPhase.PROCESSING -> ProcessingContent()
             PaymentPhase.CASH_PENDING -> CashPendingContent(event)
@@ -223,8 +229,9 @@ private fun ChooseContent(
     onSelectCash: () -> Unit,
     onSelectCard: (String) -> Unit,
     onAddCard: () -> Unit,
+    allowedCardGateways: List<String>,
 ) {
-    val cardGatewayOptions = resolveCardGatewayOptions(event)
+    val cardGatewayOptions = resolveCardGatewayOptions(event, allowedCardGateways)
 
     Column(
         modifier = Modifier
@@ -282,7 +289,7 @@ private fun ChooseContent(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Order #${event.orderId.takeLast(6)}",
+            stringResource(R.string.mobile_retailer_ui_order_takelast, event.orderId.takeLast(6)),
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
         )
@@ -297,7 +304,7 @@ private fun ChooseContent(
 
         PaymentOptionRow(
             icon = Icons.Rounded.LocalAtm,
-            label = "Cash on Delivery",
+            label = stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label),
             description = "Pay the driver in cash",
             onClick = onSelectCash,
         )
@@ -322,25 +329,17 @@ private fun ChooseContent(
     }
 }
 
-private fun resolveCardGatewayOptions(event: RetailerWSMessage): List<CardGatewayOption> {
-    val gateways = event.availableCardGateways
-        .mapNotNull(::normalizeCardGateway)
-        .distinct()
-        .ifEmpty { listOf("GLOBAL_PAY", "ADYEN") }
+private fun resolveCardGatewayOptions(
+    event: RetailerWSMessage,
+    allowedCardGateways: List<String>,
+): List<CardGatewayOption> {
+    val gateways = filterRetailerCardGateways(event.availableCardGateways, allowedCardGateways)
 
     return gateways.mapNotNull { gateway ->
         when (gateway) {
             "GLOBAL_PAY" -> CardGatewayOption(gateway, "GlobalPay", "Pay via GlobalPay checkout")
-            "ADYEN" -> CardGatewayOption(gateway, "Adyen", "Pay via Adyen checkout")
             else -> null
         }
-    }
-}
-
-private fun normalizeCardGateway(gateway: String): String? {
-    return when (gateway.trim().uppercase()) {
-        "GLOBAL_PAY", "ADYEN" -> gateway.trim().uppercase()
-        else -> null
     }
 }
 

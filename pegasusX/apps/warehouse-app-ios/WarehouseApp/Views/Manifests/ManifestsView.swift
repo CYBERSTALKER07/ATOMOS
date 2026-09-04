@@ -13,14 +13,14 @@ struct ManifestsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if manifests.isEmpty {
-                    ContentUnavailableView("No Manifests", systemImage: "doc.on.doc", description: Text("No manifests found"))
+                    ContentUnavailableView("No Manifests", systemImage: "doc.on.doc", description: Text("mobile_warehouse.ui.no_manifests_found"))
                 } else {
                     ResponsiveGridContentWrapper {
                         ForEach(manifests) { manifest in
@@ -28,7 +28,7 @@ struct ManifestsView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(String(manifest.manifestId.prefix(8)))
                                     .font(.headline.monospaced())
-                                Text("\(manifest.stopCount) stops · \(manifest.driverName)")
+                                Text(L10n.format("mobile_warehouse.ui.stopcount_stops_drivername", "\(manifest.stopCount)", "\(manifest.driverName)"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -39,10 +39,10 @@ struct ManifestsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Manifests")
+            .navigationTitle("portal.nav.manifests")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

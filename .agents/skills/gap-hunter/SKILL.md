@@ -85,8 +85,11 @@ Roles (JWT → apps must stay in sync):
 - When symptoms are flaky with no stack trace  
 - Phase exit: “can we stop building and only wire cloud?”  
 
-**Pair with:** `pegasus-doctrine` (feature shape), `financial-integrity` (money),  
+**Pair with:** `honest-code-gate` (verdict from code, not docs; cloud YES only if spine is REAL),
+`pegasus-doctrine` (feature shape), `financial-integrity` (money),
 `kafka-event-contracts`, `spanner-discipline`, `native-mobile-safety`.
+
+If the hunt is **NO** (not API-wiring-only), say **NOT READY** for cloud. Do not start GCP/PSP/OFD key wiring.
 
 ---
 
@@ -496,3 +499,15 @@ Do not expand multi-supplier, provisional credit fiscal, or prod OFD credentials
 - `pegasusX/apps/backend-go/order/{state_machine,fiscal,fiscal_provider}.go`  
 - `pegasusX/apps/backend-go/kafka/notification_dispatcher.go`  
 - `pegasusX/contracts/ssmr_fiscal_markers.json`  
+
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

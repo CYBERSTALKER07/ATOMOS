@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +37,7 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.R
 
 private val rescueReasons = listOf(
     "Engine Failure",
@@ -85,20 +88,20 @@ fun RequestRescueSheet(
                 .padding(bottom = 32.dp),
         ) {
             Text(
-                text = "Request Rescue",
+                text = stringResource(R.string.mobile_driver_ui_request_rescue),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = lab.fg,
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Report a breakdown so dispatch can assign a rescue truck",
+                text = stringResource(R.string.mobile_driver_ui_report_a_breakdown_so_dispatch_can_assign_a_rescue_truck),
                 style = MaterialTheme.typography.bodyMedium,
                 color = lab.fgSecondary,
             )
 
             Spacer(modifier = Modifier.height(PegasusSpacing.s20))
             Text(
-                text = "Rescue Reason",
+                text = stringResource(R.string.mobile_driver_ui_rescue_reason),
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = lab.fg,
             )
@@ -186,7 +189,7 @@ fun RequestRescueSheet(
                     )
                 } else {
                     Text(
-                        text = "Request Rescue",
+                        text = stringResource(R.string.mobile_driver_ui_request_rescue),
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         color = lab.bg,
                     )

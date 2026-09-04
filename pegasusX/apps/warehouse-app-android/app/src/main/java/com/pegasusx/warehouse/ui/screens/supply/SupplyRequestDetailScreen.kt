@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +21,7 @@ import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +33,7 @@ fun SupplyRequestDetailScreen(
     onBack: (() -> Unit)? = null,
 ) {
     var request by remember { mutableStateOf<WarehouseSupplyRequest?>(null) }
+    var qcResult by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -44,6 +48,8 @@ fun SupplyRequestDetailScreen(
                 val resp = opsRepository.getSupplyRequest(requestId)
                 if (resp.isSuccessful) {
                     request = resp.body()
+                    val qc = opsRepository.getSupplyRequestQC(requestId)
+                    qcResult = if (qc.isSuccessful) qc.body()?.result.orEmpty() else ""
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -96,7 +102,7 @@ fun SupplyRequestDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Supply request") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     TextButton(onClick = { load() }) { Text("Refresh") }
                 },
@@ -143,6 +149,7 @@ fun SupplyRequestDetailScreen(
                     DetailRow("Volume (VU)", row.totalVolumeVu.toString())
                     DetailRow("Transfer order", row.transferOrderId ?: "—")
                     DetailRow("Created", row.createdAt)
+                    DetailRow("QC", qcResult.ifBlank { "—" })
                     if (row.notes.isNotBlank()) {
                         DetailRow("Notes", row.notes)
                     }

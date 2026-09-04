@@ -1,0 +1,12 @@
+# Google-managed TLS for SSMR API.
+# Becomes Active only after DNS A/AAAA for the host points at the Ingress IP.
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: pegasusx-ssmr-api-cert
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: ssmr
+spec:
+  domains:
+    - api-ssmr.pegasusx.app

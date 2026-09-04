@@ -10,24 +10,9 @@ import {
   Menu,
   Bell,
   Search,
-  LayoutDashboard,
-  ShoppingCart,
-  PackageSearch,
-  Activity,
-  BarChart3,
-  Settings,
   LogOut,
   Store,
   X,
-  MapPin,
-  Container,
-  RefreshCcw,
-  Clock,
-  LayoutGrid,
-  HandHelping,
-  FileBarChart,
-  Box,
-  Building2,
 } from "lucide-react";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import { useWebSocket } from "../lib/ws";
@@ -36,50 +21,13 @@ import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 import Icon from "./Icon";
 import { apiFetch } from "@/lib/auth";
+import { SessionPackChip } from "./SessionPackChip";
 import { OrgSwitcher } from "./OrgSwitcher";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { usePortalT } from "@/lib/i18n";
+import { NAV, navSectionIsActive, type NavSection } from "@/lib/nav";
 
-/* ────────── Navigation Config ────────── */
-
-type NavEntry = {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  /** If set, entry requires this retailer permission (from /v1/retailer/me). */
-  perm?: string;
-  /** Optional capability pack required (client-side progressive disclosure). */
-  pack?: string;
-};
-type NavSection = { label?: string; items: NavEntry[] };
 type RetailerIdentity = { name: string; company: string; initials: string };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-      { href: "/orders", icon: ShoppingCart, label: "Orders", perm: "order.place" },
-      { href: "/tracking", icon: MapPin, label: "Tracking", perm: "dock.receive" },
-      { href: "/dock", icon: Container, label: "Dock", perm: "dock.receive" },
-      { href: "/catalog", icon: PackageSearch, label: "Catalog", perm: "order.place" },
-      { href: "/procurement", icon: Activity, label: "Procurement", perm: "order.place" },
-      { href: "/my-suppliers", icon: Store, label: "My Suppliers", perm: "order.place" },
-      { href: "/credit", icon: Store, label: "Credit partners", perm: "order.place" },
-      { href: "/auto-order", icon: RefreshCcw, label: "Auto-Order", perm: "order.place" },
-      { href: "/stock", icon: PackageSearch, label: "Store stock", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/stock/local-skus", icon: Box, label: "Local SKUs", perm: "stock.view", pack: "STORE_STOCK" },
-      { href: "/pos", icon: ShoppingCart, label: "POS", perm: "pos.sell", pack: "POS" },
-      { href: "/shifts", icon: Clock, label: "Shifts", perm: "shift.open", pack: "SHIFTS" },
-      { href: "/sections", icon: LayoutGrid, label: "Sections", perm: "stock.view", pack: "SECTIONS" },
-      { href: "/assist", icon: HandHelping, label: "Assist", perm: "assist.respond", pack: "CUSTOMER_ASSIST" },
-      { href: "/insights", icon: BarChart3, label: "Insights", perm: "reports.view" },
-      { href: "/reports", icon: FileBarChart, label: "Reports Pro", perm: "reports.view", pack: "REPORTS_PRO" },
-      { href: "/hq", icon: Building2, label: "Franchise HQ", perm: "reports.view", pack: "REPORTS_PRO" },
-    ],
-  },
-  {
-    label: "System",
-    items: [{ href: "/settings", icon: Settings, label: "Settings" }],
-  },
-];
 
 function filterNavByPerms(
   sections: NavSection[],
@@ -138,16 +86,22 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 /* ── Breadcrumb helper ── */
-function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
-  if (pathname === "/") return [{ label: "Hub", href: "/" }];
+function buildBreadcrumbs(
+  pathname: string,
+  t: (key: string) => string,
+): { label: string; href: string }[] {
+  if (pathname === "/") return [{ label: t("portal.chrome.retailer_hub"), href: "/" }];
   const segs = pathname.split("/").filter(Boolean);
   const crumbs: { label: string; href: string }[] = [
-    { label: "Home", href: "/" },
+    { label: t("portal.chrome.home"), href: "/" },
   ];
   let path = "";
   for (const seg of segs) {
     path += "/" + seg;
-    const label = seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
+    const match = NAV.flatMap((s) => s.items).find((item) => item.href === path);
+    const label = match
+      ? t(match.labelKey)
+      : seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, " ");
     crumbs.push({ label, href: path });
   }
   return crumbs;
@@ -155,10 +109,16 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
+  const t = usePortalT();
   const iconName: Record<ThemeMode, string> = {
     system: "autoMode",
     light: "lightMode",
     dark: "darkMode",
+  };
+  const labelKey: Record<ThemeMode, string> = {
+    system: "portal.chrome.theme_system",
+    light: "portal.chrome.theme_light",
+    dark: "portal.chrome.theme_dark",
   };
 
   return (
@@ -166,8 +126,8 @@ const ThemeToggle = memo(function ThemeToggle() {
       type="button"
       onClick={cycle}
       className="portal-btn portal-btn--ghost desk-icon-btn"
-      title={`Theme: ${mode}`}
-      aria-label={`Theme: ${mode}`}
+      title={t(labelKey[mode])}
+      aria-label={t(labelKey[mode])}
     >
       <Icon name={iconName[mode]} size={18} />
     </button>
@@ -193,6 +153,7 @@ const DrawerContent = memo(function DrawerContent({
   capabilities: string[] | null;
 }) {
   const isRail = collapsed && !isMobile;
+  const t = usePortalT();
   const navSections = filterNavByPerms(NAV, permissions, capabilities);
   return (
     <div className="flex flex-col h-full">
@@ -204,7 +165,7 @@ const DrawerContent = memo(function DrawerContent({
           {isRail ? (
             <button
               onClick={onToggle}
-              aria-label="Open sidebar"
+              aria-label={t("portal.chrome.open_sidebar")}
               className="desk-icon-btn active-press"
             >
               <PanelLeft
@@ -242,7 +203,7 @@ const DrawerContent = memo(function DrawerContent({
                     letterSpacing: "0.05em",
                   }}
                 >
-                  Retailer Workspace
+                  {t("portal.chrome.retailer_hub")}
                 </p>
                 <h1
                   style={{
@@ -261,7 +222,7 @@ const DrawerContent = memo(function DrawerContent({
                   onClick={onToggle}
                   className="desk-icon-btn active-press"
                   style={{ width: 28, height: 28 }}
-                  aria-label="Collapse sidebar"
+                  aria-label={t("portal.chrome.collapse_sidebar")}
                 >
                   <PanelLeftClose
                     size={16}
@@ -289,36 +250,15 @@ const DrawerContent = memo(function DrawerContent({
         {/* Navigation */}
         <nav
           className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? "px-1.5" : "px-2.5"}`}
+          data-testid="gs-un-nav"
         >
-          {navSections.map((section, si) => (
-            <div key={si}>
-              {si > 0 && (
-                <div
-                  style={{
-                    height: 1,
-                    background: "var(--desk-border)",
-                    margin: isRail ? "8px 4px" : "8px 12px",
-                  }}
-                />
-              )}
-              {section.label && !isRail && (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="desk-sidebar-section-label"
-                  style={{
-                    color: "var(--desk-text-tertiary)",
-                    paddingLeft: "12px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {section.label}
-                </motion.div>
-              )}
-              {section.items.map((item) => {
+          {navSections.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
                 const ItemIcon = item.icon;
+                const label = t(item.labelKey);
                 return (
                   <Link
                     key={item.href}
@@ -326,8 +266,8 @@ const DrawerContent = memo(function DrawerContent({
                     prefetch={false}
                     data-active={active ? "true" : undefined}
                     className={`desk-sidebar-link desk-sidebar-item active-press ${active ? "desk-sidebar-link--active" : ""}`}
-                    title={isRail ? item.label : undefined}
-                    aria-label={item.label}
+                    title={isRail ? label : undefined}
+                    aria-label={label}
                     style={{
                       justifyContent: isRail ? "center" : "flex-start",
                       padding: isRail ? "0" : "0 12px",
@@ -350,14 +290,41 @@ const DrawerContent = memo(function DrawerContent({
                         animate={{ opacity: 1, x: 0 }}
                         className="truncate ml-3"
                       >
-                        {item.label}
+                        {label}
                       </motion.span>
                     )}
                   </Link>
                 );
-              })}
-            </div>
-          ))}
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && (
+                  <div
+                    style={{
+                      height: 1,
+                      background: "var(--desk-border)",
+                      margin: isRail ? "8px 4px" : "8px 12px",
+                    }}
+                  />
+                )}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 
@@ -377,8 +344,8 @@ const DrawerContent = memo(function DrawerContent({
             <button
               onClick={onLogout}
               className="portal-btn portal-btn--ghost desk-sidebar-item active-press flex-1"
-              title="Sign Out"
-              aria-label="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
               type="button"
               style={{
                 height: 40,
@@ -397,11 +364,12 @@ const DrawerContent = memo(function DrawerContent({
                   marginLeft: "12px",
                 }}
               >
-                Sign Out
+                {t("common.action.sign_out")}
               </span>
             </button>
           )}
         </div>
+        {!isRail && <div className="mt-2"><LanguageSwitcher /></div>}
         {!isRail && (
           <motion.div
             layout
@@ -439,6 +407,7 @@ export default function RetailerShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const t = usePortalT();
   const router = useRouter();
   const { isConnected } = useWebSocket();
   const { unreadCount } = useRetailerNotifications();
@@ -455,7 +424,7 @@ export default function RetailerShell({
     router.push("/");
   }, [router]);
 
-  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname, t), [pathname, t]);
 
   /* Close mobile drawer on route change */
   useEffect(() => {
@@ -599,7 +568,7 @@ export default function RetailerShell({
                 <button
                   className="desk-icon-btn active-press"
                   onClick={() => setMobileOpen(false)}
-                  aria-label="Close menu"
+                  aria-label={t("retailer_desktop.retailer_shell.text.close_menu")}
                 >
                   <X size={20} />
                 </button>
@@ -633,14 +602,14 @@ export default function RetailerShell({
             <button
               className="desk-icon-btn md:hidden -ml-2 active-press"
               onClick={() => setMobileOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("retailer_desktop.retailer_shell.text.open_menu")}
             >
               <Menu size={24} />
             </button>
 
             <nav
               className="desk-breadcrumb hidden md:flex"
-              aria-label="Breadcrumb"
+              aria-label={t("retailer_desktop.retailer_shell.text.breadcrumb")}
             >
               {breadcrumbs.map((crumb, i) => (
                 <motion.span
@@ -692,6 +661,7 @@ export default function RetailerShell({
           </div>
 
           <div className="desk-topbar-right px-6 gap-4">
+            <SessionPackChip />
             {/* Live indicator */}
             <div
               className={`desk-live-indicator hidden md:inline-flex ${!isConnected ? "opacity-50" : ""}`}
@@ -728,7 +698,7 @@ export default function RetailerShell({
                 borderRadius: "var(--radius-md)",
               }}
               onClick={() => router.push("/catalog")}
-              aria-label="Open catalog search"
+              aria-label={t("retailer_desktop.retailer_shell.text.open_catalog_search")}
             >
               <Search
                 size={16}
@@ -758,7 +728,7 @@ export default function RetailerShell({
             <button
               className="desk-icon-btn md:hidden active-press"
               onClick={() => router.push("/catalog")}
-              aria-label="Search catalog"
+              aria-label={t("retailer_desktop.retailer_shell.text.search_catalog")}
             >
               <Search size={20} />
             </button>

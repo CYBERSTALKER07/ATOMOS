@@ -45,7 +45,7 @@ protocol FleetServiceProtocol {
     func updateOrderDuringDelivery(orderId: String, latitude: Double, longitude: Double) async throws -> UpdateOrderDuringDeliveryResponse
 
     /// POST /v1/delivery/credit-delivery — mark delivered on credit.
-    func markCreditDelivery(orderId: String, photoProofUrl: String?) async throws -> [String: String]
+    func markCreditDelivery(orderId: String, photoProofUrl: String?, signatureUrl: String?) async throws -> [String: String]
 
     /// POST /v1/delivery/split-payment — record cash/card split.
     func splitPayment(orderId: String, cashMinor: Int64, cardMinor: Int64, currency: String?) async throws -> SplitPaymentResponse

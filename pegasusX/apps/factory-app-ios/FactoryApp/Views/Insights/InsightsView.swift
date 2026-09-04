@@ -14,14 +14,14 @@ struct InsightsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if insights.isEmpty {
-                    ContentUnavailableView("No Insights", systemImage: "chart.bar.xaxis", description: Text("No replenishment insights"))
+                    ContentUnavailableView("No Insights", systemImage: "chart.bar.xaxis", description: Text("warehouse_portal.residual.text.no_replenishment_insights"))
                 } else {
                     ResponsiveGridContentWrapper {
                         ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
@@ -32,7 +32,7 @@ struct InsightsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Replenishment Insights")
+            .navigationTitle("mobile_factory.ui.replenishment_insights")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { load() } label: {
@@ -45,8 +45,7 @@ struct InsightsView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        guard eventType == .supplyRequestUpdate || eventType == .transferUpdate else { return }
+                        guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") || event.type.hasPrefix("FACTORY_SUPPLY_") else { return }
                         load(silent: true)
                     }
                 )

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import type {
   WarehouseAssignVehicleResponse,
@@ -9,7 +10,7 @@ import type {
   WarehouseFleetVehicleListResponse,
   WarehouseVehicleUnavailableReason,
 } from '@pegasusx/types';
-import { warehouseAssignDriverVehicleKey, warehouseCreateDriverKey } from '@pegasusx/api-client';
+import { warehouseAssignDriverVehicleKey, warehouseCreateDriverKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import Icon from '@/components/Icon';
@@ -18,6 +19,7 @@ import { PageChrome } from '@/components/PageChrome';
 import { DriversList } from '@/components/drivers/DriversList';
 
 export default function DriversPage() {
+  const t = usePortalT();
   const [drivers, setDrivers] = useState<WarehouseFleetDriver[]>([]);
   const [vehicles, setVehicles] = useState<WarehouseFleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,8 +109,8 @@ export default function DriversPage() {
     <PageTransition>
       <PageChrome
         icon="fleet"
-        title="Drivers"
-        description="Fleet drivers with vehicle assignment and live truck status."
+        title={t("portal.nav.drivers")}
+        description={t("warehouse_portal.residual.text.fleet_drivers_with_vehicle_assignment_and_live_truck_status")}
         loading={loading}
         skeletonVariant="table"
         error={error}
@@ -137,10 +139,10 @@ export default function DriversPage() {
             className="p-4 rounded-xl border border-(--border) space-y-3 mb-4"
             style={{ background: 'var(--surface)' }}
           >
-            <h2 className="text-sm font-semibold">New driver</h2>
+            <h2 className="text-sm font-semibold">{t("warehouse_portal.drivers.text.new_driver")}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
-                placeholder="Name"
+                placeholder={t("warehouse_portal.drivers.text.name")}
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 required
@@ -148,7 +150,7 @@ export default function DriversPage() {
                 style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
               />
               <input
-                placeholder="Phone"
+                placeholder={t("common.field.phone")}
                 value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
                 required
@@ -171,8 +173,8 @@ export default function DriversPage() {
             className="p-4 rounded-xl border border-(--border) mb-4"
             style={{ background: 'var(--surface)' }}
           >
-            <p className="text-sm font-semibold">Driver PIN</p>
-            <p className="text-sm text-(--muted) mt-1">Share this one-time PIN with the driver:</p>
+            <p className="text-sm font-semibold">{t("warehouse_portal.drivers.text.driver_pin")}</p>
+            <p className="text-sm text-(--muted) mt-1">{t("warehouse_portal.drivers.text.share_this_one_time_pin_with_the_driver")}</p>
             <p className="mt-2 font-mono text-lg tracking-widest">{createdPin}</p>
           </div>
         )}

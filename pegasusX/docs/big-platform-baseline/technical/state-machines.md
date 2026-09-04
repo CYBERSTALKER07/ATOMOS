@@ -1,5 +1,8 @@
 # State Machines
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Order (canonical — already implemented)
 
 See `order/state_machine.go` and `ECOSYSTEM_FEATURES_BY_ROLE.md`.

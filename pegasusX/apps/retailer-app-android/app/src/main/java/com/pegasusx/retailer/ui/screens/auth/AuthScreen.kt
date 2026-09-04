@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedVisibility
@@ -71,6 +73,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.retailer.ui.theme.StatusRed
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("MissingPermission")
@@ -127,13 +130,13 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Choose organization",
+                text = stringResource(R.string.retailer_desktop_auth_select_org_text_choose_organization),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
             )
-            Spacer(Modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your phone is linked to more than one retailer.",
+                text = stringResource(R.string.mobile_retailer_ui_your_phone_is_linked_to_more_than_one_retailer),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
@@ -188,8 +191,8 @@ fun AuthScreen(
 
     if (showMapPicker) {
         LocationPickerScreen(
-            initialLat = if (latitude != 0.0) latitude else 41.2995,
-            initialLng = if (longitude != 0.0) longitude else 69.2401,
+            initialLat = if (latitude != 0.0) latitude else (com.pegasus.design.sessionMapCenter()?.lat ?: 0.0),
+            initialLng = if (longitude != 0.0) longitude else (com.pegasus.design.sessionMapCenter()?.lng ?: 0.0),
             resolveAddress = { lat, lng -> viewModel.resolveAddress(lat, lng) },
             onConfirm = { picked ->
                 latitude = picked.latitude
@@ -238,12 +241,12 @@ fun AuthScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Pegasus",
+                text = stringResource(R.string.auth_login_title),
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.Black,
             )
             Text(
-                text = "Retailer Portal",
+                text = stringResource(R.string.mobile_retailer_ui_retailer_portal),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Black.copy(alpha = 0.5f),
             )
@@ -402,7 +405,7 @@ fun AuthScreen(
 
                     if (locationLabel.isNotEmpty()) {
                         Text(
-                            text = "Selected: $locationLabel",
+                            text = stringResource(R.string.mobile_retailer_ui_selected_locationlabel),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Black.copy(alpha = 0.6f),
                             modifier = Modifier.padding(horizontal = 4.dp),
@@ -430,7 +433,7 @@ fun AuthScreen(
 
                     // ── Logistics Details ──
                     Text(
-                        text = "Receiving Window (optional)",
+                        text = stringResource(R.string.mobile_retailer_ui_receiving_window_optional),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Black.copy(alpha = 0.5f),
                         modifier = Modifier.padding(top = 4.dp),
@@ -461,7 +464,7 @@ fun AuthScreen(
                     }
 
                     Text(
-                        text = "Loading Access Type (optional)",
+                        text = stringResource(R.string.mobile_retailer_ui_loading_access_type_optional),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Black.copy(alpha = 0.5f),
                         modifier = Modifier.padding(top = 4.dp),

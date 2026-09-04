@@ -1,18 +1,13 @@
 package com.pegasusx.driver.ui.screens.manifest
 
-import android.annotation.SuppressLint
 import android.app.Application
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
-import com.google.android.gms.tasks.CancellationTokenSource
 import com.pegasusx.driver.data.model.AmendItemPayload
 import com.pegasusx.driver.data.model.AmendOrderRequest
 import com.pegasusx.driver.data.model.OrderLineItem
 import com.pegasusx.driver.data.model.RejectionReason
-import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
 import com.pegasusx.driver.data.remote.DRIVER_RECONNECT_RECOVERY_HINT
@@ -24,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 // ── Per-item audit state ─────────────────────────────────────────────────────
@@ -74,8 +68,6 @@ class CorrectionViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CorrectionUiState(orderId = orderId, retailerName = retailerName))
     val state: StateFlow<CorrectionUiState> = _state.asStateFlow()
-
-    private val fusedClient = LocationServices.getFusedLocationProviderClient(app)
 
     // Which item index is open in the bottom sheet (-1 = none)
     private val _editingIndex = MutableStateFlow(-1)
@@ -180,7 +172,6 @@ class CorrectionViewModel @Inject constructor(
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun submitAmendment() {
         val current = _state.value
         if (!current.hasModifications) return
@@ -188,26 +179,7 @@ class CorrectionViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
             try {
-                val location = fusedClient.getCurrentLocation(
-                    Priority.PRIORITY_HIGH_ACCURACY,
-                    CancellationTokenSource().token,
-                ).await()
-                if (location != null) {
-                    val edge = api.updateOrderDuringDelivery(
-                        UpdateOrderDuringDeliveryRequest(
-                            orderId = orderId,
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                        )
-                    )
-                    if (!edge.success) {
-                        _state.update {
-                            it.copy(isSubmitting = false, error = edge.message.ifBlank { "In-delivery update rejected" })
-                        }
-                        return@launch
-                    }
-                }
-
+                // G1.C: do not call mid-delivery update (501 theatre). Amend is the durable path.
                 val payload = AmendOrderRequest(
                     orderId = orderId,
                     items = current.audits
@@ -237,17 +209,13 @@ class CorrectionViewModel @Inject constructor(
     }
 
     fun submitWithoutModification() {
+        // G1.C: never PATCH …/state to COMPLETED (always 501). Delivery complete is cash/card/credit edges.
         viewModelScope.launch {
-            _state.update { it.copy(isSubmitting = true, error = null) }
-            try {
-                api.transitionState(
-                    orderId,
-                    mapOf("state" to "COMPLETED"),
-                    DriverIdempotencyKeys.transitionState(orderId, "COMPLETED"),
+            _state.update {
+                it.copy(
+                    isSubmitting = false,
+                    error = "Use payment flow (cash collect, card complete, or credit leave) — cannot force COMPLETED via state patch",
                 )
-                _state.update { it.copy(isSubmitting = false, submitSuccess = true) }
-            } catch (e: Exception) {
-                _state.update { it.copy(isSubmitting = false, error = e.message ?: "Failed to complete delivery") }
             }
         }
     }

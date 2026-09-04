@@ -1,11 +1,13 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
 import type { PaymentLedgerEntry } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
+import { moneyCurrency } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
 
@@ -26,6 +28,7 @@ function claimIdFromRef(ref?: string, source?: string): string {
 }
 
 export default function ClaimChargebacksPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<PaymentLedgerEntry[]>([]);
   const [orderFilter, setOrderFilter] = useState("");
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ export default function ClaimChargebacksPage() {
       });
       setItems(body.items ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
       setItems([]);
     } finally {
       setLoading(false);
@@ -56,18 +59,18 @@ export default function ClaimChargebacksPage() {
 
   return (
     <PageChrome
-      title="Claim chargebacks"
-      description="Supplier-scoped ledger rows from logistics claim approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks."
+      title={t("portal.nav.claim_chargebacks")}
+      description={t("supplier_portal.residual.text.supplier_scoped_ledger_rows_from_logistics_claim_approve_chargeb")}
       icon="warning"
       loading={loading}
       error={error}
       empty={!loading && items.length === 0}
-      emptyMessage="No claim chargebacks yet. Approve a claim in Exceptions → Claims to create one."
+      emptyMessage={t("supplier_portal.residual.text.no_claim_chargebacks_yet_approve_a_claim_in_exceptions_claims_to")}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
           className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm font-mono min-w-[200px]"
-          placeholder="Filter order id"
+          placeholder={t("supplier_portal.chargebacks.claims.text.filter_order_id")}
           value={orderFilter}
           onChange={(e) => setOrderFilter(e.target.value)}
           onKeyDown={(e) => {
@@ -86,13 +89,13 @@ export default function ClaimChargebacksPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
-              <th className="py-2 pr-3">When</th>
-              <th className="py-2 pr-3">Order</th>
-              <th className="py-2 pr-3">Claim / ref</th>
-              <th className="py-2 pr-3">Retailer</th>
-              <th className="py-2 pr-3">Gateway</th>
-              <th className="py-2 pr-3 text-right">Amount</th>
-              <th className="py-2 pr-3">Source</th>
+              <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.when")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.chargebacks.claims.text.order")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.chargebacks.claims.text.claim_ref")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.chargebacks.text.gateway")}</th>
+              <th className="py-2 pr-3 text-right">{t("supplier_portal.ledger.text.amount")}</th>
+              <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.source")}</th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +117,7 @@ export default function ClaimChargebacksPage() {
                   <td className="py-2.5 pr-3 font-mono text-xs">{it.retailer_id || "—"}</td>
                   <td className="py-2.5 pr-3 text-xs">{it.gateway || "—"}</td>
                   <td className="py-2.5 pr-3 text-right font-mono font-medium">
-                    {fmt(it.amount_minor)} {it.currency || "UZS"}
+                    {fmt(it.amount_minor)} {moneyCurrency(it.currency)}
                   </td>
                   <td className="py-2.5 pr-3 text-[10px] text-[var(--muted)] max-w-[180px] truncate">
                     {it.source || it.entry_type || "—"}

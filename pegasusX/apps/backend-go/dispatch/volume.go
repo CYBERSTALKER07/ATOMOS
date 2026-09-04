@@ -45,7 +45,30 @@ func CountVolumeSources(orders []DispatchableOrder) VolumeSourceCounts {
 
 // LookupProductUnitVolumes bulk-reads UnitVolumeVU for product IDs (SKU = ProductId at checkout).
 func LookupProductUnitVolumes(ctx context.Context, client *spanner.Client, productIDs []string) (map[string]float64, error) {
-	out := make(map[string]float64, len(productIDs))
+	meta, err := LookupProductDispatchMeta(ctx, client, productIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]float64, len(meta))
+	for id, m := range meta {
+		if m.UnitVolumeVU > 0 {
+			out[id] = m.UnitVolumeVU
+		}
+	}
+	return out, nil
+}
+
+// productDispatchMeta carries catalog fields used at dispatch hydrate time.
+type productDispatchMeta struct {
+	UnitVolumeVU      float64
+	HandlingClass     string
+	RequiresColdChain bool
+	IsHazardous       bool
+}
+
+// LookupProductDispatchMeta bulk-reads volume + handling flags for product IDs.
+func LookupProductDispatchMeta(ctx context.Context, client *spanner.Client, productIDs []string) (map[string]productDispatchMeta, error) {
+	out := make(map[string]productDispatchMeta, len(productIDs))
 	if client == nil || len(productIDs) == 0 {
 		return out, nil
 	}
@@ -67,7 +90,7 @@ func LookupProductUnitVolumes(ctx context.Context, client *spanner.Client, produ
 	}
 
 	stmt := spanner.Statement{
-		SQL:    `SELECT ProductId, UnitVolumeVU FROM Products WHERE ProductId IN UNNEST(@ids)`,
+		SQL:    `SELECT ProductId, UnitVolumeVU, COALESCE(HandlingClass, 'GENERAL'), RequiresColdChain, IsHazardous FROM Products WHERE ProductId IN UNNEST(@ids)`,
 		Params: map[string]any{"ids": unique},
 	}
 	iter := client.Single().Query(ctx, stmt)
@@ -79,17 +102,17 @@ func LookupProductUnitVolumes(ctx context.Context, client *spanner.Client, produ
 			return out, nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("lookup product unit volumes: %w", err)
+			return nil, fmt.Errorf("lookup product dispatch meta: %w", err)
 		}
 		var productID string
-		var unitVU float64
-		if err := row.Columns(&productID, &unitVU); err != nil {
-			return nil, fmt.Errorf("scan product unit volume: %w", err)
+		var meta productDispatchMeta
+		if err := row.Columns(&productID, &meta.UnitVolumeVU, &meta.HandlingClass, &meta.RequiresColdChain, &meta.IsHazardous); err != nil {
+			return nil, fmt.Errorf("scan product dispatch meta: %w", err)
 		}
-		if unitVU <= 0 {
-			continue // leave absent so OrderVolumeVU marks default
+		if meta.UnitVolumeVU <= 0 {
+			meta.UnitVolumeVU = 0 // leave absent in volume map
 		}
-		out[productID] = unitVU
+		out[productID] = meta
 	}
 }
 
@@ -175,9 +198,15 @@ func enrichDispatchableVolumes(ctx context.Context, client *spanner.Client, rows
 	for _, row := range rows {
 		collect = append(collect, productIDsFromLineItemsRaw(row.LineItemsRaw)...)
 	}
-	lookup, err := LookupProductUnitVolumes(ctx, client, collect)
+	meta, err := LookupProductDispatchMeta(ctx, client, collect)
 	if err != nil {
 		return err
+	}
+	lookup := make(map[string]float64, len(meta))
+	for id, m := range meta {
+		if m.UnitVolumeVU > 0 {
+			lookup[id] = m.UnitVolumeVU
+		}
 	}
 	for _, row := range rows {
 		if row.Order == nil {
@@ -186,6 +215,46 @@ func enrichDispatchableVolumes(ctx context.Context, client *spanner.Client, rows
 		vu, src := OrderVolumeVUWithSource(row.LineItemsRaw, lookup)
 		row.Order.VolumeVU = vu
 		row.Order.VolumeSource = src
+		applyHandlingFlags(row.Order, row.LineItemsRaw, meta)
 	}
 	return nil
+}
+
+// applyHandlingFlags ORs cold/hazmat across line-item snapshots and product meta.
+func applyHandlingFlags(ord *DispatchableOrder, lineItemsRaw []byte, meta map[string]productDispatchMeta) {
+	if ord == nil {
+		return
+	}
+	var items []order.LineItem
+	_ = json.Unmarshal(lineItemsRaw, &items)
+	handling := ""
+	for _, item := range items {
+		if item.RequiresColdChain {
+			ord.RequiresColdChain = true
+		}
+		if item.IsHazardous {
+			ord.IsHazardous = true
+		}
+		if hc := strings.TrimSpace(item.HandlingClass); hc != "" && handling == "" {
+			handling = hc
+		}
+		sku := strings.TrimSpace(item.SKU)
+		if m, ok := meta[sku]; ok {
+			if m.RequiresColdChain {
+				ord.RequiresColdChain = true
+			}
+			if m.IsHazardous {
+				ord.IsHazardous = true
+			}
+			if handling == "" && strings.TrimSpace(m.HandlingClass) != "" {
+				handling = m.HandlingClass
+			}
+		}
+	}
+	if ord.RequiresColdChain && handling == "" {
+		handling = "COLD_CHAIN"
+	} else if ord.IsHazardous && handling == "" {
+		handling = "HAZARDOUS"
+	}
+	ord.HandlingClass = handling
 }

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -270,6 +271,10 @@ func isReliabilityRateLimitExempt(path string, r *http.Request) bool {
 	if strings.TrimSpace(r.Header.Get(loadBootstrapHeader)) != secret {
 		return false
 	}
+	// Never exempt partner machine API — keys must rate-limit by KeyId.
+	if strings.HasPrefix(lower, "/partner/") {
+		return false
+	}
 	return strings.HasPrefix(lower, "/v1/auth/")
 }
 
@@ -295,6 +300,33 @@ func reliabilityActorKey(r *http.Request) string {
 	if r == nil {
 		return "anonymous"
 	}
+	// Gate 5 Week 10: primary key is tenant; partner class keys remain secondary.
+	if t, ok := auth.TenantFromContext(r.Context()); ok && strings.TrimSpace(t.SupplierID) != "" {
+		tenantKey := "tenant:" + strings.TrimSpace(t.SupplierID)
+		if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+			return tenantKey + ":partner:" + p.KeyID
+		}
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			subject := strings.TrimSpace(claims.Subject)
+			if subject != "" {
+				// Secondary subject segment for single-actor abuse — same tenant shares budget
+				// when TENANT_RATE_LIMIT_SHARED=1 (default on).
+				if tenantRateLimitShared() {
+					return tenantKey
+				}
+				return tenantKey + ":sub:" + subject
+			}
+		}
+		return tenantKey
+	}
+	if p, ok := partner.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.KeyID) != "" {
+		return "partner:" + p.KeyID
+	}
+	if token := auth.BearerToken(r); strings.HasPrefix(token, "pxk_") {
+		if prefix, ok := partner.ParseBearerKey(token); ok {
+			return "partner_prefix:" + prefix
+		}
+	}
 	if claims, ok := auth.FromContext(r.Context()); ok {
 		subject := strings.TrimSpace(claims.Subject)
 		if subject != "" {
@@ -315,6 +347,19 @@ func reliabilityActorKey(r *http.Request) string {
 		return "ip:" + strings.TrimSpace(r.RemoteAddr)
 	}
 	return "anonymous"
+}
+
+func tenantRateLimitShared() bool {
+	v := strings.TrimSpace(os.Getenv("TENANT_RATE_LIMIT_SHARED"))
+	if v == "" {
+		return true
+	}
+	switch strings.ToLower(v) {
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 func reliabilityClientIPKey(r *http.Request) string {
@@ -420,11 +465,29 @@ type fixedWindowRateLimiter struct {
 
 type rateBucket struct {
 	windowStart time.Time
+	window      time.Duration
 	count       int
 }
 
 func newFixedWindowRateLimiter() *fixedWindowRateLimiter {
-	return &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
+	l := &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
+	go l.sweep()
+	return l
+}
+
+func (l *fixedWindowRateLimiter) sweep() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		l.mu.Lock()
+		for k, b := range l.buckets {
+			if now.Sub(b.windowStart) >= b.window*2 {
+				delete(l.buckets, k)
+			}
+		}
+		l.mu.Unlock()
+	}
 }
 
 func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int, int) {
@@ -440,7 +503,7 @@ func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration
 
 	bucket := l.buckets[key]
 	if bucket.windowStart.IsZero() || now.Sub(bucket.windowStart) >= window {
-		bucket = rateBucket{windowStart: now, count: 0}
+		bucket = rateBucket{windowStart: now, window: window, count: 0}
 	}
 
 	if bucket.count >= max {

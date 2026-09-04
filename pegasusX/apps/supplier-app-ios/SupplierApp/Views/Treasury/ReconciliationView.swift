@@ -4,7 +4,7 @@ struct ReconciliationView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var netMinor: Int64 = 0
-    @State private var currency = "UZS"
+    @State private var currency = packCurrency(MarketPackStore.pack)
     @State private var mismatchCount = 0
 
     var body: some View {
@@ -17,18 +17,18 @@ struct ReconciliationView: View {
                 ResponsiveGridContentWrapper {
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Settlement net (authority)").font(.caption).foregroundStyle(.secondary)
+                            Text("supplier_portal.residual.text.settlement_net_authority").font(.caption).foregroundStyle(.secondary)
                             Text(MoneyFormat.minor(netMinor, currency: currency)).font(.title2.bold())
                         }
                     }
                     Section {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Open mismatches").font(.caption).foregroundStyle(.secondary)
+                            Text("supplier_portal.residual.text.open_mismatches").font(.caption).foregroundStyle(.secondary)
                             Text("\(mismatchCount)").font(.title2.bold())
                         }
                     }
                     Section {
-                        Text("Full ledger detail is on Payment ledger.")
+                        Text("mobile_supplier.ui.full_ledger_detail_is_on_payment_ledger")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -36,7 +36,7 @@ struct ReconciliationView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Reconciliation")
+        .navigationTitle("portal.nav.reconciliation")
         .task { await load() }
     }
 

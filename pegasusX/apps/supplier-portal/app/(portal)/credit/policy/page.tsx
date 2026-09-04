@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
@@ -28,6 +29,7 @@ type Relationship = {
 };
 
 export default function CreditPolicyPage() {
+  const t = usePortalT();
   const [program, setProgram] = useState<Program | null>(null);
   const [rels, setRels] = useState<Relationship[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,7 @@ export default function CreditPolicyPage() {
       const body = (await rRes.json()) as { relationships?: Relationship[] };
       setRels(body.relationships ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "load_failed");
+      setError(e instanceof Error ? e.message : t("supplier_portal.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ export default function CreditPolicyPage() {
       setModal(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "enable_failed");
+      setError(e instanceof Error ? e.message : t("supplier_portal.residual.text.enable_failed"));
     } finally {
       setBusy(false);
     }
@@ -89,7 +91,7 @@ export default function CreditPolicyPage() {
   async function enableRetailer(ackAt: string) {
     const rid = retailerId.trim();
     if (!rid) {
-      setError("retailer_id_required");
+      setError(t("supplier_portal.residual.text.retailer_id_required"));
       return;
     }
     setBusy(true);
@@ -114,7 +116,7 @@ export default function CreditPolicyPage() {
       setRetailerId("");
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "enable_failed");
+      setError(e instanceof Error ? e.message : t("supplier_portal.residual.text.enable_failed"));
     } finally {
       setBusy(false);
     }
@@ -134,7 +136,7 @@ export default function CreditPolicyPage() {
       if (!res.ok) throw new Error(`defaults_${res.status}`);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "defaults_failed");
+      setError(e instanceof Error ? e.message : t("supplier_portal.residual.text.defaults_failed"));
     } finally {
       setBusy(false);
     }
@@ -151,7 +153,7 @@ export default function CreditPolicyPage() {
       if (!res.ok) throw new Error(`${path}_${res.status}`);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "hold_failed");
+      setError(e instanceof Error ? e.message : t("supplier_portal.residual.text.hold_failed"));
     } finally {
       setBusy(false);
     }
@@ -159,14 +161,14 @@ export default function CreditPolicyPage() {
 
   return (
     <PageChrome
-      title="Credit policy"
-      description="Enable the supplier credit program and per-retailer Net terms. Disable requires Pegaus support."
+      title={t("portal.nav.credit_policy")}
+      description={t("supplier_portal.residual.text.enable_the_supplier_credit_program_and_per_retailer_net_terms_di")}
       loading={loading}
     >
       {error ? <p className="mb-3 text-sm text-red-600">{error}</p> : null}
 
       <section className="mb-8">
-        <h2 className="text-base font-semibold mb-2">Program</h2>
+        <h2 className="text-base font-semibold mb-2">{t("supplier_portal.credit.admin_disable.text.program")}</h2>
         <p className="text-sm text-[var(--muted)] mb-3">
           Status:{" "}
           <strong>{program?.program_enabled ? "ON" : "OFF"}</strong>
@@ -213,7 +215,7 @@ export default function CreditPolicyPage() {
       </section>
 
       <section>
-        <h2 className="text-base font-semibold mb-2">Retailer relationships</h2>
+        <h2 className="text-base font-semibold mb-2">{t("supplier_portal.credit.policy.text.retailer_relationships")}</h2>
         <div className="mb-4 flex flex-wrap gap-2 items-end">
           <label className="text-sm">
             Retailer ID
@@ -221,7 +223,7 @@ export default function CreditPolicyPage() {
               className="ml-2 border rounded px-2 py-1 w-56"
               value={retailerId}
               onChange={(e) => setRetailerId(e.target.value)}
-              placeholder="ret_…"
+              placeholder={t("supplier_portal.credit.policy.text.ret")}
             />
           </label>
           <button
@@ -237,12 +239,12 @@ export default function CreditPolicyPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-[var(--border)]">
-                <th className="py-2 pr-3">Retailer</th>
-                <th className="py-2 pr-3">Terms</th>
-                <th className="py-2 pr-3">Limit</th>
-                <th className="py-2 pr-3">Balance</th>
-                <th className="py-2 pr-3">Status</th>
-                <th className="py-2">Actions</th>
+                <th className="py-2 pr-3">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
+                <th className="py-2 pr-3">{t("supplier_portal.credit.policy.text.terms")}</th>
+                <th className="py-2 pr-3">{t("supplier_portal.credit.collections.text.limit")}</th>
+                <th className="py-2 pr-3">{t("supplier_portal.credit.collections.text.balance")}</th>
+                <th className="py-2 pr-3">{t("supplier_portal.compliance.text.status")}</th>
+                <th className="py-2">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -263,7 +265,7 @@ export default function CreditPolicyPage() {
                         Hold
                       </button>
                     )}
-                    <span className="text-xs text-[var(--muted)]" title="Self-serve disable blocked">
+                    <span className="text-xs text-[var(--muted)]" title={t("supplier_portal.credit.policy.text.self_serve_disable_blocked")}>
                       Disable → support
                     </span>
                   </td>

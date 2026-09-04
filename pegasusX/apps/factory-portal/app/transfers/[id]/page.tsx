@@ -1,9 +1,10 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
-import { factoryTransferTransitionKey } from '@pegasusx/api-client';
+import { factoryTransferTransitionKey } from '@pegasusx/api-core';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
@@ -59,6 +60,7 @@ function stateClass(state: string): string {
 }
 
 export default function TransferDetailPage() {
+  const t = usePortalT();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { toast } = useToast();
@@ -161,8 +163,8 @@ export default function TransferDetailPage() {
       <PageTransition>
         <PageChrome
           icon="transfers"
-          title="Transfer detail"
-          description="Loading the current manifest and item breakdown for this transfer."
+          title={t("factory_portal.transfers._id_.text.transfer_detail")}
+          description={t("factory_portal.residual.text.loading_the_current_manifest_and_item_breakdown_for_this_transfe")}
           loading
           skeletonVariant="form"
         >
@@ -175,9 +177,9 @@ export default function TransferDetailPage() {
   if (error) {
     return (
       <PageTransition>
-        <PageChrome icon="transfers" title="Transfer detail" error={error}>
+        <PageChrome icon="transfers" title={t("factory_portal.transfers._id_.text.transfer_detail")} error={error}>
           <button type="button" className="portal-btn portal-btn--ghost" onClick={() => router.back()}>
-            Back
+            {t("common.action.back")}
           </button>
         </PageChrome>
       </PageTransition>
@@ -189,12 +191,12 @@ export default function TransferDetailPage() {
       <PageTransition>
         <PageChrome
           icon="transfers"
-          title="Transfer detail"
+          title={t("factory_portal.transfers._id_.text.transfer_detail")}
           empty
-          emptyMessage="The selected transfer is no longer available or could not be located for this factory."
+          emptyMessage={t("factory_portal.residual.text.the_selected_transfer_is_no_longer_available_or_could_not_be_loc")}
         >
           <button type="button" className="portal-btn portal-btn--ghost" onClick={() => router.back()}>
-            Back
+            {t("common.action.back")}
           </button>
         </PageChrome>
       </PageTransition>
@@ -218,7 +220,7 @@ export default function TransferDetailPage() {
         description={transfer.id}
         actions={
           <div className="flex flex-wrap items-center gap-3">
-            <button type="button" onClick={() => router.back()} className="portal-btn portal-btn--ghost p-2" aria-label="Back">
+            <button type="button" onClick={() => router.back()} className="portal-btn portal-btn--ghost p-2" aria-label={t("common.action.back")}>
               <Icon name="arrowBack" size={18} />
             </button>
             <span className={`status-chip ${stateClass(transfer.state)}`}>{transfer.state}</span>
@@ -250,8 +252,8 @@ export default function TransferDetailPage() {
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Manifest contents</p>
-              <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Items in this transfer</h2>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.transfers._id_.text.manifest_contents")}</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">{t("factory_portal.transfers._id_.text.items_in_this_transfer")}</h2>
             </div>
             <div className="rounded-full bg-[var(--surface)] px-4 py-2 text-sm text-[var(--muted)]">
               {transfer.items?.length ?? 0} line item(s)
@@ -263,10 +265,10 @@ export default function TransferDetailPage() {
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="table__header border-b border-[var(--border)]">
-                    <th className="table__column px-3 py-3 text-left">Product</th>
+                    <th className="table__column px-3 py-3 text-left">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
                     <th className="table__column px-3 py-3 text-left">SKU</th>
-                    <th className="table__column px-3 py-3 text-right">Qty</th>
-                    <th className="table__column px-3 py-3 text-right">Volume</th>
+                    <th className="table__column px-3 py-3 text-right">{t("factory_portal.transfers._id_.text.qty")}</th>
+                    <th className="table__column px-3 py-3 text-right">{t("factory_portal.transfers._id_.text.volume")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,7 +292,7 @@ export default function TransferDetailPage() {
 
         <aside className="space-y-4">
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Transfer overview</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.transfers._id_.text.transfer_overview")}</p>
             <div className="mt-4 space-y-4">
               {[
                 { label: 'Warehouse', value: transferTitle },
@@ -305,14 +307,14 @@ export default function TransferDetailPage() {
               ))}
               
               <div className="rounded-2xl bg-[var(--surface)] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)] mb-2">Driver Assignment</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)] mb-2">{t("factory_portal.transfers._id_.text.driver_assignment")}</p>
                 <select
                   className="w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm"
                   value={transfer.driver_id || ''}
                   onChange={(e) => void handleAssignDriver(e.target.value)}
                   disabled={transfer.state === 'CANCELLED' || transfer.state === 'RECEIVED'}
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">{t("factory_portal.transfers._id_.text.unassigned")}</option>
                   {drivers.map((drv) => (
                     <option key={drv.driver_id} value={drv.driver_id}>
                       {drv.name} {drv.on_shift ? '(on shift)' : ''}
@@ -325,8 +327,8 @@ export default function TransferDetailPage() {
 
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Next transition</p>
-              {next ? <span className="status-chip status-chip--warning">Action available</span> : <span className="status-chip status-chip--stable">No action</span>}
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.transfers._id_.text.next_transition")}</p>
+              {next ? <span className="status-chip status-chip--warning">{t("factory_portal.transfers._id_.text.action_available")}</span> : <span className="status-chip status-chip--stable">{t("factory_portal.transfers._id_.text.no_action")}</span>}
             </div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
               {next
@@ -346,7 +348,7 @@ export default function TransferDetailPage() {
           </section>
 
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Notes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.transfers._id_.text.notes")}</p>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
               {transfer.notes || 'No operator notes have been attached to this transfer.'}
             </p>

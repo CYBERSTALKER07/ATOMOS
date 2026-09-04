@@ -6,38 +6,38 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import GlitchText from './GlitchText';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
 import { useIsMobile } from '../hooks/useDevice';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const DEPLOYMENT_CARDS = [
-  {
-    tone: 'dark' as const,
-    tag: 'DISCOVER THE PLATFORM',
-    title: 'Take a Tour',
-    description:
-      'See how Pegasus unifies dispatch, fleet tracking, payments, and coordination across every role in your network.',
-    image: EDITORIAL_IMAGES[4],
-    href: '/#solutions',
-    ctaLabel: 'TAKE PLATFORM TOUR',
-  },
-  {
-    tone: 'light' as const,
-    tag: 'DISCOVER OUR PLATFORM',
-    title: 'Live Demo with a Pegasus Expert',
-    description:
-      'Get a personalized walkthrough and see how to run supplier-led logistics with faster, smarter decisions across your enterprise.',
-    image: EDITORIAL_IMAGES[1],
-    href: '/join',
-    ctaLabel: 'REQUEST DEMO',
-  },
-];
-
 export default function Licensing() {
   const { isMobile } = useIsMobile();
+  const { t } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
+
+  const deploymentCards = [
+    {
+      tone: 'dark' as const,
+      tag: t('licensing_tour_tag'),
+      title: t('licensing_tour_title'),
+      description: t('licensing_tour_desc'),
+      image: EDITORIAL_IMAGES[4],
+      href: '/platform',
+      ctaLabel: t('nav_tour').toUpperCase(),
+    },
+    {
+      tone: 'light' as const,
+      tag: t('licensing_demo_tag'),
+      title: t('licensing_demo_title'),
+      description: t('licensing_demo_desc'),
+      image: EDITORIAL_IMAGES[1],
+      href: '/join',
+      ctaLabel: t('nav_demo').toUpperCase(),
+    },
+  ];
 
   useEffect(() => {
     if (sectionRef.current && titleRef.current && contentRef.current && cardsRef.current) {
@@ -81,10 +81,10 @@ export default function Licensing() {
         <div className="max-w-6xl mx-auto">
           <div ref={titleRef} className="text-center mb-12 md:mb-16">
             {isMobile ? (
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">DEPLOYMENT</h2>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">{t('deployment_heading')}</h2>
             ) : (
               <GlitchText speed={1} enableShadows={true} enableOnHover={true} className="mb-6">
-                DEPLOYMENT
+                {t('deployment_heading')}
               </GlitchText>
             )}
             <div className="w-20 h-1 bg-white rounded-full mx-auto" />
@@ -92,13 +92,12 @@ export default function Licensing() {
 
           <div ref={contentRef} className="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
             <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-              Deploy Pegasus across your network with guided onboarding, live demos, and expert
-              walkthroughs tailored to how your teams run dispatch and delivery today.
+              {t('deployment_desc')}
             </p>
           </div>
 
           <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-6xl mx-auto">
-            {DEPLOYMENT_CARDS.map((card) => (
+            {deploymentCards.map((card) => (
               <ContentCard
                 key={card.title}
                 variant="vertical"
@@ -112,7 +111,7 @@ export default function Licensing() {
                 ctaStyle="button"
                 splitCta
                 className="deployment-card min-h-[28rem]"
-                hoverLabel={card.ctaLabel.includes('TOUR') ? 'VIEW' : 'DEMO'}
+                hoverLabel={card.href === '/platform' ? t('licensing_hover_view') : t('licensing_hover_demo')}
               />
             ))}
           </div>

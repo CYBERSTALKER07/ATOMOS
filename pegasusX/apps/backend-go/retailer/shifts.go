@@ -24,10 +24,17 @@ const (
 	ShiftClosed     = "CLOSED"
 
 	// Default POS/shift config when pack is on.
-	defaultRequireShiftToOpenRegister = true
-	defaultMaxShiftHours              = 12
-	defaultVarianceAlertMinor   int64 = 10_000 // 100.00 if 2-decimal currency
+	defaultRequireShiftToOpenRegister       = true
+	defaultVarianceAlertMinor         int64 = 10_000 // 100.00 if 2-decimal currency
 )
+
+func defaultMaxShiftHours() int {
+	h, err := auth.LaborMaxShiftHoursFromContext(context.Background(), "")
+	if err != nil || h <= 0 {
+		return 0
+	}
+	return int(h)
+}
 
 // TimeEntryDTO is a personal clock-in/out record.
 type TimeEntryDTO struct {
@@ -101,7 +108,7 @@ func (s *Service) HandleClockIn(w http.ResponseWriter, r *http.Request) {
 		_ = s.SetPackEnabled(r.Context(), orgID, PackSHIFTS, userID, true, map[string]any{
 			"require_clock_in":               true,
 			"require_shift_to_open_register": true,
-			"max_shift_hours":                defaultMaxShiftHours,
+			"max_shift_hours":                defaultMaxShiftHours(),
 			"variance_alert_minor":           defaultVarianceAlertMinor,
 		})
 	}
@@ -294,7 +301,7 @@ func (s *Service) handleShiftOpen(w http.ResponseWriter, r *http.Request) {
 		_ = s.SetPackEnabled(r.Context(), orgID, PackSHIFTS, userID, true, map[string]any{
 			"require_clock_in":               true,
 			"require_shift_to_open_register": true,
-			"max_shift_hours":                defaultMaxShiftHours,
+			"max_shift_hours":                defaultMaxShiftHours(),
 			"variance_alert_minor":           defaultVarianceAlertMinor,
 		})
 	}
@@ -309,9 +316,11 @@ func (s *Service) handleShiftOpen(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := stampPackCurrency(r.Context(), req.Currency)
+	if err != nil {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
 	}
 	if req.OpeningFloatMinor < 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "opening_float_invalid"})
@@ -417,7 +426,7 @@ func (s *Service) shiftsConfig(ctx context.Context, retailerID string) shiftsCon
 	cfg := shiftsConfig{
 		requireClockIn:             true,
 		requireShiftToOpenRegister: defaultRequireShiftToOpenRegister,
-		maxShiftHours:              defaultMaxShiftHours,
+		maxShiftHours:              defaultMaxShiftHours(),
 		varianceAlertMinor:         defaultVarianceAlertMinor,
 	}
 	enabled, _ := s.LoadEnabledPacks(ctx, retailerID)

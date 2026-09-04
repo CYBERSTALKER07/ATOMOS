@@ -1,5 +1,6 @@
 package com.pegasusx.retailer.data.api
 
+
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.ProblemDetail
@@ -44,6 +45,7 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
                 val request = chain.request().newBuilder()
@@ -148,12 +150,13 @@ private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interce
                     throw ProblemDetailException(
                         ProblemDetail(
                             type = "about:blank",
-                            title = "Too many requests",
+                            title = "Too Many Requests",
                             status = 429,
                             detail = "Too many requests. Please try again later.",
                             instance = null,
                             code = "rate_limit_exceeded",
-                            messageKey = null,
+                            // UI layer maps this key to mobile_retailer_ui_too_many_requests for display.
+                            messageKey = "mobile_retailer_ui_too_many_requests",
                             retryable = true,
                             action = null
                         )

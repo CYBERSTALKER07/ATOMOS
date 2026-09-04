@@ -17,12 +17,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
-	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"google.golang.org/api/iterator"
 )
@@ -54,12 +56,13 @@ type Service struct {
 	log         *slog.Logger
 	idem        idempotency.Store
 
-	supplierID       string
+	seedSupplierID   string
 	currency         string
 	jwtSecret        string
 	jwtIssuer        string
 	now              func() time.Time
 	firebaseVerifier auth.FirebaseVerifier
+	staffLookup      PayloadStaffLookup
 
 	mu             sync.RWMutex
 	spannerLoaded  bool
@@ -67,6 +70,7 @@ type Service struct {
 	orders         []OrderRow
 	manifests      []ManifestRow
 	manifestOrders map[string][]ManifestOrder
+	shipUnits      map[string][]ShipUnit
 	overflowCount  map[string]int64
 	exceptions     []ManifestException
 	reassignments  []Reassignment
@@ -75,6 +79,7 @@ type Service struct {
 	portalLister  PortalManifestLister
 	manifestStore *manifest.Store
 	orderReader   OrderExpectationReader
+	locations     telemetry.LastLocationReader
 }
 
 // ServiceConfig is the constructor input.
@@ -87,6 +92,9 @@ type ServiceConfig struct {
 	NotifSvc    *notifications.Service
 	Log         *slog.Logger
 
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID       string
 	Currency         string
 	JWTSecret        string
@@ -94,7 +102,8 @@ type ServiceConfig struct {
 	Now              func() time.Time
 	FirebaseVerifier auth.FirebaseVerifier
 	ManifestStore    *manifest.Store
-	Idem               idempotency.Store
+	Idem             idempotency.Store
+	Locations        telemetry.LastLocationReader
 }
 
 type payloaderTruckWire struct {
@@ -102,6 +111,12 @@ type payloaderTruckWire struct {
 	Label        string `json:"label"`
 	LicensePlate string `json:"license_plate"`
 	VehicleClass string `json:"vehicle_class"`
+	// TruckStatus is the current open manifest state (DRAFT/LOADING/SEALED/DISPATCHED).
+	// Empty when the vehicle has no board-state manifest — do not invent DRAFT.
+	TruckStatus  string `json:"truck_status,omitempty"`
+	UsedVolumeVU int64  `json:"used_volume_vu,omitempty"`
+	MaxVolumeVU  int64  `json:"max_volume_vu,omitempty"`
+	StopCount    int    `json:"stop_count,omitempty"`
 }
 
 type liveOrderLineWire struct {
@@ -140,19 +155,23 @@ type OrderRow struct {
 	DispatchPriority int    `json:"dispatch_priority,omitempty"`
 	OverflowCount    int64  `json:"overflow_count,omitempty"`
 	ReassignDepth    int    `json:"reassign_depth,omitempty"`
-	SplitGroupID     string `json:"split_group_id,omitempty"`
-	UpdatedAt        string `json:"updated_at"`
+	SplitGroupID     string  `json:"split_group_id,omitempty"`
+	Lat              float64 `json:"lat,omitempty"`
+	Lng              float64 `json:"lng,omitempty"`
+	UpdatedAt        string  `json:"updated_at"`
 }
 
 // ManifestRow represents one payloader-visible manifest.
 type ManifestRow struct {
-	ManifestID       string `json:"manifest_id"`
-	VehicleID        string `json:"vehicle_id,omitempty"`
-	DriverID         string `json:"driver_id,omitempty"`
-	State            string `json:"state"`
-	TotalVolumeVU    int64  `json:"total_volume_vu"`
-	MaxVolumeVU      int64  `json:"max_volume_vu"`
-	StopCount        int    `json:"stop_count"`
+	ManifestID    string `json:"manifest_id"`
+	VehicleID     string `json:"vehicle_id,omitempty"`
+	DriverID      string `json:"driver_id,omitempty"`
+	State         string `json:"state"`
+	TotalVolumeVU int64  `json:"total_volume_vu"`
+	MaxVolumeVU   int64  `json:"max_volume_vu"`
+	StopCount     int    `json:"stop_count"`
+	// WarehouseID is stamped when known (JWT home node / Spanner). B7 PL-P0-6 scope.
+	WarehouseID      string `json:"warehouse_id,omitempty"`
 	CreatedAt        string `json:"created_at"`
 	UpdatedAt        string `json:"updated_at"`
 	LoadingStartedAt string `json:"loading_started_at,omitempty"`
@@ -216,8 +235,14 @@ func NewService(c ServiceConfig) *Service {
 	if c.Repo == nil {
 		panic("repo is required")
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), seedID); err == nil {
+			c.Currency = cur
+		}
 	}
 	return &Service{
 		repo:             c.Repo,
@@ -228,16 +253,78 @@ func NewService(c ServiceConfig) *Service {
 		notifSvc:         c.NotifSvc,
 		log:              c.Log,
 		idem:             c.Idem,
-		supplierID:       c.SupplierID,
+		seedSupplierID:   seedID,
 		currency:         c.Currency,
 		jwtSecret:        c.JWTSecret,
 		jwtIssuer:        c.JWTIssuer,
 		now:              c.Now,
 		firebaseVerifier: c.FirebaseVerifier,
 		manifestStore:    c.ManifestStore,
+		locations:        c.Locations,
 		manifestOrders:   make(map[string][]ManifestOrder),
 		overflowCount:    make(map[string]int64),
 	}
+}
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+// AuthIssuer returns the JWT iss claim used when minting role tokens / WS tickets.
+func (s *Service) AuthIssuer() string {
+	if s == nil {
+		return ""
+	}
+	return s.jwtIssuer
+}
+
+// resolveWarehouseScope prefers JWT home-node warehouse for PAYLOAD role (B2 M-P1-9 / B7 PL-P0-6).
+func (s *Service) resolveWarehouseScope(ctx context.Context) string {
+	if claims, ok := auth.FromContext(ctx); ok {
+		if claims.HomeNodeType == auth.HomeNodeWarehouse && strings.TrimSpace(claims.HomeNodeID) != "" {
+			return strings.TrimSpace(claims.HomeNodeID)
+		}
+		if claims.Role == auth.RolePayload && strings.TrimSpace(claims.HomeNodeID) != "" {
+			return strings.TrimSpace(claims.HomeNodeID)
+		}
+	}
+	return ""
+}
+
+// manifestMatchesWarehouseScope allows historical rows with empty warehouse when JWT is set
+// only if both non-empty and equal; mismatch with both set is forbidden (B7 PL-P0-6).
+func manifestMatchesWarehouseScope(rowWarehouseID, scopeWarehouseID string) bool {
+	scope := strings.TrimSpace(scopeWarehouseID)
+	if scope == "" {
+		return true
+	}
+	row := strings.TrimSpace(rowWarehouseID)
+	if row == "" {
+		// Historical manifests without WarehouseId remain visible until backfilled.
+		return true
+	}
+	return row == scope
+}
+
+// assertManifestWarehouseScope rejects mutate when JWT warehouse and row warehouse both set and differ.
+func (s *Service) assertManifestWarehouseScope(ctx context.Context, m ManifestRow) error {
+	scope := s.resolveWarehouseScope(ctx)
+	if scope == "" {
+		return nil
+	}
+	row := strings.TrimSpace(m.WarehouseID)
+	if row != "" && row != scope {
+		return errManifestWarehouseScope
+	}
+	return nil
+}
+
+// errManifestWarehouseScope is returned when a payload mutate targets a foreign warehouse.
+var errManifestWarehouseScope = errString("warehouse_scope_forbidden")
+
+type errString string
+
+func (e errString) Error() string { return string(e) }
+
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
 
 type recommendReassignRequest struct {
@@ -257,9 +344,9 @@ type manifestExceptionRequest struct {
 }
 
 type applyReassignRequest struct {
-	OrderID      string `json:"order_id"`
-	ToRouteID    string `json:"to_route_id"`
-	ToManifestID string `json:"to_manifest_id"`
+	OrderID         string `json:"order_id"`
+	ToRouteID       string `json:"to_route_id"`
+	ToManifestID    string `json:"to_manifest_id"`
 	ToDriverID      string `json:"to_driver_id"`
 	Reason          string `json:"reason"`
 	IsPartial       bool   `json:"is_partial"`
@@ -281,6 +368,19 @@ func routeIDForManifest(m ManifestRow) string {
 		return "route_" + m.VehicleID
 	}
 	return "route_" + m.ManifestID
+}
+
+func (s *Service) driverIDForRouteLocked(routeID string) string {
+	routeID = strings.TrimSpace(routeID)
+	if routeID == "" {
+		return ""
+	}
+	for i := range s.manifests {
+		if routeIDForManifest(s.manifests[i]) == routeID {
+			return strings.TrimSpace(s.manifests[i].DriverID)
+		}
+	}
+	return ""
 }
 
 // portalSeedEnabled gates in-memory demo seed data. Disabled when Spanner is wired
@@ -312,9 +412,9 @@ func (s *Service) ensureDemoDataLocked() {
 	if len(s.orders) == 0 {
 		now := s.now().Format(time.RFC3339Nano)
 		s.orders = []OrderRow{
-			{OrderID: "ord_payload_1", Status: "PENDING", TotalMinor: 120000, Currency: s.currency, UpdatedAt: now},
-			{OrderID: "ord_payload_2", Status: "PENDING", TotalMinor: 98000, Currency: s.currency, UpdatedAt: now},
-			{OrderID: "ord_payload_3", Status: "PENDING", TotalMinor: 143000, Currency: s.currency, UpdatedAt: now},
+			{OrderID: "ord_payload_1", Status: "PENDING", TotalMinor: 120000, Currency: s.currency, Lat: 41.3111, Lng: 69.2797, UpdatedAt: now},
+			{OrderID: "ord_payload_2", Status: "PENDING", TotalMinor: 98000, Currency: s.currency, Lat: 41.3150, Lng: 69.2850, UpdatedAt: now},
+			{OrderID: "ord_payload_3", Status: "PENDING", TotalMinor: 143000, Currency: s.currency, Lat: 41.3200, Lng: 69.2900, UpdatedAt: now},
 		}
 	}
 	if len(s.manifests) == 0 {
@@ -393,6 +493,33 @@ func (s *Service) findManifestOrderIndexLocked(manifestID, orderID string) int {
 	return -1
 }
 
+// assertPickWaveReadyForSeal enforces §8.7 Wave 1B seal gate when enabled.
+// Soft-warn mode returns nil and stashes warning on context via side channel is not used;
+// callers should use assertPickWaveReadyForSealResult.
+func (s *Service) assertPickWaveReadyForSeal(ctx context.Context, manifestID string) error {
+	_, err := s.assertPickWaveReadyForSealResult(ctx, manifestID)
+	return err
+}
+
+func (s *Service) assertPickWaveReadyForSealResult(ctx context.Context, manifestID string) (warn string, err error) {
+	return stocklots.AssertManifestPickReady(ctx, s.spannerClient(), manifestID)
+}
+
+// assertPhysicalSealGates runs G2 pick + load ledger + cold baseline before seal.
+func (s *Service) assertPhysicalSealGates(ctx context.Context, manifestID string) (warn string, err error) {
+	warn, err = s.assertPickWaveReadyForSealResult(ctx, manifestID)
+	if err != nil {
+		return warn, err
+	}
+	if err := stocklots.AssertLoadLedgerReady(ctx, s.spannerClient(), manifestID); err != nil {
+		return warn, err
+	}
+	if err := stocklots.AssertColdChainBaselineReady(ctx, s.spannerClient(), manifestID); err != nil {
+		return warn, err
+	}
+	return warn, nil
+}
+
 func (s *Service) sealManifestLocked(manifestID string) (ManifestRow, error) {
 	idx := s.findManifestIndexLocked(manifestID)
 	if idx < 0 {
@@ -463,19 +590,19 @@ func (s *Service) broadcastPayloadEvent(ctx context.Context, eventType string, d
 		"timestamp": ts,
 		"data":      data,
 	})
-	if s.payloadHub != nil && s.supplierID != "" {
-		s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, syncFrame)
+	if s.payloadHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.payloadHub.Broadcast(ctx, "payload:"+s.resolveSupplierScope(ctx), syncFrame)
 		if notifyErr == nil {
-			s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, notifyFrame)
+			s.payloadHub.Broadcast(ctx, "payload:"+s.resolveSupplierScope(ctx), notifyFrame)
 		}
 	}
-	if s.supplierHub != nil && s.supplierID != "" {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, syncFrame)
+	if s.supplierHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), syncFrame)
 		if notifyErr == nil {
-			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, notifyFrame)
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), notifyFrame)
 		}
 		if legacyErr == nil {
-			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, legacyEnvelope)
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), legacyEnvelope)
 		}
 	}
 }
@@ -497,7 +624,13 @@ func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, dat
 }
 
 func (s *Service) invalidatePayloadKeys(ctx context.Context, keys ...string) {
-	if s.cache == nil || len(keys) == 0 {
+	if s.cache == nil {
+		return
+	}
+	if sid := strings.TrimSpace(s.resolveSupplierScope(ctx)); sid != "" {
+		keys = append(keys, cache.DashboardKey("supplier", sid))
+	}
+	if len(keys) == 0 {
 		return
 	}
 	s.cache.Invalidate(ctx, keys...)
@@ -520,24 +653,21 @@ func payloadExceptionListKey(supplierID string) string {
 }
 
 // HandleTrucks serves GET /v1/payloader/trucks.
+// truck_status + VU come from the vehicle's current board-state manifest, never GET /v1/payload/capacity/{id}.
 func (s *Service) HandleTrucks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
-	s.ensureDemoDataLocked()
+	s.ensureManifestStateLocked()
 	rows := append([]TruckRow(nil), s.trucks...)
-	s.mu.Unlock()
 	wire := make([]payloaderTruckWire, len(rows))
 	for i := range rows {
-		wire[i] = payloaderTruckWire{
-			ID:           rows[i].VehicleID,
-			Label:        rows[i].PlateNo,
-			LicensePlate: rows[i].PlateNo,
-			VehicleClass: "TRUCK",
-		}
+		wire[i] = truckWireFromRowLocked(s, rows[i])
 	}
+	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, wire)
 }
 
@@ -686,9 +816,26 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// B7 PL-P0-6: pin start-loading to JWT warehouse when row warehouse is set.
+	_ = s.hydrateFromRepo(r.Context())
+	s.mu.Lock()
+	s.ensureManifestStateLocked()
+	preIdx := s.findManifestIndexLocked(manifestID)
+	var preRow ManifestRow
+	if preIdx >= 0 {
+		preRow = s.manifests[preIdx]
+	}
+	s.mu.Unlock()
+	if preIdx >= 0 {
+		if scopeErr := s.assertManifestWarehouseScope(r.Context(), preRow); scopeErr != nil {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+			return
+		}
+	}
+
 	var manifest ManifestRow
 	now := ""
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -725,10 +872,11 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:  events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
-			ManifestID: manifestID,
-			SupplierID: s.supplierID,
-			State:      payloadManifestStateLoading,
+			ManifestDomain: events.ManifestDomainSupplier,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
+			ManifestID:     manifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			State:          payloadManifestStateLoading,
 		})
 	})
 	if err != nil {
@@ -740,12 +888,16 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "manifest_not_draft"})
 			return
 		default:
+			s.log.ErrorContext(r.Context(), "payload.start_loading_failed", "err", err, "manifest_id", manifestID)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "start_loading_failed"})
 			return
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	// G2.B: seed durable load ledger from order lines (memory + optional Spanner later in apply).
+	s.seedLoadLedgerForManifest(r.Context(), manifestID)
+
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestLoadingStarted, map[string]any{
 		"manifest_id": manifestID,
 		"state":       payloadManifestStateLoading,
@@ -799,7 +951,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -851,12 +1003,13 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:     events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
-			ManifestID:    manifestID,
-			OrderID:       req.OrderID,
-			SupplierID:    s.supplierID,
-			TotalVolumeVU: manifest.TotalVolumeVU,
-			StopCount:     int64(manifest.StopCount),
+			ManifestDomain: events.ManifestDomainSupplier,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
+			ManifestID:     manifestID,
+			OrderID:        req.OrderID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			TotalVolumeVU:  manifest.TotalVolumeVU,
+			StopCount:      int64(manifest.StopCount),
 		})
 	})
 	if err != nil {
@@ -879,7 +1032,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestOrderInjected, map[string]any{
 		"manifest_id":     manifestID,
 		"order_id":        req.OrderID,
@@ -939,7 +1092,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 	}
 
 	var exception ManifestException
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1005,24 +1158,26 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
-			ManifestID:   req.ManifestID,
-			OrderID:      req.OrderID,
-			SupplierID:   s.supplierID,
-			Reason:       req.Reason,
-			AttemptCount: exception.AttemptCount,
-			Escalated:    exception.Escalated,
+			ManifestDomain: events.ManifestDomainSupplier,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
+			ManifestID:     req.ManifestID,
+			OrderID:        req.OrderID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			Reason:         req.Reason,
+			AttemptCount:   exception.AttemptCount,
+			Escalated:      exception.Escalated,
 		}); err != nil {
 			return err
 		}
 		if exception.Escalated {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
-				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
-				ManifestID:   req.ManifestID,
-				OrderID:      req.OrderID,
-				SupplierID:   s.supplierID,
-				Reason:       req.Reason,
-				AttemptCount: exception.AttemptCount,
+				ManifestDomain: events.ManifestDomainSupplier,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
+				ManifestID:     req.ManifestID,
+				OrderID:        req.OrderID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				Reason:         req.Reason,
+				AttemptCount:   exception.AttemptCount,
 			})
 		}
 		return nil
@@ -1044,7 +1199,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID), payloadExceptionListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())), payloadExceptionListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestOrderException, map[string]any{
 		"manifest_id":   req.ManifestID,
 		"order_id":      req.OrderID,
@@ -1160,6 +1315,14 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		return
 	}
 	order := s.orders[oIdx]
+	if (order.Lat == 0 && order.Lng == 0) && s.orderReader != nil {
+		if ord, ok, _ := s.orderReader.GetOrder(r.Context(), order.OrderID); ok {
+			order.Lat = ord.Lat
+			order.Lng = ord.Lng
+			s.orders[oIdx].Lat = ord.Lat
+			s.orders[oIdx].Lng = ord.Lng
+		}
+	}
 
 	recommendations := make([]ReassignRecommendation, 0)
 	for i := range s.manifests {
@@ -1237,7 +1400,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reassignment Reassignment
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(tx PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1421,12 +1584,12 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			}
 			targetManifestOrders := s.manifestOrders[targetManifestID]
 			targetManifestOrders = append(targetManifestOrders, ManifestOrder{
-				ManifestID: targetManifestID,
-				OrderID:    order.OrderID,
-				State:      "ASSIGNED",
-				VolumeVU:   reassignedVolume,
+				ManifestID:   targetManifestID,
+				OrderID:      order.OrderID,
+				State:        "ASSIGNED",
+				VolumeVU:     reassignedVolume,
 				SplitGroupID: splitGroupID,
-				UpdatedAt:  now,
+				UpdatedAt:    now,
 			})
 			s.manifestOrders[targetManifestID] = targetManifestOrders
 			targetManifest.StopCount++
@@ -1453,16 +1616,20 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			AppliedAt:      now,
 		}
 		s.reassignments = append(s.reassignments, reassignment)
+		if err := tx.UpdateOrderAssignment(r.Context(), req.OrderID, targetRouteID, targetDriverID); err != nil {
+			return err
+		}
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		aggregateID := coalesceString(reassignment.ManifestID, reassignment.FromManifestID, "payload-reassign")
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, aggregateID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:      events.BaseEvent{Type: events.EventManifestRebalanced, Timestamp: reassignment.AppliedAt},
 			ManifestID:     aggregateID,
 			FromManifestID: reassignment.FromManifestID,
 			ToManifestID:   reassignment.ManifestID,
 			OrderID:        req.OrderID,
-			SupplierID:     s.supplierID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
 			FromRouteID:    reassignment.FromRouteID,
 			ToRouteID:      reassignment.ToRouteID,
 			ToDriverID:     reassignment.ToDriverID,
@@ -1511,7 +1678,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	keys := []string{payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID)}
+	keys := []string{payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context()))}
 	if reassignment.FromManifestID != "" {
 		keys = append(keys, payloadManifestKey(reassignment.FromManifestID))
 	}
@@ -1580,8 +1747,30 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		if manifestID == "" {
 			continue
 		}
+		_ = s.hydrateFromRepo(r.Context())
+		s.mu.Lock()
+		idx := s.findManifestIndexLocked(manifestID)
+		alreadySealed := idx >= 0 && s.manifests[idx].State == payloadManifestStateSealed
+		s.mu.Unlock()
+		if alreadySealed {
+			sealedCount++
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "already_sealed",
+				"state":       payloadManifestStateSealed,
+			})
+			continue
+		}
+		if _, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID); gateErr != nil {
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "pick_wave_blocked",
+				"error":       gateErr.Error(),
+			})
+			continue
+		}
 		var manifest ManifestRow
-		err := s.apply(r.Context(), func() error {
+		err := s.apply(r.Context(), func(_ PayloadTx) error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.ensureDemoDataLocked()
@@ -1590,14 +1779,16 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 			return sealErr
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-				ManifestID: manifestID,
-				SupplierID: s.supplierID,
-				State:      payloadManifestStateSealed,
-				RouteID:    routeIDForManifest(manifest),
-				DriverID:   manifest.DriverID,
-				VehicleID:  manifest.VehicleID,
-				OrderCount: manifest.StopCount,
+				ManifestDomain: events.ManifestDomainSupplier,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+				ManifestID:     manifestID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				WarehouseID:    s.resolveWarehouseScope(r.Context()),
+				State:          payloadManifestStateSealed,
+				RouteID:        routeIDForManifest(manifest),
+				DriverID:       manifest.DriverID,
+				VehicleID:      manifest.VehicleID,
+				OrderCount:     manifest.StopCount,
 			})
 		})
 		switch {
@@ -1621,7 +1812,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 						"manifest_id", manifestID, "err", geomErr)
 				}
 			}
-			s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+			s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 				"manifest_id": manifestID,
 				"state":       payloadManifestStateSealed,
@@ -1639,6 +1830,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 				})
 			}
+			s.afterSealAssignSSCC(r.Context(), manifestID)
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "sealed",
@@ -1679,9 +1871,14 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
 	}
+	sealPickWarn, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID)
+	if gateErr != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
+		return
+	}
 
 	var manifest ManifestRow
-	err = s.apply(r.Context(), func() error {
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1690,14 +1887,15 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return sealErr
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-			ManifestID: manifestID,
-			SupplierID: s.supplierID,
-			State:      payloadManifestStateSealed,
-			RouteID:    routeIDForManifest(manifest),
-			DriverID:   manifest.DriverID,
-			VehicleID:  manifest.VehicleID,
-			OrderCount: manifest.StopCount,
+			ManifestDomain: events.ManifestDomainSupplier,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID:     manifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			State:          payloadManifestStateSealed,
+			RouteID:        routeIDForManifest(manifest),
+			DriverID:       manifest.DriverID,
+			VehicleID:      manifest.VehicleID,
+			OrderCount:     manifest.StopCount,
 		})
 	})
 	if err == http.ErrMissingFile {
@@ -1720,7 +1918,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(manifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
 	s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 		"manifest_id": manifestID,
 		"state":       payloadManifestStateSealed,
@@ -1749,6 +1947,11 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"volume_vu":   float64(manifest.TotalVolumeVU),
 		"max_vu":      float64(manifest.MaxVolumeVU),
 	}
+	if sealPickWarn != "" {
+		resp["pick_wave_warning"] = sealPickWarn
+	}
+	s.afterSealAssignSSCC(r.Context(), manifestID)
+
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
 	writeJSONBytes(w, http.StatusOK, respBytes)
@@ -1779,104 +1982,96 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required"})
 		return
 	}
-
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-
-	if req.ManifestID != "" {
-		var manifest ManifestRow
-		err := s.apply(r.Context(), func() error {
-			var sealErr error
-			manifest, sealErr = s.sealManifestLocked(req.ManifestID)
-			return sealErr
-		}, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
-				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-				ManifestID: req.ManifestID,
-				SupplierID: s.supplierID,
-				State:      payloadManifestStateSealed,
-				RouteID:    routeIDForManifest(manifest),
-				DriverID:   manifest.DriverID,
-				VehicleID:  manifest.VehicleID,
-				OrderCount: manifest.StopCount,
-			})
+	// B2 M-P0-7: order-only seal is a silent memory mutation — require manifest_id
+	// and go through apply (outbox). Never hold s.mu across apply (deadlock).
+	if req.ManifestID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error":   "manifest_id_required",
+			"message": "POST /v1/payload/seal requires manifest_id; order-only seal is forbidden (use /v1/payloader/manifests/{id}/seal)",
 		})
-		s.mu.Unlock()
-		if err == http.ErrMissingFile {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
-			return
-		}
-		if err == http.ErrBodyNotAllowed {
-			platform.WriteErrorWithExplain(w, http.StatusConflict, "manifest_not_sealable", err)
-			return
-		}
-		if err != nil {
-			platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "manifest_seal_failed", err)
-			return
-		}
-
-		if s.manifestStore != nil {
-			if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), req.ManifestID, "manifest_sealed"); geomErr != nil {
-				s.log.WarnContext(r.Context(), "manifest route geometry persist failed",
-					"manifest_id", req.ManifestID, "err", geomErr)
-			}
-		}
-
-		s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.supplierID), payloadOrderListKey(s.supplierID))
-		s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
-			"manifest_id": req.ManifestID,
-			"state":       payloadManifestStateSealed,
-			"route_id":    routeIDForManifest(manifest),
-			"driver_id":   manifest.DriverID,
-			"vehicle_id":  manifest.VehicleID,
-			"order_count": manifest.StopCount,
-			"updated_at":  manifest.UpdatedAt,
-		})
-		resp := map[string]any{
-			"status":      "PAYLOAD_MANIFEST_SEALED",
-			"manifest_id": manifest.ManifestID,
-			"state":       manifest.State,
-			"sealed_at":   manifest.SealedAt,
-		}
-		respBytes, _ := json.Marshal(resp)
-		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-		writeJSONBytes(w, http.StatusOK, respBytes)
+		return
+	}
+	if _, gateErr := s.assertPhysicalSealGates(r.Context(), req.ManifestID); gateErr != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": gateErr.Error()})
 		return
 	}
 
-	oIdx := s.findOrderIndexLocked(req.OrderID)
-	now := s.now().Format(time.RFC3339Nano)
-	if oIdx < 0 {
-		s.orders = append(s.orders, OrderRow{
-			OrderID:    req.OrderID,
-			Status:     "DISPATCHED",
-			TotalMinor: 0,
-			Currency:   s.currency,
-			UpdatedAt:  now,
-		})
-	} else {
-		s.orders[oIdx].Status = "DISPATCHED"
-		s.orders[oIdx].UpdatedAt = now
-	}
-
-	if oIdx >= 0 && s.orders[oIdx].ManifestID != "" {
-		manifestID := s.orders[oIdx].ManifestID
-		orders := s.manifestOrders[manifestID]
-		moIdx := s.findManifestOrderIndexLocked(manifestID, req.OrderID)
-		if moIdx >= 0 {
-			orders[moIdx].State = "SEALED"
-			orders[moIdx].UpdatedAt = now
-			s.manifestOrders[manifestID] = orders
-		}
+	// B7 PL-P0-6: seal only manifests in JWT warehouse when both sides are set.
+	_ = s.hydrateFromRepo(r.Context())
+	s.mu.Lock()
+	s.ensureManifestStateLocked()
+	preIdx := s.findManifestIndexLocked(req.ManifestID)
+	var preRow ManifestRow
+	if preIdx >= 0 {
+		preRow = s.manifests[preIdx]
 	}
 	s.mu.Unlock()
-	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
-	s.broadcastPayloadEvent(r.Context(), "ORDER_DISPATCHED", map[string]any{"order_id": req.OrderID})
+	if preIdx >= 0 {
+		if scopeErr := s.assertManifestWarehouseScope(r.Context(), preRow); scopeErr != nil {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+			return
+		}
+	}
+
+	var manifest ManifestRow
+	err = s.apply(r.Context(), func(_ PayloadTx) error {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.ensureDemoDataLocked()
+		var sealErr error
+		manifest, sealErr = s.sealManifestLocked(req.ManifestID)
+		return sealErr
+	}, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID:     req.ManifestID,
+			SupplierID:     s.resolveSupplierScope(r.Context()),
+			WarehouseID:    s.resolveWarehouseScope(r.Context()),
+			State:          payloadManifestStateSealed,
+			RouteID:        routeIDForManifest(manifest),
+			DriverID:       manifest.DriverID,
+			VehicleID:      manifest.VehicleID,
+			OrderCount:     manifest.StopCount,
+		})
+	})
+	if err == http.ErrMissingFile {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
+		return
+	}
+	if err == http.ErrBodyNotAllowed {
+		platform.WriteErrorWithExplain(w, http.StatusConflict, "manifest_not_sealable", err)
+		return
+	}
+	if err != nil {
+		platform.WriteErrorWithExplain(w, http.StatusInternalServerError, "manifest_seal_failed", err)
+		return
+	}
+
+	if s.manifestStore != nil {
+		if geomErr := s.manifestStore.PersistRouteGeometryForManifest(r.Context(), req.ManifestID, "manifest_sealed"); geomErr != nil {
+			s.log.WarnContext(r.Context(), "manifest route geometry persist failed",
+				"manifest_id", req.ManifestID, "err", geomErr)
+		}
+	}
+
+	s.invalidatePayloadKeys(r.Context(), payloadManifestKey(req.ManifestID), payloadManifestListKey(s.resolveSupplierScope(r.Context())), payloadOrderListKey(s.resolveSupplierScope(r.Context())))
+	s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
+		"manifest_id":  req.ManifestID,
+		"state":        payloadManifestStateSealed,
+		"route_id":     routeIDForManifest(manifest),
+		"driver_id":    manifest.DriverID,
+		"vehicle_id":   manifest.VehicleID,
+		"warehouse_id": s.resolveWarehouseScope(r.Context()),
+		"order_count":  manifest.StopCount,
+		"updated_at":   manifest.UpdatedAt,
+	})
+	s.afterSealAssignSSCC(r.Context(), req.ManifestID)
 	resp := map[string]any{
-		"status":        "PAYLOAD_SEALED_AND_DISPATCHED",
-		"order_id":      req.OrderID,
-		"sealed_at":     now,
-		"dispatch_code": dispatchCodeForOrder(req.OrderID),
+		"status":      "PAYLOAD_MANIFEST_SEALED",
+		"manifest_id": manifest.ManifestID,
+		"state":       manifest.State,
+		"sealed_at":   manifest.SealedAt,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
@@ -1952,8 +2147,16 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 	sealedCount := 0
 
 	for _, manifestID := range candidateIDs {
+		if _, gateErr := s.assertPhysicalSealGates(r.Context(), manifestID); gateErr != nil {
+			results = append(results, map[string]any{
+				"manifest_id": manifestID,
+				"status":      "pick_wave_blocked",
+				"error":       gateErr.Error(),
+			})
+			continue
+		}
 		var sealed ManifestRow
-		sealErr := s.apply(r.Context(), func() error {
+		sealErr := s.apply(r.Context(), func(_ PayloadTx) error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			var e error
@@ -1961,14 +2164,16 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			return e
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
-				ManifestID: manifestID,
-				SupplierID: s.supplierID,
-				State:      payloadManifestStateSealed,
-				RouteID:    routeIDForManifest(sealed),
-				DriverID:   sealed.DriverID,
-				VehicleID:  sealed.VehicleID,
-				OrderCount: sealed.StopCount,
+				ManifestDomain: events.ManifestDomainSupplier,
+				BaseEvent:      events.BaseEvent{Type: events.EventManifestSealed, Timestamp: sealed.UpdatedAt},
+				ManifestID:     manifestID,
+				SupplierID:     s.resolveSupplierScope(r.Context()),
+				WarehouseID:    s.resolveWarehouseScope(r.Context()),
+				State:          payloadManifestStateSealed,
+				RouteID:        routeIDForManifest(sealed),
+				DriverID:       sealed.DriverID,
+				VehicleID:      sealed.VehicleID,
+				OrderCount:     sealed.StopCount,
 			})
 		})
 		switch {
@@ -1994,8 +2199,8 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 			}
 			s.invalidatePayloadKeys(r.Context(),
 				payloadManifestKey(manifestID),
-				payloadManifestListKey(s.supplierID),
-				payloadOrderListKey(s.supplierID),
+				payloadManifestListKey(s.resolveSupplierScope(r.Context())),
+				payloadOrderListKey(s.resolveSupplierScope(r.Context())),
 			)
 			s.broadcastPayloadEvent(r.Context(), events.EventManifestSealed, map[string]any{
 				"manifest_id": manifestID,
@@ -2014,6 +2219,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 					"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
 				})
 			}
+			s.afterSealAssignSSCC(r.Context(), manifestID)
 			results = append(results, map[string]any{
 				"manifest_id": manifestID,
 				"status":      "sealed",

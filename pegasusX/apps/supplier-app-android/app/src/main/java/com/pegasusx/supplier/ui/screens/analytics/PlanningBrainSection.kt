@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.ShowChart
@@ -35,6 +37,7 @@ import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.pegasusx.supplier.R
 
 @Composable
 fun PlanningBrainSection(ops: SupplierOperationsRepository) {
@@ -89,14 +92,14 @@ fun PlanningBrainSection(ops: SupplierOperationsRepository) {
         ElevatedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                 Text("Scenario run", style = MaterialTheme.typography.titleSmall)
-                Text("Factory downtime: ${downtimeHours.roundToInt()}h", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.mobile_supplier_ui_factory_downtime_roundtointh, downtimeHours.roundToInt()), style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = downtimeHours,
                     onValueChange = { downtimeHours = it },
                     valueRange = 0f..168f,
                     steps = 167,
                 )
-                Text("Demand delta: ${demandDeltaPct.roundToInt()}%", style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.mobile_supplier_ui_demand_delta_roundtoint, demandDeltaPct.roundToInt()), style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = demandDeltaPct,
                     onValueChange = { demandDeltaPct = it },
@@ -136,7 +139,7 @@ fun PlanningBrainSection(ops: SupplierOperationsRepository) {
                 }
                 scenario?.let { result ->
                     Text(
-                        "SLA risk ${result.slaRiskPct.roundToInt()}% · fleet ${result.fleetVolumeOrders} · stockouts ${result.stockoutSkus.size}",
+                        stringResource(R.string.mobile_supplier_ui_sla_risk_roundtoint_fleet_fleetvolumeorders_stockouts_size, result.slaRiskPct.roundToInt(), result.fleetVolumeOrders, result.stockoutSkus.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

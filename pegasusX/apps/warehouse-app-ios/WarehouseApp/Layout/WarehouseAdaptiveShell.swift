@@ -57,21 +57,25 @@ struct WarehouseAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: WarehouseSection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: WarehouseSection.dashboard.icon) }
                 .tag(WarehouseCompactTab.dashboard)
 
-            sectionView(.orders)
-                .tabItem { Label("Orders", systemImage: WarehouseSection.orders.icon) }
-                .tag(WarehouseCompactTab.orders)
-
             sectionView(.dispatch)
-                .tabItem { Label("Dispatch", systemImage: WarehouseSection.dispatch.icon) }
+                .tabItem { Label("portal.nav.dispatch", systemImage: WarehouseSection.dispatch.icon) }
                 .tag(WarehouseCompactTab.dispatch)
+
+            sectionView(.inventory)
+                .tabItem { Label("portal.nav.floor", systemImage: WarehouseSection.inventory.icon) }
+                .tag(WarehouseCompactTab.floor)
+
+            sectionView(.demandForecast)
+                .tabItem { Label("portal.nav.planning", systemImage: WarehouseSection.demandForecast.icon) }
+                .tag(WarehouseCompactTab.plan)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_warehouse.ui.more", systemImage: "ellipsis.circle") }
             .tag(WarehouseCompactTab.more)
         }
     }
@@ -123,16 +127,26 @@ struct WarehouseAdaptiveShell: View {
             CRMView()
         case .returns:
             ReturnsView()
+        case .coldChain:
+            ColdChainView()
+        case .laborCapacity:
+            LaborCapacityView()
         case .exceptions:
             ExceptionsView()
+        case .controlTower:
+            WarehouseScoredExceptionsView()
         case .claims:
             ClaimsView()
         case .rescues:
             RescuesView()
+        case .coverage:
+            NavigationStack { CoverageView() }
         case .paymentConfig:
             NavigationStack { PaymentConfigView() }
         case .opsSettings:
             NavigationStack { OpsSettingsView() }
+        case .returnPolicy:
+            NavigationStack { ReturnPolicySettingsView() }
         case .notifications:
             NavigationStack { NotificationInboxView() }
         case .portalSetup, .portalProfile, .portalSearch:

@@ -112,6 +112,7 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 		}
 
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateManifest, manifestRow.ManifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:   events.BaseEvent{Type: events.EventManifestDispatched, Timestamp: now.UTC().Format(time.RFC3339Nano)},
 			ManifestID:  manifestRow.ManifestID,
 			SupplierID:  manifestRow.SupplierID,
@@ -262,6 +263,7 @@ func (s *Store) ReturnDriver(ctx context.Context, driverID string, now time.Time
 		}
 
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateManifest, manifestRow.ManifestID, events.TopicMain, events.ManifestEvent{
+			ManifestDomain: events.ManifestDomainSupplier,
 			BaseEvent:   events.BaseEvent{Type: events.EventManifestCompleted, Timestamp: now.UTC().Format(time.RFC3339Nano)},
 			ManifestID:  manifestRow.ManifestID,
 			SupplierID:  manifestRow.SupplierID,

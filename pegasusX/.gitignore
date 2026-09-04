@@ -11,9 +11,11 @@ out/
 *.out
 *.exe
 vendor/
-# Local build artifact (never commit; ~59MB)
+# Local build artifacts (never commit)
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*
+apps/ai-worker/ai-worker
+apps/handoff-service/handoff-service
 
 # env
 .env
@@ -64,3 +66,13 @@ web-build/
 *.tfstate
 *.tfstate.*
 *.tfplan
+*.secret
+*.plan
+*.txt
+
+# temporary and agent run artifacts
+.agents/
+.ssmr/
+.tmp/
+*.diff
+workdir/

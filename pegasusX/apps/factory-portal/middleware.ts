@@ -78,6 +78,7 @@ export const config = {
     '/manifests/:path*',
     '/manifest-exceptions/:path*',
     '/supply-requests/:path*',
+    '/payload/:path*',
     '/payload-override/:path*',
     '/settings/:path*',
     '/setup/:path*',

@@ -99,13 +99,13 @@ struct ForecastConfidenceView: View {
         if compact {
             HStack(spacing: 6) {
                 if confidence.blocked {
-                    Text("Insufficient history")
+                    Text("mobile_warehouse.ui.insufficient_history")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(LabTheme.warning)
                 } else {
                     let low = confidence.lowUnits ?? 0
                     let high = confidence.highUnits ?? low
-                    Text("\(formatUnits(low)) – \(formatUnits(high))")
+                    Text(L10n.format("mobile_warehouse.ui.formatunits_formatunits_2", "\(formatUnits(low))", "\(formatUnits(high))"))
                         .font(.caption.monospacedDigit())
                 }
                 if let source = confidence.baselineSource, !source.isEmpty {
@@ -117,7 +117,7 @@ struct ForecastConfidenceView: View {
                         .clipShape(Capsule())
                 }
                 if confidence.seasonalActive {
-                    Text("Seasonal")
+                    Text("mobile_warehouse.ui.seasonal")
                         .font(.caption2)
                         .foregroundStyle(LabTheme.warning)
                 }
@@ -125,7 +125,7 @@ struct ForecastConfidenceView: View {
         } else {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("Forecast confidence")
+                    Text("supplier_portal.forecast_confidence_card.text.forecast_confidence")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -139,22 +139,22 @@ struct ForecastConfidenceView: View {
                     }
                 }
                 if confidence.blocked {
-                    Text("Insufficient history — predictive forecast blocked")
+                    Text("warehouse_portal.forecast_confidence_view.text.insufficient_history_predictive_forecast_blocked")
                         .font(.subheadline)
                         .foregroundStyle(LabTheme.warning)
                 } else {
                     let low = confidence.lowUnits ?? 0
                     let high = confidence.highUnits ?? low
-                    Text("\(formatUnits(low)) – \(formatUnits(high)) units")
+                    Text(L10n.format("mobile_warehouse.ui.formatunits_formatunits_2_units", "\(formatUnits(low))", "\(formatUnits(high))"))
                         .font(.subheadline.bold().monospacedDigit())
                 }
                 if let pct = confidence.confidencePct, !confidence.blocked {
-                    Text("\(pct)% confidence")
+                    Text(L10n.format("mobile_warehouse.ui.pct_confidence_2", "\(pct)"))
                         .font(.caption)
                         .foregroundStyle(confidenceColor(pct))
                 }
                 if confidence.seasonalActive {
-                    Text("Seasonal template active")
+                    Text("warehouse_portal.forecast_confidence_view.text.seasonal_template_active")
                         .font(.caption)
                         .foregroundStyle(LabTheme.warning)
                 }

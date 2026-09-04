@@ -30,11 +30,15 @@ type demandForecastProduct struct {
 	Sources           demandForecastSources `json:"sources"`
 }
 
-func (s *Service) productDemandForecast(ctx context.Context, warehouseID string, forecastDays int) []demandForecastProduct {
-	if rows, err := s.productDemandFromSpanner(ctx, warehouseID, forecastDays); err == nil && len(rows) > 0 {
-		return rows
+func (s *Service) productDemandForecast(ctx context.Context, warehouseID string, forecastDays int) (rows []demandForecastProduct, source string) {
+	spannerRows, err := s.productDemandFromSpanner(ctx, warehouseID, forecastDays)
+	if err == nil {
+		return spannerRows, "spanner"
 	}
-	return s.productDemandFromScaffold(warehouseID, forecastDays)
+	if s.portalSeedEnabled() {
+		return s.productDemandFromScaffold(warehouseID, forecastDays), "scaffold"
+	}
+	return []demandForecastProduct{}, "empty"
 }
 
 func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int) []demandForecastProduct {
@@ -202,7 +206,7 @@ func (s *Service) productDemandFromSpanner(ctx context.Context, warehouseID stri
 	if s == nil || s.spannerClient == nil || strings.TrimSpace(warehouseID) == "" {
 		return nil, spanner.ErrRowNotFound
 	}
-	supplierID := strings.TrimSpace(s.supplierID)
+	supplierID := s.resolveSupplierScope(ctx)
 	if supplierID == "" {
 		return nil, spanner.ErrRowNotFound
 	}
@@ -349,7 +353,7 @@ func (s *Service) inventoryLevelsByWarehouse(ctx context.Context, warehouseID st
 		      WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	
+
 	var iter *spanner.RowIterator
 	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
 		iter = txn.Query(ctx, stmt)

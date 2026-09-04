@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
@@ -12,6 +13,7 @@ import type { FinanceAuthoritySnapshot } from "../../payments/_shared/finance";
 import { errorToMessage, formatMinor, loadFinanceAuthoritySnapshot } from "../../payments/_shared/finance";
 
 export default function TreasuryPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -73,8 +75,8 @@ export default function TreasuryPage() {
   return (
     <PageChrome
       icon="treasury"
-      title="Treasury"
-      description="Payments, settlement authority, earnings, and reconciliation health."
+      title={t("portal.nav.treasury")}
+      description={t("supplier_portal.residual.text.payments_settlement_authority_earnings_and_reconciliation_health")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -92,14 +94,14 @@ export default function TreasuryPage() {
       }
     >
       <KpiStatGrid columns={3}>
-        <KpiStatCard label="Month earnings" value={monthEarnings} />
+        <KpiStatCard label={t("supplier_portal.residual.text.month_earnings")} value={monthEarnings} />
         <KpiStatCard
-          label="Settlement groups"
+          label={t("supplier_portal.payments.text.settlement_groups")}
           value={settlementRows}
           sub={`Source: ${financeSource}`}
         />
         <KpiStatCard
-          label="Reconciliation mismatches"
+          label={t("supplier_portal.earnings.text.reconciliation_mismatches")}
           value={mismatchCount}
           sub={mismatchCount > 0 ? "Review reconciliation" : "All clear"}
         />
@@ -109,14 +111,14 @@ export default function TreasuryPage() {
         <HubCard
           href="/payments"
           icon="payment"
-          title="Payments & ledger"
-          description="Live finance stream, chargebacks, and reconciliation."
+          title={t("supplier_portal.reconciliation.text.payments_and_ledger")}
+          description={t("supplier_portal.residual.text.live_finance_stream_chargebacks_and_reconciliation")}
         />
         <HubCard
           href="/earnings"
           icon="treasury"
-          title="Earnings & disputes"
-          description="Treasury splits and dispute operations."
+          title={t("supplier_portal.treasury.text.earnings_and_disputes")}
+          description={t("supplier_portal.residual.text.treasury_splits_and_dispute_operations")}
         />
       </div>
     </PageChrome>

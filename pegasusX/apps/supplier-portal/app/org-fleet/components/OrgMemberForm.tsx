@@ -1,7 +1,10 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import type { Role, HomeNodeType } from "@pegasusx/types";
-import { supplierOrgMemberCreateKey } from "@pegasusx/api-client";
-import type { ApiClient } from "@pegasusx/api-client";
+import { supplierOrgMemberCreateKey } from "@pegasusx/api-core";
+import type { ApiClient } from "@pegasusx/api-core";
 import {
   OrgFormState,
   defaultOrgForm,
@@ -25,6 +28,7 @@ export function OrgMemberForm({
   api: ApiClient;
   onCreated: () => void;
 }) {
+  const t = usePortalT();
   const [orgForm, setOrgForm] = useState<OrgFormState>(defaultOrgForm);
   const [orgSubmitting, setOrgSubmitting] = useState(false);
   const [orgMessage, setOrgMessage] = useState<string | null>(null);
@@ -32,6 +36,7 @@ export function OrgMemberForm({
   const activeNodeOptions = nodeOptionsFor(orgEffectiveNodeType(orgForm), state.topology);
 
   async function submitOrgMember(event: React.FormEvent<HTMLFormElement>) {
+  const t = usePortalT();
     event.preventDefault();
     setOrgSubmitting(true);
     setOrgMessage(null);
@@ -53,35 +58,35 @@ export function OrgMemberForm({
 
   return (
     <article className="md-card md-shape-md p-6">
-      <h2 className="md-typescale-title-large">Org members</h2>
+      <h2 className="md-typescale-title-large">{t("supplier_portal.org_fleet.components.org_member_form.text.org_members")}</h2>
       <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-outline)" }}>
         Create supplier operators, node admins, and payload staff with explicit node assignments.
       </p>
       <form className="grid gap-3 mt-4" onSubmit={submitOrgMember}>
         <input
           className="md-input-outlined"
-          placeholder="Full name"
+          placeholder={t("supplier_portal.org_fleet.components.org_member_form.text.full_name")}
           value={orgForm.name}
           onChange={(event) => setOrgForm((current) => ({ ...current, name: event.target.value }))}
           disabled={orgSubmitting}
         />
         <input
           className="md-input-outlined"
-          placeholder="Email"
+          placeholder={t("supplier_portal.auth.login.email_label")}
           value={orgForm.email}
           onChange={(event) => setOrgForm((current) => ({ ...current, email: event.target.value }))}
           disabled={orgSubmitting}
         />
         <input
           className="md-input-outlined"
-          placeholder="Phone"
+          placeholder={t("common.field.phone")}
           value={orgForm.phone}
           onChange={(event) => setOrgForm((current) => ({ ...current, phone: event.target.value }))}
           disabled={orgSubmitting}
         />
         <input
           className="md-input-outlined"
-          placeholder="Temporary password"
+          placeholder={t("supplier_portal.org_fleet.components.org_member_form.text.temporary_password")}
           type="password"
           value={orgForm.password}
           onChange={(event) => setOrgForm((current) => ({ ...current, password: event.target.value }))}
@@ -120,8 +125,8 @@ export function OrgMemberForm({
             }
             disabled={orgSubmitting}
           >
-            <option value="WAREHOUSE">Warehouse payload staff</option>
-            <option value="FACTORY">Factory payload staff</option>
+            <option value="WAREHOUSE">{t("supplier_portal.org_fleet.components.org_member_form.text.warehouse_payload_staff")}</option>
+            <option value="FACTORY">{t("supplier_portal.org_fleet.components.org_member_form.text.factory_payload_staff")}</option>
           </select>
         )}
 
@@ -132,7 +137,7 @@ export function OrgMemberForm({
             onChange={(event) => setOrgForm((current) => ({ ...current, nodeID: event.target.value }))}
             disabled={orgSubmitting}
           >
-            <option value="">Select node</option>
+            <option value="">{t("supplier_portal.org_fleet.components.org_member_form.text.select_node")}</option>
             {activeNodeOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}

@@ -8,6 +8,17 @@
 
 **Distribution:** website / GCS CDN only. These keys sign **sideloaded** enterprise installers — not Microsoft Store or Mac App Store packages.
 
+## Fail-closed apply / validate
+
+`scripts/apply_desktop_updater_pubkey.sh` **does not** default to `dev.pub`.
+
+| Context | Required |
+|---------|----------|
+| Production / release CI | `TAURI_UPDATER_PUBKEY` or `TAURI_UPDATER_PUBKEY_PATH` (must **not** be committed `dev.pub`) |
+| Local / unsigned CI | `ALLOW_DEV_UPDATER_PUBKEY=1` (explicit opt-in to committed `dev.pub`) |
+
+`scripts/validate_desktop_updater.sh` fails if configs still match `dev.pub` or use Windows `installMode: passive`, unless `ALLOW_DEV_UPDATER_PUBKEY=1`. Release builds use `installMode: basic` (visible installer UI).
+
 ## Dev / CI (committed)
 
 - **`dev.pub`** — minisign public key used for local builds and unsigned CI Windows artifacts.
@@ -19,11 +30,13 @@ CI=1 pnpm --filter @pegasusx/retailer-app-desktop exec tauri signer generate --c
   -w contracts/desktop-updater/dev.key -f
 ```
 
+Local build helpers (`build_desktop_*.sh`) set `ALLOW_DEV_UPDATER_PUBKEY=1` when no production pubkey env is present.
+
 ## Production
 
 1. Generate a production keypair (password-protected) and store the private key in GSM as `PEGASUSX_TAURI_SIGNING_PRIVATE_KEY`.
 2. Set `TAURI_UPDATER_PUBKEY` in the release pipeline from the production `.pub` file.
-3. Run `bash scripts/apply_desktop_updater_pubkey.sh` before `tauri build`.
+3. Run `bash scripts/apply_desktop_updater_pubkey.sh` before `tauri build` (no `ALLOW_DEV_*`).
 4. Sign update artifacts with `TAURI_SIGNING_PRIVATE_KEY` (or `TAURI_SIGNING_PRIVATE_KEY_PATH` + password).
 
 ## Updater CDN layout (GCS) — Tauri 2

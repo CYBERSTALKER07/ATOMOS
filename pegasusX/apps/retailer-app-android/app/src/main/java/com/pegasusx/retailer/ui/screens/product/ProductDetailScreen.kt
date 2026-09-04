@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.product
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -65,6 +67,7 @@ import com.pegasusx.retailer.data.model.Variant
 import com.pegasusx.retailer.ui.screens.autoorder.EnableTarget
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 @Composable
 fun ProductDetailScreen(
@@ -92,7 +95,7 @@ fun ProductDetailScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissEnableDialog,
             title = { Text("Use Previous Analytics?") },
-            text = { Text("Use existing order history for $entityLabel, or start fresh? Starting fresh requires at least 2 orders.") },
+            text = { Text(stringResource(R.string.mobile_retailer_ui_use_existing_order_history_for_entitylabel_or_start_fresh_starting_fresh, entityLabel)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmEnable(useHistory = true) }) {
                     Text("Use History")
@@ -124,7 +127,7 @@ fun ProductDetailScreen(
                                 pack = "Single",
                                 packCount = 1,
                                 weightPerUnit = "",
-                                price = (product.price ?: 0).toDouble(),
+                                price = (product.price ?: 0).toLong(),
                             )
                             onAddToCart(product, variant)
                             scope.launch { snackbarHostState.showSnackbar("${product.name} added to cart") }
@@ -145,7 +148,7 @@ fun ProductDetailScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Add to Cart \u2014 ${product.displayPrice}",
+                            stringResource(R.string.mobile_retailer_ui_add_to_cart_u2014_displayprice, product.displayPrice),
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                         )
                     }
@@ -162,7 +165,7 @@ fun ProductDetailScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
             }
             Text(
                 text = uiState.product?.name ?: "Product",
@@ -276,7 +279,7 @@ fun ProductDetailScreen(
                         if (product.nutrition.isNotBlank()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Nutrition: ${product.nutrition}",
+                                stringResource(R.string.mobile_retailer_ui_nutrition_nutrition, product.nutrition),
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                             )
@@ -323,7 +326,7 @@ fun ProductDetailScreen(
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             )
                             Text(
-                                "Applies to all variants of ${product.name}",
+                                stringResource(R.string.mobile_retailer_ui_applies_to_all_variants_of_name, product.name),
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                             )
@@ -392,13 +395,11 @@ private fun VariantRow(
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "${variant.size} — ${variant.pack}",
+                    Text(stringResource(R.string.mobile_retailer_ui_size_pack, variant.size, variant.pack),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                         maxLines = 1,
                     )
-                    Text(
-                        "Pack: ${variant.packCount}  ·  ${variant.weightPerUnit}  ·  ${"%,.0f".format(variant.price)}",
+                    Text(stringResource(R.string.mobile_retailer_ui_pack_packcount_weightperunit_format, variant.packCount, variant.weightPerUnit, "%,d".format(variant.price.toLong())),
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
                     )

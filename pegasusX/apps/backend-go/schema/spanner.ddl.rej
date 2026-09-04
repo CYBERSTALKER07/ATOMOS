@@ -1,0 +1,22 @@
+@@ -750,6 +750,21 @@
+   InspectedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+ ) PRIMARY KEY (RequestId, FactoryId);
+ 
++CREATE TABLE BillOfMaterials (
++  FinishedProductId       STRING(36)  NOT NULL,
++  RawMaterialId           STRING(36)  NOT NULL,
++  QuantityRequired        FLOAT64     NOT NULL,
++  Version                 INT64       NOT NULL DEFAULT (1),
++) PRIMARY KEY (FinishedProductId, RawMaterialId);
++
++CREATE TABLE FactoryRawInventory (
++  FactoryId               STRING(36)  NOT NULL,
++  RawMaterialId           STRING(36)  NOT NULL,
++  QuantityOnHand          FLOAT64     NOT NULL DEFAULT (0),
++  QuantityReserved        FLOAT64     NOT NULL DEFAULT (0),
++  UpdatedAt               TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
++) PRIMARY KEY (FactoryId, RawMaterialId);
++
+ CREATE TABLE OpsBroadcasts (
+   BroadcastId             STRING(36)  NOT NULL,
+   TargetRole              STRING(32)  NOT NULL,

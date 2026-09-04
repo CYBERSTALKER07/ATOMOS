@@ -1,7 +1,9 @@
 package retailer
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -145,5 +147,64 @@ func TestHqAPI_SalesByLocationBalanced(t *testing.T) {
 	}
 	if !foundLocal {
 		t.Fatalf("expected local sku in by-sku: %+v", skuResp.Items)
+	}
+}
+
+func TestHqAPI_PacksLoadErrorFailed(t *testing.T) {
+	t.Parallel()
+	svc := NewService(ServiceConfig{
+		Now: time.Now, NewID: func() string { return "x" },
+		HqAnalyticsEnabled: hqOn(),
+	})
+	svc.enabledPacksQuery = func(context.Context, string) (EnabledSet, error) {
+		return nil, errors.New("spanner_unavailable")
+	}
+	assertHqFailed(t, svc.HandleHqSummary, "/v1/retailer/hq/summary")
+	svc.enabledPacksQuery = nil
+	enabled, err := svc.LoadEnabledPacks(context.Background(), "org")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if enabled.Has(PackREPORTSPRO) {
+		t.Fatal("must not auto-enable REPORTS_PRO when HQ pack load failed")
+	}
+}
+
+func TestHqAPI_PackEnableErrorFailed(t *testing.T) {
+	t.Parallel()
+	svc := NewService(ServiceConfig{
+		Now: time.Now, NewID: func() string { return "x" },
+		HqAnalyticsEnabled: hqOn(),
+	})
+	svc.setPackEnabledFn = func(context.Context, string, string, string, bool, map[string]any) error {
+		return errors.New("spanner_unavailable")
+	}
+	assertHqFailed(t, svc.HandleHqSummary, "/v1/retailer/hq/summary")
+}
+
+func assertHqFailed(t *testing.T, handler http.HandlerFunc, path string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "o", Role: auth.RoleRetailer, RetailerOrgID: "org",
+		RetailerRole: "OWNER", RetailerUserID: "o",
+	}))
+	rr := httptest.NewRecorder()
+	handler(rr, req)
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["error"] != "hq_failed" {
+		t.Fatalf("payload=%v", payload)
+	}
+	if _, ok := payload["net_minor"]; ok {
+		t.Fatal("failed HQ must not return zeroed summary tiles")
+	}
+	if _, ok := payload["items"]; ok {
+		t.Fatal("failed HQ must not return items[]")
 	}
 }

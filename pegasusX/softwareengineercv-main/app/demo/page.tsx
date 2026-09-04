@@ -1,80 +1,76 @@
+'use client';
+
 import Link from 'next/link';
+import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function DemoPortal() {
+  const { t } = useLanguage();
+
   const personas = [
     {
-      name: 'Supplier',
+      name: t('demo_persona_supplier', 'Supplier'),
       href: '/demo/supplier',
-      desc: 'Manage outbound orders, track inventory, and view fulfillment SLAs.',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="12" y1="22.08" x2="12" y2="12" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )
+      desc: t('demo_persona_supplier_desc', 'Vet orders, preview dispatch, and review treasury on the supplier control plane.'),
+      kpi: 'ADMIN role',
     },
     {
-      name: 'Warehouse',
+      name: t('demo_persona_warehouse', 'Warehouse'),
       href: '/demo/warehouse',
-      desc: 'Monitor live dock utilization, inbound/outbound queues, and cross-dock times.',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="3" y1="9" x2="21" y2="9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <line x1="9" y1="21" x2="9" y2="9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )
+      desc: t('demo_persona_warehouse_desc', 'Visual dispatch board, capacity matching, and live fleet after gate seal.'),
+      kpi: 'WAREHOUSE_ADMIN',
     },
     {
-      name: 'Retailer',
+      name: t('demo_persona_retailer', 'Retailer'),
       href: '/demo/retailer',
-      desc: 'Track in-transit deliveries, view real-time fleet ETA, and manage receiving.',
-      icon: (
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <polyline points="9 22 9 12 15 12 15 22" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )
-    }
+      desc: t('demo_persona_retailer_desc', 'Checkout, live tracking, shop-closed respond, and pay-at-delivery.'),
+      kpi: 'RETAILER',
+    },
   ];
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <div className="w-full max-w-4xl px-4">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-medium tracking-tight mb-4">Pegasus Dashboard</h1>
-          <p className="text-white/50 text-lg">Select a persona below to experience the specialized workflows.</p>
-        </div>
+    <FleekSecondaryLayout
+      activeHref="/demo"
+      sectionTitle={t('demo_section_title', 'INTERACTIVE DEMO')}
+      title={t('demo_title', 'Pegasus Dashboard')}
+      summary={t('demo_summary', 'Select a persona to experience specialized workflows — dispatch, fleet, and receiving — on the same order truth.')}
+      primaryHref="/demo/supplier"
+      primaryLabel={t('demo_primary', 'SUPPLIER DEMO')}
+      secondaryHref="/join"
+      secondaryLabel={t('demo_secondary', 'REQUEST ACCESS')}
+      hubId="operations"
+      showStack={false}
+      section06={
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            {personas.map((p) => (
+              <Link
+                key={p.href}
+                href={p.href}
+                className="docs-card group transition-colors hover:border-white/30"
+              >
+                <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">{p.kpi}</p>
+                <h2 className="mt-4 text-xl font-semibold">{p.name}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/50 group-hover:text-white/70">
+                  {p.desc}
+                </p>
+                <span className="mt-8 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-white/35 group-hover:text-[var(--fleek-accent)]">
+                  {t('demo_enter_platform', 'Enter platform →')}
+                </span>
+              </Link>
+            ))}
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {personas.map((p) => (
-            <Link 
-              key={p.name} 
-              href={p.href}
-              className="group bg-[#0a0a0a] border border-white/10 p-8 rounded block transition-all hover:border-white/30 hover:bg-[#111]"
+          <p className="mt-10 text-center">
+            <Link
+              href="/"
+              className="text-sm text-white/40 underline-offset-4 hover:text-white hover:underline"
             >
-              <div className="w-12 h-12 rounded bg-white/5 border border-white/10 flex items-center justify-center text-white/70 mb-6 group-hover:text-white group-hover:scale-110 transition-all">
-                {p.icon}
-              </div>
-              <h2 className="text-xl font-medium text-white/90 mb-3">{p.name} Portal</h2>
-              <p className="text-sm text-white/50 leading-relaxed">
-                {p.desc}
-              </p>
-              <div className="mt-8 text-xs font-mono tracking-widest text-white/30 group-hover:text-white/80 transition-colors flex items-center gap-2">
-                ENTER PLATFORM
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 12h14M12 5l7 7-7 7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
+              {t('demo_return_landing', 'Return to landing page')}
             </Link>
-          ))}
-        </div>
-        
-        <div className="mt-16 text-center">
-          <Link href="/" className="text-sm text-white/40 hover:text-white transition-colors underline underline-offset-4">
-            Return to Landing Page
-          </Link>
-        </div>
-      </div>
-    </div>
+          </p>
+        </>
+      }
+    />
   );
 }

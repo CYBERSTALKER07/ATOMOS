@@ -37,6 +37,88 @@
       "title": "AIRecommendationPayload",
       "type": "object"
     },
+    "ARInvoicePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "aging_bucket": {
+          "type": "string"
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "balance_minor": {
+          "type": "integer"
+        },
+        "base_event": {},
+        "due_at": {
+          "type": "string"
+        },
+        "dunning_step": {
+          "type": "integer"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "last_dunned_at": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "principal_minor": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "invoice_id",
+        "retailer_id",
+        "supplier_id"
+      ],
+      "title": "ARInvoicePayload",
+      "type": "object"
+    },
+    "BuyerAcceptancePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "deadline": {
+          "type": "string"
+        },
+        "ehf_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "status",
+        "supplier_id"
+      ],
+      "title": "BuyerAcceptancePayload",
+      "type": "object"
+    },
     "CashVariancePayload": {
       "additionalProperties": true,
       "properties": {
@@ -180,7 +262,13 @@
         "reporter_role": {
           "type": "string"
         },
+        "retailer_id": {
+          "type": "string"
+        },
         "sku": {
+          "type": "string"
+        },
+        "supplier_id": {
           "type": "string"
         }
       },
@@ -205,7 +293,13 @@
         "order_id": {
           "type": "string"
         },
+        "photo_proof_url": {
+          "type": "string"
+        },
         "retailer_id": {
+          "type": "string"
+        },
+        "signature_url": {
           "type": "string"
         },
         "status": {
@@ -445,10 +539,19 @@
           "type": "string"
         },
         "base_event": {},
+        "card_minor": {
+          "type": "integer"
+        },
+        "cash_minor": {
+          "type": "integer"
+        },
         "contact_name": {
           "type": "string"
         },
         "currency": {
+          "type": "string"
+        },
+        "driver_id": {
           "type": "string"
         },
         "email": {
@@ -676,6 +779,61 @@
       "title": "LogisticsExceptionPayload",
       "type": "object"
     },
+    "LotRecallPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "base_event": {},
+        "campaign_id": {
+          "type": "string"
+        },
+        "impacted_lot_count": {
+          "type": "integer"
+        },
+        "impacted_order_count": {
+          "type": "integer"
+        },
+        "impacted_units_count": {
+          "type": "integer"
+        },
+        "lot_code": {
+          "type": "string"
+        },
+        "lot_id": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "recall_reason": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "product_id",
+        "supplier_id"
+      ],
+      "title": "LotRecallPayload",
+      "type": "object"
+    },
     "ManifestPayload": {
       "additionalProperties": true,
       "properties": {
@@ -708,6 +866,9 @@
           "type": "string"
         },
         "from_vehicle_id": {
+          "type": "string"
+        },
+        "manifest_domain": {
           "type": "string"
         },
         "manifest_id": {
@@ -885,6 +1046,9 @@
         "manifest_id": {
           "type": "string"
         },
+        "message": {
+          "type": "string"
+        },
         "negotiation_id": {
           "type": "string"
         },
@@ -963,6 +1127,40 @@
       "title": "OrderPayload",
       "type": "object"
     },
+    "PayoutBatchPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "batch_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "net_payout_minor": {
+          "type": "integer"
+        },
+        "rail_reference": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "batch_id",
+        "currency",
+        "net_payout_minor",
+        "status",
+        "supplier_id"
+      ],
+      "title": "PayoutBatchPayload",
+      "type": "object"
+    },
     "PlanningPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1009,6 +1207,12 @@
         "product_id": {
           "type": "string"
         },
+        "published_by": {
+          "type": "string"
+        },
+        "scenario_id": {
+          "type": "string"
+        },
         "signal_id": {
           "type": "string"
         },
@@ -1024,6 +1228,9 @@
         "ttl_seconds": {
           "type": "integer"
         },
+        "version": {
+          "type": "integer"
+        },
         "warehouse_id": {
           "type": "string"
         }
@@ -1033,61 +1240,6 @@
         "supplier_id"
       ],
       "title": "PlanningPayload",
-      "type": "object"
-    },
-    "DemandSignalPayload": {
-      "additionalProperties": true,
-      "description": "Retailer POS sell-through flywheel signal for supplier demand (no POS internals).",
-      "properties": {
-        "type": {
-          "const": "DEMAND_SIGNAL",
-          "type": "string"
-        },
-        "timestamp": {
-          "type": "string"
-        },
-        "retailer_id": {
-          "type": "string"
-        },
-        "location_id": {
-          "type": "string"
-        },
-        "sku": {
-          "type": "string"
-        },
-        "day": {
-          "description": "UTC civil day YYYY-MM-DD",
-          "type": "string"
-        },
-        "qty_delta": {
-          "description": "Signed units this event (sale +, void −)",
-          "type": "integer"
-        },
-        "net_sold": {
-          "description": "Day cumulative net sold after this update",
-          "type": "integer"
-        },
-        "source": {
-          "const": "STORE_POS",
-          "type": "string"
-        },
-        "kind": {
-          "enum": ["sale", "void"],
-          "type": "string"
-        },
-        "supplier_id": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "type",
-        "retailer_id",
-        "sku",
-        "day",
-        "qty_delta",
-        "source"
-      ],
-      "title": "DemandSignalPayload",
       "type": "object"
     },
     "PreOrderPayload": {
@@ -1617,6 +1769,69 @@
       "title": "SupplierPayload",
       "type": "object"
     },
+    "SupplierServicePromisePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "breach_reason": {
+          "type": "string"
+        },
+        "breached_at": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "cutoff_applied_at": {
+          "type": "string"
+        },
+        "fill_rate_target_bps": {
+          "type": "integer"
+        },
+        "guaranteed_delivery_date": {
+          "type": "string"
+        },
+        "min_order_minor": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "promise_type": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "sla_hours": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "currency",
+        "fill_rate_target_bps",
+        "guaranteed_delivery_date",
+        "min_order_minor",
+        "order_id",
+        "promise_type",
+        "retailer_id",
+        "sla_hours",
+        "status",
+        "supplier_id"
+      ],
+      "title": "SupplierServicePromisePayload",
+      "type": "object"
+    },
     "SupplyRequestPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1824,10 +2039,19 @@
       "additionalProperties": true,
       "properties": {
         "base_event": {},
+        "factory_id": {
+          "type": "string"
+        },
         "from_warehouse": {
           "type": "string"
         },
+        "state": {
+          "type": "string"
+        },
         "status": {
+          "type": "string"
+        },
+        "supplier_id": {
           "type": "string"
         },
         "to_warehouse": {
@@ -1922,6 +2146,177 @@
         }
       ],
       "title": "AllocationPolicyAppliedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_AGING_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceAgingUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_DUNNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceDunnedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceOpenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_PAYMENT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoicePaymentEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ARInvoicePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AR_INVOICE_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ArInvoiceSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_ACCEPTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceAcceptedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_EXPIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceExpiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_PENDING"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptancePendingEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/BuyerAcceptancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BUYER_ACCEPTANCE_REJECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BuyerAcceptanceRejectedEnvelope"
     },
     {
       "allOf": [
@@ -2021,6 +2416,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/LogisticsExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CLAIM_UNDER_REVIEW"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ClaimUnderReviewEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/CommandPayload"
         },
         {
@@ -2074,6 +2488,63 @@
         }
       ],
       "title": "CommandSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CONTROL_TOWER_PLAYBOOK_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ControlTowerPlaybookChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CONTROL_TOWER_RUN_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ControlTowerRunCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CONTROL_TOWER_RUN_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ControlTowerRunUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -2192,7 +2663,7 @@
     {
       "allOf": [
         {
-          "$ref": "#/$defs/DemandSignalPayload"
+          "$ref": "#/$defs/RetailerPayload"
         },
         {
           "properties": {
@@ -2207,6 +2678,44 @@
         }
       ],
       "title": "DemandSignalEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoutePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_PLANNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchPlannedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoutePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchRequestedEnvelope"
     },
     {
       "allOf": [
@@ -2349,6 +2858,63 @@
         {
           "properties": {
             "type": {
+              "const": "FACTORY_SLA_BREACH"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactorySlaBreachEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FactoryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_STAFF_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryStaffCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FactoryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_STAFF_PASSWORD_SET"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryStaffPasswordSetEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplyRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "FACTORY_SUPPLY_REQUEST_UPDATE"
             }
           },
@@ -2359,6 +2925,25 @@
         }
       ],
       "title": "FactorySupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FiscalReceiptPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FISCAL_CORRECTIVE_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FiscalCorrectiveRequestedEnvelope"
     },
     {
       "allOf": [
@@ -2496,6 +3081,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_POLICY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryPolicyUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_QUANTITY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryQuantityUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SyncPayload"
         },
         {
@@ -2549,6 +3172,101 @@
         }
       ],
       "title": "LogisticsTelemetryEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplyRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOOK_AHEAD_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LookAheadCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_QUARANTINED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotQuarantinedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_RECALL_INITIATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotRecallInitiatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOT_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LotReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplyRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOYALTY_POINTS_EARNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LoyaltyPointsEarnedEnvelope"
     },
     {
       "allOf": [
@@ -2644,6 +3362,25 @@
         }
       ],
       "title": "ManifestDraftCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_EXCEPTION_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestExceptionResolvedEnvelope"
     },
     {
       "allOf": [
@@ -2796,6 +3533,25 @@
         }
       ],
       "title": "NegotiationResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplyRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NETWORK_MODE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NetworkModeChangedEnvelope"
     },
     {
       "allOf": [
@@ -3009,6 +3765,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PARENT_ORDER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ParentOrderCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PARENT_ORDER_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ParentOrderUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ShopClosedBypassOffloadPayload"
         },
         {
@@ -3085,6 +3879,101 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_EXPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchExportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_GENERATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchGeneratedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_BATCH_PAID"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutBatchPaidEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayoutBatchPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYOUT_POLICY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayoutPolicyUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PlanningPayload"
         },
         {
@@ -3157,6 +4046,82 @@
         }
       ],
       "title": "PlanningPromoSimulationReadyEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "POS_SALE_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PosSaleCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "POS_SALE_VOIDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PosSaleVoidedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "POS_SESSION_CLOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PosSessionClosedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "POS_SESSION_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PosSessionOpenedEnvelope"
     },
     {
       "allOf": [
@@ -3408,6 +4373,120 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/SupplyRequestPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PULL_MATRIX_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PullMatrixCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REASSIGN_HANDSHAKE_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReassignHandshakeCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RECEIVING_VARIANCE_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReceivingVarianceReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundRequestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FinancePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REFUND_SUCCEEDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RefundSucceededEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PlanningPayload"
         },
         {
@@ -3442,6 +4521,196 @@
         }
       ],
       "title": "ReplenishmentInsightCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REPLENISHMENT_POLICY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReplenishmentPolicyUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_ASSIST_SLA_BREACHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAssistSlaBreachedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_ASSIST_TICKET_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAssistTicketCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_ASSIST_TICKET_CLAIMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAssistTicketClaimedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_ASSIST_TICKET_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAssistTicketCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_ASSIST_TICKET_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAssistTicketOpenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_AUTO_ORDER_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerAutoOrderUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_CAPABILITY_PACK_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerCapabilityPackChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_CLOCK_IN"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerClockInEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_CLOCK_OUT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerClockOutEnvelope"
     },
     {
       "allOf": [
@@ -3484,6 +4753,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_LOCATION_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerLocationCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_LOCATION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerLocationUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/RetailerPriceOverridePayload"
         },
         {
@@ -3522,6 +4829,63 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SECTION_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerSectionCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SECTION_SKU_MAPPED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerSectionSkuMappedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SECTION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerSectionUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/OrderPayload"
         },
         {
@@ -3541,6 +4905,120 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SELL_THROUGH_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerSellThroughUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SHIFT_CASH_VARIANCE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerShiftCashVarianceEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SHIFT_CLOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerShiftClosedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_SHIFT_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerShiftOpenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_STAFF_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerStaffCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_STAFF_SECTION_ASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerStaffSectionAssignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ReturnPayload"
         },
         {
@@ -3556,6 +5034,25 @@
         }
       ],
       "title": "ReturnReceivedAtWarehouseEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ReturnPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETURN_SCAN_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReturnScanReceivedEnvelope"
     },
     {
       "allOf": [
@@ -3826,6 +5323,101 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STORE_STOCK_ADJUSTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StoreStockAdjustedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STORE_STOCK_CLAIM_HOLD"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StoreStockClaimHoldEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STORE_STOCK_COUNTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StoreStockCountedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STORE_STOCK_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StoreStockReceivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STORE_STOCK_TRANSFERRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StoreStockTransferredEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SupplierPayload"
         },
         {
@@ -3864,6 +5456,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_BROADCAST"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierBroadcastEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SupplierPayload"
         },
         {
@@ -3879,6 +5490,44 @@
         }
       ],
       "title": "SupplierCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_CREDIT_PROGRAM_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierCreditProgramChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LotRecallPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_CREDIT_TERMS_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierCreditTermsChangedEnvelope"
     },
     {
       "allOf": [
@@ -3959,6 +5608,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/SupplierServicePromisePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_SERVICE_PROMISE_BREACHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierServicePromiseBreachedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplierServicePromisePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_SERVICE_PROMISE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierServicePromiseCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SupplierPayload"
         },
         {
@@ -4035,6 +5722,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/WarehouseTransferPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_TRANSFER_ARRIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyTransferArrivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/SystemPayload"
         },
         {
@@ -4050,6 +5756,25 @@
         }
       ],
       "title": "SystemAppOutdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehouseTransferPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TRANSFER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TransferCreatedEnvelope"
     },
     {
       "allOf": [
@@ -4088,6 +5813,25 @@
         }
       ],
       "title": "VehicleCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_BROADCAST"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseBroadcastEnvelope"
     },
     {
       "allOf": [
@@ -4206,6 +5950,82 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WMS_CYCLE_APPROVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WmsCycleApprovedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WMS_PICK_CONFIRMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WmsPickConfirmedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WMS_PUTAWAY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WmsPutawayEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehousePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WMS_TEMPERATURE_BREACH"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WmsTemperatureBreachEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/PlanningPayload"
         },
         {
@@ -4221,6 +6041,25 @@
         }
       ],
       "title": "Planning.meio.recommendation.v1Envelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "planning.scenario.published.v1"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "Planning.scenario.published.v1Envelope"
     },
     {
       "allOf": [
@@ -4249,14 +6088,27 @@
         "AI_RECOMMENDATION_DECIDED",
         "ALLOCATION_FAIR_SHARE_APPLIED",
         "ALLOCATION_POLICY_APPLIED",
+        "AR_INVOICE_AGING_UPDATED",
+        "AR_INVOICE_DUNNED",
+        "AR_INVOICE_OPENED",
+        "AR_INVOICE_PAYMENT",
+        "AR_INVOICE_SETTLED",
+        "BUYER_ACCEPTANCE_ACCEPTED",
+        "BUYER_ACCEPTANCE_EXPIRED",
+        "BUYER_ACCEPTANCE_PENDING",
+        "BUYER_ACCEPTANCE_REJECTED",
         "CART_SYNC_UPDATED",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
         "CLAIM_FILED",
         "CLAIM_RESOLVED",
+        "CLAIM_UNDER_REVIEW",
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
+        "CONTROL_TOWER_PLAYBOOK_CHANGED",
+        "CONTROL_TOWER_RUN_CREATED",
+        "CONTROL_TOWER_RUN_UPDATED",
         "CREDIT_DELIVERY_MARKED",
         "CREDIT_DELIVERY_RESOLVED",
         "CREDIT_LEAVE",
@@ -4264,6 +6116,8 @@
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_BASELINE_UPDATED",
         "DEMAND_SIGNAL",
+        "DISPATCH_PLANNED",
+        "DISPATCH_REQUESTED",
         "DISPATCH_ZONE_OVERRIDE",
         "DRIVER_AVAILABILITY_CHANGED",
         "DRIVER_CREATED",
@@ -4271,7 +6125,11 @@
         "DRIVER_RETURN_APPROACHING",
         "FACTORY_CREATED",
         "FACTORY_LOCATION_UPDATED",
+        "FACTORY_SLA_BREACH",
+        "FACTORY_STAFF_CREATED",
+        "FACTORY_STAFF_PASSWORD_SET",
         "FACTORY_SUPPLY_REQUEST_UPDATE",
+        "FISCAL_CORRECTIVE_REQUESTED",
         "FISCAL_RECEIPT_FAILED",
         "FISCAL_RECEIPT_REQUESTED",
         "FISCAL_RECEIPT_SUCCEEDED",
@@ -4279,14 +6137,22 @@
         "FREEZE_LOCK_RELEASED",
         "INVENTORY_IMPORT_STATUS_UPDATE",
         "INVENTORY_IMPORT_UPLOADED",
+        "INVENTORY_POLICY_UPDATED",
+        "INVENTORY_QUANTITY_UPDATED",
         "INVENTORY_SYNC_COMPLETE",
         "LOGISTICS_EXCEPTION_REPORTED",
         "LOGISTICS_TELEMETRY",
+        "LOOK_AHEAD_COMPLETED",
+        "LOT_QUARANTINED",
+        "LOT_RECALL_INITIATED",
+        "LOT_RELEASED",
+        "LOYALTY_POINTS_EARNED",
         "MANIFEST_CANCELLED",
         "MANIFEST_COMPLETED",
         "MANIFEST_DISPATCHED",
         "MANIFEST_DLQ_ESCALATION",
         "MANIFEST_DRAFT_CREATED",
+        "MANIFEST_EXCEPTION_RESOLVED",
         "MANIFEST_LOADING_STARTED",
         "MANIFEST_ORDER_EXCEPTION",
         "MANIFEST_ORDER_INJECTED",
@@ -4295,6 +6161,7 @@
         "MISSING_ITEMS_REPORTED",
         "NEGOTIATION_PROPOSED",
         "NEGOTIATION_RESOLVED",
+        "NETWORK_MODE_CHANGED",
         "ORDER_ALLOCATED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
@@ -4306,14 +6173,25 @@
         "ORDER_REASSIGNED",
         "ORDER_STATUS_CHANGED",
         "ORDER_VALIDATION_FAILED",
+        "PARENT_ORDER_CREATED",
+        "PARENT_ORDER_UPDATED",
         "PARTIAL_OFFLOAD",
         "PAYMENT_CLEARED",
         "PAYMENT_FAILED",
         "PAYMENT_REQUIRED",
+        "PAYOUT_BATCH_DISPATCHED",
+        "PAYOUT_BATCH_EXPORTED",
+        "PAYOUT_BATCH_GENERATED",
+        "PAYOUT_BATCH_PAID",
+        "PAYOUT_POLICY_UPDATED",
         "PLANNING_AGENT_BROADCAST",
         "PLANNING_CONFIDENCE_DOWNGRADED",
         "PLANNING_FORECAST_UPDATED",
         "PLANNING_PROMO_SIMULATION_READY",
+        "POS_SALE_COMPLETED",
+        "POS_SALE_VOIDED",
+        "POS_SESSION_CLOSED",
+        "POS_SESSION_OPENED",
         "PRE_ORDER_AUTO_ACCEPTED",
         "PRE_ORDER_CANCELLED",
         "PRE_ORDER_CONFIRMATION",
@@ -4327,14 +6205,42 @@
         "PRODUCT_HANDLING_UPDATED",
         "PROMOTION_CHANGED",
         "PROXIMITY_UNLOCKED",
+        "PULL_MATRIX_COMPLETED",
+        "REASSIGN_HANDSHAKE_COMPLETED",
+        "RECEIVING_VARIANCE_REPORTED",
+        "REFUND_FAILED",
+        "REFUND_REQUESTED",
+        "REFUND_SUCCEEDED",
         "REPLENISHMENT_AUTO_APPROVED",
         "REPLENISHMENT_INSIGHT_CREATED",
+        "REPLENISHMENT_POLICY_UPDATED",
+        "RETAILER_ASSIST_SLA_BREACHED",
+        "RETAILER_ASSIST_TICKET_CANCELLED",
+        "RETAILER_ASSIST_TICKET_CLAIMED",
+        "RETAILER_ASSIST_TICKET_COMPLETED",
+        "RETAILER_ASSIST_TICKET_OPENED",
+        "RETAILER_AUTO_ORDER_UPDATED",
+        "RETAILER_CAPABILITY_PACK_CHANGED",
+        "RETAILER_CLOCK_IN",
+        "RETAILER_CLOCK_OUT",
         "RETAILER_CREDIT_LIMIT_BREACHED",
         "RETAILER_CREDIT_PROFILE_CHANGED",
+        "RETAILER_LOCATION_CREATED",
+        "RETAILER_LOCATION_UPDATED",
         "RETAILER_PRICE_OVERRIDE",
         "RETAILER_REGISTERED",
+        "RETAILER_SECTION_CREATED",
+        "RETAILER_SECTION_SKU_MAPPED",
+        "RETAILER_SECTION_UPDATED",
         "RETAILER_SEGMENT_UPDATED",
+        "RETAILER_SELL_THROUGH_UPDATED",
+        "RETAILER_SHIFT_CASH_VARIANCE",
+        "RETAILER_SHIFT_CLOSED",
+        "RETAILER_SHIFT_OPENED",
+        "RETAILER_STAFF_CREATED",
+        "RETAILER_STAFF_SECTION_ASSIGNED",
         "RETURN_RECEIVED_AT_WAREHOUSE",
+        "RETURN_SCAN_RECEIVED",
         "REVERSE_LOGISTICS_REQUIRED",
         "ROUTE_CREATED",
         "ROUTE_REORDERED",
@@ -4349,27 +6255,45 @@
         "SKU_CLASS_UPDATED",
         "SPLIT_PAYMENT_CREATED",
         "SPLIT_SHIPMENT_CREATED",
+        "STORE_STOCK_ADJUSTED",
+        "STORE_STOCK_CLAIM_HOLD",
+        "STORE_STOCK_COUNTED",
+        "STORE_STOCK_RECEIVED",
+        "STORE_STOCK_TRANSFERRED",
         "SUPPLIER_BILLING_CONFIGURED",
         "SUPPLIER_BILLING_UPDATED",
+        "SUPPLIER_BROADCAST",
         "SUPPLIER_CREATED",
+        "SUPPLIER_CREDIT_PROGRAM_CHANGED",
+        "SUPPLIER_CREDIT_TERMS_CHANGED",
         "SUPPLIER_MEMBER_ADDED",
         "SUPPLIER_PROFILE_UPDATED",
         "SUPPLIER_RETURN_CREATED",
         "SUPPLIER_RETURN_RESOLVED",
+        "SUPPLIER_SERVICE_PROMISE_BREACHED",
+        "SUPPLIER_SERVICE_PROMISE_CREATED",
         "SUPPLIER_UPDATED",
         "SUPPLY_REQUEST_ACCEPTED",
         "SUPPLY_REQUEST_UPDATE",
         "SUPPLY_TRANSFER_APPROACHING",
+        "SUPPLY_TRANSFER_ARRIVED",
         "SYSTEM_APP_OUTDATED",
+        "TRANSFER_CREATED",
         "VEHICLE_AVAILABILITY_CHANGED",
         "VEHICLE_CREATED",
+        "WAREHOUSE_BROADCAST",
         "WAREHOUSE_CREATED",
         "WAREHOUSE_DISPATCH_LOCK_CHANGED",
         "WAREHOUSE_LOCATION_UPDATED",
         "WAREHOUSE_SUPPLY_REQUEST_OPENED",
         "WAREHOUSE_TRANSFER_CREATED",
         "WAREHOUSE_TRANSFER_RECEIVED",
+        "WMS_CYCLE_APPROVED",
+        "WMS_PICK_CONFIRMED",
+        "WMS_PUTAWAY",
+        "WMS_TEMPERATURE_BREACH",
         "planning.meio.recommendation.v1",
+        "planning.scenario.published.v1",
         "planning.signal.ingest.v1"
       ],
       "type": "string"
@@ -4385,21 +6309,36 @@
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
     "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
     "ALLOCATION_POLICY_APPLIED": "OrderPayload",
+    "AR_INVOICE_AGING_UPDATED": "ARInvoicePayload",
+    "AR_INVOICE_DUNNED": "ARInvoicePayload",
+    "AR_INVOICE_OPENED": "ARInvoicePayload",
+    "AR_INVOICE_PAYMENT": "ARInvoicePayload",
+    "AR_INVOICE_SETTLED": "ARInvoicePayload",
+    "BUYER_ACCEPTANCE_ACCEPTED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_EXPIRED": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
+    "BUYER_ACCEPTANCE_REJECTED": "BuyerAcceptancePayload",
     "CART_SYNC_UPDATED": "SyncPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",
     "CLAIM_FILED": "LogisticsExceptionPayload",
     "CLAIM_RESOLVED": "LogisticsExceptionPayload",
+    "CLAIM_UNDER_REVIEW": "LogisticsExceptionPayload",
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",
+    "CONTROL_TOWER_PLAYBOOK_CHANGED": "LotRecallPayload",
+    "CONTROL_TOWER_RUN_CREATED": "LotRecallPayload",
+    "CONTROL_TOWER_RUN_UPDATED": "LotRecallPayload",
     "CREDIT_DELIVERY_MARKED": "CreditDeliveryPayload",
     "CREDIT_DELIVERY_RESOLVED": "CreditDeliveryPayload",
     "CREDIT_LEAVE": "ShopClosedBypassOffloadPayload",
     "DELIVERY_DISPUTED": "DeliverySessionPayload",
     "DELIVERY_SESSION_UPDATED": "DeliverySessionPayload",
     "DEMAND_BASELINE_UPDATED": "PlanningPayload",
-    "DEMAND_SIGNAL": "DemandSignalPayload",
+    "DEMAND_SIGNAL": "RetailerPayload",
+    "DISPATCH_PLANNED": "RoutePayload",
+    "DISPATCH_REQUESTED": "RoutePayload",
     "DISPATCH_ZONE_OVERRIDE": "PlanningPayload",
     "DRIVER_AVAILABILITY_CHANGED": "DriverPayload",
     "DRIVER_CREATED": "DriverPayload",
@@ -4407,7 +6346,11 @@
     "DRIVER_RETURN_APPROACHING": "ReturnPayload",
     "FACTORY_CREATED": "FactoryPayload",
     "FACTORY_LOCATION_UPDATED": "FactoryPayload",
+    "FACTORY_SLA_BREACH": "SupplyRequestPayload",
+    "FACTORY_STAFF_CREATED": "FactoryPayload",
+    "FACTORY_STAFF_PASSWORD_SET": "FactoryPayload",
     "FACTORY_SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
+    "FISCAL_CORRECTIVE_REQUESTED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_FAILED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_REQUESTED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_SUCCEEDED": "FiscalReceiptPayload",
@@ -4415,14 +6358,22 @@
     "FREEZE_LOCK_RELEASED": "SystemPayload",
     "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportPayload",
     "INVENTORY_IMPORT_UPLOADED": "InventoryImportPayload",
+    "INVENTORY_POLICY_UPDATED": "WarehousePayload",
+    "INVENTORY_QUANTITY_UPDATED": "WarehousePayload",
     "INVENTORY_SYNC_COMPLETE": "SyncPayload",
     "LOGISTICS_EXCEPTION_REPORTED": "LogisticsExceptionPayload",
     "LOGISTICS_TELEMETRY": "LogisticsExceptionPayload",
+    "LOOK_AHEAD_COMPLETED": "SupplyRequestPayload",
+    "LOT_QUARANTINED": "LotRecallPayload",
+    "LOT_RECALL_INITIATED": "LotRecallPayload",
+    "LOT_RELEASED": "LotRecallPayload",
+    "LOYALTY_POINTS_EARNED": "SupplyRequestPayload",
     "MANIFEST_CANCELLED": "ManifestPayload",
     "MANIFEST_COMPLETED": "ManifestPayload",
     "MANIFEST_DISPATCHED": "ManifestPayload",
     "MANIFEST_DLQ_ESCALATION": "ManifestPayload",
     "MANIFEST_DRAFT_CREATED": "ManifestPayload",
+    "MANIFEST_EXCEPTION_RESOLVED": "ManifestPayload",
     "MANIFEST_LOADING_STARTED": "ManifestPayload",
     "MANIFEST_ORDER_EXCEPTION": "ManifestPayload",
     "MANIFEST_ORDER_INJECTED": "ManifestPayload",
@@ -4431,6 +6382,7 @@
     "MISSING_ITEMS_REPORTED": "OrderPayload",
     "NEGOTIATION_PROPOSED": "NegotiationPayload",
     "NEGOTIATION_RESOLVED": "NegotiationPayload",
+    "NETWORK_MODE_CHANGED": "SupplyRequestPayload",
     "ORDER_ALLOCATED": "OrderPayload",
     "ORDER_AMENDED": "OrderPayload",
     "ORDER_ASSIGNED": "OrderPayload",
@@ -4442,14 +6394,25 @@
     "ORDER_REASSIGNED": "OrderPayload",
     "ORDER_STATUS_CHANGED": "OrderPayload",
     "ORDER_VALIDATION_FAILED": "OrderPayload",
+    "PARENT_ORDER_CREATED": "LotRecallPayload",
+    "PARENT_ORDER_UPDATED": "LotRecallPayload",
     "PARTIAL_OFFLOAD": "ShopClosedBypassOffloadPayload",
     "PAYMENT_CLEARED": "FinancePayload",
     "PAYMENT_FAILED": "FinancePayload",
     "PAYMENT_REQUIRED": "FinancePayload",
+    "PAYOUT_BATCH_DISPATCHED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_EXPORTED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_GENERATED": "PayoutBatchPayload",
+    "PAYOUT_BATCH_PAID": "PayoutBatchPayload",
+    "PAYOUT_POLICY_UPDATED": "PayoutBatchPayload",
     "PLANNING_AGENT_BROADCAST": "PlanningPayload",
     "PLANNING_CONFIDENCE_DOWNGRADED": "PlanningPayload",
     "PLANNING_FORECAST_UPDATED": "PlanningPayload",
     "PLANNING_PROMO_SIMULATION_READY": "PlanningPayload",
+    "POS_SALE_COMPLETED": "RetailerPayload",
+    "POS_SALE_VOIDED": "RetailerPayload",
+    "POS_SESSION_CLOSED": "RetailerPayload",
+    "POS_SESSION_OPENED": "RetailerPayload",
     "PRE_ORDER_AUTO_ACCEPTED": "PreOrderPayload",
     "PRE_ORDER_CANCELLED": "PreOrderPayload",
     "PRE_ORDER_CONFIRMATION": "PreOrderPayload",
@@ -4463,14 +6426,42 @@
     "PRODUCT_HANDLING_UPDATED": "ProductPayload",
     "PROMOTION_CHANGED": "PromotionPayload",
     "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
+    "PULL_MATRIX_COMPLETED": "SupplyRequestPayload",
+    "REASSIGN_HANDSHAKE_COMPLETED": "OrderPayload",
+    "RECEIVING_VARIANCE_REPORTED": "RetailerPayload",
+    "REFUND_FAILED": "FinancePayload",
+    "REFUND_REQUESTED": "FinancePayload",
+    "REFUND_SUCCEEDED": "FinancePayload",
     "REPLENISHMENT_AUTO_APPROVED": "PlanningPayload",
     "REPLENISHMENT_INSIGHT_CREATED": "PlanningPayload",
+    "REPLENISHMENT_POLICY_UPDATED": "PlanningPayload",
+    "RETAILER_ASSIST_SLA_BREACHED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_CANCELLED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_CLAIMED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_COMPLETED": "RetailerPayload",
+    "RETAILER_ASSIST_TICKET_OPENED": "RetailerPayload",
+    "RETAILER_AUTO_ORDER_UPDATED": "RetailerPayload",
+    "RETAILER_CAPABILITY_PACK_CHANGED": "RetailerPayload",
+    "RETAILER_CLOCK_IN": "RetailerPayload",
+    "RETAILER_CLOCK_OUT": "RetailerPayload",
     "RETAILER_CREDIT_LIMIT_BREACHED": "CreditLimitPayload",
     "RETAILER_CREDIT_PROFILE_CHANGED": "CreditProfilePayload",
+    "RETAILER_LOCATION_CREATED": "RetailerPayload",
+    "RETAILER_LOCATION_UPDATED": "RetailerPayload",
     "RETAILER_PRICE_OVERRIDE": "RetailerPriceOverridePayload",
     "RETAILER_REGISTERED": "RetailerPayload",
+    "RETAILER_SECTION_CREATED": "RetailerPayload",
+    "RETAILER_SECTION_SKU_MAPPED": "RetailerPayload",
+    "RETAILER_SECTION_UPDATED": "RetailerPayload",
     "RETAILER_SEGMENT_UPDATED": "OrderPayload",
+    "RETAILER_SELL_THROUGH_UPDATED": "RetailerPayload",
+    "RETAILER_SHIFT_CASH_VARIANCE": "RetailerPayload",
+    "RETAILER_SHIFT_CLOSED": "RetailerPayload",
+    "RETAILER_SHIFT_OPENED": "RetailerPayload",
+    "RETAILER_STAFF_CREATED": "RetailerPayload",
+    "RETAILER_STAFF_SECTION_ASSIGNED": "RetailerPayload",
     "RETURN_RECEIVED_AT_WAREHOUSE": "ReturnPayload",
+    "RETURN_SCAN_RECEIVED": "ReturnPayload",
     "REVERSE_LOGISTICS_REQUIRED": "LogisticsExceptionPayload",
     "ROUTE_CREATED": "RoutePayload",
     "ROUTE_REORDERED": "RoutePayload",
@@ -4485,27 +6476,45 @@
     "SKU_CLASS_UPDATED": "OrderPayload",
     "SPLIT_PAYMENT_CREATED": "FinancePayload",
     "SPLIT_SHIPMENT_CREATED": "SplitShipmentPayload",
+    "STORE_STOCK_ADJUSTED": "RetailerPayload",
+    "STORE_STOCK_CLAIM_HOLD": "RetailerPayload",
+    "STORE_STOCK_COUNTED": "RetailerPayload",
+    "STORE_STOCK_RECEIVED": "RetailerPayload",
+    "STORE_STOCK_TRANSFERRED": "RetailerPayload",
     "SUPPLIER_BILLING_CONFIGURED": "SupplierPayload",
     "SUPPLIER_BILLING_UPDATED": "SupplierPayload",
+    "SUPPLIER_BROADCAST": "WarehousePayload",
     "SUPPLIER_CREATED": "SupplierPayload",
+    "SUPPLIER_CREDIT_PROGRAM_CHANGED": "LotRecallPayload",
+    "SUPPLIER_CREDIT_TERMS_CHANGED": "LotRecallPayload",
     "SUPPLIER_MEMBER_ADDED": "SupplierPayload",
     "SUPPLIER_PROFILE_UPDATED": "SupplierPayload",
     "SUPPLIER_RETURN_CREATED": "ReturnPayload",
     "SUPPLIER_RETURN_RESOLVED": "ReturnPayload",
+    "SUPPLIER_SERVICE_PROMISE_BREACHED": "SupplierServicePromisePayload",
+    "SUPPLIER_SERVICE_PROMISE_CREATED": "SupplierServicePromisePayload",
     "SUPPLIER_UPDATED": "SupplierPayload",
     "SUPPLY_REQUEST_ACCEPTED": "SupplyRequestPayload",
     "SUPPLY_REQUEST_UPDATE": "SupplyRequestPayload",
     "SUPPLY_TRANSFER_APPROACHING": "WarehouseTransferPayload",
+    "SUPPLY_TRANSFER_ARRIVED": "WarehouseTransferPayload",
     "SYSTEM_APP_OUTDATED": "SystemPayload",
+    "TRANSFER_CREATED": "WarehouseTransferPayload",
     "VEHICLE_AVAILABILITY_CHANGED": "VehiclePayload",
     "VEHICLE_CREATED": "VehiclePayload",
+    "WAREHOUSE_BROADCAST": "WarehousePayload",
     "WAREHOUSE_CREATED": "WarehousePayload",
     "WAREHOUSE_DISPATCH_LOCK_CHANGED": "WarehousePayload",
     "WAREHOUSE_LOCATION_UPDATED": "WarehousePayload",
     "WAREHOUSE_SUPPLY_REQUEST_OPENED": "SupplyRequestPayload",
     "WAREHOUSE_TRANSFER_CREATED": "WarehouseTransferPayload",
     "WAREHOUSE_TRANSFER_RECEIVED": "WarehouseTransferPayload",
+    "WMS_CYCLE_APPROVED": "WarehousePayload",
+    "WMS_PICK_CONFIRMED": "WarehousePayload",
+    "WMS_PUTAWAY": "WarehousePayload",
+    "WMS_TEMPERATURE_BREACH": "WarehousePayload",
     "planning.meio.recommendation.v1": "PlanningPayload",
+    "planning.scenario.published.v1": "PlanningPayload",
     "planning.signal.ingest.v1": "PlanningPayload"
   }
 }

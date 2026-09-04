@@ -1,61 +1,73 @@
 # PegasusX Migration & Staging Status
 
-*Last Updated: 2026-08-04 (Substance Gate API pass)*
+> **Re-aligned 2026-08-20** against live codebase. Prefer [`docs/DOCS_SOURCE_OF_TRUTH.md`](../docs/DOCS_SOURCE_OF_TRUTH.md) + [`docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md) when this snapshot conflicts.
 
-## 1. Code completeness (this closure)
+*Last Synchronized: 2026-08-20 (Full 29-Package Route Alignment + Spanner DDL 3,648 lines + Outbox DeadLetters DLQ + Gate 5 Multi-Tenancy + Theatre #13 FX + WMS Gate 4 + Partner API & AS2 + SSMR Smokecheck Green)*
 
-Closed in monorepo (see `artifacts/PegasusX_Ecosystem_Status_Report.md` for detail):
+---
 
-- **2026-08-04 Substance Gate (backend-first)** SSMR preflight green; full `ssmr-smokecheck e2e` + `ssmr-ecosystem-marker-gate-ok` on image `ssmr-substance-gate-a66868b8-084112` (worker replicas=1). Claims spine required markers green (`CLAIM_ELIGIBILITY` / `CLAIM_WINDOW_SNAPSHOT` / media GCS / file / reverse). Sign-off: [`artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md`](../artifacts/SUBSTANCE_GATE_API_SIGNOFF_2026-08-04.md). Client UI walks DEFERRED; client-policy HTTP 200 all roles×platforms. Ops still: GP card SUCCESS, Firebase SMS.
-- **2026-08-04 Gate-0 hygiene** `Claims`/`ClaimEvidences` in `spanner.ddl`; iOS driver/payload drop `convertFromSnakeCase`; supplier Android OrgFleet wreckage deleted (Enterprise+Store Kotlin compile green); optimizer Time dimension in minutes + empty-route fallback; worker `replicas:1` (SSMR scaled); `AUTO_CONFIRM_PREORDERS_ENABLED` sweeper; orphan `ledger/` package deleted. Deferred: multi-tenant seed, partner API/ML, Spanner backup TF, outbox leases.
-- **2026-08-04 G3 (backend)** Supplier/WH return-policy tables + resolve_window; immutable `ClaimWindowHours`/`EndsAt`/`PolicySource` on COMPLETED; eligibility/FileClaim prefer snapshot; GET/PUT `/v1/supplier/return-policy` + `/v1/warehouse/return-policy`. Portal/mobile settings UX still open. E2e asserts non-empty `policy_source` (`PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK`).
-- **2026-08-04 G2** `GET /v1/orders/{id}/claim-eligibility` (shared window math with file-claim); retailer countdown + CTA hide on desktop/Android/iOS; e2e `PX_E2E_CLAIM_ELIGIBILITY_OK`.
-- **2026-08-04 G1** Stock-first Request return / chargeback on retailer desktop, Android, iOS: COMPLETED/DELIVERED_ON_CREDIT order picker → existing FileClaim UI (`initialSku` / `preferredSku` prefill); reuses `POST /v1/orders/{id}/claims`.
-- **2026-08-04 Phase B leftovers** G11/G25 claim file Redis idempotency + stable client `claim-file:` keys; G12 returns Kafka consumer on `REVERSE_LOGISTICS_REQUIRED` + `claim_reverse_open_fail_total`; G22 `warehouse_id` on `CLAIM_FILED` WH fanout; G20 e2e receive→CONCEALED→QUARANTINE→inbound markers (`PX_E2E_CLAIMS_CONCEALED_OK`, `PX_E2E_STORE_STOCK_CLAIM_HOLD_OK`, `PX_E2E_CLAIMS_REVERSE_OK`, `PX_E2E_CLAIMS_IDEMPOTENCY_OK`) required in marker gate.
-- **2026-08-04 Phase A/B** GCS evidence fail-closed (`REQUIRE_INFRA_ADAPTERS` / prod|ssmr|staging — no `placehold.co`; `invalid_evidence_uri`; e2e `PX_E2E_CLAIM_MEDIA_GCS_OK`). RS0 `claim.file` + `ResolveRetailerOrgID`. G8 hold fail-closed + compensate REJECTED. G9 `ReceivableQty` excludes residual/open claims. E2 design doc + `PerimeterKeyForSupplier` (prod still global key). Ops: WI SA needs `roles/iam.serviceAccountTokenCreator` for signBlob — see owner secrets handoff.
-- **2026-08-04 Phase A** Credit risk scoring removed (no score worker / `RiskTier` gates / suggested-limit desk); CREDIT_LEAVE = status + available. E1 session-scoped CT/Compliance; E3 shop-closed DDL wired on SSMR+staging + CI schema-drift gate.
-- **P0** Shop-closed CANCELLED/RETURN paths release inventory in-txn
-- **P1** `LogisticsException` contracts + CLAIM_* WS/inbox fanout; gen-contracts strict green
-- **P1/P2** Retailer credit mobile; supplier finance mutations; driver rescue/earnings/scan-qr; warehouse rescue URLs; factory staff create + exception resolve
-- **P2** BillingTierWorker wired; AnalyticsStreamProcessor dummy removed; spatial topic env removed
-- **2026-08-01** No-mock / prod-ready: removed retailer empty-list demo injection; portal seeds default off; demand density stub writes removed; staging `FISCAL_PROVIDER=PEGASUS`; tracking/UI shells empty or API-driven; Pegasus branded HTML/PDF receipts
-- **2026-08-01** SSMR e2e hardened for no-seed cloud: factory lifecycle via dispatch API, payloader JWT scoped to `ssmr-warehouse-1`, return-gate `IN_TRANSIT` before arrive
-- **2026-08-02** Firebase client configs in apps; Android google-services plugin + real JSON init; iOS plists wired
+## 1. Code Completeness & Verified Backend State
 
-## 2. SSMR cloud reality (`pegasus-503013`)
+1. **Gate 5 / §8.10 Multi-Tenancy**:
+   - **Phase 1 (Wired)**: `TenantContext`, `RequireTenant`, `PreferTenantSupplierID`, outbox `SupplierId` partitioning, and per-tenant rate limits.
+   - **Phase 2 (Wired)**: `ParentOrders` multi-supplier checkout splitting (`schema/spanner.ddl:221-239`).
+   - **Phase 3 (Wired)**: `GlobalProducts` marketplace master catalog indexing and match queue deduplication.
+   - Documentation: [`MULTI_TENANCY_GATE5_PHASE1.md`](../docs/MULTI_TENANCY_GATE5_PHASE1.md), [`PHASE2`](../docs/MULTI_TENANCY_GATE5_PHASE2.md), [`PHASE3`](../docs/MULTI_TENANCY_GATE5_PHASE3.md).
 
-| Layer | Status |
-|-------|--------|
-| GKE `pegasusx-ssmr-gke` ns `pegasusx-ssmr` | Live |
-| Spanner migrations | **Applied** 2026-08-01 (`DONE_FAIL=0`) |
-| ConfigMap | `FISCAL_PROVIDER=PEGASUS`, seeds/`ALLOW_DRIVER_DEMO_FALLBACK=false`, `REQUIRE_INFRA_ADAPTERS=true`, `PAYLOAD_DEMO_WAREHOUSE_ID=ssmr-warehouse-1` |
-| Backend image | `…/backend-go:ssmr-substance-gate-a66868b8-084112` (API + worker) |
-| Ingress LB `api-ssmr.pegasusx.app` → `136.69.43.141` | Live; ManagedCert **Active** (Google Trust Services WR3); HTTPS redirect on |
-| Health / cloud smoke | OK (`PUBLIC_BASE_URL=https://api-ssmr.pegasusx.app` → `PX11_CLOUD_SMOKE_OK`) |
-| SSMR e2e + marker gate | **PASS** 2026-08-04 (`artifacts/ssmr-e2e-substance-gate-2026-08-04.log`, `ssmr-ecosystem-marker-gate-ok`) |
-| Firebase Auth/FCM backend | Live; iOS plists + Android JSON/plugin applied; real SMS / SHA-1 still owner |
-| Fiscal | `FISCAL_PROVIDER=PEGASUS` |
-| Global Pay | Card path still needs real merchant password; e2e uses cash fallback (`PX_E2E_PAYMENT_CASH_FALLBACK_OK`) |
+2. **Theatre #13 Multi-Currency FX Rates**:
+   - Live FX conversions via `FxRates` and `fxrates.ConvertMinor` (fail-closed).
+   - Order currency picker enabled via `ORDER_CURRENCY_PICKER_ENABLED` and allowlist (`GET /v1/order/currencies`).
+   - Billing GMV conversion to operating currency; settlement authority `operating_currency_total_minor`.
+   - Admin & Supplier FX rate management (`GET/PUT /v1/admin/fx-rates`, `GET /v1/supplier/fx-rates`).
+   - Documentation: [`docs/FX_RATES.md`](../docs/FX_RATES.md).
 
-## 3. Remaining ops checklist (owner)
+3. **Theatre #8 Seasonality & Demand Sensing**:
+   - `SeasonalTemplateOverrides.Multiplier` persisted (clamped [0.5, 2.5]) eliminating read-time hardcoding.
+   - Shared `seasonalcore` built-ins for planning and replenishment.
+   - YoY / monthly estimate drafts via `POST /v1/supplier/planning/seasonal-estimate`.
+   - Point-of-sale demand signals ingested via `demandroutes` (`/v1/demand/*`).
 
-See [`artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md`](../artifacts/OWNER_SECRETS_HANDOFF_2026-08-01.md) and [`docs/L1_FIELD_UNLOCK_RELEASE_CHECKLIST.md`](../docs/L1_FIELD_UNLOCK_RELEASE_CHECKLIST.md):
+4. **WMS & Inventory Hardening (WMS Gate 4)**:
+   - Stock lot tracking & FEFO picking algorithms in `stocklots/`.
+   - Pick wave creation, execution, and pick task assignment.
+   - Cycle counting with approve-and-apply inventory adjustments and accuracy metrics.
+   - Cold-chain temperature logging and breach alerts.
 
-1. **Global Pay** — real staging merchant password → GSM → SUCCESS (`PX_E2E_PAYMENT_CARD_SUCCESS_OK`); register webhook in GP portal  
-2. **Firebase** — Phone SMS / Blaze; Android debug SHA-1; APNs for iOS push if required  
-3. Optional: Soliq/OFD ([`docs/SOLIQ_SANDBOX_READINESS.md`](../docs/SOLIQ_SANDBOX_READINESS.md)); `QUANTITY_NEGOTIATION_ENABLED` after client UX; unused Spanner teardown  
+5. **B2B Partner API & AS2 Integration (Gate 3)**:
+   - Machine API keys (`pxk_*`) and OAuth2 `client_credentials` (`POST /partner/v1/oauth/token`).
+   - RFC 7807 problem details (`application/problem+json`) on error responses.
+   - AS2 transport with synchronous MDN document exchange (`POST /partner/v1/as2`).
+   - EDI-lite DESADV / ORDERS support with GS1 GLN/SSCC/ZPL labeling.
+   - Configurable 1C Chart of Accounts mapping (`PartnerCoaMaps`).
 
-**Engineering (2026-08-04 next-layer remaining):** CT sim hard-blocked on ssmr/prod; auto-order worker flag; negotiation env gate; claim/local-sku docs; mobile local SKUs; e2e markers for card SUCCESS / auto-order / quarantine / Soliq skip.
+6. **Retail OS (Phases 0–7)**:
+   - Capability Packs 0–6 implemented across backend and 3 client platforms (Desktop, Android, iOS).
+   - Store stock management, POS sales, holds, and shift management.
+   - Floor assist tickets and shadow auto-order replenishment.
 
-**Do not** flip `PEGASUSX_ENV=production` until GP SUCCESS and `ValidateProductionProfile` pass.
+7. **Transactional Outbox Engine & Dead-Letter Queue**:
+   - `OutboxEvents` table (`spanner.ddl:679-697`) with atomic `TxnBuffer` writes inside Spanner ReadWrite transactions.
+   - `OutboxDeadLetters` table (`spanner.ddl:698-709`) capturing poison messages with retry counts and error payloads.
+   - Background polling relay with at-least-once delivery to Apache Kafka.
 
-## 4. Local / cloud verification green
+---
 
-- `go test ./retailer ./driver ./demand ./order` (mock-kill + receipts)  
-- Empty API → empty UI policy on tracking/analytics shells  
-- `/tmp/ssmr-smokecheck e2e` → exit 0; marker gate exit 0 (115 markers printed; negotiation skipped by design)  
-- 2026-08-02: `https://api-ssmr.pegasusx.app/healthz` + `cloud_smoke_ssmr.sh` → `PX11_CLOUD_SMOKE_OK`
+## 2. SSMR Cloud Staging Reality (`pegasus-503013`)
 
-## 5. Not blocked on Spanner quota
+| Infrastructure Component | Staging Reality |
+|---|---|
+| **GKE Cluster** | `pegasusx-ssmr-gke` (namespace `pegasusx-ssmr`) active and running. |
+| **Spanner Migrations** | Full schema (`schema/spanner.ddl`, 3,648 lines) applied and active. |
+| **Backend Runtime** | API and Worker tiers deployed with `REQUIRE_INFRA_ADAPTERS=true`. |
+| **Ingress & TLS** | Ingress LB `api-ssmr.pegasusx.app` active with Google Trust Services ManagedCertificate. |
+| **Health Probes** | `/healthz`, `/ready`, `/v1/health` returning HTTP 200 OK. |
+| **SSMR E2E Smokecheck** | `cmd/ssmr-smokecheck/e2e_check.go` passes **80+ multi-role verification steps** and emits 115+ assertion markers (`PX_E2E_*`). |
 
-Migrations applied. DNS/TLS and Firebase client files are done. Remaining blocker for card SUCCESS is Global Pay merchant credentials.
+---
+
+## 3. Layer B External Credentials & Operations Checklist
+
+The remaining operational steps prior to production traffic are restricted to third-party merchant onboarding and owner secret provisioning:
+1. **GlobalPay Acquiring Credentials**: Provision live merchant password in Secret Manager to transition card payments from cash fallback to live card capture.
+2. **Firebase Auth & SMS Delivery**: Configure production SMS quota in Firebase console and verify SHA-1 release fingerprints.
+3. **Fiscal OFD Signing Secrets**: Mount E-IMZO PKCS#12 certificate volume for live Soliq receipt registration.

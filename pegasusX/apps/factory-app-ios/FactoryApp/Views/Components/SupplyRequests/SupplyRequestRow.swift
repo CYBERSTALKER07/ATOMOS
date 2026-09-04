@@ -5,16 +5,19 @@ struct SupplyRequestRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Request \(request.id.prefix(8))")
+            Text(L10n.format("mobile_factory.ui.request_prefix", "\(request.id.prefix(8))"))
                 .font(.headline)
-            Text("\(request.priority) · \(Int(request.totalVolumeVU)) VU")
+            Text(L10n.format("mobile_factory.ui.priority_totalvolumevu_vu", "\(request.priority)", "\(Int(request.totalVolumeVU))"))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             HStack {
                 FactoryStatusBadge(text: request.state)
+                if slaBadgeVisible(request.slaStatus) {
+                    FactoryStatusBadge(text: (request.slaStatus ?? "").replacingOccurrences(of: "_", with: " "))
+                }
                 Spacer()
                 if let target = request.requestedDeliveryDate {
-                    Text("Due: \(target)")
+                    Text(L10n.format("mobile_factory.ui.due_target_2", "\(target)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -35,6 +35,11 @@ struct LoginResponse: Decodable {
     }
 }
 
+struct DeviceTokenRequest: Encodable, Equatable {
+    let token: String
+    let platform: String
+}
+
 struct RegisterResponse: Decodable {
     let supplierId: String
     let legalName: String
@@ -69,6 +74,11 @@ struct SupplierDashboard: Decodable {
     let inventorySKUs: Int
     let pendingOrders: Int
     let updatedAt: String
+    let ordersByStatus: [String: Int]
+    let todayRevenueMinor: Int64
+    let deliveriesCompletedToday: Int
+    let deliveriesAttemptedToday: Int
+    let manifestsByState: [String: Int]
 
     enum CodingKeys: String, CodingKey {
         case supplierId = "supplier_id"
@@ -76,6 +86,25 @@ struct SupplierDashboard: Decodable {
         case inventorySKUs = "inventory_skus"
         case pendingOrders = "pending_orders"
         case updatedAt = "updated_at"
+        case ordersByStatus = "orders_by_status"
+        case todayRevenueMinor = "today_revenue_minor"
+        case deliveriesCompletedToday = "deliveries_completed_today"
+        case deliveriesAttemptedToday = "deliveries_attempted_today"
+        case manifestsByState = "manifests_by_state"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        supplierId = try c.decode(String.self, forKey: .supplierId)
+        isConfigured = try c.decode(Bool.self, forKey: .isConfigured)
+        inventorySKUs = (try? c.decode(Int.self, forKey: .inventorySKUs)) ?? 0
+        pendingOrders = (try? c.decode(Int.self, forKey: .pendingOrders)) ?? 0
+        updatedAt = (try? c.decode(String.self, forKey: .updatedAt)) ?? ""
+        ordersByStatus = (try? c.decode([String: Int].self, forKey: .ordersByStatus)) ?? [:]
+        todayRevenueMinor = (try? c.decode(Int64.self, forKey: .todayRevenueMinor)) ?? 0
+        deliveriesCompletedToday = (try? c.decode(Int.self, forKey: .deliveriesCompletedToday)) ?? 0
+        deliveriesAttemptedToday = (try? c.decode(Int.self, forKey: .deliveriesAttemptedToday)) ?? 0
+        manifestsByState = (try? c.decode([String: Int].self, forKey: .manifestsByState)) ?? [:]
     }
 }
 

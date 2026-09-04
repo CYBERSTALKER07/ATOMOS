@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.insights
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -26,6 +28,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.*
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +90,7 @@ fun InsightsScreen(
     ) { innerPadding ->
         when {
             loading && insights.isEmpty() -> PegasusLoadingState(
-                title = "Loading insights",
+                title = stringResource(R.string.mobile_factory_ui_loading_insights),
                 body = "Fetching replenishment pressure and restock signals for this factory.",
                 modifier = Modifier
                     .fillMaxSize()

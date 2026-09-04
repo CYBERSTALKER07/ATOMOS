@@ -60,7 +60,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 	}
 
 	if body.UseDemandForecast {
-		products := s.productDemandForecast(r.Context(), warehouseID, 7)
+		products, _ := s.productDemandForecast(r.Context(), warehouseID, 7)
 		body.Items = make([]supplyRequestItemInput, 0, len(products))
 		for _, p := range products {
 			qty := p.RecommendedQty
@@ -134,7 +134,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 
 	req := SupplyRequest{
 		RequestID:      requestID,
-		SupplierID:     s.supplierID,
+		SupplierID:     s.resolveSupplierScope(r.Context()),
 		WarehouseID:    warehouseID,
 		FactoryID:      factoryID,
 		TransferMode:   topology.TransferMode,
@@ -159,7 +159,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 	eventPayload := events.WarehouseEvent{
 		BaseEvent:    events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
 		RequestID:    req.RequestID,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierScope(r.Context()),
 		WarehouseID:  req.WarehouseID,
 		FactoryID:    req.FactoryID,
 		TransferMode: req.TransferMode,
@@ -176,7 +176,7 @@ func (s *Service) handleCreateSupplyRequestFromBody(w http.ResponseWriter, r *ht
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+		s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.resolveSupplierScope(r.Context()), warehouseID))
 	}
 	s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, req)
 

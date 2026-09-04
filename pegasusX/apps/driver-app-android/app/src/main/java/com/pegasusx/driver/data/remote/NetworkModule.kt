@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.pegasusx.driver.BuildConfig
+import com.pegasusx.driver.data.local.MIGRATION_5_6
 import com.pegasusx.driver.data.local.PegasusDriverDatabase
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.local.PendingMutationDao
@@ -48,8 +49,11 @@ object NetworkModule {
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .pingInterval(30, TimeUnit.SECONDS) // WebSocket keepalive
+        .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) {
+            TokenHolder.token
+        })
         .addInterceptor { chain ->
-            val token = TokenHolder.firebaseIdToken ?: TokenHolder.token
+            val token = TokenHolder.httpAuthorizationToken(TokenHolder.token, null)
             val request = chain.request().newBuilder()
                 .addHeader("X-Trace-Id", java.util.UUID.randomUUID().toString())
                 .apply { if (token != null) addHeader("Authorization", "Bearer $token") }
@@ -86,7 +90,7 @@ object NetworkModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PegasusDriverDatabase =
         Room.databaseBuilder(context, PegasusDriverDatabase::class.java, "pegasus_driver.db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_5_6)
             .build()
 
     @Provides
@@ -133,10 +137,14 @@ object TokenHolder {
         get() = prefs.getString("token", null)
         set(value) = prefs.edit().putString("token", value).apply()
 
-    /** Firebase ID token — preferred over legacy JWT when non-null */
-    var firebaseIdToken: String?
-        get() = prefs.getString("firebaseIdToken", null)
-        set(value) = prefs.edit().putString("firebaseIdToken", value).apply()
+    /** Session JWT for HTTP/WS Bearer. Firebase ID is OTP `id_token` body only. */
+    fun httpAuthorizationToken(sessionJwt: String?, @Suppress("UNUSED_PARAMETER") firebaseIdToken: String? = null): String? {
+        val jwt = sessionJwt?.trim().orEmpty()
+        if (jwt.isNotEmpty()) {
+            return jwt
+        }
+        return null
+    }
 
     var userId: String?
         get() = prefs.getString("userId", null)

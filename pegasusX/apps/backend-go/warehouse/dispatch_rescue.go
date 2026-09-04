@@ -205,6 +205,7 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 			"TopicName":     events.TopicMain,
 			"Payload":       string(evJSON),
 			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    sid,
 		})
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})

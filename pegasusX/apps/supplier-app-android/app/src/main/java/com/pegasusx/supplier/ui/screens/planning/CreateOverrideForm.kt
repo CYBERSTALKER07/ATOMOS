@@ -15,12 +15,14 @@ fun CreateOverrideForm(
     name: String,
     startDate: String,
     endDate: String,
+    multiplier: String,
     formError: String?,
     saving: Boolean,
     onTemplateIdChange: (String) -> Unit,
     onNameChange: (String) -> Unit,
     onStartDateChange: (String) -> Unit,
     onEndDateChange: (String) -> Unit,
+    onMultiplierChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
     Column {
@@ -38,12 +40,28 @@ fun CreateOverrideForm(
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     DropdownMenuItem(
                         text = { Text("Custom") },
-                        onClick = { onTemplateIdChange(""); expanded = false },
+                        onClick = {
+                            onTemplateIdChange("")
+                            onMultiplierChange("")
+                            expanded = false
+                        },
                     )
                     data?.builtinTemplates?.forEach { template ->
                         DropdownMenuItem(
-                            text = { Text(template.name) },
-                            onClick = { onTemplateIdChange(template.id); expanded = false },
+                            text = {
+                                Text(
+                                    if (template.multiplier != null) {
+                                        "${template.name} (×${template.multiplier})"
+                                    } else {
+                                        template.name
+                                    },
+                                )
+                            },
+                            onClick = {
+                                onTemplateIdChange(template.id)
+                                template.multiplier?.let { onMultiplierChange(it.toString()) }
+                                expanded = false
+                            },
                         )
                     }
                 }
@@ -52,6 +70,12 @@ fun CreateOverrideForm(
         OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text("Name (optional)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = startDate, onValueChange = onStartDateChange, label = { Text("Start (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = endDate, onValueChange = onEndDateChange, label = { Text("End (YYYY-MM-DD)") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            value = multiplier,
+            onValueChange = onMultiplierChange,
+            label = { Text("Multiplier (optional, 0.5–2.5)") },
+            modifier = Modifier.fillMaxWidth(),
+        )
         formError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         Button(
             enabled = !saving,

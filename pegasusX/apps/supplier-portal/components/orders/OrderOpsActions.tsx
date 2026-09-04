@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { supplierWarehouseOps } from '@/lib/supplier-warehouse-ops';
 
 interface OrderOpsActionsProps {
@@ -23,14 +26,15 @@ export function OrderOpsActions({
   onDelay,
   onReject,
 }: OrderOpsActionsProps) {
+  const t = usePortalT();
   if (!canWarehouseMutate || (!flags.canDelay && !flags.canReject)) return null;
 
   return (
     <div className="md-card p-5 space-y-4">
-      <p className="md-typescale-title-small">Warehouse admin actions</p>
+      <p className="md-typescale-title-small">{t("supplier_portal.orders.order_ops_actions.text.warehouse_admin_actions")}</p>
       {flags.canDelay ? (
         <label className="block text-sm">
-          <span className="text-[var(--color-md-outline)]">New delivery date</span>
+          <span className="text-[var(--color-md-outline)]">{t("supplier_portal.orders.order_ops_actions.text.new_delivery_date")}</span>
           <input
             type="date"
             value={proposedDate}
@@ -42,7 +46,7 @@ export function OrderOpsActions({
       ) : null}
       <textarea
         className="md-input-outlined w-full px-3 py-2 min-h-[80px]"
-        placeholder="Reason (required)"
+        placeholder={t("supplier_portal.orders.order_ops_actions.text.reason_required")}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         disabled={acting}

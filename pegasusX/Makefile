@@ -1,14 +1,17 @@
-|.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate schema-drift-gate apply-shop-closed-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev
+|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
 
 help:
 	@echo "pegasusX make targets"
 	@echo "  infra-up              start Spanner emulator, Redis, Kafka via docker-compose"
 	@echo "  infra-down            stop infra"
-	@echo "  ssmr-infra-up         start the isolated SSMR sandbox stack"
-	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
-	@echo "  test-ssmr-infra       run isolated SSMR smoke + full-ecosystem PX_E2E marker gate"
-	@echo "  test-ssmr-lifecycle   Phase 6: create→dispatch→seal→complete vertical only"
-	@echo "  test-ssmr-fiscal      ADR-009 fiscal hard-gate markers (cash/fail/force/shortfall/shift-freeze)"
+	@echo "  sandbox-infra-up      start the isolated sandbox stack"
+	@echo "  sandbox-infra-down    stop the isolated sandbox stack"
+	@echo "  test-sandbox-infra    run isolated sandbox smoke + full-ecosystem PX_E2E marker gate"
+	@echo "  test-sandbox-lifecycle Phase 6: create→dispatch→seal→complete vertical only"
+	@echo "  test-sandbox-fiscal   ADR-009 fiscal hard-gate markers (cash/fail/force/shortfall/shift-freeze)"
+	@echo "  ssmr-infra-up         alias of sandbox-infra-up (deprecated name)"
+	@echo "  ssmr-infra-down       alias of sandbox-infra-down"
+	@echo "  test-ssmr-infra       alias of test-sandbox-infra"
 	@echo "  planning-training-export  PX-PROD-3 baseline export for ML collect-later (Spanner required)"
 	@echo "  planning-export-validate  PX-PROD-3 post-export QA (FILE=path [MIN_ROWS=1])"
 	@echo "  planning-export-local-cron  PX-LC-2 daily export+validate; appends artifacts/planning-export-audit.log"
@@ -21,9 +24,25 @@ help:
 	@echo "  phase0-sync-secrets       sync .env.staging.secrets → GSM (post-apply)"
 	@echo "  phase0-migrate            apply Spanner migrations through 20260702 on cloud"
 	@echo "  (hybrid)              merge .env.ssmr.hybrid.example for free cloud APIs + local Docker"
-	@echo "  ssmr-ecosystem-marker-gate validate PX_E2E log against contracts/ssmr_ecosystem_markers.json"
+	@echo "  sandbox-ecosystem-marker-gate validate PX_E2E log against contracts/sandbox_ecosystem_markers.json"
+	@echo "  ssmr-ecosystem-marker-gate alias of sandbox-ecosystem-marker-gate"
 	@echo "  schema-drift-gate         EH0.3 fail if shop-closed Spanner columns/tables missing"
+	@echo "  money-path-gate           Phase-0 money-path + hygiene greps + gitleaks"
+	@echo "  kafka-ha-gate             Phase-0 Kafka HA contracts (Strimzi RF=3, Managed Kafka RF=3, DLQ)"
+	@echo "  repo-hygiene-gate         Phase-0 repo hygiene (no tracked tfstate/secrets/binaries)"
+	@echo "  phase1-gate               Phase-1 exit gate: AR/refund/payout/billing proofs + Soliq + GP simulator"
+	@echo "  phase2-gate               Phase-2 exit gate: partner master-data/EDI ACKs/DataMatrix/OpenAPI"
+	@echo "  phase3-gate               Phase-3 exit gate: platform admin/flags/WMS API/SLO stubs"
+	@echo "  phase4-gate               Phase-4 exit gate: optimizer replicas/partial alloc/S&OP/place flip"
+	@echo "  phase5-gate               Phase-5 progress gate: tenant freeze/spine/outbox/rate-limit foundations"
+	@echo "  phase5b-gate              Phase-5b progress gate: ParentOrders + multi-supplier checkout"
+	@echo "  phase5c-gate              Phase-5c progress gate: GlobalProducts master + match queue"
+	@echo "  analytics-tenancy-gate    RoutePerformanceAnalytics SupplierId + tenant list filter"
+	@echo "  ci-enterprise-gates       CI chain: phase2→5c + analytics-tenancy (P2-18)"
+	@echo "  admin-portal-ci           Typecheck + build admin-portal (P2-18)"
 	@echo "  apply-shop-closed-ddl     EH0.2 apply 20260729 shop-closed DDL + verify (SSMR default)"
+	@echo "  apply-parent-orders-ddl   Gate 5 Phase 2 apply 20260817 ParentOrders DDL + verify"
+	@echo "  apply-global-products-ddl Gate 5 Phase 3 apply 20260818 GlobalProducts DDL + verify"
 	@echo "  load-cert             PX9-F load certification (smoke profile, backend must be up)"
 	@echo "  load-cert-ssmr         SSMR stack up + load-cert smoke gate"
 	@echo "  load-cert-cloud        load cert against PUBLIC_BASE_URL (staging/prod SLOs)"
@@ -32,6 +51,8 @@ help:
 	@echo "  parity-contract-full   PX12-A full client path vs backend route check"
 	@echo "  gap-hunter-gate        PX12-C event producer/consumer shape gate"
 	@echo "  gen-contracts-gate     verify contracts/events.schema.json matches gen-contracts"
+	@echo "  partner-openapi-gate   verify contracts/partner.openapi.yaml exists + path markers"
+	@echo "  jwt-openapi-gate       verify contracts/jwt-core.openapi.yaml exists + path markers"
 	@echo "  px12-preflight         PX12 automated QA gates (contract + gap-hunter + launch-readiness)"
 	@echo "  p0-preflight           P0 launch gates (prod profile + k8s + SSMR; see docs/P0_LAUNCH_CHECKLIST.md)"
 	@echo "  p1-pilot-weekly        P1 weeks 1–8 weekly gate (see docs/P1_PILOT_CHECKLIST.md)"
@@ -50,9 +71,18 @@ help:
 	@echo "  backend-build         build all Go binaries"
 	@echo "  supplier-portal-dev   run supplier portal Next.js dev server"
 	@echo "  marketing-site-dev    run PegasusX marketing site (port 3004)"
-	@echo "  terraform-init        initialize terraform working dir"
+	@echo "  terraform-init        initialize terraform with backend-ssmr.hcl (live prefix)"
 	@echo "  terraform-plan        preview infra changes"
 	@echo "  terraform-apply       apply infra changes"
+	@echo "  cell-backend-guard    GS-C: prove EU backend prefix cannot open pegasusx/ssmr"
+	@echo "  cell-plan             GS-C2: terraform plan for CELL=uz|eu (no apply, no live state)"
+	@echo "  cell-project-plan     GS-C3: plan project pegasusx-cell-eu (no apply)"
+	@echo "  cell-migrate          GS-C3: EU Spanner DDL dry-run (no UZ restore)"
+	@echo "  cell-isolation-proof  GS-C4: write isolation evidence (no apply)"
+	@echo "  global-plan           GS-C5: plan global DNS/AR (no apply, no live state)"
+	@echo "  cell-api-proof        GS-C5: write home_cell API URL evidence (no apply)"
+	@echo "  pack-client-proof     GS-R: session pack bind + native pin evidence"
+	@echo "  partner-dialect-proof GS-P: pack-aware partner dialect gates"
 
 infra-up:
 	docker compose -f infra/docker-compose.yml up -d
@@ -60,23 +90,41 @@ infra-up:
 infra-down:
 	docker compose -f infra/docker-compose.yml down
 
-ssmr-infra-up:
-	docker compose -f infra/docker-compose.ssmr.yml up -d
+sandbox-infra-up:
+	docker compose -f infra/docker-compose.sandbox.yml up -d
 
-ssmr-infra-down:
-	docker compose -f infra/docker-compose.ssmr.yml down
+sandbox-infra-down:
+	docker compose -f infra/docker-compose.sandbox.yml down
 
-ssmr-infra-reset:
-	docker compose -f infra/docker-compose.ssmr.yml down -v --remove-orphans
+sandbox-infra-reset:
+	docker compose -f infra/docker-compose.sandbox.yml down -v --remove-orphans
 
-test-ssmr-infra:
-	bash scripts/smoke_ssmr.sh
+test-sandbox-infra:
+	bash scripts/smoke_sandbox.sh
 
-test-ssmr-lifecycle:
-	bash scripts/smoke_ssmr_lifecycle.sh
+test-sandbox-lifecycle:
+	bash scripts/smoke_sandbox_lifecycle.sh
 
-test-ssmr-fiscal:
-	bash scripts/smoke_ssmr_fiscal.sh
+test-sandbox-fiscal:
+	bash scripts/smoke_sandbox_fiscal.sh
+
+sandbox-ecosystem-marker-gate:
+	@test -n "$(LOG)" || (echo "usage: make sandbox-ecosystem-marker-gate LOG=path/to/sandbox-e2e.log" >&2; exit 1)
+	bash scripts/parity/sandbox_ecosystem_marker_gate.sh "$(LOG)"
+
+ssmr-infra-up: sandbox-infra-up
+
+ssmr-infra-down: sandbox-infra-down
+
+ssmr-infra-reset: sandbox-infra-reset
+
+test-ssmr-infra: test-sandbox-infra
+
+test-ssmr-lifecycle: test-sandbox-lifecycle
+
+test-ssmr-fiscal: test-sandbox-fiscal
+
+ssmr-ecosystem-marker-gate: sandbox-ecosystem-marker-gate
 
 planning-training-export:
 	bash scripts/planning_training_export.sh
@@ -114,15 +162,57 @@ phase0-sync-secrets:
 phase0-migrate:
 	bash scripts/phase0_apply_spanner_migrations.sh
 
-ssmr-ecosystem-marker-gate:
-	@test -n "$(LOG)" || (echo "usage: make ssmr-ecosystem-marker-gate LOG=path/to/ssmr-e2e.log" >&2; exit 1)
-	bash scripts/parity/ssmr_ecosystem_marker_gate.sh "$(LOG)"
-
 schema-drift-gate:
 	bash scripts/ci_schema_drift_gate.sh
 
+money-path-gate:
+	bash scripts/money_path_gate.sh
+
+kafka-ha-gate:
+	bash scripts/ci_kafka_ha_gate.sh
+
+repo-hygiene-gate:
+	bash scripts/ci_repo_hygiene_gate.sh
+
+phase1-gate:
+	bash scripts/phase1_gate.sh
+
+phase2-gate:
+	bash scripts/phase2_gate.sh
+
+phase3-gate:
+	bash scripts/phase3_gate.sh
+
+phase4-gate:
+	bash scripts/phase4_gate.sh
+
+phase5-gate:
+	bash scripts/phase5_gate.sh
+
+phase5b-gate:
+	bash scripts/phase5b_gate.sh
+
+phase5c-gate:
+	bash scripts/phase5c_gate.sh
+
+analytics-tenancy-gate:
+	bash scripts/analytics_tenancy_gate.sh
+
+ci-enterprise-gates:
+	bash scripts/ci_enterprise_gates.sh
+
+admin-portal-ci:
+	pnpm --filter @pegasusx/admin-portal typecheck
+	pnpm --filter @pegasusx/admin-portal build
+
 apply-shop-closed-ddl:
 	bash scripts/apply_shop_closed_ddl.sh
+
+apply-parent-orders-ddl:
+	bash scripts/apply_parent_orders_ddl.sh
+
+apply-global-products-ddl:
+	bash scripts/apply_global_products_ddl.sh
 
 load-cert:
 	PATH="/opt/homebrew/bin:/usr/local/bin:$$PATH" bash scripts/load/load_cert.sh
@@ -147,6 +237,36 @@ gap-hunter-gate:
 
 gen-contracts-gate:
 	bash scripts/parity/gen_contracts_gate.sh
+
+partner-openapi-gate:
+	@test -f contracts/partner.openapi.yaml || (echo "missing contracts/partner.openapi.yaml" && exit 1)
+	@grep -q '/partner/v1/orders' contracts/partner.openapi.yaml || (echo "partner.openapi.yaml missing /partner/v1/orders" && exit 1)
+	@grep -q '/partner/v1/catalog/products' contracts/partner.openapi.yaml || (echo "missing /partner/v1/catalog/products" && exit 1)
+	@grep -q '/partner/v1/catalog/prices' contracts/partner.openapi.yaml || (echo "missing /partner/v1/catalog/prices" && exit 1)
+	@grep -q '/partner/v1/inventory/stock' contracts/partner.openapi.yaml || (echo "missing /partner/v1/inventory/stock" && exit 1)
+	@grep -q '/partner/v1/demand/pos-feed' contracts/partner.openapi.yaml || (echo "missing /partner/v1/demand/pos-feed" && exit 1)
+	@grep -q 'rotate-secret' contracts/partner.openapi.yaml || (echo "missing webhook rotate-secret" && exit 1)
+	@grep -q 'catalog:write' contracts/partner.openapi.yaml || (echo "missing catalog:write scope" && exit 1)
+	@grep -q 'IdempotencyKey' contracts/partner.openapi.yaml || (echo "missing IdempotencyKey parameter" && exit 1)
+	@grep -c 'IdempotencyKey' contracts/partner.openapi.yaml | awk '$$1 < 4 { print "need IdempotencyKey on orders+products+prices+stock(+pos)"; exit 1 }'
+	@grep -q '/v1/admin/partner-keys/{keyID}/revoke' contracts/partner.openapi.yaml || (echo "missing admin key revoke path" && exit 1)
+	@grep -q '/v1/supplier/partner-keys' contracts/partner.openapi.yaml || (echo "missing supplier partner-keys alias" && exit 1)
+	@grep -q '/v1/supplier/partner-keys/{keyID}/revoke' contracts/partner.openapi.yaml || (echo "missing supplier key revoke" && exit 1)
+	@grep -q '/v1/supplier/partner-sftp' contracts/partner.openapi.yaml || (echo "missing supplier partner-sftp path" && exit 1)
+	@grep -q '/v1/admin/partner-sftp' contracts/partner.openapi.yaml || (echo "missing admin partner-sftp path" && exit 1)
+	@grep -q '/v1/retailer/partner-keys' contracts/partner.openapi.yaml || (echo "missing retailer partner-keys path" && exit 1)
+	@grep -q '/v1/supplier/partner-webhooks' contracts/partner.openapi.yaml || (echo "missing supplier partner-webhooks alias" && exit 1)
+	@grep -q '/v1/supplier/partner-as2' contracts/partner.openapi.yaml || (echo "missing supplier partner-as2 alias" && exit 1)
+	@grep -q '/v1/supplier/partner-coa' contracts/partner.openapi.yaml || (echo "missing supplier partner-coa alias" && exit 1)
+	@echo "partner-openapi-gate-ok"
+
+jwt-openapi-gate:
+	@test -f contracts/jwt-core.openapi.yaml || (echo "missing contracts/jwt-core.openapi.yaml" && exit 1)
+	@grep -q '/v1/warehouse/ops/dashboard' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/warehouse/ops/dashboard" && exit 1)
+	@grep -q '/v1/supplier/inventory' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/supplier/inventory" && exit 1)
+	@grep -q '/v1/order' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/order" && exit 1)
+	@grep -q '/v1/payloader/manifests' contracts/jwt-core.openapi.yaml || (echo "jwt-core.openapi.yaml missing /v1/payloader/manifests" && exit 1)
+	@echo "jwt-openapi-gate-ok"
 
 px12-preflight:
 	bash scripts/qa/px12_preflight.sh
@@ -210,10 +330,85 @@ marketing-site-dev:
 	cd apps/marketing-site && pnpm dev
 
 terraform-init:
-	cd infra/terraform && terraform init
+	cd infra/terraform && terraform init -backend-config=backend-ssmr.hcl
 
 terraform-plan:
 	cd infra/terraform && terraform plan
 
 terraform-apply:
 	cd infra/terraform && terraform apply
+
+cell-backend-guard:
+	bash scripts/assert_cell_backend.sh
+
+cell-plan:
+	@test -n "$(CELL)" || (echo "usage: make cell-plan CELL=uz|eu" >&2; exit 1)
+	bash scripts/cell_plan.sh "$(CELL)"
+
+cell-project-plan:
+	@test -n "$(CELL)" || (echo "usage: make cell-project-plan CELL=eu" >&2; exit 1)
+	bash scripts/cell_project_plan.sh "$(CELL)"
+
+cell-migrate:
+	@test -n "$(CELL)" || (echo "usage: make cell-migrate CELL=eu" >&2; exit 1)
+	bash scripts/cell_migrate.sh "$(CELL)"
+
+cell-isolation-proof:
+	bash scripts/cell_isolation_proof.sh
+
+global-plan:
+	bash scripts/global_plan.sh
+
+cell-api-proof:
+	bash scripts/cell_api_proof.sh
+
+pack-client-proof:
+	bash scripts/pack_client_proof.sh
+
+partner-dialect-proof:
+	bash scripts/partner_dialect_proof.sh
+
+# --- CodeGraph (Memgraph + Tree-sitter + 5 Seams + MCP) ---
+.PHONY: codegraph-up codegraph-down codegraph-seed codegraph-seams codegraph-export codegraph-verify codegraph-mcp codegraph-ui codegraph-audit codegraph-advanced-audit bazel-graph kythe-index codegraph-watch
+
+CODEGRAPH_PYTHON ?= $(shell if [ -f ../.venv/bin/python3 ]; then echo ../.venv/bin/python3; elif [ -f .venv/bin/python3 ]; then echo .venv/bin/python3; else echo python3; fi)
+
+codegraph-up:
+	docker compose -f infra/docker-compose.codegraph.yml up -d
+
+codegraph-down:
+	docker compose -f infra/docker-compose.codegraph.yml down
+
+codegraph-export:
+	$(CODEGRAPH_PYTHON) scripts/seed_architecture_graph.py --dry-run --export-cypher context/architecture_seed.cypher
+	$(CODEGRAPH_PYTHON) scripts/extract_codegraph_seams.py --dry-run --export-cypher context/seams_seed.cypher
+
+codegraph-seed:
+	$(CODEGRAPH_PYTHON) scripts/seed_architecture_graph.py
+
+codegraph-seams:
+	$(CODEGRAPH_PYTHON) scripts/extract_codegraph_seams.py
+
+codegraph-verify:
+	$(CODEGRAPH_PYTHON) scripts/verify_codegraph.py
+
+codegraph-mcp:
+	bash scripts/run_mcp_server.sh
+
+codegraph-ui:
+	bash scripts/run_codegraph_ui.sh
+
+codegraph-audit:
+	$(CODEGRAPH_PYTHON) scripts/audit_codegraph.py
+
+codegraph-advanced-audit:
+	$(CODEGRAPH_PYTHON) scripts/advanced_codegraph_analyzer.py
+
+bazel-graph:
+	$(CODEGRAPH_PYTHON) scripts/bazel_target_graph.py --sync
+
+kythe-index:
+	$(CODEGRAPH_PYTHON) scripts/kythe_semantic_adapter.py --index
+
+codegraph-watch:
+	PYTHONUNBUFFERED=1 $(CODEGRAPH_PYTHON) -u scripts/dynamic_codegraph_watcher.py

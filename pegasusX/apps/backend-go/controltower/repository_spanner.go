@@ -10,6 +10,9 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // SpannerRepository implements Repository on Spanner.
@@ -141,14 +144,42 @@ func (r *SpannerRepository) CreatePlaybook(ctx context.Context, pb Playbook) err
 	if strings.TrimSpace(pb.SupplierID) != "" {
 		row["SupplierId"] = pb.SupplierID
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("ControlTowerPlaybooks", row)})
+	// B4 M-P1-4: playbook write + outbox in one RW txn.
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("ControlTowerPlaybooks", row)}); err != nil {
+			return err
+		}
+		return emitControlTowerOutbox(ctx, txn, events.EventControlTowerPlaybookChanged, pb.SupplierID, pb.PlaybookID, "", "", "ACTIVE", "", "CREATE", pb.CreatedBy)
+	})
 	return err
 }
 
 func (r *SpannerRepository) UpdatePlaybook(ctx context.Context, playbookID string, fields map[string]any) error {
 	fields["PlaybookId"] = playbookID
 	fields["UpdatedAt"] = spanner.CommitTimestamp
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.UpdateMap("ControlTowerPlaybooks", fields)})
+	supplierID := ""
+	if v, ok := fields["SupplierId"].(string); ok {
+		supplierID = v
+	}
+	action := "UPDATE"
+	if active, ok := fields["IsActive"].(bool); ok && !active {
+		action = "DEACTIVATE"
+	}
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if supplierID == "" {
+			if row, rerr := txn.ReadRow(ctx, "ControlTowerPlaybooks", spanner.Key{playbookID}, []string{"SupplierId"}); rerr == nil {
+				var sid spanner.NullString
+				_ = row.Columns(&sid)
+				if sid.Valid {
+					supplierID = sid.StringVal
+				}
+			}
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("ControlTowerPlaybooks", fields)}); err != nil {
+			return err
+		}
+		return emitControlTowerOutbox(ctx, txn, events.EventControlTowerPlaybookChanged, supplierID, playbookID, "", "", "", "", action, "")
+	})
 	return err
 }
 
@@ -431,7 +462,12 @@ func (r *SpannerRepository) CreateRun(ctx context.Context, run PlaybookRun) erro
 	if run.ExecutedBy != "" {
 		row["ExecutedBy"] = run.ExecutedBy
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("ControlTowerPlaybookRuns", row)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("ControlTowerPlaybookRuns", row)}); err != nil {
+			return err
+		}
+		return emitControlTowerOutbox(ctx, txn, events.EventControlTowerRunCreated, run.SupplierID, run.PlaybookID, run.RunID, run.ExceptionID, run.Status, run.Mode, "CREATE", run.ExecutedBy)
+	})
 	return err
 }
 
@@ -469,6 +505,12 @@ func scanRunRow(row *spanner.Row) (PlaybookRun, error) {
 }
 
 func (r *SpannerRepository) UpdateRun(ctx context.Context, run PlaybookRun) error {
+	return r.FinalizeRunWithExceptionEffects(ctx, run, nil)
+}
+
+// FinalizeRunWithExceptionEffects writes terminal run status + optional exception
+// ticket mutations + outbox in one RW txn (control-tower action mega-txn residual).
+func (r *SpannerRepository) FinalizeRunWithExceptionEffects(ctx context.Context, run PlaybookRun, effects []localExceptionSideEffect) error {
 	resultsRaw := run.ActionsResultRaw
 	if len(resultsRaw) == 0 && len(run.ActionsResult) > 0 {
 		resultsRaw, _ = json.Marshal(run.ActionsResult)
@@ -486,8 +528,70 @@ func (r *SpannerRepository) UpdateRun(ctx context.Context, run PlaybookRun) erro
 	if run.ExecutedBy != "" {
 		row["ExecutedBy"] = run.ExecutedBy
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.UpdateMap("ControlTowerPlaybookRuns", row)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("ControlTowerPlaybookRuns", row)}); err != nil {
+			return err
+		}
+		for _, se := range effects {
+			if strings.HasPrefix(se.ExceptionID, "fiscal:") || strings.HasPrefix(se.ExceptionID, "shop-closed:") {
+				continue
+			}
+			if se.Status != "" {
+				if _, err := txn.Update(ctx, spanner.Statement{
+					SQL:    `UPDATE ExceptionTickets SET Status = @status WHERE TicketId = @id`,
+					Params: map[string]any{"status": se.Status, "id": se.ExceptionID},
+				}); err != nil {
+					return err
+				}
+			}
+			if se.AssigneeRole != "" {
+				if _, err := txn.Update(ctx, spanner.Statement{
+					SQL:    `UPDATE ExceptionTickets SET AssignedRole = @role WHERE TicketId = @id`,
+					Params: map[string]any{"role": se.AssigneeRole, "id": se.ExceptionID},
+				}); err != nil {
+					return err
+				}
+			}
+		}
+		return emitControlTowerOutbox(ctx, txn, events.EventControlTowerRunUpdated, run.SupplierID, run.PlaybookID, run.RunID, run.ExceptionID, run.Status, run.Mode, "UPDATE", run.ExecutedBy)
+	})
 	return err
+}
+
+// emitControlTowerOutbox buffers a control-tower lifecycle event on the active txn (B4 M-P1-4).
+func emitControlTowerOutbox(ctx context.Context, txn *spanner.ReadWriteTransaction, eventType, supplierID, playbookID, runID, exceptionID, status, mode, action, actorID string) error {
+	if txn == nil || strings.TrimSpace(eventType) == "" {
+		return nil
+	}
+	aggID := strings.TrimSpace(runID)
+	if aggID == "" {
+		aggID = strings.TrimSpace(playbookID)
+	}
+	if aggID == "" {
+		aggID = strings.TrimSpace(supplierID)
+	}
+	if aggID == "" {
+		aggID = "control-tower"
+	}
+	payload := events.ControlTowerEvent{
+		BaseEvent: events.BaseEvent{
+			Type:      eventType,
+			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+		SupplierID:  strings.TrimSpace(supplierID),
+		PlaybookID:  strings.TrimSpace(playbookID),
+		RunID:       strings.TrimSpace(runID),
+		ExceptionID: strings.TrimSpace(exceptionID),
+		Status:      strings.TrimSpace(status),
+		Mode:        strings.TrimSpace(mode),
+		Action:      strings.TrimSpace(action),
+		ActorID:     strings.TrimSpace(actorID),
+	}
+	buf := outbox.NewSpannerTxnBuffer(txn)
+	if err := outbox.EmitJSON(ctx, buf, events.AggregateControlTower, aggID, events.TopicMain, payload); err != nil {
+		return err
+	}
+	return buf.Flush(ctx)
 }
 
 func (r *SpannerRepository) ListRuns(ctx context.Context, supplierID, status string, limit int) ([]PlaybookRun, error) {
@@ -727,4 +831,35 @@ func jsonRawValue(raw []byte) any {
 		return map[string]any{}
 	}
 	return v
+}
+
+func (r *SpannerRepository) RecordIntervention(ctx context.Context, manifestID, supplierID, operatorID, commandType, reasonCode, notes string) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mut := spanner.InsertMap("ControlTowerInterventions", map[string]any{
+			"InterventionId": uuid.NewString(),
+			"ManifestId":     manifestID,
+			"SupplierId":     supplierID,
+			"CommandType":    commandType,
+			"ReasonCode":     reasonCode,
+			"OperatorNotes":  notes,
+			"OperatorId":     operatorID,
+			"Status":         "APPLIED",
+			"CreatedAt":      spanner.CommitTimestamp,
+		})
+		
+		// TODO: Phase 4 Financial Draft Compensations could be hooked here.
+		// For now, we also emit an OutboxEvent so the driver gets the WebSocket broadcast.
+		outboxMut := spanner.InsertMap("OutboxEvents", map[string]any{
+			"EventId":       uuid.NewString(),
+			"AggregateType": "MANIFEST",
+			"AggregateId":   manifestID,
+			"EventType":     "MANIFEST_ABORTED",
+			"Payload":       `{"manifest_id":"` + manifestID + `","reason":"` + reasonCode + `"}`,
+			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    supplierID,
+		})
+		
+		return txn.BufferWrite([]*spanner.Mutation{mut, outboxMut})
+	})
+	return err
 }

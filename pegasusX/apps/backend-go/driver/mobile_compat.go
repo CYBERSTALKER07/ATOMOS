@@ -110,11 +110,13 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// B7 D-P0-6: never fake departed without wired manifest domain fn.
 	if s.depart == nil {
-		resp := map[string]string{"status": "departed"}
-		respBytes, _ := json.Marshal(resp)
-		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-		writeJSONBytes(w, http.StatusOK, respBytes)
+		s.releaseIdempotency(r.Context(), r)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error":   "depart_unwired",
+			"message": "Depart requires Spanner depart fn (bootstrap DepartFn); no silent success",
+		})
 		return
 	}
 
@@ -189,8 +191,8 @@ func (s *Service) HandleOpenFiscal(w http.ResponseWriter, r *http.Request) {
 
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.
 // It flips the driver's DISPATCHED manifest to COMPLETED and marks the driver
-// as off-shift. Without ReturnCompleteFn wired, it degrades gracefully to the
-// prior no-op stub so mobile clients never receive a hard error.
+// as off-shift. Without ReturnCompleteFn wired, B7 D-P0-7 fail-closes with 503
+// (no silent in-memory availability flip).
 //
 // Phase 6 / T10: blocks when any assigned order is still FISCALIZING or FISCAL_FAILED
 // (cash bag soft-freeze until fiscal SUCCESS or audited force-complete).
@@ -252,15 +254,13 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
+	// B7 D-P0-7: never fake returned / flip in-memory availability without durable path.
 	if s.returnComplete == nil {
-		// Graceful degradation — update availability in-memory and return OK.
-		s.mu.Lock()
-		s.availability[driverID] = false
-		s.mu.Unlock()
-		resp := map[string]string{"status": "returned"}
-		respBytes, _ := json.Marshal(resp)
-		s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-		writeJSONBytes(w, http.StatusOK, respBytes)
+		s.releaseIdempotency(r.Context(), r)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+			"error":   "return_complete_unwired",
+			"message": "Return-complete requires Spanner ReturnCompleteFn; no silent success",
+		})
 		return
 	}
 
@@ -303,7 +303,7 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		DriverID:   driverID,
 		Available:  false,
 		OnShift:    false,
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 	})
 	s.log.InfoContext(r.Context(), "driver returned to depot",
 		"driver_id", driverID,
@@ -357,85 +357,56 @@ func (s *Service) HandleOrderComplete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "completed"})
 }
 
-// HandleOrderCollectCash serves POST /v1/order/collect-cash.
+// HandleOrderCollectCash serves POST /v1/order/collect-cash when OrderService is absent.
+// B1 M-P0-2: never fake money capture — clients must hit order.HandleCollectCash.
 func (s *Service) HandleOrderCollectCash(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "collected", "state": "COMPLETED"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/order/collect-cash with OrderService wired — silent cash capture is forbidden",
+		"path":    "/v1/order/collect-cash",
+	})
 }
 
 // HandleOrderStatePatch serves PATCH /v1/orders/{orderID}/state.
+// B1 M-P0-2: fail-closed — this path never wrote Spanner/outbox; do not report success.
 func (s *Service) HandleOrderStatePatch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
 	orderID := strings.TrimSpace(chi.URLParam(r, "orderID"))
-	body, err := readLimitedBody(r, 8*1024)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
-		return
-	}
-	if s.guardIdempotency(w, r, body) {
-		return
-	}
-	var req struct {
-		State string `json:"state"`
-	}
-	_ = json.Unmarshal(body, &req)
-	state := strings.TrimSpace(req.State)
-	if state == "" {
-		state = "IN_TRANSIT"
-	}
-	var resp any
-	if s.orderGet != nil {
-		current, found, _ := s.orderGet(r.Context(), orderID)
-		if found {
-			current.Status = state
-			resp = current
-			
-			if state == "IN_TRANSIT" && current.SplitGroupID != "" && s.repo != nil {
-				claims, ok := auth.FromContext(r.Context())
-				if ok {
-					siblings, err := s.repo.FindSiblingDriversForOrder(r.Context(), orderID)
-					if err == nil {
-						for _, sib := range siblings {
-							if sib != claims.Subject {
-								payload := map[string]any{
-									"type":           "OTHER_TRUCK_ON_WAY",
-									"order_id":       orderID,
-									"split_group_id": current.SplitGroupID,
-									"message":        "Another truck is on the way to this route.",
-								}
-								s.broadcastDriverEvent(r.Context(), sib, payload)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	if resp == nil {
-		resp = map[string]any{"id": orderID, "state": state}
-	}
-	respBytes, err := json.Marshal(resp)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "encode_response_failed"})
-		return
-	}
-	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
-	writeJSONBytes(w, http.StatusOK, respBytes)
+	// G1.C: keep hard 501 trap so mis-wired clients never invent lifecycle success.
+	writeJSON(w, http.StatusNotImplemented, map[string]any{
+		"error":    "not_implemented",
+		"code":     "use_delivery_edges",
+		"order_id": orderID,
+		"message":  "PATCH /v1/orders/{id}/state does not mutate Spanner; use delivery edge routes (arrive, depart, collect-cash, credit-leave, partial-offload)",
+		"use": []string{
+			"/v1/delivery/arrive",
+			"/v1/order/collect-cash",
+			"/v1/driver/orders/{orderId}/credit-leave",
+			"/v1/driver/orders/{orderId}/partial-offload",
+			"/v1/fleet/driver/depart",
+		},
+	})
 }
 
-// HandleDeliveryArrive serves POST /v1/delivery/arrive.
+// HandleDeliveryArrive serves POST /v1/delivery/arrive when OrderService is absent.
+// B1 M-P0-2: never fake arrive success.
 func (s *Service) HandleDeliveryArrive(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "arrived"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Use POST /v1/delivery/arrive with OrderService wired — silent arrive is forbidden",
+		"path":    "/v1/delivery/arrive",
+	})
 }
 
 // HandleDeliveryShopClosed is a fallback when order.Service is not wired.
@@ -533,6 +504,17 @@ func (s *Service) HandleOrderGet(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			s.log.ErrorContext(r.Context(), "order get failed", "err", err, "order_id", orderID)
 		} else if found {
+			// Fail-closed ownership check: a driver may only read an order
+			// assigned to them. Other roles (admin/warehouse/factory) that reach
+			// this mobile-compat route retain prior behaviour.
+			if claims, ok := auth.FromContext(r.Context()); ok && claims.Role == auth.RoleDriver {
+				caller := strings.TrimSpace(claims.Subject)
+				assigned := strings.TrimSpace(order.AssignedDriverID)
+				if caller == "" || assigned == "" || caller != assigned {
+					writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+					return
+				}
+			}
 			writeJSON(w, http.StatusOK, order)
 			return
 		} else {
@@ -551,7 +533,8 @@ func (s *Service) HandleOrderGet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 }
 
-// HandleUserNotifications serves GET /v1/user/notifications (driver inbox).
+// HandleUserNotifications is not mounted. Live GET is notifications.InboxHandlers.HandleList
+// (main.go last registration). Kept fail-closed so a remount cannot return empty [] as success.
 func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -563,17 +546,22 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if s.notifSvc == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
 		return
 	}
 	limit, offset := notifications.ParseInboxPagination(r)
 	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), driverID, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "list notifications failed", "err", listErr, "driver_id", driverID)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0, "limit": limit, "offset": offset})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_list_failed"})
 		return
 	}
-	unread, _ := s.notifSvc.UnreadCount(r.Context(), driverID)
+	unread, unreadErr := s.notifSvc.UnreadCount(r.Context(), driverID)
+	if unreadErr != nil {
+		s.log.ErrorContext(r.Context(), "unread count failed", "err", unreadErr, "driver_id", driverID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_unread_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"notifications": notifications.ToInboxWireFromAnyList(notifs),
 		"unread_count":  unread,
@@ -583,7 +571,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleMarkNotificationsRead serves POST /v1/user/notifications/read.
+// HandleMarkNotificationsRead is not mounted. Live POST is notifications.InboxHandlers.HandleMarkRead.
 func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -599,8 +587,14 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	if s.notifSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
+		return
+	}
 	if markErr := notifications.ApplyMarkRead(r.Context(), s.notifSvc, driverID, req); markErr != nil {
 		s.log.ErrorContext(r.Context(), "mark notifications read failed", "err", markErr, "driver_id", driverID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "mark_read_failed"})
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

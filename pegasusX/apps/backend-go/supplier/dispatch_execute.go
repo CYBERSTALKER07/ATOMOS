@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -30,16 +31,16 @@ const dispatchExecuteCommittedStatus = "dispatched"
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.
 // Status is "no_op" when nothing was committed; "dispatched" when one or more manifests were written.
 type DispatchExecuteResult struct {
-	Status           string                 `json:"status"`
-	SupplierID       string                 `json:"supplier_id"`
-	WarehouseID      string                 `json:"warehouse_id,omitempty"`
-	ManifestsCreated int                    `json:"manifests_created"`
-	OrdersAssigned   int                    `json:"orders_assigned"`
-	OptimizerSource  string                 `json:"optimizer_source,omitempty"`
-	Warnings         []string               `json:"warnings,omitempty"`
+	Status           string                     `json:"status"`
+	SupplierID       string                     `json:"supplier_id"`
+	WarehouseID      string                     `json:"warehouse_id,omitempty"`
+	ManifestsCreated int                        `json:"manifests_created"`
+	OrdersAssigned   int                        `json:"orders_assigned"`
+	OptimizerSource  string                     `json:"optimizer_source,omitempty"`
+	Warnings         []string                   `json:"warnings,omitempty"`
 	CapacityWarnings []dispatch.CapacityWarning `json:"capacity_warnings,omitempty"`
-	Manifests        []DispatchExecuteRoute `json:"manifests"`
-	Orphans          []string               `json:"orphan_order_ids,omitempty"`
+	Manifests        []DispatchExecuteRoute     `json:"manifests"`
+	Orphans          []string                   `json:"orphan_order_ids,omitempty"`
 }
 
 type dispatchExecuteOptions struct {
@@ -117,8 +118,8 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 		Mode          string `json:"mode"`
 		ForceCapacity bool   `json:"force_capacity"`
 		Routes        []struct {
-			DriverID  string   `json:"driver_id"`
-			OrderIDs  []string `json:"order_ids"`
+			DriverID string   `json:"driver_id"`
+			OrderIDs []string `json:"order_ids"`
 		} `json:"routes"`
 	}
 	if len(body) > 0 {
@@ -145,13 +146,13 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 				s.log.ErrorContext(r.Context(), "failed to execute partial commit compensation", "err", compErr)
 			}
 			writeJSON(w, http.StatusInternalServerError, map[string]any{
-				"error":             "dispatch_partial_commit",
-				"committed_routes":  len(partial.CommittedRoutes),
-				"failed_chunk":      partial.FailedChunk,
-				"total_chunks":      partial.TotalChunks,
-				"total_routes":      partial.TotalRoutes,
-				"detail":            partial.Cause.Error(),
-				"compensated":       compErr == nil,
+				"error":            "dispatch_partial_commit",
+				"committed_routes": len(partial.CommittedRoutes),
+				"failed_chunk":     partial.FailedChunk,
+				"total_chunks":     partial.TotalChunks,
+				"total_routes":     partial.TotalRoutes,
+				"detail":           partial.Cause.Error(),
+				"compensated":      compErr == nil,
 			})
 			return
 		}
@@ -172,7 +173,11 @@ func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(sid))
+		keys := []string{supplierCacheKey(sid), cache.DashboardKey("supplier", sid)}
+		if wh := strings.TrimSpace(warehouseFilter); wh != "" {
+			keys = append(keys, cache.DashboardKey("warehouse", wh))
+		}
+		s.cache.Invalidate(r.Context(), keys...)
 	}
 	s.broadcastDispatchCommitted(r.Context(), sid, result)
 	s.log.InfoContext(r.Context(), "dispatch executed",
@@ -299,10 +304,40 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 			Lng: s.fallbackDepotLng,
 		})
 		job := plan.BuildSolveJob(ctx, supplierID, homeNodeID, depot, rows, fleet)
-		assignment, source, err = plan.OptimizeAndValidate(ctx, s.optimizerClient, job)
+		
+		// Emit DISPATCH_REQUESTED for the Python sidecar instead of synchronous execution
+		now := s.now().UTC()
+		payloadBytes, _ := json.Marshal(map[string]any{
+			"type":         "DISPATCH_REQUESTED",
+			"supplier_id":  supplierID,
+			"warehouse_id": warehouseID,
+			"fleet":        fleet,
+			"orders":       rows,
+			"job":          job,
+			"timestamp":    now.UnixMilli(),
+		})
+		
+		err = spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.InsertMap("OutboxEvents", map[string]any{
+					"EventId":       uuid.NewString(),
+					"AggregateType": "Supplier",
+					"AggregateId":   supplierID,
+					"TopicName":     events.TopicMain,
+					"Payload":       payloadBytes,
+					"CreatedAt":     now,
+					"PublishedAt":   nil,
+					"SupplierId":    supplierID,
+				}),
+			})
+		})
 		if err != nil {
 			return DispatchExecuteResult{}, err
 		}
+
+		out.Status = "optimizing"
+		out.OptimizerSource = "async_sidecar"
+		return out, nil
 	}
 	out.OptimizerSource = source
 	if assignment != nil {
@@ -316,6 +351,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	now := s.now().UTC()
+	assignment.Routes = dispatch.ExpandOversizeRoutes(assignment.Routes, now.UnixMilli())
 	lockID := ""
 	if lockWarehouseID != "" {
 		lockID, err = dispatch.AcquireManualDispatchLock(ctx, s.portalSpanner, lockWarehouseID, supplierID, supplierID, now)
@@ -366,7 +402,10 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					continue
 				}
 				manifestID := uuid.NewString()
-				routeID := uuid.NewString()
+				routeID := strings.TrimSpace(route.RouteID)
+				if routeID == "" {
+					routeID = uuid.NewString()
+				}
 				vehicleID := strings.TrimSpace(vehicleByDriver[driverID])
 
 				orderIDs := make([]string, 0, len(route.Orders))
@@ -650,6 +689,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 				"Payload":       manifestPayload,
 				"CreatedAt":     now,
 				"PublishedAt":   nil,
+				"SupplierId":    supplierID,
 			}))
 
 			for _, oid := range r.OrderIDs {
@@ -679,6 +719,7 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 					"Payload":       orderPayload,
 					"CreatedAt":     now,
 					"PublishedAt":   nil,
+					"SupplierId":    supplierID,
 				}))
 			}
 		}

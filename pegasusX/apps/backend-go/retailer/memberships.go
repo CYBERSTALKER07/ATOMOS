@@ -349,7 +349,8 @@ func (s *Service) BackfillMembershipsFromUsers(ctx context.Context) (int, error)
 	stmt := spanner.Statement{
 		SQL: `SELECT UserId, RetailerId, Phone, Name, IFNULL(PasswordHash, ''), IFNULL(FirebaseUid, ''),
 			RetailerRole, IsOwner, IsActive, CreatedAt, UpdatedAt
-			FROM RetailerUsers`,
+			FROM RetailerUsers
+			WHERE RetailerId IS NOT NULL`,
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()

@@ -19,11 +19,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const (
-	AutoOrderModeDraft = "draft"
-	AutoOrderModePlace = "place"
-)
-
 // AutoOrderPlacedOrder is one procurement order created in place mode.
 type AutoOrderPlacedOrder struct {
 	OrderID    string   `json:"order_id"`
@@ -62,9 +57,16 @@ type AutoOrderCandidate struct {
 	SKU        string   `json:"sku"`
 	ProductID  string   `json:"product_id,omitempty"`
 	SupplierID string   `json:"supplier_id,omitempty"`
+	CategoryID string   `json:"category_id,omitempty"`
 	Qty        int64    `json:"qty"`
 	Name       string   `json:"name,omitempty"`
 	Sources    []string `json:"sources,omitempty"` // L3.5 from reorder suggestions
+	// Inventory-grounded metadata (optional).
+	IP           float64 `json:"ip,omitempty"`
+	ReorderPoint float64 `json:"reorder_point,omitempty"`
+	OrderUpTo    float64 `json:"order_up_to,omitempty"`
+	Confidence   float64 `json:"confidence,omitempty"`
+	Reason       string  `json:"reason,omitempty"`
 }
 
 type autoOrderWorkerState struct {
@@ -83,7 +85,7 @@ func (s *Service) aoWorker() *autoOrderWorkerState {
 }
 
 // HandleAutoOrderRun serves POST /v1/retailer/settings/auto-order/run
-// Query: mode=draft|place (default draft, or settings.execution_mode).
+// Query: mode=off|shadow|draft|place (default settings.execution_mode, else draft).
 // place creates real orders when OrderCreator is wired and AUTO_ORDER_PLACE_ENABLED (or test).
 func (s *Service) HandleAutoOrderRun(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -100,16 +102,25 @@ func (s *Service) HandleAutoOrderRun(w http.ResponseWriter, r *http.Request) {
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
+	rawMode := strings.TrimSpace(r.URL.Query().Get("mode"))
+	mode := NormalizeExecutionMode(rawMode)
+	if rawMode != "" && mode == "" {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+			"error": "invalid_mode", "allowed": "shadow,draft,place",
+		})
+		return
+	}
 	if mode == "" {
 		settings := s.loadAutoOrderDurable(r.Context(), orgID)
-		mode = strings.ToLower(strings.TrimSpace(settings.ExecutionMode))
-		if mode == "" {
+		mode = NormalizeExecutionMode(settings.ExecutionMode)
+		if mode == "" || mode == AutoOrderModeOff {
 			mode = AutoOrderModeDraft
 		}
 	}
-	if mode != AutoOrderModeDraft && mode != AutoOrderModePlace {
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "invalid_mode", "allowed": "draft,place"})
+	if mode != AutoOrderModeShadow && mode != AutoOrderModeDraft && mode != AutoOrderModePlace {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+			"error": "invalid_mode", "allowed": "shadow,draft,place",
+		})
 		return
 	}
 	if mode == AutoOrderModePlace {
@@ -250,8 +261,11 @@ func (s *Service) SeedAutoOrderCandidates(orgID string, cands []AutoOrderCandida
 
 // RunAutoOrderForRetailer executes one tick (testable without HTTP).
 func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode string) AutoOrderRun {
-	if mode != AutoOrderModePlace {
-		mode = AutoOrderModeDraft
+	mode = NormalizeExecutionMode(mode)
+	if mode == "" || mode == AutoOrderModeOff {
+		if mode == "" {
+			mode = AutoOrderModeDraft
+		}
 	}
 	now := s.now().UTC()
 	bucket := now.Format("2006-01-02")
@@ -266,6 +280,16 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 	}
 
 	settings := s.loadAutoOrderDurable(ctx, orgID)
+	settingsMode := NormalizeExecutionMode(settings.ExecutionMode)
+	if mode == AutoOrderModeOff || settingsMode == AutoOrderModeOff {
+		run.Mode = AutoOrderModeOff
+		run.Status = "SKIPPED_ALL"
+		run.Message = "execution_mode_off"
+		run.Skipped = append(run.Skipped, AutoOrderSkip{Reason: "execution_mode_off"})
+		run.FinishedAt = s.now().UTC().Format(time.RFC3339Nano)
+		s.recordAutoOrderRun(run)
+		return run
+	}
 	if !settings.GlobalEnabled && !hasAnyScopedEnable(settings) {
 		run.Status = "SKIPPED_ALL"
 		run.Message = "auto_order_disabled"
@@ -301,6 +325,9 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 		if c.Qty <= 0 {
 			c.Qty = 1
 		}
+		if c.CategoryID == "" {
+			c.CategoryID = s.categoryIDForSKU(ctx, c.SKU)
+		}
 		if !candidateAllowed(settings, c) {
 			run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "scoped_disabled"})
 			continue
@@ -316,12 +343,16 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 		actionable = append(actionable, c)
 	}
 
-	if mode == AutoOrderModePlace {
+	switch mode {
+	case AutoOrderModeShadow:
+		s.runAutoOrderShadow(ctx, orgID, bucket, actionable, &run)
+	case AutoOrderModePlace:
 		s.runAutoOrderPlace(ctx, orgID, bucket, actionable, &run)
-	} else {
+	default: // draft
+		mode = AutoOrderModeDraft
+		run.Mode = mode
 		for _, c := range actionable {
 			key := orgID + "|" + bucket + "|" + mode + "|" + c.SKU
-			// Draft cart line when we have a cart store + supplier.
 			if s.cartRepo != nil {
 				if c.SupplierID == "" {
 					run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "missing_supplier"})
@@ -334,7 +365,7 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 					ProductID:     aoFirstNonEmpty(c.ProductID, c.SKU),
 					Quantity:      c.Qty,
 					PriceSnapshot: 0,
-					Currency:      "UZS",
+					Currency:      autoOrderCartCurrency(ctx, c.SupplierID),
 					UpdatedAt:     now,
 				}
 				if err := s.cartRepo.UpsertItems(ctx, []CartItem{item}); err != nil {
@@ -350,20 +381,22 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 		}
 	}
 
-	if run.DraftLines == 0 && run.PlacedLines == 0 {
-		run.Status = "SKIPPED_ALL"
-		if run.Message == "" {
-			run.Message = "all_candidates_skipped"
+	if mode != AutoOrderModeShadow {
+		if run.DraftLines == 0 && run.PlacedLines == 0 {
+			run.Status = "SKIPPED_ALL"
+			if run.Message == "" {
+				run.Message = "all_candidates_skipped"
+			}
+		} else if run.PlacedLines > 0 && len(run.Skipped) > 0 {
+			run.Status = "PARTIAL"
+			run.Message = "orders_placed_partial"
+		} else if run.PlacedLines > 0 {
+			run.Status = "OK"
+			run.Message = "orders_placed"
+		} else if run.DraftLines > 0 {
+			run.Status = "OK"
+			run.Message = "draft_cart_lines"
 		}
-	} else if run.PlacedLines > 0 && len(run.Skipped) > 0 {
-		run.Status = "PARTIAL"
-		run.Message = "orders_placed_partial"
-	} else if run.PlacedLines > 0 {
-		run.Status = "OK"
-		run.Message = "orders_placed"
-	} else {
-		run.Status = "OK"
-		run.Message = "draft_cart_lines"
 	}
 
 	if run.PlacedLines > 0 {
@@ -372,6 +405,13 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 				"Auto-order placed",
 				fmt.Sprintf("Auto-order placed %d line(s) across %d order(s).", run.PlacedLines, len(run.PlacedOrders)),
 				"/orders")
+		}
+	} else if mode == AutoOrderModeShadow && run.DraftLines > 0 {
+		if w, ok := s.notifSvc.(NotificationWriter); ok && w != nil {
+			_ = w.CreateNotification(ctx, orgID, "RETAILER", events.EventRetailerAutoOrderUpdated,
+				"Auto-order shadow proposals",
+				fmt.Sprintf("Shadow recorded %d proposal(s) — no cart or orders created.", run.DraftLines),
+				"/auto-order")
 		}
 	} else if run.DraftLines > 0 {
 		if w, ok := s.notifSvc.(NotificationWriter); ok && w != nil {
@@ -384,12 +424,12 @@ func (s *Service) RunAutoOrderForRetailer(ctx context.Context, orgID, mode strin
 	run.FinishedAt = s.now().UTC().Format(time.RFC3339Nano)
 	s.recordAutoOrderRun(run)
 	_ = s.emitPosEvent(ctx, orgID, events.EventRetailerAutoOrderUpdated, map[string]any{
-		"run_id":        run.RunID,
-		"draft_lines":   run.DraftLines,
-		"placed_lines":  run.PlacedLines,
-		"placed_orders": len(run.PlacedOrders),
-		"status":        run.Status,
-		"mode":          run.Mode,
+		"run_id":           run.RunID,
+		"draft_lines":      run.DraftLines,
+		"placed_lines":     run.PlacedLines,
+		"placed_orders":    len(run.PlacedOrders),
+		"status":           run.Status,
+		"mode":             run.Mode,
 		"candidate_source": run.CandidateSource,
 	})
 	return run
@@ -430,7 +470,7 @@ func (s *Service) markBucket(key, value string) {
 
 // runAutoOrderPlace groups candidates by supplier and creates real orders via OrderCreator.
 func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, cands []AutoOrderCandidate, run *AutoOrderRun) {
-	if s.orderCreator == nil || !s.autoOrderPlaceEnabled {
+	if s.orderCreator == nil || !s.placeAllowedForRetailer(ctx, orgID) {
 		// Soft fall-through: still draft so operators are not stuck
 		for _, c := range cands {
 			run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "place_unavailable"})
@@ -438,7 +478,7 @@ func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, c
 		if s.orderCreator == nil {
 			run.Message = "place_unavailable_no_order_creator"
 		} else {
-			run.Message = "place_disabled_set_AUTO_ORDER_PLACE_ENABLED"
+			run.Message = "place_blocked_by_soak_gate_or_flag"
 		}
 		// Draft fallback for ops continuity
 		now := s.now().UTC()
@@ -450,7 +490,7 @@ func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, c
 				_ = s.cartRepo.UpsertItems(ctx, []CartItem{{
 					CartItemID: s.newID(), RetailerID: orgID, SupplierID: c.SupplierID,
 					ProductID: aoFirstNonEmpty(c.ProductID, c.SKU), Quantity: c.Qty,
-					Currency: "UZS", UpdatedAt: now,
+					Currency: autoOrderCartCurrency(ctx, c.SupplierID), UpdatedAt: now,
 				}})
 			}
 			key := orgID + "|" + bucket + "|" + AutoOrderModePlace + "|" + c.SKU
@@ -699,8 +739,8 @@ func (s *Service) loadAutoOrderCandidates(ctx context.Context, orgID string) []A
 	return c
 }
 
-// loadAutoOrderCandidatesWithSource prefers test seeds, then OPEN ReorderSuggestions (L3.5),
-// then AI prediction line items by SKU.
+// loadAutoOrderCandidatesWithSource prefers test seeds, then inventory (R,s,S) proposals,
+// then OPEN ReorderSuggestions (L3.5), then AI prediction lines (legacy when not inventory-grounded).
 func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID string) ([]AutoOrderCandidate, string) {
 	s.mu.RLock()
 	if s.autoOrderCandidates != nil {
@@ -712,20 +752,30 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 	}
 	s.mu.RUnlock()
 
+	// Inventory-grounded (R,s,S) proposals — preferred when stock/suggestions yield qty.
+	if props := s.loadInventoryProposals(ctx, orgID); len(props) > 0 {
+		return proposalsToCandidates(props), "inventory_rs"
+	}
+
 	// L3.5: sell-through-aware reorder suggestions (OPEN, SuggestedQty > 0)
 	if cands := s.candidatesFromReorderSuggestions(ctx, orgID); len(cands) > 0 {
 		return cands, "reorder_suggestions"
 	}
 
+	if AutoOrderInventoryGrounded() {
+		// Skip AI /2-style prediction lines when inventory path is the source of truth.
+		return nil, ""
+	}
+
 	if s.orders == nil {
 		return nil, ""
 	}
+	// Fetch legacy baseline for candidates
 	items, err := s.orders.ListRetailerAIPredictions(ctx, orgID, 25)
 	if err != nil || len(items) == 0 {
 		return nil, ""
 	}
 
-	// Aggregate qty per SKU (last non-empty supplier/name wins).
 	type agg struct {
 		sku, productID, supplierID, name string
 		qty                              int64
@@ -746,11 +796,23 @@ func (s *Service) loadAutoOrderCandidatesWithSource(ctx context.Context, orgID s
 				bySKU[sku] = a
 				orderKeys = append(orderKeys, sku)
 			}
-			qty := li.Quantity
-			if qty <= 0 {
-				qty = 1
+			// Use Python AI sidecar for optimal demand
+			// Passing synthetic history for now
+			aiResp, err := PredictDemand(ctx, DemandPredictionRequest{
+				SKU:                  sku,
+				HistoricalDailySales: []int{10, 15, 12, 18, 5, 20},
+				CurrentStock:         5, // Stub: should pull from StoreStock
+				LeadTimeDays:         2,
+			})
+			if err == nil && aiResp.OptimalReorderQty > 0 {
+				a.qty = aiResp.OptimalReorderQty
+			} else {
+				a.qty += li.Quantity
+				if a.qty <= 0 {
+					a.qty = 1
+				}
 			}
-			a.qty += qty
+			
 			if name := strings.TrimSpace(li.Name); name != "" {
 				a.name = name
 			}
@@ -843,8 +905,8 @@ func (s *Service) supplierIDForRetailerSKU(ctx context.Context, orgID, sku strin
 			}
 		}
 	}
-	// SSMR / single-supplier seed fallback
-	return strings.TrimSpace(s.supplierID)
+	// SSMR / single-supplier seed fallback (request TenantContext wins when present).
+	return s.resolveSupplierScope(ctx)
 }
 
 // autoOrderWorkerEnabled gates the background ticker (default off).
@@ -878,11 +940,14 @@ func (s *Service) sweepAutoOrderEnabled(ctx context.Context) {
 	ids := s.listAutoOrderEnabledRetailerIDs(ctx)
 	for _, rid := range ids {
 		settings := s.loadAutoOrderDurable(ctx, rid)
-		mode := strings.ToLower(strings.TrimSpace(settings.ExecutionMode))
+		mode := NormalizeExecutionMode(settings.ExecutionMode)
 		if mode == "" {
 			mode = AutoOrderModeDraft
 		}
-		if mode == AutoOrderModePlace && !s.autoOrderPlaceEnabled {
+		if mode == AutoOrderModeOff {
+			continue
+		}
+		if mode == AutoOrderModePlace && !s.placeAllowedForRetailer(ctx, rid) {
 			mode = AutoOrderModeDraft
 		}
 		_ = s.RunAutoOrderForRetailer(ctx, rid, mode)
@@ -957,41 +1022,20 @@ func hasAnyScopedEnable(s AutoOrderSettings) bool {
 	return false
 }
 
-func candidateAllowed(settings AutoOrderSettings, c AutoOrderCandidate) bool {
-	for _, o := range settings.ProductOverrides {
-		if (o.ProductID == c.ProductID || o.ProductID == c.SKU) && !o.Enabled {
-			return false
-		}
-	}
-	for _, o := range settings.VariantOverrides {
-		if o.VariantID == c.SKU && !o.Enabled {
-			return false
-		}
-	}
-	if settings.GlobalEnabled {
-		return true
-	}
-	for _, o := range settings.SupplierOverrides {
-		if o.SupplierID == c.SupplierID && o.Enabled {
-			return true
-		}
-	}
-	for _, o := range settings.ProductOverrides {
-		if (o.ProductID == c.ProductID || o.ProductID == c.SKU) && o.Enabled {
-			return true
-		}
-	}
-	for _, o := range settings.VariantOverrides {
-		if o.VariantID == c.SKU && o.Enabled {
-			return true
-		}
-	}
-	return false
-}
-
 func aoFirstNonEmpty(a, b string) string {
 	if strings.TrimSpace(a) != "" {
 		return a
 	}
 	return b
+}
+
+// autoOrderCartCurrency is empty-currency law for draft / place-fallback cart
+// lines: shipped pack ISO. Planned/unknown packs stay empty — never invent UZS.
+// Place stays off; this only stamps cart currency.
+func autoOrderCartCurrency(ctx context.Context, supplierID string) string {
+	c, err := auth.CoalesceCurrency(ctx, supplierID, "")
+	if err != nil {
+		return ""
+	}
+	return c
 }

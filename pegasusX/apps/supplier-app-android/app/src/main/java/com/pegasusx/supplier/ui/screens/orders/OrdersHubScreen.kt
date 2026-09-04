@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -15,19 +17,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierOrder
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.screens.dispatch.DispatchPreviewScreen
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.OrdersViewModel
+import com.pegasusx.supplier.R
 
 private enum class OrdersHubSurface { Queue, Dispatch }
 
@@ -37,10 +40,17 @@ fun OrdersHubScreen(
     ops: SupplierOperationsRepository,
     realtimeSignals: SupplierRealtimeSignals,
     onOrderClick: (SupplierOrder) -> Unit,
+    initialStatus: String? = null,
     viewModel: OrdersViewModel = hiltViewModel(),
 ) {
     var surface by remember { mutableStateOf(OrdersHubSurface.Queue) }
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(initialStatus) {
+        if (!initialStatus.isNullOrBlank()) {
+            viewModel.setCommandStatus(initialStatus)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -50,7 +60,7 @@ fun OrdersHubScreen(
                     actions = {
                         if (surface == OrdersHubSurface.Queue) {
                             IconButton(onClick = { viewModel.load() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                             }
                         }
                     },
@@ -66,6 +76,11 @@ fun OrdersHubScreen(
                         onClick = { surface = OrdersHubSurface.Dispatch },
                         text = { Text("Dispatch") },
                     )
+                }
+                if (surface == OrdersHubSurface.Queue && state.commandStatus != null) {
+                    TextButton(onClick = { viewModel.clearCommandStatus() }) {
+                        Text("Filtered by ${state.commandStatus?.replace('_', ' ')} · Clear")
+                    }
                 }
                 if (surface == OrdersHubSurface.Queue) {
                     ScrollableTabRow(selectedTabIndex = state.filter.ordinal) {
@@ -121,7 +136,7 @@ private fun OrdersQueueContent(
 ) {
     when {
         showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> PegasusLoadingState(
-            title = "Loading orders…",
+            title = stringResource(R.string.mobile_supplier_ui_loading_orders),
             body = "Supplier order queue",
             modifier = modifier,
         )
@@ -242,7 +257,7 @@ private fun OrdersQueueContent(
                     )
                     Box {
                         IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(44.dp)) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Order actions")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.supplier_portal_orders_order_kebab_menu_text_order_actions))
                         }
                         DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                             DropdownMenuItem(

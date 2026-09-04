@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
@@ -13,6 +14,7 @@ import { usePagination } from "@/lib/use-pagination";
 const api = createSupplierApi();
 
 export default function SupplierFleetOrdersPage() {
+  const t = usePortalT();
   const [orders, setOrders] = useState<SupplierFleetOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function SupplierFleetOrdersPage() {
     api
       .getSupplierFleetOrders()
       .then(setOrders)
-      .catch((err) => setError(err instanceof Error ? err.message : "fleet_orders_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.fleet_orders_failed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -29,13 +31,13 @@ export default function SupplierFleetOrdersPage() {
 
   return (
     <PageChrome
-      title="Fleet orders"
-      description="Supplier-scoped active orders for dispatch oversight."
+      title={t("supplier_portal.fleet.orders.text.fleet_orders")}
+      description={t("supplier_portal.residual.text.supplier_scoped_active_orders_for_dispatch_oversight")}
       icon="fleet"
       loading={loading}
       error={error}
       empty={!loading && orders.length === 0}
-      emptyMessage="No active fleet orders."
+      emptyMessage={t("supplier_portal.residual.text.no_active_fleet_orders")}
     >
       <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
         <Link href="/fleet" className="text-[var(--color-md-primary)] underline">

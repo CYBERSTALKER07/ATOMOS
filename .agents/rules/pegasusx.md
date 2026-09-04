@@ -8,6 +8,10 @@ trigger: always_on
 
 ---
 
+# Honesty (absolute — before alignment)
+
+Current source is the only status SoT. Docs, `ROLE_ROW_PARITY_MATRIX` **"Wired"**, and prior chat are hypotheses. Do not claim wired/done/production-ready/cloud-ready without file:line from this session. **Do not start cloud/API/infra wiring** unless backend + shipped role-row clients + data plane are REAL and tests passed after a re-read of the edits. Skill: `honest-code-gate`. Pair: `gap-hunter`.
+
 # pegasusX ecosystem alignment (required on every change)
 
 When you edit backend code or add a feature, **trace every surface the change touches** and update them in the same batch. Do not land a partial slice that leaves role rows, contracts, or cross-role flows inconsistent.
@@ -16,6 +20,9 @@ When you edit backend code or add a feature, **trace every surface the change to
 
 Before coding, identify:
 
+- **Blast radius via Two-Tier Verification (MANDATORY):**
+  - **Tier 1 (CodeGraph + Bazel/Kythe):** run `python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json` and `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>` to calculate upstream reachability and affected test targets.
+  - **Tier 2 (Targeted Raw Reading):** open and raw-read the exact files identified in Tier 1. Inspect guard clauses, transaction boundaries (`spanner.ReadWriteTransaction`), and business rules. Re-read every edit after writing.
 - **Role(s)** affected (supplier, retailer, driver, warehouse, factory, payload)
 - **Route owner** (`*routes/routes.go` under `apps/backend-go`)
 - **Cross-role consumers** (who reads this state next in the order/dispatch/payment chain)
@@ -77,5 +84,19 @@ A feature is not done until:
 
 1. All touched role-row clients compile and use the same contract
 2. Cross-role downstream effects are handled (or explicitly documented as deferred)
-3. `go test` on touched backend packages passes
+3. `go test` on touched backend packages passes **after** a re-read of every edited file (plan landing ≠ success)
 4. New ecosystem behavior has an SSMR assertion or a documented reason it is UI-only / manual QA
+5. The live path is **REAL** (not THEATRE). Matrix "Wired" is evidence to re-verify, not a go-live certificate
+6. Cloud/API wiring is **not** implied — Layer B only when remaining work is secrets/env/IAM
+
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

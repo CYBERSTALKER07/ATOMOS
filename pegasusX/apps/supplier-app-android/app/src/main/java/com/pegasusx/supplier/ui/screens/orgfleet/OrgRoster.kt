@@ -8,8 +8,8 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.SupplierOrgMember
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 

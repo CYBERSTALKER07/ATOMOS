@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dock
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -63,6 +65,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.retailer.R
 
 private val stateLabels = mapOf(
     "DISPATCHED" to "Dispatched",
@@ -118,7 +121,7 @@ fun DockScreen(
             uiState.supplierGroups.isEmpty() -> {
                 PegasusEmptyState(
                     icon = Icons.Default.LocalShipping,
-                    title = "Dock Queue Empty",
+                    title = stringResource(R.string.mobile_retailer_ui_dock_queue_empty),
                     message = "Inbound deliveries grouped by supplier will appear here.",
                 )
             }
@@ -162,14 +165,14 @@ private fun DockSummaryRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DockMetricCard(label = "Queue", value = queueCount.toString(), modifier = Modifier.weight(1f))
-        DockMetricCard(label = "Arrived", value = arrivedCount.toString(), modifier = Modifier.weight(1f))
-        DockMetricCard(label = "Approaching", value = approachingCount.toString(), modifier = Modifier.weight(1f))
+        DockMetricCard(label = stringResource(R.string.retailer_desktop_assist_text_queue), value = queueCount.toString(), modifier = Modifier.weight(1f))
+        DockMetricCard(label = stringResource(R.string.supplier_portal_residual_text_arrived), value = arrivedCount.toString(), modifier = Modifier.weight(1f))
+        DockMetricCard(label = stringResource(R.string.mobile_retailer_ui_approaching), value = approachingCount.toString(), modifier = Modifier.weight(1f))
         IconButton(onClick = onRefresh, enabled = !isRefreshing) {
             if (isRefreshing) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             } else {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
             }
         }
     }
@@ -220,7 +223,7 @@ private fun SupplierDockSection(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(group.supplierName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Text(
-                        "${group.orders.size} orders · ${formatDockAmount(group.totalAmount)} UZS",
+                        stringResource(R.string.mobile_retailer_ui_size_orders_formatdockamount_uzs, group.orders.size, formatDockAmount(group.totalAmount)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
@@ -283,12 +286,12 @@ private fun DockOrderRow(
             Row(verticalAlignment = Alignment.Top) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Order #${order.orderId.takeLast(8)}",
+                        stringResource(R.string.mobile_retailer_ui_order_takelast, order.orderId.takeLast(8)),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        "${order.items.size} items · ${formatDockAmount(order.totalAmount)} UZS",
+                        stringResource(R.string.mobile_retailer_ui_size_items_formatdockamount_uzs, order.items.size, formatDockAmount(order.totalAmount)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )

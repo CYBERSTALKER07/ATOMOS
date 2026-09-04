@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.preorders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -15,15 +17,16 @@ import com.pegasusx.warehouse.data.model.WarehousePreorderRow
 import com.pegasusx.warehouse.data.model.WarehouseProposeDeliveryRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -156,7 +159,7 @@ fun PreordersScreen(
                         enabled = reason.isNotBlank(),
                     ) { Text("Send proposal") }
                 },
-                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text("Back") } },
+                dismissButton = { TextButton(onClick = { showReasonDialog = false }) { Text(stringResource(R.string.common_action_back)) } },
             )
         }
 
@@ -178,7 +181,7 @@ fun PreordersScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -192,7 +195,7 @@ fun PreordersScreen(
     ) { padding ->
         when {
             loading && rows.isEmpty() -> PegasusLoadingState(
-                title = "Loading pre-orders…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_pre_orders),
                 body = "Fetching scheduled deliveries",
                 modifier = Modifier.fillMaxSize().padding(padding)
             )

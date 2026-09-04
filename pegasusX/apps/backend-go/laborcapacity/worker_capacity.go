@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
@@ -21,7 +22,12 @@ func (s *Service) RunCapacitySnapshotWorker(ctx context.Context, interval time.D
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			now := time.Now().In(time.FixedZone("Asia/Tashkent", 5*3600))
+			loc, err := auth.TimezoneFromContext(ctx, "")
+			if err != nil {
+				slog.Error("capacity snapshot skipped: pack timezone", "error", err)
+				continue
+			}
+			now := time.Now().In(loc)
 			// Compute for today + 2 days
 			if err := s.Recompute(ctx, now, now.AddDate(0, 0, 2)); err != nil {
 				slog.Error("capacity snapshot failed", "error", err)
@@ -112,7 +118,7 @@ func (s *Service) doRecompute(ctx context.Context, from, to civil.Date, filterZo
 		if !zoneH3.Valid || zoneH3.StringVal == "" {
 			continue
 		}
-		
+
 		zd := zoneDate{zone: zoneH3.StringVal, date: date}
 		if _, ok := aggregates[zd]; !ok {
 			aggregates[zd] = &agg{}
@@ -134,29 +140,35 @@ func (s *Service) doRecompute(ctx context.Context, from, to civil.Date, filterZo
 		aggregates[zd].totalCapacity += hours * stopsPerHour * scoreFactor
 	}
 
+	tz, tzErr := auth.TimezoneNameFromContext(ctx, "")
+	if tzErr != nil {
+		return fmt.Errorf("pack timezone: %w", tzErr)
+	}
+
 	// 2. Compute UsedCapacity from assigned orders
 	usedStmt := spanner.Statement{
 		SQL: `
 			SELECT 
 				ZoneH3, 
-				DATE(PromisedBy, 'Asia/Tashkent') as AssignedDate,
+				DATE(PromisedBy, @Tz) as AssignedDate,
 				COUNT(*) as AssignedStops
 			FROM Orders
 			WHERE Status IN ('ASSIGNED', 'IN_TRANSIT')
-			  AND DATE(PromisedBy, 'Asia/Tashkent') >= CAST(@From AS STRING)
-			  AND DATE(PromisedBy, 'Asia/Tashkent') <= CAST(@To AS STRING)
+			  AND DATE(PromisedBy, @Tz) >= CAST(@From AS STRING)
+			  AND DATE(PromisedBy, @Tz) <= CAST(@To AS STRING)
 			GROUP BY ZoneH3, AssignedDate
 		`,
 		Params: map[string]interface{}{
 			"From": from.String(),
 			"To":   to.String(),
+			"Tz":   tz,
 		},
 	}
 	if filterZone != "" {
 		usedStmt.SQL += " AND ZoneH3 = @Zone"
 		usedStmt.Params["Zone"] = filterZone
 	}
-	
+
 	uIter := s.spanner.Single().Query(ctx, usedStmt)
 	defer uIter.Stop()
 	for {
@@ -199,7 +211,7 @@ func (s *Service) doRecompute(ctx context.Context, from, to civil.Date, filterZo
 			"UsedCapacity":  a.usedCapacity,
 			"ComputedAt":    now,
 		}))
-		
+
 		events = append(events, capacityOutbox{
 			ZoneH3:        zd.zone,
 			Date:          zd.date.String(),
@@ -239,4 +251,3 @@ func (s *Service) flushCapacityMutations(ctx context.Context, mutations []*spann
 	})
 	return err
 }
-

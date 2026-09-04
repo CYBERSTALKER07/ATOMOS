@@ -1,12 +1,13 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { TwinOpsRouteView } from "@pegasusx/types";
+import type { TwinOpsRouteView, TwinVehicleInventoryRow } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
-import { useMapLibreTeardown } from "@pegasusx/ui-kit/desktop";
-
-const DEFAULT_CENTER: [number, number] = [69.2401, 41.2995];
+import { useMapLibreTeardown } from "@pegasusx/ui-maps";
+import { createSupplierApi } from "@/lib/api";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const LATENESS_COLORS: Record<string, string> = {
   green: "#0f9d58",
@@ -31,6 +32,7 @@ export default function LiveOpsMap({
   selectedRouteId,
   onSelectRoute,
 }: LiveOpsMapProps) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
   useMapLibreTeardown(mapRef);
 
@@ -73,7 +75,7 @@ export default function LiveOpsMap({
   if (loading && routes.length === 0) {
     return (
       <div className={className} style={{ color: "var(--color-md-outline, var(--muted))" }}>
-        <p className="text-sm text-center px-4 py-8">Loading live routes…</p>
+        <p className="text-sm text-center px-4 py-8">{t("supplier_portal.live_ops_map.text.loading_live_routes")}</p>
       </div>
     );
   }
@@ -95,7 +97,7 @@ export default function LiveOpsMap({
           color: "var(--color-md-outline, var(--muted))",
         }}
       >
-        <p className="text-sm text-center px-4 py-8">No active routes from the digital twin right now.</p>
+        <p className="text-sm text-center px-4 py-8">{t("supplier_portal.live_ops_map.text.no_active_routes_from_the_digital_twin_right_now")}</p>
       </div>
     );
   }
@@ -106,11 +108,7 @@ export default function LiveOpsMap({
         ref={(ref) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
-        initialViewState={{
-          longitude: DEFAULT_CENTER[0],
-          latitude: DEFAULT_CENTER[1],
-          zoom: 11,
-        }}
+        initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 11)}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
         mapLib={maplibregl}
@@ -146,6 +144,38 @@ export default function LiveOpsMap({
 }
 
 export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) {
+  const t = usePortalT();
+  const [fetchedInventory, setFetchedInventory] = useState<TwinVehicleInventoryRow[] | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+
+  const embeddedInventoryLen = route?.Inventory?.length ?? 0;
+  useEffect(() => {
+    if (!route?.RouteID) {
+      setFetchedInventory(null);
+      return;
+    }
+    if (embeddedInventoryLen > 0) {
+      setFetchedInventory(null);
+      return;
+    }
+    let cancelled = false;
+    setInventoryLoading(true);
+    void createSupplierApi()
+      .getTwinRouteInventory(route.RouteID)
+      .then((rows) => {
+        if (!cancelled) setFetchedInventory(rows ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedInventory([]);
+      })
+      .finally(() => {
+        if (!cancelled) setInventoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [route?.RouteID, embeddedInventoryLen]);
+
   if (!route) {
     return (
       <div className="p-4 text-sm" style={{ color: "var(--desk-text-secondary)" }}>
@@ -153,6 +183,8 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
       </div>
     );
   }
+
+  const inventory = (route.Inventory ?? []).length > 0 ? route.Inventory! : (fetchedInventory ?? []);
 
   return (
     <div className="p-4 flex flex-col gap-4 text-sm overflow-y-auto h-full">
@@ -177,7 +209,7 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
       </div>
 
       <section>
-        <h4 className="font-medium mb-2">Remaining stops</h4>
+        <h4 className="font-medium mb-2">{t("supplier_portal.live_ops_map.text.remaining_stops")}</h4>
         <ul className="space-y-2">
           {(route.Stops ?? [])
             .filter((s) => s.Status !== "COMPLETED" && s.Status !== "CANCELLED")
@@ -194,12 +226,14 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
       </section>
 
       <section>
-        <h4 className="font-medium mb-2">Vehicle inventory</h4>
-        {(route.Inventory ?? []).length === 0 ? (
-          <p style={{ color: "var(--desk-text-secondary)" }}>No inventory rows.</p>
+        <h4 className="font-medium mb-2">{t("supplier_portal.live_ops_map.text.vehicle_inventory")}</h4>
+        {inventoryLoading && inventory.length === 0 ? (
+          <p style={{ color: "var(--desk-text-secondary)" }}>Loading…</p>
+        ) : inventory.length === 0 ? (
+          <p style={{ color: "var(--desk-text-secondary)" }}>{t("supplier_portal.live_ops_map.text.no_inventory_rows")}</p>
         ) : (
           <ul className="space-y-1 font-mono text-xs">
-            {(route.Inventory ?? []).map((row) => (
+            {inventory.map((row) => (
               <li key={row.Sku}>{row.Sku}: {row.QtyOnVehicle}</li>
             ))}
           </ul>
@@ -207,9 +241,9 @@ export function LiveOpsSidePanel({ route }: { route: TwinOpsRouteView | null }) 
       </section>
 
       <section>
-        <h4 className="font-medium mb-2">Open exceptions</h4>
+        <h4 className="font-medium mb-2">{t("supplier_portal.live_ops_map.text.open_exceptions")}</h4>
         {(route.exceptions ?? []).length === 0 ? (
-          <p style={{ color: "var(--desk-text-secondary)" }}>None on this route.</p>
+          <p style={{ color: "var(--desk-text-secondary)" }}>{t("supplier_portal.live_ops_map.text.none_on_this_route")}</p>
         ) : (
           <ul className="space-y-2">
             {(route.exceptions ?? []).map((exc, idx) => (

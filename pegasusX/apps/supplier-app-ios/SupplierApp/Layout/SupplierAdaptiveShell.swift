@@ -4,7 +4,8 @@ import Network
 enum CompactTab: Hashable {
     case dashboard
     case orders
-    case fleet
+    case dispatch
+    case plan
     case more
 }
 
@@ -84,21 +85,25 @@ struct SupplierAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: SupplierSection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: SupplierSection.dashboard.icon) }
                 .tag(CompactTab.dashboard)
 
             sectionView(.orders)
-                .tabItem { Label("Orders", systemImage: SupplierSection.orders.icon) }
+                .tabItem { Label("portal.nav.orders", systemImage: SupplierSection.orders.icon) }
                 .tag(CompactTab.orders)
 
-            sectionView(.fleet)
-                .tabItem { Label("Fleet", systemImage: SupplierSection.fleet.icon) }
-                .tag(CompactTab.fleet)
+            sectionView(.dispatchPreview)
+                .tabItem { Label("portal.nav.dispatch", systemImage: SupplierSection.dispatchPreview.icon) }
+                .tag(CompactTab.dispatch)
+
+            sectionView(.planningBrain)
+                .tabItem { Label("portal.nav.planning", systemImage: SupplierSection.planningBrain.icon) }
+                .tag(CompactTab.plan)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_supplier.ui.more", systemImage: "ellipsis.circle") }
             .tag(CompactTab.more)
         }
     }
@@ -189,6 +194,8 @@ struct SupplierAdaptiveShell: View {
             PlanningBrainView()
         case .planningSettings:
             PlanningSettingsView()
+        case .returnPolicy:
+            ReturnPolicySettingsView()
         case .knowledgeGraph:
             KnowledgeGraphView()
         case .replenishmentPolicies:
@@ -197,8 +204,32 @@ struct SupplierAdaptiveShell: View {
             FactoriesView()
         case .warehouses:
             WarehousesView()
+        case .crm:
+            CRMView()
+        case .loyalty:
+            LoyaltyProgramView()
+        case .entityResolution:
+            EntityResolutionView()
+        case .payouts:
+            PayoutsView()
         case .catalogDetail:
             CatalogDetailView(productId: nil)
+        case .controlTower:
+            ScoredExceptionsView()
+        case .playbooks:
+            PlaybooksView()
+        case .segmentation:
+            JSONFeedView(title: "Segmentation", path: "v1/supplier/segmentation/retailers")
+        case .taxRegimes:
+            JSONFeedView(title: "Tax regimes", path: "v1/admin/tax-regimes", query: ["country": "UZ"])
+        case .creditPolicy:
+            JSONFeedView(title: "Credit policy", path: "v1/supplier/credit-program")
+        case .creditAdminDisable:
+            CreditAdminDisableView()
+        case .flywheel:
+            JSONFeedView(title: "POS flywheel", path: "v1/supplier/analytics/demand/flywheel", query: ["days": "7"])
+        case .paydayCalendar:
+            JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"])
         }
     }
 

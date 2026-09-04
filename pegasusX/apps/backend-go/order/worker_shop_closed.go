@@ -3,9 +3,11 @@ package order
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -82,6 +84,8 @@ func (s *Service) processShopClosedTimeouts(ctx context.Context) error {
 
 func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID string) error {
 	now := s.now().UTC()
+	var resolvedDecision TimeoutDecision
+	var resolvedOrder *Order
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		order, err := s.loadOrderForUpdate(ctx, txn, orderID)
@@ -95,10 +99,12 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 			return nil // not yet due
 		}
 
-		// fetch credit profile for update
+		// Fetch credit profile for update. Fail-closed: an unreadable profile
+		// aborts the resolution (retried next tick) instead of silently deciding
+		// without limit/balance truth.
 		profile, err := s.getProfileForUpdate(ctx, txn, order.RetailerID, order.SupplierID)
 		if err != nil {
-			s.log.WarnContext(ctx, "failed to load credit profile for timeout resolution", "err", err, "retailer_id", order.RetailerID)
+			return fmt.Errorf("load credit profile for shop-closed timeout %s: %w", order.OrderID, err)
 		}
 
 		// For now hardcode cfg, this could come from Supplier or global config
@@ -108,6 +114,8 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 		}
 
 		decision := DecideShopClosedTimeout(order, profile, cfg)
+		resolvedDecision = decision
+		resolvedOrder = order
 
 		buf := &spannerTxnBuffer{}
 		var mutations []*spanner.Mutation
@@ -123,6 +131,11 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 
 		switch decision {
 		case DecisionCreditLeave:
+			// Credit leave books an AR open item; without AR invoicing the debt
+			// is uncollectible. Fail closed (retried next tick, alertable).
+			if s.ar != nil && order.TotalMinor > 0 && !ar.InvoicesEnabled() {
+				return fmt.Errorf("shop-closed credit leave %s: %w", order.OrderID, ar.ErrInvoicesDisabled)
+			}
 			// same credit-draw logic as driver CreditLeave endpoint
 			// mark order as delivering on credit
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
@@ -132,17 +145,38 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 				"Version":              order.Version + 1,
 				"UpdatedAt":            now,
 			}))
-			// Deduct credit
-			if profile != nil {
-				newBalance := profile.CurrentBalanceMinor + order.TotalMinor
-				mutations = append(mutations, spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
-					"RetailerId":           profile.RetailerID,
-					"SupplierId":           profile.SupplierID,
-					"CurrentBalanceMinor":  newBalance,
-					"AvailableCreditMinor": max(0, profile.CreditLimitMinor-newBalance),
-					"Version":              profile.Version + 1,
-					"UpdatedAt":            spanner.CommitTimestamp,
-				}))
+			// Draw credit through the shared reservation-aware path (converts an
+			// existing OrderCreditReservations hold instead of double-counting,
+			// and recomputes availability including ReservedMinor).
+			if profile != nil && order.TotalMinor > 0 {
+				if s.credit == nil {
+					return fmt.Errorf("credit repository not configured for shop-closed credit leave %s", order.OrderID)
+				}
+				if err := s.credit.MarkBalanceInTxn(ctx, txn, order.RetailerID, order.SupplierID, order.OrderID, order.TotalMinor); err != nil {
+					return fmt.Errorf("mark credit balance for shop-closed timeout %s: %w", order.OrderID, err)
+				}
+				// Record the CREDIT payment leg so the debt exists in the order
+				// ledger, mirroring the driver credit-leave path. Skip when one
+				// is already recorded (worker retry after partial failure).
+				hasCreditLeg, legErr := s.hasCapturedCreditLeg(ctx, txn, order.OrderID)
+				if legErr != nil {
+					return legErr
+				}
+				if !hasCreditLeg {
+					leg := PaymentLeg{
+						OrderID:        order.OrderID,
+						LegID:          s.newID(),
+						Method:         MethodCredit,
+						AmountMinor:    order.TotalMinor,
+						Status:         PaymentStatusCaptured,
+						IdempotencyKey: "credit-leave-" + order.OrderID,
+						CreatedAt:      now,
+						CapturedAt:     spanner.NullTime{Time: now, Valid: true},
+					}
+					if err := s.RecordPaymentLeg(ctx, txn, leg); err != nil {
+						return err
+					}
+				}
 			}
 			_ = outbox.EmitJSON(ctx, buf, events.AggregateOrder, order.OrderID, events.TopicMain, events.OrderEvent{
 				BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.Format(time.RFC3339Nano)},
@@ -200,13 +234,29 @@ func (s *Service) resolveOneShopClosedTimeout(ctx context.Context, orderID strin
 	if err == nil {
 		s.invalidateOrderCache(ctx, orderID)
 	}
+	// B6: AR open is performed inside the credit-leave txn when possible.
+	// Worker residual: if still missing after commit, fail-closed by returning error
+	// so the sweeper retries (OpenFromCreditLeave is idempotent per order).
+	if err == nil && s.ar != nil && resolvedDecision == DecisionCreditLeave && resolvedOrder != nil && resolvedOrder.TotalMinor > 0 {
+		if _, aerr := s.ar.OpenFromCreditLeave(ctx, ar.OpenFromCreditLeaveRequest{
+			SupplierID:    resolvedOrder.SupplierID,
+			RetailerID:    resolvedOrder.RetailerID,
+			OrderID:       orderID,
+			AmountMinor:   resolvedOrder.TotalMinor,
+			Currency:      resolvedOrder.Currency,
+			CreditLeaveAt: now,
+		}); aerr != nil {
+			s.log.ErrorContext(ctx, "open AR invoice after shop-closed credit leave failed", "order_id", orderID, "err", aerr)
+			return aerr
+		}
+	}
 
 	return err
 }
 
 func (s *Service) getProfileForUpdate(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID string) (*credit.Profile, error) {
 	row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID}, []string{
-		"CreditLimitMinor", "CurrentBalanceMinor", "AvailableCreditMinor", "Status", "RiskScore", "DelinquencyCount", "Version",
+		"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "AvailableCreditMinor", "Status", "RiskScore", "DelinquencyCount", "Version",
 	})
 	if err != nil {
 		if spanner.ErrCode(err) == 5 { // NotFound
@@ -216,7 +266,7 @@ func (s *Service) getProfileForUpdate(ctx context.Context, txn *spanner.ReadWrit
 	}
 	var p credit.Profile
 	var status spanner.NullString
-	if err := row.Columns(&p.CreditLimitMinor, &p.CurrentBalanceMinor, &p.AvailableCreditMinor, &status, &p.RiskScore, &p.DelinquencyCount, &p.Version); err != nil {
+	if err := row.Columns(&p.CreditLimitMinor, &p.CurrentBalanceMinor, &p.ReservedMinor, &p.AvailableCreditMinor, &status, &p.RiskScore, &p.DelinquencyCount, &p.Version); err != nil {
 		return nil, err
 	}
 	p.RetailerID = retailerID
@@ -230,6 +280,31 @@ func max(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// hasCapturedCreditLeg reports whether a CAPTURED CREDIT leg already exists for
+// the order (interleaved child read keyed by OrderId).
+func (s *Service) hasCapturedCreditLeg(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (bool, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT LegId FROM OrderPaymentLegs
+		      WHERE OrderId = @order_id AND Method = @method AND Status = @status
+		      LIMIT 1`,
+		Params: map[string]any{
+			"order_id": orderID,
+			"method":   string(MethodCredit),
+			"status":   string(PaymentStatusCaptured),
+		},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("query credit payment leg %s: %w", orderID, err)
+	}
+	return true, nil
 }
 
 func (s *Service) loadOrderForUpdate(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string) (*Order, error) {

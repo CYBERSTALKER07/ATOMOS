@@ -10,7 +10,7 @@ struct DispatchDriverList: View {
 
     var body: some View {
         if availableDrivers.isEmpty && unavailableDrivers.isEmpty {
-            ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("No available drivers"))
+            ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("mobile_warehouse.ui.no_available_drivers"))
         } else {
             ResponsiveGridContentWrapper {
                 if !availableDrivers.isEmpty {
@@ -50,7 +50,7 @@ struct DispatchDriverList: View {
             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
                 WarehouseStatusBadge(text: driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
                 if driver.maxVolumeVu > 0 {
-                    Text("\(driver.maxVolumeVu, specifier: "%.0f") VU")
+                    Text(L10n.format("mobile_warehouse.ui.n_0f_vu", String(format: "%.0f", driver.maxVolumeVu)))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Invoice
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
@@ -34,7 +34,7 @@ fun TreasuryTransactionList(
         ) {
             items(invoices, key = { it.invoiceId }) { inv ->
                 val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs
-                val displayCurrency = if (inv.currency.isBlank()) "UZS" else inv.currency.uppercase()
+                val displayCurrency = com.pegasus.design.network.moneyCurrency(inv.currency)
                 val payoutOwner = buildString {
                     append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
                     if (inv.payoutOwnerId.isNotBlank()) {

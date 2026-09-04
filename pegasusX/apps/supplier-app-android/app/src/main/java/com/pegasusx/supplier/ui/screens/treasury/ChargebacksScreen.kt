@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,10 +15,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.ui.PegasusRuntimeBanner
+import com.pegasus.design.ui.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.TreasuryViewModel
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +35,7 @@ fun ChargebacksScreen(
                 title = { Text("Chargebacks") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )

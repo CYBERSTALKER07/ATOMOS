@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { WarehouseOrderDetail } from '@pegasusx/types';
 
 interface OrderLineItemsProps {
@@ -5,6 +8,7 @@ interface OrderLineItemsProps {
 }
 
 export function OrderLineItems({ detail }: OrderLineItemsProps) {
+  const t = usePortalT();
   if (!detail || (detail.line_items?.length ?? 0) === 0) return null;
 
   return (
@@ -15,9 +19,9 @@ export function OrderLineItems({ detail }: OrderLineItemsProps) {
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--color-md-outline-variant)]">
-            <th className="text-left py-2 px-4">Product</th>
-            <th className="text-right py-2 px-4">Qty</th>
-            <th className="text-right py-2 px-4">Unit</th>
+            <th className="text-left py-2 px-4">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+            <th className="text-right py-2 px-4">{t("supplier_portal.analytics.demand.text.qty")}</th>
+            <th className="text-right py-2 px-4">{t("supplier_portal.catalog.components.catalog_table.text.unit")}</th>
           </tr>
         </thead>
         <tbody>

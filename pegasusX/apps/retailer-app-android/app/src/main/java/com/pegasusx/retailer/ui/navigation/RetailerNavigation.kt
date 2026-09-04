@@ -69,6 +69,7 @@ import com.pegasusx.retailer.ui.screens.settings.StoreStockScreen
 import com.pegasusx.retailer.ui.screens.settings.PosScreen
 import com.pegasusx.retailer.ui.screens.settings.ShiftsScreen
 import com.pegasusx.retailer.ui.screens.settings.SectionsScreen
+import com.pegasusx.retailer.ui.screens.settings.PlanogramScreen
 import com.pegasusx.retailer.ui.screens.settings.ReportsScreen
 import com.pegasusx.retailer.ui.screens.settings.AssistScreen
 import com.pegasusx.retailer.ui.screens.settings.LocalSkusScreen
@@ -427,8 +428,17 @@ fun RetailerNavigation(
                             onPosClick = { navController.navigate("POS") },
                             onShiftsClick = { navController.navigate("SHIFTS") },
                             onSectionsClick = { navController.navigate("SECTIONS") },
+                            onPlanogramsClick = { navController.navigate("PLANOGRAM") },
                             onReportsClick = { navController.navigate("REPORTS_PRO") },
                             onAssistClick = { navController.navigate("ASSIST") },
+                        )
+                    }
+                }
+                composable("PLANOGRAM") {
+                    Box(Modifier.fillMaxSize()) {
+                        PlanogramScreen(
+                            onNavigateBack = { navController.popBackStack() },
+                            onNavigateToStoreStock = { navController.navigate("STORE_STOCK") },
                         )
                     }
                 }

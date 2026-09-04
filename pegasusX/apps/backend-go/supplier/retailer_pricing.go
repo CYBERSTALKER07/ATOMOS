@@ -29,6 +29,7 @@ type createRetailerPriceOverrideRequest struct {
 	ProductID  string `json:"product_id"`
 	SkuID      string `json:"sku_id"`
 	Price      int64  `json:"price"`
+	Currency   string `json:"currency"`
 	Notes      string `json:"notes"`
 	ExpiresAt  string `json:"expires_at"`
 }
@@ -177,6 +178,24 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Resolve the supplier's canonical currency and validate the override matches.
+	supplierCurrency := s.currency
+	if supplierCurrency == "" {
+		supplierCurrency = "UZS"
+	}
+	reqCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
+	if reqCurrency == "" {
+		reqCurrency = supplierCurrency
+	}
+	if reqCurrency != supplierCurrency {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error":             "currency_mismatch",
+			"supplier_currency": supplierCurrency,
+			"provided_currency": reqCurrency,
+		})
+		return
+	}
+
 	expiresAt, err := parseOptionalRFC3339(req.ExpiresAt)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "expires_at_must_be_rfc3339"})
@@ -191,8 +210,8 @@ func (s *Service) createRetailerPriceOverride(w http.ResponseWriter, r *http.Req
 		if err := deactivateActiveOverrides(txnCtx, txn, sid, req.RetailerID, productID); err != nil {
 			return err
 		}
-		cols := []string{"OverrideId", "SupplierId", "RetailerId", "ProductId", "OverridePrice", "SetBy", "SetByRole", "IsActive", "CreatedAt", "UpdatedAt"}
-		vals := []any{overrideID, sid, req.RetailerID, productID, req.Price, setBy, setByRole, true, spanner.CommitTimestamp, spanner.CommitTimestamp}
+		cols := []string{"OverrideId", "SupplierId", "RetailerId", "ProductId", "OverridePrice", "Currency", "SetBy", "SetByRole", "IsActive", "CreatedAt", "UpdatedAt"}
+		vals := []any{overrideID, sid, req.RetailerID, productID, req.Price, reqCurrency, setBy, setByRole, true, spanner.CommitTimestamp, spanner.CommitTimestamp}
 		if strings.TrimSpace(req.Notes) != "" {
 			cols = append(cols, "Notes")
 			vals = append(vals, strings.TrimSpace(req.Notes))

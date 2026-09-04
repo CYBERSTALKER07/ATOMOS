@@ -1,0 +1,1290 @@
+openapi: 3.0.3
+info:
+  title: PegasusX Human JWT Core API
+  version: "1.0.0"
+  description: |
+    Codegen-ready OpenAPI for the high-traffic human JWT spine (~45 operations).
+    Authenticate with `Authorization: Bearer <JWT>` issued by role login/refresh.
+    Partner machine API is separate — see [`partner.openapi.yaml`](./partner.openapi.yaml).
+    This contract does **not** replace the hand-written `@pegasusx/api-client`; it is the
+    substrate for future openapi-typescript / SDK generation. Full ~411-path catalog is out of scope.
+servers:
+  - url: https://api-ssmr.pegasusx.app
+    description: SSMR
+security:
+  - BearerJWT: []
+paths:
+  /v1/auth/supplier/login:
+    post:
+      tags: [Auth]
+      summary: Supplier login
+      operationId: supplierLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierLoginResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/auth/supplier/refresh:
+    post:
+      tags: [Auth]
+      summary: Supplier token refresh
+      operationId: supplierRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Refreshed tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierLoginResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/auth/retailer/login:
+    post:
+      tags: [Auth]
+      summary: Retailer login
+      operationId: retailerLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerLoginResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/auth/retailer/refresh:
+    post:
+      tags: [Auth]
+      summary: Retailer token refresh
+      operationId: retailerRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Refreshed tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerLoginResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/auth/payloader/login:
+    post:
+      tags: [Auth]
+      summary: Payloader login
+      operationId: payloaderLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/auth/payloader/refresh:
+    post:
+      tags: [Auth]
+      summary: Payloader token refresh
+      operationId: payloaderRefresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          description: Refreshed tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/supplier/profile:
+    get:
+      tags: [Supplier]
+      summary: Get supplier profile
+      operationId: getSupplierProfile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierProfile"
+        "401":
+          $ref: "#/components/responses/Problem"
+    put:
+      tags: [Supplier]
+      summary: Update supplier profile
+      operationId: putSupplierProfile
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierProfileUpdateRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierProfile"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/retailer/profile:
+    get:
+      tags: [Retailer]
+      summary: Get retailer profile
+      operationId: getRetailerProfile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerProfile"
+        "401":
+          $ref: "#/components/responses/Problem"
+    put:
+      tags: [Retailer]
+      summary: Update retailer profile
+      operationId: putRetailerProfile
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerProfile"
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/order/create:
+    post:
+      tags: [Orders]
+      summary: Create order (retailer)
+      operationId: createOrder
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderSummary"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/orders:
+    get:
+      tags: [Orders]
+      summary: List orders (retailer alias)
+      operationId: listOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderListResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/orders/{orderID}:
+    get:
+      tags: [Orders]
+      summary: Get order by ID
+      operationId: getOrder
+      parameters:
+        - name: orderID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderSummary"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/order/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel order (retailer)
+      operationId: cancelOrder
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id]
+              properties:
+                order_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Cancelled
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/orders/request-cancel:
+    post:
+      tags: [Orders]
+      summary: Request order cancel
+      operationId: requestCancelOrder
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id]
+              properties:
+                order_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Cancel requested
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/orders/edit-preorder:
+    post:
+      tags: [Orders]
+      summary: Edit preorder (retailer)
+      operationId: editPreorder
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Preorder updated
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /v1/delivery/arrive:
+    post:
+      tags: [Delivery]
+      summary: Mark driver arrived at stop
+      operationId: deliveryArrive
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id]
+              properties:
+                order_id:
+                  type: string
+                lat:
+                  type: number
+                lng:
+                  type: number
+      responses:
+        "200":
+          description: Arrived
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/delivery/scan-qr:
+    post:
+      tags: [Delivery]
+      summary: Driver scan delivery QR
+      operationId: deliveryScanQr
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, qr_payload]
+              properties:
+                order_id:
+                  type: string
+                qr_payload:
+                  type: string
+      responses:
+        "200":
+          description: Scan accepted
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/delivery/confirm-cash:
+    post:
+      tags: [Delivery]
+      summary: Retailer confirm cash at door
+      operationId: deliveryConfirmCash
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id]
+              properties:
+                order_id:
+                  type: string
+                amount_minor:
+                  type: integer
+      responses:
+        "200":
+          description: Cash confirmed
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /v1/warehouse/ops/dashboard:
+    get:
+      tags: [Warehouse]
+      summary: Warehouse ops dashboard
+      operationId: warehouseOpsDashboard
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseOpsDashboard"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/board:
+    get:
+      tags: [Warehouse]
+      summary: Warehouse ops board
+      operationId: warehouseOpsBoard
+      responses:
+        "200":
+          description: Board
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/pulse:
+    get:
+      tags: [Warehouse]
+      summary: Warehouse ops pulse
+      operationId: warehouseOpsPulse
+      responses:
+        "200":
+          description: Pulse
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/dispatch/preview:
+    get:
+      tags: [Warehouse]
+      summary: Dispatch preview (GET)
+      operationId: warehouseDispatchPreviewGet
+      responses:
+        "200":
+          description: Preview
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+    post:
+      tags: [Warehouse]
+      summary: Dispatch preview (POST)
+      operationId: warehouseDispatchPreviewPost
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Preview
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/dispatch/execute:
+    post:
+      tags: [Warehouse]
+      summary: Execute dispatch
+      operationId: warehouseDispatchExecute
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Executed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/orders:
+    get:
+      tags: [Warehouse]
+      summary: Warehouse ops orders
+      operationId: warehouseOpsOrders
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WarehouseOrdersResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/warehouse/ops/preorders:
+    get:
+      tags: [Warehouse]
+      summary: Warehouse ops preorders
+      operationId: warehouseOpsPreorders
+      responses:
+        "200":
+          description: Preorders
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/supplier/inventory:
+    get:
+      tags: [Supplier]
+      summary: List supplier inventory
+      operationId: getSupplierInventory
+      responses:
+        "200":
+          description: Inventory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierInventoryResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [Supplier]
+      summary: Patch supplier inventory
+      operationId: patchSupplierInventory
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/manifests:
+    get:
+      tags: [Supplier]
+      summary: List supplier manifests
+      operationId: listSupplierManifests
+      responses:
+        "200":
+          description: Manifests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestListResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/manifests/{id}:
+    get:
+      tags: [Supplier]
+      summary: Get supplier manifest
+      operationId: getSupplierManifest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Manifest detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayloaderManifest"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/pricing/rules:
+    get:
+      tags: [Supplier]
+      summary: Get supplier pricing rules
+      operationId: getSupplierPricingRules
+      responses:
+        "200":
+          description: Pricing rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPricingRule"
+        "401":
+          $ref: "#/components/responses/Problem"
+    patch:
+      tags: [Supplier]
+      summary: Patch supplier pricing rules
+      operationId: patchSupplierPricingRules
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPricingRule"
+      responses:
+        "200":
+          description: Updated rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPricingRule"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/topology:
+    get:
+      tags: [Supplier]
+      summary: Get supplier topology
+      operationId: getSupplierTopology
+      responses:
+        "200":
+          description: Topology
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/retailer/stock:
+    get:
+      tags: [Retailer]
+      summary: List retailer stock
+      operationId: listRetailerStock
+      responses:
+        "200":
+          description: Stock rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetailerStockListResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/retailer/settings/auto-order:
+    get:
+      tags: [Retailer]
+      summary: Get retailer auto-order settings
+      operationId: getRetailerAutoOrderSettings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/retailer/suppliers:
+    get:
+      tags: [Retailer]
+      summary: List retailer supplier preferences
+      operationId: listRetailerSuppliers
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/payloader/trucks:
+    get:
+      tags: [Payload]
+      summary: List payloader trucks
+      operationId: listPayloaderTrucks
+      responses:
+        "200":
+          description: Trucks
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/payloader/manifests:
+    get:
+      tags: [Payload]
+      summary: List payloader manifests
+      operationId: listPayloaderManifests
+      responses:
+        "200":
+          description: Manifests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ManifestListResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/payloader/manifests/{manifestID}:
+    get:
+      tags: [Payload]
+      summary: Get payloader manifest
+      operationId: getPayloaderManifest
+      parameters:
+        - name: manifestID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Manifest detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayloaderManifest"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/payloader/manifests/{manifestID}/start-loading:
+    post:
+      tags: [Payload]
+      summary: Start loading manifest
+      operationId: startLoadingPayloaderManifest
+      parameters:
+        - name: manifestID
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Loading started
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/payloader/manifests/{manifestID}/seal:
+    post:
+      tags: [Payload]
+      summary: Seal payloader manifest
+      operationId: sealPayloaderManifest
+      parameters:
+        - name: manifestID
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Sealed
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/payload/seal:
+    post:
+      tags: [Payload]
+      summary: Payload seal (legacy path)
+      operationId: payloadSeal
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Sealed
+        "401":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /v1/returns/inbound:
+    get:
+      tags: [Returns]
+      summary: List inbound returns
+      operationId: listReturnsInbound
+      responses:
+        "200":
+          description: Inbound returns
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+
+  /v1/user/notifications:
+    get:
+      tags: [Shared]
+      summary: List user notifications
+      operationId: listUserNotifications
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationInboxResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/user/notifications/read:
+    post:
+      tags: [Shared]
+      summary: Mark notifications read
+      operationId: markNotificationsRead
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkNotificationsReadRequest"
+      responses:
+        "200":
+          description: Updated
+        "401":
+          $ref: "#/components/responses/Problem"
+  /v1/catalog/products:
+    get:
+      tags: [Shared]
+      summary: List catalog products
+      operationId: listCatalogProducts
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Problem"
+
+components:
+  securitySchemes:
+    BearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Human session JWT from role login/refresh
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Client-supplied idempotency key for mutating requests
+  responses:
+    Problem:
+      description: Problem+JSON error
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Problem:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+    AuthTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in_sec:
+          type: integer
+    SupplierLoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/AuthTokenResponse"
+        - type: object
+          properties:
+            supplier_id:
+              type: string
+            is_registered:
+              type: boolean
+            is_configured:
+              type: boolean
+            next_step:
+              type: string
+    RetailerLoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/AuthTokenResponse"
+        - type: object
+          properties:
+            retailer_id:
+              type: string
+            retailer_org_id:
+              type: string
+            user_id:
+              type: string
+            is_configured:
+              type: boolean
+    SupplierProfile:
+      type: object
+      properties:
+        supplier_id:
+          type: string
+        legal_name:
+          type: string
+        contact_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        country:
+          type: string
+        currency:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        is_registered:
+          type: boolean
+        is_configured:
+          type: boolean
+        gln:
+          type: string
+        gs1_company_prefix:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+    SupplierProfileUpdateRequest:
+      type: object
+      properties:
+        legal_name:
+          type: string
+        contact_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        categories:
+          type: array
+          items:
+            type: string
+        gln:
+          type: string
+        gs1_company_prefix:
+          type: string
+    RetailerProfile:
+      type: object
+      properties:
+        retailer_id:
+          type: string
+        legal_name:
+          type: string
+        contact_name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        is_configured:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+    CreateOrderRequest:
+      type: object
+      required: [line_items]
+      properties:
+        supplier_id:
+          type: string
+        line_items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              quantity:
+                type: integer
+        lat:
+          type: number
+        lng:
+          type: number
+        note:
+          type: string
+    OrderSummary:
+      type: object
+      properties:
+        order_id:
+          type: string
+        retailer_id:
+          type: string
+        supplier_id:
+          type: string
+        status:
+          type: string
+        total_minor:
+          type: integer
+        currency:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+    OrderListResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderSummary"
+    WarehouseOpsDashboard:
+      type: object
+      properties:
+        supplier_id:
+          type: string
+        inventory_skus:
+          type: integer
+        orders_open:
+          type: integer
+        dispatch_locks:
+          type: integer
+        supply_requests:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+    WarehouseOrdersResponse:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderSummary"
+    SupplierInventoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              product_name:
+                type: string
+              quantity:
+                type: number
+              updated_at:
+                type: string
+                format: date-time
+    SupplierPricingRule:
+      type: object
+      additionalProperties: true
+      description: Supplier pricing rules happy-path shape (aligned with @pegasusx/types)
+    PayloaderManifest:
+      type: object
+      properties:
+        manifest_id:
+          type: string
+        status:
+          type: string
+        state:
+          type: string
+        orders_count:
+          type: integer
+        driver_id:
+          type: string
+        driver_name:
+          type: string
+        vehicle_id:
+          type: string
+        truck_id:
+          type: string
+        total_vu:
+          type: number
+        sealed_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        orders:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    ManifestListResponse:
+      type: object
+      properties:
+        manifests:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayloaderManifest"
+    RetailerStockRow:
+      type: object
+      properties:
+        location_id:
+          type: string
+        stock_bin:
+          type: string
+        sku:
+          type: string
+        on_hand:
+          type: number
+        reserved:
+          type: number
+        available:
+          type: number
+    RetailerStockListResponse:
+      type: object
+      properties:
+        retailer_id:
+          type: string
+        location_id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RetailerStockRow"
+    NotificationItem:
+      type: object
+      properties:
+        id:
+          type: string
+        notification_id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        channel:
+          type: string
+        read_at:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    NotificationInboxResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationItem"
+        unread_count:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        has_more:
+          type: boolean
+    MarkNotificationsReadRequest:
+      type: object
+      properties:
+        notification_ids:
+          type: array
+          items:
+            type: string
+        mark_all:
+          type: boolean

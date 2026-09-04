@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,6 +34,7 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.payload.data.model.Truck
 import com.pegasus.payload.ui.components.ExplainStatusBanner
 import com.pegasus.payload.ui.components.ManifestKpiGrid
+import com.pegasus.payload.R
 
 @Composable
 fun ManifestDetailPane(
@@ -73,6 +76,16 @@ fun ManifestDetailPane(
                 )
                 return@Column
             }
+            val inboundLat = state.manifest?.driverLat
+            val inboundLng = state.manifest?.driverLng
+            if (inboundLat != null && inboundLng != null) {
+                Text(
+                    text = "Inbound truck ${if (state.manifest?.liveLocationAvailable == true) "LIVE" else "last known"}: " +
+                        "%.5f, %.5f".format(inboundLat, inboundLng),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             DetailHeader(
                 truck = truck,
                 onRefresh = onRefresh,
@@ -103,7 +116,7 @@ fun ManifestDetailPane(
 
             when {
                 state.loadingManifest -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading manifest",
+                    title = stringResource(R.string.mobile_payload_ui_loading_manifest),
                     body = "Syncing orders and volume for this vehicle.",
                 )
                 state.manifest == null -> PegasusStatePane(
@@ -206,11 +219,11 @@ fun DetailHeader(
         Spacer(Modifier.width(12.dp))
         if (showInject) {
             IconButton(onClick = onShowInject) {
-                Icon(Icons.Filled.Add, contentDescription = "Inject order")
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.mobile_payload_ui_inject_order))
             }
         }
         IconButton(onClick = onRefresh) {
-            Icon(Icons.Filled.Refresh, contentDescription = "Refresh manifest")
+            Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_manifest))
         }
     }
 }

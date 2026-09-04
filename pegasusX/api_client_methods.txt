@@ -65,7 +65,6 @@ getSupplierFleetVehicles
 getSupplierImportMapping
 getSupplierImportSession
 getSupplierInventory
-getSupplierInventoryAudit
 getSupplierKnowledgeGraph
 getSupplierMEIONetworkSummary
 getSupplierManifestDetail

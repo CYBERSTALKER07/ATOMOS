@@ -21,6 +21,17 @@ type Service struct {
 	log        *slog.Logger
 	promotions *promotion.Service
 	stock      *StockEnricher
+	globalHook ProductUpsertHook
+}
+
+// ProductUpsertHook is invoked after successful product create/update (GlobalProducts).
+type ProductUpsertHook interface {
+	OnProductUpserted(ctx context.Context, productID, supplierID, name, barcode string, priceMinor int64, currency string, unitsPerPack int64) error
+}
+
+// SetGlobalProductHook wires the optional GlobalProducts linker.
+func (s *Service) SetGlobalProductHook(h ProductUpsertHook) {
+	s.globalHook = h
 }
 
 // NewService creates a catalog service with the given dependencies.
@@ -89,8 +100,8 @@ func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retai
 }
 
 // ListProductsDiscovery returns active catalog rows across suppliers for retailer browse surfaces.
-func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID string, limit, offset int64) ([]RetailerProduct, error) {
-	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, limit, offset)
+func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID, marketCode string, limit, offset int64) ([]RetailerProduct, error) {
+	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, marketCode, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list discoverable products: %w", err)
 	}
@@ -179,6 +190,7 @@ func (s *Service) CreateProduct(ctx context.Context, p Product) error {
 	if s.cache != nil {
 		s.cache.Invalidate(ctx, "catalog:products:"+p.SupplierID)
 	}
+	s.notifyGlobalHook(ctx, p)
 	return nil
 }
 
@@ -224,7 +236,23 @@ func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
 			"catalog:product:"+p.ProductID,
 		)
 	}
+	s.notifyGlobalHook(ctx, p)
 	return nil
+}
+
+func (s *Service) notifyGlobalHook(ctx context.Context, p Product) {
+	if s.globalHook == nil {
+		return
+	}
+	var pack int64
+	if p.UnitsPerPack != nil {
+		pack = *p.UnitsPerPack
+	}
+	if err := s.globalHook.OnProductUpserted(ctx, p.ProductID, p.SupplierID, p.Name, p.Barcode, p.PriceMinor, p.Currency, pack); err != nil {
+		if s.log != nil {
+			s.log.WarnContext(ctx, "global products hook failed", "product_id", p.ProductID, "err", err)
+		}
+	}
 }
 
 func productHandlingEvent(p Product) events.ProductEvent {

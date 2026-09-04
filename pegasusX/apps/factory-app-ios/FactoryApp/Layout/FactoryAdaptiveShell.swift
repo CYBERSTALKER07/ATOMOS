@@ -6,6 +6,7 @@ struct FactoryAdaptiveShell: View {
     @State private var sidebarSelection: FactorySection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: FactoryCompactTab = .dashboard
+    @State private var pendingTransferFilter: String?
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
@@ -54,13 +55,16 @@ struct FactoryAdaptiveShell: View {
     private var compactShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("Dashboard", systemImage: FactorySection.dashboard.icon) }
+                .tabItem { Label("portal.nav.dashboard", systemImage: FactorySection.dashboard.icon) }
                 .tag(FactoryCompactTab.dashboard)
             sectionView(.loadingBay)
-                .tabItem { Label("Loading Bay", systemImage: FactorySection.loadingBay.icon) }
+                .tabItem { Label("portal.nav.loading_bay", systemImage: FactorySection.loadingBay.icon) }
                 .tag(FactoryCompactTab.loadingBay)
+            sectionView(.payloadLoad)
+                .tabItem { Label("portal.nav.payload", systemImage: FactorySection.payloadLoad.icon) }
+                .tag(FactoryCompactTab.payload)
             sectionView(.transfers)
-                .tabItem { Label("Transfers", systemImage: FactorySection.transfers.icon) }
+                .tabItem { Label("portal.nav.transfers", systemImage: FactorySection.transfers.icon) }
                 .tag(FactoryCompactTab.transfers)
             NavigationStack {
                 FactoryMoreHubView { section in
@@ -68,7 +72,7 @@ struct FactoryAdaptiveShell: View {
                     compactTab = .dashboard
                 }
             }
-            .tabItem { Label("More", systemImage: "ellipsis.circle") }
+            .tabItem { Label("mobile_factory.ui.more", systemImage: "ellipsis.circle") }
             .tag(FactoryCompactTab.more)
         }
     }
@@ -82,12 +86,21 @@ struct FactoryAdaptiveShell: View {
                 onOpenPayloadOverride: { sidebarSelection = .payloadOverride },
                 onOpenManifestExceptions: { sidebarSelection = .manifestExceptions },
                 onOpenAnalytics: { sidebarSelection = .analytics },
-                onOpenInsights: { sidebarSelection = .insights }
+                onOpenInsights: { sidebarSelection = .insights },
+                onOpenTransfers: { key in
+                    pendingTransferFilter = key
+                    sidebarSelection = .transfers
+                    compactTab = .transfers
+                },
+                onOpenLoadingBay: {
+                    sidebarSelection = .loadingBay
+                    compactTab = .loadingBay
+                }
             )
         case .loadingBay:
             LoadingBayView()
         case .transfers:
-            TransferListView()
+            TransferListView(initialFilter: pendingTransferFilter)
         case .fleet:
             FleetView()
         case .staff:
@@ -98,6 +111,8 @@ struct FactoryAdaptiveShell: View {
             SupplyRequestsView()
         case .payloadOverride:
             PayloadOverrideView()
+        case .payloadLoad:
+            PayloadLoadView()
         case .manifests:
             ManifestsView()
         case .manifestExceptions:

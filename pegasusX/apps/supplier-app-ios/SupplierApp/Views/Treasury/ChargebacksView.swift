@@ -6,7 +6,7 @@ struct ChargebacksView: View {
     @State private var retailerId = ""
     @State private var gateway = "ADYEN"
     @State private var amount = ""
-    @State private var currency = "UZS"
+    @State private var currency = packCurrency(MarketPackStore.pack)
     @State private var sessionId = ""
     @State private var busy = false
     @State private var chargebackMessage: String?
@@ -18,22 +18,22 @@ struct ChargebacksView: View {
     var body: some View {
         Form {
             Section {
-                Text("Record payment disputes and reversals against the durable finance ledger.")
+                Text("mobile_supplier.ui.record_payment_disputes_and_reversals_against_the_durable_financ")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
             Section("Record chargeback") {
-                TextField("Order ID", text: $orderId)
+                TextField("supplier_portal.admin.control_center.field.order_id", text: $orderId)
                     .textInputAutocapitalization(.never)
-                TextField("Retailer ID", text: $retailerId)
+                TextField("supplier_portal.chargebacks.text.retailer_id", text: $retailerId)
                     .textInputAutocapitalization(.never)
                 Picker("Gateway", selection: $gateway) {
                     ForEach(gateways, id: \.self) { Text($0).tag($0) }
                 }
-                TextField("Amount (minor units)", text: $amount)
+                TextField("supplier_portal.chargebacks.text.amount_minor_units", text: $amount)
                     .keyboardType(.numberPad)
-                TextField("Currency", text: $currency)
+                TextField("supplier_portal.chargebacks.text.currency", text: $currency)
                     .textInputAutocapitalization(.characters)
                 Button(busy ? "Recording…" : "Record chargeback") {
                     Task { await submitChargeback() }
@@ -45,7 +45,7 @@ struct ChargebacksView: View {
             }
 
             Section("Reverse chargeback") {
-                TextField("Session ID", text: $sessionId)
+                TextField("supplier_portal.admin.control_center.field.session_id", text: $sessionId)
                     .textInputAutocapitalization(.never)
                 Button(busy ? "Reversing…" : "Record reversal") {
                     Task { await submitReversal() }
@@ -60,7 +60,7 @@ struct ChargebacksView: View {
                 Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
             }
         }
-        .navigationTitle("Chargebacks")
+        .navigationTitle("portal.nav.chargebacks")
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busy {
                 busy = false

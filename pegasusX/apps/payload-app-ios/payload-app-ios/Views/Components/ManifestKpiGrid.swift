@@ -38,7 +38,7 @@ struct ManifestKpiGrid: View {
                 }
             }
 
-            Text("Manifest \(manifest.manifestId.prefix(8))")
+            Text(L10n.format("mobile_payload.ui.manifest_prefix", "\(manifest.manifestId.prefix(8))"))
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
                 .foregroundStyle(TermTheme.tertiary)
         }

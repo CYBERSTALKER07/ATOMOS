@@ -28,7 +28,7 @@ struct ClaimsView: View {
                 }
                 .font(.subheadline)
                 .padding(.horizontal, LabTheme.spacingMD)
-                Text("Read-only prep queue. Approve/reject stays supplier HQ.")
+                Text("mobile_warehouse.ui.read_only_prep_queue_approve_reject_stays_supplier_hq")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -41,18 +41,18 @@ struct ClaimsView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if let error {
                         ContentUnavailableView {
-                            Label("Error", systemImage: "exclamationmark.triangle")
+                            Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                         } description: {
                             Text(error)
                         } actions: {
-                            Button("Retry") { Task { await load() } }
+                            Button("common.action.retry") { Task { await load() } }
                         }
                     } else if claims.isEmpty {
                         ContentUnavailableView("No claims in this filter", systemImage: "doc.text")
                     } else {
                         List(claims) { c in
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                Text("\(c.claimType) · \(c.status)")
+                                Text(L10n.format("mobile_warehouse.ui.claimtype_status", "\(c.claimType)", "\(c.status)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(c.claimId)
@@ -62,11 +62,11 @@ struct ClaimsView: View {
                                         OrderDetailView(orderId: c.orderId)
                                     }
                                 }
-                                Text("Retailer \(c.retailerId) · \(c.amountMinor) \(c.currency)")
+                                Text(L10n.format("mobile_warehouse.ui.retailer_retailerid_amountminor_currency", "\(c.retailerId)", "\(c.amountMinor)", "\(c.currency)"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 ForEach(c.lineItems) { li in
-                                    Text("\(li.sku) × \(li.quantity)" + (li.reason.isEmpty ? "" : " (\(li.reason))"))
+                                    Text(L10n.format("mobile_warehouse.ui.sku_quantity", "\(li.sku)", "\(li.quantity)") + (li.reason.isEmpty ? "" : " (\(li.reason))"))
                                         .font(.caption)
                                 }
                                 if !c.description.isEmpty {
@@ -81,10 +81,10 @@ struct ClaimsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Claims")
+            .navigationTitle("portal.nav.claims")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
                 }
             }
             .task(id: status) { await load() }

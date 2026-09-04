@@ -257,6 +257,7 @@ func runGapClosureReverseLogisticsE2E(ctx context.Context, client *http.Client, 
 		Role:         auth.RoleWarehouse,
 		SupplierID:   supplierID,
 		SupplierRole: auth.RoleWarehouseAdmin,
+		HomeNodeType: auth.HomeNodeWarehouse,
 		HomeNodeID:   whID,
 	})
 	if err != nil {

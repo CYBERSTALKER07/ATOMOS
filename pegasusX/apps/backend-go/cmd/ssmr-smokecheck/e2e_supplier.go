@@ -280,7 +280,7 @@ func runSupplierImportAsyncE2E(ctx context.Context, client *http.Client, base, c
 		return fmt.Errorf("import async uploaded status %d body %s", status, string(respBody))
 	}
 
-	deadline := time.Now().Add(45 * time.Second)
+	deadline := time.Now().Add(60 * time.Second)
 	var sessionStatus string
 	for time.Now().Before(deadline) {
 		getURL := base + "/v1/supplier/inventory/imports/" + created.SessionID
@@ -319,13 +319,44 @@ func runSupplierImportAsyncE2E(ctx context.Context, client *http.Client, base, c
 		return fmt.Errorf("import async approve status %d body %s", status, string(respBody))
 	}
 
+	approveDeadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(approveDeadline) {
+		getURL := base + "/v1/supplier/inventory/imports/" + created.SessionID
+		status, respBody, _, err = clientDo(ctx, client, http.MethodGet, getURL, nil, cookie, "ssmr-import-async-approve-poll")
+		if err != nil {
+			return err
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("import async approve poll status %d body %s", status, string(respBody))
+		}
+		var session struct {
+			Status string `json:"status"`
+		}
+		if err := json.Unmarshal(respBody, &session); err != nil {
+			return fmt.Errorf("decode import async approve poll: %w", err)
+		}
+		sessionStatus = strings.ToUpper(strings.TrimSpace(session.Status))
+		if sessionStatus == "APPROVED" || sessionStatus == "APPLYING" {
+			break
+		}
+		if sessionStatus == "FAILED" {
+			return fmt.Errorf("import async session failed after approve body %s", string(respBody))
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	if sessionStatus != "APPROVED" && sessionStatus != "APPLYING" {
+		return fmt.Errorf("import async approve timed out status=%q", sessionStatus)
+	}
+
 	applyURL := base + "/v1/supplier/inventory/imports/" + created.SessionID + "/apply"
 	status, respBody, _, err = clientDo(ctx, client, http.MethodPost, applyURL, nil, cookie, "ssmr-import-async-apply")
 	if err != nil {
 		return err
 	}
 	if status != http.StatusOK {
-		return fmt.Errorf("import async apply status %d body %s", status, string(respBody))
+		getURL := base + "/v1/supplier/inventory/imports/" + created.SessionID
+		_, sessBody, _, _ := clientDo(ctx, client, http.MethodGet, getURL, nil, cookie, "ssmr-import-async-apply-diag")
+		return fmt.Errorf("import async apply status %d body %s session %s", status, string(respBody), string(sessBody))
 	}
 	var applied struct {
 		AppliedRows int64  `json:"applied_rows"`

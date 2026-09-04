@@ -1,176 +1,124 @@
-'use client';
-
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import Link from 'next/link';
-import StaggeredMenu from '@/components/StaggeredMenu';
-import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
+import AppsFamilyPage from '@/app/components/apps/AppsFamilyPage';
+import { EDITORIAL_IMAGES } from '@/app/components/apps/AppsFamilyPage';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
-gsap.registerPlugin(ScrollTrigger);
+function DeviceVisual({ labels }: { labels: string[] }) {
+  return (
+    <div className="w-full max-w-lg border border-white/20 bg-[#111] p-3">
+      <div className="mb-2 h-2 w-full bg-white/10" />
+      <div className="grid grid-cols-4 gap-2">
+        {labels.map((l) => (
+          <div
+            key={l}
+            className="aspect-video border border-white/10 text-[9px] font-mono uppercase text-white/40 flex items-center justify-center"
+          >
+            {l}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DesktopAppsPage() {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
-  const app1Ref = useRef<HTMLDivElement>(null);
-  const app2Ref = useRef<HTMLDivElement>(null);
-  const app3Ref = useRef<HTMLDivElement>(null);
-  const app4Ref = useRef<HTMLDivElement>(null);
-  const app5Ref = useRef<HTMLDivElement>(null);
-  const featuresRef = useRef<HTMLDivElement>(null);
-  const feature1Ref = useRef<HTMLDivElement>(null);
-  const feature2Ref = useRef<HTMLDivElement>(null);
-  const feature3Ref = useRef<HTMLDivElement>(null);
-  const feature4Ref = useRef<HTMLDivElement>(null);
-
-  const menuItems = [
-    { label: 'Home', ariaLabel: 'Go to home page', link: '/' },
-    { label: 'About', ariaLabel: 'Learn about me', link: '/#about' },
-    { label: 'Projects', ariaLabel: 'View all projects', link: '/#projects' },
-    { label: 'Web Apps', ariaLabel: 'View web applications', link: '/web-apps' },
-    { label: 'Mobile Apps', ariaLabel: 'View mobile applications', link: '/mobile-apps' },
-    { label: 'Desktop Apps', ariaLabel: 'View desktop applications', link: '/desktop-apps' },
-    { label: 'Contact', ariaLabel: 'Get in touch', link: '/#contact' }
-  ];
-
-  const socialItems = [
-    { label: 'GitHub', link: 'https://github.com' },
-    { label: 'LinkedIn', link: 'https://linkedin.com' },
-    { label: 'Twitter', link: 'https://twitter.com' }
-  ];
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Hero animations
-      gsap.from(titleRef.current, {
-        y: 100,
-        opacity: 0,
-        duration: 1,
-        ease: 'power4.out',
-      });
-
-      gsap.from(subtitleRef.current, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        delay: 0.2,
-        ease: 'power4.out',
-      });
-
-      // App card animations
-      const appRefs = [app1Ref, app2Ref, app3Ref, app4Ref, app5Ref];
-      
-      appRefs.forEach((ref, index) => {
-        gsap.from(ref.current, {
-          scrollTrigger: {
-            trigger: ref.current,
-            start: 'top 80%',
-            toggleActions: 'play none none reverse',
-          },
-          x: index % 2 === 0 ? -100 : 100,
-          opacity: 0,
-          duration: 1,
-          ease: 'power3.out',
-        });
-      });
-
-      // Features section animation - individual cards
-      const featureRefs = [feature1Ref, feature2Ref, feature3Ref, feature4Ref];
-      
-      featureRefs.forEach((ref, index) => {
-        if (ref.current) {
-          gsap.from(ref.current, {
-            scrollTrigger: {
-              trigger: ref.current,
-              start: 'top 85%',
-              toggleActions: 'play none none reverse',
-            },
-            y: 50,
-            opacity: 0,
-            duration: 0.8,
-            delay: index * 0.15,
-            ease: 'power3.out',
-          });
-        }
-      });
-    });
-
-    return () => ctx.revert();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* StaggeredMenu */}
-      <StaggeredMenu
-        position="right"
-        items={menuItems}
-        socialItems={socialItems}
-        displaySocials={true}
-        displayItemNumbering={true}
-        menuButtonColor="#FFFFFF"
-        openMenuButtonColor="#000000"
-        changeMenuColorOnOpen={true}
-        colors={['#0D0D0D', '#1a1a1a', '#000000']}
-        accentColor="#A9EBF9"
-        isFixed={true}
-        onMenuOpen={() => console.log('Menu opened')}
-        onMenuClose={() => console.log('Menu closed')}
-      />
-
-      {/* Hero Section */}
-      <section ref={heroRef} className="min-h-screen flex items-center justify-center px-4 md:px-8 pt-24 md:pt-0">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1
-            ref={titleRef}
-            className="text-5xl md:text-7xl lg:text-8xl font-light mb-8"
-          >
-            Retailer Desktop
-          </h1>
-          <p
-            ref={subtitleRef}
-            className="text-xl md:text-2xl text-[#C0C0C0] max-w-3xl mx-auto"
-          >
-            Native desktop apps for retailer teams — catalog, checkout, and live delivery tracking at the counter
-          </p>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 md:px-8">
-        <div className="max-w-7xl mx-auto editorial-grid grid grid-cols-1 lg:grid-cols-2">
-          <div ref={app1Ref} className="lg:col-span-2">
-            <ContentCard variant="featured" tone="light" eyebrow="DISCOVER THE PLATFORM" title="Retailer Desktop (Tauri)" description="Fast native desktop app for retailer ordering — catalog with zone checks, scheduled delivery windows, checkout, and live shipment tracking from the store counter." image={SITE_IMAGES.truckTerminal} href="/#contact" ctaLabel="REQUEST DEMO" ctaStyle="button" />
-          </div>
-          <div ref={app2Ref}>
-            <ContentCard variant="split" tag="Supplier" title="Supplier Ops Dashboard" description="Executive view across the network — order vetting queues, dispatch preview, treasury reconciliation, and topology management for multi-site suppliers." image={SITE_IMAGES.operationsTeam} href="/#contact" ctaLabel="READ MORE" />
-          </div>
-          <div ref={app3Ref}>
-            <ContentCard variant="split" tone="light" tag="Warehouse" title="Warehouse Dispatch Console" description="Desktop-grade dispatch boards for depot managers — visual load planning, fleet map, and gate coordination during peak hours." image={SITE_IMAGES.warehouseWireframe} href="/#contact" ctaLabel="READ MORE" />
-          </div>
-          <div ref={app4Ref}>
-            <ContentCard variant="vertical" tag="Tracking" title="Fleet Command Center" description="Large-screen fleet telemetry with planned-vs-actual routes and deviation alerts for ops teams." image={EDITORIAL_IMAGES[0]} href="/#contact" ctaLabel="READ MORE" />
-          </div>
-          <div ref={app5Ref}>
-            <ContentCard variant="vertical" tone="light" tag="Treasury" title="Treasury Workstation" description="Supplier finance teams reconcile card, cash-on-delivery, and driver collections with audit-ready records." image={EDITORIAL_IMAGES[1]} href="/#contact" ctaLabel="READ MORE" />
-          </div>
-        </div>
-      </section>
-
-      <section className="py-20 px-4 md:px-8 bg-black">
-        <div className="max-w-5xl mx-auto">
-          <ContentCard variant="featured" tone="light" eyebrow="NEXT STEP" title="Desktop Parity for Retailer Teams" description="Give store counters a fast native app with the same catalog, checkout, and tracking as mobile." image={EDITORIAL_IMAGES[2]} href="/join" ctaLabel="REQUEST DEMO" ctaStyle="button" />
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 px-4 md:px-8 border-t-2 border-white">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-[#C0C0C0]">
-            © 2025 Pegasus. All rights reserved.
-          </p>
-        </div>
-      </footer>
-    </div>
+    <AppsFamilyPage
+      config={{
+        surface: 'desktop',
+        title: 'Desktop Command Centers',
+        subtitle:
+          'Electron and native desktop apps for control-room teams — multi-monitor dispatch, treasury, and network oversight.',
+        laneLabel: 'Desktop',
+        deviceVisual: <DeviceVisual labels={['Map', 'Board', 'Treasury', 'Alerts']} />,
+        featured: {
+          tag: 'Control room',
+          title: 'Supplier Desktop Console',
+          description:
+            'Multi-monitor oversight for supplier ops — vetting queues, dispatch preview, and treasury in one workspace.',
+          image: SITE_IMAGES.logisticsPlatformUi,
+          href: '/join',
+          ctaLabel: 'REQUEST DEMO',
+        },
+        apps: [
+          {
+            tag: 'Dispatch',
+            title: 'Warehouse Desktop Board',
+            description: 'Large-format dispatch for morning peak — drag trucks, override assignments, seal loads.',
+            image: SITE_IMAGES.warehouseAutomation,
+            href: '/join',
+          },
+          {
+            tag: 'Analytics',
+            title: 'Network Analytics',
+            description: 'Desktop dashboards for SLA, OTD, and cohort retention across sites.',
+            image: EDITORIAL_IMAGES[4],
+            href: '/join',
+            tone: 'light',
+          },
+          {
+            tag: 'Integrations',
+            title: 'ERP Bridge',
+            description: 'Desktop agent for ERP sync and batch reconciliation.',
+            image: EDITORIAL_IMAGES[5],
+            href: '/join',
+            variant: 'vertical',
+          },
+        ],
+        features: [
+          { tag: 'Multi-monitor', title: 'Control Room Layout', description: 'Span boards across displays.', image: EDITORIAL_IMAGES[0], href: '/join' },
+          { tag: 'Keyboard', title: 'Power User Shortcuts', description: 'Dispatch without the mouse.', image: EDITORIAL_IMAGES[1], href: '/join', tone: 'light' },
+          { tag: 'Offline', title: 'Local Cache', description: 'Keep working through outages.', image: EDITORIAL_IMAGES[2], href: '/join' },
+          { tag: 'Security', title: 'Device Trust', description: 'Managed installs for enterprise.', image: EDITORIAL_IMAGES[3], href: '/join', tone: 'light' },
+        ],
+      }}
+      configRu={{
+        surface: 'desktop',
+        title: 'Десктопные командные центры',
+        subtitle:
+          'Electron и нативные десктоп-приложения для команд в диспетчерской — мультимониторная диспетчеризация, казначейство и контроль сети.',
+        laneLabel: 'Десктоп',
+        deviceVisual: <DeviceVisual labels={['Карта', 'Доска', 'Казна', 'Алерты']} />,
+        featured: {
+          tag: 'Диспетчерская',
+          title: 'Десктоп-консоль поставщика',
+          description:
+            'Мультимониторный контроль для операций поставщика — очереди проверки, превью диспетчеризации и казначейство в одном рабочем пространстве.',
+          image: SITE_IMAGES.logisticsPlatformUi,
+          href: '/join',
+          ctaLabel: 'ЗАПРОСИТЬ ДЕМО',
+        },
+        apps: [
+          {
+            tag: 'Диспетчеризация',
+            title: 'Десктоп-доска склада',
+            description: 'Крупноформатная диспетчеризация для утреннего пика — перетаскивание грузовиков, переопределения, пломбирование.',
+            image: SITE_IMAGES.warehouseAutomation,
+            href: '/join',
+          },
+          {
+            tag: 'Аналитика',
+            title: 'Аналитика сети',
+            description: 'Десктоп-дашборды SLA, OTD и удержания когорт по площадкам.',
+            image: EDITORIAL_IMAGES[4],
+            href: '/join',
+            tone: 'light',
+          },
+          {
+            tag: 'Интеграции',
+            title: 'ERP-мост',
+            description: 'Десктоп-агент для синхронизации с ERP и пакетной сверки.',
+            image: EDITORIAL_IMAGES[5],
+            href: '/join',
+            variant: 'vertical',
+          },
+        ],
+        features: [
+          { tag: 'Мультимонитор', title: 'Раскладка диспетчерской', description: 'Доски на нескольких экранах.', image: EDITORIAL_IMAGES[0], href: '/join' },
+          { tag: 'Клавиатура', title: 'Горячие клавиши', description: 'Диспетчеризация без мыши.', image: EDITORIAL_IMAGES[1], href: '/join', tone: 'light' },
+          { tag: 'Офлайн', title: 'Локальный кэш', description: 'Работайте при сбоях сети.', image: EDITORIAL_IMAGES[2], href: '/join' },
+          { tag: 'Безопасность', title: 'Доверие устройства', description: 'Управляемые установки для enterprise.', image: EDITORIAL_IMAGES[3], href: '/join', tone: 'light' },
+        ],
+      }}
+    />
   );
 }

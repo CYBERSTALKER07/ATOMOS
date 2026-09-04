@@ -99,13 +99,20 @@ func (s *WebhookInboxStore) ProcessPending(ctx context.Context, svc *Service, li
 			return processed, fmt.Errorf("list webhook inbox: %w", err)
 		}
 		var webhookID, gateway, source string
-		var recordJSON []byte
+		var recordJSON spanner.NullJSON
 		var attempts int64
 		if err := row.Columns(&webhookID, &gateway, &recordJSON, &source, &attempts); err != nil {
 			continue
 		}
 		var record WebhookRecord
-		if err := json.Unmarshal(recordJSON, &record); err != nil {
+		
+		recordBytes, marshalErr := json.Marshal(recordJSON.Value)
+		if marshalErr != nil {
+			_ = s.markDead(ctx, webhookID, attempts, marshalErr)
+			continue
+		}
+		
+		if err := json.Unmarshal(recordBytes, &record); err != nil {
 			_ = s.markDead(ctx, webhookID, attempts, err)
 			continue
 		}

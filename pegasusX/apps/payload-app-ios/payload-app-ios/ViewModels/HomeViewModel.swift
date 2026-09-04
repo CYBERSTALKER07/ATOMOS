@@ -50,6 +50,7 @@ final class HomeViewModel {
 
     private(set) var pulseEvents: [PulseEvent] = []
     private(set) var pulseLoading = false
+    private(set) var pulseError: String?
 
     // MARK: - Phase 6 state
     private(set) var notifications: [NotificationItem] = []
@@ -119,8 +120,14 @@ final class HomeViewModel {
         defer { if !silent { loadingTrucks = false } }
         do {
             let result = try await api.trucks()
-            trucks = result
-            if selectedTruckId == nil, let first = result.first?.id {
+            var board: [Manifest] = []
+            for state in ManifestBoard.states {
+                if let rows = try? await api.listLoadingBayManifests(state: state) {
+                    board.append(contentsOf: rows)
+                }
+            }
+            trucks = ManifestBoard.attach(trucks: result, manifests: board)
+            if selectedTruckId == nil, let first = trucks.first?.id {
                 await selectTruck(first)
             }
         } catch {
@@ -173,7 +180,11 @@ final class HomeViewModel {
             let loading = try await api.loadingManifests().manifests
             var ready: [String] = []
             for item in loading {
-                guard let manifestTruckId = item.truckId else { continue }
+                // Batch seal-completed is payloader-only; factory seals via /v1/factory/.../seal.
+                guard item.source != "factory" else { continue }
+                let manifestTruckId = item.truckId.flatMap { $0.isEmpty ? nil : $0 }
+                    ?? item.vehicleId.flatMap { $0.isEmpty ? nil : $0 }
+                guard let manifestTruckId else { continue }
                 let truckOrders: [LiveOrder]
                 if manifestTruckId == truckId {
                     truckOrders = orders
@@ -199,7 +210,7 @@ final class HomeViewModel {
         batchSealFailures = []
         defer { batchSealing = false }
         do {
-            let response = try await api.sealCompletedManifests(manifestIds: batchReadyManifestIds)
+            let response = try await api.sealAllManifests()
             let failures = (response.results ?? []).filter { ($0.status ?? "") != "sealed" && !($0.status ?? "").isEmpty }
             if !failures.isEmpty {
                 batchSealFailures = failures
@@ -253,13 +264,14 @@ final class HomeViewModel {
         if !silent { loadingManifest = true }
         defer { if !silent { loadingManifest = false } }
         do {
-            let draft = try await api.supplierManifests(state: "DRAFT")
-            if let match = draft.manifests.first(where: { $0.truckId == truckId }) {
-                manifest = match
-                return
+            for state in ManifestBoard.states {
+                let rows = try await api.listLoadingBayManifests(state: state)
+                if let match = rows.first(where: { $0.matchesTruck(truckId) }) {
+                    manifest = match
+                    return
+                }
             }
-            let loading = try await api.supplierManifests(state: "LOADING")
-            manifest = loading.manifests.first(where: { $0.truckId == truckId })
+            manifest = nil
         } catch {
             if !silent { self.error = describe(error) }
         }
@@ -377,12 +389,20 @@ final class HomeViewModel {
 
     // MARK: - Manifest-level transitions
     func startLoading() async {
-        guard let id = manifest?.manifestId, !startingLoading else { return }
+        guard let current = manifest, !startingLoading else { return }
         startingLoading = true
         error = nil
         defer { startingLoading = false }
         do {
-            _ = try await api.supplierStartLoading(manifestId: id)
+            if current.source == "factory" {
+                _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+            } else {
+                do {
+                    _ = try await api.supplierStartLoading(manifestId: current.manifestId)
+                } catch {
+                    _ = try await api.factoryStartLoading(manifestId: current.manifestId)
+                }
+            }
             manifest = manifest.map { mutateState($0, to: "LOADING") }
         } catch {
             self.error = describe(error)
@@ -394,18 +414,23 @@ final class HomeViewModel {
     }
 
     func sealManifest() async {
-        guard let id = manifest?.manifestId, !sealingManifest else { return }
+        guard let current = manifest, !sealingManifest else { return }
         sealingManifest = true
         error = nil
         errorExplain = nil
         defer { sealingManifest = false }
         do {
-            let manifestIds = batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(id)
+            let factoryOnly = current.source == "factory"
+            let manifestIds = !factoryOnly && batchReadyManifestIds.count > 1 && batchReadyManifestIds.contains(current.manifestId)
                 ? batchReadyManifestIds
-                : [id]
-            _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+                : [current.manifestId]
+            if factoryOnly {
+                _ = try await api.factorySealManifest(manifestId: current.manifestId)
+            } else {
+                _ = try await api.sealCompletedManifests(manifestIds: manifestIds)
+            }
             manifestSealed = true
-            if manifestIds.count > 1 {
+            if !factoryOnly && manifestIds.count > 1 {
                 batchReadyManifestIds = []
                 sealedOrdersByTruck = [:]
             }
@@ -592,12 +617,17 @@ final class HomeViewModel {
 
     func refreshPulse() async {
         pulseLoading = true
+        pulseError = nil
         defer { pulseLoading = false }
         do {
             let response = try await api.pulse()
-            pulseEvents = response.events
+            let result = PulseHonesty.apply(ok: true, incoming: response.events, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         } catch {
-            pulseEvents = []
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+            pulseEvents = result.events
+            pulseError = result.error
         }
     }
 
@@ -664,7 +694,7 @@ final class HomeViewModel {
     }
 
     private func handleFrame(_ frame: WsMessage) {
-        if frame.type == "PAYLOAD_SYNC" {
+        if frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false) {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let silent = self.manifest != nil || !self.orders.isEmpty
@@ -736,6 +766,7 @@ final class HomeViewModel {
         Manifest(
             manifestId: m.manifestId,
             truckId: m.truckId,
+            vehicleId: m.vehicleId,
             driverId: m.driverId,
             state: state,
             totalVolumeVu: m.totalVolumeVu,
@@ -746,7 +777,8 @@ final class HomeViewModel {
             dispatchedAt: m.dispatchedAt,
             createdAt: m.createdAt,
             orders: m.orders,
-            overflowCount: m.overflowCount
+            overflowCount: m.overflowCount,
+            source: m.source
         )
     }
 

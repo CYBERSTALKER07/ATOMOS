@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +35,7 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import com.pegasusx.supplier.R
 
 private const val STYLE_URL = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
 private val ROUTE_COLORS = listOf(
@@ -58,7 +61,7 @@ fun DispatchPreviewMapLibre(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "Route preview unavailable until optimizer proposes stops with coordinates.",
+                text = stringResource(R.string.supplier_portal_dispatch_preview_map_text_route_preview_unavailable_until_optimizer_proposes_stops_with_co),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

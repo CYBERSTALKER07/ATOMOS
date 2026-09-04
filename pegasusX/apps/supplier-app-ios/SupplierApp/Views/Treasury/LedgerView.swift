@@ -19,14 +19,14 @@ struct LedgerView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(row.entryType).font(.headline)
                             Text(MoneyFormat.minor(row.amountMinor, currency: row.currency)).font(.subheadline)
-                            if let orderId = row.orderId { Text("Order \(orderId)").font(.caption) }
+                            if let orderId = row.orderId { Text(L10n.format("mobile_supplier.ui.order_orderid_2", "\(orderId)")).font(.caption) }
                             Text(row.occurredAt).font(.caption)
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Payment ledger")
+        .navigationTitle("mobile_supplier.ui.payment_ledger")
         .task { await load() }
     }
 

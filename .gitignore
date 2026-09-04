@@ -2,6 +2,9 @@
 .DS_Store
 Thumbs.db
 
+# === Agent memory (keep WORKSPACE.md; ignore session scratch) ===
+.agents/memory/sessions/
+
 # === IDE ===
 .idea/
 *.iml
@@ -44,6 +47,15 @@ local.properties
 *.ipa
 *.dSYM.zip
 
+# === Python ===
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
 # === Secrets ===
 .env
 .env.*
@@ -63,10 +75,14 @@ local.properties
 *.log
 tmp/
 .git_backup/
-.git_backup/
 pegasus/backend-go
 pegasus/*-ai-worker
 node_modules/
 dist/
-.git_backup/
-pegasus/backend-go
+
+# === CodeGraph Cache ===
+.cgr-*
+**/.cgr-*
+.dynamic_watcher_status.json
+**/.dynamic_watcher_status.json
+

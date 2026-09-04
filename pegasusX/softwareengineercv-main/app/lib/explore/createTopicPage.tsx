@@ -9,6 +9,7 @@ import CategoryHubClient from '@/app/components/explore/CategoryHubClient';
 import TopicPageClient from '@/app/components/explore/TopicPageClient';
 import type { ExploreCategoryId } from '@/app/data/topicTypes';
 import { pageMetadata } from '@/app/lib/seo';
+import { getServerLanguage } from '@/app/lib/i18n/server';
 
 export function createCategoryHubPage(categoryId: ExploreCategoryId) {
   return function CategoryHubPage() {
@@ -19,9 +20,10 @@ export function createCategoryHubPage(categoryId: ExploreCategoryId) {
 }
 
 export function createCategoryHubMetadata(categoryId: ExploreCategoryId) {
-  return function generateMetadata(): Metadata {
+  return async function generateMetadata(): Promise<Metadata> {
     const hub = getCategoryHub(categoryId);
     if (!hub) return { title: 'Explore' };
+    const lang = await getServerLanguage();
     const description =
       hub.promo?.body ??
       `Explore ${hub.label} on Pegasus — dispatch, fleet tracking, payments, and role-specific logistics software.`;
@@ -29,6 +31,7 @@ export function createCategoryHubMetadata(categoryId: ExploreCategoryId) {
       title: hub.label,
       description,
       path: `/${categoryId}`,
+      language: lang,
     });
   };
 }
@@ -67,10 +70,13 @@ export function createTopicMetadata(categoryId: ExploreCategoryId) {
     const { slug } = await params;
     const topic = getTopicByPath(categoryId, slug);
     if (!topic) return { title: 'Topic' };
+    const lang = await getServerLanguage();
+    const content = topic.content[lang] || topic.content.en;
     return pageMetadata({
-      title: topic.content.title,
-      description: topic.content.summary,
+      title: content.title,
+      description: content.summary,
       path: topic.href,
+      language: lang,
     });
   };
 }

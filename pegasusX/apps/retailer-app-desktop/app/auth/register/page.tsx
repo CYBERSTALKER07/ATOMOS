@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -11,6 +12,7 @@ import {
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { FormAlert } from "@pegasusx/ui-kit/portal";
 import { storeToken } from "@/lib/bridge";
+import { sessionMapCenter } from "@pegasusx/api-core";
 import { resetPhoneOtpFlow, sendPhoneOtp, verifyPhoneOtp } from "@/lib/firebase";
 import {
   INITIAL_STATE,
@@ -28,6 +30,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 // Store location and tax setup live at /setup/* post-registration.
 
 export default function RetailerRegisterPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,7 +72,7 @@ export default function RetailerRegisterPage() {
           verification: { otpCode: "", idToken: "" },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+        setSubmitError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.failed_to_send_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -87,7 +90,7 @@ export default function RetailerRegisterPage() {
           verification: { ...s.verification, idToken },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+        setSubmitError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.invalid_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -123,8 +126,8 @@ export default function RetailerRegisterPage() {
         body: JSON.stringify({
           phone,
           name: state.profile.legalName.trim(),
-          lat: 41.2995,
-          lng: 69.2401,
+          lat: sessionMapCenter()?.lat ?? 0,
+          lng: sessionMapCenter()?.lng ?? 0,
           delivery_address: "Pending setup",
         }),
       });
@@ -157,7 +160,7 @@ export default function RetailerRegisterPage() {
 
       router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Registration failed");
+      setSubmitError(err instanceof Error ? err.message : t("supplier_portal.auth.register.error.registration_failed"));
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +168,7 @@ export default function RetailerRegisterPage() {
 
   return (
     <AuthRegisterShell
-      title="Set up your retailer account"
+      title={t("retailer_desktop.auth.register.text.set_up_your_retailer_account")}
       subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
       stepOrder={STEP_ORDER}
       stepLabels={STEP_LABELS}

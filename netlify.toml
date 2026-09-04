@@ -1,0 +1,20 @@
+# Marketing site (Next.js) — pegasusX/softwareengineercv-main
+# Force npm in the app folder so pnpm does not hoist the pegasusX workspace install
+# (which does not include this package and leaves `next` missing).
+
+[build]
+  base = "pegasusX/softwareengineercv-main"
+  command = "npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Netlify may still pick pnpm via parent monorepo lockfiles/packageManager.
+  # Skip that auto-install (pnpm 9 rejects `--version` on `install`); `npm ci` below installs this app.
+  PNPM_FLAGS = "--help"
+  NPM_FLAGS = "--version"
+  NODE_VERSION = "20"
+  # Site assistant (xAI / Grok): set XAI_API_KEY in Netlify UI → Site configuration →
+  # Environment variables (never commit the key). Optional: XAI_MODEL=grok-3-mini
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

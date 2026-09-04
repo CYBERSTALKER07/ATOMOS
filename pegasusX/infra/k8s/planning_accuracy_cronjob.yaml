@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pegasusx-planning-accuracy
+  namespace: pegasusx
+spec:
+  schedule: "0 3 * * *" # Daily 03:00 UTC — after predictive-push (01:00) and training-export (02:30)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: pegasusx-planning-accuracy
+        spec:
+          containers:
+          - name: planning-accuracy
+            image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
+            command:
+            - "/usr/local/bin/planning-accuracy"
+            args:
+            - "-days"
+            - "28"
+            envFrom:
+            - secretRef:
+                name: backend-go-secrets
+            - configMapRef:
+                name: backend-go-config
+            resources:
+              requests:
+                cpu: "250m"
+                memory: "512Mi"
+              limits:
+                cpu: "500m"
+                memory: "1Gi"
+          restartPolicy: OnFailure

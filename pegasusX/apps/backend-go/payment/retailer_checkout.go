@@ -18,10 +18,25 @@ import (
 // ErrGatewayMismatch is returned when a session exists but the requested gateway differs.
 var ErrGatewayMismatch = errors.New("gateway mismatch")
 
+// ErrCurrencyMismatch is returned when request currency differs from the order currency.
+var ErrCurrencyMismatch = errors.New("currency_mismatch")
+
+// ErrOrderSnapshotRequired is returned when card checkout cannot load the order total.
+var ErrOrderSnapshotRequired = errors.New("order_snapshot_required")
+
+// ErrCheckoutAmountMismatch is returned when a client amount disagrees with the order total.
+var ErrCheckoutAmountMismatch = errors.New("amount_mismatch")
+
 // OrderCheckoutReader loads persisted order totals for retailer payment flows.
 type OrderCheckoutReader interface {
 	CheckoutSnapshot(ctx context.Context, orderID, retailerID string) (totalMinor int64, currency string, err error)
 	CheckoutOrderContext(ctx context.Context, orderID, retailerID string) (order.CheckoutOrderContext, error)
+}
+
+// OrderCashSelector marks an order as cash-at-delivery (durable Spanner + outbox).
+// Implemented by order.Service.SelectCashAtDelivery.
+type OrderCashSelector interface {
+	SelectCashAtDelivery(ctx context.Context, orderID, retailerID, actorID string) (status string, amountMinor int64, currency string, err error)
 }
 
 // BindOrderCheckoutReader wires order totals for card/cash checkout handlers.
@@ -29,11 +44,17 @@ func (s *Service) BindOrderCheckoutReader(reader OrderCheckoutReader) {
 	s.orderReader = reader
 }
 
+// BindOrderCashSelector wires durable cash selection (B1 M-P0-5).
+func (s *Service) BindOrderCashSelector(sel OrderCashSelector) {
+	s.orderCash = sel
+}
+
 type retailerCardCheckoutRequest struct {
 	OrderID     string `json:"order_id"`
 	Gateway     string `json:"gateway"`
 	Amount      int64  `json:"amount"`
 	AmountMinor int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
 	ReturnURL   string `json:"return_url"`
 	InvoiceID   string `json:"invoice_id"`
 }
@@ -97,34 +118,40 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// B3 M-P0-4: multi-user JWT — checkout ownership is org id.
 	retailerID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok && claims.Subject != "" {
-		retailerID = claims.Subject
+	if claims, ok := auth.FromContext(r.Context()); ok {
+		retailerID = auth.ResolveRetailerOrgID(claims)
 	}
 	if retailerID == "" {
 		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/order/card-checkout", false, "")
 		return
 	}
 
-	amountMinor := req.AmountMinor
-	if amountMinor <= 0 {
-		amountMinor = req.Amount
+	if s.orderReader == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "order_snapshot_required", "order snapshot required for card checkout", "/v1/order/card-checkout", false, "")
+		return
 	}
-	currency := s.currency
-	if amountMinor <= 0 && s.orderReader != nil {
-		total, orderCurrency, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
-		if snapErr != nil {
-			s.writeOrderCheckoutError(w, "/v1/order/card-checkout", snapErr)
+	snapTotal, orderCurrency, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
+	if snapErr != nil {
+		s.writeOrderCheckoutError(w, "/v1/order/card-checkout", snapErr)
+		return
+	}
+	amountMinor, amtErr := resolveCardCheckoutAmount(req.AmountMinor, req.Amount, snapTotal)
+	if amtErr != nil {
+		if errors.Is(amtErr, ErrCheckoutAmountMismatch) {
+			writeJSONError(w, http.StatusUnprocessableEntity, "amount_mismatch", "amount_minor must match order total", "/v1/order/card-checkout", false, "")
 			return
 		}
-		amountMinor = total
-		if strings.TrimSpace(orderCurrency) != "" {
-			currency = orderCurrency
-		}
-	}
-	if amountMinor <= 0 {
-		writeJSONError(w, http.StatusBadRequest, "invalid_request", "amount is required", "/v1/order/card-checkout", false, "")
+		writeJSONError(w, http.StatusUnprocessableEntity, "order_snapshot_required", "order total is required", "/v1/order/card-checkout", false, "")
 		return
+	}
+	currency := strings.TrimSpace(req.Currency)
+	if currency == "" && strings.TrimSpace(orderCurrency) != "" {
+		currency = orderCurrency
+	}
+	if currency == "" {
+		currency = s.currency
 	}
 
 	checkoutReq := CheckoutRequest{
@@ -138,6 +165,13 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		if errors.Is(err, ErrGatewayMismatch) {
 			writeJSONError(w, http.StatusConflict, "gateway_mismatch", "cannot change gateway for an active session", "/v1/order/card-checkout", false, "")
+			return
+		}
+		if errors.Is(err, ErrCurrencyMismatch) {
+			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "request currency must match order currency", "/v1/order/card-checkout", false, "")
+			return
+		}
+		if writeCheckoutPackError(w, "/v1/order/card-checkout", err) {
 			return
 		}
 		s.writeExecutionError(w, "/v1/order/card-checkout", err)
@@ -178,6 +212,7 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 }
 
 // HandleOrderCashCheckout serves POST /v1/order/cash-checkout.
+// B1 M-P0-5: must mutate Spanner to PENDING_CASH_COLLECTION + outbox (via orderCash).
 func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/order/cash-checkout", false, "")
@@ -206,31 +241,51 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	retailerID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok && claims.Subject != "" {
-		retailerID = claims.Subject
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusUnauthorized, "unauthorized", "unauthorized", "/v1/order/cash-checkout", false, "")
+		return
 	}
+	// B3 M-P0-4: org-scoped cash selection; actor remains staff user id.
+	retailerID := auth.ResolveRetailerOrgID(claims)
 	if retailerID == "" {
 		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/order/cash-checkout", false, "")
 		return
 	}
+	actorID := auth.ResolveRetailerUserID(claims)
+	if actorID == "" {
+		actorID = claims.Subject
+	}
 
-	amountMinor := int64(0)
-	if s.orderReader != nil {
-		total, _, snapErr := s.orderReader.CheckoutSnapshot(r.Context(), req.OrderID, retailerID)
-		if snapErr != nil {
-			s.writeOrderCheckoutError(w, "/v1/order/cash-checkout", snapErr)
-			return
-		}
-		amountMinor = total
+	pack, packErr := auth.RequireCheckoutPack(claims)
+	if packErr != nil {
+		writeCheckoutPackError(w, "/v1/order/cash-checkout", packErr)
+		return
+	}
+	if err := auth.AssertPackPSP(pack, DefaultPaymentMethod); err != nil {
+		writeCheckoutPackError(w, "/v1/order/cash-checkout", err)
+		return
+	}
+
+	if s.orderCash == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "cash_selector_unwired",
+			"Cash selection requires order service wiring; use POST /v1/delivery/confirm-cash",
+			"/v1/order/cash-checkout", false, "")
+		return
+	}
+
+	status, amountMinor, _, err := s.orderCash.SelectCashAtDelivery(r.Context(), req.OrderID, retailerID, actorID)
+	if err != nil {
+		s.writeOrderCheckoutError(w, "/v1/order/cash-checkout", err)
+		return
 	}
 
 	resp := retailerCashCheckoutResponse{
 		OrderID:    req.OrderID,
-		State:      "PENDING",
+		State:      status,
 		Amount:     amountMinor,
 		RetailerID: retailerID,
-		Message:    "cash checkout accepted",
+		Message:    "awaiting_driver_cash_collection",
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.persistIdempotencyRecord(r.Context(), r.Header.Get("Idempotency-Key"), sha256Hex(body), http.StatusOK, respBytes, 24*time.Hour)
@@ -238,6 +293,22 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(respBytes)
+}
+
+// resolveCardCheckoutAmount uses the persisted order total. A positive client
+// amount is accepted only when it matches the snapshot.
+func resolveCardCheckoutAmount(clientMinor, clientLegacy, snapTotal int64) (int64, error) {
+	if snapTotal <= 0 {
+		return 0, ErrOrderSnapshotRequired
+	}
+	client := clientMinor
+	if client <= 0 {
+		client = clientLegacy
+	}
+	if client > 0 && client != snapTotal {
+		return 0, ErrCheckoutAmountMismatch
+	}
+	return snapTotal, nil
 }
 
 func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string, err error) {
@@ -250,37 +321,71 @@ func (s *Service) writeOrderCheckoutError(w http.ResponseWriter, endpoint string
 		writeJSONError(w, http.StatusUnprocessableEntity, "backorder_payment_deferred", "backorder payment is deferred until fulfillment", endpoint, false, "")
 	case errors.Is(err, order.ErrPaymentBeforeDelivery):
 		writeJSONError(w, http.StatusUnprocessableEntity, "payment_before_delivery_not_allowed", "payment is collected at delivery after offload", endpoint, false, "")
+	case errors.Is(err, order.ErrInvalidStatusTransition):
+		writeJSONError(w, http.StatusConflict, "invalid_status_for_cash_selection", err.Error(), endpoint, false, "")
 	default:
 		writeJSONError(w, http.StatusInternalServerError, "order_lookup_failed", err.Error(), endpoint, false, "")
 	}
 }
 
-func (s *Service) initCheckoutSession(ctx context.Context, mode string, req CheckoutRequest) (SessionRecord, PaymentAttemptRecord, ExecutionResult, error) {
-	resolvedCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
-	if resolvedCurrency == "" {
-		resolvedCurrency = s.currency
+func writeCheckoutPackError(w http.ResponseWriter, endpoint string, err error) bool {
+	if errors.Is(err, auth.ErrMarketPackUnknown) || errors.Is(err, auth.ErrMarketPackNotShipped) ||
+		errors.Is(err, auth.ErrPackGatewayForbidden) || errors.Is(err, auth.ErrPackCurrencyMismatch) {
+		st, code := auth.CheckoutPackHTTPStatus(err)
+		writeJSONError(w, st, code, err.Error(), endpoint, false, "")
+		return true
 	}
+	return false
+}
+
+func (s *Service) initCheckoutSession(ctx context.Context, mode string, req CheckoutRequest) (SessionRecord, PaymentAttemptRecord, ExecutionResult, error) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
+	resolvedCurrency, err := auth.ResolveCheckoutCurrency(pack, req.Currency)
+	if err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
+	requestHadCurrency := strings.TrimSpace(req.Currency) != ""
 
 	warehouseID := ""
+	orderCurrency := ""
 	if s.orderReader != nil {
 		if orderCtx, err := s.orderReader.CheckoutOrderContext(ctx, req.OrderID, req.RetailerID); err == nil {
-			if orderCtx.Currency != "" && resolvedCurrency == s.currency {
-				resolvedCurrency = strings.ToUpper(strings.TrimSpace(orderCtx.Currency))
-			}
+			orderCurrency = strings.ToUpper(strings.TrimSpace(orderCtx.Currency))
 			warehouseID = orderCtx.WarehouseID
 		}
 	}
+	if orderCurrency != "" {
+		if requestHadCurrency && resolvedCurrency != orderCurrency {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrCurrencyMismatch
+		}
+		if !strings.EqualFold(orderCurrency, pack.CurrencyCode) {
+			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, auth.ErrPackCurrencyMismatch
+		}
+	}
 
+	supplierID := s.resolveSupplierID(ctx)
 	policy := NormalizeGatewayPolicy(PaymentAcceptorSupplier, nil, "SUPPLIER_DEFAULT")
 	if s.policy != nil {
-		resolved, err := s.policy.Resolve(ctx, s.supplierID, warehouseID)
+		resolved, err := s.policy.Resolve(ctx, supplierID, warehouseID)
 		if err != nil {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
 		}
 		policy = resolved
 	}
+	policy = applyPackToGatewayPolicy(policy, pack)
 
-	req.Gateway = policy.ResolveCardGateway(req.Gateway)
+	req.Gateway = auth.CanonicalPSP(req.Gateway)
+	if mode == "CASH" {
+		req.Gateway = DefaultPaymentMethod
+	} else {
+		req.Gateway = policy.ResolveCardGateway(req.Gateway)
+	}
+	if err := auth.AssertPackPSP(pack, req.Gateway); err != nil {
+		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
+	}
 	if mode != "CASH" {
 		if err := policy.ValidateCardGateway(req.Gateway); err != nil {
 			return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err
@@ -291,6 +396,20 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 		if existing.Status == "PAYMENT_REQUIRED" || existing.Status == "AWAITING_PAYMENT" {
 			if existing.Gateway != "" && req.Gateway != "" && !strings.EqualFold(existing.Gateway, req.Gateway) {
 				return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, ErrGatewayMismatch
+			}
+			if existing.AmountMinor == req.AmountMinor && (req.Gateway == "" || strings.EqualFold(existing.Gateway, req.Gateway)) {
+				return existing, PaymentAttemptRecord{
+					SessionID:       existing.SessionID,
+					Gateway:         existing.Gateway,
+					ExecutionAction: string(ExecutionActionCheckoutInit),
+					Status:          "INITIATED",
+					CreatedAt:       existing.CreatedAt,
+					UpdatedAt:       existing.UpdatedAt,
+				}, ExecutionResult{
+					ResolvedGateway: existing.Gateway,
+					Mode:            ExecutionMode(existing.Mode),
+					PolicySource:    policy.PolicySource,
+				}, nil
 			}
 		}
 	}
@@ -313,7 +432,7 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 	session := SessionRecord{
 		SessionID:   s.newID("psess"),
 		OrderID:     req.OrderID,
-		SupplierID:  s.supplierID,
+		SupplierID:  supplierID,
 		RetailerID:  req.RetailerID,
 		Gateway:     executionResult.ResolvedGateway,
 		Currency:    resolvedCurrency,

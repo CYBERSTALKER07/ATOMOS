@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
+import LanguageSwitcher from './LanguageSwitcher';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 export type PillNavItem = {
@@ -52,7 +53,22 @@ const PillNav: React.FC<PillNavProps> = ({
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
 
-  const displayItems = categories ? categories.map(c => ({ label: c.label, href: c.viewAllHref || '#', id: c.id })) : items;
+  const displayItems = useMemo(
+    () =>
+      categories
+        ? categories.map((c) => ({ label: c.label, href: c.viewAllHref || '#', id: c.id }))
+        : items,
+    [categories, items],
+  );
+
+  // Content signature — ignore array identity so form re-renders don't restart GSAP.
+  const navLayoutKey = useMemo(
+    () =>
+      categories
+        ? categories.map((c) => `${c.id}:${c.label}`).join('|')
+        : items.map((i) => `${i.href}:${i.label}`).join('|'),
+    [categories, items],
+  );
 
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
@@ -63,6 +79,7 @@ const PillNav: React.FC<PillNavProps> = ({
   const navItemsRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const introPlayedRef = useRef(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -158,7 +175,9 @@ const PillNav: React.FC<PillNavProps> = ({
       gsap.set(menu, { visibility: 'hidden', opacity: 0, scaleY: 1, y: 0 });
     }
 
-    if (initialLoadAnimation) {
+    // Play the entrance animation once per mount — never on form focus/typing re-renders.
+    if (initialLoadAnimation && !introPlayedRef.current) {
+      introPlayedRef.current = true;
       const logo = logoRef.current;
       const navItems = navItemsRef.current;
 
@@ -167,7 +186,7 @@ const PillNav: React.FC<PillNavProps> = ({
         gsap.to(logo, {
           scale: 1,
           duration: 0.6,
-          ease
+          ease,
         });
       }
 
@@ -177,13 +196,13 @@ const PillNav: React.FC<PillNavProps> = ({
           opacity: 1,
           x: 0,
           duration: 0.6,
-          ease
+          ease,
         });
       }
     }
 
     return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation, showMenuButton]);
+  }, [navLayoutKey, ease, initialLoadAnimation, showMenuButton]);
 
   useEffect(() => {
     const navItems = navItemsRef.current;
@@ -438,7 +457,8 @@ const PillNav: React.FC<PillNavProps> = ({
             </ul>
           </div>
 
-          <div className="shrink-0 ml-auto flex items-center gap-0 pointer-events-auto">
+          <div className="shrink-0 ml-auto flex items-center gap-2 pointer-events-auto">
+            <LanguageSwitcher className="mr-1 sm:mr-2" />
             <button
               ref={hamburgerRef}
               onClick={toggleMobileMenu}

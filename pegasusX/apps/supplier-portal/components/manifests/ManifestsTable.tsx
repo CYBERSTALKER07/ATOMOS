@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import Link from 'next/link';
 import type { SupplierManifestRow } from '@pegasusx/types';
@@ -8,15 +11,16 @@ interface ManifestsTableProps {
 }
 
 export function ManifestsTable({ items }: ManifestsTableProps) {
+  const t = usePortalT();
   return (
     <div className="md-card overflow-hidden">
       <table className="desk-table w-full">
         <thead>
           <tr className="border-b border-[var(--color-md-outline-variant)] text-[var(--color-md-outline)]">
-            <th className="md-typescale-label-medium p-4 font-medium text-left">Manifest</th>
-            <th className="md-typescale-label-medium p-4 font-medium text-left">Status</th>
-            <th className="md-typescale-label-medium p-4 font-medium text-right">Orders</th>
-            <th className="md-typescale-label-medium p-4 font-medium text-left">Driver</th>
+            <th className="md-typescale-label-medium p-4 font-medium text-left">{t("supplier_portal.manifest_exceptions.text.manifest")}</th>
+            <th className="md-typescale-label-medium p-4 font-medium text-left">{t("supplier_portal.compliance.text.status")}</th>
+            <th className="md-typescale-label-medium p-4 font-medium text-right">{t("portal.nav.orders")}</th>
+            <th className="md-typescale-label-medium p-4 font-medium text-left">{t("supplier_portal.analytics.route_performance.text.driver")}</th>
           </tr>
         </thead>
         <tbody>

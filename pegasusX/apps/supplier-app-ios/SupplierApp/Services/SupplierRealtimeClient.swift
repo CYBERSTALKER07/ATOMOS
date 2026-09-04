@@ -85,7 +85,9 @@ final class SupplierRealtimeClient {
         else if raw.hasPrefix("http") { base = raw.trimmingCharacters(in: CharacterSet(charactersIn: "/")) }
         else { base = "http://\(raw):8180" }
         #else
-        let base = "https://api.pegasus.uz"
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let base = raw.isEmpty ? "https://api.pegasusx.app" : raw.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         #endif
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
         var components = URLComponents(string: base)!

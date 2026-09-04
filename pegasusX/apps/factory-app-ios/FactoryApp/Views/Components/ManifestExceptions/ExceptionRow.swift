@@ -12,14 +12,14 @@ struct ExceptionRow: View {
                     .font(.headline)
                 Spacer()
                 if exception.escalated {
-                    Text("Escalated")
+                    Text("factory_portal.residual.text.escalated")
                         .font(.caption.bold())
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(LabTheme.destructive.opacity(0.15), in: Capsule())
                 }
             }
-            Text("Transfer \(shortId(exception.transferId)) · Manifest \(shortId(exception.manifestId))")
+            Text(L10n.format("mobile_factory.ui.transfer_shortid_manifest_shortid_2", "\(shortId(exception.transferId))", "\(shortId(exception.manifestId))"))
                 .font(.footnote.monospaced())
                 .foregroundStyle(.secondary)
             Text(attemptLabel)

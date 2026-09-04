@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
@@ -49,7 +50,7 @@ function MetricCard({
       <h3 className={`text-sm font-medium ${alert ? "text-red-800" : "text-gray-500"}`}>{title}</h3>
       <p className={`text-3xl font-bold mt-2 ${alert ? "text-red-600" : "text-gray-900"}`}>{value}</p>
       {href ? (
-        <p className="text-xs text-gray-500 mt-2 underline">View in Exception Centre</p>
+        <p className="text-xs text-gray-500 mt-2 underline">{"View in Exception Centre"}</p>
       ) : null}
     </div>
   );
@@ -64,6 +65,7 @@ function MetricCard({
 }
 
 export default function ComplianceDashboard() {
+  const t = usePortalT();
   const supplierId = sessionSupplierId();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<ProblemOrder[]>([]);
@@ -76,7 +78,7 @@ export default function ComplianceDashboard() {
       setLoading(false);
       setStats(null);
       setOrders([]);
-      setError("No supplier session. Sign in again to load compliance for your tenant.");
+      setError(t("supplier_portal.residual.text.no_supplier_session_sign_in_again_to_load_compliance_for_your_te"));
       return;
     }
     try {
@@ -92,7 +94,7 @@ export default function ComplianceDashboard() {
       setStats(data.stats);
       setOrders(data.orders || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load compliance stats");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_compliance_stats"));
       setStats(null);
       setOrders([]);
     } finally {
@@ -125,7 +127,7 @@ export default function ComplianceDashboard() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Export failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.export_failed"));
     } finally {
       setExporting(false);
     }
@@ -134,9 +136,9 @@ export default function ComplianceDashboard() {
   if (!supplierId) {
     return (
       <div className="p-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold tracking-tight">Compliance & Fiscal Audit</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t("supplier_portal.compliance.text.compliance_and_fiscal_audit")}</h1>
         <p className="text-gray-500 mt-2">
-          No supplier session. Sign in again to load compliance for your tenant.
+          {t("supplier_portal.residual.text.no_supplier_session_sign_in_again_to_load_compliance_for_your_te")}
         </p>
       </div>
     );
@@ -146,7 +148,7 @@ export default function ComplianceDashboard() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Compliance & Fiscal Audit</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("supplier_portal.compliance.text.compliance_and_fiscal_audit")}</h1>
           <p className="text-gray-500 mt-2">
             Track open fiscal states, claim mismatches, and ecosystem integrity for {supplierId}.
           </p>
@@ -163,32 +165,32 @@ export default function ComplianceDashboard() {
       {error ? <div className="text-red-600 text-sm">{error}</div> : null}
 
       {loading ? (
-        <div className="text-gray-500 text-center py-12">Loading statistics...</div>
+        <div className="text-gray-500 text-center py-12">{t("supplier_portal.compliance.text.loading_statistics")}</div>
       ) : (
         <>
           {stats && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-              <MetricCard title="Fiscalizing" value={stats.fiscalizing} />
-              <MetricCard title="Fiscal Failed" value={stats.fiscalFailed} alert={stats.fiscalFailed > 0} />
-              <MetricCard title="Force Completed" value={stats.forceCompleted} alert={stats.forceCompleted > 0} />
-              <MetricCard title="BA Pending" value={stats.buyerAcceptancePending} />
-              <MetricCard title="BA Rejected" value={stats.buyerAcceptanceRejected} alert={stats.buyerAcceptanceRejected > 0} />
-              <MetricCard title="Claim Mismatches" value={stats.claimMismatches} alert={stats.claimMismatches > 0} />
-              <MetricCard title="Credit Frozen" value={stats.creditFrozen} alert={stats.creditFrozen > 0} />
+              <MetricCard title={t("supplier_portal.compliance.text.fiscalizing")} value={stats.fiscalizing} />
+              <MetricCard title={t("supplier_portal.compliance.text.fiscal_failed")} value={stats.fiscalFailed} alert={stats.fiscalFailed > 0} />
+              <MetricCard title={t("supplier_portal.compliance.text.force_completed")} value={stats.forceCompleted} alert={stats.forceCompleted > 0} />
+              <MetricCard title={t("supplier_portal.compliance.text.ba_pending")} value={stats.buyerAcceptancePending} />
+              <MetricCard title={t("supplier_portal.compliance.text.ba_rejected")} value={stats.buyerAcceptanceRejected} alert={stats.buyerAcceptanceRejected > 0} />
+              <MetricCard title={t("supplier_portal.compliance.text.claim_mismatches")} value={stats.claimMismatches} alert={stats.claimMismatches > 0} />
+              <MetricCard title={t("supplier_portal.compliance.text.credit_frozen")} value={stats.creditFrozen} alert={stats.creditFrozen > 0} />
               <MetricCard
-                title="Open Credit Notes"
+                title={t("supplier_portal.compliance.text.open_credit_notes")}
                 value={stats.openCreditNotes}
                 alert={stats.openCreditNotes > 0}
                 href={"/finance/credit-notes" as Route}
               />
               <MetricCard
-                title="Open Reverse Logistics"
+                title={t("supplier_portal.compliance.text.open_reverse_logistics")}
                 value={stats.openReverseLogisticsTasks}
                 alert={stats.openReverseLogisticsTasks > 0}
                 href={"/exceptions" as Route}
               />
               <MetricCard
-                title="Open Cash Discrepancies"
+                title={t("supplier_portal.compliance.text.open_cash_discrepancies")}
                 value={stats.openCashDiscrepancies}
                 alert={stats.openCashDiscrepancies > 0}
                 href={"/treasury/cash-reconciliations" as Route}
@@ -197,22 +199,22 @@ export default function ComplianceDashboard() {
           )}
 
           {!stats && !error ? (
-            <div className="text-gray-500 text-center py-12">No compliance stats for this supplier yet.</div>
+            <div className="text-gray-500 text-center py-12">{t("supplier_portal.compliance.text.no_compliance_stats_for_this_supplier_yet")}</div>
           ) : null}
 
           {orders && orders.length > 0 && (
             <div className="mt-12">
-              <h2 className="text-xl font-bold mb-4">Problematic Orders</h2>
+              <h2 className="text-xl font-bold mb-4">{t("supplier_portal.compliance.text.problematic_orders")}</h2>
               <div className="overflow-x-auto border border-gray-200 rounded-lg">
                 <table className="w-full text-left text-sm text-gray-500">
                   <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3">Order ID</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Fiscal Status</th>
-                      <th className="px-4 py-3">EHF ID</th>
-                      <th className="px-4 py-3">BA Status</th>
-                      <th className="px-4 py-3">Created At</th>
+                      <th className="px-4 py-3">{t("supplier_portal.admin.control_center.field.order_id")}</th>
+                      <th className="px-4 py-3">{t("supplier_portal.compliance.text.status")}</th>
+                      <th className="px-4 py-3">{t("supplier_portal.compliance.text.fiscal_status")}</th>
+                      <th className="px-4 py-3">{t("supplier_portal.compliance.text.ehf_id")}</th>
+                      <th className="px-4 py-3">{t("supplier_portal.compliance.text.ba_status")}</th>
+                      <th className="px-4 py-3">{t("supplier_portal.compliance.text.created_at")}</th>
                     </tr>
                   </thead>
                   <tbody>

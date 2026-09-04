@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,11 +15,12 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierReplenishmentPolicy
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +55,7 @@ fun ReplenishmentPoliciesScreen(
                 title = { Text("Replenishment policies") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -108,6 +111,25 @@ fun ReplenishmentPoliciesScreen(
                         Modifier.weight(1f),
                     )
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
+                    SupplierKpiTile(
+                        "Service level",
+                        "${(policy!!.targetServiceLevel * 100).toInt()}%",
+                        Icons.Default.Policy,
+                        Modifier.weight(1f),
+                    )
+                    SupplierKpiTile(
+                        "Lead days / σ",
+                        "${policy!!.leadTimeDays} / ${policy!!.leadTimeSigmaDays}",
+                        Icons.Default.Speed,
+                        Modifier.weight(1f),
+                    )
+                }
+                Text(
+                    "Lead σ is assumed until ≥10 transfers have ReceivedAt history.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

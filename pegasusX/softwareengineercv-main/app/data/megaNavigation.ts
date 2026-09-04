@@ -45,7 +45,17 @@ export const MEGA_NAV_FOOTER_LINKS = [
   { label: 'Request Demo', href: '/join' },
   { label: 'Contact', href: '/contact' },
   { label: 'All Modules', href: '/projects' },
-] as const;
+];
+
+export const getMegaNavFooterLinks = (t?: (key: string, fallback?: string) => string) => {
+  if (!t) return MEGA_NAV_FOOTER_LINKS;
+  return [
+    { label: t('footer_about', 'About'), href: '/#about' },
+    { label: t('nav_demo', 'Request Demo'), href: '/join' },
+    { label: t('nav_contact', 'Contact'), href: '/contact' },
+    { label: t('nav_all_modules', 'All Modules'), href: '/projects' },
+  ];
+};
 
 export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
   {
@@ -53,17 +63,17 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     label: 'Platform',
     viewAllHref: '/platform',
     links: [
-      { slug: 'atomos-control-plane', label: 'ATOMOS Control Plane', description: 'One platform. Six roles. Zero blind spots.', href: topicHref('platform', 'atomos-control-plane'), flow: 'controlPlane', relatedProjectSlug: 'supplier-control-plane' },
+      { slug: 'atomos-control-plane', label: 'Control Plane', description: 'One platform. Six roles. Zero blind spots.', href: topicHref('platform', 'atomos-control-plane'), flow: 'controlPlane', relatedProjectSlug: 'supplier-control-plane' },
       { slug: 'how-pegasus-works', label: 'How Pegasus Works', description: 'Supplier-led networks from order to payment.', href: topicHref('platform', 'how-pegasus-works'), flow: 'orderLifecycle' },
       { slug: 'order-lifecycle', label: 'Order Lifecycle', description: 'Placed → Loaded → In transit → Arrived → Completed.', href: topicHref('platform', 'order-lifecycle'), flow: 'orderLifecycle', relatedProjectSlug: 'supplier-control-plane' },
       { slug: 'supplier-control-plane', label: 'Supplier Control Plane', description: 'Vetting, topology, treasury, and dispatch preview.', href: topicHref('platform', 'supplier-control-plane'), flow: 'controlPlane', relatedProjectSlug: 'supplier-control-plane' },
-      { slug: 'mutating-handler-contract', label: 'Mutating Handler Contract', description: 'Verify → Validate → Save → Refresh → Notify.', href: topicHref('platform', 'mutating-handler-contract'), flow: 'mutatingHandler' },
-      { slug: 'reliable-updates', label: 'Reliable Updates', description: 'Transactional outbox — no mismatched screens.', href: topicHref('platform', 'reliable-updates'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'mutating-handler-contract', label: 'Safe Updates', description: 'Check → Confirm → Save → Refresh → Notify.', href: topicHref('platform', 'mutating-handler-contract'), flow: 'mutatingHandler' },
+      { slug: 'reliable-updates', label: 'Reliable Updates', description: 'Every app stays aligned after each change.', href: topicHref('platform', 'reliable-updates'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'network-topology', label: 'Network Topology', description: 'Warehouses, factories, zones, and gate seals.', href: topicHref('platform', 'network-topology'), flow: 'topologyMap', relatedProjectSlug: 'network-topology' },
       { slug: 'trust-reliability', label: 'Trust & Reliability', description: 'Status accuracy, payment safety, human override.', href: topicHref('platform', 'trust-reliability'), flow: 'orderLifecycle' },
     ],
     promo: {
-      title: 'The ATOMOS Control Plane',
+      title: 'The Pegasus Control Plane',
       body: 'Digitize tribal knowledge, connect every function, and run one agile planning and execution model end-to-end.',
       primaryLabel: 'EXPLORE PLATFORM',
       primaryHref: '/platform',
@@ -76,15 +86,15 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     label: 'Solutions',
     viewAllHref: '/solutions',
     links: [
-      { slug: 'dispatch-the-right-load', label: 'Dispatch the Right Load', description: 'Peak-window misloads eliminated with visual boards.', href: topicHref('solutions', 'dispatch-the-right-load'), flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
-      { slug: 'visual-dispatch-engine', label: 'Visual Dispatch Engine', description: 'Match trucks to orders with warehouse override.', href: topicHref('solutions', 'visual-dispatch-engine'), flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
-      { slug: 'fleet-visibility', label: 'Fleet Visibility', description: 'See your fleet as it moves — planned vs actual.', href: topicHref('solutions', 'fleet-visibility'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
-      { slug: 'live-fleet-tracking', label: 'Live Fleet Tracking', description: 'Deviation alerts and retailer tracking views.', href: topicHref('solutions', 'live-fleet-tracking'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
-      { slug: 'payment-confidence', label: 'Payment Confidence', description: 'Checkout, COD, treasury, and disputes.', href: topicHref('solutions', 'payment-confidence'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
-      { slug: 'treasury-integrity', label: 'Treasury Integrity', description: 'Close the books without surprises.', href: topicHref('solutions', 'treasury-integrity'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
-      { slug: 'network-coordination', label: 'Network Coordination', description: 'Fragmented truth replaced by one live platform.', href: topicHref('solutions', 'network-coordination'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
-      { slug: 'warehouse-operations', label: 'Warehouse Operations', description: 'Pre-order hub, stock commitments, fleet CRUD.', href: topicHref('solutions', 'warehouse-operations'), flow: 'dispatchBoard', relatedProjectSlug: 'warehouse-operations' },
-      { slug: 'factory-loading', label: 'Factory Loading', description: 'Supply requests, manifest lifecycle, loading bay.', href: topicHref('solutions', 'factory-loading'), flow: 'orderLifecycle', relatedProjectSlug: 'factory-loading' },
+      { slug: 'dispatch-the-right-load', label: 'Dispatch the Right Load', description: 'Peak-window misloads eliminated with visual boards.', href: '/capabilities/smarter-dispatch', flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
+      { slug: 'visual-dispatch-engine', label: 'Visual Dispatch Engine', description: 'Match trucks to orders with warehouse override.', href: '/capabilities/smarter-dispatch', flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
+      { slug: 'fleet-visibility', label: 'Fleet Visibility', description: 'See your fleet as it moves — planned vs actual.', href: '/capabilities/live-fleet-tracking', flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
+      { slug: 'live-fleet-tracking', label: 'Live Fleet Tracking', description: 'Deviation alerts and retailer tracking views.', href: '/capabilities/live-fleet-tracking', flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
+      { slug: 'payment-confidence', label: 'Payment Confidence', description: 'Checkout, COD, treasury, and disputes.', href: '/capabilities/payment-confidence', flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
+      { slug: 'treasury-integrity', label: 'Treasury Integrity', description: 'Close the books without surprises.', href: '/roles/finance', flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
+      { slug: 'network-coordination', label: 'Network Coordination', description: 'Fragmented truth replaced by one live platform.', href: '/capabilities/instant-coordination', flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'warehouse-operations', label: 'Warehouse Operations', description: 'Pre-order hub, stock commitments, fleet CRUD.', href: '/roles/warehouse', flow: 'dispatchBoard', relatedProjectSlug: 'warehouse-operations' },
+      { slug: 'factory-loading', label: 'Factory Loading', description: 'Supply requests, manifest lifecycle, loading bay.', href: '/roles/factory', flow: 'orderLifecycle', relatedProjectSlug: 'factory-loading' },
     ],
     promo: {
       title: 'Proven value for physical logistics',
@@ -123,10 +133,10 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     viewAllHref: '/capabilities',
     links: [
       { slug: 'smarter-dispatch', label: 'Smarter Dispatch', description: 'Match orders to trucks; warehouse always in control.', href: topicHref('capabilities', 'smarter-dispatch'), flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
-      { slug: 'reliable-updates', label: 'Reliable Updates', description: 'Outbox pattern — consistent state across apps.', href: topicHref('capabilities', 'reliable-updates'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'reliable-updates', label: 'Reliable Updates', description: 'Consistent state across every app after each change.', href: topicHref('capabilities', 'reliable-updates'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'payment-confidence', label: 'Payment Confidence', description: 'Card, COD, treasury, and dispute handling.', href: topicHref('capabilities', 'payment-confidence'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
-      { slug: 'live-fleet-tracking', label: 'Live Fleet Tracking', description: 'Telemetry with planned vs actual routes.', href: topicHref('capabilities', 'live-fleet-tracking'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
-      { slug: 'instant-coordination', label: 'Instant Coordination', description: 'WebSocket refresh across web and mobile.', href: topicHref('capabilities', 'instant-coordination'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'live-fleet-tracking', label: 'Live Fleet Tracking', description: 'Planned vs actual routes with live tracking.', href: topicHref('capabilities', 'live-fleet-tracking'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
+      { slug: 'instant-coordination', label: 'Instant Coordination', description: 'Live refresh across web and mobile.', href: topicHref('capabilities', 'instant-coordination'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'connected-network', label: 'Connected Network', description: 'Topology, zones, and service areas.', href: topicHref('capabilities', 'connected-network'), flow: 'topologyMap', relatedProjectSlug: 'network-topology' },
       { slug: 'returns-barcode-gate', label: 'Returns & Barcode Gate', description: 'Inbound returns with accountability.', href: topicHref('capabilities', 'returns-barcode-gate'), flow: 'exceptionPlaybook', relatedProjectSlug: 'payload-gate-control' },
       { slug: 'dispatch-preview', label: 'Dispatch Preview', description: 'Supplier override before trucks roll.', href: topicHref('capabilities', 'dispatch-preview'), flow: 'controlPlane', relatedProjectSlug: 'supplier-control-plane' },
@@ -137,20 +147,21 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     label: 'Technology',
     viewAllHref: '/technology',
     links: [
-      { slug: 'go-backend-platform', label: 'Go Backend Platform', description: 'Modular monolith with role-scoped routes.', href: topicHref('technology', 'go-backend-platform'), flow: 'techStack' },
-      { slug: 'cloud-spanner', label: 'Cloud Spanner', description: 'Transactional datastore with outbox pattern.', href: topicHref('technology', 'cloud-spanner'), flow: 'techStack', relatedProjectSlug: 'realtime-coordination' },
-      { slug: 'redis-kafka', label: 'Redis & Kafka', description: 'Cache invalidation and event bus fanout.', href: topicHref('technology', 'redis-kafka'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
-      { slug: 'websocket-hubs', label: 'WebSocket Hubs', description: 'Per-role live coordination rooms.', href: topicHref('technology', 'websocket-hubs'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
-      { slug: 'osrm-routing', label: 'OSRM Routing', description: 'Route geometry and turn-by-turn.', href: topicHref('technology', 'osrm-routing'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
-      { slug: 'firebase-otp', label: 'Firebase OTP', description: 'Phone auth for driver, factory, payload.', href: topicHref('technology', 'firebase-otp'), flow: 'techStack', relatedProjectSlug: 'driver-execution-app' },
-      { slug: 'next-js-surfaces', label: 'Next.js Surfaces', description: 'Supplier portal, marketing, and ops boards.', href: topicHref('technology', 'next-js-surfaces'), flow: 'techStack', relatedProjectSlug: 'pegasus-marketing-site' },
-      { slug: 'native-mobile-desktop', label: 'Native Mobile & Desktop', description: 'Android, iOS, and Tauri retailer desktop.', href: topicHref('technology', 'native-mobile-desktop'), flow: 'appsMatrix' },
+      { slug: 'go-backend-platform', label: 'Unified Platform Core', description: 'One backend for every role and surface.', href: topicHref('technology', 'go-backend-platform'), flow: 'techStack' },
+      { slug: 'cloud-spanner', label: 'Shared System of Record', description: 'Reliable order truth for the whole network.', href: topicHref('technology', 'cloud-spanner'), flow: 'techStack', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'redis-kafka', label: 'Live Sync & Events', description: 'Keep screens fresh after every change.', href: topicHref('technology', 'redis-kafka'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'websocket-hubs', label: 'Live Coordination', description: 'Instant updates by role across the network.', href: topicHref('technology', 'websocket-hubs'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
+      { slug: 'osrm-routing', label: 'Route Planning', description: 'Planned paths and turn-by-turn guidance.', href: topicHref('technology', 'osrm-routing'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
+      { slug: 'firebase-otp', label: 'Phone Sign-In', description: 'SMS login for driver, factory, and gate teams.', href: topicHref('technology', 'firebase-otp'), flow: 'techStack', relatedProjectSlug: 'driver-execution-app' },
+      { slug: 'next-js-surfaces', label: 'Web Portals', description: 'Supplier portal, marketing, and ops boards.', href: topicHref('technology', 'next-js-surfaces'), flow: 'techStack', relatedProjectSlug: 'pegasus-marketing-site' },
+      { slug: 'native-mobile-desktop', label: 'Native Mobile & Desktop', description: 'Android, iOS, and retailer desktop apps.', href: topicHref('technology', 'native-mobile-desktop'), flow: 'appsMatrix' },
+      { slug: 'cloud-ecosystem', label: 'Cloud Ecosystem', description: 'GCP, Spanner, Kafka, Redis, GKE, and delivery stack.', href: '/cloud-ecosystem', flow: 'techStack' },
     ],
     promo: {
       title: 'Built for real-world complexity',
-      body: 'Spanner transactions, Kafka events, Redis cache, and WebSocket fanout — production-grade from day one.',
-      primaryLabel: 'VIEW TECH STACK',
-      primaryHref: '/technology',
+      body: 'Reliable writes, live sync, and instant updates across every role — built for peak operations.',
+      primaryLabel: 'CLOUD ECOSYSTEM',
+      primaryHref: '/cloud-ecosystem',
       secondaryLabel: 'ALL MODULES',
       secondaryHref: '/projects',
     },
@@ -161,7 +172,7 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     viewAllHref: '/ai-vision',
     links: [
       { slug: 'smart-dispatch-assist', label: 'Smart Dispatch Assist', description: 'Optional auto-suggestions; warehouse override.', href: topicHref('ai-vision', 'smart-dispatch-assist'), flow: 'aiAssist', relatedProjectSlug: 'dispatch-engine' },
-      { slug: 'ai-worker-vrp', label: 'AI Worker / VRP', description: 'Route optimization via Kafka consumer.', href: topicHref('ai-vision', 'ai-worker-vrp'), flow: 'aiAssist', badge: 'NEW', relatedProjectSlug: 'dispatch-engine' },
+      { slug: 'AI assist-vrp', label: 'Smart Route Assist', description: 'Background route suggestions for dispatch.', href: topicHref('ai-vision', 'AI assist-vrp'), flow: 'aiAssist', badge: 'NEW', relatedProjectSlug: 'dispatch-engine' },
       { slug: 'ai-recommendations', label: 'AI Recommendations', description: 'Supplier ops suggestions from live data.', href: topicHref('ai-vision', 'ai-recommendations'), flow: 'aiAssist', badge: 'NEW', relatedProjectSlug: 'supplier-control-plane' },
       { slug: 'pulse-timeline', label: 'Pulse Timeline', description: 'Live event stream across the order lifecycle.', href: topicHref('ai-vision', 'pulse-timeline'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'explain-status-banners', label: 'Explain Status Banners', description: 'Plain-language status for every role.', href: topicHref('ai-vision', 'explain-status-banners'), flow: 'orderLifecycle', relatedProjectSlug: 'realtime-coordination' },
@@ -190,7 +201,7 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
       { slug: 'wrong-truck-sealed', label: 'Wrong Truck Sealed', description: 'Per-truck seal and driver gate accountability.', href: topicHref('operations', 'wrong-truck-sealed'), flow: 'exceptionPlaybook', relatedProjectSlug: 'payload-gate-control' },
       { slug: 'driver-reassignment', label: 'Driver Reassignment', description: 'Mid-load sick driver — capacity-safe replay.', href: topicHref('operations', 'driver-reassignment'), flow: 'exceptionPlaybook', relatedProjectSlug: 'payload-gate-control' },
       { slug: 'shop-closed-at-delivery', label: 'Shop Closed at Delivery', description: 'Driver, retailer, and supplier coordination.', href: topicHref('operations', 'shop-closed-at-delivery'), flow: 'exceptionPlaybook', relatedProjectSlug: 'driver-execution-app' },
-      { slug: 'cash-at-door-cod', label: 'Cash at Door / COD', description: 'Payment exceptions and webhook replay safety.', href: topicHref('operations', 'cash-at-door-cod'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
+      { slug: 'cash-at-door-cod', label: 'Cash at Door / COD', description: 'Payment exceptions and safe payment retries.', href: topicHref('operations', 'cash-at-door-cod'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
       { slug: 'returns-wrong-barcode', label: 'Returns Wrong Barcode', description: 'Gate, warehouse, and supplier handoff.', href: topicHref('operations', 'returns-wrong-barcode'), flow: 'exceptionPlaybook', relatedProjectSlug: 'payload-gate-control' },
       { slug: 'live-tracking-expectations', label: 'Live Tracking Expectations', description: 'Loss-tolerant telemetry and support flows.', href: topicHref('operations', 'live-tracking-expectations'), flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },
     ],
@@ -209,13 +220,50 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     viewAllHref: '/apps-deploy',
     links: [
       { slug: 'mobile-apps', label: 'Mobile Apps', description: 'Driver, warehouse, factory, retailer, payload.', href: topicHref('apps-deploy', 'mobile-apps'), flow: 'appsMatrix' },
-      { slug: 'desktop-apps', label: 'Desktop Apps', description: 'Retailer Tauri desktop for store counters.', href: topicHref('apps-deploy', 'desktop-apps'), flow: 'appsMatrix' },
+      { slug: 'desktop-apps', label: 'Desktop Apps', description: 'Retailer desktop app for store counters.', href: topicHref('apps-deploy', 'desktop-apps'), flow: 'appsMatrix' },
       { slug: 'web-apps', label: 'Web Apps', description: 'Supplier and warehouse portals.', href: topicHref('apps-deploy', 'web-apps'), flow: 'appsMatrix' },
       { slug: 'dispatch-fleet', label: 'Dispatch & Fleet', description: 'Visual load planning at peak hours.', href: topicHref('apps-deploy', 'dispatch-fleet'), flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
       { slug: 'payments-treasury', label: 'Payments & Treasury', description: 'Financial integrity across the network.', href: topicHref('apps-deploy', 'payments-treasury'), flow: 'paymentFlow', relatedProjectSlug: 'payment-integrity' },
       { slug: 'realtime-coordination', label: 'Realtime Coordination', description: 'Live updates across every surface.', href: topicHref('apps-deploy', 'realtime-coordination'), flow: 'realtimePipeline', relatedProjectSlug: 'realtime-coordination' },
       { slug: 'enterprise-rollout', label: 'Enterprise Rollout', description: 'Multi-site networks and deployment pillars.', href: topicHref('apps-deploy', 'enterprise-rollout'), flow: 'controlPlane' },
-      { slug: 'request-demo', label: 'Request Demo', description: 'Live walkthrough with the Pegasus team.', href: topicHref('apps-deploy', 'request-demo'), flow: 'orderLifecycle' },
     ],
   },
 ];
+
+import { TOPIC_CONTENT_RU } from './topicContent';
+
+export const getMegaNavCategories = (t?: (key: string, fallback?: string) => string): MegaNavCategory[] => {
+  if (!t) return MEGA_NAV_CATEGORIES;
+
+  return MEGA_NAV_CATEGORIES.map((cat) => {
+    const localizedCatLabel = t(`nav_${cat.id}`, cat.label);
+    const isRu = t('nav_platform') === 'Платформа';
+
+    return {
+      ...cat,
+      label: localizedCatLabel,
+      links: cat.links.map((link) => {
+        const fullKey = `${cat.id}/${link.slug}`;
+        const ruContent = TOPIC_CONTENT_RU[fullKey];
+        if (isRu && ruContent) {
+          return {
+            ...link,
+            label: ruContent.title,
+            description: ruContent.summary,
+          };
+        }
+        return link;
+      }),
+      promo: cat.promo
+        ? {
+            ...cat.promo,
+            title: t(`promo_${cat.id}_title`, cat.promo.title),
+            body: t(`promo_${cat.id}_body`, cat.promo.body),
+            primaryLabel: t('btn_explore', cat.promo.primaryLabel),
+            secondaryLabel: t('nav_demo', cat.promo.secondaryLabel),
+          }
+        : undefined,
+    };
+  });
+};
+

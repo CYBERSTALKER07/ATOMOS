@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
@@ -11,6 +13,7 @@ import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.ui.components.AddressLocationField
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun AddFactoryDialog(
@@ -19,7 +22,8 @@ fun AddFactoryDialog(
     onSave: (String, AddressLocationValue) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf(AddressLocationValue(lat = 41.3111, lng = 69.2797)) }
+    val packCenter = com.pegasus.design.network.sessionMapCenter()
+    var location by remember { mutableStateOf(AddressLocationValue(lat = packCenter?.lat ?: 0.0, lng = packCenter?.lng ?: 0.0)) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -31,7 +35,7 @@ fun AddFactoryDialog(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Factory address",
+                    label = stringResource(R.string.factory_portal_residual_text_factory_address),
                 )
             }
         },

@@ -71,7 +71,7 @@ func (s *PolicyService) HandleGetCreditProgram(w http.ResponseWriter, r *http.Re
 		return
 	}
 	if !found {
-		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: "Asia/Tashkent"})
+		writeJSON(w, http.StatusOK, SupplierCreditProgram{SupplierID: sid, ProgramEnabled: false, GlobalTermsDays: 30, Timezone: packCreditTimezone(r.Context(), sid)})
 		return
 	}
 	writeJSON(w, http.StatusOK, p)
@@ -319,12 +319,15 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	rid := claims.Subject
+	var rid string
 	if claims.Role == auth.RoleAdmin {
 		rid = strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 		if rid == "" {
-			rid = claims.Subject
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_id_required"})
+			return
 		}
+	} else {
+		rid = auth.ResolveRetailerOrgID(claims)
 	}
 	list, err := s.ListRetailerRelationships(r.Context(), rid, 100)
 	if err != nil {
@@ -333,11 +336,11 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 	}
 	type row struct {
 		RetailerPaymentTerms
-		ResolvedTerms
-		ProfileStatus        string `json:"profile_status,omitempty"`
-		AvailableCreditMinor int64  `json:"available_credit_minor,omitempty"`
-		CurrentBalanceMinor  int64  `json:"current_balance_minor,omitempty"`
-		OnHold               bool   `json:"on_hold"`
+		Resolved             ResolvedTerms `json:"resolved_terms"`
+		ProfileStatus        string        `json:"profile_status,omitempty"`
+		AvailableCreditMinor int64         `json:"available_credit_minor,omitempty"`
+		CurrentBalanceMinor  int64         `json:"current_balance_minor,omitempty"`
+		OnHold               bool          `json:"on_hold"`
 	}
 	out := make([]row, 0, len(list))
 	for _, t := range list {
@@ -345,7 +348,7 @@ func (s *PolicyService) HandleListRetailerCreditRelationships(w http.ResponseWri
 			continue
 		}
 		resolved, _ := s.ResolveTermsFor(r.Context(), t.RetailerID, t.SupplierID)
-		rr := row{RetailerPaymentTerms: t, ResolvedTerms: resolved}
+		rr := row{RetailerPaymentTerms: t, Resolved: resolved}
 		if s.credit != nil {
 			if p, found, _ := s.credit.GetProfile(r.Context(), t.RetailerID, t.SupplierID); found {
 				rr.ProfileStatus = string(p.Status)

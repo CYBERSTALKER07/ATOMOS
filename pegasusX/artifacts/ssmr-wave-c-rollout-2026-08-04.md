@@ -1,5 +1,10 @@
 # SSMR Wave C C3.3/C4.1 backend roll — 2026-08-04
 
+
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`../docs/DOCS_SOURCE_OF_TRUTH.md`](../docs/DOCS_SOURCE_OF_TRUTH.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md) · [`../context/current_status.md`](../context/current_status.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
 ## Scope
 
 - **C3.3** Offline count: `OFFLINE_COUNT_ENABLED`, `GET/POST /v1/retailer/stock/counts/version|commit`, 409 `COUNT_VERSION_CONFLICT`, force audit

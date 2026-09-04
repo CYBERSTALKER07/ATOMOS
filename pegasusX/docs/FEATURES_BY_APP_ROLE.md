@@ -1,14 +1,26 @@
 # PegasusX — Features by App / Role
 
 **SOURCE OF TRUTH: CODE ONLY (not other markdown).**  
-Extracted 2026-08-04 from:
+Extracted 2026-08-04; client parity re-synced 2026-08-12; **G7 regen 2026-08-13** (admin ops/dead-letters, factory SLA board, planning accuracy MAPE, partner EDI/1C/ASN); **P0 honesty 2026-08-13**; **P5 factory planning 2026-08-13** (API+workers, flags default off, no new screens); **P6 supplier extras 2026-08-13** (A+F API; clients P7-C); **leftover close 2026-08-14** (payout-policy, entityresolution, SplitManifest naming, P5-D DemandForecastBaseline, CRM Email, typed CT lists, retailer CT tiles); **ecosystem flexibility 2026-08-14** (factory dispatch = warehouse solver class on Spanner; topology hybrid country/H3; country catalog AUTH_COUNTRIES not a CountryConfigs table; loyalty earn/tier live `{enrolled:false}`; factory Payload/Load; entity-resolution + predictive-push UI; **not cloud, not store**); **P7 factory honesty 2026-08-13** (exception GET Spanner-first; dispatch no invent; C portal+native); **P8–P16 enterprise close 2026-08-13** (dead `payloaderoutes` removed; live `payloaderoutes`; staff login; QC gate; broadcast outbox; S&OP column; billing list; seal-all clients; **not cloud, not store**). Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md).
+
+**Honesty (P0):** this file is a **route + nav inventory**. A listed path is not a live product feature. Tags: **REAL** (durable + clients), **PARTIAL** (durable but incomplete), **THEATRE** (200 that does not persist the claim), **GONE** (410/403/501 by product), **STUB** (mounted but not the advertised engine). Re-verify in handlers — see [`ROLE_FEATURES_DOCS_VS_CODE.md`](./ROLE_FEATURES_DOCS_VS_CODE.md).
+
+Extracted from:
 
 - JWT roles: [`apps/backend-go/auth/claims.go`](../apps/backend-go/auth/claims.go)
 - HTTP mounts: every `apps/backend-go/*routes/routes.go` (612 route registrations scanned)
-- Client nav: `*Shell.tsx`, `*Section.kt`, `DriverRoutes`, `RetailerNavigation.kt`
+- Client nav: `*Shell.tsx`, `*Section.kt` / `WarehouseSection.swift`, `DriverRoutes`, `RetailerNavigation.kt`
 - Apps tree: `apps/*` (stubs noted from their `package.json`)
 
-Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) · [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md)
+Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABILITIES_MATH_LOGIC.md) · [ORDER_FLOW_AND_EDGE_CASES.md](./ORDER_FLOW_AND_EDGE_CASES.md) · [PROD_READINESS_SEQUENCE.md](./PROD_READINESS_SEQUENCE.md)
+
+**GS-C1–C5:** named cell overlays are [`infra/k8s/overlays/cells/uz`](../infra/k8s/overlays/cells/uz) and [`infra/k8s/overlays/cells/eu`](../infra/k8s/overlays/cells/eu) (`HOME_CELL=cell-eu`, `CELL_JWT_ENFORCE=true`, commercial fiscal, empty adapters OK). Project factory: `infra/terraform/cells/eu/project/`. Isolation proof: `make cell-isolation-proof`. Global DNS/AR: `infra/terraform/global/` (`make global-plan`). Session `api_url` from `home_cell`; `GET /v1/platform/cells`. Portals pin via `pinApiBaseUrl`. Env overlays are not cells. Plan only — do not apply.
+
+**GS-I:** public `GET /v1/auth/oidc/discovery` + `POST /v1/auth/oidc/exchange`; ADMIN `GET/PUT/DELETE /v1/supplier/oidc`. Process-global Auth0 wrap is not mounted. SAML/SCIM not mounted.
+
+**GS-R:** clients bind `GET /v1/auth/session` pack (currency + receipts label + maps camera). Native apps pin `home_cell` via `CellApi.pinApiBaseUrl` / `CellPinInterceptor` (localhost stays bootstrap). Empty/planned pack does not invent Tashkent. `checkout_reads_this` still false.
+
+**GS-P:** `GET /v1/platform/partner-dialects`. 1C CIS-only; PEPPOL planned/not live; X12/SAP sold_only; AS2 transport (no VAN). Empty 1C currency from pack. `POST /v1/platform/tenants/register` is not gated.
 
 ---
 
@@ -16,11 +28,11 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 
 | Dir | Status (from code/package.json) |
 |-----|----------------------------------|
-| `supplier-portal` | Live Next.js + Tauri supplier/ADMIN UI |
+| `supplier-portal` | Live Next.js + Tauri 2 supplier/ADMIN UI (web + desktop shell) |
 | `supplier-app-android` / `supplier-app-ios` | Live |
-| `supplier-app-desktop` | Redirect stub → supplier-portal |
-| `admin-portal` | Deprecated stub → supplier-portal |
-| `retailer-app-desktop` / `-android` / `-ios` | Live |
+| `supplier-app-desktop` | **Does not exist** — desktop = `supplier-portal` Tauri |
+| `admin-portal` | Live Next **PLATFORM_ADMIN** console: login+MFA, tenants / flags (+ dual-control approve) / audit / match queue / partner keys·AS2·SFTP / **ops outbox + Spanner dead-letters** / **billing invoices + fee-schedules** (P12) |
+| `retailer-app-desktop` / `-android` / `-ios` | Live (desktop = Next 15 + Tauri 2) |
 | `warehouse-portal` / `-android` / `-ios` | Live |
 | `factory-portal` / `-android` / `-ios` | Live |
 | `payload-terminal` / `-android` / `-ios` | Live |
@@ -33,7 +45,7 @@ Companion (also code-grounded): [ROLE_CAPABILITIES_MATH_LOGIC.md](./ROLE_CAPABIL
 ## 0.1 JWT roles (`auth/claims.go`)
 
 ```
-ADMIN, RETAILER, DRIVER, PAYLOAD,
+ADMIN, PLATFORM_ADMIN, RETAILER, DRIVER, PAYLOAD,
 FACTORY, FACTORY_ADMIN, FACTORY_DRIVER,
 WAREHOUSE_ADMIN, WAREHOUSE
 ```
@@ -50,9 +62,9 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Client | Evidence | Surfaces |
 |--------|----------|----------|
-| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` |
-| Android | `RetailerNavigation.kt` route ids | `PROCUREMENT`, `CONTROL_TOWER`, `DOCK`, `ANALYTICS`, `AUTO_ORDER`, `CART`, `NOTIFICATIONS`, `ACCOUNT_PROFILE`, `FAMILY_MEMBERS`, `CAPABILITIES`, `TEAM`, `LOCATIONS`, `STORE_STOCK`, `LOCAL_SKUS`, `POS`, `SHIFTS`, `SECTIONS`, `REPORTS_PRO`, `ASSIST`, `SETUP_WIZARD` |
-| iOS | `ContentView.swift` | Tab shell (`home`, `insights`, …) + screen modules under `Screens/` |
+| Desktop | `RetailerShell.tsx` hrefs | `/`, `/dashboard`, `/catalog`, `/my-suppliers`, `/orders`, `/tracking`, `/dock`, `/procurement`, `/auto-order`, `/insights`, **`/control-tower`**, `/reports`, `/hq`, `/credit`, `/stock`, `/stock/local-skus`, `/pos`, `/shifts`, `/sections`, `/assist`, `/settings` |
+| Android | `RetailerNavigation.kt` + `SidebarMenu.kt` | `PROCUREMENT`, `CONTROL_TOWER`, `CREDIT`, `HQ`, `DOCK`, `ANALYTICS`, `AI_PREDICTIONS`→`FUTURE_DEMAND`, `AUTO_ORDER`, `CART`, `NOTIFICATIONS`, `ACCOUNT_PROFILE`, `FAMILY_MEMBERS`, `CAPABILITIES`, `TEAM`, `LOCATIONS`, `STORE_STOCK`, `LOCAL_SKUS`, `POS`, `SHIFTS`, `SECTIONS`, `REPORTS_PRO`, `ASSIST`, `SETUP_WIZARD` |
+| iOS | `ContentView.swift` / `Screens/` | Full Retail OS + `HqView`, `CreditPartnersView`, `ControlTower`, `ReportsProView`, `PosView`, pulse on `DashboardView` |
 
 ### Feature inventory = registered routes
 
@@ -60,7 +72,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Feature | Methods |
 |---------|---------|
-| Login / refresh / register | `POST /v1/auth/retailer/{login,refresh,register}` |
+| Login / refresh / register | `POST /v1/auth/retailer/{login,refresh,register}` (**T4:** register requires `supplier_id` or `invite_token`; no PreferTenant(seed). Demo `"1234"` only in ssmr) |
 | Memberships / select-org / switch-org | `GET …/memberships`, `POST …/select-org`, `POST …/switch-org` |
 | Me + capabilities | `GET /v1/retailer/me`, `GET/POST /v1/retailer/capabilities*` |
 | Switch location | `POST /v1/auth/retailer/switch-location` |
@@ -73,29 +85,31 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Feature | Methods |
 |---------|---------|
-| Suppliers attach/detach | `/v1/retailer/suppliers*` |
+| Suppliers attach/detach | `/v1/retailer/suppliers*` (**T4:** `POST …/suppliers/{id}/add` rejects seed outside ssmr) |
 | Cart sync | `GET/POST /v1/retailer/cart/sync` |
-| Checkout quote / promo watch | `POST /v1/retailer/checkout/quote`, `POST /v1/retailer/promotions/watch` |
+| Checkout quote / promo watch | `POST /v1/retailer/checkout/quote` (**M1:** quote currency + `market_code` from shipped pack), `POST /v1/retailer/promotions/watch` |
 | Pricing rules (read) | `GET /v1/retailer/pricing/rules` |
-| Cash/card checkout | `POST /v1/order/{cash,card}-checkout` |
-| Unified/preview/B2B checkout | `POST /v1/checkout/{unified,preview,b2b}` (`paymentroutes`) |
+| Cash/card checkout | **REAL** — `POST /v1/order/cash-checkout` and `POST /v1/order/card-checkout` (B1 cash → `PENDING_CASH_COLLECTION` + outbox; card opens a GP session). **M1:** PSP ∩ shipped pack; CASH must be on pack; PEGASUS → GLOBAL_PAY. Not saved-cards. |
+| Create / currencies | `POST /v1/order/create`, `GET /v1/order/currencies` (**M5:** empty currency from shipped pack, not hardcoded `UZS`; planned pack 404) |
+| Unified/preview/B2B checkout | `POST /v1/checkout/{unified,preview,b2b}` (`paymentroutes`). Unified `items[]` **REAL** create (no capture). Preview dry-run. **M1:** both read shipped-pack currency/PSP (planned pack 404). **B2B GONE** — `410 payment_before_delivery_removed`. |
 | Catalog browse | `GET /v1/catalog/*`, `GET /v1/products` (`catalogroutes`) |
-| Saved cards | `/v1/retailer/card*`, `GET /v1/retailer/cards` |
+| Saved cards | **GONE** — `/v1/retailer/card*`, `GET /v1/retailer/cards` `410 saved_cards_not_product` (P1; no vault). |
+| Loyalty | **REAL** — `GET /v1/retailer/loyalty/tier` + `/ledger` (`loyalty/handlers.go`). Unconfigured → `{enrolled:false}` (never a fake Bronze). Earn `floor(net * earn_bps / 10000)` on CollectCash + card settle. Burn out of scope. `HandleLoyaltyNotProduct` unmounted. Desktop settings + Android/iOS profile bind the GET. |
 
 **Orders / delivery / AI**
 
 | Feature | Methods |
 |---------|---------|
 | Order list | `GET /v1/orders`, `GET /v1/retailers/{id}/orders` |
-| Cancel / request-cancel | `POST /v1/order/cancel`, `POST /v1/orders/request-cancel` |
+| Cancel / request-cancel | `POST /v1/order/cancel` **REAL** pre-dispatch. `POST /v1/orders/request-cancel` **GONE** — hard `403 cancel_not_allowed`. |
 | Preorder confirm/edit/reject | `POST /v1/orders/{confirm,edit,reject}-preorder` |
 | Delivery proposal accept/reject | `POST /v1/orders/{accept,reject}-delivery-proposal` |
 | Shop-closed respond | `POST /v1/retailer/shop-closed-response`, `POST /v1/retailer/orders/{id}/shop-closed/respond` |
 | Confirm cash (doorstep) | `POST /v1/delivery/confirm-cash` (`orderroutes`, RoleRetailer) |
-| Tracking / active fulfillment / pending payments | `GET /v1/retailer/{tracking,active-fulfillment,pending-payments}` |
+| Tracking / active fulfillment / pending payments | `GET /v1/retailer/{tracking,active-fulfillment}` **REAL**. `pending-payments` **PARTIAL** — real orders; `session_id`/`gateway` only when a PaymentSessions row exists (P2; no `sess_` / `payme`). |
 | Pulse / control-tower pulse | `GET /v1/retailer/pulse`, `GET /v1/retailer/control-tower/pulse` |
 | Auto-order settings + run | `/v1/retailer/settings/auto-order*` including `…/run` |
-| AI predictions / confirm / reject | `/v1/retailer/ai/predictions`, `/v1/ai/*`, `POST /v1/retailer/orders/{confirm,reject}-ai` |
+| AI predictions / confirm / reject | `GET /v1/retailer/ai/predictions` **REAL** `{items: RetailerAIPrediction}` (pending AI preorders, not SKU DemandForecast). Desktop `dashboard/page.tsx` / `insights/page.tsx`; Android `PegasusApi.kt` `getRetailerAIPredictions`; iOS `APIClient.getRetailerAIPredictions`. Confirm/reject-ai POSTs from those apps. `GET /v1/ai/predictions` **GONE** `410 use_retailer_ai_predictions` (alias kept for old store builds). `PATCH /v1/ai/predictions/correct` **GONE** `410 prediction_correct_unwired`. Procurement/auto-order SKU steppers do **not** map this list. |
 | Reorder suggestions / sell-through | `GET /v1/retailer/reorder-suggestions`, `GET /v1/retailer/insights/sell-through` |
 | Claims file/list/eligibility | `/v1/orders/{id}/claims*`, `claim-eligibility` (`orderroutes`) |
 | Receipt / QR / timeline / status-context | orderroutes retailer GETs |
@@ -108,7 +122,7 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 | Store stock | `/v1/retailer/stock*` (receive/transfer/adjust/counts) |
 | Local SKUs | `/v1/retailer/local-skus*` |
 | POS | `/v1/retailer/registers`, `/v1/retailer/pos/*` |
-| Time / shifts | `/v1/retailer/time/*`, `/v1/retailer/shifts*` |
+| Time / shifts | `/v1/retailer/time/*`, `/v1/retailer/shifts*` (**M4:** max shift hours from shipped pack) |
 | Sections | `/v1/retailer/sections*` |
 | Assist tickets | `/v1/retailer/assist/tickets*` |
 | Reports | `/v1/retailer/reports/*` |
@@ -119,10 +133,10 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Observation | Code basis |
 |-------------|------------|
-| `/hq` in desktop shell; not in Android route ids | Shell vs `RetailerNavigation.kt` |
-| `/credit` in desktop shell; Android exposes profile/credit via account, not a `CREDIT` section id | Shell vs Android ids |
-| `CONTROL_TOWER` on Android; desktop has pulse API but no `/control-tower` in shell href list | Shell hrefs vs Android |
-| AR invoices routes exist; no shell href `/ar` | `creditroutes` vs shells |
+| HQ / Credit / AR | **Parity closed** — desktop `/hq` `/credit`; Android `CREDIT`/`HQ`; iOS `HqView` / `CreditPartnersView` (AR under credit) |
+| Control Tower | Android/iOS first-class; desktop `/control-tower` in `RetailerShell` nav (R4.2). Pulse tiles navigate to orders/deliveries/dock/POS/shifts/assist/stock/reports (P13-E). |
+| Reports / pulse | Desktop deep reports + mobile Reports Pro CSV share + dashboard pulse strip (`/v1/retailer/reports/export`, `/v1/retailer/pulse`) |
+| POS holds | Mobile park/list/resume/void when `POS_HOLDS_ENABLED` (pilot default on; set `false` to hide) |
 
 ---
 
@@ -132,39 +146,46 @@ Role gate: `RoleRetailer` (plus shared catalog/payment/order/claim routes).
 
 | Client | Evidence | Surfaces (abbrev.) |
 |--------|----------|-------------------|
-| Portal | `SupplierShell.tsx` | dashboard, orders, dispatch, fleet*, manifests, exceptions, catalog, inventory(+import), pricing*, promotions, topology/factories/warehouses/zones/lanes, ledger/payments/chargebacks*/reconciliation/treasury*/earnings/compliance, credit/*, control-tower, playbooks, planning, segmentation, tax-regimes, AI, analytics*, replenishment*, returns, org-fleet, activity, ops/map, … |
-| Android | `SupplierSection.kt` | `DASHBOARD`, `ORDERS`, `FLEET*`, `MANIFESTS`, `DISPATCH_PREVIEW`, `ACTIVITY`, `ORG_FLEET`, `TREASURY_HUB`, `LEDGER`, `PAYMENTS`, `CHARGEBACKS`, `RECONCILIATION`, `OPERATIONS`, `ANALYTICS`, `AI_RECOMMENDATIONS`, topology/catalog/inventory/pricing/promotions/returns/earnings/profile/setup, … |
-| Desktop | `supplier-app-desktop/package.json` | redirect only |
+| Portal (+ Tauri desktop) | `SupplierShell.tsx` | dashboard, orders, dispatch, fleet*, manifests, exceptions, catalog, inventory(+import), pricing*, promotions, topology/factories/warehouses/zones/lanes, ledger/payments/chargebacks*/reconciliation/treasury*/earnings/compliance, credit/*, control-tower, playbooks, planning, segmentation, tax-regimes, AI, analytics*, replenishment*, returns, org-fleet, activity, ops/map, … |
+| Android / iOS | `SupplierSection.kt` (+ iOS peers) | `DASHBOARD`, `ORDERS`, `FLEET*`, `MANIFESTS`, `DISPATCH_PREVIEW`, `ACTIVITY`, `ORG_FLEET`, `TREASURY_HUB`, `LEDGER`, `PAYMENTS`, `CHARGEBACKS`, `RECONCILIATION`, `OPERATIONS`, `ANALYTICS`, `AI_RECOMMENDATIONS`, topology/catalog/inventory/pricing/promotions/returns/earnings/profile/setup, … |
+| `supplier-app-desktop` | — | **Does not exist** — use `supplier-portal` Tauri (see §0) |
 
 ### Feature inventory (route groups)
 
 | Domain | Route prefix / examples |
 |--------|-------------------------|
-| Auth / setup | `/v1/auth/supplier/*`, `/v1/supplier/{configure,business/setup,billing/setup,profile,settings}` |
+| Auth / setup | `/v1/auth/supplier/*` (**T2:** `POST /v1/auth/supplier/register` 409 + Location T1 once seed registered), **GS-I** `GET /v1/auth/oidc/discovery` `POST /v1/auth/oidc/exchange` `GET/PUT/DELETE /v1/supplier/oidc` (optional per tenant; staff JWT unchanged), `POST /v1/supplier/retailer-invites` (**T4:** ADMIN HMAC invite, 7d), `POST /v1/supplier/staff-invites` (**T5:** ADMIN HMAC factory/warehouse invite, 7d), `/v1/supplier/{configure,business/setup,billing/setup,profile,settings}` |
 | Dashboard / activity / pulse | `/v1/supplier/{dashboard,activity}`, `/v1/supplier/pulse` |
 | Orders | `/v1/supplier/orders`, `…/vet`, `…/payment-bypass`, receipts |
 | Shop-closed ops | `/v1/supplier/shop-closed/{active,resolve}` |
-| Negotiations | `/v1/supplier/negotiations/pending`, `…/negotiate/resolve` |
+| Negotiations | **GONE** (default) — `/v1/supplier/negotiations/pending` empty list; `…/negotiate/resolve` `410 feature_disabled` unless `QUANTITY_NEGOTIATION_ENABLED`. |
 | Early-complete | `/v1/supplier/route/approve-early-complete` |
 | Reassign | `/v1/supplier/{recommend-reassign,reassign-order}` |
-| Dispatch / fleet | `/v1/supplier/dispatch/*`, `/v1/supplier/fleet/*` |
+| Dispatch / fleet | `/v1/supplier/dispatch/*`, `/v1/supplier/fleet/*`. Oversize routes split after capacity checks (`dispatch.ExpandOversizeRoutes`, `AUTO-{driver}-{ts}-A/B`, cap 25). |
 | Manifests / exceptions | `/v1/supplier/manifests`, `exceptions*`, `manifest-exceptions`, `ops/exception-map` |
 | Catalog CRUD | `catalogroutes` POST/PUT products (RoleAdmin) |
-| Inventory + import + audit | `/v1/supplier/inventory*` |
+| Inventory + import + audit | `/v1/supplier/inventory*` adjust/import **REAL**. `GET /v1/supplier/inventory/audit` **GONE** `410 audit_unwired` (P1). |
 | Pricing / promotions | `/v1/supplier/pricing/*`, `/v1/supplier/promotions*` |
-| Topology | `/v1/supplier/topology`, `supply-lanes`, factories/warehouses via supplier APIs |
-| Finance | `/v1/payment/{ledger,chargeback*,settlement/authority,reconciliation/mismatches}`, claim-chargebacks, cash-reconciliations, credit-notes |
+| Topology | `/v1/supplier/topology` **PARTIAL** — PUT round-trips `country_code`, `coverage_cities`, primary/secondary/assigned factories. Checkout cover: no cells → warehouse country; cells set → H3 membership; no cover → `zone_miss`; never another country. `supply-lanes` (**topology utilization JSON unchanged** — not optimizer `SupplyLanes` rows), factories/warehouses via supplier APIs |
+| Factory planning (P5 / P7-C) | `GET/PUT /v1/supplier/network-mode`, `POST /v1/supplier/planning/pull-matrix`, `POST /v1/supplier/planning/kill-switch`, `POST /v1/supplier/planning/predictive-push` — ADMIN. Portal `/settings/planning` factory-ops panel + native PlanningSettings (predictive-push 409 `factory_planning_disabled` when Go default off). Engines no-op unless `FACTORY_PLANNING_ENABLED` (Go default **false** — do not flip). P5-D `SYSTEM_PREDICTED` from `DemandForecastBaseline` (not `AIPredictions`); `"grain":"demand_forecast_baseline"`. |
+| Supplier CRM (P6-A / P7-C) | `GET /v1/supplier/crm/retailers`, `GET …/crm/retailers/{retailerId}` — ADMIN, **PARTIAL** portal+native (`/crm`, Android, iOS). `Orders.Status` + `TotalMinor`; `Retailers.Email` when set; order `lines[]` from `LineItemsJson`. Empty `{"retailers":[]}`; **503** without Spanner. Does **not** change warehouse `/ops/crm`. **Not store.** |
+| Loyalty program | `GET/PATCH /v1/supplier/loyalty/program` — PATCH requires `reason`. Portal `/loyalty` + Android/iOS. Unconfigured GET `source: unconfigured` (default 100 bps + DefaultTiers). |
+| Payout batches (P7-C) | `GET/POST /v1/supplier/payouts/batches`, GET by id, export, mark-paid, dispatch. Portal `/finance/payouts` + Android/iOS. **M6:** `GET /v1/supplier/payouts/rail` reads pack `payout_rail` (UZ `bank-file`). Planned pack 404. Live `dispatch` with `live:true` → `no_live_rail` (unknown name is not a PSP). |
+| Payout policy (P6-B) | `GET/PATCH /v1/supplier/payout-policy` — ADMIN. Modes `HQ_SUPPLIER` \| `WAREHOUSE_LOCAL`. PATCH requires `reason`. Thin portal+Android+iOS. **Not** a live PSP. |
+| Entity resolution (P6-C) | `POST /v1/supplier/entity-resolution/{resolve,explain}` — ADMIN. Result direct (no `{status:ok}`). Portal `/entity-resolution` + Android/iOS. |
+| Country catalog (P6-D) | `GET /v1/country-configs/{code}` **in-memory AUTH_COUNTRIES** (UZ,KZ,KG,TJ,TM,AE,TR,RU,US,GB) — **not** a `CountryConfigs` Spanner table. Unknown → 404 `country_not_supported`. US is 200. `checkout_reads_this: false` (SSMR fiscal still PEGASUS/FAKE). Warehouse/factory `CountryCode` persisted. **M1:** checkout currency/PSP from MarketPack. **M2:** fiscal fail-closes on MarketPack `fiscal_adapter`. **M3:** doorstep/approach one pack `breach_radius_meters` (UZ 150; countrycfg radius is ops knobs). **M4:** calendar TZ / shop-closed grace / weather / factory SLA / labor hours from MarketPack (`UZDefault()` is not the law). **M5:** empty order/payment currency from MarketPack (not hardcoded `UZS`). **M6:** pack `payout_rail` (UZ `bank-file`; unknown+live → `no_live_rail`). **M7:** tax stamp / receipts use pack country (`countryFromCurrency` deleted). |
+| Finance | `/v1/payment/{ledger,chargeback*,settlement/authority,reconciliation/mismatches}`, claim-chargebacks, cash-reconciliations, credit-notes. `POST /v1/order/{id}/refunds` (**M5:** empty currency from shipped pack) |
 | Credit program | `/v1/supplier/credit-{profiles,program*,relationships*}`, admin disable |
 | Claims adjudicate | `/v1/supplier/claims`, `/v1/claims/{id}/{approve,reject}` |
-| Compliance | `/v1/compliance/*`, tax-regimes |
-| Planning / AI / MEIO / twin | `/v1/supplier/{ai,planning,meio,segmentation,knowledge-graph}*`, twin routes, replenishment* |
+| Compliance | `/v1/compliance/*`, `/v1/admin/tax-regimes*` (**M7:** fiscal stamp + receipts use pack country, not currency→country) |
+| Planning / AI / MEIO / twin | `/v1/supplier/{ai,planning,meio,segmentation,knowledge-graph}*`, twin routes, replenishment*. S&OP **PARTIAL** — `Factories.DailyOutputCapacity` when column sum > 0 (`capacity_source: factories_column`); else `capacity_source: env_default` (`SOP_FACTORY_DAILY_UNITS` default 700) (P10-B). |
 | Control tower | `/v1/control-tower/*`, zone-overrides |
-| Returns / broadcast | `/v1/supplier/returns*`, `/v1/supplier/broadcast` |
+| Returns / broadcast | `/v1/supplier/returns*`, `/v1/supplier/broadcast` (P10-A persist + outbox then WS) |
 | Demand signals | `demandroutes` `/v1/demand/signals*` |
 
 ### Parity gaps (portal shell vs Android section)
 
-Portal-only hrefs with no matching Android section enum: `/control-tower`, `/settings/playbooks`, `/settings/segmentation`, `/settings/tax-regimes`, `/credit/policy`, `/credit/admin-disable`, `/analytics/demand/flywheel`, `/demand/payday-calendar`, `/settings/planning` (Android has analytics/AI/ops subset instead).
+P13-B native slices exist on Android `SupplierSection` + iOS `SupplierSection`: `/control-tower` and `/settings/playbooks` are **typed lists** (scored exceptions / playbooks). Segmentation, tax-regimes, credit policy, flywheel, payday remain JSON dumps. `/settings/planning`, `/crm`, `/finance/payouts` remain from P7-C (payouts include payout-policy mode). P13-E retailer Control Tower tiles navigate.
 
 ---
 
@@ -176,36 +197,39 @@ Roles: `WAREHOUSE`, `WAREHOUSE_ADMIN` (many ops routes require Admin/WarehouseAd
 
 | Client | Evidence |
 |--------|----------|
-| Portal | `WarehouseShell.tsx`: `/`, dispatch*, orders, preorders, tomorrow-board, drivers/vehicles, inventory, stock-commitments, products, manifests, fleet-live-map, replenishment, demand-forecast, supply-requests, transfers, returns, claims, exceptions, rescues, analytics, crm, treasury, payment-config, staff, settings, operations, control-tower, dispatch-locks |
-| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS`, `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, `EXCEPTIONS`, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
+| Portal | `WarehouseShell.tsx`: `/`, dispatch*, orders, preorders, tomorrow-board, drivers/vehicles, inventory, **`/bins`**, **`/pick-waves`**, **`/cycle-counts`**, **`/cold-chain`**, **`/labor-capacity`**, stock-commitments, products, manifests, fleet-live-map, replenishment, demand-forecast, supply-requests, transfers, returns, claims, exceptions, rescues, analytics, crm, treasury, payment-config, staff, settings (incl. return-policy embed), operations, control-tower, dispatch-locks |
+| Android | `WarehouseSection.kt`: `DASHBOARD`, `ORDERS`, `DRIVERS`, `VEHICLES`, `INVENTORY`, `DISPATCH`, `ANALYTICS`, `TREASURY`, `STAFF`, `MANIFESTS`, `DISPATCH_SETTINGS`, `FLEET_LIVE_MAP`, `TRANSFER_ACTIONS` (pick-wave/cycle nested), `PRODUCTS`, `PREORDERS`, `TOMORROW_BOARD`, `STOCK_COMMITMENTS`, `SUPPLY_REQUESTS`, `REPLENISHMENT`, `DEMAND_FORECAST`, `RETAILERS`, `RETURNS`, **`COLD_CHAIN`**, **`LABOR_CAPACITY`**, `RETURN_POLICY`, `EXCEPTIONS`, **`CONTROL_TOWER`**, `CLAIMS`, `RESCUES`, `PAYMENT_CONFIG`, `OPS_SETTINGS`, `LOCATION_SETTINGS`, `NOTIFICATIONS`, `PORTAL_*` handoff |
+| iOS | Peer screens incl. `ReturnPolicySettingsView`, **`ColdChainView`**, **`LaborCapacityView`**, **Control Tower** typed scored-exception list (`GET /v1/control-tower/exceptions/scored`); pick/cycle via Transfer Actions |
 
 ### Feature inventory
 
 | Domain | Routes |
 |--------|--------|
-| Auth / setup | `/v1/auth/warehouse/*`, `/v1/warehouse/setup` |
+| Auth / setup | `/v1/auth/warehouse/*` (**T5:** register requires `invite_token` or ADMIN Bearer + node; bcrypt only), `/v1/warehouse/setup` |
 | Dispatch | `/v1/warehouse/ops/dispatch/{preview,execute,settings,runs*}`, rescue preview/propose, tracking, dispatch-locks |
 | Reassign | `/v1/warehouse/{recommend-reassign,reassign-order}` |
 | Orders / preorders | delay/reject/overflow/propose-delivery; preorder edit/reject |
 | Board / exceptions / broadcast | `/ops/board`, `/ops/exceptions`, broadcast templates |
 | Fleet | drivers/vehicles/staff, live-map |
 | Inventory / commitments / products / settings / location | `/ops/inventory*`, stock-commitments, products, settings, location |
-| Replenishment / demand / supply / transfers | insights, demand/forecast, supply-requests, transfers emergency/receive/force-receive |
+| Replenishment / demand / supply / transfers | insights, supply-requests, transfers emergency/receive/force-receive **REAL**. Demand/forecast **PARTIAL** — Spanner first (`source: spanner` even if empty); scaffold only when `WAREHOUSE_PORTAL_SEED`; else `source: empty` (P2). `GET/POST /v1/warehouse/supply-requests/{id}/qc` portal+native (P9-C / P11-C). |
 | Returns inbound | `returnsroutes` `/v1/returns/inbound*` (+ `/ops/returns`) |
 | Reverse logistics | `GET/POST /v1/warehouse/reverse-logistics*` (**RequireRole Warehouse only**) |
 | Return policy | `GET/PUT /v1/warehouse/return-policy` (WarehouseAdmin/Admin) |
 | Claims | shared orderroutes claims approve/reject (WarehouseAdmin) |
-| Treasury / financials / payment-config / CRM / analytics | `/ops/{treasury,financials,payment-config,crm,analytics}` |
+| Treasury / financials / payment-config / CRM / analytics | `/ops/{treasury,financials,payment-config,crm,analytics}`. CRM/payment-config **REAL**. Warehouse CRM JSON (`retailers[]` with `business_name` / `total_orders` / `total_revenue` / `last_order_date`) **unchanged**. Portal+native last_order + load-error honesty (P7-C). Treasury invoices **PARTIAL** — ArInvoices⋈Orders by warehouse (P2); `[]` only when query empty; no Spanner → 503. Analytics **PARTIAL** — Spanner fills breakdowns; fallback `*_available: false`. Financials `daily_revenue` from Orders when Spanner; `gateway_breakdown` from `PaymentSessions` ⋈ warehouse orders when query OK; `platform_fee` from `BillingFeeSchedules` when a schedule exists; else `*_available: false` (P11-A). |
 | Pulse | `/v1/warehouse/ops/pulse` |
 
 ### Parity gaps
 
 | Observation | Code |
 |-------------|------|
-| Control Tower in portal shell; absent from Android section enum | shells vs `WarehouseSection.kt` |
-| `PORTAL_SETUP` / `PORTAL_PROFILE` / `PORTAL_SEARCH` on Android | explicit portal handoff |
-| Return-policy routes; no shell href `/return-policy` | warehouseroutes vs WarehouseShell |
+| Control Tower | Portal shell + Android `CONTROL_TOWER` + iOS `controlTower` (P13-C) — typed `GET /v1/control-tower/exceptions/scored` list |
+| Cold-chain / labor-capacity | Portal + Android/iOS (R4.1) — `ColdChainScreen`/`LaborCapacityScreen`, `ColdChainView`/`LaborCapacityView` |
+| Pick waves / cycle counts / bins | Portal dedicated routes; mobile nested under Transfer Actions |
+| Return policy | Routes + Android `RETURN_POLICY` + iOS settings; portal embeds under settings (no `/return-policy` href) |
 | Reverse-logistics role = `WAREHOUSE` not `WAREHOUSE_ADMIN` | `creditnoteroutes` |
+| `PORTAL_SETUP` / `PORTAL_PROFILE` / `PORTAL_SEARCH` on Android | explicit portal handoff |
 
 ---
 
@@ -217,27 +241,29 @@ Roles: `FACTORY`, `FACTORY_ADMIN` (+ ADMIN). `FACTORY_DRIVER` uses driver routes
 
 | Client | Evidence |
 |--------|----------|
-| Portal | `FactoryShell.tsx`: `/`, loading-bay, manifests, manifest-exceptions, payload-override, transfers, supply-requests, fleet, staff, insights, analytics, settings/location |
-| Android | `FactorySection.kt`: `DASHBOARD`, `LOADING_BAY`, `TRANSFERS`, `FLEET`, `STAFF`, `LOCATION`, `SUPPLY_REQUESTS`, `PAYLOAD_OVERRIDE`, `MANIFESTS`, `MANIFEST_EXCEPTIONS`, `INSIGHTS`, `ANALYTICS`, `NOTIFICATIONS` |
+| Portal | `FactoryShell.tsx`: `/`, loading-bay, **payload**, manifests, manifest-exceptions, payload-override, transfers, supply-requests, fleet, staff, insights, analytics, settings/location |
+| Android | `FactorySection.kt`: `DASHBOARD`, `LOADING_BAY`, `PAYLOAD_LOAD`, `TRANSFERS`, `FLEET`, `STAFF`, `LOCATION`, `SUPPLY_REQUESTS`, `PAYLOAD_OVERRIDE`, `MANIFESTS`, `MANIFEST_EXCEPTIONS`, `INSIGHTS`, `ANALYTICS`, `NOTIFICATIONS` |
 
 ### Feature inventory
 
 | Domain | Routes |
 |--------|--------|
-| Auth / setup / profile / location | `/v1/auth/factory/*`, `/v1/factory/setup`, profile, ops/location |
+| Auth / setup / profile / location | `/v1/auth/factory/*` (**T5:** register requires `invite_token` or ADMIN Bearer + node; bcrypt on write), `/v1/factory/setup`, profile, ops/location |
 | Dashboard / analytics / pulse | `/v1/factory/{dashboard,analytics/overview}`, `/v1/factory/pulse` |
-| Manifest lifecycle | start-loading, seal, dispatch, complete; factory dispatch |
+| Manifest lifecycle | start-loading, seal, complete **REAL** under Spanner. Factory **Payload/Load** screen (portal `/payload`, Android `PAYLOAD_LOAD`, iOS inlined) calls factory-plane start-loading/seal only — not last-mile `payloaderoutes`. `POST /v1/factory/dispatch` **live Spanner** = warehouse solver class (`plan.OptimizeAndValidate`, OR-Tools then one H3 `fallback_phase1`) → `FactoryTruckManifests` only; AUTO/MANUAL/`force_capacity`/`accept_partial`/fingerprint; empty queue `created_manifest_count: 0`, no invent, no outbox; **not** gated by `FACTORY_BATCHER_ENABLED`. Nil-Spanner / portal-seed tests still `pick_n_created_v1` memory path. Never writes `SupplierTruckManifests`. |
 | Rebalance / cancel | manifests rebalance, cancel-transfer, cancel |
-| Exceptions | manifest-exceptions list/resolve |
-| Transfers / supply-requests | create/transition; accept/fulfill-options/patch |
-| Fleet / staff | fleet, drivers, vehicles, staff CRUD |
+| Exceptions | GET **PARTIAL** — Spanner `ManifestExceptions` ⋈ `FactoryTruckManifests` (P7-A); JSON `transfer_id` ← `OrderId`; empty `[]` when query/seed empty. Resolve **PARTIAL** — Spanner-first (P9-B); memory only `FACTORY_PORTAL_SEED`; `RunTx` + `MANIFEST_EXCEPTION_RESOLVED` (P3). Supplier exception JSON (`order_id`) **unchanged**. |
+| Transfers / supply-requests | GET **PARTIAL** — Spanner `FactoryInternalTransfers` first; memory overlay only `FACTORY_PORTAL_SEED`/`USE_DEMO_SEED` (P3). Transition + supply accept **REAL**/PARTIAL. Transfer create **PARTIAL** — persist via `apply` + `TRANSFER_CREATED` outbox (P3). |
+| Supply-request QC (P6-F / P7-C / P9-C) | `GET/POST /v1/factory/supply-requests/{id}/qc` **PARTIAL** portal+native (board/list + Android/iOS cards). Table `FactorySupplyRequestQC` on `WarehouseSupplyRequests`. PASS/FAIL upsert; does **not** change request State; accept **409** unless QC `PASS`. Outbox `FACTORY_SUPPLY_REQUEST_UPDATE`. Missing QC row → 200 `result: ""`. **Not store.** |
+| **SLA board (G7.1)** | `GET /v1/factory/sla-board` + `sla_*` on supply-requests; portal badges — request due-date (`kind: supply_request`). **M4:** default hours from shipped pack (UZ 48; planned → N/A). Transfer-transit 1×/1.5×/2× is a **second** worker (`kind: transfer_transit`) behind `FACTORY_PLANNING_ENABLED` (P5-E) — not this board. |
+| Fleet / staff | fleet/drivers/vehicles reads. Staff POST **PARTIAL** — `SupplierUsers` via `RunTx` + `FACTORY_STAFF_CREATED` outbox (P3); password bcrypt/invite (P9-A), never `"unset"`. Set-password UI portal+native (P13-D). GET Spanner-first (`AssignedFactoryId`); memory overlay only with seed. |
 | Insights | clients call `/v1/warehouse/replenishment/insights` (warehouse route allows factory roles in handler gate) |
 
 No dedicated `FACTORY_DRIVER` app directory — role allowed on `driverroutes`.
 
 ---
 
-## 5. Payload — APIs (`payloaderroutes` 27)
+## 5. Payload — APIs (`payloaderoutes` 27)
 
 Role: `PAYLOAD` (+ ADMIN).
 
@@ -253,18 +279,17 @@ Role: `PAYLOAD` (+ ADMIN).
 
 | Feature | Routes |
 |---------|--------|
-| Auth | `/v1/auth/payloader/{login,refresh}` |
+| Auth | `/v1/auth/payloader/{login,refresh}` (**T5:** SupplierUsers PAYLOADER row; no `+998` default) |
 | Board | `/v1/payloader/{trucks,orders,manifests}` |
-| Load / seal | start-loading, seal, seal-completed, seal-all, `/v1/payload/seal` |
+| Load / seal | start-loading, seal, seal-completed, `/v1/payload/seal` |
 | Inject | `…/inject-order` |
 | Reassign | recommend-reassign, reassign-order, `/v1/fleet/reassign` |
 | Exceptions | `/v1/payload/manifest-exception`, list, `/v1/delivery/exception-report` |
-| Capacity | `GET /v1/payload/capacity/{vehicleID}` |
 | Alias supplier manifests | `/v1/supplier/manifests*` same handlers |
 | Pulse / notifications | `/v1/payloader/pulse`, user notifications |
 | Inbound returns | `returnsroutes` (PAYLOAD allowed on inbound) |
 
-`seal-all` is registered; client usage must be verified per app (not assumed from docs).
+**Client usage notes:** terminal + native apps use inbound + seal-completed / per-order seal + **`POST …/seal-all`** (P13-A: terminal, Android, iOS). **`GET /v1/payload/capacity/{vehicleID}` is GONE** `410 capacity_unwired` (hardcoded theatre; VU lives on the manifest).
 
 ---
 
@@ -284,18 +309,19 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 
 | Domain | Routes |
 |--------|--------|
-| Auth / profile / availability / pulse | `/v1/auth/driver/login`, `/v1/driver/{profile,availability,pulse,history,earnings}` |
+| Auth / profile / availability / pulse | `/v1/auth/driver/login` (**T5:** `Drivers` row + bcrypt PinHash; no `+998` default), `/v1/driver/{profile,availability,pulse,earnings}`. `GET /v1/driver/history` **PARTIAL** — Spanner Orders by DriverId (30d completed window, P2); `[]` when none / query unset. |
 | Manifest / fleet | manifest, manifest-gate, `/v1/fleet/{manifest,orders}`, geometry, depart, return-complete, reorder, request-early-complete |
 | Telemetry | `POST /v1/telemetry/location` |
-| Doorstep (orderroutes) | arrive, proximity-unlock, shop-closed, partial-offload, scan-qr, deliver, confirm-offload, collect-cash, complete, fiscal/retry |
-| Doorstep (driverroutes aliases) | shop-closed, partial-offload, credit-leave, validate-qr, amend, negotiate, credit-delivery, missing-items, exception-report, split-payment, confirm-payment-bypass, bypass-offload |
+| Doorstep (orderroutes) | arrive, proximity-unlock, shop-closed, partial-offload, scan-qr, deliver, confirm-offload, collect-cash, complete, fiscal/retry (**M2:** planned pack 404; PEPPOL 422. **M3:** one pack breach radius; planned pack 404. **M4:** shop-closed grace from pack) |
+| Doorstep (driverroutes aliases) | shop-closed, partial-offload, credit-leave, validate-qr, amend, credit-delivery, missing-items, exception-report, split-payment, confirm-payment-bypass, bypass-offload. `POST /v1/delivery/negotiate` **GONE** — default `410 feature_disabled`. |
 | Sync offline | `POST /v1/sync/batch` |
 | Supply transfers | `/v1/driver/supply-transfers*` |
 | Rescue | `/v1/driver/ops/rescue/{request,respond}` |
 | Cash recon | `/v1/driver/cash-reconciliations` |
 | Return goods | `GET /v1/driver/return-goods` |
 | Open fiscal / pending collections | `/v1/driver/open-fiscal`, `pending-collections` |
-| Handshake | `deliveryroutes` verify-handshake, update-order-during-delivery |
+| Handshake | `deliveryroutes` verify-handshake. `update-order-during-delivery` **GONE** — `not_implemented`; use amend / missing-items / partial-offload. |
+| `PATCH /v1/orders/{id}/state` | **GONE** — mounted `501 use_delivery_edges`; not a feature. Use arrive / collect-cash / credit-leave / partial-offload / depart. |
 | Force-complete | **not** driver — `RoleAdmin`, `RoleWarehouseAdmin` only |
 
 ---
@@ -304,11 +330,15 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 
 | Package | Routes |
 |---------|--------|
-| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh |
+| `platformroutes` | client-policy/config, media upload-ticket, device-token, auth refresh/logout, **GS-A** `GET /v1/auth/session` (JWT + market pack + **GS-C5** `api_url`/`ws_url`; `checkout_reads_this: false`), `GET /v1/platform/cells` (home_cell → API URL), `GET /v1/platform/market-packs` (+ `/{code}`), **GS-P** `GET /v1/platform/partner-dialects`, **GS-T1** `POST /v1/platform/tenants/register` (public; shipped pack only; not dialect-gated). **GS-I** OIDC lives on `supplierroutes` (`/v1/auth/oidc/*`, `/v1/supplier/oidc`), not a process-global Auth0 wrap |
 | `webhookroutes` | global-pay, adyen, stripe, payme, click |
 | `updateroutes` | iOS plist + desktop updater.json |
-| `infraroutes` | healthz/ready |
+| `infraroutes` | healthz/ready (+ G4 `GET /v1/health/capabilities` optimizer honesty) |
 | `etaroutes` / `laborcapacityroutes` | ETA + labor capacity helpers |
+| `platformadmin` (G4–G7 / P12) | login, MFA, tenants (**T3:** missing KYB ≠ active; `POST …/transition` APPROVE is dual-control pack+cell), flags, audit, match queue, partner, `/ops/outbox/{summary,events,dead-letters}`, `/ops/runtime`, `GET /v1/admin/billing/{invoices,fee-schedules}`, `POST /v1/admin/billing/run-monthly` |
+| Planning accuracy (G6) | `GET /v1/admin/planning/accuracy`, `POST …/run-once` (`mape28`, `demoted`) |
+| Partner enterprise I/O (G5) | EDI profile GET/PUT, 1C import, master-data, WMS ASN in/out |
+| Dispatch honesty | `optimizer_class` HEURISTIC\|OPTIMAL; `matrix_source` haversine\|osrm |
 
 ---
 
@@ -320,3 +350,5 @@ Roles: `DRIVER`, `FACTORY_DRIVER`.
 4. Did **not** copy feature lists from `ECOSYSTEM_FEATURES_BY_ROLE.md` or other docs.
 
 If a feature is not a route above and not a client nav id above, it is not claimed here.
+
+**P0 honesty (2026-08-13):** THEATRE/GONE/STUB tags above were checked against live handlers (`retailer/mobile_compat.go`, `order/retailer_request_cancel.go`, `supplier/portal_handlers.go`, `factory/service.go`, `warehouse/ops_portal.go`, `driver/service.go`). A registered route is not a live product.

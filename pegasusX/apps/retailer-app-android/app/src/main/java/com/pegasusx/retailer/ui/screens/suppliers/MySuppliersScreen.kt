@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.suppliers
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +60,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.Supplier
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasusx.retailer.ui.theme.StatusGreen
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +86,7 @@ fun MySuppliersScreen(
         AlertDialog(
             onDismissRequest = { supplierToRemove = null },
             title = { Text("Remove vendor?") },
-            text = { Text("${supplier.name} will be removed from your connected suppliers.") },
+            text = { Text(stringResource(R.string.mobile_retailer_ui_name_will_be_removed_from_your_connected_suppliers, supplier.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -104,7 +107,7 @@ fun MySuppliersScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showConnectSheet = true }) {
-                Icon(Icons.Rounded.Add, contentDescription = "Connect vendor")
+                Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.mobile_retailer_ui_connect_vendor))
             }
         },
     ) { innerPadding ->
@@ -290,7 +293,7 @@ private fun SupplierCard(
                 if (supplier.orderCount > 3) {
                     Icon(
                         Icons.Rounded.Sync,
-                        contentDescription = "Auto-order active",
+                        contentDescription = stringResource(R.string.mobile_retailer_ui_auto_order_active),
                         modifier = Modifier.size(14.dp),
                         tint = StatusGreen,
                     )
@@ -322,7 +325,7 @@ private fun SupplierCard(
 
             // Order count pill
             Text(
-                "${supplier.orderCount} orders",
+                stringResource(R.string.mobile_retailer_ui_ordercount_orders_2, supplier.orderCount),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Medium),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier
@@ -350,13 +353,13 @@ private fun AnalyticsOverview(analytics: com.pegasusx.retailer.data.model.Retail
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "MTD Settlement",
+                    text = stringResource(R.string.mobile_retailer_ui_mtd_settlement),
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "$${analytics.totalThisMonth}",
+                    text = stringResource(R.string.mobile_retailer_ui_totalthismonth, analytics.totalThisMonth),
                     style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Light),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
@@ -371,7 +374,7 @@ private fun AnalyticsOverview(analytics: com.pegasusx.retailer.data.model.Retail
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "TRADE BREAKDOWN",
+                        text = stringResource(R.string.mobile_retailer_ui_trade_breakdown),
                         style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -394,9 +397,9 @@ private fun AnalyticsOverview(analytics: com.pegasusx.retailer.data.model.Retail
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(supplier.supplierName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text("${supplier.orderCount} trades", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.mobile_retailer_ui_ordercount_trades, supplier.orderCount), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Text("$${supplier.total}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
+                            Text(stringResource(R.string.mobile_retailer_ui_total, supplier.total), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium))
                         }
                     }
                 }

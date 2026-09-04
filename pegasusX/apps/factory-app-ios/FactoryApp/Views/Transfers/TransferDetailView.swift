@@ -15,11 +15,11 @@ struct TransferDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") {
+                    Button("common.action.retry") {
                         Task { await load() }
                     }
                 }
@@ -42,7 +42,7 @@ struct TransferDetailView: View {
                         if transfer.state == "APPROVED" || transfer.state == "LOADING" {
                             HStack(spacing: LabTheme.spacingMD) {
                                 if transfer.state == "APPROVED" {
-                                    Button("Start Loading") {
+                                    Button("mobile_factory.ui.start_loading") {
                                         Task { await transition(to: "LOADING") }
                                     }
                                     .frame(maxWidth: .infinity)
@@ -50,7 +50,7 @@ struct TransferDetailView: View {
                                 }
 
                                 if transfer.state == "LOADING" {
-                                    Button("Mark Dispatched") {
+                                    Button("mobile_factory.ui.mark_dispatched") {
                                         Task { await transition(to: "DISPATCHED") }
                                     }
                                     .frame(maxWidth: .infinity)
@@ -59,7 +59,7 @@ struct TransferDetailView: View {
                             }
                             .disabled(transitioning)
                         } else {
-                            Text("No manual transition is available for the current state.")
+                            Text("mobile_factory.ui.no_manual_transition_is_available_for_the_current_state")
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -69,7 +69,7 @@ struct TransferDetailView: View {
 
                         Divider()
 
-                        Text("Items")
+                        Text("warehouse_portal.supply_requests._id_.text.items")
                             .font(.headline)
 
                         ForEach(Array(transfer.items.enumerated()), id: \.element.id) { index, item in
@@ -94,7 +94,7 @@ struct TransferDetailView: View {
 
                         if !transfer.notes.isEmpty {
                             Divider()
-                            Text("Notes")
+                            Text("factory_portal.transfers._id_.text.notes")
                                 .font(.headline)
                             Text(transfer.notes)
                                 .font(.body)
@@ -109,10 +109,10 @@ struct TransferDetailView: View {
             }
         }
         .background(LabTheme.background)
-        .navigationTitle("Transfer")
+        .navigationTitle("factory_portal.payload_override.payload_list.text.transfer")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                     Task { await load() }
                 }
                 .labelStyle(.iconOnly)
@@ -123,8 +123,7 @@ struct TransferDetailView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                     if !transitioning {
                         Task { await load(silent: true) }
                     }
@@ -183,7 +182,7 @@ private struct TransferOverviewCard: View {
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                 Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
                     .font(.title3.bold())
-                Text("Transfer \(transfer.id.prefix(8))")
+                Text(L10n.format("mobile_factory.ui.transfer_prefix", "\(transfer.id.prefix(8))"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

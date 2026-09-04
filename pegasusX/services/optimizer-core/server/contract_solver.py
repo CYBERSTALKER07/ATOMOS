@@ -95,8 +95,28 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     if not stops_in:
         raise SolverError("BAD_REQUEST", "stops slice is empty")
 
-    depot_lat = float(vehicles_in[0].get("start_lat") or 0)
-    depot_lng = float(vehicles_in[0].get("start_lng") or 0)
+    depot_nodes: list[tuple[float, float]] = []
+    depot_map: dict[tuple[float, float], int] = {}
+
+    def get_or_add_depot(lat: float, lng: float) -> int:
+        coord = (round(lat, 6), round(lng, 6))
+        if coord not in depot_map:
+            idx = len(depot_nodes)
+            depot_map[coord] = idx
+            depot_nodes.append((lat, lng))
+        return depot_map[coord]
+
+    starts: list[int] = []
+    ends: list[int] = []
+    for v in vehicles_in:
+        s_lat = float(v.get("start_lat") or 0)
+        s_lng = float(v.get("start_lng") or 0)
+        e_lat = float(v.get("end_lat") or s_lat)
+        e_lng = float(v.get("end_lng") or s_lng)
+        starts.append(get_or_add_depot(s_lat, s_lng))
+        ends.append(get_or_add_depot(e_lat, e_lng))
+
+    num_depots = len(depot_nodes)
 
     stops: list[dict[str, Any]] = []
     orphans: list[dict[str, str]] = []
@@ -114,7 +134,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
         return _empty_response(trace_id, len(stops_in), orphans, elapsed_ms)
 
-    node_coords = [(depot_lat, depot_lng)]
+    node_coords = list(depot_nodes)
     for stop in stops:
         node_coords.append((float(stop["lat"]), float(stop["lng"])))
 
@@ -127,7 +147,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         for i in range(size)
     ]
 
-    demands = [0]
+    demands = [0] * num_depots
     for stop in stops:
         demands.append(max(1, int(stop["volume_vu"] * SCALE_FACTOR)))
 
@@ -139,7 +159,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         float(v.get("avg_speed_kmph") or 0) or DEFAULT_AVG_SPEED_KMPH for v in vehicles_in
     ]
 
-    manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), 0)
+    manager = pywrapcp.RoutingIndexManager(size, len(vehicles_in), starts, ends)
     routing = pywrapcp.RoutingModel(manager)
 
     def distance_callback(from_index: int, to_index: int) -> int:
@@ -166,15 +186,15 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 to_node = manager.IndexToNode(to_index)
                 travel = _travel_minutes(distance_matrix[from_node][to_node], spd)
                 # Service time is paid when leaving a customer node.
-                if from_node != 0:
-                    travel += int(stops[from_node - 1]["service_minutes"])
+                if from_node >= num_depots:
+                    travel += int(stops[from_node - num_depots]["service_minutes"])
                 return travel
 
             return time_callback
 
         time_callback_indices.append(routing.RegisterTransitCallback(make_time_cb()))
 
-    time_windows: list[tuple[int, int] | None] = [None]
+    time_windows: list[tuple[int, int] | None] = [None] * num_depots
     has_time_windows = False
     for stop in stops:
         open_min = _parse_hh_mm(str(stop.get("window_open") or ""))
@@ -194,18 +214,18 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             time_callback_indices, 30, max_horizon, False, "Time"
         )
         time_dim = routing.GetDimensionOrDie("Time")
-        for node_index in range(1, size):
+        for node_index in range(num_depots, size):
             tw = time_windows[node_index]
             if tw is None:
                 continue
             manager_index = manager.NodeToIndex(node_index)
-            service = int(stops[node_index - 1]["service_minutes"])
+            service = int(stops[node_index - num_depots]["service_minutes"])
             time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
 
     # Drop infeasible stops individually instead of collapsing the whole model.
     # Penalty high enough that assignment is preferred when feasible.
     drop_penalty = 100_000
-    for node_index in range(1, size):
+    for node_index in range(num_depots, size):
         routing.AddDisjunction([manager.NodeToIndex(node_index)], drop_penalty)
 
     max_stops = int(tunables["max_stops_per_route"])
@@ -231,7 +251,6 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             total_vu = 0.0
             distance_m = 0
             duration_min = 0
-            prev_node = 0
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
                 next_index = solution.Value(routing.NextVar(index))
@@ -240,14 +259,12 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 duration_min += _travel_minutes(
                     distance_matrix[node_index][next_node], vehicle_speeds[vehicle_index]
                 )
-                if node_index != 0:
-                    stop = stops[node_index - 1]
+                if node_index >= num_depots:
+                    stop = stops[node_index - num_depots]
                     ordered_stops.append(stop)
                     total_vu += float(stop["volume_vu"])
                     duration_min += int(stop["service_minutes"])
-                prev_node = node_index
                 index = next_index
-                _ = prev_node
             if not ordered_stops:
                 continue
             if len(ordered_stops) > max_stops:

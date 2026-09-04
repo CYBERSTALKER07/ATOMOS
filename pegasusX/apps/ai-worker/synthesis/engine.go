@@ -13,23 +13,25 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 	"google.golang.org/api/iterator"
 )
 
 // OrderSignal is the minimal order-event payload used for synthesis.
 type OrderSignal struct {
-	OrderID      string  `json:"order_id"`
-	SupplierID   string  `json:"supplier_id"`
-	RetailerID   string  `json:"retailer_id"`
-	WarehouseID  string  `json:"warehouse_id"`
-	Status       string  `json:"status"`
-	TotalMinor   int64   `json:"total_minor"`
-	Currency     string  `json:"currency"`
-	OrderSource  string  `json:"order_source"`
-	LineItems    []Line  `json:"line_items"`
-	H3Cell       string  `json:"h3_cell"`
-	Lat          float64 `json:"lat"`
-	Lng          float64 `json:"lng"`
+	OrderID      string    `json:"order_id"`
+	SupplierID   string    `json:"supplier_id"`
+	RetailerID   string    `json:"retailer_id"`
+	WarehouseID  string    `json:"warehouse_id"`
+	Status       string    `json:"status"`
+	TotalMinor   int64     `json:"total_minor"`
+	Currency     string    `json:"currency"`
+	OrderSource  string    `json:"order_source"`
+	LineItems    []Line    `json:"line_items"`
+	H3Cell       string    `json:"h3_cell"`
+	Lat          float64   `json:"lat"`
+	Lng          float64   `json:"lng"`
+	CreatedAt    time.Time `json:"created_at,omitempty"`
 }
 
 // Line is one SKU line on an order signal.
@@ -113,7 +115,7 @@ func (e *Engine) HandleOrderEvent(ctx context.Context, eventType string, payload
 	mutations = append(mutations, predMut)
 
 	if e.CreatePreorders && len(signal.LineItems) > 0 && rec.Action == "SUGGEST_REORDER" {
-		preMut, ok, err := e.maybePreorderMutation(ctx, signal, rec)
+		preMut, ok, err := e.maybePreorderMutation(ctx, signal, history, rec)
 		if err != nil {
 			return err
 		}
@@ -288,7 +290,27 @@ func (e *Engine) predictionMutation(rec Recommendation) (*spanner.Mutation, erro
 	}), nil
 }
 
-func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, rec Recommendation) (*spanner.Mutation, bool, error) {
+func extractSKUDemandHistory(history []OrderSignal, productID string, fallbackBase time.Time) []predictivepush.DemandPoint {
+	var points []predictivepush.DemandPoint
+	for i, ord := range history {
+		t := ord.CreatedAt
+		if t.IsZero() {
+			t = fallbackBase.AddDate(0, 0, -(i+1)*7)
+		}
+		for _, item := range ord.LineItems {
+			if item.ProductID == productID && item.Quantity > 0 {
+				points = append(points, predictivepush.DemandPoint{
+					Date: t,
+					Qty:  item.Quantity,
+				})
+				break
+			}
+		}
+	}
+	return points
+}
+
+func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, history []OrderSignal, rec Recommendation) (*spanner.Mutation, bool, error) {
 	// Skip if a pending AI preorder already exists for this retailer recently.
 	exists, err := e.hasOpenAIPreorder(ctx, signal.RetailerID, signal.SupplierID)
 	if err != nil {
@@ -302,12 +324,20 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 	delivery := now.AddDate(0, 0, e.preorderHorizonDays()).UTC()
 	autoConfirm := now.Add(time.Duration(e.autoConfirmHours()) * time.Hour).UTC()
 	orderID := uuid.NewString()
+	horizon := e.preorderHorizonDays()
 
-	// Scale suggested qty: 50% of last order, min 1 per line.
+	// Calculate suggested order quantities using Croston/SBA demand rates based on historical orders
 	lines := make([]map[string]any, 0, len(signal.LineItems))
 	var total int64
 	for _, line := range signal.LineItems {
-		qty := line.Quantity / 2
+		skuPoints := extractSKUDemandHistory(history, line.ProductID, now)
+		skuPoints = append(skuPoints, predictivepush.DemandPoint{
+			Date: now,
+			Qty:  line.Quantity,
+		})
+
+		forecast := predictivepush.CalculateCrostonSBA(skuPoints, horizon, 0.15)
+		qty := forecast.SuggestedQty
 		if qty < 1 {
 			qty = 1
 		}
@@ -322,6 +352,8 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 			"quantity":          qty,
 			"unit_price_minor":  unit,
 			"line_total_minor":  qty * unit,
+			"forecast_category": forecast.Category,
+			"forecast_rate":     forecast.DemandRate,
 		})
 	}
 	lineJSON, err := json.Marshal(lines)
@@ -334,26 +366,26 @@ func (e *Engine) maybePreorderMutation(ctx context.Context, signal OrderSignal, 
 	}
 
 	mut := spanner.InsertMap("Orders", map[string]any{
-		"OrderId":              orderID,
-		"SupplierId":           signal.SupplierID,
-		"RetailerId":           signal.RetailerID,
-		"WarehouseId":          nullable(signal.WarehouseID),
-		"Status":               "PENDING",
-		"OrderSource":          "AI_PREORDER",
-		"ConfirmationStatus":   "PENDING",
-		"LineItemsJson":        lineJSON,
-		"TotalMinor":           total,
-		"OriginalTotalMinor":   total,
-		"Currency":             currency,
-		"H3Cell":               nullable(signal.H3Cell),
-		"Lat":                  signal.Lat,
-		"Lng":                  signal.Lng,
+		"OrderId":               orderID,
+		"SupplierId":            signal.SupplierID,
+		"RetailerId":            signal.RetailerID,
+		"WarehouseId":           nullable(signal.WarehouseID),
+		"Status":                "PENDING",
+		"OrderSource":           "AI_PREORDER",
+		"ConfirmationStatus":    "PENDING",
+		"LineItemsJson":         lineJSON,
+		"TotalMinor":            total,
+		"OriginalTotalMinor":    total,
+		"Currency":              currency,
+		"H3Cell":                nullable(signal.H3Cell),
+		"Lat":                   signal.Lat,
+		"Lng":                   signal.Lng,
 		"RequestedDeliveryDate": delivery,
-		"AutoConfirmAt":        autoConfirm,
-		"DerivedFromOrderId":   nullable(signal.OrderID),
-		"Version":              int64(1),
-		"CreatedAt":            now,
-		"UpdatedAt":            now,
+		"AutoConfirmAt":         autoConfirm,
+		"DerivedFromOrderId":    nullable(signal.OrderID),
+		"Version":               int64(1),
+		"CreatedAt":             now,
+		"UpdatedAt":             now,
 	})
 	_ = rec // score already gated
 	return mut, true, nil
@@ -387,7 +419,7 @@ func (e *Engine) loadRecentRetailerOrders(ctx context.Context, supplierID, retai
 		limit = 20
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, SupplierId, RetailerId, WarehouseId, Status, TotalMinor, Currency, OrderSource, LineItemsJson
+		SQL: `SELECT OrderId, SupplierId, RetailerId, WarehouseId, Status, TotalMinor, Currency, OrderSource, LineItemsJson, CreatedAt
 		      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated}
 		      WHERE RetailerId = @retailer_id
 		      ORDER BY CreatedAt DESC
@@ -414,8 +446,9 @@ func (e *Engine) loadRecentRetailerOrders(ctx context.Context, supplierID, retai
 			totalMinor                                           int64
 			lineJSON                                             []byte
 			whNull                                               spanner.NullString
+			createdAt                                            time.Time
 		)
-		if err := row.Columns(&orderID, &supID, &retID, &whNull, &status, &totalMinor, &currency, &source, &lineJSON); err != nil {
+		if err := row.Columns(&orderID, &supID, &retID, &whNull, &status, &totalMinor, &currency, &source, &lineJSON, &createdAt); err != nil {
 			return nil, err
 		}
 		if whNull.Valid {
@@ -434,6 +467,7 @@ func (e *Engine) loadRecentRetailerOrders(ctx context.Context, supplierID, retai
 			TotalMinor:  totalMinor,
 			Currency:    currency,
 			OrderSource: source,
+			CreatedAt:   createdAt,
 		}
 		_ = json.Unmarshal(lineJSON, &sig.LineItems)
 		out = append(out, sig)

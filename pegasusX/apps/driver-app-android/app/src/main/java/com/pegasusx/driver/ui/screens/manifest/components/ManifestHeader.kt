@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.remote.ConnectionState
 import com.pegasusx.driver.ui.components.WsConnectionPill
 import com.pegasusx.driver.ui.theme.PegasusSpacing
+import com.pegasusx.driver.R
 
 @Composable
 fun ManifestHeader(
@@ -85,7 +88,7 @@ fun ManifestHeader(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "$pendingCount",
+                            text = stringResource(R.string.mobile_driver_ui_pendingcount),
                             style = typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                             color = colorScheme.onPrimary,
                         )
@@ -99,12 +102,12 @@ fun ManifestHeader(
                 IconButton(onClick = onRefresh) {
                     Icon(
                         Icons.Default.Refresh,
-                        contentDescription = "Refresh manifest",
+                        contentDescription = stringResource(R.string.mobile_driver_ui_refresh_manifest),
                         tint = colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    text = "Loading Mode",
+                    text = stringResource(R.string.mobile_driver_ui_loading_mode),
                     style = typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                     color = if (loadingMode) colorScheme.primary else colorScheme.onSurfaceVariant,
                 )

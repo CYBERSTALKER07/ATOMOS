@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
@@ -16,17 +17,26 @@ interface Retailer {
 }
 
 export default function CRMPage() {
+  const t = usePortalT();
   const [retailers, setRetailers] = useState<Retailer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await apiFetch('/v1/warehouse/ops/crm');
       if (res.ok) {
         const data = await res.json();
         setRetailers(data.retailers || []);
+      } else {
+        setRetailers([]);
+        setError(`CRM unavailable (${res.status})`);
       }
-    } catch { /* handled */ }
+    } catch {
+      setRetailers([]);
+      setError('CRM unavailable');
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -38,8 +48,10 @@ export default function CRMPage() {
     <PageTransition>
       <PageChrome
         icon="crm"
-        title="Retailer CRM"
-        description="Retailer relationships, order volume, and revenue for this warehouse."
+        title={t("warehouse_portal.crm.text.retailer_crm")}
+        description={t("warehouse_portal.residual.text.retailer_relationships_order_volume_and_revenue_for_this_warehou")}
+        loading={loading}
+        error={error}
         actions={
           <button type="button" onClick={() => { setLoading(true); load(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary">
             <Icon name="refresh" size={16} /> Refresh
@@ -51,21 +63,21 @@ export default function CRMPage() {
         <div className="space-y-1">
           {Array.from({ length: 5 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
         </div>
-      ) : retailers.length === 0 ? (
+      ) : error ? null : retailers.length === 0 ? (
         <EmptyState 
           variant="no-data" 
-          headline="No buyer data to analyze yet" 
-          body="Retailer relationships and purchase histories will appear here once orders are fulfilled by this node." 
+          headline={t("warehouse_portal.residual.text.no_buyer_data_to_analyze_yet")} 
+          body={t("warehouse_portal.residual.text.retailer_relationships_and_purchase_histories_will_appear_here_o")} 
         />
       ) : (
         <div className="overflow-x-auto">
           <table className="desk-table w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)]">
-                <th className="text-left py-2 px-3 font-medium">Business Name</th>
-                <th className="text-right py-2 px-3 font-medium">Total Orders</th>
-                <th className="text-right py-2 px-3 font-medium">Revenue (UZS)</th>
-                <th className="text-right py-2 px-3 font-medium">Last Order</th>
+                <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.crm.text.business_name")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.crm.text.total_orders")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.analytics.text.revenue_uzs")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.crm.text.last_order")}</th>
               </tr>
             </thead>
             <tbody>

@@ -58,18 +58,18 @@ type SupplierActivityEvent struct {
 
 // SupplierDispatchPreview is the supplier-scoped dispatch planning snapshot.
 type SupplierDispatchPreview struct {
-	UndispatchedOrders     []map[string]any `json:"undispatched_orders"`
-	AvailableDrivers       []map[string]any `json:"available_drivers"`
-	UnavailableDrivers     []map[string]any `json:"unavailable_drivers"`
-	PendingCount           int              `json:"pending_count"`
-	AvailableCount         int              `json:"available_driver_count"`
-	WindowConstrainedCount int              `json:"window_constrained_count"`
-	ProposedRoutes         []map[string]any `json:"proposed_routes,omitempty"`
-	OptimizerSource        string           `json:"optimizer_source,omitempty"`
-	OptimizerWarnings      []string         `json:"optimizer_warnings,omitempty"`
-	PlanFingerprint        string           `json:"plan_fingerprint,omitempty"`
-	WarehousePlanFingerprint string         `json:"warehouse_plan_fingerprint,omitempty"`
-	PlanFingerprintMismatch bool            `json:"plan_fingerprint_mismatch,omitempty"`
+	UndispatchedOrders       []map[string]any `json:"undispatched_orders"`
+	AvailableDrivers         []map[string]any `json:"available_drivers"`
+	UnavailableDrivers       []map[string]any `json:"unavailable_drivers"`
+	PendingCount             int              `json:"pending_count"`
+	AvailableCount           int              `json:"available_driver_count"`
+	WindowConstrainedCount   int              `json:"window_constrained_count"`
+	ProposedRoutes           []map[string]any `json:"proposed_routes,omitempty"`
+	OptimizerSource          string           `json:"optimizer_source,omitempty"`
+	OptimizerWarnings        []string         `json:"optimizer_warnings,omitempty"`
+	PlanFingerprint          string           `json:"plan_fingerprint,omitempty"`
+	WarehousePlanFingerprint string           `json:"warehouse_plan_fingerprint,omitempty"`
+	PlanFingerprintMismatch  bool             `json:"plan_fingerprint_mismatch,omitempty"`
 }
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
@@ -99,18 +99,22 @@ type SupplierManifestExceptionRow struct {
 
 type supplierDashboardDetail struct {
 	supplierDashboardResponse
-	OrdersByStatus         map[string]int          `json:"orders_by_status"`
-	TodayRevenueMinor      int64                   `json:"today_revenue_minor"`
-	Currency               string                  `json:"currency"`
-	ActiveDrivers          int                     `json:"active_drivers"`
-	TotalDrivers           int                     `json:"total_drivers"`
-	RetailersOrderedToday  int                     `json:"retailers_ordered_today"`
-	TotalRetailers         int                     `json:"total_retailers"`
-	DeliveryCompletionRate float64                 `json:"delivery_completion_rate_pct"`
-	FleetVuUsed            int64                   `json:"fleet_vu_used"`
-	FleetVuTotal           int64                   `json:"fleet_vu_total"`
-	RecentManifests        []SupplierManifestRow   `json:"recent_manifests"`
-	ActivityEvents         []SupplierActivityEvent `json:"activity_events"`
+	OrdersByStatus           map[string]int          `json:"orders_by_status"`
+	TodayRevenueMinor        int64                   `json:"today_revenue_minor"`
+	Currency                 string                  `json:"currency"`
+	ActiveDrivers            int                     `json:"active_drivers"`
+	TotalDrivers             int                     `json:"total_drivers"`
+	RetailersOrderedToday    int                     `json:"retailers_ordered_today"`
+	TotalRetailers           int                     `json:"total_retailers"`
+	DeliveryCompletionRate   float64                 `json:"delivery_completion_rate_pct"`
+	DeliveriesCompletedToday int                     `json:"deliveries_completed_today"`
+	DeliveriesAttemptedToday int                     `json:"deliveries_attempted_today"`
+	ManifestsByState         map[string]int          `json:"manifests_by_state"`
+	FleetVuUsed              int64                   `json:"fleet_vu_used"`
+	FleetVuTotal             int64                   `json:"fleet_vu_total"`
+	FleetVuAvailable         bool                    `json:"fleet_vu_available"`
+	RecentManifests          []SupplierManifestRow   `json:"recent_manifests"`
+	ActivityEvents           []SupplierActivityEvent `json:"activity_events"`
 }
 
 // HandleDispatchPreview serves GET/POST /v1/supplier/dispatch/preview.
@@ -255,19 +259,27 @@ func (s *Service) buildSupplierDashboardDetail(ctx context.Context, sid string, 
 
 	metrics := aggregateOrderMetrics(orders, s.now())
 	drivers, vehicles := s.fleetCounts(ctx, sid)
+	currency := ""
+	if c, err := auth.CoalesceCurrency(ctx, sid, profile.Currency); err == nil {
+		currency = c
+	}
 
 	detail := supplierDashboardDetail{
 		supplierDashboardResponse: base,
 		OrdersByStatus:            metrics.ordersByStatus,
 		TodayRevenueMinor:         metrics.todayRevenueMinor,
-		Currency:                  s.currency,
+		Currency:                  currency,
 		ActiveDrivers:             metrics.activeDrivers,
 		TotalDrivers:              drivers,
 		RetailersOrderedToday:     metrics.retailersToday,
 		TotalRetailers:            metrics.totalRetailers,
 		DeliveryCompletionRate:    metrics.completionRate,
-		FleetVuUsed:               metrics.fleetVuUsed,
+		DeliveriesCompletedToday:  metrics.completedToday,
+		DeliveriesAttemptedToday:  metrics.attemptedToday,
+		ManifestsByState:          manifestStateCounts(manifests),
+		FleetVuUsed:               fleetVuUsedFromManifests(manifests),
 		FleetVuTotal:              fleetMaxVU,
+		FleetVuAvailable:          true,
 		RecentManifests:           manifests,
 		ActivityEvents:            buildSupplierActivityEvents(orders, 20),
 	}
@@ -547,14 +559,13 @@ type orderMetricsAggregate struct {
 	retailersToday    int
 	totalRetailers    int
 	completionRate    float64
-	fleetVuUsed       int64
+	completedToday    int
+	attemptedToday    int
 }
 
 func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAggregate {
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	statuses := map[string]int{
-		"PENDING": 0, "LOADED": 0, "IN_TRANSIT": 0, "ARRIVED": 0, "COMPLETED": 0, "CANCELLED": 0,
-	}
+	statuses := emptyOrderStatusCounts()
 	retailersToday := map[string]struct{}{}
 	allRetailers := map[string]struct{}{}
 	activeDrivers := map[string]struct{}{}
@@ -563,7 +574,7 @@ func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAg
 	attemptedToday := 0
 
 	for _, order := range orders {
-		status := strings.ToUpper(strings.TrimSpace(order.Status))
+		status := canonicalizeOrderStatus(order.Status)
 		if _, ok := statuses[status]; ok {
 			statuses[status]++
 		}
@@ -604,8 +615,88 @@ func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAg
 		retailersToday:    len(retailersToday),
 		totalRetailers:    len(allRetailers),
 		completionRate:    completion,
-		fleetVuUsed:       int64(len(orders)) * 10,
+		completedToday:    completedToday,
+		attemptedToday:    attemptedToday,
 	}
+}
+
+func emptyManifestStateCounts() map[string]int {
+	return map[string]int{
+		"DRAFT": 0, "LOADING": 0, "SEALED": 0,
+		"DISPATCHED": 0, "COMPLETED": 0, "CANCELLED": 0,
+	}
+}
+
+func manifestStateCounts(rows []SupplierManifestRow) map[string]int {
+	out := emptyManifestStateCounts()
+	for _, row := range rows {
+		state := strings.ToUpper(strings.TrimSpace(row.State))
+		if state == "" {
+			state = strings.ToUpper(strings.TrimSpace(row.Status))
+		}
+		if _, ok := out[state]; ok {
+			out[state]++
+		}
+	}
+	return out
+}
+
+var orderStatusFunnel = []string{
+	"PENDING", "SCHEDULED", "AUTO_ACCEPTED", "BACKORDERED",
+	"LOADED", "IN_TRANSIT", "DELAYED",
+	"ARRIVED", "ARRIVED_SHOP_CLOSED",
+	"AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "DELIVERED_ON_CREDIT",
+	"FISCALIZING", "FISCAL_FAILED", "RECONCILIATION_REQUIRED",
+	"COMPLETED", "CANCELLED",
+}
+
+func emptyOrderStatusCounts() map[string]int {
+	out := make(map[string]int, len(orderStatusFunnel))
+	for _, key := range orderStatusFunnel {
+		out[key] = 0
+	}
+	return out
+}
+
+func canonicalizeOrderStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "DISPATCHED":
+		return "LOADED"
+	case "EN_ROUTE":
+		return "IN_TRANSIT"
+	case "ARRIVING":
+		return "ARRIVED"
+	case "SHOP_CLOSED_PENDING":
+		return "ARRIVED_SHOP_CLOSED"
+	default:
+		return strings.ToUpper(strings.TrimSpace(status))
+	}
+}
+
+func isOpenManifestState(state string) bool {
+	switch strings.ToUpper(strings.TrimSpace(state)) {
+	case "DRAFT", "LOADING", "SEALED", "DISPATCHED":
+		return true
+	default:
+		return false
+	}
+}
+
+func fleetVuUsedFromManifests(rows []SupplierManifestRow) int64 {
+	var used int64
+	for _, row := range rows {
+		if !isOpenManifestState(row.State) {
+			continue
+		}
+		if row.TotalVu > 0 {
+			used += row.TotalVu
+			continue
+		}
+		if row.TotalVolumeVU > 0 {
+			used += int64(row.TotalVolumeVU)
+		}
+	}
+	return used
 }
 
 func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, warehouseID string, limit, offset int) (SupplierDispatchPreview, error) {

@@ -18,11 +18,11 @@ struct ProfileView: View {
                         SupplierIdentityCard(profile: profile)
                         Section {
                             if !profile.isConfigured {
-                                Button("Complete billing setup") {
+                                Button("mobile_supplier.ui.complete_billing_setup") {
                                     tokenStore.showBillingGate()
                                 }
                             }
-                            Button("Sign out", role: .destructive) {
+                            Button("mobile_supplier.ui.sign_out", role: .destructive) {
                                 tokenStore.clear()
                             }
                         }
@@ -30,7 +30,7 @@ struct ProfileView: View {
                     .supplierReadableWidth()
                 }
             }
-            .navigationTitle("Profile")
+            .navigationTitle("portal.nav.profile")
             .task { await load() }
             .refreshable { await load(silent: true) }
         }

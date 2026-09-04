@@ -35,3 +35,12 @@ func (d *RedisEventDedup) ShouldProcess(ctx context.Context, key string) (bool, 
 	}
 	return ok, nil
 }
+
+// Release deletes the key from Redis, allowing future retries.
+func (d *RedisEventDedup) Release(ctx context.Context, key string) error {
+	if d == nil || d.client == nil || key == "" {
+		return nil
+	}
+	_, err := d.client.Del(ctx, eventDedupKeyPrefix+key).Result()
+	return err
+}

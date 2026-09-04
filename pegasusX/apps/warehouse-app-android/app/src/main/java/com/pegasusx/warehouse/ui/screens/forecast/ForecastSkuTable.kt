@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.forecast
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +28,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 fun LazyGridScope.forecastSkuTable(
     products: List<DemandForecastProduct>,
@@ -39,7 +42,7 @@ fun LazyGridScope.forecastSkuTable(
     generatedAt?.takeIf { it.isNotBlank() }?.let { generated ->
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
-                "Generated ${formatGeneratedAt(generated)} · $forecastDays-day window",
+                stringResource(R.string.mobile_warehouse_ui_generated_formatgeneratedat_forecastdays_day_window, formatGeneratedAt(generated), forecastDays),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -80,17 +83,17 @@ private fun ForecastProductCard(
             }
             Row(modifier = Modifier.fillMaxWidth()) {
                 ForecastMetricColumn(
-                    title = "Stock",
+                    title = stringResource(R.string.portal_nav_stock),
                     value = fmt.format(product.currentStock),
                     modifier = Modifier.weight(1f),
                 )
                 ForecastMetricColumn(
-                    title = "Rec.",
+                    title = stringResource(R.string.mobile_warehouse_ui_rec),
                     value = fmt.format(product.recommendedQty),
                     modifier = Modifier.weight(1f),
                 )
                 ForecastMetricColumn(
-                    title = "Stockout",
+                    title = stringResource(R.string.warehouse_portal_forecast_forecast_sku_table_text_stockout),
                     value = String.format(Locale.US, "%.1fd", product.daysUntilStockout),
                     valueColor = stockoutColor(product.daysUntilStockout),
                     modifier = Modifier.weight(1f),

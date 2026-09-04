@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 
 interface ProposeDelayDialogProps {
@@ -21,6 +24,7 @@ export function ProposeDelayDialog({
   onClose,
   onConfirm,
 }: ProposeDelayDialogProps) {
+  const t = usePortalT();
   if (!open) return null;
 
   return (
@@ -30,13 +34,13 @@ export function ProposeDelayDialog({
     >
       <div className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Delay delivery</h2>
+          <h2 className="text-lg font-semibold">{t("supplier_portal.orders.propose_delay_dialog.text.delay_delivery")}</h2>
           <p className="text-sm text-[var(--muted)] mt-1">
             Choose a new delivery date. The retailer is notified and can accept or reject.
           </p>
         </div>
         <label className="block text-sm">
-          <span className="text-[var(--muted)]">New delivery date</span>
+          <span className="text-[var(--muted)]">{t("supplier_portal.orders.order_ops_actions.text.new_delivery_date")}</span>
           <input
             type="date"
             value={proposedDate}
@@ -47,7 +51,7 @@ export function ProposeDelayDialog({
         <textarea
           value={reason}
           onChange={(e) => onReasonChange(e.target.value)}
-          placeholder="Reason (required)"
+          placeholder={t("supplier_portal.orders.order_ops_actions.text.reason_required")}
           rows={3}
           className="w-full px-3 py-2 rounded-lg border text-sm md-input-outlined"
         />

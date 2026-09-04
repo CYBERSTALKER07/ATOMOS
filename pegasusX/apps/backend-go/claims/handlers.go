@@ -57,6 +57,7 @@ func (s *Service) HandleFileOrderClaim(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleApproveClaim serves POST /v1/claims/{claimID}/approve.
+// B6: HTTP Idempotency-Key guard (settlement is also domain-idempotent via chargeback id).
 func (s *Service) HandleApproveClaim(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -68,23 +69,36 @@ func (s *Service) HandleApproveClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claimID := strings.TrimSpace(chi.URLParam(r, "claimID"))
-	var req ApproveClaimRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && r.ContentLength != 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	var req ApproveClaimRequest
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			s.releaseIdempotency(r.Context(), r)
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 	}
 	c, settlement, err := s.ApproveClaim(r.Context(), actor, claimID, req)
 	if err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeClaimError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
 		"claim":      c,
 		"settlement": settlement,
 	})
 }
 
 // HandleRejectClaim serves POST /v1/claims/{claimID}/reject.
+// B6: HTTP Idempotency-Key guard.
 func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -96,17 +110,29 @@ func (s *Service) HandleRejectClaim(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	claimID := strings.TrimSpace(chi.URLParam(r, "claimID"))
-	var req RejectClaimRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && r.ContentLength != 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
+	}
+	if s.guardIdempotency(w, r, body) {
+		return
+	}
+	var req RejectClaimRequest
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &req); err != nil {
+			s.releaseIdempotency(r.Context(), r)
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 	}
 	c, err := s.RejectClaim(r.Context(), actor, claimID, req)
 	if err != nil {
+		s.releaseIdempotency(r.Context(), r)
 		writeClaimError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, c)
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, c)
 }
 
 // HandleListSupplierClaims serves GET /v1/supplier/claims?status=&limit=.

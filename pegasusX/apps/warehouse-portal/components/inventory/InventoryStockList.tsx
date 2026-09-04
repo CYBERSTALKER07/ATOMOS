@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { motion } from 'framer-motion';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
@@ -49,6 +50,7 @@ export default function InventoryStockList({
   onCancelAdjust,
   onPolicyChange,
 }: InventoryStockListProps) {
+  const t = usePortalT();
   if (loading) {
     return (
       <div className="space-y-1">
@@ -61,7 +63,7 @@ export default function InventoryStockList({
     return (
       <EmptyState
         variant={search || lowOnly ? 'no-results' : 'no-data'}
-        headline="No inventory items found"
+        headline={t("warehouse_portal.residual.text.no_inventory_items_found")}
         body={search || lowOnly ? "Try adjusting your search filters to find what you're looking for." : "There are no products in your inventory yet."}
       />
     );
@@ -76,13 +78,13 @@ export default function InventoryStockList({
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Product</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
             <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">SKU</th>
-            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Quantity</th>
-            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Reorder At</th>
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">OOS Policy</th>
-            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
-            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Action</th>
+            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.inventory.inventory_stock_list.text.quantity")}</th>
+            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.inventory.inventory_stock_list.text.reorder_at")}</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.inventory.inventory_stock_list.text.oos_policy")}</th>
+            <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.bins.text.status")}</th>
+            <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("supplier_portal.admin.audit_log.table.action")}</th>
           </tr>
         </thead>
         <tbody>
@@ -107,9 +109,9 @@ export default function InventoryStockList({
                     className="px-2 py-1 rounded border text-xs outline-none focus:ring-1 focus:ring-[var(--primary)]"
                     style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
                   >
-                    <option value="INHERIT">Inherit warehouse</option>
-                    <option value="REJECT">Reject when OOS</option>
-                    <option value="ACCEPT_BACKORDER">Accept backorder</option>
+                    <option value="INHERIT">{t("warehouse_portal.inventory.inventory_stock_list.text.inherit_warehouse")}</option>
+                    <option value="REJECT">{t("warehouse_portal.inventory.inventory_stock_list.text.reject_when_oos")}</option>
+                    <option value="ACCEPT_BACKORDER">{t("warehouse_portal.inventory.inventory_stock_list.text.accept_backorder")}</option>
                   </select>
                 </td>
                 <td className="py-3 px-4">
@@ -126,7 +128,7 @@ export default function InventoryStockList({
                         type="number"
                         value={adjustVal}
                         onChange={e => onAdjustValChange(e.target.value)}
-                        placeholder="New qty"
+                        placeholder={t("warehouse_portal.inventory.inventory_stock_list.text.new_qty")}
                         className="w-20 px-2 py-1 rounded border text-xs outline-none focus:ring-1 focus:ring-[var(--primary)]"
                         style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
                       />

@@ -12,6 +12,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
@@ -52,6 +53,10 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 	var verified bool
 
 	idToken := strings.TrimSpace(req.IDToken)
+	if idToken != "" && s.firebaseVerifier == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": auth.FirebaseLoginUnavailable})
+		return
+	}
 	if idToken != "" && s.firebaseVerifier != nil {
 		fbClaims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
 		if err != nil {
@@ -132,7 +137,7 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 
 	supplierID := strings.TrimSpace(staff.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	isConfigured := false
@@ -203,8 +208,7 @@ func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (
 		      FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone}
 		      WHERE Phone = @phone
 		        AND IsActive = true
-		        AND SupplierRole IN ('FACTORY', 'FACTORY_ADMIN', 'FACTORY_STAFF')
-		      LIMIT 1`,
+		        AND SupplierRole IN ('FACTORY', 'FACTORY_ADMIN', 'FACTORY_STAFF')`,
 		Params: map[string]any{"phone": phone},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
@@ -231,6 +235,13 @@ func (s *Service) lookupFactoryStaffByPhone(ctx context.Context, phone string) (
 	); err != nil {
 		return factoryStaffRecord{}, false, fmt.Errorf("scan factory staff: %w", err)
 	}
+
+	// Check for ambiguous multi-tenant collision
+	_, nextErr := iter.Next()
+	if nextErr == nil {
+		return factoryStaffRecord{}, false, fmt.Errorf("ambiguous phone number: belongs to multiple tenants")
+	}
+
 	if !rec.IsActive {
 		return factoryStaffRecord{}, false, nil
 	}
@@ -256,16 +267,19 @@ func (s *Service) lookupFactoryName(ctx context.Context, factoryID string) (stri
 func verifyFactoryStaffSecret(storedHash, secret string) bool {
 	storedHash = strings.TrimSpace(storedHash)
 	secret = strings.TrimSpace(secret)
-	if storedHash == "" || secret == "" {
+	if storedHash == "" || secret == "" || strings.EqualFold(storedHash, staffPasswordUnsetSentinel) {
 		return false
 	}
 	if strings.HasPrefix(storedHash, "$2a$") || strings.HasPrefix(storedHash, "$2b$") || strings.HasPrefix(storedHash, "$2y$") {
 		return bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(secret)) == nil
 	}
-	return storedHash == secret
+	return false
 }
 
 func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {
+	if !staffinvite.DemoScaffoldAllowed() {
+		return false
+	}
 	if !s.verifyFactoryDemoPhone(phone) {
 		return false
 	}
@@ -274,15 +288,18 @@ func (s *Service) verifyFactoryDemoCredentials(phone, secret string) bool {
 		expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
 	}
 	if expectSecret == "" {
-		expectSecret = "1234"
+		return false
 	}
 	return secret == expectSecret
 }
 
 func (s *Service) verifyFactoryDemoPhone(phone string) bool {
+	if !staffinvite.DemoScaffoldAllowed() {
+		return false
+	}
 	expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
 	if expectPhone == "" {
-		expectPhone = "+998901000099"
+		return false
 	}
 	return phone == expectPhone
 }
@@ -304,7 +321,7 @@ func (s *Service) issueFactoryDemoToken(w http.ResponseWriter, phone string) {
 	claims := auth.Claims{
 		Subject:      "factory-staff-demo",
 		Role:         auth.RoleFactory,
-		SupplierID:   s.supplierID,
+		SupplierID:   s.seedSupplierID,
 		SupplierRole: auth.RoleFactoryAdmin,
 		HomeNodeType: auth.HomeNodeFactory,
 		HomeNodeID:   factoryID,

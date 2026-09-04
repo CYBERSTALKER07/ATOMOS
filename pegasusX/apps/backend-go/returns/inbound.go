@@ -14,6 +14,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -43,22 +45,22 @@ func parsePhysicalStatusFilter(raw string) []string {
 
 // InboundReturnRow is the gate queue read model.
 type InboundReturnRow struct {
-	ReturnID              string `json:"return_id"`
-	OrderID               string `json:"order_id"`
-	SkuID                 string `json:"sku_id"`
-	ProductName           string `json:"product_name"`
-	ImageURL              string `json:"image_url,omitempty"`
-	Barcode               string `json:"barcode,omitempty"`
-	ExpectedQty           int64  `json:"expected_qty"`
-	ReceivedQty           int64  `json:"received_qty"`
-	Reason                string `json:"reason"`
-	DriverNotes           string `json:"driver_notes,omitempty"`
-	PhysicalStatus        string `json:"physical_status"`
-	ManifestID            string `json:"manifest_id,omitempty"`
-	DriverID              string `json:"driver_id,omitempty"`
-	DriverName            string `json:"driver_name,omitempty"`
-	SuggestedDisposition  string `json:"suggested_disposition"`
-	CreatedAt             string `json:"created_at"`
+	ReturnID             string `json:"return_id"`
+	OrderID              string `json:"order_id"`
+	SkuID                string `json:"sku_id"`
+	ProductName          string `json:"product_name"`
+	ImageURL             string `json:"image_url,omitempty"`
+	Barcode              string `json:"barcode,omitempty"`
+	ExpectedQty          int64  `json:"expected_qty"`
+	ReceivedQty          int64  `json:"received_qty"`
+	Reason               string `json:"reason"`
+	DriverNotes          string `json:"driver_notes,omitempty"`
+	PhysicalStatus       string `json:"physical_status"`
+	ManifestID           string `json:"manifest_id,omitempty"`
+	DriverID             string `json:"driver_id,omitempty"`
+	DriverName           string `json:"driver_name,omitempty"`
+	SuggestedDisposition string `json:"suggested_disposition"`
+	CreatedAt            string `json:"created_at"`
 }
 
 // HandleInboundList serves GET /v1/returns/inbound.
@@ -116,9 +118,9 @@ func (s *Service) HandleInboundList(w http.ResponseWriter, r *http.Request) {
 	          AND sr.PhysicalStatus IN UNNEST(@physical_statuses)
 	          AND sr.Status = @fin_pending`
 	params := map[string]any{
-		"warehouse_id":       warehouseID,
-		"physical_statuses":  statusList,
-		"fin_pending":        FinancialPending,
+		"warehouse_id":      warehouseID,
+		"physical_statuses": statusList,
+		"fin_pending":       FinancialPending,
 	}
 	if manifestID != "" {
 		sql += " AND sr.ManifestId = @manifest_id"
@@ -158,10 +160,7 @@ func (s *Service) HandleBarcodeLookup(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	supplierID := ""
-	if claims, ok := auth.FromContext(r.Context()); ok {
-		supplierID = strings.TrimSpace(claims.SupplierID)
-	}
+	supplierID := auth.PreferTenantSupplierID(r.Context(), "")
 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
@@ -257,20 +256,20 @@ func (s *Service) HandleStartReceiveSession(w http.ResponseWriter, r *http.Reque
 }
 
 type scanRequest struct {
-	Barcode   string `json:"barcode"`
-	Qty       int64  `json:"qty"`
-	ReturnID  string `json:"return_id"`
-	SessionID string `json:"session_id"`
+	Barcode    string `json:"barcode"`
+	Qty        int64  `json:"qty"`
+	ReturnID   string `json:"return_id"`
+	SessionID  string `json:"session_id"`
 	ManifestID string `json:"manifest_id"`
 }
 
 type scanResponse struct {
-	Matched    bool             `json:"matched"`
-	ReturnID   string           `json:"return_id,omitempty"`
-	Product    map[string]any   `json:"product,omitempty"`
-	Line       *InboundReturnRow  `json:"line,omitempty"`
-	Variance   bool             `json:"variance"`
-	Message    string           `json:"message,omitempty"`
+	Matched  bool              `json:"matched"`
+	ReturnID string            `json:"return_id,omitempty"`
+	Product  map[string]any    `json:"product,omitempty"`
+	Line     *InboundReturnRow `json:"line,omitempty"`
+	Variance bool              `json:"variance"`
+	Message  string            `json:"message,omitempty"`
 }
 
 // HandleInboundScan serves POST /v1/returns/inbound/scan.
@@ -347,15 +346,15 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 	var resp scanResponse
 	_, err = s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
-			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason"})
+			[]string{"SkuId", "ExpectedQty", "RejectedQty", "ReceivedQty", "PhysicalStatus", "WarehouseId", "Reason", "OrderId"})
 		if err != nil {
-			return fmt.Errorf("return_not_found")
+			return fmt.Errorf("read return %s: %w", returnID, err)
 		}
-		var sku, reason, physical string
+		var sku, reason, physical, orderID string
 		var expectedNull spanner.NullInt64
 		var rejected, received int64
 		var whNull spanner.NullString
-		if err := row.Columns(&sku, &expectedNull, &rejected, &received, &physical, &whNull, &reason); err != nil {
+		if err := row.Columns(&sku, &expectedNull, &rejected, &received, &physical, &whNull, &reason, &orderID); err != nil {
 			return err
 		}
 		if whNull.Valid && whNull.StringVal != warehouseID {
@@ -377,6 +376,46 @@ func (s *Service) HandleInboundScan(w http.ResponseWriter, r *http.Request) {
 			"ReceiveSessionId": nullableString(req.SessionID),
 			"ReceivedBy":       claims.Subject,
 		})}); err != nil {
+			return err
+		}
+		// B7 WH-P0-5: scan qty must leave the bus (same RW txn as physical update).
+		supplierID := ""
+		if strings.TrimSpace(orderID) != "" {
+			if orderRow, oerr := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"SupplierId"}); oerr == nil {
+				_ = orderRow.Columns(&supplierID)
+			}
+		}
+		payload, err := json.Marshal(map[string]any{
+			"type":            events.EventReturnScanReceived,
+			"return_id":       returnID,
+			"order_id":        orderID,
+			"sku_id":          sku,
+			"quantity":        qty,
+			"received_qty":    newReceived,
+			"expected_qty":    expected,
+			"warehouse_id":    warehouseID,
+			"supplier_id":     supplierID,
+			"operator_id":     claims.Subject,
+			"session_id":      strings.TrimSpace(req.SessionID),
+			"physical_status": newPhysical,
+			"timestamp":       s.now().UTC().Format(time.RFC3339Nano),
+		})
+		if err != nil {
+			return err
+		}
+		aggID := orderID
+		if aggID == "" {
+			aggID = returnID
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       outbox.ClampEventID(fmt.Sprintf("return-scan-%s-%d", returnID, newReceived)),
+			AggregateType: events.AggregateOrder,
+			AggregateID:   aggID,
+			TopicName:     events.TopicMain,
+			Payload:       payload,
+			CreatedAt:     s.now().UTC(),
+			SupplierID:    supplierID,
+		}))}); err != nil {
 			return err
 		}
 		resp = scanResponse{
@@ -477,7 +516,7 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 			row, err := txn.ReadRow(ctx, "SupplierReturns", spanner.Key{returnID},
 				[]string{"OrderId", "SkuId", "RejectedQty", "ReceivedQty", "Status", "PhysicalStatus", "WarehouseId", "Reason"})
 			if err != nil {
-				return fmt.Errorf("return %s not found", returnID)
+				return fmt.Errorf("read return %s: %w", returnID, err)
 			}
 			var orderID, skuID, finStatus, physical, reason string
 			var rejected, received int64
@@ -527,7 +566,14 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 			})}
 
 			if disposition == DispositionRestock && creditQty > 0 {
-				if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, skuID, creditQty); err != nil {
+				if stocklots.LotsEnabled() {
+					if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+						ctx, txn, supplierID, warehouseID, skuID,
+						stocklots.DefaultReturnsLocationID, "RETURNS", creditQty,
+					); err != nil {
+						return err
+					}
+				} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, skuID, creditQty); err != nil {
 					return err
 				}
 			}
@@ -549,15 +595,36 @@ func (s *Service) HandleInboundConfirm(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			eventID := returnID
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       eventID,
-				"AggregateType": events.AggregateOrder,
-				"AggregateId":   orderID,
-				"TopicName":     events.TopicMain,
-				"Payload":       payload,
-				"CreatedAt":     s.now().UTC(),
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       eventID,
+				AggregateType: events.AggregateOrder,
+				AggregateID:   orderID,
+				TopicName:     events.TopicMain,
+				Payload:       payload,
+				CreatedAt:     s.now().UTC(),
+				SupplierID:    supplierID,
+			})))
+
+			// TRK4-009: Enqueue automatic credit note generation upon warehouse return confirmation
+			cnPayload, _ := json.Marshal(map[string]any{
+				"type":        "CREDIT_NOTE_REQUESTED",
+				"order_id":    orderID,
+				"return_id":   returnID,
+				"supplier_id": supplierID,
+				"quantity":    creditQty,
+				"sku_id":      skuID,
+				"reason":      reason,
+				"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+			})
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       "cn:" + returnID,
+				AggregateType: events.AggregateOrder,
+				AggregateID:   orderID,
+				TopicName:     events.TopicMain,
+				Payload:       cnPayload,
+				CreatedAt:     s.now().UTC(),
+				SupplierID:    supplierID,
+			})))
 			if err := txn.BufferWrite(mutations); err != nil {
 				return err
 			}
@@ -627,18 +694,16 @@ func (s *Service) HandleReturnsHistory(w http.ResponseWriter, r *http.Request) {
 	        LEFT JOIN Drivers d ON d.DriverId = sr.DriverId
 	        WHERE sr.PhysicalStatus IN (@restocked, @written_off)`
 	params := map[string]any{
-		"restocked":  PhysicalRestocked,
+		"restocked":   PhysicalRestocked,
 		"written_off": PhysicalWrittenOff,
 	}
 
 	if whID, ok := s.resolveGateWarehouseID(r); ok && whID != "" {
 		sql += " AND sr.WarehouseId = @warehouse_id"
 		params["warehouse_id"] = whID
-	} else if claims, ok := auth.FromContext(r.Context()); ok {
-		if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
-			sql += " AND o.SupplierId = @supplier_id"
-			params["supplier_id"] = supplierID
-		}
+	} else if supplierID := auth.PreferTenantSupplierID(r.Context(), ""); supplierID != "" {
+		sql += " AND o.SupplierId = @supplier_id"
+		params["supplier_id"] = supplierID
 	}
 	sql += fmt.Sprintf(" ORDER BY sr.ReceivedAt DESC LIMIT %d OFFSET %d", limit+1, offset)
 
@@ -736,11 +801,11 @@ func (s *Service) HandleDriverReturnGoods(w http.ResponseWriter, r *http.Request
 		        AND sr.Status = @fin_pending
 		      ORDER BY sr.CreatedAt ASC`,
 		Params: map[string]any{
-			"driver_id":  driverID,
-			"pending":    PhysicalPending,
-			"on_truck":   PhysicalOnTruck,
-			"arrived":    PhysicalArrived,
-			"receiving":  PhysicalReceiving,
+			"driver_id":   driverID,
+			"pending":     PhysicalPending,
+			"on_truck":    PhysicalOnTruck,
+			"arrived":     PhysicalArrived,
+			"receiving":   PhysicalReceiving,
 			"fin_pending": FinancialPending,
 		},
 	}

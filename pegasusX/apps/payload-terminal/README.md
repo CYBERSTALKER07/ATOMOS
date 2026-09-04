@@ -17,4 +17,4 @@ EXPO_PUBLIC_API_URL=http://localhost:8180 npm run start
 
 Demo login: `+998901110022` / PIN `33333333` → `POST /v1/auth/payloader/login`.
 
-WebSocket: `/v1/ws?token=<jwt>` (unified hub).
+WebSocket: browsers mint `GET /v1/payload/ws-session` then connect `/v1/ws?token=<ws-ticket>` (`token_use=ws` only). Native apps send `Authorization: Bearer` on `/v1/ws` (no query JWT).

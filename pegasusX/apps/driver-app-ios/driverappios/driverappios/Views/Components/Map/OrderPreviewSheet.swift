@@ -21,7 +21,7 @@ struct OrderPreviewSheet: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(mission.order_id.suffix(6).uppercased())")
+                    Text(L10n.format("mobile_driver.ui.ord_uppercased", "\(mission.order_id.suffix(6).uppercased())"))
                         .font(.system(size: 20, weight: .black, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
                         .tracking(1.2)
@@ -71,16 +71,16 @@ struct OrderPreviewSheet: View {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(LabTheme.fgTertiary)
-                        Text("ETA \(formatETATime(eta))")
+                        Text(L10n.format("mobile_driver.ui.eta_formatetatime", "\(formatETATime(eta))"))
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundStyle(LabTheme.fg)
                         if let dur = order.etaDurationSec {
-                            Text("· \(formatDuration(dur))")
+                            Text(L10n.format("mobile_driver.ui.formatduration", "\(formatDuration(dur))"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
                         if let distM = order.etaDistanceM {
-                            Text("· \(formatETADistance(distM))")
+                            Text(L10n.format("mobile_driver.ui.formatetadistance", "\(formatETADistance(distM))"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundStyle(LabTheme.fgSecondary)
                         }
@@ -143,7 +143,7 @@ struct OrderPreviewSheet: View {
                     Haptics.light()
                     withAnimation(Anim.snappy) { selectedMission = nil; phase = .pickingOrder }
                 } label: {
-                    Text("Choose Another")
+                    Text("mobile_driver.ui.choose_another")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 11)

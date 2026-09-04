@@ -11,8 +11,8 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
+import com.pegasusx.retailer.data.model.RetailerAIPrediction
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.retailer.ui.components.ShimmerOrderList
@@ -93,18 +93,17 @@ fun OrderedList(
 
 @Composable
 fun AiPlannedList(
-    predictions: List<DemandForecast>,
+    predictions: List<RetailerAIPrediction>,
     isLoading: Boolean = false,
-    onPreorder: (DemandForecast) -> Unit,
-    onCorrect: (DemandForecast) -> Unit,
-    onReject: (DemandForecast) -> Unit,
+    onConfirm: (RetailerAIPrediction) -> Unit,
+    onReject: (RetailerAIPrediction) -> Unit,
 ) {
     if (isLoading && predictions.isEmpty()) {
         ShimmerOrderList(count = 3)
         return
     }
     if (predictions.isEmpty()) {
-        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No AI Predictions", body = "AI-predicted orders based on your history will appear here")
+        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No pending AI preorders", body = "AI restock preorders waiting for confirm or reject will appear here")
         return
     }
     LazyVerticalGrid(
@@ -112,12 +111,11 @@ fun AiPlannedList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(predictions, key = { _, f -> f.id }) { _, forecast ->
+        itemsIndexed(predictions, key = { _, f -> f.orderId }) { _, item ->
             AiPlannedCard(
-                forecast = forecast,
-                onPreorder = { onPreorder(forecast) },
-                onCorrect = { onCorrect(forecast) },
-                onReject = { onReject(forecast) },
+                item = item,
+                onConfirm = { onConfirm(item) },
+                onReject = { onReject(item) },
             )
         }
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }

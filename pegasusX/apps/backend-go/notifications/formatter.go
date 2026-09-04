@@ -90,6 +90,44 @@ func FormatManifestOrderInjected(manifestID, orderID string) FormattedNotificati
 	return formatManifestNotification("Order Injected", body, manifestID, "normal")
 }
 
+// FormatManifestExceptionResolved produces a notification when a factory exception is resolved.
+func FormatManifestExceptionResolved(manifestID, resolution string) FormattedNotification {
+	body := "Manifest exception resolved on " + manifestID
+	if resolution != "" {
+		body += ": " + resolution
+	}
+	return FormattedNotification{
+		Title:    "Exception Resolved",
+		Body:     body,
+		DeepLink: "/manifest-exceptions",
+		Priority: "normal",
+	}
+}
+
+// FormatFactoryStaffCreated produces a notification for factory staff create.
+func FormatFactoryStaffCreated(staffID, factoryID string) FormattedNotification {
+	body := "Factory staff " + staffID + " created"
+	if factoryID != "" {
+		body += " at " + factoryID
+	}
+	return FormattedNotification{
+		Title:    "Factory Staff",
+		Body:     body,
+		DeepLink: "/staff",
+		Priority: "normal",
+	}
+}
+
+// FormatFactoryTransferCreated produces a notification for factory transfer create.
+func FormatFactoryTransferCreated(transferID string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Transfer Created",
+		Body:     "Factory transfer " + transferID + " created",
+		DeepLink: "/transfers",
+		Priority: "normal",
+	}
+}
+
 // FormatManifestOrderException produces a notification for a manifest gate exception.
 func FormatManifestOrderException(manifestID, orderID, reason string) FormattedNotification {
 	body := "Manifest gate exception on " + manifestID
@@ -365,6 +403,110 @@ func FormatClaimFiled(claimID, orderID, claimType string) FormattedNotification 
 		Body:     body,
 		DeepLink: "/claims/" + claimID,
 		Priority: "high",
+	}
+}
+
+// FormatClaimUnderReview produces inbox copy when a claim enters settlement review.
+func FormatClaimUnderReview(claimID, orderID string) FormattedNotification {
+	body := "Claim " + claimID + " is under review"
+	if orderID != "" {
+		body = "Claim " + claimID + " on order " + orderID + " is under review for settlement"
+	}
+	return FormattedNotification{
+		Title:    "Claim under review",
+		Body:     body,
+		DeepLink: "/claims/" + claimID,
+		Priority: "high",
+	}
+}
+
+// FormatARInvoice produces inbox copy for AR open-item lifecycle events.
+func FormatARInvoice(eventType, invoiceID, orderID, status string, balanceMinor int64, currency string) FormattedNotification {
+	title := "AR invoice update"
+	switch eventType {
+	case "AR_INVOICE_OPENED":
+		title = "AR invoice opened"
+	case "AR_INVOICE_PAYMENT":
+		title = "AR payment recorded"
+	case "AR_INVOICE_SETTLED":
+		title = "AR invoice settled"
+	case "AR_INVOICE_DUNNED":
+		title = "AR dunning step"
+	}
+	body := "Invoice " + invoiceID
+	if orderID != "" {
+		body += " (order " + orderID + ")"
+	}
+	if status != "" {
+		body += " — " + status
+	}
+	if balanceMinor > 0 && currency != "" {
+		body += fmt.Sprintf(" balance %d %s", balanceMinor, currency)
+	}
+	return FormattedNotification{
+		Title:    title,
+		Body:     body,
+		DeepLink: "/finance/ar/" + invoiceID,
+		Priority: "normal",
+	}
+}
+
+// FormatPayoutBatch produces inbox copy for supplier payout lifecycle.
+func FormatPayoutBatch(eventType, batchID, status string, netMinor int64, currency string) FormattedNotification {
+	title := "Payout batch update"
+	switch eventType {
+	case "PAYOUT_BATCH_GENERATED":
+		title = "Payout batch generated"
+	case "PAYOUT_BATCH_EXPORTED":
+		title = "Payout bank file exported"
+	case "PAYOUT_BATCH_DISPATCHED":
+		title = "Payout batch dispatched"
+	case "PAYOUT_BATCH_PAID":
+		title = "Payout batch paid"
+	}
+	body := "Batch " + batchID + " — " + status
+	if netMinor != 0 && currency != "" {
+		body += fmt.Sprintf(" (%d %s)", netMinor, currency)
+	}
+	return FormattedNotification{
+		Title:    title,
+		Body:     body,
+		DeepLink: "/finance/payouts/" + batchID,
+		Priority: "normal",
+	}
+}
+
+// FormatParentOrder produces inbox copy for multi-supplier parent rollup (B3 M-P0-6).
+func FormatParentOrder(eventType, parentOrderID, status string, childCount int) FormattedNotification {
+	title := "Parent order update"
+	switch eventType {
+	case "PARENT_ORDER_CREATED":
+		title = "Multi-supplier order created"
+	case "PARENT_ORDER_UPDATED":
+		title = "Multi-supplier order updated"
+	}
+	body := "Parent " + parentOrderID
+	if status != "" {
+		body += " — " + status
+	}
+	if childCount > 0 {
+		body += fmt.Sprintf(" (%d suppliers)", childCount)
+	}
+	return FormattedNotification{
+		Title:    title,
+		Body:     body,
+		DeepLink: "/orders/parent/" + parentOrderID,
+		Priority: "normal",
+	}
+}
+
+// FormatCartSyncUpdated produces a soft UX toast for multi-device cart sync (B3 M-P1-3).
+func FormatCartSyncUpdated(_ string) FormattedNotification {
+	return FormattedNotification{
+		Title:    "Cart updated",
+		Body:     "Your cart was updated on another device",
+		DeepLink: "/cart",
+		Priority: "low",
 	}
 }
 

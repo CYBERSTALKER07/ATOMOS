@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, Pressable, ScrollView, Alert, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { PayloadStatePanel } from './PayloadStatePanel';
-import { WorkflowSectionHeader } from './WorkflowSectionHeader';
-import { ExplainStatusBanner } from './ExplainStatusBanner';
+import PayloadStatePanel from './PayloadStatePanel';
+import WorkflowSectionHeader from './WorkflowSectionHeader';
+import { ExplainStatusBanner, type StatusExplain } from '../explainBanner';
 
 export interface ManifestDetailPaneProps {
   selectedOrder: any | null;
@@ -14,7 +14,7 @@ export interface ManifestDetailPaneProps {
   activeTruck: string | null;
   openReDispatch: (orderId: string) => void;
   manifestState: string | null;
-  handleException: (orderId: string, reason: string) => void;
+  handleException: (orderId: string, reason: "OVERFLOW" | "DAMAGED" | "MANUAL") => void;
   exceptionLoading: string | null;
   setShowProductScanner: (show: boolean) => void;
   selectedManifest: any[];
@@ -24,10 +24,13 @@ export interface ManifestDetailPaneProps {
   allChecked: boolean;
   isSealing: boolean;
   setShowInjectOrder: (show: boolean) => void;
-  sealExplain: string | null;
+  sealExplain: StatusExplain | null;
   handleManifestSeal: () => void;
   isSealingManifest: boolean;
   isLoading: boolean;
+  inboundDriverLat?: number | null;
+  inboundDriverLng?: number | null;
+  inboundLive?: boolean;
 }
 
 export const ManifestDetailPane: React.FC<ManifestDetailPaneProps> = ({
@@ -52,9 +55,22 @@ export const ManifestDetailPane: React.FC<ManifestDetailPaneProps> = ({
   handleManifestSeal,
   isSealingManifest,
   isLoading,
+  inboundDriverLat = null,
+  inboundDriverLng = null,
+  inboundLive = false,
 }) => {
   return (
       <View className="flex-1 flex-col">
+        {inboundDriverLat != null && inboundDriverLng != null ? (
+          <View
+            className="px-8 py-3"
+            style={{ borderBottomWidth: isIOS ? 0.33 : 1, borderBottomColor: T.colors.separator }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', color: T.colors.secondaryLabel }}>
+              Inbound truck {inboundLive ? 'LIVE' : 'last known'}: {inboundDriverLat.toFixed(5)}, {inboundDriverLng.toFixed(5)}
+            </Text>
+          </View>
+        ) : null}
         {/* Order header */}
         {selectedOrder ? (
           <>

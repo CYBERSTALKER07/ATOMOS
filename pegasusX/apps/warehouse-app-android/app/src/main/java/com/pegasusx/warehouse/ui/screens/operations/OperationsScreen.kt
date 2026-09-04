@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,12 +47,13 @@ import com.pegasusx.warehouse.data.model.RetailerOverridePreview
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastRequest
 import com.pegasusx.warehouse.data.model.WarehouseBroadcastTemplateCreateRequest
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private val broadcastRoles = listOf("DRIVER", "RETAILER", "ALL")
 
@@ -212,7 +215,7 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -222,7 +225,7 @@ fun OperationsScreen(api: WarehouseApi, onBack: (() -> Unit)? = null) {
     ) { padding ->
         if (loading && templates.isEmpty()) {
             PegasusLoadingState(
-                title = "Loading operations",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_operations),
                 body = "Fetching broadcast templates and depot tools",
                 modifier = Modifier.padding(padding),
             )

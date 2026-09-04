@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.autoorder
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -74,6 +76,7 @@ import com.pegasusx.retailer.ui.screens.autoorder.components.OverrideRow
 import com.pegasusx.retailer.ui.screens.autoorder.components.SectionHeader
 import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.OutlinedButton
+import com.pegasusx.retailer.R
 
 @Composable
 fun AutoOrderScreen(
@@ -117,7 +120,7 @@ fun AutoOrderScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissEnableDialog,
             title = { Text("Use Previous Analytics?") },
-            text = { Text("Use existing order history for $entityLabel, or start fresh? Starting fresh requires at least 2 orders.") },
+            text = { Text(stringResource(R.string.mobile_retailer_ui_use_existing_order_history_for_entitylabel_or_start_fresh_starting_fresh, entityLabel)) },
             confirmButton = {
                 TextButton(onClick = { viewModel.confirmEnable(useHistory = true) }) {
                     Text("Use History")
@@ -206,7 +209,130 @@ fun AutoOrderScreen(
             )
         }
 
-        // ── Run worker (draft + place) ──
+        // ── Execution mode ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Execution mode", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Global aggressiveness. Scope toggles below choose which SKUs. " +
+                            "Disable at any scope blocks even when global is on. Shadow recommended.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        listOf("off" to "Off", "shadow" to "Shadow", "draft" to "Draft", "place" to "Place").forEach { (mode, label) ->
+                            val selected = uiState.executionMode == mode
+                            OutlinedButton(
+                                onClick = { viewModel.setExecutionMode(mode) },
+                                enabled = !uiState.running,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selected) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    uiState.settings?.shadowStats?.let { st ->
+                        Text(
+                            stringResource(R.string.mobile_retailer_ui_30d_wape_toint_accept_toint_2_proposalcount_proposals, (st.wape * 100).toInt(), (st.unmodifiedAcceptRate * 100).toInt(), st.proposalCount),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    uiState.soakGate?.let { gate ->
+                        val allowed = gate.decision?.allowed == true
+                        val reasons = gate.decision?.reasons.orEmpty().joinToString(" · ")
+                        val stats = gate.decision?.stats
+                        Text(
+                            "Place readiness: " + if (allowed) "passed" else "blocked",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (allowed) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.error
+                            },
+                        )
+                        if (stats != null) {
+                            Text(
+                                "${stats.proposalCount} proposals · ${stats.matchedOrders} matched · " +
+                                    "WAPE ${(stats.wape * 100).toInt()}% · unmodified ${(stats.unmodifiedAcceptRate * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (gate.placeFlagEnabled == false) {
+                            Text(
+                                "Server place flag is off (dual-control required).",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (reasons.isNotEmpty()) {
+                            Text(
+                                reasons,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            "Download soak evidence from desktop or scripts/generate_auto_order_soak_artifact.sh",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Shadow inbox ──
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Shadow inbox", style = MaterialTheme.typography.titleMedium)
+                    if (uiState.shadowProposals.isEmpty()) {
+                        Text(
+                            "No shadow proposals yet. Set mode to Shadow and run Shadow now.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        uiState.shadowProposals.take(8).forEach { p ->
+                            Text(
+                                stringResource(R.string.mobile_retailer_ui_sku_qty_proposedqty_ip_toint_rop_toint_2, p.sku, p.proposedQty, p.ip.toInt(), p.reorderPoint.toInt()),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Run worker (shadow + draft + place) ──
         item {
             Card(
                 colors = CardDefaults.cardColors(
@@ -219,7 +345,7 @@ fun AutoOrderScreen(
                 ) {
                     Text("Auto-order worker", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Draft stages cart lines (idempotent per SKU/day). " +
+                        "Shadow records proposals only. Draft stages cart lines. " +
                             "Place creates real supplier orders when the server flag is on.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -229,8 +355,21 @@ fun AutoOrderScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedButton(
+                            onClick = viewModel::runAutoOrderShadow,
+                            enabled = !uiState.running && uiState.executionMode != "off",
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            if (uiState.running && uiState.runningMode == "shadow") {
+                                CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(6.dp))
+                                Text("…")
+                            } else {
+                                Text("Shadow")
+                            }
+                        }
+                        OutlinedButton(
                             onClick = viewModel::runAutoOrderNow,
-                            enabled = !uiState.running,
+                            enabled = !uiState.running && uiState.executionMode != "off",
                             modifier = Modifier.weight(1f),
                         ) {
                             if (uiState.running && uiState.runningMode == "draft") {
@@ -240,12 +379,12 @@ fun AutoOrderScreen(
                             } else {
                                 Icon(Icons.Rounded.PlayArrow, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Draft now")
+                                Text("Draft")
                             }
                         }
                         Button(
                             onClick = viewModel::openPlaceConfirm,
-                            enabled = !uiState.running,
+                            enabled = !uiState.running && uiState.executionMode != "off",
                             modifier = Modifier.weight(1f),
                         ) {
                             if (uiState.running && uiState.runningMode == "place") {
@@ -259,7 +398,7 @@ fun AutoOrderScreen(
                             } else {
                                 Icon(Icons.Rounded.ShoppingCart, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Place now")
+                                Text("Place")
                             }
                         }
                     }
@@ -289,8 +428,7 @@ fun AutoOrderScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 val pBit = if (run.placedLines > 0) " p${run.placedLines}" else ""
-                                Text(
-                                    "${run.scheduleBucket ?: run.startedAt.take(10)} · ${run.mode} · d${run.draftLines}$pBit",
+                                Text(stringResource(R.string.mobile_retailer_ui_take_mode_ddraftlinespbit, run.scheduleBucket ?: run.startedAt.take(10), run.mode, run.draftLines, pBit),
                                     style = MaterialTheme.typography.bodySmall,
                                 )
                                 Text(
@@ -347,14 +485,13 @@ fun AutoOrderScreen(
                                 verticalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Text(
-                                    "${row.sku} · qty ${row.suggestedQty}" +
+                                    stringResource(R.string.mobile_retailer_ui_sku_qty_suggestedqty, row.sku, row.suggestedQty) +
                                         if (row.currentStock > 0) " · stock ${row.currentStock}" else "",
                                     style = MaterialTheme.typography.bodyMedium,
                                 )
                                 DemandSourceChips(sources = row.sources)
                                 if (row.sellThroughVelocity > 0) {
-                                    Text(
-                                        "POS vel ${"%.1f".format(row.sellThroughVelocity)}/d",
+                                    Text(stringResource(R.string.mobile_retailer_ui_pos_vel_format_d, "%.1f".format(row.sellThroughVelocity)),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )

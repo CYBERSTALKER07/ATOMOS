@@ -1,34 +1,38 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { supplierFetch } from "@/lib/auth";
 import { RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
 
 export default function ChargebacksPage() {
+  const t = usePortalT();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Chargeback state
   const [orderId, setOrderId] = useState("");
   const [retailerId, setRetailerId] = useState("");
-  const [gateway, setGateway] = useState("ADYEN");
+  const [gateway, setGateway] = useState("CASH");
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("UZS");
+  const { gateways, currency: packCurrency } = useSupplierPaymentCatalog();
+  const currency = packCurrency;
   const [chargebackMessage, setChargebackMessage] = useState<string | null>(null);
 
   // Reversal state
   const [sessionId, setSessionId] = useState("");
   const [reversalMessage, setReversalMessage] = useState<string | null>(null);
 
-  const gateways = ["ADYEN", "GLOBAL_PAY", "STRIPE", "PAYME", "CLICK", "CASH"];
+  const gatewayOptions = gateways.length ? gateways : ["CASH"];
 
   const submitChargeback = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountMinor = parseInt(amount, 10);
     if (isNaN(amountMinor)) {
-      setError("Amount must be a number.");
+      setError(t("supplier_portal.residual.text.amount_must_be_a_number"));
       return;
     }
     setBusy(true);
@@ -95,8 +99,8 @@ export default function ChargebacksPage() {
     <div className="min-h-full p-6 md:p-8" style={{ background: "var(--desk-canvas)" }}>
       <PageChrome
         icon="warning"
-        title="Chargebacks"
-        description="Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks."
+        title={t("portal.nav.chargebacks")}
+        description={t("supplier_portal.residual.text.record_payment_disputes_and_reversals_against_the_durable_financ")}
       >
         <div className="mb-6">
           <a
@@ -114,61 +118,61 @@ export default function ChargebacksPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <PageSection title="Record Chargeback">
+          <PageSection title={t("supplier_portal.chargebacks.text.record_chargeback")}>
             <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
               <form onSubmit={submitChargeback} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Order ID</label>
+                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.admin.control_center.field.order_id")}</label>
                   <input
                     type="text"
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
                     className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
-                    placeholder="Enter Order ID"
+                    placeholder={t("supplier_portal.chargebacks.text.enter_order_id")}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Retailer ID</label>
+                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.retailer_id")}</label>
                   <input
                     type="text"
                     value={retailerId}
                     onChange={(e) => setRetailerId(e.target.value)}
                     className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
-                    placeholder="Enter Retailer ID"
+                    placeholder={t("supplier_portal.chargebacks.text.enter_retailer_id")}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Gateway</label>
+                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.gateway")}</label>
                   <select
                     value={gateway}
                     onChange={(e) => setGateway(e.target.value)}
                     className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
                   >
-                    {gateways.map(g => <option key={g} value={g}>{g}</option>)}
+                    {gatewayOptions.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Amount (minor units)</label>
+                    <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.amount_minor_units")}</label>
                     <input
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
-                      placeholder="e.g. 1000"
+                      placeholder={t("supplier_portal.chargebacks.text.e_g_1000")}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Currency</label>
+                    <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.currency")}</label>
                     <input
                       type="text"
                       value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)] uppercase"
-                      placeholder="UZS"
+                      readOnly
+                      className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none text-[var(--desk-text-primary)] uppercase"
+                      placeholder="pack currency"
                       required
                     />
                   </div>
@@ -194,17 +198,17 @@ export default function ChargebacksPage() {
             </div>
           </PageSection>
 
-          <PageSection title="Reverse Chargeback">
+          <PageSection title={t("supplier_portal.chargebacks.text.reverse_chargeback")}>
             <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
               <form onSubmit={submitReversal} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">Session ID</label>
+                  <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.admin.control_center.field.session_id")}</label>
                   <input
                     type="text"
                     value={sessionId}
                     onChange={(e) => setSessionId(e.target.value)}
                     className="w-full h-10 px-3 bg-[var(--desk-canvas)] border border-[var(--desk-border)] rounded-lg outline-none focus:border-[var(--desk-accent)] text-[var(--desk-text-primary)]"
-                    placeholder="Enter Chargeback Session ID"
+                    placeholder={t("supplier_portal.chargebacks.text.enter_chargeback_session_id")}
                     required
                   />
                 </div>

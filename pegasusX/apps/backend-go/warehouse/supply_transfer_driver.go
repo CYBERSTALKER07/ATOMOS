@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // SupplyTransferDriverView is a factory-driver supply leg row.
@@ -77,14 +79,14 @@ func (s *Service) ArriveSupplyTransfer(ctx context.Context, driverID, transferID
 	if driverID == "" || transferID == "" {
 		return fmt.Errorf("driver_id and transfer_id required")
 	}
-	var warehouseID string
+	var warehouseID, supplierID string
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID},
 			[]string{"DriverId", "State", "WarehouseId", "SupplierId"})
 		if err != nil {
 			return errTransferNotFound
 		}
-		var assignedDriver, state, supplierID string
+		var assignedDriver, state string
 		var warehouseCol spanner.NullString
 		if err := row.Columns(&assignedDriver, &state, &warehouseCol, &supplierID); err != nil {
 			return err
@@ -99,23 +101,46 @@ func (s *Service) ArriveSupplyTransfer(ctx context.Context, driverID, transferID
 		if warehouseCol.Valid {
 			warehouseID = strings.TrimSpace(warehouseCol.StringVal)
 		}
-		return txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
 			"TransferId": transferID,
 			"State":      "ARRIVED",
 			"UpdatedAt":  spanner.CommitTimestamp,
-		})})
+		})}); err != nil {
+			return err
+		}
+		// B2 M-P0-15: durable outbox for supply-transfer arrive (was silent Spanner write).
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		agg := transferID
+		if warehouseID != "" {
+			agg = warehouseID
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, agg, events.TopicMain, map[string]any{
+			"type":         events.EventSupplyTransferArrived,
+			"transfer_id":  transferID,
+			"driver_id":    driverID,
+			"warehouse_id": warehouseID,
+			"supplier_id":  supplierID,
+			"latitude":     lat,
+			"longitude":    lng,
+			"state":        "ARRIVED",
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return err
 	}
 	if s.warehouseHub != nil && warehouseID != "" {
 		payload, _ := json.Marshal(map[string]any{
-			"event_type":  events.EventSupplyTransferApproaching,
-			"transfer_id": transferID,
-			"driver_id":   driverID,
+			"type":         events.EventSupplyTransferArrived,
+			"event_type":   events.EventSupplyTransferArrived,
+			"transfer_id":  transferID,
+			"driver_id":    driverID,
 			"warehouse_id": warehouseID,
-			"latitude":    lat,
-			"longitude":   lng,
+			"latitude":     lat,
+			"longitude":    lng,
 		})
 		s.warehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, payload)
 	}

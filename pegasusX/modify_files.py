@@ -61,7 +61,7 @@ with open(android_path, 'w') as f:
     f.writelines(new_a_lines)
 
 # iOS
-ios_path = "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift"
+ios_path = "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift"
 with open(ios_path, 'r') as f:
     i_lines = f.readlines()
 

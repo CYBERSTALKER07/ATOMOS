@@ -29,8 +29,8 @@ struct LocationSetupView: View {
                             .foregroundStyle(.secondary)
                         }
                         if !hasAssignedFactory {
-                            Section("Factory name") {
-                                TextField("Factory name", text: $factoryName)
+                            Section("factory_portal.residual.text.factory_name") {
+                                TextField("factory_portal.residual.text.factory_name", text: $factoryName)
                             }
                         } else if !factoryName.isEmpty {
                             Section { Text(factoryName) }
@@ -52,7 +52,7 @@ struct LocationSetupView: View {
                     }
                 }
             }
-            .navigationTitle("Factory location")
+            .navigationTitle("factory_portal.settings.location.text.factory_location")
         }
         .task { await loadExistingIfNeeded() }
     }

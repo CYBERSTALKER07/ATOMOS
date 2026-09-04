@@ -9024,1591 +9024,1591 @@
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/AnimatedNumberText.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
       "line": 9,
       "text": "\\(value)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/AnimatedNumberText.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
       "line": 23,
       "text": "\\(Int(value).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/FloatingActiveOrdersBar.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/FloatingActiveOrdersBar.swift",
       "line": 30,
       "text": "\\(activeOrders.count) Active Order\\(activeOrders.count == 1 ?"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/OrderCardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/OrderCardView.swift",
       "line": 24,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/OrderCardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/OrderCardView.swift",
       "line": 28,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/OrderCardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/OrderCardView.swift",
       "line": 75,
       "text": "×\\(item.quantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/OrderCardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/OrderCardView.swift",
       "line": 85,
       "text": "+\\(order.items.count - 3) more items"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/OrderCardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/OrderCardView.swift",
       "line": 107,
       "text": "Cancel Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/PegasusCard.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/PegasusCard.swift",
       "line": 152,
       "text": "Simple card content"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/PegasusCard.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/PegasusCard.swift",
       "line": 157,
       "text": "Card content here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/PegasusCard.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/PegasusCard.swift",
       "line": 161,
       "text": "Gradient card content"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/QuantityStepper.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/QuantityStepper.swift",
       "line": 20,
       "text": "\\(quantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SidebarMenu.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SidebarMenu.swift",
       "line": 67,
       "text": "Pegasus · v1.0.0"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 24,
       "text": "Product name placeholder"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 28,
       "text": "Short product description goes here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 35,
       "text": "500ml"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 87,
       "text": "Order #ABC"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 91,
       "text": "3 items · $0.00"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Components/SkeletonViews.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/SkeletonViews.swift",
       "line": 98,
       "text": "PENDING"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 217,
       "text": "Pegasus"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 255,
       "text": "Online"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 274,
       "text": "MAIN"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 294,
       "text": "TOOLS"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 501,
       "text": "Pegasus"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 516,
       "text": "\\(cart.totalItems)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 536,
       "text": "\\(notificationCount)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 135,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 148,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 161,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/ContentView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
       "line": 123,
       "text": "Active Deliveries"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 49,
       "text": "Could not load deliveries. Check your connection."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 96,
       "text": "No Active Orders"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 99,
       "text": "Your en-route and confirmed deliveries will appear here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 151,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 154,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 180,
       "text": "until arrival"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 201,
       "text": "+\\(order.items.count - 3)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 216,
       "text": "Details"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 232,
       "text": "Show QR"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 244,
       "text": "Awaiting Driver"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 255,
       "text": "Awaiting Dispatch"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 323,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 341,
       "text": "Estimated Arrival"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 364,
       "text": "×\\(item.quantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 384,
       "text": "Total"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 401,
       "text": "Show this QR code to the driver"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 416,
       "text": "Awaiting Dispatch"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 419,
       "text": "QR code will appear when your order is on the way"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 459,
       "text": "Order in progress. Cannot be cancelled."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 483,
       "text": "Cancel order #\\(order.id.suffix(3))? This cannot be undone."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 488,
       "text": "Could not cancel the order. Please try again."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 540,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 556,
       "text": "Token not yet generated"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 567,
       "text": "Show to driver for delivery confirmation"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 575,
       "text": "Dismiss"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 46,
       "text": "Retry"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 47,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 475,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 480,
       "text": "Cancel Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 481,
       "text": "Keep Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 486,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveDeliveriesView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveDeliveriesView.swift",
       "line": 471,
       "text": "Order Details"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 53,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 68,
       "text": "IN TRANSIT"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 80,
       "text": "Estimated Arrival"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 100,
       "text": "×\\(item.quantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 115,
       "text": "QR Code for Driver"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 119,
       "text": "Show this code for delivery confirmation"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 130,
       "text": "Awaiting Dispatch"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 133,
       "text": "QR code will appear when dispatched"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 142,
       "text": "Total"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 164,
       "text": "No Active Orders"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ActiveOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ActiveOrderView.swift",
       "line": 167,
       "text": "Orders en route will appear here with QR codes"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 34,
       "text": "Could not update order status. Please try again."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 55,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 87,
       "text": "until arrival"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 98,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 129,
       "text": "No Active Arrivals"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 132,
       "text": "Incoming deliveries will appear here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ArrivalView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ArrivalView.swift",
       "line": 32,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 239,
       "text": "Enable \\(alertEntityLabel) using your existing order history, or start fresh? Starting fresh requires at least 2 orders before predictions begin."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 251,
       "text": "Loading settings…"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 300,
       "text": "Global Auto-Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 303,
       "text": "Auto-order everything from all suppliers"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 335,
       "text": "Global auto-order active. Overrides all supplier/product settings."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 349,
       "text": "Analytics since: \\(dateStr)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 439,
       "text": "Order by \\(forecast.suggestedOrderDate)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 447,
       "text": "\\(forecast.predictedQuantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 450,
       "text": "units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 481,
       "text": "How It Works"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 222,
       "text": "Use History"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 225,
       "text": "Start Fresh"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 228,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/AutoOrderView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
       "line": 188,
       "text": "Auto-Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 18,
       "text": "\\(cart.totalItems) items in your cart"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 26,
       "text": "Clear All"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 90,
       "text": "\\(Int(item.variant.price).formatted()) each"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 100,
       "text": "\\(Int(item.totalPrice).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 148,
       "text": "Subtotal"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 159,
       "text": "Delivery"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 163,
       "text": "Free"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 172,
       "text": "Total"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 188,
       "text": "Checkout"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 226,
       "text": "Your cart is empty"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 230,
       "text": "Browse the catalog and add\\nproducts to get started"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CartView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
       "line": 242,
       "text": "Browse Catalog"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 56,
       "text": "Could not load catalog. Check your connection."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 96,
       "text": "Categories"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 100,
       "text": "\\(categories.count) types"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 183,
       "text": "\\(count) items"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 212,
       "text": "\\(count) items"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 298,
       "text": "No Results"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 301,
       "text": "No products match \\"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 53,
       "text": "Retry"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 54,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CatalogView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CatalogView.swift",
       "line": 68,
       "text": "Search products..."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategoryProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategoryProductsView.swift",
       "line": 46,
       "text": "\\(group.products.count) items"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategoryProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategoryProductsView.swift",
       "line": 141,
       "text": "No Products"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategoryProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategoryProductsView.swift",
       "line": 144,
       "text": "No products found in \\(category.name)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategorySuppliersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategorySuppliersView.swift",
       "line": 42,
       "text": "\\(suppliers.count) suppliers available"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategorySuppliersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategorySuppliersView.swift",
       "line": 135,
       "text": "My Supplier"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CategorySuppliersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CategorySuppliersView.swift",
       "line": 160,
       "text": "No Suppliers"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 82,
       "text": "This supplier is off-shift or outside business hours. Your order will be placed, but processing will not begin until they are back online."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 120,
       "text": "Your cart is empty"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 174,
       "text": "\\(Int(item.totalPrice).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 206,
       "text": "Change"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 227,
       "text": "Total"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 335,
       "text": "Order Placed! 🎉"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 339,
       "text": "Your order has been submitted successfully.\\nYou'll receive updates in your inbox."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 68,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 77,
       "text": "I Understand, Place Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 80,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 46,
       "text": "Checkout"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/CheckoutView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
       "line": 302,
       "text": "Payment Method"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DashboardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DashboardView.swift",
       "line": 235,
       "text": "\\(forecast.predictedQuantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DashboardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DashboardView.swift",
       "line": 238,
       "text": "units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DashboardView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DashboardView.swift",
       "line": 281,
       "text": "\\(count)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryMapView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryMapView.swift",
       "line": 94,
       "text": "No active deliveries with driver location"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryMapView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryMapView.swift",
       "line": 265,
       "text": "\\(count) active"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryMapView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryMapView.swift",
       "line": 115,
       "text": "Delivery Map"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 78,
       "text": "Amount Due"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 97,
       "text": "Order #\\(String(event.orderId.suffix(6)))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 102,
       "text": "Choose Payment Method"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 141,
       "text": "Processing..."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 144,
       "text": "Connecting to payment service"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 166,
       "text": "Cash Collection Pending"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 174,
       "text": "Please have the cash ready.\\nThe driver will collect it shortly."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 182,
       "text": "Waiting for driver confirmation"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 210,
       "text": "Payment Complete"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 223,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 251,
       "text": "Payment Failed"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 270,
       "text": "Try Again"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 282,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 53,
       "text": "Close"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/DeliveryPaymentSheetView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/DeliveryPaymentSheetView.swift",
       "line": 48,
       "text": "Payment Required"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 70,
       "text": "\\(forecast.productName) — AI predicted \\(forecast.predictedQuantity) units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 135,
       "text": "Order by \\(forecast.suggestedOrderDate)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 143,
       "text": "\\(forecast.predictedQuantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 146,
       "text": "units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 53,
       "text": "Submit"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 59,
       "text": "Reject"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 65,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 29,
       "text": "AI Demand Forecast"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 51,
       "text": "Correct amount"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 178,
       "text": "Correct"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/FutureDemandView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
       "line": 190,
       "text": "Reject"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/HistoryView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/HistoryView.swift",
       "line": 90,
       "text": "No Orders Found"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/HistoryView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/HistoryView.swift",
       "line": 93,
       "text": "Your order history will appear here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 57,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 60,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 94,
       "text": "×\\(item.quantity)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 112,
       "text": "Show to driver on arrival"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 162,
       "text": "No Incoming Deliveries"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InboxView.swift",
       "line": 165,
       "text": "Incoming orders will appear here with QR codes"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 172,
       "text": "Expense Insights"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 175,
       "text": "Track your procurement spending"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 230,
       "text": "Monthly Trend"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 290,
       "text": "Top Suppliers"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 324,
       "text": "Top Products"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 335,
       "text": "\\(product.quantity) units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 362,
       "text": "No Analytics Data"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 365,
       "text": "Complete a few orders and your expense insights will appear here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 541,
       "text": "Daily Spending"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 597,
       "text": "Orders by Status"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 619,
       "text": "\\(item.state.replacingOccurrences(of:"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 680,
       "text": "Spending by Category"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/InsightsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/InsightsView.swift",
       "line": 723,
       "text": "Ordering Pattern by Day"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LocationPickerView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LocationPickerView.swift",
       "line": 81,
       "text": "Pick Store Location"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LocationPickerView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LocationPickerView.swift",
       "line": 125,
       "text": "Drag map to adjust pin position"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LocationPickerView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LocationPickerView.swift",
       "line": 137,
       "text": "Confirm Location"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 67,
       "text": "Pegasus"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 71,
       "text": "Retailer Portal"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 146,
       "text": "Open Map"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 204,
       "text": "Location: \\(locationLabel)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 221,
       "text": "Receiving Window"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/LoginView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LoginView.swift",
       "line": 247,
       "text": "Loading Access Type"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/MySuppliersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/MySuppliersView.swift",
       "line": 77,
       "text": "\\(supplier.orderCount) orders"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/MySuppliersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/MySuppliersView.swift",
       "line": 101,
       "text": "No Suppliers Yet"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/NotificationInboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/NotificationInboxView.swift",
       "line": 107,
       "text": "You'll be notified about order updates here"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/NotificationInboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/NotificationInboxView.swift",
       "line": 126,
       "text": "Done"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/NotificationInboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/NotificationInboxView.swift",
       "line": 122,
       "text": "Notifications"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/NotificationInboxView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/NotificationInboxView.swift",
       "line": 133,
       "text": "Read All"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 71,
       "text": "Check your connection and try again."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 110,
       "text": "\\(count)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 252,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 255,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 295,
       "text": "Details"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 310,
       "text": "Show QR"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 320,
       "text": "Awaiting Dispatch"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 346,
       "text": "Order #\\(order.id.suffix(3))"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 349,
       "text": "\\(order.itemCount) items · \\(order.displayTotal)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 360,
       "text": "View"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 395,
       "text": "Order by \\(forecast.suggestedOrderDate)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 403,
       "text": "\\(forecast.predictedQuantity) units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 411,
       "text": "Pre-Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 68,
       "text": "Retry"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/OrdersView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
       "line": 69,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 42,
       "text": "Your procurement order has been submitted successfully."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 58,
       "text": "\\(forecasts.count)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 61,
       "text": "Suggestions"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 68,
       "text": "\\(selectedItems.count)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 72,
       "text": "Selected"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 90,
       "text": "Suggestions"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 149,
       "text": "Confidence: \\(forecast.confidencePercent)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 159,
       "text": "\\(forecast.predictedQuantity) units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 188,
       "text": "\\(selectedItems.count) items selected"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 198,
       "text": "units"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 40,
       "text": "OK"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 45,
       "text": "Retry"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProcurementView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
       "line": 46,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 67,
       "text": "Enable auto-order using existing history, or start fresh? Starting fresh requires at least 2 orders before predictions begin."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 127,
       "text": "\\(Int(variant.price).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 131,
       "text": "/ \\(variant.pack)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 169,
       "text": "\\(variant.size) — \\(variant.pack)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 179,
       "text": "\\(Int(variant.price).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 204,
       "text": "Quantity"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 208,
       "text": "Total: \\(Int(Double(quantity) * v.price).formatted())"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 249,
       "text": "Auto-Order – This Product"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 252,
       "text": "Product-level override"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 277,
       "text": "\\(variant.size) — \\(variant.pack)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 379,
       "text": "Total"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 55,
       "text": "Use History"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 58,
       "text": "Start Fresh"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProductDetailView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
       "line": 61,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 50,
       "text": "Pegasus Retailer v1.0.0"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 143,
       "text": "Order History"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 149,
       "text": "\\(orderCount) orders"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 182,
       "text": "Auto-Order Everything"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 185,
       "text": "Auto-order all previously ordered products"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 214,
       "text": "Global auto-order is active. This overrides individual supplier and product settings."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 236,
       "text": "Use existing order history for predictions, or start fresh? Starting fresh requires at least 2 orders per product."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 226,
       "text": "Use History"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 229,
       "text": "Start Fresh"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/ProfileView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProfileView.swift",
       "line": 232,
       "text": "Cancel"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SearchView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SearchView.swift",
       "line": 87,
       "text": "Search Products"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SearchView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SearchView.swift",
       "line": 90,
       "text": "Type to find products by name or description"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SearchView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SearchView.swift",
       "line": 106,
       "text": "No Results"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SearchView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SearchView.swift",
       "line": 109,
       "text": "No products match \\"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SearchView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SearchView.swift",
       "line": 29,
       "text": "Search all products..."
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 180,
       "text": "Auto-Order"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 183,
       "text": "Auto-order all from \\(supplier.name)"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 212,
       "text": "Products by Category"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 216,
       "text": "\\(products.count) items"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 286,
       "text": "No Products Yet"
     },
     {
       "kind": "swiftui-inline-text",
-      "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Screens/SupplierProductsView.swift",
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
       "line": 105,
       "text": "\\(supplier.catalogSubtitle)"
     },

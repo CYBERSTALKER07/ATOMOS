@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -120,6 +119,10 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 				sessionID = strings.TrimSpace(val)
 			}
 		}
+		if err := s.assertSessionCurrency(r.Context(), sessionID, strings.TrimSpace(item.MerchantReference), currency); err != nil {
+			writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "webhook currency must match payment session currency", endpoint, false, "")
+			return
+		}
 
 		// Map specific Adyen events to PaymentAttempt metadata transitions
 		var executionAction string
@@ -156,7 +159,7 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			TransactionID:  transactionID,
 			SessionID:      sessionID,
 			OrderID:        strings.TrimSpace(item.MerchantReference),
-			SupplierID:     s.supplierID,
+			SupplierID:     s.resolveWebhookSupplierID(r.Context(), strings.TrimSpace(item.MerchantReference)),
 			Status:         status,
 			AmountMinor:    item.Amount.Value,
 			Currency:       currency,
@@ -168,22 +171,12 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp := map[string]string{
-			"status":         "accepted",
-			"gateway":        "adyen",
-			"transaction_id": row.TransactionID,
-		}
-		respBytes, _ := json.Marshal(resp)
-		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, respBytes, 7*24*time.Hour)
+		s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, []byte("[accepted]"), 7*24*time.Hour)
 		processed++
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"status":          "accepted",
-		"gateway":         "adyen",
-		"processed_items": processed,
-	})
+	_, _ = w.Write([]byte("[accepted]"))
 }
 

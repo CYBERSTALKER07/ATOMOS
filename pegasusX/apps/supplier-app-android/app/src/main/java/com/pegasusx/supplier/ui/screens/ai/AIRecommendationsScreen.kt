@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.ai
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,12 +13,13 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierAIRecommendation
 import com.pegasusx.supplier.data.model.SupplierAIRecommendationDecisionRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.pegasusx.supplier.R
 
 private val statusFilters = listOf("PENDING", "ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "ALL")
 private val decisionActions = listOf("ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "REOPENED")
@@ -83,7 +86,7 @@ fun AIRecommendationsScreen(ops: SupplierOperationsRepository, onBack: () -> Uni
                 title = { Text("AI recommendations") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -167,13 +170,12 @@ private fun RecommendationCard(
                 Text(rec.explanation, style = MaterialTheme.typography.bodyMedium)
             }
             Text(
-                "${rec.aggregateType} ${rec.aggregateId} · Source ${rec.source}",
+                stringResource(R.string.mobile_supplier_ui_aggregatetype_aggregateid_source_source, rec.aggregateType, rec.aggregateId, rec.source),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
             if (rec.reasonCodes.isNotEmpty()) {
-                Text(
-                    "Reasons: ${rec.reasonCodes.joinToString(", ")}",
+                Text(stringResource(R.string.mobile_supplier_ui_reasons_jointostring, rec.reasonCodes.joinToString(", ")),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline,
                 )

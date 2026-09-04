@@ -32,6 +32,7 @@ type SuggestionRow struct {
 	AdjustedDemand   float64  `json:"adjusted_demand_per_day"`
 	CurrentStock     int64    `json:"current_stock"`
 	InFlightQty      int64    `json:"in_flight_qty"`
+	SafetyStock      float64  `json:"safety_stock"`
 	SuggestedByDate  string   `json:"suggested_by_date"`
 	Status           string   `json:"status"`
 	ComputedAt       string   `json:"computed_at"`
@@ -257,7 +258,7 @@ var (
 
 func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retailerID, status, skuSearch string, sourceFilter []string) ([]SuggestionRow, error) {
 	sql := `SELECT rs.RetailerId, rs.Sku, rs.SuggestedQty, rs.AdjustedDemand, rs.CurrentStock,
-	               rs.InFlightQty, rs.SuggestedByDate, rs.ComputedAt, rs.Status,
+	               rs.InFlightQty, rs.SafetyStock, rs.SuggestedByDate, rs.ComputedAt, rs.Status,
 	               r.Name AS RetailerName, p.Name AS SkuName,
 	               rs.SourcesJson, rs.SellThroughVel, rs.BaseDemand
 	        FROM ReorderSuggestions rs
@@ -307,19 +308,22 @@ func (a *SuggestionsAPI) listSuggestions(ctx context.Context, supplierID, retail
 		var suggestedBy civil.Date
 		var computedAt time.Time
 		var retailerName, skuName, sourcesJSON spanner.NullString
-		var stVel, baseDem spanner.NullFloat64
+		var stVel, baseDem, safetyStock spanner.NullFloat64
 		if err := row.Columns(
 			&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
-			&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
+			&sr.InFlightQty, &safetyStock, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
 			&sourcesJSON, &stVel, &baseDem,
 		); err != nil {
-			// Pre-migration schema without L3.3 columns
+			// Pre-migration schema without L3.3 / SafetyStock column order
 			if err2 := row.Columns(
 				&sr.RetailerID, &sr.Sku, &sr.SuggestedQty, &sr.AdjustedDemand, &sr.CurrentStock,
 				&sr.InFlightQty, &suggestedBy, &computedAt, &sr.Status, &retailerName, &skuName,
 			); err2 != nil {
 				return nil, err
 			}
+		}
+		if safetyStock.Valid {
+			sr.SafetyStock = safetyStock.Float64
 		}
 		sr.SuggestedByDate = suggestedBy.String()
 		sr.ComputedAt = computedAt.UTC().Format(time.RFC3339Nano)

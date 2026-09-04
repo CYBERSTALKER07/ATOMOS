@@ -5,7 +5,7 @@
 > *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
 
 
-Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same route map as `pegasus/apps/warehouse-portal` (dashboard, orders, dispatch, inventory, supply, forecast, fleet, treasury, etc.).
+Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same route map as `apps/warehouse-portal` (dashboard, orders, dispatch, inventory, supply, forecast, fleet, treasury, etc.).
 
 ## Stack
 
@@ -18,7 +18,7 @@ Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same r
 
 - `POST /v1/auth/warehouse/login` — phone + PIN (demo: `+998901000088` / `1234`)
 - `POST /v1/auth/warehouse/refresh` — refresh token rotation
-- WebSocket: `GET /v1/ws?token=…` (warehouse + supplier rooms)
+- WebSocket: `GET /v1/warehouse/ws-session` → short-lived `token_use=ws` ticket → `/v1/ws?token=…` (browsers cannot set Authorization on WebSocket).
 
 ## Commands
 

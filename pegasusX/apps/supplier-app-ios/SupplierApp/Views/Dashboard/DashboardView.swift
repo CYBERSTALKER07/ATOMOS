@@ -8,10 +8,13 @@ struct DashboardView: View {
     @State private var meiSummary: SupplierMEIONetworkSummary?
     @State private var pulseEvents: [SupplierPulseEvent] = []
     @State private var pulseLoading = true
+    @State private var pulseError: String?
     @State private var demandConfidence: ForecastConfidence?
     @State private var demandGeneratedAt: String?
     @State private var loading = true
     @State private var error: String?
+    @State private var pack: MarketPack?
+    @State private var commandJump: CommandStatusJump?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 200 : 150
@@ -35,6 +38,7 @@ struct DashboardView: View {
                             if !tokenStore.isConfigured {
                                 billingBanner
                             }
+                            PackBanner(pack: pack)
 
                             SupplierSectionHeader(
                                 title: "Operations at a glance",
@@ -43,9 +47,9 @@ struct DashboardView: View {
 
                             if let meiSummary {
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                                    Text("MEIO network")
+                                    Text("supplier_portal.residual.text.meio_network")
                                         .font(.headline)
-                                    Text("\(meiSummary.warehousesScanned) warehouses · \(meiSummary.transferRecommendations) transfer recs · \(meiSummary.insightsGenerated) insights")
+                                    Text(L10n.format("mobile_supplier.ui.warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig", "\(meiSummary.warehousesScanned)", "\(meiSummary.transferRecommendations)", "\(meiSummary.insightsGenerated)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -63,12 +67,24 @@ struct DashboardView: View {
                                 )
                             }
 
-                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading)
+                            NetworkPulseStrip(events: pulseEvents, loading: pulseLoading, error: pulseError)
 
                             LazyVGrid(
                                 columns: [GridItem(.adaptive(minimum: gridMin), spacing: SupplierTheme.spacingMD)],
                                 spacing: SupplierTheme.spacingMD
                             ) {
+                                KpiTile(
+                                    title: "Revenue today",
+                                    value: formatPackMoney(dashboard.todayRevenueMinor, pack: pack),
+                                    systemImage: "banknote",
+                                    tint: .accentColor
+                                )
+                                KpiTile(
+                                    title: "Completion",
+                                    value: "\(dashboard.deliveriesCompletedToday)/\(dashboard.deliveriesAttemptedToday)",
+                                    systemImage: "checkmark.circle",
+                                    tint: SupplierTheme.success
+                                )
                                 KpiTile(
                                     title: "Pending orders",
                                     value: "\(dashboard.pendingOrders)",
@@ -81,15 +97,22 @@ struct DashboardView: View {
                                     systemImage: "archivebox",
                                     tint: .accentColor
                                 )
-                                KpiTile(
-                                    title: "Configured",
-                                    value: dashboard.isConfigured ? "Yes" : "No",
-                                    systemImage: "checkmark.seal",
-                                    tint: dashboard.isConfigured ? SupplierTheme.success : SupplierTheme.destructive
-                                )
                             }
 
-                            Text("Updated \(dashboard.updatedAt)")
+                            StatusStackView(
+                                dictionary: orderStatusFunnel,
+                                counts: dashboard.ordersByStatus,
+                                source: "live",
+                                onSelect: { commandJump = CommandStatusJump(status: $0) }
+                            )
+
+                            StatusStackView(
+                                dictionary: manifestStates,
+                                counts: dashboard.manifestsByState,
+                                source: dashboard.manifestsByState.isEmpty ? "empty" : "live"
+                            )
+
+                            Text(L10n.format("mobile_supplier.ui.updated_updatedat", "\(dashboard.updatedAt)"))
                                 .font(.caption2)
                                 .foregroundStyle(.tertiary)
                         }
@@ -99,7 +122,7 @@ struct DashboardView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Dashboard")
+            .navigationTitle("portal.nav.dashboard")
             .toolbar {
                 signOutToolbar
                 ToolbarItem(placement: .topBarTrailing) {
@@ -110,17 +133,23 @@ struct DashboardView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(silent: true) }
                     }
                     .labelStyle(.iconOnly)
                 }
             }
+            .navigationDestination(item: $commandJump) { jump in
+                OrdersHubView(initialCommandStatus: jump.status)
+            }
             .refreshable { await load(silent: true) }
             .task {
+                if let token = tokenStore.token {
+                    pack = await MarketPackBinder.fetch(baseUrl: APIClient.shared.cellBootstrap, token: token)?.pack
+                }
                 await load()
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 30_000_000_000)
+                    try? await Task.sleep(nanoseconds: 60_000_000_000)
                     await load(silent: true)
                 }
             }
@@ -137,14 +166,14 @@ struct DashboardView: View {
         HStack(spacing: SupplierTheme.spacingMD) {
             Image(systemName: "creditcard")
             VStack(alignment: .leading, spacing: 4) {
-                Text("Billing incomplete")
+                Text("mobile_supplier.ui.billing_incomplete")
                     .font(.subheadline.bold())
-                Text("Finish setup to enable treasury and payouts.")
+                Text("mobile_supplier.ui.finish_setup_to_enable_treasury_and_payouts")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Setup") {
+            Button("mobile_supplier.ui.setup") {
                 tokenStore.showBillingGate()
             }
             .font(.caption.bold())
@@ -155,7 +184,7 @@ struct DashboardView: View {
     @ToolbarContentBuilder
     private var signOutToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+            Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                 tokenStore.clear()
             }
             .labelStyle(.iconOnly)
@@ -179,7 +208,17 @@ struct DashboardView: View {
                 demandConfidence = nil
             }
             pulseLoading = true
-            pulseEvents = (try? await SupplierOperationsService.pulse())?.events ?? []
+            pulseError = nil
+            do {
+                let events = try await SupplierOperationsService.pulse().events
+                let result = PulseHonesty.apply(ok: true, incoming: events, previous: pulseEvents)
+                pulseEvents = result.events
+                pulseError = result.error
+            } catch {
+                let result = PulseHonesty.apply(ok: false, incoming: nil, previous: pulseEvents)
+                pulseEvents = result.events
+                pulseError = result.error
+            }
             pulseLoading = false
             if let configured = dashboard?.isConfigured {
                 tokenStore.markConfigured(configured)

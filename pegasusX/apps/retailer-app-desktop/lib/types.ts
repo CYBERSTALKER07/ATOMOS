@@ -151,7 +151,7 @@ export interface RetailerAnalytics {
   total_last_month: number;
 }
 
-/* ── AI Predictions ── */
+/* ── AI Predictions (legacy SKU-forecast card — not the live retailer list) ── */
 export interface Prediction {
   id: string;
   retailer_id?: string;
@@ -183,6 +183,48 @@ export function isPredictionBlocked(
     || Boolean(item.blocked_reason);
 }
 
+/** Live GET /v1/retailer/ai/predictions item — pending AI preorder, not a SKU forecast. */
+export interface RetailerAILineItem {
+  sku: string;
+  name?: string;
+  quantity: number;
+  unit_price_minor: number;
+}
+
+export interface RetailerAIPrediction {
+  order_id: string;
+  order_source?: string;
+  confirmation_status?: string;
+  requested_delivery_date?: string;
+  auto_confirm_at?: string;
+  total_minor: number;
+  currency: string;
+  derived_from_order_id?: string;
+  updated_at: string;
+  line_items?: RetailerAILineItem[];
+}
+
+export interface RetailerAIPredictionsResponse {
+  items: RetailerAIPrediction[];
+}
+
+export function aiPredictionTitle(item: RetailerAIPrediction): string {
+  const first = item.line_items?.[0];
+  const label = first?.name || first?.sku;
+  if (label) return label;
+  return item.order_id;
+}
+
+export function aiPredictionQty(item: RetailerAIPrediction): number {
+  return (item.line_items ?? []).reduce((sum, line) => sum + (line.quantity ?? 0), 0);
+}
+
+export function formatMinorAmount(minor: number, currency?: string): string {
+  const units = (minor ?? 0) / 100;
+  const code = (currency ?? "").trim();
+  return code ? `${units.toLocaleString()} ${code}` : units.toLocaleString();
+}
+
 /* ── Auto-Order Settings ── */
 export interface SupplierOverride {
   supplier_id: string;
@@ -204,16 +246,44 @@ export interface VariantOverride {
   variant_id: string;
   enabled: boolean;
 }
+export type AutoOrderExecutionMode = "off" | "shadow" | "draft" | "place";
+
+export interface AutoOrderShadowStats {
+  proposal_count: number;
+  matched_orders: number;
+  wape: number;
+  unmodified_accept_rate: number;
+  window_days: number;
+}
+
+export interface AutoOrderShadowProposal {
+  proposal_id: string;
+  retailer_id: string;
+  sku: string;
+  supplier_id?: string;
+  proposed_qty: number;
+  ip: number;
+  reorder_point: number;
+  order_up_to: number;
+  confidence?: number;
+  reason?: string;
+  bucket_date: string;
+  status: string;
+  run_id?: string;
+  created_at?: string;
+}
+
 export interface AutoOrderSettings {
   global_enabled: boolean;
-  /** draft (default) | place — place creates real supplier orders when flag on */
-  execution_mode?: "draft" | "place" | string;
+  /** off | shadow | draft | place — place creates real supplier orders when flag on */
+  execution_mode?: AutoOrderExecutionMode | string;
   has_any_history: boolean;
   analytics_start_date?: string;
   supplier_overrides: SupplierOverride[];
   category_overrides: CategoryOverride[];
   product_overrides: ProductOverride[];
   variant_overrides: VariantOverride[];
+  shadow_stats?: AutoOrderShadowStats;
 }
 
 /** POST /v1/retailer/settings/auto-order/run audit row */
@@ -235,7 +305,7 @@ export interface AutoOrderRun {
   retailer_id: string;
   started_at: string;
   finished_at?: string;
-  mode: "draft" | "place" | string;
+  mode: AutoOrderExecutionMode | string;
   draft_lines: number;
   placed_lines?: number;
   placed_orders?: AutoOrderPlacedOrder[];
@@ -335,10 +405,18 @@ export interface UnifiedCheckoutResponse {
   status: string;
   invoice_id: string;
   total: number;
+  currency?: string;
   supplier_orders: SupplierOrderResult[];
   backordered_item_count?: number;
   backorder_order_id?: string;
   stock_warnings?: StockWarning[];
+}
+
+/** GET /v1/order/currencies — flag-gated order currency picker. */
+export interface OrderCurrencyOptions {
+  enabled: boolean;
+  operating_currency: string;
+  allowlist: string[];
 }
 
 export interface CashCheckoutResponse {
@@ -383,11 +461,11 @@ export interface ActiveFulfillmentsResponse {
 }
 
 export interface PendingPaymentSession {
-  session_id: string;
+  session_id?: string;
   order_id: string;
   retailer_id: string;
   supplier_id: string;
-  gateway: string;
+  gateway?: string;
   locked_amount: number;
   currency: string;
   status: string;
@@ -445,6 +523,14 @@ export interface TrackingOrderItem {
   line_total: number;
 }
 
+export interface TrackingRouteGeometry {
+  route_id?: string;
+  encoded_polyline?: string;
+  coordinates: Array<{ lat: number; lng: number }>;
+  source: string;
+  stop_count?: number;
+}
+
 export interface TrackingOrder {
   order_id: string;
   supplier_id: string;
@@ -462,6 +548,7 @@ export interface TrackingOrder {
   fiscal_qr?: string;
   latest_fiscal_receipt_id?: string;
   items: TrackingOrderItem[];
+  route_geometry?: TrackingRouteGeometry;
 }
 
 export interface TrackingResponse {

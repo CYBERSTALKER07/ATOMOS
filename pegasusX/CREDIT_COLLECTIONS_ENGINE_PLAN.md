@@ -1,13 +1,17 @@
 # Enterprise Credit & Collections Engine
 
-## Verdict (current state)
+> **HISTORICAL PLAN BODY — do not use “Verdict” bullets below as status.**  
+> Behavior SoT: [`docs/CREDIT_ECOSYSTEM_BEHAVIOR.md`](docs/CREDIT_ECOSYSTEM_BEHAVIOR.md) · Residuals: [`docs/PROD_READINESS_SEQUENCE.md`](docs/PROD_READINESS_SEQUENCE.md) R1.3.
 
-Trade credit today is **limit + balance + freeze**, not collections:
+## Verdict (current state) — SUPERSEDED 2026-08-12
 
-- Real: [`RetailerCreditProfiles`](apps/backend-go/schema/spanner.ddl), [`credit.CheckOrder`](apps/backend-go/credit/service.go), credit-leave → `DELIVERED_ON_CREDIT` + `MarkBalance`, payment legs, collections desk UI (freeze/limit only), nightly scores (suggest-only), credit notes, cash recon.
-- Broken / missing for prod AR: no payment terms / due dates / invoices, `DelinquencyCount` never increments, no aging/dunning, create-time check does not reserve, `MarkBalance` runs **after** the order txn, freeze blocks all creates (not credit-only), `ledger/` is unwired with no DDL, `MasterInvoices` is schema-only, notifications are FCM + `LogTransport` only.
+**Implemented (flag-gated):** credit policy V2, reserve/CAS, same-txn mark/convert on credit leave, `ArInvoices` + aging + dunning step machine, `DelinquencyCount` bump on first OVERDUE, auto-hold at CREDIT_HOLD, **AR outbox** (`AR_INVOICE_*`), off-app SMS/email/WhatsApp transports (`DUNNING_*_PROVIDER`), credit scoring product **removed** (limit + status only).
 
-**Default committed scope:** full AR open-item + collections + dunning transports + wire [`ledger/`](apps/backend-go/ledger) for AR journal postings. Not a full company GL chart — AR subledger + cash/card/credit-note offsets only.
+**Residual ops:** provider keys / WhatsApp Content SID (R1.3); multi-currency AR aging ledger; live GP SUCCESS is separate money gate.
+
+### Archive — original plan framing (pre-implementation)
+
+Trade credit was once **limit + balance + freeze** only. The phased design below is the archive of how AR was planned — not a claim of missing code.
 
 ```mermaid
 flowchart TD

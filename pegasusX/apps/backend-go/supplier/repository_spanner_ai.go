@@ -170,19 +170,10 @@ func (r *SpannerRepository) RecordAIRecommendationDecision(ctx context.Context, 
 		})}
 
 		for _, event := range buf.events {
-			createdAt := event.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = decidedAt
+			if event.CreatedAt.IsZero() {
+				event.CreatedAt = decidedAt
 			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       event.EventID,
-				"AggregateType": event.AggregateType,
-				"AggregateId":   event.AggregateID,
-				"TopicName":     event.TopicName,
-				"Payload":       event.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}))
+			mutations = append(mutations, portalOutboxMutation(event))
 		}
 
 		return txn.BufferWrite(mutations)

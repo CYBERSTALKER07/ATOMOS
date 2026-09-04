@@ -32,9 +32,9 @@ struct OrgFleetView: View {
                     .padding(.top)
 
                     Picker("Section", selection: $tab) {
-                        Text("Drivers (\(drivers.count))").tag(0)
-                        Text("Vehicles (\(vehicles.count))").tag(1)
-                        Text("Org (\(orgMembers.count))").tag(2)
+                        Text(L10n.format("mobile_supplier.ui.drivers_count", "\(drivers.count)")).tag(0)
+                        Text(L10n.format("mobile_supplier.ui.vehicles_count", "\(vehicles.count)")).tag(1)
+                        Text(L10n.format("mobile_supplier.ui.org_count", "\(orgMembers.count)")).tag(2)
                     }
                     .pickerStyle(.segmented)
                     .padding()
@@ -57,10 +57,10 @@ struct OrgFleetView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Org & fleet")
+        .navigationTitle("mobile_supplier.ui.org_and_fleet")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Add") {
+                Button("mobile_supplier.ui.add") {
                     switch tab {
                     case 0: showDriverSheet = true
                     case 1: showVehicleSheet = true

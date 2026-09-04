@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,19 +11,20 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.RealtimeRefreshEffect
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.data.model.FleetDriver
 import com.pegasusx.supplier.data.model.FleetVehicle
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierOpsListCard
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,10 +79,10 @@ fun FleetScreen(
                 title = { Text("Fleet") },
                 actions = {
                     IconButton(onClick = onOpenLiveMap) {
-                        Icon(Icons.Default.Map, contentDescription = "Live map")
+                        Icon(Icons.Default.Map, contentDescription = stringResource(R.string.retailer_desktop_tracking_tracking_map_text_live_map))
                     }
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -87,8 +90,8 @@ fun FleetScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             TabRow(selectedTabIndex = tab) {
-                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Drivers (${drivers.size})") })
-                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Vehicles (${vehicles.size})") })
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_supplier_ui_drivers_size, drivers.size)) })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_supplier_ui_vehicles_size, vehicles.size)) })
             }
             when {
                 showFullScreenLoading(loading, hasData) -> PegasusLoadingState("Loading fleet…", "Drivers and vehicles")

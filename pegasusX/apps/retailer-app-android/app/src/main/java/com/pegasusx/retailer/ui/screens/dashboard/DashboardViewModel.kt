@@ -4,10 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PulseHonesty
+import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.local.TokenManager
-import com.pegasusx.retailer.data.model.DemandForecast
+import com.pegasusx.retailer.data.model.ControlTowerPulse
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.Product
+import com.pegasusx.retailer.data.model.PulseEvent
+import com.pegasusx.retailer.data.model.RetailerAIPrediction
 import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -29,11 +35,17 @@ enum class DashboardLoadIssue {
 data class DashboardUiState(
     val isLoading: Boolean = false,
     val activeOrders: List<Order> = emptyList(),
-    val predictions: List<DemandForecast> = emptyList(),
+    val predictions: List<RetailerAIPrediction> = emptyList(),
     val recentProducts: List<Product> = emptyList(),
+    val pulseEvents: List<PulseEvent> = emptyList(),
+    val pulseLoading: Boolean = false,
+    val pulseError: String? = null,
+    val commandPulse: ControlTowerPulse? = null,
+    val commandPulseError: String? = null,
     val error: String? = null,
     val loadIssue: DashboardLoadIssue? = null,
     val orderActionPending: Boolean = false,
+    val pack: MarketPack? = null,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -82,7 +94,9 @@ class DashboardViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, pulseLoading = true, pulseError = null, error = null) }
+            val pack = MarketPackBinder.fetch(BuildConfig.BASE_URL, tokenManager.getPreferredToken().orEmpty())?.pack
+            _uiState.update { it.copy(pack = pack) }
 
             var nextIssue: DashboardLoadIssue? = null
             var nextError: String? = null
@@ -99,7 +113,7 @@ class DashboardViewModel @Inject constructor(
             }
 
             try {
-                val forecasts = api.getPredictions(retailerId)
+                val forecasts = api.getRetailerAIPredictions().items
                 _uiState.update { it.copy(predictions = forecasts) }
             } catch (e: Exception) {
                 if (nextIssue == null) {
@@ -118,6 +132,34 @@ class DashboardViewModel @Inject constructor(
                 }
             }
 
+            try {
+                val pulse = api.getRetailerPulse()
+                _uiState.update { it.copy(pulseEvents = pulse.events, pulseLoading = false, pulseError = null) }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(pulseLoading = false, pulseError = PulseHonesty.FAILED) }
+            }
+
+            try {
+                val command = api.getControlTowerPulse()
+                val applied = PulseHonesty.applyObject(
+                    ok = true,
+                    incoming = command,
+                    previous = _uiState.value.commandPulse,
+                )
+                _uiState.update {
+                    it.copy(commandPulse = applied.value, commandPulseError = applied.error)
+                }
+            } catch (_: Exception) {
+                val applied = PulseHonesty.applyObject(
+                    ok = false,
+                    incoming = null,
+                    previous = _uiState.value.commandPulse,
+                )
+                _uiState.update {
+                    it.copy(commandPulse = applied.value, commandPulseError = applied.error)
+                }
+            }
+
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -132,16 +174,44 @@ class DashboardViewModel @Inject constructor(
         _uiState.update { it.copy(error = null, loadIssue = null) }
     }
 
-    fun requestPreorder(forecast: DemandForecast) {
-        _uiState.update { it.copy(error = "AI pre-orders are not available in this app") }
-    }
-
     fun confirmAiOrder(orderId: String) {
-        _uiState.update { it.copy(error = "AI orders are not available") }
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.confirmAiOrder(
+                    body = mapOf("order_id" to orderId),
+                    idempotencyKey = RetailerIdempotencyKeys.confirmAI(orderId),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
-        _uiState.update { it.copy(error = "AI orders are not available") }
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.rejectAiOrder(
+                    body = mapOf("order_id" to orderId, "reason" to reason),
+                    idempotencyKey = RetailerIdempotencyKeys.rejectAI(orderId, reason),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
     }
 
     fun confirmPreorder(orderId: String) {

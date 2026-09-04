@@ -1,5 +1,9 @@
 # Big-Platform Baseline Plan (O9 / Blue Yonder / Manhattan / Kinaxis + PegasusX)
 
+> **HISTORICAL / FROZEN planning baseline — not the current residual SoT.**  
+> Live residuals: [`../PROD_READINESS_SEQUENCE.md`](../PROD_READINESS_SEQUENCE.md) · [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md).  
+> Many items below are now code-wired (WMS Gate 4, labor-capacity, partner rails); re-verify before treating as open.
+
 **Status:** planning baseline (not fully implemented)  
 **Date:** 2026-07-29  
 **Spine (must not break):** Spanner + outbox + Kafka + Redis + WS + role clients + **int64 minor units** + canonical order status machine  
@@ -42,7 +46,7 @@ Make **enterprise planning + execution depth** the default baseline (O9 / Kinaxi
 - Live SSMR: Spanner, Redis, Strimzi Kafka, GKE, Firebase Auth/FCM path, Maps Places geocode, `FISCAL_PROVIDER=PEGASUS` (Soliq deferred).  
 - Order fiscal hard-gate (ADR-009): capture → `FISCALIZING` → `COMPLETED` / `FISCAL_FAILED`.  
 - Claims: order-line pricing, 48h window, LEDGER_ONLY / STORE_CREDIT / GATEWAY_REFUND, INTERNAL cash clawback.  
-- Dispatch: optimizer-core (OR-Tools) + heuristic fallback; freeze locks exist.  
+- Dispatch: code wires **optimizer-core (OR-Tools)** with H3 BinPack fallback; **cloud SSMR/prod runs heuristic until sidecar image + replicas ≥ 1**. Route geometry: Google Routes → OSRM → dense. SoT: [`../OPTIMIZER_AND_ROUTING_RUNTIME.md`](../OPTIMIZER_AND_ROUTING_RUNTIME.md).  
 - Explicit **Payload** role + seal + inject. Offline driver hashes exist.
 
 ## Next detail slices (pick one)

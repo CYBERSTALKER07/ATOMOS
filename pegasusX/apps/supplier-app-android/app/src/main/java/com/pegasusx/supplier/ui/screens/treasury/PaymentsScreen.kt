@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,13 +15,14 @@ import com.pegasusx.supplier.data.model.SettlementAuthorityResponse
 import com.pegasusx.supplier.data.model.SettlementAuthorityRow
 import com.pegasusx.supplier.data.model.SettlementCurrencyTotal
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +64,7 @@ fun PaymentsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Payments") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -154,7 +157,7 @@ private fun TotalRow(row: SettlementCurrencyTotal, money: (Long, String) -> Stri
             Text(row.currency, style = MaterialTheme.typography.titleMedium)
             Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                 Text(money(row.amountMinorTotal, row.currency), style = MaterialTheme.typography.bodyLarge)
-                Text("${row.entryCount} entries", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                Text(stringResource(R.string.mobile_supplier_ui_entrycount_entries, row.entryCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
             }
         }
     }
@@ -165,11 +168,11 @@ private fun MismatchRow(row: ReconciliationMismatchRow, money: (Long, String) ->
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${row.gateway} · ${row.currency}", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.mobile_supplier_ui_gateway_currency, row.gateway, row.currency), style = MaterialTheme.typography.titleMedium)
                 Text(money(row.netAmountMinor, row.currency), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
             }
             Text(
-                "Credit ${money(row.creditAmountMinorTotal, row.currency)} · Debit ${money(row.debitAmountMinorTotal, row.currency)} · ${row.entryCountTotal} entries",
+                stringResource(R.string.mobile_supplier_ui_credit_money_debit_money_2_entrycounttotal_entries, money(row.creditAmountMinorTotal, row.currency), money(row.debitAmountMinorTotal, row.currency), row.entryCountTotal),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
@@ -182,11 +185,11 @@ private fun GroupRow(row: SettlementAuthorityRow, money: (Long, String) -> Strin
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${row.gateway} · ${row.entryType}", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.mobile_supplier_ui_gateway_entrytype, row.gateway, row.entryType), style = MaterialTheme.typography.titleMedium)
                 Text(money(row.amountMinorTotal, row.currency), style = MaterialTheme.typography.bodyLarge)
             }
             Text(
-                "${row.currency} · ${row.entryCount} entries",
+                stringResource(R.string.mobile_supplier_ui_currency_entrycount_entries, row.currency, row.entryCount),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )

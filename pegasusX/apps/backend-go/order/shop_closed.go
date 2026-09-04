@@ -11,18 +11,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type shopClosedReportRequest struct {
-	Reason   string          `json:"reason"`
-	Note     string          `json:"note,omitempty"`
-	PhotoURL string          `json:"photoUrl,omitempty"`
-	Location DriverTelemetry `json:"location"`
+	OrderID       string          `json:"order_id,omitempty"`
+	Reason        string          `json:"reason"`
+	Note          string          `json:"note,omitempty"`
+	PhotoURL      string          `json:"photo_url,omitempty"`
+	PhotoURLCamel string          `json:"photoUrl,omitempty"`
+	Location      DriverTelemetry `json:"location"`
+	Latitude      *float64        `json:"latitude,omitempty"`
+	Longitude     *float64        `json:"longitude,omitempty"`
 }
 
 type driverEndpointResponse struct {
@@ -97,12 +101,39 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	}
 	orderID := chi.URLParam(r, "orderId")
 	if orderID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id required in path"})
+		orderID = strings.TrimSpace(req.OrderID)
+	}
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	if err := req.Location.Validate(100.0); err != nil {
-		writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+	photoURL := strings.TrimSpace(req.PhotoURL)
+	if photoURL == "" {
+		photoURL = strings.TrimSpace(req.PhotoURLCamel)
+	}
+	if photoURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "photo_url_required"})
 		return
+	}
+	req.PhotoURL = photoURL
+	// Body lat/lng fallback when location object omitted (mobile clients).
+	if req.Location.Lat == 0 && req.Location.Lng == 0 {
+		if req.Latitude != nil {
+			req.Location.Lat = *req.Latitude
+		}
+		if req.Longitude != nil {
+			req.Location.Lng = *req.Longitude
+		}
+	}
+	if req.Location.RecordedAt.IsZero() {
+		req.Location.RecordedAt = s.now()
+	}
+	// Only enforce telemetry accuracy when a live GPS reading was provided.
+	if req.Location.Lat != 0 || req.Location.Lng != 0 {
+		if err := req.Location.Validate(100.0); err != nil {
+			writeJSON(w, http.StatusPreconditionFailed, map[string]string{"error": err.Error()})
+			return
+		}
 	}
 
 	reason := NormalizeShopClosedReason(req.Reason)
@@ -113,8 +144,17 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 	now := s.now()
 	// Client timestamp was removed, just use now
 
-	graceEnds := now.Add(s.shopGrace)
 	ctx := r.Context()
+	grace, graceErr := auth.ShopClosedGraceFromContext(ctx, claims.SupplierID)
+	if graceErr != nil {
+		st, code := auth.TimezonePackHTTPStatus(graceErr)
+		writeJSON(w, st, map[string]string{"error": code})
+		return
+	}
+	if grace <= 0 {
+		grace = s.shopGrace
+	}
+	graceEnds := now.Add(grace)
 
 	var retailerID, supplierID string
 	var gpsLat, gpsLng float64
@@ -158,7 +198,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			t := proxUnlockedAt.Time
 			proxUnlockedAtPtr = &t
 		}
-		
+
 		var h3 string
 		if h3Cell.Valid {
 			h3 = h3Cell.StringVal
@@ -178,7 +218,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			Actor:  driverID,
 			Reason: "report_shop_closed",
 		})
-		
+
 		// Ensure we capture if it was unlocked (maybe by this call)
 		if orderRecord.ProximityUnlockedAt != nil {
 			finalProxUnlocked = true
@@ -271,7 +311,7 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		if errors.Is(err, ErrInvalidStatusTransition) {
 			s.log.ErrorContext(ctx, "shop closed report failed (invalid status)", "order_id", orderID, "err", err)
 			writeJSON(w, http.StatusConflict, map[string]string{
-				"error": "invalid_status_transition",
+				"error":   "invalid_status_transition",
 				"message": err.Error(),
 			})
 			return
@@ -349,7 +389,7 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	retailerID := strings.TrimSpace(claims.Subject)
+	retailerID := auth.ResolveRetailerOrgID(claims)
 	s.executeShopClosedRetailerResponse(w, r, body, req, retailerID)
 }
 
@@ -479,7 +519,7 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		case RetailerRespCancel:
 			newStatus = string(StatusCancelled)
 			resolution = ShopClosedResolutionCancelled
-			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+			if err := ReleaseReservationsFromOrderFieldsWithID(ctx, txn, supplierID, warehouseID, req.OrderID, orderSource, lineItemsRaw); err != nil {
 				return err
 			}
 			mutations = append(mutations,
@@ -513,7 +553,7 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 					"ResolvedAt":  now.UTC(),
 				}),
 			)
-		// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
+			// 5_MIN / CALL_ME / CLOSED_TODAY: acknowledge only; stay PENDING.
 		}
 
 		logPayload := map[string]any{
@@ -682,7 +722,7 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 			}))
 		case "RETURN_TO_DEPOT":
 			resolution = "RETURN_TO_DEPOT"
-			if err := ReleaseReservationsFromOrderFields(ctx, txn, supplierID, warehouseID, orderSource, lineItemsRaw); err != nil {
+			if err := ReleaseReservationsFromOrderFieldsWithID(ctx, txn, supplierID, warehouseID, orderID, orderSource, lineItemsRaw); err != nil {
 				return err
 			}
 			mutations = append(mutations,
@@ -759,10 +799,6 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
-
-
-
-
 func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
@@ -787,21 +823,26 @@ func (s *Service) invalidateOrderCache(ctx context.Context, orderID string) {
 }
 
 func outboxMutation(e outbox.Event) *spanner.Mutation {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
 	row := map[string]any{
 		"EventId":       e.EventID,
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
 		"TopicName":     e.TopicName,
 		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
+		// Commit timestamp: row creation time is commit time. Wall-clock
+		// timestamps here fail on any client/host clock skew.
+		"CreatedAt":   spanner.CommitTimestamp,
+		"PublishedAt": nil,
 	}
 	if e.PublishedAt != nil {
 		row["PublishedAt"] = e.PublishedAt.UTC()
+	}
+	sid := strings.TrimSpace(e.SupplierID)
+	if sid == "" {
+		sid = outbox.SupplierIDFromPayload(e.Payload)
+	}
+	if sid != "" {
+		row["SupplierId"] = sid
 	}
 	return spanner.InsertOrUpdateMap("OutboxEvents", row)
 }

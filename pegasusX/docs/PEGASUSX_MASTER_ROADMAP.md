@@ -1,7 +1,12 @@
 # PegasusX Master Roadmap (Everything, Sequenced)
 
-**Status:** Program roadmap (order of battle)  
-**Repo:** `/Users/shakhzod/ATOMOS/pegasusX` (canonical working tree; Desktop `V.O.I.D` is not the execution root)  
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
+**Status:** Program roadmap (order of battle) — **frozen**; Wave C L8–L11 largely code-done — see [`WAVE_C_IMPLEMENTATION_PLAN.md`](./WAVE_C_IMPLEMENTATION_PLAN.md) + [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md)  
+**Repo:** `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` (living SoT tree; ATOMOS path may be a mirror)  
 **Date:** 2026-08-04  
 **Role:** Sequences all major plans; detail stays in linked docs — do not duplicate every epic here.
 

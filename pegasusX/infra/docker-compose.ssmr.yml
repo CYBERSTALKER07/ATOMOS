@@ -1,4 +1,5 @@
 name: pegasusx-ssmr
+# Deprecated alias of docker-compose.sandbox.yml. Prefer that file. Live GCS prefix pegasusx/ssmr is unchanged.
 
 services:
   spanner-emulator:
@@ -73,11 +74,13 @@ services:
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_MAIN}-dlq" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_ORDERS:-pegasusx-orders}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_DISPATCH:-pegasusx-dispatch}" --partitions 3 --replication-factor 1
-        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_SPATIAL}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_SPATIAL:-ssmr.events.spatial}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_DEMAND:-pegasusx-demand}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_REALTIME}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_WEBHOOKS}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_FREEZE_LOCKS}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_INVENTORY_IMPORT}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_EXCEPTIONS:-logistics.exceptions.v1}" --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.signal.ingest.v1 --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.request.v1 --partitions 3 --replication-factor 1
         kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.result.v1 --partitions 3 --replication-factor 1
@@ -137,6 +140,8 @@ services:
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
+      - ../.ssmr/gcs-signer-key.json:/run/secrets/gcs-signer-key.json:ro
+      - ../.ssmr/import-uploads:/data/import-uploads
       - pegasusx-ssmr-go-mod:/root/go/pkg/mod
       - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
@@ -148,6 +153,10 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      DISPATCH_AI_MIN_STOPS: "1"
+      GCS_BUCKET_NAME: pegasus-503013-ssmr-assets
+      IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcs-signer-key.json
       INTERNAL_API_KEY: dev-internal-key
       GLOBAL_PAY_ENV: dev
       REQUIRE_INFRA_ADAPTERS: "true"

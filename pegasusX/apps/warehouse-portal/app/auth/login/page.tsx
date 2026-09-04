@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
@@ -11,6 +12,7 @@ import { COUNTRIES } from "../register/wizard-state";
 type LoginStep = "phone" | "otp";
 
 export default function WarehouseLoginPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
   const [countryCode, setCountryCode] = useState("UZ");
@@ -25,7 +27,7 @@ export default function WarehouseLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6,14}$/.test(phoneLocal)) {
-      setError("Enter a valid phone number (6-14 digits)");
+      setError(t("warehouse_portal.residual.text.enter_a_valid_phone_number_6_14_digits"));
       return;
     }
     setLoading(true);
@@ -33,7 +35,7 @@ export default function WarehouseLoginPage() {
       await sendPhoneOtp(`${dialCode}${phoneLocal}`);
       setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send verification code");
+      setError(err instanceof Error ? err.message : t("warehouse_portal.residual.text.failed_to_send_verification_code"));
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ export default function WarehouseLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(otpCode)) {
-      setError("Enter the 6-digit code");
+      setError(t("warehouse_portal.residual.text.enter_the_6_digit_code"));
       return;
     }
 
@@ -51,7 +53,7 @@ export default function WarehouseLoginPage() {
     try {
       const phone = `${dialCode}${phoneLocal}`;
       const idToken = await verifyPhoneOtp(otpCode);
-      const res = await fetch(`${warehouseApiBaseUrl}/v1/auth/warehouse/login`, {
+      const res = await fetch(`${warehouseApiBaseUrl()}/v1/auth/warehouse/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id_token: idToken }),
@@ -70,7 +72,7 @@ export default function WarehouseLoginPage() {
       persistSession(data.token, data.refresh_token);
       router.replace(data.is_configured ? "/" : "/setup/location");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.error.login_failed"));
     } finally {
       setLoading(false);
     }
@@ -78,11 +80,11 @@ export default function WarehouseLoginPage() {
 
   return (
     <AuthLoginCard
-      title="Warehouse sign in"
+      title={t("warehouse_portal.auth.login.text.warehouse_sign_in")}
       subtitle={
         step === "phone"
-          ? "Enter your registered phone number."
-          : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`
+          ? t("warehouse_portal.auth.login.text.enter_registered_phone")
+          : t("warehouse_portal.auth.login.text.enter_otp_sent_to", { phone: `${dialCode}${phoneLocal}` })
       }
       step={step}
       countryCode={countryCode}
@@ -91,8 +93,8 @@ export default function WarehouseLoginPage() {
       error={error}
       loading={loading}
       registerHref="/auth/register"
-      registerPrompt="New warehouse?"
-      registerLabel="Register"
+      registerPrompt={t("warehouse_portal.residual.text.new_warehouse")}
+      registerLabel={t("warehouse_portal.residual.text.register")}
       onCountryChange={setCountryCode}
       onPhoneChange={setPhoneLocal}
       onOtpChange={setOtpCode}

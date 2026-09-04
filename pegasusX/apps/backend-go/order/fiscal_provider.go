@@ -11,12 +11,17 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
 
-// Fiscal provider selection (ADR-009 hard-gate).
+// Fiscal provider selection (ADR-009 hard-gate) — G1.B product truth.
 //
-//	FISCAL_PROVIDER=PEGASUS    (default product path — platform commercial receipts, no Soliq)
-//	FISCAL_PROVIDER=FAKE       SSMR test hooks (amount=13 / fiscal-fail ids)
-//	FISCAL_PROVIDER=MY_SOLIQ   tax OFD HTTP adapter (when Soliq sandbox/prod creds arrive)
+//	FISCAL_PROVIDER=MY_SOLIQ   tax OFD (default when unset in tax-class envs: production/staging
+//	                           or FISCAL_TAX_MARKET=true). Requires Soliq + EDS env; misconfig = hard-fail.
+//	FISCAL_PROVIDER=PEGASUS    commercial platform receipts only (tax_ofd=false). Must be set
+//	                           **explicitly** — never the silent tax-market default.
+//	FISCAL_PROVIDER=FAKE       SSMR/test hooks (amount=13 / fiscal-fail ids)
 //	FISCAL_PROVIDER=GLOBAL_PAY payment-provider receipts only (rarely used alone)
+//
+// Local/SSMR (PEGASUSX_ENV empty|ssmr|dev|local) still defaults to PEGASUS when FISCAL_PROVIDER
+// is unset, so developers are not blocked without Soliq creds. Production/staging unset → MY_SOLIQ.
 //
 // Optional secondary payment receipt (best-effort, never blocks COMPLETED):
 //
@@ -31,8 +36,10 @@ import (
 //	FISCAL_MY_SOLIQ_TIN        supplier taxpayer ID (STIR)
 //	FISCAL_MY_SOLIQ_PATH       optional path, default /v1/receipts
 //	FISCAL_MY_SOLIQ_TIMEOUT_MS optional, default 8000
+//	FISCAL_MY_SOLIQ_SIGNER     dev-hmac (non-prod) | pkcs12 (prod EDS)
 const (
 	envFiscalProvider   = "FISCAL_PROVIDER"
+	envFiscalTaxMarket  = "FISCAL_TAX_MARKET"
 	envMySoliqBaseURL   = "FISCAL_MY_SOLIQ_BASE_URL"
 	envMySoliqAPIKey    = "FISCAL_MY_SOLIQ_API_KEY"
 	envMySoliqTIN       = "FISCAL_MY_SOLIQ_TIN"
@@ -42,15 +49,55 @@ const (
 	FiscalFakeFailAmountMinor int64 = 13
 )
 
-// ProviderFromEnv selects PEGASUS (default), FAKE, MY_SOLIQ, or GLOBAL_PAY.
+// ResolveFiscalProviderName returns the effective provider name after G1.B defaults.
+// Explicit FISCAL_PROVIDER always wins; empty uses tax-class default (MY_SOLIQ) or PEGASUS.
+func ResolveFiscalProviderName() string {
+	raw := strings.ToUpper(strings.TrimSpace(os.Getenv(envFiscalProvider)))
+	switch raw {
+	case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
+		return FiscalProviderMySoliq
+	case FiscalProviderFake:
+		return FiscalProviderFake
+	case FiscalProviderGlobalPay:
+		return FiscalProviderGlobalPay
+	case FiscalProviderPegasus, "COMMERCIAL", "PLATFORM":
+		return FiscalProviderPegasus
+	case "":
+		if isTaxFiscalDefaultEnv() {
+			return FiscalProviderMySoliq
+		}
+		return FiscalProviderPegasus
+	default:
+		// Unknown explicit value: do not invent tax success — treat as PEGASUS only if
+		// not tax-class; tax-class unknown falls through to hard-fail via MY_SOLIQ path.
+		if isTaxFiscalDefaultEnv() {
+			return FiscalProviderMySoliq
+		}
+		return FiscalProviderPegasus
+	}
+}
+
+// isTaxFiscalDefaultEnv is true when unset FISCAL_PROVIDER must mean MY_SOLIQ (G1.B).
+func isTaxFiscalDefaultEnv() bool {
+	if envTruthy(os.Getenv(envFiscalTaxMarket)) {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
+	case "production", "prod", "staging":
+		return true
+	default:
+		return false
+	}
+}
+
+// ProviderFromEnv selects MY_SOLIQ, PEGASUS, FAKE, or GLOBAL_PAY per ResolveFiscalProviderName.
 // When PEGASUS is primary and Global Pay receipt env is enabled, wraps multi-receipt.
 func ProviderFromEnv() FiscalProvider {
-	switch strings.ToUpper(strings.TrimSpace(os.Getenv(envFiscalProvider))) {
-	case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
+	switch ResolveFiscalProviderName() {
+	case FiscalProviderMySoliq:
 		p, err := NewMySoliqProviderFromEnv()
 		if err != nil {
-			// Misconfigured production adapter must not silently fall back in
-			// a way that invents fiscal success — surface as hard-fail provider.
+			// Misconfigured tax adapter must not invent fiscal success.
 			return hardFailProvider{reason: err.Error()}
 		}
 		return p
@@ -66,12 +113,10 @@ func ProviderFromEnv() FiscalProvider {
 		}
 		return p
 	default:
-		// PEGASUS (and empty / unknown aliases) — product default without Soliq.
+		// PEGASUS — commercial only (tax_ofd=false); never silent tax OFD.
 		primary := PegasusReceiptProvider{PublicBaseURL: strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))}
 		gp, err := NewGlobalPayReceiptProviderFromEnv()
 		if err != nil {
-			// Misconfigured secondary must not block platform receipts.
-			// hard-fail only when GLOBAL_PAY is the primary provider (handled above).
 			return primary
 		}
 		if gp != nil {
@@ -129,6 +174,30 @@ type MySoliqProvider struct {
 	signer      fiscal.EDSSigner
 }
 
+// NewMySoliqProvider builds a MY_SOLIQ adapter with an explicit signer and Soliq client.
+// Prefer NewMySoliqProviderFromEnv in production; this constructor is for SSMR/contract
+// harnesses that inject a mock BaseURL + DevHMACSigner.
+func NewMySoliqProvider(baseURL, apiKey, tin string, signer fiscal.EDSSigner) (*MySoliqProvider, error) {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	apiKey = strings.TrimSpace(apiKey)
+	tin = strings.TrimSpace(tin)
+	if baseURL == "" || apiKey == "" || tin == "" {
+		return nil, fmt.Errorf("mysoliq: baseURL, apiKey, and tin required")
+	}
+	if signer == nil {
+		return nil, fmt.Errorf("mysoliq: EDSSigner required")
+	}
+	return &MySoliqProvider{
+		TIN: tin,
+		soliqClient: soliq.NewClient(soliq.SoliqConfig{
+			BaseURL: baseURL,
+			APIKey:  apiKey,
+			TIN:     tin,
+		}),
+		signer: signer,
+	}, nil
+}
+
 // NewMySoliqProviderFromEnv builds a provider from env; errors if required vars missing.
 func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 	base := strings.TrimRight(strings.TrimSpace(os.Getenv(envMySoliqBaseURL)), "/")
@@ -157,6 +226,13 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 			timeout = time.Duration(n) * time.Millisecond
 		}
 	}
+	// EDS signing is mandatory: MY_SOLIQ issues legal tax receipts (EHF), and an
+	// unsigned receipt must never reach the gateway. Fail-closed at construction
+	// instead of per-receipt so misconfiguration surfaces at deploy, not at sale.
+	signer, err := fiscal.SignerFromEnv(os.Getenv("PEGASUSX_ENV"))
+	if err != nil {
+		return nil, err
+	}
 	cfg := soliq.SoliqConfig{
 		BaseURL: base,
 		APIKey:  key,
@@ -166,21 +242,29 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 	return &MySoliqProvider{
 		TIN:         tin,
 		soliqClient: soliq.NewClient(cfg),
-		// Signer is nil initially, it must be injected or set later for EHFs
+		signer:      signer,
 	}, nil
 }
 
+// SetSigner injects the EDS signer (contract tests wire the dev-hmac signer here).
+func (p *MySoliqProvider) SetSigner(signer fiscal.EDSSigner) {
+	p.signer = signer
+}
+
 type mySoliqReceiptRequest struct {
-	AttemptID     string                   `json:"attempt_id"`
-	OrderID       string                   `json:"order_id"`
-	SupplierID    string                   `json:"supplier_id"`
-	RetailerID    string                   `json:"retailer_id,omitempty"`
-	TIN           string                   `json:"tin"`
-	AmountMinor   int64                    `json:"amount_minor"`
-	Currency      string                   `json:"currency"`
-	PaymentMethod string                   `json:"payment_method"`
-	LineItems     []mySoliqReceiptLineItem `json:"line_items,omitempty"`
-	IdempotencyKey string                  `json:"idempotency_key"`
+	AttemptID      string                   `json:"attempt_id"`
+	OrderID        string                   `json:"order_id"`
+	SupplierID     string                   `json:"supplier_id"`
+	RetailerID     string                   `json:"retailer_id,omitempty"`
+	TIN            string                   `json:"tin"`
+	AmountMinor    int64                    `json:"amount_minor"`
+	Currency       string                   `json:"currency"`
+	PaymentMethod  string                   `json:"payment_method"`
+	LineItems      []mySoliqReceiptLineItem `json:"line_items,omitempty"`
+	IdempotencyKey string                   `json:"idempotency_key"`
+	// Corrective chain: set on refund EHF that reverses an earlier receipt.
+	CorrectsEhfID  string                   `json:"corrects_ehf_id,omitempty"`
+	CorrectReason  string                   `json:"correct_reason,omitempty"`
 }
 
 type mySoliqReceiptLineItem struct {
@@ -206,9 +290,9 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 	if p == nil {
 		return FiscalCreateResult{}, fmt.Errorf("mysoliq: nil provider")
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	body := mySoliqReceiptRequest{
 		AttemptID:      req.AttemptID,
@@ -257,6 +341,53 @@ func (p *MySoliqProvider) CreateReceipt(ctx context.Context, req FiscalCreateReq
 
 func (p *MySoliqProvider) GetSoliqClient() soliq.SoliqClient {
 	return p.soliqClient
+}
+
+// CreateCorrectiveReceipt submits the corrective (refund) EHF referencing the
+// original receipt. Same signed envelope plus corrects_ehf_id; idempotency key
+// is the corrective attempt id so retries never double-issue.
+func (p *MySoliqProvider) CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error) {
+	if p == nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq: nil provider")
+	}
+	if strings.TrimSpace(req.OriginalReceiptID) == "" {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective: original receipt id required")
+	}
+	if p.signer == nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq: no EDSSigner configured")
+	}
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
+	}
+	body := mySoliqReceiptRequest{
+		AttemptID:      req.AttemptID,
+		OrderID:        req.OrderID,
+		SupplierID:     req.SupplierID,
+		RetailerID:     req.RetailerID,
+		TIN:            p.TIN,
+		AmountMinor:    req.AmountMinor,
+		Currency:       currency,
+		PaymentMethod:  "REFUND",
+		IdempotencyKey: req.AttemptID,
+		CorrectsEhfID:  req.OriginalReceiptID,
+		CorrectReason:  req.ReasonCode,
+	}
+	signedPayload, err := fiscal.AttachSignature(ctx, p.signer, body)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq attach signature: %w", err)
+	}
+	resp, err := p.soliqClient.Submit(ctx, signedPayload, req.AttemptID)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq submit corrective: %w", err)
+	}
+	if !resp.Success {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective error (code=%s): %s", resp.ErrorCode, resp.ErrorMessage)
+	}
+	if resp.EhfID == "" {
+		return FiscalCreateResult{}, fmt.Errorf("mysoliq corrective missing receipt_id in response")
+	}
+	return FiscalCreateResult{FiscalReceiptID: resp.EhfID, RawPayload: resp.RawBody}, nil
 }
 
 func firstNonEmpty(vals ...string) string {

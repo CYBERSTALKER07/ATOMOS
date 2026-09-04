@@ -1,6 +1,7 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -72,7 +73,16 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 	now := s.now().UTC()
 	supplierID := strings.TrimSpace(claims.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
+	}
+
+	geo, err := stampWarehouseCoords(r.Context(), req.Lat, req.Lng, "")
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
 	}
 
 	mutations := make([]*spanner.Mutation, 0, 2)
@@ -85,7 +95,7 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		warehouseID = "wh-" + uuid.NewString()[:8]
 		mutations = append(mutations, spanner.Insert("Warehouses",
-			[]string{"WarehouseId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CoverageRadiusKm", "PrimaryFactoryId", "IsActive", "IsOnShift", "CreatedAt", "UpdatedAt"},
+			[]string{"WarehouseId", "SupplierId", "Name", "Address", "PlaceId", "Lat", "Lng", "CoverageRadiusKm", "PrimaryFactoryId", "CountryCode", "H3Cell", "IsActive", "IsOnShift", "CreatedAt", "UpdatedAt"},
 			[]any{
 				warehouseID,
 				supplierID,
@@ -96,6 +106,8 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 				req.Lng,
 				req.CoverageRadiusKm,
 				strings.TrimSpace(req.PrimaryFactoryID),
+				geo.CountryCode,
+				geo.H3Cell,
 				true,
 				false,
 				now,
@@ -114,6 +126,8 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 			"PlaceId":     nullableString(strings.TrimSpace(req.PlaceID)),
 			"Lat":         req.Lat,
 			"Lng":         req.Lng,
+			"CountryCode": geo.CountryCode,
+			"H3Cell":      geo.H3Cell,
 			"UpdatedAt":   now,
 		}
 		if name := strings.TrimSpace(req.Name); name != "" {
@@ -122,7 +136,9 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 		mutations = append(mutations, spanner.UpdateMap("Warehouses", update))
 	}
 
-	if _, err := s.spannerClient.Apply(r.Context(), mutations); err != nil {
+	if _, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		s.log.ErrorContext(r.Context(), "failed to complete warehouse setup", "err", err)
 		web.JSONError(w, "Failed to complete warehouse setup", http.StatusInternalServerError)
 		return
@@ -155,11 +171,11 @@ func (s *Service) HandleWarehouseSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"warehouse_id":   warehouseID,
-		"supplier_id":    supplierID,
-		"token":          token,
-		"refresh_token":  refresh,
-		"is_configured":  isConfigured,
+		"warehouse_id":  warehouseID,
+		"supplier_id":   supplierID,
+		"token":         token,
+		"refresh_token": refresh,
+		"is_configured": isConfigured,
 	})
 }
 

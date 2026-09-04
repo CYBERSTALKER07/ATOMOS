@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import PageSection from './layout/PageSection';
 import gsap from 'gsap';
@@ -135,9 +136,8 @@ function WorkflowIcon({ type, className = "" }: { type: string, className?: stri
 const WorkflowCustomNode = ({ data }: any) => {
   return (
     <div className={`
-      w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
-      flex items-center relative transition-all duration-300
-      hover:border-white/70 hover:bg-[#151515] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(255,255,255,0.1)]
+      group w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
+      flex items-center relative
     `}>
       {data.type !== 'start' && <Handle type="target" position={Position.Left} className="w-2 h-2 bg-white !border-none !-ml-1" />}
       <Handle type="source" position={Position.Right} className="w-2 h-2 bg-white !border-none !-mr-1" />
@@ -164,6 +164,8 @@ const nodeTypes = {
 };
 
 export default function LogisticsWorkflow() {
+  const { t } = useLanguage();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeRole, setActiveRole] = useState<WorkflowRole>('supplier');
 
@@ -194,7 +196,7 @@ export default function LogisticsWorkflow() {
       label: c.items,
       labelStyle: { fill: '#888', fontSize: 10, fontFamily: 'monospace' },
       labelBgStyle: { fill: '#111', stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, rx: 10 },
-      labelBgPadding: [20, 8],
+      labelBgPadding: [20, 8] as [number, number],
       animated: true,
       style: { stroke: 'rgba(255,255,255,0.15)', strokeWidth: 2, strokeDasharray: '4 4' },
       markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.3)' }
@@ -241,13 +243,13 @@ export default function LogisticsWorkflow() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M4 15l8-8 8 8" />
             </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Our Product</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('workflow_eyebrow', 'Our Product')}</span>
           </div>
           <h2 className="text-5xl md:text-6xl font-medium tracking-tight mb-6 text-white leading-tight max-w-xl">
             Build logic at scale
           </h2>
           <p className="text-white/50 max-w-xl text-base md:text-lg leading-relaxed">
-            Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.
+            {t('workflow_desc', 'Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.')}
           </p>
         </div>
 

@@ -22,7 +22,7 @@ Evidence: screenshot + API ids in run log. Complete before enabling `CASH_RECONC
 
 ## 4c — Supplier finance desk loop (web)
 
-1. `/credit/collections` — score columns visible.
+1. `/credit/collections` — AR / dunning list loads (**no score columns** — credit risk scoring removed Phase A).
 2. `/compliance` — deep links to cash recon and credit notes.
 3. `/exceptions` — resolve cash discrepancy, issue credit note draft, unfreeze credit (one per kind).
 4. `/settings/notification-preferences` — toggle event; confirm inbox formatting.

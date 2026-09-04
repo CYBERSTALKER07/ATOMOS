@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -61,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.time.Duration
 import java.time.Instant
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +91,7 @@ fun NotificationInboxScreen(
                     if (state.isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
-                        Icon(Icons.Outlined.SyncAlt, contentDescription = "Refresh notifications")
+                        Icon(Icons.Outlined.SyncAlt, contentDescription = stringResource(R.string.mobile_retailer_ui_refresh_notifications))
                     }
                 }
                 if (state.unreadCount > 0) {

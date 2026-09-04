@@ -1,5 +1,8 @@
 # Spine Laws (Non-Negotiable)
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Mutation shape
 
 ```

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 )
 
@@ -56,17 +57,41 @@ type AutocompletePrediction struct {
 	Description string `json:"description"`
 }
 
+func resolveCountry(ctx context.Context, countryCode ...string) string {
+	for _, c := range countryCode {
+		if tr := strings.TrimSpace(c); tr != "" {
+			return strings.ToLower(tr)
+		}
+	}
+	if claims, ok := auth.FromContext(ctx); ok {
+		if code := auth.EffectiveMarketCode(claims); code != "" {
+			return strings.ToLower(code)
+		}
+	}
+	if p, err := auth.CheckoutPackFromContext(ctx); err == nil {
+		if code, err := auth.PackCountryCode(p); err == nil && code != "" {
+			return strings.ToLower(code)
+		}
+	}
+	def := auth.DefaultMarketCodeFromEnv()
+	if def == "" {
+		def = "uz"
+	}
+	return strings.ToLower(def)
+}
+
 // ReverseGeocode resolves coordinates to a display address.
-func (s *Service) ReverseGeocode(ctx context.Context, lat, lng float64) (ResolvedLocation, error) {
+func (s *Service) ReverseGeocode(ctx context.Context, lat, lng float64, countryCode ...string) (ResolvedLocation, error) {
 	lat = roundCoord(lat)
 	lng = roundCoord(lng)
-	key := reverseCacheKey(lat, lng)
+	cc := resolveCountry(ctx, countryCode...)
+	key := reverseCacheKey(cc, lat, lng)
 	var out ResolvedLocation
 	if err := s.loadJSON(ctx, key, ttlReverse, func(ctx context.Context) (any, error) {
 		if s != nil && s.googleAPIKey != "" {
-			return s.reverseGoogle(ctx, lat, lng)
+			return s.reverseGoogle(ctx, lat, lng, cc)
 		}
-		return s.reverseNominatim(ctx, lat, lng)
+		return s.reverseNominatim(ctx, lat, lng, cc)
 	}, &out); err != nil {
 		return ResolvedLocation{}, err
 	}
@@ -74,18 +99,19 @@ func (s *Service) ReverseGeocode(ctx context.Context, lat, lng float64) (Resolve
 }
 
 // ForwardGeocode resolves a free-text address to coordinates.
-func (s *Service) ForwardGeocode(ctx context.Context, address string) (ResolvedLocation, error) {
+func (s *Service) ForwardGeocode(ctx context.Context, address string, countryCode ...string) (ResolvedLocation, error) {
 	address = strings.TrimSpace(address)
 	if address == "" {
 		return ResolvedLocation{}, fmt.Errorf("address_required")
 	}
-	key := forwardCacheKey(address)
+	cc := resolveCountry(ctx, countryCode...)
+	key := forwardCacheKey(cc, address)
 	var out ResolvedLocation
 	if err := s.loadJSON(ctx, key, ttlForward, func(ctx context.Context) (any, error) {
 		if s != nil && s.googleAPIKey != "" {
-			return s.forwardGoogle(ctx, address)
+			return s.forwardGoogle(ctx, address, cc)
 		}
-		return s.forwardNominatim(ctx, address)
+		return s.forwardNominatim(ctx, address, cc)
 	}, &out); err != nil {
 		return ResolvedLocation{}, err
 	}
@@ -93,15 +119,16 @@ func (s *Service) ForwardGeocode(ctx context.Context, address string) (ResolvedL
 }
 
 // Autocomplete returns address suggestions for partial user input.
-func (s *Service) Autocomplete(ctx context.Context, input string) ([]AutocompletePrediction, error) {
+func (s *Service) Autocomplete(ctx context.Context, input string, countryCode ...string) ([]AutocompletePrediction, error) {
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return nil, nil
 	}
-	key := autocompleteCacheKey(input)
+	cc := resolveCountry(ctx, countryCode...)
+	key := autocompleteCacheKey(cc, input)
 	var out []AutocompletePrediction
 	if err := s.loadJSON(ctx, key, ttlAutocomplete, func(ctx context.Context) (any, error) {
-		return s.autocompleteUncached(ctx, input)
+		return s.autocompleteUncached(ctx, input, cc)
 	}, &out); err != nil {
 		return nil, err
 	}
@@ -109,7 +136,7 @@ func (s *Service) Autocomplete(ctx context.Context, input string) ([]Autocomplet
 }
 
 // ResolvePlaceID loads coordinates for a Google place_id.
-func (s *Service) ResolvePlaceID(ctx context.Context, placeID string) (ResolvedLocation, error) {
+func (s *Service) ResolvePlaceID(ctx context.Context, placeID string, countryCode ...string) (ResolvedLocation, error) {
 	placeID = strings.TrimSpace(placeID)
 	if placeID == "" {
 		return ResolvedLocation{}, fmt.Errorf("place_id_required")
@@ -117,7 +144,8 @@ func (s *Service) ResolvePlaceID(ctx context.Context, placeID string) (ResolvedL
 	if s == nil || s.googleAPIKey == "" {
 		return ResolvedLocation{}, fmt.Errorf("google_maps_not_configured")
 	}
-	key := placeCacheKey(placeID)
+	cc := resolveCountry(ctx, countryCode...)
+	key := placeCacheKey(cc, placeID)
 	var out ResolvedLocation
 	if err := s.loadJSON(ctx, key, ttlPlace, func(ctx context.Context) (any, error) {
 		return s.resolvePlaceIDUncached(ctx, placeID)
@@ -152,9 +180,9 @@ func (s *Service) loadJSON(ctx context.Context, key string, ttl time.Duration, l
 	return json.Unmarshal(raw, dest)
 }
 
-func (s *Service) autocompleteUncached(ctx context.Context, input string) ([]AutocompletePrediction, error) {
+func (s *Service) autocompleteUncached(ctx context.Context, input, cc string) ([]AutocompletePrediction, error) {
 	if s == nil || s.googleAPIKey == "" {
-		loc, err := s.ForwardGeocode(ctx, input)
+		loc, err := s.ForwardGeocode(ctx, input, cc)
 		if err != nil {
 			return nil, nil
 		}
@@ -168,6 +196,9 @@ func (s *Service) autocompleteUncached(ctx context.Context, input string) ([]Aut
 	q.Set("input", input)
 	q.Set("key", s.googleAPIKey)
 	q.Set("types", "address")
+	if cc != "" {
+		q.Set("components", "country:"+cc)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
@@ -245,11 +276,14 @@ func (s *Service) resolvePlaceIDUncached(ctx context.Context, placeID string) (R
 	}, nil
 }
 
-func (s *Service) reverseGoogle(ctx context.Context, lat, lng float64) (ResolvedLocation, error) {
+func (s *Service) reverseGoogle(ctx context.Context, lat, lng float64, cc string) (ResolvedLocation, error) {
 	endpoint := "https://maps.googleapis.com/maps/api/geocode/json"
 	q := url.Values{}
 	q.Set("latlng", fmt.Sprintf("%f,%f", lat, lng))
 	q.Set("key", s.googleAPIKey)
+	if cc != "" {
+		q.Set("components", "country:"+cc)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		return ResolvedLocation{}, err
@@ -282,11 +316,14 @@ func (s *Service) reverseGoogle(ctx context.Context, lat, lng float64) (Resolved
 	}, nil
 }
 
-func (s *Service) forwardGoogle(ctx context.Context, address string) (ResolvedLocation, error) {
+func (s *Service) forwardGoogle(ctx context.Context, address, cc string) (ResolvedLocation, error) {
 	endpoint := "https://maps.googleapis.com/maps/api/geocode/json"
 	q := url.Values{}
 	q.Set("address", address)
 	q.Set("key", s.googleAPIKey)
+	if cc != "" {
+		q.Set("components", "country:"+cc)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		return ResolvedLocation{}, err
@@ -325,13 +362,16 @@ func (s *Service) forwardGoogle(ctx context.Context, address string) (ResolvedLo
 	}, nil
 }
 
-func (s *Service) reverseNominatim(ctx context.Context, lat, lng float64) (ResolvedLocation, error) {
+func (s *Service) reverseNominatim(ctx context.Context, lat, lng float64, cc string) (ResolvedLocation, error) {
 	q := url.Values{}
 	q.Set("format", "jsonv2")
 	q.Set("lat", strconv.FormatFloat(lat, 'f', 6, 64))
 	q.Set("lon", strconv.FormatFloat(lng, 'f', 6, 64))
 	q.Set("addressdetails", "1")
 	q.Set("zoom", "18")
+	if cc != "" {
+		q.Set("countrycodes", cc)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, nominatimURL+"/reverse?"+q.Encode(), nil)
 	if err != nil {
 		return ResolvedLocation{}, err
@@ -355,11 +395,14 @@ func (s *Service) reverseNominatim(ctx context.Context, lat, lng float64) (Resol
 	return ResolvedLocation{Address: addr, Formatted: addr, Lat: lat, Lng: lng}, nil
 }
 
-func (s *Service) forwardNominatim(ctx context.Context, address string) (ResolvedLocation, error) {
+func (s *Service) forwardNominatim(ctx context.Context, address, cc string) (ResolvedLocation, error) {
 	q := url.Values{}
 	q.Set("q", address)
 	q.Set("format", "json")
 	q.Set("limit", "1")
+	if cc != "" {
+		q.Set("countrycodes", cc)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, nominatimURL+"/search?"+q.Encode(), nil)
 	if err != nil {
 		return ResolvedLocation{}, err
@@ -390,3 +433,4 @@ func (s *Service) forwardNominatim(ctx context.Context, address string) (Resolve
 		Lng:       lng,
 	}, nil
 }
+

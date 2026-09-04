@@ -1,14 +1,15 @@
 # Substance Gate — E2E verification for every role, app, and platform
 
 **Status:** Operating instruction (anti-theatre)  
-**Repo:** `/Users/shakhzod/ATOMOS/pegasusX`  
-**Date:** 2026-08-04  
+**Repo:** `pegasusX` (SoT tree)  
+**Date:** 2026-08-04 (role matrix re-aligned 2026-08-12)  
 **Companion SoTs:**
+- Doc map: [`DOCS_SOURCE_OF_TRUTH.md`](./DOCS_SOURCE_OF_TRUTH.md)
 - Marker catalog: [`contracts/ssmr_ecosystem_markers.json`](../contracts/ssmr_ecosystem_markers.json)
-- Role features: [`ECOSYSTEM_FEATURES_BY_ROLE.md`](./ECOSYSTEM_FEATURES_BY_ROLE.md)
+- Feature inventory: [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md)
 - Role-row parity: [`ROLE_ROW_PARITY_MATRIX.md`](./ROLE_ROW_PARITY_MATRIX.md)
 - Retail OS packs: [`RETAILER_OS_E2E_MATRIX.md`](./RETAILER_OS_E2E_MATRIX.md)
-- Theatre inventory: [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) §2
+- Theatre inventory: [`../PLATFORM_AUDIT.md`](../PLATFORM_AUDIT.md) §2 (re-verify frozen bullets)
 - Living status: [`../context/current_status.md`](../context/current_status.md)
 
 **Hard rule:** A feature may be labeled **Done** only if it passes the Substance Gate (SG) below. UI, DDL, workers, or dashboards that imply capability without SG proof are **Theatre** — wire, rename/hide, or delete.
@@ -52,12 +53,12 @@ Deferred  ⇔ tracked as Theatre/Partial with owner + exit marker/test — UI mu
 | Role | Web / desktop | Android | iOS | Notes |
 |------|---------------|---------|-----|-------|
 | **Retailer** | `retailer-app-desktop` (Tauri) | `retailer-app-android` | `retailer-app-ios` | Retail OS packs; stock + claims |
-| **Supplier** | `supplier-portal` (+ stub `supplier-app-desktop`) | `supplier-app-android` | `supplier-app-ios` | Org/fleet, treasury, ops |
-| **Warehouse** | `warehouse-portal` | `warehouse-app-android` | `warehouse-app-ios` | Dispatch, returns dock, claims approve |
-| **Factory** | `factory-portal` | `factory-app-android` | `factory-app-ios` | Manifests, supply requests |
+| **Supplier** | `supplier-portal` (Next + Tauri 2; no separate desktop app) | `supplier-app-android` | `supplier-app-ios` | Org/fleet, treasury, ops, planning web |
+| **Warehouse** | `warehouse-portal` | `warehouse-app-android` | `warehouse-app-ios` | Dispatch, WMS, returns dock, claims approve |
+| **Factory** | `factory-portal` | `factory-app-android` | `factory-app-ios` | Manifests, supply requests, loading bay |
 | **Driver** | — | `driver-app-android` | `driver-app-ios` | Delivery, cash, shop-closed |
-| **Payload** | terminal via `payload-app-*` | `payload-app-android` | `payload-app-ios` | Seal / load / reassign |
-| **Admin** | `admin-portal` (redirect stub) | — | — | Not a full product surface |
+| **Payload** | `payload-terminal` (Expo SoT) | `payload-app-android` | `payload-app-ios` | Seal / load / reassign + factory loading-bay bridge |
+| **Platform admin** | `admin-portal` (live Next console) | — | — | Tenants / flags dual-control / audit / match / partner; MFA; web only |
 
 **Platform versions to verify (each client row):**
 
@@ -184,7 +185,7 @@ For each role: **API markers first**, then **WEB / AND / IOS** checklist. Mark e
 1. Portal: topology + org fleet + import one SKU.  
 2. Android/iOS: same org fleet list loads (no crash on Org & fleet).  
 3. After retailer claim: approve → ledger/chargeback visible.  
-4. Settings that claim “auto-approve above X%” — **fail Substance** until touchless reads `MinConfidenceScore` (Theatre §2.6).
+4. Settings that claim “auto-approve above X%” — backend **WIRED** (`TouchlessEligible` reads `MinConfidenceScore`); still verify portal/settings UX shows the live threshold.
 
 ---
 
@@ -293,15 +294,18 @@ Until SG passes, these stay **Theatre / Partial** (see `PLATFORM_AUDIT.md` §2):
 
 | Item | Why it fails SG | Exit |
 |------|-----------------|------|
-| Touchless `MinConfidenceScore` | CONTROL unread | Wire reader + property test |
-| AI confidence gate always-pass | CONTROL cannot reject | Fix threshold math + test |
-| Seasonality multipliers | READERS missing | Multiply in forecast qty or remove UI |
+| ~~Touchless `MinConfidenceScore`~~ | **WIRED** — `TouchlessEligible` + tests | — |
+| ~~AI confidence gate always-pass~~ | **WIRED** — base 0.15 / rejectable + tests | — |
+| Promo elasticity / closed-loop | **Partial** — elasticity input + line `promotion_id` attribution | Demand-model curves still open; keep `sandbox_only` |
+| Seasonality multipliers | **WIRED** — persisted override `Multiplier` + `seasonalcore` shared windows on forecast + replenishment | Residual: HW annual library / weather; estimate drafts flag-gated |
 | Weather/POS “signals” | SOURCES fake constants | Real feed or delete |
-| Forecast MAPE in portal | PROOF/LABEL wrong grain | Server WAPE job or remove metric |
-| Billing meter | SOURCES schema mismatch | Fix columns + e2e meter event |
+| Forecast MAPE in portal | **WIRED** server WAPE/bias/TS (`ForecastAccuracyDaily`) | Enable `FORECAST_ACCURACY_ENABLED` + migration |
+| Billing meter | WIRED (schema + amount_minor decode) | Residual: fee schedule / invoices; e2e meter event |
 | Soliq legal OFD | PROOF skipped | `PX_E2E_SOLIQ_SANDBOX_OK` required |
-| Cold chain sensors | SOURCES absent | Ingest + excursion or rename |
-| i18n catalogs | READERS absent | Wire catalogs or stop claiming i18n |
+| Cold chain | **Partial→Wired** — solver flags + WMS ingest + band hydrate + TEMPERATURE_BREACH auto-raise | Residual: Bluetooth sensor fleet / cumulative minutes |
+| Multi-currency FX | **Partial→Wired (Wave 1+2+)** — `FxRates` + `ConvertMinor` + mismatch gate + billing/settlement operating rollup + portal FX UI + flag-gated order currency picker | Residual: multi-currency AR ledger / Airwallex FX — [`FX_RATES.md`](./FX_RATES.md) |
+| i18n catalogs | **Desktop + Mobile UI: Wired (draft) incl. interpolations** | Do not claim certified-linguistic Done; ICU plurals / embedded-copy residuals remain |
+| Mobile shared kit / offline (§8.8) | **Partial→Wired** — kit packages + capture-time coords + Room migrations; scan UX residual | See [`MOBILE_SHARED_KIT.md`](./MOBILE_SHARED_KIT.md); PR-7 scan still open |
 | Supplier/WH claim-window **portal UX** | UI missing (API Done) | Portal/settings screens |
 | Quantity negotiations | Flag off / SKIPPED | Product enable + OK marker |
 

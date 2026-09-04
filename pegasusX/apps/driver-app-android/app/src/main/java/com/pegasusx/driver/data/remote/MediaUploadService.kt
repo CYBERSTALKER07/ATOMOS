@@ -31,7 +31,7 @@ data class MediaUploadTicket(
 }
 
 /**
- * Signed GCS PUT for OS&D evidence photos (driver_exception purpose).
+ * Signed GCS PUT for PoD / OS&D evidence photos.
  */
 @Singleton
 class MediaUploadService @Inject constructor(
@@ -44,7 +44,14 @@ class MediaUploadService @Inject constructor(
         purpose: String = "driver_exception",
         orderId: String? = null,
     ): String = withContext(Dispatchers.IO) {
-        val bytes = compressJpeg(uri)
+        uploadJpegBytes(compressJpeg(uri), purpose = purpose, orderId = orderId)
+    }
+
+    suspend fun uploadJpegBytes(
+        bytes: ByteArray,
+        purpose: String = "credit_proof",
+        orderId: String? = null,
+    ): String = withContext(Dispatchers.IO) {
         val ticket = api.getMediaUploadTicket(
             purpose = purpose,
             ext = "jpg",
@@ -63,6 +70,18 @@ class MediaUploadService @Inject constructor(
         }
         ticket.resolvedPublicUrl
     }
+
+    /** Persist JPEG under app files for offline queue flush. */
+    fun savePodJpeg(orderId: String, kind: String, bytes: ByteArray): String {
+        val dir = java.io.File(context.filesDir, "pod/$orderId").apply { mkdirs() }
+        val file = java.io.File(dir, "$kind.jpg")
+        file.writeBytes(bytes)
+        return file.absolutePath
+    }
+
+    fun readLocalJpeg(path: String): ByteArray = java.io.File(path).readBytes()
+
+    fun compressJpegUri(uri: Uri): ByteArray = compressJpeg(uri)
 
     private fun compressJpeg(uri: Uri): ByteArray {
         context.contentResolver.openInputStream(uri).use { input ->

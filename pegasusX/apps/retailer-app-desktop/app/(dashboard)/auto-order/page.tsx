@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -13,16 +14,15 @@ import {
 } from "lucide-react";
 import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
-import { AutoOrderList } from "@/components/auto-order/AutoOrderList";
 import { PageChrome } from "@/components/PageChrome";
-import { BentoGrid, BentoCard } from "@/components/BentoGrid";
 import { useLiveData } from "@/lib/hooks";
 import { apiFetch } from "@/lib/auth";
 import { getRetailerId } from "@/lib/retailer-profile";
 import type {
+  AutoOrderExecutionMode,
   AutoOrderRun,
   AutoOrderSettings,
-  Prediction,
+  AutoOrderShadowProposal,
 } from "@/lib/types";
 
 type RetailerReorderSuggestion = {
@@ -30,12 +30,20 @@ type RetailerReorderSuggestion = {
   suggested_qty: number;
   adjusted_demand_per_day?: number;
   current_stock?: number;
+  safety_stock?: number;
   sources?: string[];
   sell_through_velocity?: number;
   status?: string;
 };
 
+type SoakGate = {
+  decision?: { allowed: boolean; reasons?: string[]; stats?: AutoOrderSettings["shadow_stats"] };
+  thresholds?: { min_proposals?: number; max_wape?: number; min_unmodified?: number; gate_disabled?: boolean };
+  place_flag_enabled?: boolean;
+};
+
 export default function AutoOrderPage() {
+  const t = usePortalT();
   const {
     data: settings,
     loading: settingsLoading,
@@ -44,41 +52,30 @@ export default function AutoOrderPage() {
     mutate: mutateSettings,
   } = useLiveData<AutoOrderSettings>("/v1/retailer/settings/auto-order");
 
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [predictionsLoading, setPredictionsLoading] = useState(true);
-  const [predictionsError, setPredictionsError] = useState<Error | null>(null);
-
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [runs, setRuns] = useState<AutoOrderRun[]>([]);
   const [runsLoading, setRunsLoading] = useState(true);
   const [runsError, setRunsError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [runningMode, setRunningMode] = useState<"draft" | "place" | null>(null);
+  const [runningMode, setRunningMode] = useState<AutoOrderExecutionMode | null>(
+    null,
+  );
   const [lastRun, setLastRun] = useState<AutoOrderRun | null>(null);
   const [reorderSuggestions, setReorderSuggestions] = useState<
     RetailerReorderSuggestion[]
   >([]);
+  const [shadowProposals, setShadowProposals] = useState<
+    AutoOrderShadowProposal[]
+  >([]);
   const [placeConfirmOpen, setPlaceConfirmOpen] = useState(false);
+  const [soakGate, setSoakGate] = useState<SoakGate | null>(null);
 
   const retailerId = getRetailerId();
-  const executionMode =
-    settings?.execution_mode === "place" ? "place" : "draft";
-
-  const fetchPredictions = useCallback(async () => {
-    if (!retailerId) return;
-    setPredictionsLoading(true);
-    setPredictionsError(null);
-    try {
-      const res = await apiFetch(`/v1/ai/predictions?retailer_id=${retailerId}`);
-      if (!res.ok) throw new Error("Predictions fetch failed");
-      const data = await res.json();
-      setPredictions(Array.isArray(data) ? data : []);
-    } catch (err: unknown) {
-      setPredictionsError(err instanceof Error ? err : new Error("Predictions fetch failed"));
-    } finally {
-      setPredictionsLoading(false);
-    }
-  }, [retailerId]);
+  const executionMode: AutoOrderExecutionMode = (() => {
+    const m = settings?.execution_mode;
+    if (m === "off" || m === "shadow" || m === "draft" || m === "place") return m;
+    return settings?.global_enabled ? "draft" : "off";
+  })();
 
   const fetchRuns = useCallback(async () => {
     setRunsLoading(true);
@@ -91,7 +88,7 @@ export default function AutoOrderPage() {
       const data = (await res.json()) as { items?: AutoOrderRun[] };
       setRuns(Array.isArray(data.items) ? data.items : []);
     } catch (err) {
-      setRunsError(err instanceof Error ? err.message : "Could not load runs");
+      setRunsError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_load_runs"));
       setRuns([]);
     } finally {
       setRunsLoading(false);
@@ -112,9 +109,50 @@ export default function AutoOrderPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchPredictions();
-  }, [fetchPredictions]);
+  const fetchShadowProposals = useCallback(async () => {
+    try {
+      const res = await apiFetch(
+        "/v1/retailer/settings/auto-order/shadow-proposals",
+      );
+      if (!res.ok) {
+        setShadowProposals([]);
+        return;
+      }
+      const data = (await res.json()) as { items?: AutoOrderShadowProposal[] };
+      setShadowProposals(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      setShadowProposals([]);
+    }
+  }, []);
+
+  const fetchSoakGate = useCallback(async () => {
+    try {
+      const res = await apiFetch("/v1/retailer/settings/auto-order/soak-gate");
+      if (!res.ok) {
+        setSoakGate(null);
+        return;
+      }
+      setSoakGate((await res.json()) as SoakGate);
+    } catch {
+      setSoakGate(null);
+    }
+  }, []);
+
+  const downloadSoakArtifact = useCallback(async () => {
+    try {
+      const res = await apiFetch("/v1/retailer/settings/auto-order/soak-artifact");
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auto-order-soak-${retailerId || "retailer"}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* best effort */
+    }
+  }, [retailerId]);
 
   useEffect(() => {
     void fetchRuns();
@@ -124,15 +162,30 @@ export default function AutoOrderPage() {
     void fetchReorderSuggestions();
   }, [fetchReorderSuggestions]);
 
+  useEffect(() => {
+    void fetchShadowProposals();
+  }, [fetchShadowProposals]);
+
+  useEffect(() => {
+    void fetchSoakGate();
+  }, [fetchSoakGate]);
+
   const refreshAll = useCallback(() => {
     setSyncMessage(null);
     void mutateSettings();
-    void fetchPredictions();
     void fetchRuns();
     void fetchReorderSuggestions();
-  }, [mutateSettings, fetchPredictions, fetchRuns, fetchReorderSuggestions]);
+    void fetchShadowProposals();
+    void fetchSoakGate();
+  }, [
+    mutateSettings,
+    fetchRuns,
+    fetchReorderSuggestions,
+    fetchShadowProposals,
+    fetchSoakGate,
+  ]);
 
-  const runAutoOrder = async (mode: "draft" | "place") => {
+  const runAutoOrder = async (mode: "shadow" | "draft" | "place") => {
     setRunning(true);
     setRunningMode(mode);
     setSyncMessage(null);
@@ -166,6 +219,13 @@ export default function AutoOrderPage() {
                 (json.message ? ` — ${json.message}` : "")
             : `Place run ${json.status}${json.message ? `: ${json.message}` : ""}`,
         );
+      } else if (mode === "shadow") {
+        setSyncMessage(
+          json.status === "OK" || json.status === "PARTIAL"
+            ? `Shadow run: ${json.draft_lines} proposal(s) recorded (no orders)` +
+                (json.message ? ` — ${json.message}` : "")
+            : `Shadow ${json.status}${json.message ? `: ${json.message}` : ""}`,
+        );
       } else {
         setSyncMessage(
           json.status === "OK" || json.status === "PARTIAL"
@@ -176,20 +236,24 @@ export default function AutoOrderPage() {
       }
       await fetchRuns();
       await fetchReorderSuggestions();
+      await fetchShadowProposals();
     } catch (err) {
-      setSyncMessage(err instanceof Error ? err.message : "Auto-order run failed");
+      setSyncMessage(err instanceof Error ? err.message : t("retailer_desktop.residual.text.auto_order_run_failed"));
     } finally {
       setRunning(false);
       setRunningMode(null);
     }
   };
 
-  const setExecutionMode = async (mode: "draft" | "place") => {
+  const setExecutionMode = async (mode: AutoOrderExecutionMode) => {
     try {
       const res = await apiFetch("/v1/retailer/settings/auto-order/global", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ execution_mode: mode }),
+        body: JSON.stringify({
+          execution_mode: mode,
+          global_enabled: mode !== "off",
+        }),
       });
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as {
@@ -198,14 +262,16 @@ export default function AutoOrderPage() {
         throw new Error(json.error || "execution_mode_update_failed");
       }
       await mutateSettings();
-      setSyncMessage(
-        mode === "place"
-          ? "Default execution set to Place (still requires Place now + confirm)."
-          : "Default execution set to Draft.",
-      );
+      const labels: Record<AutoOrderExecutionMode, string> = {
+        off: "Auto-order off.",
+        shadow: "Mode: Shadow (proposals only — recommended).",
+        draft: "Mode: Draft cart lines.",
+        place: "Mode: Place (still requires Place now + server flag).",
+      };
+      setSyncMessage(labels[mode]);
     } catch (err) {
       setSyncMessage(
-        err instanceof Error ? err.message : "Failed to update execution mode",
+        err instanceof Error ? err.message : t("retailer_desktop.residual.text.failed_to_update_execution_mode"),
       );
     }
   };
@@ -276,7 +342,7 @@ export default function AutoOrderPage() {
     setPendingAction(null);
   };
 
-  const isLoading = settingsLoading || predictionsLoading;
+  const isLoading = settingsLoading;
 
   return (
     <div
@@ -285,15 +351,28 @@ export default function AutoOrderPage() {
     >
       <PageChrome
         icon="wand.and.stars"
-        title="Auto-Order Engine"
-        description="Empathy Engine Intelligence with 5-level granular control."
+        title={t("retailer_desktop.auto_order.text.auto_order_engine")}
+        description={t("retailer_desktop.residual.text.empathy_engine_intelligence_with_5_level_granular_control")}
         loading={isLoading}
         skeletonVariant="form"
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              disabled={running || isLoading}
+              disabled={running || isLoading || executionMode === "off"}
+              onClick={() => void runAutoOrder("shadow")}
+              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
+            >
+              {running && runningMode === "shadow" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Play size={16} />
+              )}
+              {running && runningMode === "shadow" ? "Shadowing…" : "Shadow now"}
+            </button>
+            <button
+              type="button"
+              disabled={running || isLoading || executionMode === "off"}
               onClick={() => void runAutoOrder("draft")}
               className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
             >
@@ -306,7 +385,7 @@ export default function AutoOrderPage() {
             </button>
             <button
               type="button"
-              disabled={running || isLoading}
+              disabled={running || isLoading || executionMode === "off"}
               onClick={() => setPlaceConfirmOpen(true)}
               className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
             >
@@ -398,78 +477,135 @@ export default function AutoOrderPage() {
           </div>
         )}
 
-        {predictionsError && (
-          <div className="mb-6 flex items-center gap-2 p-3 rounded-xl bg-[var(--desk-warning)]/10 text-[var(--desk-warning)] border border-[var(--desk-warning)]/30">
-            <AlertTriangle size={16} />
-            <span className="md-typescale-body-small">
-              Predictions unavailable: {predictionsError.message}
-            </span>
+        <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+          <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-1">
+            Execution mode
+          </h3>
+          <p className="text-xs text-[var(--desk-text-tertiary)] mb-4">
+            How aggressive globally. Scopes below choose which SKUs participate. Off disables
+            worker action. Shadow is recommended until acceptance looks good.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {(
+              [
+                ["off", "Off"],
+                ["shadow", "Shadow"],
+                ["draft", "Draft cart"],
+                ["place", "Place orders"],
+              ] as const
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                className={`text-xs px-3 py-1.5 rounded-lg border ${
+                  executionMode === mode
+                    ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
+                    : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
+                }`}
+                onClick={() => void setExecutionMode(mode)}
+              >
+                {label}
+                {mode === "place" ? " *" : mode === "shadow" ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-[var(--desk-text-tertiary)]">
+            * Place still needs AUTO_ORDER_PLACE_ENABLED + manager permission.
+            {settings?.shadow_stats
+              ? ` · 30d WAPE ${(settings.shadow_stats.wape * 100).toFixed(0)}% · accept ${(settings.shadow_stats.unmodified_accept_rate * 100).toFixed(0)}% (${settings.shadow_stats.proposal_count} proposals)`
+              : ""}
+          </p>
+        </div>
+
+        {soakGate && (
+          <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
+                Place readiness (30-day shadow soak)
+              </h3>
+              <button
+                type="button"
+                onClick={() => void downloadSoakArtifact()}
+                className="portal-btn portal-btn--ghost h-9 px-4 rounded-xl text-xs font-light"
+              >
+                Download evidence (JSON)
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
+                  soakGate.decision?.allowed
+                    ? "bg-emerald-500/10 text-emerald-700"
+                    : "bg-amber-500/10 text-amber-700"
+                }`}
+              >
+                {soakGate.decision?.allowed
+                  ? "Soak passed — place permitted"
+                  : "Soak gate blocking place"}
+              </span>
+              {soakGate.place_flag_enabled === false && (
+                <span className="text-xs px-3 py-1.5 rounded-lg bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]">
+                  AUTO_ORDER_PLACE_ENABLED off
+                </span>
+              )}
+            </div>
+            {soakGate.decision?.stats && (
+              <p className="text-xs text-[var(--desk-text-secondary)] mb-2">
+                {soakGate.decision.stats.proposal_count} proposals ·{" "}
+                {soakGate.decision.stats.matched_orders} matched · WAPE{" "}
+                {((soakGate.decision.stats.wape ?? 0) * 100).toFixed(0)}% · unmodified{" "}
+                {((soakGate.decision.stats.unmodified_accept_rate ?? 0) * 100).toFixed(0)}%
+              </p>
+            )}
+            {soakGate.thresholds && (
+              <p className="text-xs text-[var(--desk-text-tertiary)] mb-2">
+                Thresholds: ≥{soakGate.thresholds.min_proposals} proposals · WAPE ≤
+                {((soakGate.thresholds.max_wape ?? 0) * 100).toFixed(0)}% · unmodified ≥
+                {((soakGate.thresholds.min_unmodified ?? 0) * 100).toFixed(0)}%
+              </p>
+            )}
+            {(soakGate.decision?.reasons?.length ?? 0) > 0 && (
+              <p className="text-xs text-[var(--desk-text-tertiary)]">
+                {soakGate.decision!.reasons!.join(" · ")}
+              </p>
+            )}
           </div>
         )}
 
-        <BentoGrid className="mb-8">
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Execution default
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className={`text-xs px-3 py-1.5 rounded-lg border ${
-                    executionMode === "draft"
-                      ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
-                      : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
-                  }`}
-                  onClick={() => void setExecutionMode("draft")}
+        <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">
+              Shadow inbox
+            </h3>
+            <span className="text-xs text-[var(--desk-text-tertiary)]">
+              Inventory (R,s,S) proposals — no cart or orders
+            </span>
+          </div>
+          {shadowProposals.length === 0 ? (
+            <p className="text-sm text-[var(--desk-text-secondary)]">
+              No shadow proposals yet. Set mode to Shadow and run Shadow now.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {shadowProposals.slice(0, 12).map((p) => (
+                <div
+                  key={p.proposal_id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-canvas)] px-4 py-3"
                 >
-                  Draft
-                </button>
-                <button
-                  type="button"
-                  className={`text-xs px-3 py-1.5 rounded-lg border ${
-                    executionMode === "place"
-                      ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/10 text-[var(--desk-accent)]"
-                      : "border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
-                  }`}
-                  onClick={() => void setExecutionMode("place")}
-                >
-                  Place
-                </button>
-              </div>
+                  <p className="text-sm font-light text-[var(--desk-text-primary)]">
+                    {p.sku} · qty {p.proposed_qty}
+                    {` · IP ${p.ip.toFixed?.(0) ?? p.ip}`}
+                    {` · ROP ${p.reorder_point.toFixed?.(0) ?? p.reorder_point}`}
+                    {` · S ${p.order_up_to.toFixed?.(0) ?? p.order_up_to}`}
+                  </p>
+                  <span className="text-xs text-[var(--desk-text-tertiary)]">
+                    {p.bucket_date}
+                  </span>
+                </div>
+              ))}
             </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Suppliers
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {settings?.supplier_overrides?.length || 0}
-              </span>
-            </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Suggestions
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {reorderSuggestions.length}
-              </span>
-            </div>
-          </BentoCard>
-          <BentoCard interactive={false}>
-            <div className="flex flex-col gap-1">
-              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2">
-                Predictions
-              </span>
-              <span className="md-typescale-metric text-[var(--desk-text-primary)]">
-                {predictions.length}
-              </span>
-            </div>
-          </BentoCard>
-        </BentoGrid>
+          )}
+        </div>
 
         {/* Reorder suggestions (sell-through aware) */}
         <div className="mb-8 p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
@@ -496,6 +632,7 @@ export default function AutoOrderPage() {
                     <p className="text-sm font-light text-[var(--desk-text-primary)]">
                       {row.sku} · qty {row.suggested_qty}
                       {row.current_stock != null ? ` · stock ${row.current_stock}` : ""}
+                      {row.safety_stock != null ? ` · SS ${row.safety_stock.toFixed(0)}` : ""}
                     </p>
                     <div className="mt-1">
                       <DemandSourceChips sources={row.sources} />
@@ -582,8 +719,8 @@ export default function AutoOrderPage() {
           ) : runs.length === 0 ? (
             <p className="text-sm text-[var(--desk-text-secondary)]">
               No runs yet. Enable auto-order and use{" "}
-              <span className="font-medium">Draft now</span> or{" "}
-              <span className="font-medium">Place now</span>.
+              <span className="font-medium">{t("retailer_desktop.auto_order.text.draft_now")}</span> or{" "}
+              <span className="font-medium">{t("retailer_desktop.auto_order.text.place_now")}</span>.
             </p>
           ) : (
             <div className="space-y-2">
@@ -622,21 +759,20 @@ export default function AutoOrderPage() {
 
         <div className="space-y-6">
           <AutoOrderRules settings={settings ?? undefined} handleToggle={handleToggle} />
-          <AutoOrderList predictions={predictions} />
 
           <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] mt-6">
             <div className="flex items-center gap-2 mb-4">
               <Info size={16} className="text-[var(--desk-accent)]" />
-              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">How It Works</h3>
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.auto_order.text.how_it_works")}</h3>
             </div>
             <ol className="list-decimal list-inside space-y-2 text-[var(--desk-text-secondary)] md-typescale-body-small">
-              <li>The AI analyzes your purchase patterns even when auto-order is off.</li>
-              <li>When you enable, choose to use your history or start fresh.</li>
-              <li>Starting fresh requires at least 2 orders per product.</li>
-              <li>Overrides: Variant &gt; Product &gt; Category &gt; Supplier &gt; Global.</li>
+              <li>{t("retailer_desktop.auto_order.text.the_ai_analyzes_your_purchase_patterns_even_when_auto_order_is_o")}</li>
+              <li>{t("retailer_desktop.auto_order.text.when_you_enable_choose_to_use_your_history_or_start_fresh")}</li>
+              <li>{t("retailer_desktop.auto_order.text.starting_fresh_requires_at_least_2_orders_per_product")}</li>
+              <li>{t("retailer_desktop.auto_order.text.overrides_size_variant_and_gt_product_and_gt_category_and_gt_sup")}</li>
               <li>
-                <strong>Run auto-order now</strong> drafts cart lines for today
-                (idempotent per SKU). Place mode still drafts until order.create is wired.
+                Modes: Shadow records proposals only; Draft stages cart; Place creates
+                AUTO_ORDER when the server flag and manager permission allow.
               </li>
             </ol>
           </div>
@@ -645,7 +781,7 @@ export default function AutoOrderPage() {
         {pendingAction && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
             <div className="bg-[var(--desk-surface)] w-full max-w-sm rounded-2xl p-6 shadow-xl border border-[var(--desk-border)]">
-              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-2">Use Previous Analytics?</h3>
+              <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] mb-2">{t("retailer_desktop.auto_order.text.use_previous_analytics")}</h3>
               <p className="md-typescale-body-medium text-[var(--desk-text-secondary)] mb-6">
                 Enable this auto-order using your existing order history, or start fresh? Starting fresh requires at least 2 orders before predictions begin.
               </p>

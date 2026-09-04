@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.supply.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,12 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.SupplyRequest
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun SupplyRequestCard(
     request: SupplyRequest,
     transitioning: Boolean,
+    qcResult: String = "",
     onAction: (String) -> Unit,
+    onQC: (String) -> Unit = {},
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -42,7 +47,7 @@ fun SupplyRequestCard(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Request ${request.id.take(8)}",
+                        text = stringResource(R.string.mobile_factory_ui_request_take, request.id.take(8)),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -61,6 +66,21 @@ fun SupplyRequestCard(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (slaBadgeVisible(request.slaStatus)) {
+                        RequestTag(
+                            text = request.slaStatus.replace('_', ' '),
+                            containerColor = when (request.slaStatus.uppercase()) {
+                                "BREACHED" -> MaterialTheme.colorScheme.errorContainer
+                                "AT_RISK" -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            contentColor = when (request.slaStatus.uppercase()) {
+                                "BREACHED" -> MaterialTheme.colorScheme.onErrorContainer
+                                "AT_RISK" -> MaterialTheme.colorScheme.onTertiaryContainer
+                                else -> MaterialTheme.colorScheme.onSecondaryContainer
+                            },
+                        )
+                    }
                 }
             }
 
@@ -70,7 +90,11 @@ fun SupplyRequestCard(
             ) {
                 SupplyMetric("Volume", "${trimDecimal(request.totalVolumeVU)} VU", Modifier.weight(1f))
                 SupplyMetric("Created", formatDate(request.createdAt), Modifier.weight(1f))
-                SupplyMetric("Delivery", formatDate(request.requestedDeliveryDate), Modifier.weight(1f))
+                SupplyMetric(
+                    "Delivery",
+                    listOfNotNull(formatDate(request.requestedDeliveryDate), slaHoursLabel(request.slaHoursRemaining)).joinToString(" · "),
+                    Modifier.weight(1f),
+                )
             }
 
             if (request.notes.isNotBlank()) {
@@ -88,10 +112,33 @@ fun SupplyRequestCard(
                 }
             }
 
+            if (qcResult.isNotBlank()) {
+                Text(
+                    text = "QC $qcResult",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                FilledTonalButton(
+                    onClick = { onQC("PASS") },
+                    enabled = !transitioning,
+                    modifier = Modifier.weight(1f),
+                ) { Text("PASS") }
+                Button(
+                    onClick = { onQC("FAIL") },
+                    enabled = !transitioning,
+                    modifier = Modifier.weight(1f),
+                ) { Text("FAIL") }
+            }
+
             val actions = actionsForState(request.state)
             if (actions.isEmpty()) {
                 Text(
-                    text = "No manual action is available for the current state.",
+                    text = stringResource(R.string.mobile_factory_ui_no_manual_action_is_available_for_the_current_state),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

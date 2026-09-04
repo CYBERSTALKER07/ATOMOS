@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,13 +37,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.gson.JsonObject
+import kotlinx.serialization.json.JsonObject
 import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class CapabilityPackUi(
     val id: String,
@@ -77,7 +81,7 @@ fun CapabilitiesScreen(
             error = null
             try {
                 val el = viewModel.api.getCapabilities()
-                val arr = el.asJsonObject.getAsJsonArray("packs")
+                val arr = el.asJsonObject.getAsJsonArray("packs").orEmpty()
                 packs = arr.mapNotNull { item ->
                     val o = item.asJsonObject
                     CapabilityPackUi(
@@ -158,7 +162,7 @@ fun CapabilitiesScreen(
                 title = { Text("Store capabilities") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -200,7 +204,7 @@ fun CapabilitiesScreen(
                             Text(pack.description, style = MaterialTheme.typography.bodySmall)
                             if (pack.hardDeps.isNotEmpty()) {
                                 Text(
-                                    "Requires: ${pack.hardDeps.joinToString()}",
+                                    stringResource(R.string.mobile_retailer_ui_requires_jointostring, pack.hardDeps.joinToString()),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )

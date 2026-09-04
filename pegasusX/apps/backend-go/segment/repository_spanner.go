@@ -374,7 +374,8 @@ func (r *SpannerRepository) ListRetailerSegmentsForSupplier(ctx context.Context,
 	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT rs.RetailerId, rs.Segment, COALESCE(rs.Reason,''), rs.UpdatedAt
 		      FROM RetailerSegments rs
-		      INNER JOIN Orders o ON o.RetailerId = rs.RetailerId AND o.SupplierId = @sid
+		      INNER JOIN Orders o ON o.RetailerId = rs.RetailerId
+		      WHERE o.SupplierId = @sid
 		      GROUP BY rs.RetailerId, rs.Segment, rs.Reason, rs.UpdatedAt
 		      ORDER BY rs.UpdatedAt DESC`,
 		Params: map[string]interface{}{"sid": supplierID},

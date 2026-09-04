@@ -1,8 +1,14 @@
 package supplier
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func TestBuildVelocityResponseCountsCreatedAndCompleted(t *testing.T) {
@@ -34,14 +40,93 @@ func TestBuildRevenueResponseSumsCompletedOrders(t *testing.T) {
 	if resp.TotalMinor != 7500 {
 		t.Fatalf("total_minor=%d want=7500", resp.TotalMinor)
 	}
+	if resp.Currency != "UZS" {
+		t.Fatalf("currency=%q", resp.Currency)
+	}
 }
 
-func TestBuildDemandHistoryAggregatesActualAndBaseline(t *testing.T) {
+func TestBuildRevenueResponse_EmptyCurrencyDoesNotInventUZS(t *testing.T) {
 	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
-	orders := []SupplierOrder{
-		{Status: "COMPLETED", UpdatedAt: "2026-06-14T09:00:00Z"},
-		{Status: "COMPLETED", UpdatedAt: "2026-06-13T18:00:00Z"},
+	resp := buildRevenueResponse(nil, "", now, 1)
+	if resp.Currency != "" {
+		t.Fatalf("currency=%q want empty", resp.Currency)
 	}
+}
+
+func TestHandleAnalyticsRevenue_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	svc := NewService(ServiceConfig{SupplierID: "sup-rev"})
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/analytics/revenue", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: "sup-rev", MarketCode: "UZ",
+	}))
+	rr := httptest.NewRecorder()
+	svc.HandleAnalyticsRevenue(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var body struct {
+		Currency string `json:"currency"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Currency != "UZS" {
+		t.Fatalf("currency=%q want pack UZS", body.Currency)
+	}
+}
+
+func TestHandleAnalyticsRevenue_PlannedFailsClosed(t *testing.T) {
+	svc := NewService(ServiceConfig{SupplierID: "sup-ca"})
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/analytics/revenue", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: "sup-ca", MarketCode: "CA",
+	}))
+	rr := httptest.NewRecorder()
+	svc.HandleAnalyticsRevenue(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestImportRowCurrency_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: "sup-imp", MarketCode: "UZ",
+	})
+	cur, err := importRowCurrency(ctx, "sup-imp", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cur != "UZS" {
+		t.Fatalf("currency=%q want pack UZS", cur)
+	}
+}
+
+func TestImportRowCurrency_USDOnUZRejected(t *testing.T) {
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: "sup-imp-usd", MarketCode: "UZ",
+	})
+	_, err := importRowCurrency(ctx, "sup-imp-usd", map[string]any{"currency": "USD"}, nil)
+	if err != auth.ErrPackCurrencyMismatch {
+		t.Fatalf("err=%v want pack_currency_mismatch", err)
+	}
+}
+
+func TestImportRowCurrency_PlannedFailsClosed(t *testing.T) {
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin, SupplierID: "sup-imp-ca", MarketCode: "CA",
+	})
+	_, err := importRowCurrency(ctx, "sup-imp-ca", nil, nil)
+	if err == nil {
+		t.Fatal("expected planned pack to fail closed")
+	}
+}
+
+func TestBuildDemandHistoryFromDayMaps(t *testing.T) {
+	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
+	predicted := map[string]int64{"2026-06-14": 12, "2026-06-13": 8}
+	actual := map[string]int64{"2026-06-14": 10, "2026-06-13": 9}
 	recs := []AIRecommendation{
 		{
 			RecommendationID: "r-1",
@@ -54,13 +139,16 @@ func TestBuildDemandHistoryAggregatesActualAndBaseline(t *testing.T) {
 			Status:           "PENDING",
 		},
 	}
-	resp := buildDemandHistory(orders, recs, now, 14)
+	resp := buildDemandHistoryFromDayMaps(predicted, actual, recs, now, 14)
 	if len(resp.TimeSeries) != 14 {
 		t.Fatalf("time_series=%d want=14", len(resp.TimeSeries))
 	}
 	last := resp.TimeSeries[len(resp.TimeSeries)-1]
-	if last.ActualQty != 1 || last.PredictedQty != 5 {
+	if last.ActualQty != 10 || last.PredictedQty != 12 {
 		t.Fatalf("last point actual=%d predicted=%d", last.ActualQty, last.PredictedQty)
+	}
+	if len(resp.Upcoming) != 1 || resp.Upcoming[0].PredictedQty != 5 {
+		t.Fatalf("upcoming=%+v", resp.Upcoming)
 	}
 }
 

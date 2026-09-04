@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 import Link from "next/link";
 import { ShoppingCart, PackageSearch, Brain, Truck, Layers3 } from "lucide-react";
@@ -23,6 +26,7 @@ export function KpiGrid({
   blockedPredictionCount,
   uniqueSuppliersCount,
 }: KpiGridProps) {
+  const t = usePortalT();
   return (
     <BentoGrid className="mb-10">
       <BentoCard
@@ -50,30 +54,32 @@ export function KpiGrid({
         </div>
 
         <div className="grid grid-cols-3 gap-3 mt-6">
-          <QuickAction href="/catalog" icon={PackageSearch} label="Catalog" />
-          <QuickAction href="/orders" icon={ShoppingCart} label="Orders" />
-          <QuickAction href="/insights" icon={Brain} label="Reorder suggestions" />
+          <QuickAction href="/catalog" icon={PackageSearch} label={t("portal.nav.section.catalog")} />
+          <QuickAction href="/orders" icon={ShoppingCart} label={t("portal.nav.orders")} />
+          <QuickAction href="/insights" icon={Brain} label={t("supplier_portal.replenishment.suggestions.text.reorder_suggestions")} />
         </div>
       </BentoCard>
 
       <KpiCard
-        label="Active Nodes"
+        label={t("retailer_desktop.residual.text.active_nodes")}
         value={activeOrdersLength}
         sub={`${completedOrdersLength} archived`}
         icon={<Truck size={18} style={{ color: "var(--desk-accent)" }} />}
       />
       <KpiCard
-        label="AI Signals"
+        label={t("retailer_desktop.residual.text.ai_signals")}
         value={predictionListLength}
         sub={
           blockedPredictionCount > 0
             ? `${blockedPredictionCount} blocked (sparse history)`
-            : "Restock Ready"
+            : predictionListLength === 0
+              ? "None pending"
+              : "Pending confirm"
         }
         icon={<Brain size={18} style={{ color: "var(--desk-info)" }} />}
       />
       <KpiCard
-        label="Staged Cart"
+        label={t("retailer_desktop.residual.text.staged_cart")}
         value={cartQuantity}
         sub="Items in queue"
         icon={
@@ -81,7 +87,7 @@ export function KpiGrid({
         }
       />
       <KpiCard
-        label="Suppliers"
+        label={t("retailer_desktop.residual.text.suppliers")}
         value={uniqueSuppliersCount}
         sub="Active partners"
         icon={<Layers3 size={18} style={{ color: "var(--desk-warning)" }} />}

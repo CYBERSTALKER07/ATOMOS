@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { desktopPrint } from '@pegasusx/desktop-bridge';
 import { downloadCsv } from '@/lib/csv';
@@ -12,11 +13,13 @@ import { KpiStatCard, KpiStatGrid } from '@/components/KpiStatCard';
 import { HubCard } from '@/components/portal';
 import EmptyState from '@/components/EmptyState';
 import { TreasuryTransactionList } from '@/components/treasury/TreasuryTransactionList';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 interface TreasuryOverview {
   total_invoiced: number;
   total_paid: number;
   total_outstanding: number;
+  currency?: string;
 }
 
 export interface Invoice {
@@ -37,6 +40,7 @@ export interface Invoice {
 }
 
 export default function TreasuryPage() {
+  const t = usePortalT();
   const [overview, setOverview] = useState<TreasuryOverview | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +82,8 @@ export default function TreasuryPage() {
     if (typeof inv.amount_uzs === 'number' && Number.isFinite(inv.amount_uzs)) return inv.amount_uzs;
     return 0;
   };
-  const resolveCurrency = (inv: Invoice) => (inv.currency || 'UZS').toUpperCase();
+  const resolveCurrency = (inv: Invoice) => moneyCurrency(inv.currency);
+  const overviewCurrency = moneyCurrency(overview?.currency);
   const formatPayoutOwner = (inv: Invoice) => {
     const ownerType = (inv.payout_owner_type || '').trim();
     const ownerID = (inv.payout_owner_id || '').trim();
@@ -112,8 +117,8 @@ export default function TreasuryPage() {
     <PageTransition>
       <PageChrome
         icon="treasury"
-        title="Treasury"
-        description="Invoiced revenue, payouts, and outstanding liabilities for this warehouse."
+        title={t("portal.nav.treasury")}
+        description={t("warehouse_portal.residual.text.invoiced_revenue_payouts_and_outstanding_liabilities_for_this_wa")}
         loading={loading}
         skeletonVariant="dashboard"
         actions={
@@ -136,20 +141,20 @@ export default function TreasuryPage() {
         <HubCard
           href="/payment-config"
           icon="payment"
-          title="Payment config"
-          description="View checkout gateways and settlement routing for this node."
+          title={t("warehouse_portal.treasury.text.payment_config")}
+          description={t("warehouse_portal.residual.text.view_checkout_gateways_and_settlement_routing_for_this_node")}
         />
       </div>
       <KpiStatGrid columns={3}>
-        <KpiStatCard label="Total invoiced" value={`${fmt(ov.total_invoiced)} UZS`} />
+        <KpiStatCard label={t("warehouse_portal.residual.text.total_invoiced")} value={`${fmt(ov.total_invoiced)} ${overviewCurrency}`.trim()} />
         <KpiStatCard
-          label="Paid"
-          value={`${fmt(ov.total_paid)} UZS`}
+          label={t("warehouse_portal.residual.text.paid")}
+          value={`${fmt(ov.total_paid)} ${overviewCurrency}`.trim()}
           sub="Settled to date"
         />
         <KpiStatCard
-          label="Outstanding"
-          value={`${fmt(ov.total_outstanding)} UZS`}
+          label={t("warehouse_portal.residual.text.outstanding")}
+          value={`${fmt(ov.total_outstanding)} ${overviewCurrency}`.trim()}
           sub={ov.total_outstanding > 0 ? 'Requires collection' : 'All clear'}
         />
       </KpiStatGrid>
@@ -158,8 +163,8 @@ export default function TreasuryPage() {
         <section className="desk-card overflow-hidden">
           <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--desk-border)' }}>
             <div>
-              <h2 className="bento-card-title">Invoices</h2>
-              <p className="text-sm mt-1" style={{ color: 'var(--desk-text-secondary)' }}>Retailer billing rows for this warehouse node.</p>
+              <h2 className="bento-card-title">{t("warehouse_portal.treasury.text.invoices")}</h2>
+              <p className="text-sm mt-1" style={{ color: 'var(--desk-text-secondary)' }}>{t("warehouse_portal.treasury.text.retailer_billing_rows_for_this_warehouse_node")}</p>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" onClick={exportCsv} className="md-btn md-btn-outlined text-sm px-3 py-1.5 flex items-center gap-2">

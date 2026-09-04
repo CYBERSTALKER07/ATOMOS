@@ -1,15 +1,18 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
 import { dialCodeForCountry } from "@pegasusx/ui-kit/auth";
 import { createSupplierApi } from "@/lib/api";
 import { persistSession } from "@/lib/auth";
+import { discoverOIDC } from "@/lib/oidc";
 
 type LoginStep = "phone" | "otp";
 
 export default function SupplierLoginPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
   const [countryCode, setCountryCode] = useState("UZ");
@@ -17,6 +20,8 @@ export default function SupplierLoginPage() {
   const [otpCode, setOtpCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [companyId, setCompanyId] = useState("");
+  const [idpLoading, setIdpLoading] = useState(false);
 
   const dialCode = useMemo(() => dialCodeForCountry(countryCode), [countryCode]);
 
@@ -24,7 +29,7 @@ export default function SupplierLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6,14}$/.test(phoneLocal)) {
-      setError("Enter a valid phone number (6-14 digits)");
+      setError(t("supplier_portal.residual.text.enter_a_valid_phone_number_6_14_digits"));
       return;
     }
     setStep("otp");
@@ -34,7 +39,7 @@ export default function SupplierLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(otpCode)) {
-      setError("Enter the 6-digit code");
+      setError(t("supplier_portal.residual.text.enter_the_6_digit_code"));
       return;
     }
 
@@ -53,19 +58,42 @@ export default function SupplierLoginPage() {
         router.push(`/auth/register?phone=${encodeURIComponent(dialCode + phoneLocal)}`);
         return;
       }
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.error.login_failed"));
     } finally {
       setLoading(false);
     }
   }
 
+  async function handleIdP(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const sid = companyId.trim();
+    if (!sid) {
+      setError("Enter the company id to use SSO");
+      return;
+    }
+    setIdpLoading(true);
+    try {
+      const nonce = crypto.randomUUID();
+      sessionStorage.setItem("oidc_supplier_id", sid);
+      sessionStorage.setItem("oidc_nonce", nonce);
+      const disc = await discoverOIDC(sid, nonce);
+      window.location.href = disc.authorization_url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "IdP is not attached");
+    } finally {
+      setIdpLoading(false);
+    }
+  }
+
   return (
+    <>
     <AuthLoginCard
-      title="Supplier sign in"
+      title={t("supplier_portal.auth.login.text.supplier_sign_in")}
       subtitle={
         step === "phone"
-          ? "Enter your registered phone number."
-          : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`
+          ? t("supplier_portal.auth.login.text.enter_registered_phone")
+          : t("supplier_portal.auth.login.text.enter_otp_sent_to", { phone: `${dialCode}${phoneLocal}` })
       }
       step={step}
       countryCode={countryCode}
@@ -74,8 +102,8 @@ export default function SupplierLoginPage() {
       error={error}
       loading={loading}
       registerHref="/auth/register"
-      registerPrompt="New supplier?"
-      registerLabel="Register"
+      registerPrompt={t("supplier_portal.residual.text.new_supplier")}
+      registerLabel={t("supplier_portal.residual.text.register")}
       onCountryChange={setCountryCode}
       onPhoneChange={setPhoneLocal}
       onOtpChange={setOtpCode}
@@ -83,5 +111,18 @@ export default function SupplierLoginPage() {
       onVerifyOtp={handleVerifyOtp}
       onBack={() => setStep("phone")}
     />
+    <form className="mx-auto mt-6 max-w-md space-y-2 px-4" onSubmit={handleIdP}>
+      <p className="text-center text-sm text-[var(--desk-text-secondary)]">Or sign in with your company IdP</p>
+      <input
+        className="w-full rounded border px-3 py-2 text-sm"
+        placeholder="Company id"
+        value={companyId}
+        onChange={(e) => setCompanyId(e.target.value)}
+      />
+      <button type="submit" disabled={idpLoading} className="w-full rounded border px-3 py-2 text-sm">
+        {idpLoading ? "Opening IdP…" : "Login with IdP"}
+      </button>
+    </form>
+    </>
   );
 }

@@ -5,7 +5,7 @@
 # Production endpoint overrides:
 #   prod.api.base.url         -> Pegasus primary API host (default)
 #   prod.ws.base.url          -> Pegasus primary WebSocket host (default)
-prod.api.base.url=https://api.pegasus.uz
-prod.ws.base.url=wss://api.pegasus.uz
+prod.api.base.url=https://api.pegasusx.app
+prod.ws.base.url=wss://api.pegasusx.app
 dev.host=10.0.2.2
 MAPS_API_KEY=

@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { PortalField, PortalSelect } from '@/components/portal';
 import type { Manifest, Transfer } from '../../app/payload-override/page';
 
@@ -18,6 +21,7 @@ export function PayloadOverrideForm({
   onClose: () => void;
   onSubmit: () => void;
 }) {
+  const t = usePortalT();
   if (!rebalanceModal) return null;
 
   return (
@@ -26,18 +30,18 @@ export function PayloadOverrideForm({
         className="desk-card p-6 w-full max-w-md space-y-4"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold">Move transfer</h2>
+        <h2 className="text-lg font-semibold">{t("factory_portal.payload_override.payload_override_form.text.move_transfer")}</h2>
         <p className="text-sm text-[var(--muted)]">
           Moving <span className="font-mono">{rebalanceModal.transfer.transfer_id.slice(0, 8)}</span>
           {' '}({rebalanceModal.transfer.volume_vu} VU) to another manifest
         </p>
 
-        <PortalField id="target-manifest" label="Target manifest">
+        <PortalField id="target-manifest" label={t("factory_portal.residual.text.target_manifest")}>
           <PortalSelect
             value={targetManifestId}
             onChange={(event) => setTargetManifestId(event.target.value)}
           >
-            <option value="">Select a manifest...</option>
+            <option value="">{t("factory_portal.payload_override.payload_override_form.text.select_a_manifest")}</option>
             {loadingManifests
               .filter((manifest) => manifest.manifest_id !== rebalanceModal.sourceManifest)
               .map((manifest) => (

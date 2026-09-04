@@ -85,6 +85,7 @@ fun ProfileScreen(
     onPosClick: () -> Unit = {},
     onShiftsClick: () -> Unit = {},
     onSectionsClick: () -> Unit = {},
+    onPlanogramsClick: () -> Unit = {},
     onReportsClick: () -> Unit = {},
     onAssistClick: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -188,6 +189,7 @@ fun ProfileScreen(
                 onPosClick = onPosClick,
                 onShiftsClick = onShiftsClick,
                 onSectionsClick = onSectionsClick,
+                onPlanogramsClick = onPlanogramsClick,
                 onReportsClick = onReportsClick,
                 onAssistClick = onAssistClick,
             )

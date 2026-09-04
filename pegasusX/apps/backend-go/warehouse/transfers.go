@@ -15,6 +15,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 var (
@@ -68,7 +69,7 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 
 	factoryID, supplierID, err := s.resolveWarehouseFactory(ctx, whID)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
+		writeFactoryResolveError(w, err)
 		return
 	}
 
@@ -188,10 +189,10 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 
 	// Factory + supplier are always derived from the JWT-scoped warehouse, never
 	// trusted from the body. A body factory_id is honored only when it matches the
-	// warehouse's own primary factory; any mismatch is a scope-spoofing attempt.
+	// engine-resolved factory; any mismatch is a scope-spoofing attempt.
 	factoryID, supplierID, err := s.resolveWarehouseFactory(ctx, whID)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
+		writeFactoryResolveError(w, err)
 		return
 	}
 	if bodyFactory := strings.TrimSpace(req.FactoryID); bodyFactory != "" && bodyFactory != factoryID {
@@ -268,18 +269,30 @@ func (s *Service) resolveWarehouseFactory(ctx context.Context, warehouseID strin
 		return s.memoryResolveWarehouseFactory(ctx, warehouseID)
 	}
 	row, err := s.spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
-		[]string{"SupplierId", "PrimaryFactoryId"})
+		[]string{"SupplierId", "PrimaryFactoryId", "CountryCode", "Lat", "Lng"})
 	if err != nil {
 		return "", "", err
 	}
-	var primaryFactory spanner.NullString
-	if err := row.Columns(&supplierID, &primaryFactory); err != nil {
+	var primaryFactory, country spanner.NullString
+	var lat, lng spanner.NullFloat64
+	if err := row.Columns(&supplierID, &primaryFactory, &country, &lat, &lng); err != nil {
 		return "", "", err
 	}
-	if !primaryFactory.Valid || primaryFactory.StringVal == "" {
-		return "", "", errors.New("primary factory missing")
+	factoryID, err = s.engineFactoryID(ctx, supplierID, warehouseID, country.StringVal, lat.Float64, lng.Float64, primaryFactory.StringVal)
+	if err != nil {
+		return "", "", err
 	}
-	return primaryFactory.StringVal, supplierID, nil
+	return factoryID, supplierID, nil
+}
+
+func writeFactoryResolveError(w http.ResponseWriter, err error) {
+	if errors.Is(err, proximity.ErrFactoryUnassigned) ||
+		errors.Is(err, auth.ErrGeographyIncomplete) ||
+		errors.Is(err, auth.ErrCrossMarketDeferred) {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
 }
 
 func mapTransferError(w http.ResponseWriter, r *http.Request, transferID string, err error) {

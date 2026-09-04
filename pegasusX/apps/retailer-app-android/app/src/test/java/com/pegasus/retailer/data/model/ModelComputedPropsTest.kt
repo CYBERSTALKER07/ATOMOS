@@ -132,6 +132,20 @@ class ModelComputedPropsTest {
     }
 
     @Test
+    fun order_displayTotal_emptyCurrencyDoesNotInventUZS() {
+        val o = Order(id = "o1", totalAmount = 100)
+        assertFalse(o.displayTotal.contains("UZS"))
+    }
+
+    @Test
+    fun moneyCurrency_emptyDoesNotInventUZS() {
+        assertEquals("", moneyCurrency(""))
+        assertEquals("", moneyCurrency(null))
+        assertEquals("KZT", moneyCurrency("kzt"))
+        assertFalse(moneyCurrency("").contains("UZS"))
+    }
+
+    @Test
     fun order_itemCount_sumsQuantities() {
         val items = listOf(
             OrderLineItem("l1", "p1", "A", "v1", "1L", 3, 10.0, 30.0),
@@ -169,6 +183,30 @@ class ModelComputedPropsTest {
     fun demandForecast_confidencePercent() {
         val f = DemandForecast(id = "f1", confidence = 0.89)
         assertEquals("89%", f.confidencePercent)
+    }
+
+    @Test
+    fun retailerAIPrediction_titleFromFirstLineName() {
+        val item = RetailerAIPrediction(
+            orderId = "ord-1",
+            confirmationStatus = "PENDING",
+            requestedDeliveryDate = "2026-08-20T00:00:00Z",
+            totalMinor = 12500,
+            currency = "UZS",
+            updatedAt = "2026-08-13T00:00:00Z",
+            lineItems = listOf(RetailerAILineItem(sku = "sku-1", name = "Milk 1L", quantity = 4)),
+        )
+        assertEquals("Milk 1L", item.title)
+        assertEquals(4L, item.quantity)
+        assertEquals("2026-08-20", item.deliveryLabel)
+        assertEquals("125 UZS", item.formattedTotal)
+    }
+
+    @Test
+    fun retailerAIPrediction_titleFallsBackToOrderId() {
+        val item = RetailerAIPrediction(orderId = "ord-empty", updatedAt = "")
+        assertEquals("ord-empty", item.title)
+        assertEquals(0L, item.quantity)
     }
 
     // ── MonthlyExpense ──

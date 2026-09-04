@@ -32,13 +32,7 @@ func (h *InboxHandlers) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 	limit, offset := ParseInboxPagination(r)
 	if h == nil || h.Service == nil {
-		writeInboxJSON(w, http.StatusOK, map[string]any{
-			"notifications": []InboxItemWire{},
-			"unread_count":  0,
-			"total":         0,
-			"limit":         limit,
-			"offset":        offset,
-		})
+		writeInboxJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
 		return
 	}
 	notifs, err := h.Service.ListForRecipient(r.Context(), recipientID, limit, offset)
@@ -46,17 +40,18 @@ func (h *InboxHandlers) HandleList(w http.ResponseWriter, r *http.Request) {
 		if h.Log != nil {
 			h.Log.ErrorContext(r.Context(), "list notifications failed", "recipient_id", recipientID, "err", err)
 		}
-		writeInboxJSON(w, http.StatusOK, map[string]any{
-			"notifications": []InboxItemWire{},
-			"unread_count":  0,
-			"total":         0,
-			"limit":         limit,
-			"offset":        offset,
-		})
+		writeInboxJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_list_failed"})
 		return
 	}
 	wire := ToInboxWireList(notifs)
-	unread, _ := h.Service.UnreadCount(r.Context(), recipientID)
+	unread, unreadErr := h.Service.UnreadCount(r.Context(), recipientID)
+	if unreadErr != nil {
+		if h.Log != nil {
+			h.Log.ErrorContext(r.Context(), "unread count failed", "recipient_id", recipientID, "err", unreadErr)
+		}
+		writeInboxJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_unread_failed"})
+		return
+	}
 	writeInboxJSON(w, http.StatusOK, map[string]any{
 		"notifications": wire,
 		"unread_count":  unread,
@@ -89,7 +84,7 @@ func (h *InboxHandlers) HandleMarkRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h == nil || h.Service == nil {
-		writeInboxJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeInboxJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
 		return
 	}
 	if err := ApplyMarkRead(r.Context(), h.Service, recipientID, req); err != nil {

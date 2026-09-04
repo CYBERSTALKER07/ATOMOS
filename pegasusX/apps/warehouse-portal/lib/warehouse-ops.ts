@@ -8,9 +8,10 @@ import {
   warehouseOrderProposeDeliveryKey,
   warehouseOrderRejectKey,
   warehouseReceiveTransferKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId, warehouseScopeQuery } from '@/lib/warehouse-scope';
+import { apiFetch } from '@/lib/auth';
 
 /** Typed warehouse mutation helpers for portal order + transfer action panels. */
 export const warehouseOps = {
@@ -93,4 +94,23 @@ export const warehouseOps = {
       { lock_id: lockId },
       warehouseDispatchLockReleaseKey(lockId),
     ),
+  issuePaymentBypass: (orderId: string) => 
+    apiFetch('/v1/warehouse/ops/orders/payment-bypass', {
+      method: 'POST',
+      body: JSON.stringify({ order_id: orderId }),
+    }).then((r: Response) => r.json()),
+  getEarlyCompleteRequest: (driverId: string) =>
+    apiFetch(`/v1/warehouse/ops/orders/early-complete/${driverId}`, {
+      method: 'GET',
+    }).then((r: Response) => r.json()),
+  approveEarlyComplete: (driverId: string, action: 'CANCEL' | 'RESCHEDULE', newWindowStart?: string, newWindowEnd?: string) =>
+    apiFetch('/v1/warehouse/ops/orders/early-complete/approve', {
+      method: 'POST',
+      body: JSON.stringify({
+        driver_id: driverId,
+        action,
+        newWindowStart,
+        newWindowEnd
+      }),
+    }).then((r: Response) => r.json()),
 };

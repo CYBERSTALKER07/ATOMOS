@@ -1,8 +1,9 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useStableCallback } from '@/lib/useStableCallback';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
@@ -15,6 +16,7 @@ import { useToast } from '@/components/Toast';
 import type { WarehouseDispatchLock, WarehouseLiveEvent } from '@pegasusx/types';
 
 export default function DispatchLocksPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [locks, setLocks] = useState<WarehouseDispatchLock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,12 +105,12 @@ export default function DispatchLocksPage() {
     <PageTransition>
       <PageChrome
         icon="lock"
-        title="Dispatch Locks"
-        description="Prevent concurrent dispatch operations during loading."
+        title={t("portal.nav.dispatch_locks")}
+        description={t("warehouse_portal.residual.text.prevent_concurrent_dispatch_operations_during_loading")}
         loading={loading}
         error={restricted ? 'You do not have permission to manage dispatch locks for this scope.' : loadError}
         empty={!loading && !restricted && !loadError && locks.length === 0}
-        emptyMessage="No active dispatch locks. Dispatch operations are running freely."
+        emptyMessage={t("warehouse_portal.residual.text.no_active_dispatch_locks_dispatch_operations_are_running_freely")}
         actions={
           <div className="flex items-center gap-2">
             <button
@@ -146,12 +148,12 @@ export default function DispatchLocksPage() {
           <table className="desk-table w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Lock ID</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Type</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Scope</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Locked At</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Locked By</th>
-                <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Actions</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.dispatch_locks.text.lock_id")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.bins.text.type")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.dispatch_locks.text.scope")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.dispatch_locks.text.locked_at")}</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.dispatch_locks.text.locked_by")}</th>
+                <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.dispatch_locks.text.actions")}</th>
               </tr>
             </thead>
             <tbody>

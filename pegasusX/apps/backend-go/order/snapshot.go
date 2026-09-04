@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
@@ -81,4 +82,68 @@ func snapshotWarehousePolicyInTxn(ctx context.Context, txn *spanner.ReadWriteTra
 		}
 	}
 	return nil
+}
+
+func snapshotServicePromiseInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, o *Order) (*spanner.Mutation, error) {
+	if o == nil || o.OrderID == "" || o.SupplierID == "" {
+		return nil, nil
+	}
+	row, err := txn.ReadRow(ctx, "SupplierServicePolicies", spanner.Key{o.SupplierID}, []string{
+		"LeadTimeDays", "SameDayCutoffTime", "NextDayCutoffTime", "MinOrderMinor", "Currency", "FillRateGuaranteeBps",
+	})
+	leadTimeDays := int64(1)
+	fillRateBps := int64(9500)
+	minOrderMinor := int64(0)
+	currency := o.Currency
+	if currency == "" {
+		currency = "UZS"
+	}
+	if err == nil {
+		var leadTime, fillRate, minOrder spanner.NullInt64
+		var sameDay, nextDay, curr spanner.NullString
+		_ = row.Columns(&leadTime, &sameDay, &nextDay, &minOrder, &curr, &fillRate)
+		if leadTime.Valid && leadTime.Int64 > 0 {
+			leadTimeDays = leadTime.Int64
+		}
+		if fillRate.Valid && fillRate.Int64 > 0 {
+			fillRateBps = fillRate.Int64
+		}
+		if minOrder.Valid {
+			minOrderMinor = minOrder.Int64
+		}
+		if curr.Valid && curr.StringVal != "" {
+			currency = curr.StringVal
+		}
+	}
+
+	promiseType := "NEXT_DAY"
+	guaranteedDelivery := o.CreatedAt.Add(time.Duration(leadTimeDays*24) * time.Hour)
+	if o.RequestedDeliveryDate != nil && !o.RequestedDeliveryDate.IsZero() {
+		promiseType = "SCHEDULED"
+		guaranteedDelivery = *o.RequestedDeliveryDate
+	}
+	slaHours := leadTimeDays * 24
+	if promiseType == "SCHEDULED" {
+		slaHours = int64(guaranteedDelivery.Sub(o.CreatedAt).Hours())
+		if slaHours < 0 {
+			slaHours = 0
+		}
+	}
+
+	mut := spanner.InsertMap("OrderServicePromiseSnapshots", map[string]any{
+		"OrderId":                o.OrderID,
+		"SupplierId":             o.SupplierID,
+		"RetailerId":             o.RetailerID,
+		"WarehouseId":            o.WarehouseID,
+		"PromiseType":            promiseType,
+		"GuaranteedDeliveryDate": guaranteedDelivery,
+		"FillRateTargetBps":      fillRateBps,
+		"MinOrderMinor":          minOrderMinor,
+		"Currency":               currency,
+		"SLAHours":               slaHours,
+		"Status":                 "PENDING",
+		"CreatedAt":              spanner.CommitTimestamp,
+		"UpdatedAt":              spanner.CommitTimestamp,
+	})
+	return mut, nil
 }

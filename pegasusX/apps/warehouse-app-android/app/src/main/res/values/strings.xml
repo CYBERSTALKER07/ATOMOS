@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">Pegasus Warehouse</string>
+    <!-- Dispatch action dialog titles (app-local; promote to i18n catalogs on next pipeline run) -->
+    <string name="warehouse_dispatch_title_supply_request_failed">Supply Request Failed</string>
+    <string name="warehouse_dispatch_title_cancellation_failed">Cancellation Failed</string>
+    <string name="warehouse_dispatch_title_lock_failed">Lock Failed</string>
+    <string name="warehouse_dispatch_title_dispatch_incomplete">Dispatch Incomplete</string>
+    <string name="warehouse_dispatch_title_dispatch_failed">Dispatch Failed</string>
+    <string name="warehouse_dispatch_title_smart_dispatch_incomplete">Smart Dispatch Incomplete</string>
+    <string name="warehouse_dispatch_title_smart_dispatch_failed">Smart Dispatch Failed</string>
+    <string name="warehouse_dispatch_title_release_failed">Release Failed</string>
+    <string name="warehouse_dispatch_title_propose_failed">Propose failed</string>
+    <string name="warehouse_dispatch_title_cancel_failed">Cancel failed</string>
+    <string name="warehouse_dispatch_title_date_proposed">Date proposed</string>
+    <string name="warehouse_dispatch_title_order_cancelled">Order cancelled</string>
 </resources>

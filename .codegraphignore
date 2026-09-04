@@ -1,0 +1,80 @@
+# Code-Graph-RAG Index Exclusion Rules for PegasusX Monorepo
+# Root: /Users/shakhzod/Desktop/V.O.I.D
+
+# 1. Archived & Legacy Codebases (Strictly Non-Living)
+pegasus/
+archive/
+**/archive/
+
+# 2. Package Managers & Dependency Caches
+**/node_modules/
+**/.pnpm-store/
+**/.yarn/
+**/.gradle/
+**/gradle/
+**/Pods/
+**/Pods.xcodeproj/
+**/.gemini/
+**/.cursor/
+**/.claude/
+**/.windsurf/
+**/.zed/
+**/.continue/
+
+# 3. Build Outputs, Transpiled Code & Intermediate Artifacts
+**/.next/
+**/dist/
+**/build/
+**/out/
+**/.turbo/
+**/DerivedData/
+**/*.xcodeproj/xcuserdata/
+**/*.xcworkspace/xcuserdata/
+**/target/
+**/bin/
+**/obj/
+apps/backend-go/backend-go
+apps/ai-worker/ai-worker
+
+# 4. Binary Assets, Images & Media
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.ico
+**/*.svg
+**/*.pdf
+**/*.docx
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.mp4
+**/*.tar.gz
+**/*.zip
+
+# 5. Test Coverage, Snapshots & Scratch Workspaces
+**/coverage/
+**/.nyc_output/
+**/scratch/
+**/*.orig
+**/*.bak
+**/*.log
+*.log
+xcodebuild.log
+
+# 6. Infrastructure State & Secrets
+*.tfstate*
+**/.terraform/
+**/*.pem
+**/*.key
+**/*.keystore
+**/*.p12
+.env*
+!.env.example
+!.env.ssmr.example
+
+# 7. System & Version Control Artifacts
+.git/
+.DS_Store
+**/.DS_Store
+Thumbs.db

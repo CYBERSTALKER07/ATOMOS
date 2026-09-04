@@ -2,9 +2,9 @@
 //  WebSocketClient.swift
 //  payload-app-ios
 //
-//  URLSessionWebSocketTask wrapper for /v1/ws. Auto-reconnects every
-//  3 s while a token is present. Emits notification frames plus PAYLOAD_SYNC
-//  refresh frames. Mirrors Android `PayloadWebSocket`.
+//  URLSessionWebSocketTask wrapper for /v1/ws with Authorization: Bearer.
+//  Auto-reconnects every 3 s while a token is present. Emits notification
+//  frames plus PAYLOAD_SYNC refresh frames. Mirrors Android `PayloadWebSocket`.
 //
 
 import Foundation
@@ -50,9 +50,10 @@ final class WebSocketClient {
     private func openSocket() {
         guard let token else { return }
         let base = APIClient.shared.wsBaseURL
-        let encoded = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? token
-        guard let url = URL(string: "\(base)/v1/ws?token=\(encoded)") else { return }
-        let t = session.webSocketTask(with: url)
+        guard let url = URL(string: "\(base)/v1/ws") else { return }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let t = session.webSocketTask(with: request)
         task = t
         t.resume()
         reconnectAttempt = 0
@@ -77,7 +78,7 @@ final class WebSocketClient {
                     guard let text, let data = text.data(using: .utf8) else { continue }
                     if let frame = try? JSONDecoder().decode(WsMessage.self, from: data) {
                         let hasContent = !(frame.title ?? "").isEmpty || !(frame.body ?? "").isEmpty
-                        let isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                        let isPayloadSync = frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false)
                         if hasContent || isPayloadSync { self.onFrame?(frame) }
                     }
                 } catch {

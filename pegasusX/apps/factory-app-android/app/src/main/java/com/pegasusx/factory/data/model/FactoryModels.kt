@@ -22,6 +22,12 @@ data class AuthResponse(
     @SerialName("is_configured") val isConfigured: Boolean = false,
 )
 
+@Serializable
+data class DeviceTokenRequest(
+    val token: String,
+    val platform: String,
+)
+
 // ── Dashboard ──
 @Serializable
 data class DashboardStats(
@@ -33,6 +39,17 @@ data class DashboardStats(
     @SerialName("vehicles_available") val vehiclesAvailable: Int = 0,
     @SerialName("staff_on_shift") val staffOnShift: Int = 0,
     @SerialName("critical_insights") val criticalInsights: Int = 0,
+    val source: String = "empty",
+    val plane: String = "factory_trucks",
+    @SerialName("transfers_by_state") val transfersByState: Map<String, Int> = emptyMap(),
+    @SerialName("manifests_by_state") val manifestsByState: Map<String, Int> = emptyMap(),
+    @SerialName("vehicles_by_state") val vehiclesByState: Map<String, Int> = emptyMap(),
+    @SerialName("driver_duty") val driverDuty: Map<String, Int> = emptyMap(),
+    @SerialName("sla_by_status") val slaByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("qc_by_result") val qcByResult: Map<String, Int> = emptyMap(),
+    @SerialName("qc_available") val qcAvailable: Boolean = false,
+    @SerialName("bay_loading_transfers") val bayLoadingTransfers: Int = 0,
+    @SerialName("bay_loading_manifests") val bayLoadingManifests: Int = 0,
 )
 
 // mirror of backend-go/factory HandleAnalyticsOverview + packages/types FactoryAnalyticsOverviewResponse
@@ -110,6 +127,9 @@ data class SupplyRequest(
     @SerialName("created_by") val createdBy: String = "",
     @SerialName("created_at") val createdAt: String = "",
     @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("sla_status") val slaStatus: String = "",
+    @SerialName("sla_due_at") val slaDueAt: String? = null,
+    @SerialName("sla_hours_remaining") val slaHoursRemaining: Double? = null,
 )
 
 @Serializable
@@ -133,6 +153,17 @@ data class SupplyFulfillOptions(
     @SerialName("outcome_internal") val outcomeInternal: String = "",
     @SerialName("outcome_truck") val outcomeTruck: String = "",
     @SerialName("linked_driver_eta") val linkedDriverEta: String? = null,
+)
+
+@Serializable
+data class SupplyRequestQCResponse(
+    @SerialName("request_id") val requestId: String = "",
+    val result: String = "",
+)
+
+@Serializable
+data class SupplyRequestQCRequest(
+    val result: String,
 )
 
 // ── Manifests ──
@@ -274,6 +305,33 @@ data class VehicleListResponse(
     val vehicles: List<Vehicle> = emptyList(),
 )
 
+@Serializable
+data class FactoryFleetDriverLocation(
+    @SerialName("driver_id") val driverId: String = "",
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+)
+
+@Serializable
+data class FactoryFleetLiveRoute(
+    @SerialName("manifest_id") val manifestId: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("driver_name") val driverName: String = "",
+    @SerialName("manifest_state") val manifestState: String = "",
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
+    @SerialName("location_stale") val locationStale: Boolean = false,
+    @SerialName("driver_location") val driverLocation: FactoryFleetDriverLocation? = null,
+)
+
+@Serializable
+data class FactoryFleetLiveMapResponse(
+    val routes: List<FactoryFleetLiveRoute> = emptyList(),
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("fetched_at") val fetchedAt: String = "",
+)
+
 // ── Staff ──
 @Serializable
 data class StaffMember(
@@ -396,14 +454,24 @@ data class FleetVehicleListResponse(
 // ── Dispatch ──
 @Serializable
 data class DispatchRequest(
-    @SerialName("transfer_ids") val transferIds: List<String>,
+    val mode: String = "AUTO",
+    @SerialName("transfer_ids") val transferIds: List<String> = emptyList(),
+    @SerialName("force_capacity") val forceCapacity: Boolean = false,
+    @SerialName("accept_partial") val acceptPartial: Boolean = false,
+    val reason: String = "factory-app-android",
 )
 
 @Serializable
 data class DispatchResponse(
-    @SerialName("manifest_id") val manifestId: String,
+    val status: String = "",
+    @SerialName("manifest_id") val manifestId: String = "",
     @SerialName("truck_plate") val truckPlate: String = "",
     @SerialName("stop_count") val stopCount: Int = 0,
+    @SerialName("created_manifest_count") val createdManifestCount: Int = 0,
+    @SerialName("manifests_created") val manifestsCreated: Int = 0,
+    @SerialName("optimizer_class") val optimizerClass: String = "",
+    @SerialName("dispatch_algo") val dispatchAlgo: String = "",
+    val unassigned: List<String> = emptyList(),
 )
 
 // ── Notifications + client policy ──

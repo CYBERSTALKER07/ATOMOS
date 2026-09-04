@@ -2,17 +2,17 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { gsap } from 'gsap';
+import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import ChamferButton from './ChamferButton';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
-import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
-
-const HERO_VIDEO_PAUSE_AT = 5;
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
+  const { t, language } = useLanguage();
 
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -20,57 +20,13 @@ export default function Hero() {
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
-    if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
-      video.pause();
-      video.currentTime = HERO_VIDEO_PAUSE_AT;
-    }
-  }, []);
-
-  const playIntro = useCallback(async (video: HTMLVideoElement) => {
-    video.currentTime = 0;
-    try {
-      await video.play();
-    } catch {
-      video.pause();
-      video.currentTime = 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (prefersReducedMotion) {
-      video.pause();
-      video.currentTime = 0;
-      return;
-    }
-
-    video.muted = true;
-
-    const onTimeUpdate = () => clampAndPauseAtMark(video);
-    const startIntro = () => {
-      void playIntro(video);
-    };
-
-    video.addEventListener('timeupdate', onTimeUpdate);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      startIntro();
-    } else {
-      video.addEventListener('loadeddata', startIntro, { once: true });
-      video.addEventListener('canplay', startIntro, { once: true });
-    }
-
-    return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadeddata', startIntro);
-      video.removeEventListener('canplay', startIntro);
-    };
-  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
+  const typedPhrases = [
+    t('hero_type_1'),
+    t('hero_type_2'),
+    t('hero_type_3'),
+    t('hero_type_4'),
+  ];
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -164,21 +120,37 @@ export default function Hero() {
         </>
       )}
 
-      <div className="page-shell py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="page-shell py-12 sm:py-16 lg:py-20 relative z-20">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
           {/* Content Side - Left */}
-          <div ref={textRef} className="space-y-8 order-2 lg:order-1">
+          <div ref={textRef} className="space-y-8 order-1">
             <div>
-              <h1
-                ref={titleRef}
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
-              >
-                Pegasus
+              <h1 ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 mb-2">
+                <span className="sr-only">{t('hero_title')}</span>
+                <ParticleText
+                  text="Pegasus"
+                  particleSize={2.2}
+                  density={4}
+                  color="#f8fafc"
+                  highlightColor="#10B981"
+                  scatter={160}
+                  gatherDuration={1500}
+                  stagger={350}
+                  pointerRepel={42}
+                  repelRadius={120}
+                  idleDrift={0.6}
+                  trigger="mount"
+                  fontSize="clamp(3.5rem, 10vw, 7.5rem)"
+                  fontWeight={800}
+                  textAlign="left"
+                  glow
+                />
               </h1>
 
               <div ref={subtitleRef} className="mb-6">
                 <TextType
-                  text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
+                  key={language}
+                  text={typedPhrases}
                   typingSpeed={isMobile ? 100 : 75}
                   pauseDuration={1500}
                   deletingSpeed={isMobile ? 70 : 50}
@@ -191,46 +163,41 @@ export default function Hero() {
                 />
               </div>
 
-              <div className="w-90 h-[0.5px] bg-white mb-6" />
+              <div className="w-full max-w-xl h-[1px] bg-white/20 mb-6" />
 
               <p
                 ref={descRef}
                 className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
               >
-                Run supplier-led logistics from one platform — dispatch, tracking, payments,
-                and coordination across every team in your network.
+                {t('hero_desc')}
               </p>
             </div>
 
             {/* CTA Buttons */}
             <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
               <ChamferButton onClick={scrollToNext} variant="fill">
-                Explore Platform
+                {t('hero_explore')}
               </ChamferButton>
               <ChamferButton href="/join" variant="ghost">
-                Request Demo
+                {t('hero_demo')}
               </ChamferButton>
             </div>
           </div>
 
-          {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
-          <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
-              {/* Video replacing Atom image and LaserFlow */}
+          {/* Visual Side — break out to viewport with 16px side gutters on small screens, 70px on sm */}
+          <div
+            ref={visualRef}
+            className="relative order-2 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] ml-[calc(50%-50vw+16px)] sm:w-[calc(100vw-140px)] sm:max-w-[calc(100vw-140px)] sm:ml-[calc(50%-50vw+70px)] lg:ml-0 lg:w-full lg:max-w-none"
+          >
+            <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[120px] sm:rounded-tl-[160px] lg:rounded-tl-[200px] rounded-br-[60px] sm:rounded-br-[80px] lg:rounded-br-[100px] border-none">
               <div className="absolute inset-0">
-                <video
-                  ref={videoRef}
-                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
-                  poster={HERO_VIDEO_POSTER}
+                <img
+                  src="/EbszSCwA.jpeg"
+                  alt="Pegasus Logistics Platform Dashboard Interface"
                   className="h-full w-full object-cover"
                 />
               </div>
 
-              {/* Decorative border overlay - show on mobile only */}
               {isMobile && (
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />
@@ -251,7 +218,7 @@ export default function Hero() {
         aria-label="Scroll to next section"
       >
         <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-sm font-light tracking-widest">SCROLL</span>
+          <span className="text-sm font-light tracking-widest">{t('hero_scroll')}</span>
           <svg
             className="w-6 h-6 animate-bounce"
             fill="none"

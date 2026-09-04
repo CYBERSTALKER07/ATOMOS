@@ -5,7 +5,7 @@
 > *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
 
 
-Kotlin + Jetpack Compose Material 3 factory admin client for pegasusX. Parity target: `pegasus/apps/factory-app-android` + `factory-app-ios`.
+Kotlin + Jetpack Compose Material 3 factory admin client for pegasusX. Parity target: `apps/factory-app-android` + `factory-app-ios`.
 
 ## Stack
 

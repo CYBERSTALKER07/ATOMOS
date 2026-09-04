@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +32,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
+import com.pegasus.payload.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,13 +52,36 @@ fun ManifestExceptionsSheet(
             ) {
                 Text("Manifest exceptions", style = MaterialTheme.typography.titleLarge)
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh exceptions")
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_exceptions))
                 }
             }
+            
+            // --- Parity: Report Dock Damage ---
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .androidx.compose.foundation.background(androidx.compose.ui.graphics.Color(0xFFFEE2E2), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text("Report Dock Damage", color = androidx.compose.ui.graphics.Color(0xFF991B1B), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    androidx.compose.material3.Button(
+                        onClick = { /* ViewModel logic wired later */ },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFDC2626)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("MARK DAMAGED", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    }
+                }
+            }
+            // ----------------------------------
+            
             HorizontalDivider()
             when {
                 loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading exceptions",
+                    title = stringResource(R.string.mobile_payload_ui_loading_exceptions),
                     body = "Fetching overflow, damaged, and manual removals.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
@@ -86,11 +112,11 @@ fun ManifestExceptionsSheet(
                                 }
                             }
                             Text(
-                                "Order ${row.orderId.take(8)} · Manifest ${row.manifestId.take(8)}",
+                                stringResource(R.string.mobile_payload_ui_order_take_manifest_take_2, row.orderId.take(8), row.manifestId.take(8)),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(
-                                "Attempts ${row.attemptCount}",
+                                stringResource(R.string.mobile_payload_ui_attempts_attemptcount, row.attemptCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

@@ -7,6 +7,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -103,7 +105,7 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 			qty = int64(burn * 7)
 		}
 		_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{
+			muts := []*spanner.Mutation{
 				spanner.InsertOrUpdateMap("DemandForecastBaseline", map[string]any{
 					"SupplierId":   supplierID,
 					"ForecastDate": today,
@@ -114,7 +116,21 @@ func (s *Service) seedDemandBaselineFromInsights(ctx context.Context, supplierID
 					"Source":       strings.TrimSpace(insight.Urgency),
 					"CreatedAt":    spanner.CommitTimestamp,
 				}),
-			})
+			}
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			if err := outbox.EmitJSON(ctx, buf, "DemandForecastBaseline", supplierID+":"+productID, events.TopicDemand, map[string]any{
+				"type":         "DEMAND_FORECAST_BASELINE_UPDATED",
+				"supplier_id":  supplierID,
+				"warehouse_id": warehouseID,
+				"product_id":   productID,
+				"baseline_qty": qty,
+			}); err != nil {
+				return err
+			}
+			if err := buf.Flush(ctx); err != nil {
+				return err
+			}
+			return txn.BufferWrite(muts)
 		})
 	}
 }

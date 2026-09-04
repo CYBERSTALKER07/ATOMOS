@@ -1,7 +1,10 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
+import { useWarehouseWsRefresh } from '@/lib/use-warehouse-ws-refresh';
+import { WAREHOUSE_DISPATCH_REFRESH_EVENTS } from '@/lib/fleet-ws-events';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -17,6 +20,7 @@ interface Manifest {
 }
 
 export default function ManifestsPage() {
+  const t = usePortalT();
   const [manifests, setManifests] = useState<Manifest[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -34,12 +38,16 @@ export default function ManifestsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  useWarehouseWsRefresh(() => {
+    void load();
+  }, { eventTypes: WAREHOUSE_DISPATCH_REFRESH_EVENTS });
+
   return (
     <PageTransition>
       <PageChrome
         icon="manifests"
-        title="Manifests"
-        description="Daily loading manifests for drivers and vehicles at this node."
+        title={t("portal.nav.manifests")}
+        description={t("warehouse_portal.residual.text.daily_loading_manifests_for_drivers_and_vehicles_at_this_node")}
         loading={loading}
         empty={!loading && manifests.length === 0}
         emptyMessage={`No manifests for ${date}.`}
@@ -76,12 +84,14 @@ export default function ManifestsPage() {
           <table className="desk-table w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)]">
-                <th className="text-left py-2 px-3 font-medium">Manifest</th>
-                <th className="text-left py-2 px-3 font-medium">Driver</th>
-                <th className="text-left py-2 px-3 font-medium">Vehicle</th>
-                <th className="text-right py-2 px-3 font-medium">Stops</th>
-                <th className="text-left py-2 px-3 font-medium">Status</th>
-                <th className="text-right py-2 px-3 font-medium">Created</th>
+                <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.manifest")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.driver")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.vehicle")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.stops")}</th>
+                <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.bins.text.status")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.created")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.pick")}</th>
+                <th className="text-right py-2 px-3 font-medium">{t("warehouse_portal.manifests.text.labels")}</th>
               </tr>
             </thead>
             <tbody>
@@ -98,6 +108,40 @@ export default function ManifestsPage() {
                   </td>
                   <td className="py-2.5 px-3 text-right text-[var(--muted)]">
                     {new Date(m.created_at).toLocaleTimeString()}
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    <a
+                      href={`/pick-waves?manifest_id=${encodeURIComponent(m.manifest_id)}`}
+                      className="md-btn md-btn-text text-xs"
+                    >
+                      Pick wave
+                    </a>
+                  </td>
+                  <td className="py-2.5 px-3 text-right">
+                    <button
+                      type="button"
+                      className="md-btn md-btn-text text-xs"
+                      onClick={async () => {
+                        try {
+                          const res = await apiFetch(`/v1/warehouse/manifests/${encodeURIComponent(m.manifest_id)}/labels`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: '{}',
+                          });
+                          if (!res.ok) return;
+                          const zpl = await res.text();
+                          const blob = new Blob([zpl], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${m.manifest_id.slice(0, 8)}-labels.zpl`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch { /* ignore */ }
+                      }}
+                    >
+                      Print labels
+                    </button>
                   </td>
                 </tr>
               ))}

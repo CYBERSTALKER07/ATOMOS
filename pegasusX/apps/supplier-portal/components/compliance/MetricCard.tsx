@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { type ReactNode } from "react";
 import { Info } from "lucide-react";
 
@@ -21,6 +24,7 @@ export function MetricCard({
   tooltipText,
   isAlert = false,
 }: MetricCardProps) {
+  const t = usePortalT();
   return (
     <div
       className={`relative p-6 rounded-2xl border ${
@@ -72,7 +76,7 @@ export function MetricCard({
           >
             {trend.value}
           </span>
-          <span className="text-[var(--desk-text-tertiary)]">vs last week</span>
+          <span className="text-[var(--desk-text-tertiary)]">{t("supplier_portal.compliance.metric_card.text.vs_last_week")}</span>
         </div>
       )}
     </div>

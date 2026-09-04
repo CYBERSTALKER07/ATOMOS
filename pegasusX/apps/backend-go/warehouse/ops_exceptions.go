@@ -60,16 +60,22 @@ func (s *Service) listOpsExceptions(ctx context.Context, warehouseID string) ([]
 }
 
 func (s *Service) listManifestExceptions(ctx context.Context, warehouseID string) ([]OpsExceptionRow, error) {
-	sid := strings.TrimSpace(s.supplierID)
-	stmt := spanner.Statement{
-		SQL: `SELECT e.ExceptionId, e.OrderId, e.ManifestId, e.Reason, e.CreatedAt
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
+	sql := `SELECT e.ExceptionId, e.OrderId, e.ManifestId, e.Reason, e.CreatedAt
 		      FROM ManifestExceptions e
 		      JOIN Orders o ON o.OrderId = e.OrderId
 		      WHERE o.WarehouseId = @wh
-		        AND e.ResolvedAt IS NULL
+		        AND e.ResolvedAt IS NULL`
+	params := map[string]any{"wh": warehouseID}
+	if sid != "" {
+		sql += ` AND o.SupplierId = @sid`
+		params["sid"] = sid
+	}
+	stmt := spanner.Statement{
+		SQL: sql + `
 		      ORDER BY e.CreatedAt DESC
 		      LIMIT 100`,
-		Params: map[string]any{"wh": warehouseID, "sid": sid},
+		Params: params,
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -99,16 +105,23 @@ func (s *Service) listManifestExceptions(ctx context.Context, warehouseID string
 }
 
 func (s *Service) listDelayedOrderExceptions(ctx context.Context, warehouseID string, now time.Time) ([]OpsExceptionRow, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, Status, Source, ConfirmationStatus, DeliveryPriority,
+	sid := strings.TrimSpace(s.resolveSupplierScope(ctx))
+	sql := `SELECT OrderId, Status, Source, ConfirmationStatus, DeliveryPriority,
 		             DeliverBefore, RequestedDeliveryDate, ProposedDeliveryDate,
 		             ReceivingWindowOpen, ReceivingWindowClose, UpdatedAt
 		      FROM Orders
 		      WHERE WarehouseId = @wh
-		        AND Status = 'DELAYED'
+		        AND Status = 'DELAYED'`
+	params := map[string]any{"wh": warehouseID}
+	if sid != "" {
+		sql += ` AND SupplierId = @sid`
+		params["sid"] = sid
+	}
+	stmt := spanner.Statement{
+		SQL: sql + `
 		      ORDER BY UpdatedAt DESC
 		      LIMIT 50`,
-		Params: map[string]any{"wh": warehouseID},
+		Params: params,
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()

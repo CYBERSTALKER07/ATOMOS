@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import {
   X,
@@ -15,9 +16,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { orderableCapsFromPreview } from "../lib/stock-policy";
 import { apiFetch } from "../lib/auth";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import { getRetailerProfile } from "@/lib/retailer-profile";
+import { checkoutGatewayForMethod } from "@/lib/payment-catalog";
+import { useRetailerPaymentCatalog } from "@/lib/use-payment-catalog";
 import type {
   ActiveFulfillmentsResponse,
   CheckoutPreviewResponse,
@@ -27,7 +31,7 @@ import type {
   StockWarning,
 } from "../lib/types";
 import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
-import { retailerUnifiedCheckoutKey } from "@pegasusx/api-client";
+import { retailerUnifiedCheckoutKey } from "@pegasusx/api-core";
 import {
   enqueuePendingCheckout,
   pendingCheckoutQueuedMessage,
@@ -48,6 +52,7 @@ export default function CheckoutModal({
   onClose,
   total,
 }: CheckoutModalProps) {
+  const t = usePortalT();
   const { items, clearCart, applyPreviewOrderableCaps, checkoutPolicyToken } = useCart();
   const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
@@ -59,6 +64,8 @@ export default function CheckoutModal({
   const [deliveryMode, setDeliveryMode] = useState<"STANDARD" | "SCHEDULED">("STANDARD");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [expressPriority, setExpressPriority] = useState(false);
+  const { currency: packDisplayCurrency, allowsCash, allowsGlobalPay, gateways } =
+    useRetailerPaymentCatalog();
   const [hasCardConfigured, setHasCardConfigured] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [pendingCardToken, setPendingCardToken] = useState<string | null>(null);
@@ -119,12 +126,12 @@ export default function CheckoutModal({
 
         if (loading) {
           setLoading(false);
-          setError("Connection restored. Confirm checkout status before retrying.");
+          setError(t("retailer_desktop.residual.text.connection_restored_confirm_checkout_status_before_retrying"));
         }
       } catch {
         if (!cancelled && loading) {
           setLoading(false);
-          setError("Connection restored. Confirm checkout status before retrying.");
+          setError(t("retailer_desktop.residual.text.connection_restored_confirm_checkout_status_before_retrying"));
         }
       }
     }
@@ -153,7 +160,7 @@ export default function CheckoutModal({
       }
       setPendingCardToken(data.card_token);
     } catch (err) {
-      setCardSetupError(err instanceof Error ? err.message : "Could not start card tokenization");
+      setCardSetupError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_start_card_tokenization"));
     } finally {
       setAddingCard(false);
     }
@@ -179,7 +186,7 @@ export default function CheckoutModal({
       setCardOtpCode("");
       setHasCardConfigured(true);
     } catch (err) {
-      setCardSetupError(err instanceof Error ? err.message : "Could not confirm card");
+      setCardSetupError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_confirm_card"));
     } finally {
       setAddingCard(false);
     }
@@ -198,6 +205,15 @@ export default function CheckoutModal({
     return () => unsub();
   }, [subscribe, method]);
 
+  useEffect(() => {
+    if (method === "cash" && !allowsCash && allowsGlobalPay) {
+      setMethod("global_pay");
+    }
+    if (method === "global_pay" && !allowsGlobalPay && allowsCash) {
+      setMethod("cash");
+    }
+  }, [allowsCash, allowsGlobalPay, method]);
+
   const handleCheckout = async () => {
     if (items.length === 0) return;
     setLoading(true);
@@ -210,13 +226,6 @@ export default function CheckoutModal({
       if (!profile) {
         throw new Error("Authentication required. Please log in again.");
       }
-
-      const gatewayMap: Record<string, string> = {
-        global_pay: "GLOBAL_PAY",
-        adyen: "ADYEN",
-        airwallex: "AIRWALLEX",
-        cash: "CASH",
-      };
 
       const lineItems = items.map((item) => ({
         sku_id: item.product_id,
@@ -286,7 +295,7 @@ export default function CheckoutModal({
 
       const checkoutPayload: Record<string, unknown> = {
         retailer_id: profile.id,
-        payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+        payment_gateway: checkoutGatewayForMethod(method, gateways),
         latitude: 0,
         longitude: 0,
         items: submitItems,
@@ -343,7 +352,7 @@ export default function CheckoutModal({
         if (cartRes.status === 422 && errBody?.error === "payment_gateway_policy_violation") {
           // This happens when unified checkout policy triggers 3C Fallback.
           // We can read it here, although WS will arrive shortly.
-          setDegradedBanner({ gateway: gatewayMap[method], reason: errBody.message || "Gateway temporarily blocked." });
+          setDegradedBanner({ gateway: checkoutGatewayForMethod(method, gateways), reason: errBody.message || "Gateway temporarily blocked." });
           if (method !== "cash") {
              setMethod("cash");
           }
@@ -371,12 +380,6 @@ export default function CheckoutModal({
         try {
           const profile = getProfile();
           if (profile) {
-            const gatewayMap: Record<string, string> = {
-              global_pay: "GLOBAL_PAY",
-              adyen: "ADYEN",
-              airwallex: "AIRWALLEX",
-              cash: "CASH",
-            };
             const lineItems = items.map((item) => ({
               sku_id: item.product_id,
               quantity: item.quantity,
@@ -389,7 +392,7 @@ export default function CheckoutModal({
             void enqueuePendingCheckout(
               {
                 retailer_id: profile.id,
-                payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
+                payment_gateway: checkoutGatewayForMethod(method, gateways),
                 latitude: 0,
                 longitude: 0,
                 items: lineItems,
@@ -402,7 +405,7 @@ export default function CheckoutModal({
         }
         setError(pendingCheckoutQueuedMessage(err));
       } else {
-        setError(err instanceof Error ? err.message : "Checkout failed");
+        setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.checkout_failed"));
       }
     } finally {
       setLoading(false);
@@ -445,11 +448,11 @@ export default function CheckoutModal({
                     Total Authorization
                   </span>
                   <div className="md-typescale-display-small font-light text-[var(--desk-text-primary)]">
-                    UZS {(total + deliveryFeeMinor).toLocaleString()}
+                    {packDisplayCurrency || packCurrency(readCachedAuthSession()?.pack)} {(total + deliveryFeeMinor).toLocaleString()}
                   </div>
                   {deliveryFeeMinor > 0 && (
                     <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
-                      Includes {deliveryFeeMinor.toLocaleString()} UZS delivery fee
+                      Includes {deliveryFeeMinor.toLocaleString()} {packDisplayCurrency || packCurrency(readCachedAuthSession()?.pack)} delivery fee
                     </p>
                   )}
                 </div>
@@ -463,7 +466,7 @@ export default function CheckoutModal({
                 <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex gap-3 text-orange-800">
                   <AlertTriangle size={20} className="shrink-0 mt-0.5" />
                   <div>
-                     <h3 className="font-light text-sm uppercase tracking-wide">Card Payments Temporarily Unavailable</h3>
+                     <h3 className="font-light text-sm uppercase tracking-wide">{t("retailer_desktop.checkout_modal.text.card_payments_temporarily_unavailable")}</h3>
                      <p className="text-xs mt-1 font-medium opacity-90">
                        {degradedBanner.gateway} is currently experiencing issues ({degradedBanner.reason}). We have automatically switched your payment method to cash.
                      </p>
@@ -481,16 +484,16 @@ export default function CheckoutModal({
                     onClick={() => setDeliveryMode("STANDARD")}
                     className={`p-4 rounded-2xl border text-left ${deliveryMode === "STANDARD" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
                   >
-                    <span className="font-light text-sm">Standard (ASAP)</span>
-                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Earliest T+1 business day</span>
+                    <span className="font-light text-sm">{t("retailer_desktop.checkout_modal.text.standard_asap")}</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.checkout_modal.text.earliest_t_1_business_day")}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeliveryMode("SCHEDULED")}
                     className={`p-4 rounded-2xl border text-left ${deliveryMode === "SCHEDULED" ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5" : "border-[var(--desk-border)]"}`}
                   >
-                    <span className="font-light text-sm">Scheduled pre-order</span>
-                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">Delivery day T+3 or later</span>
+                    <span className="font-light text-sm">{t("retailer_desktop.checkout_modal.text.scheduled_pre_order")}</span>
+                    <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.checkout_modal.text.delivery_day_t_3_or_later")}</span>
                   </button>
                 </div>
                 <input
@@ -515,6 +518,7 @@ export default function CheckoutModal({
                 </span>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {allowsCash ? (
                   <button
                     onClick={() => setMethod("cash")}
                     className={`relative p-5 rounded-2xl border text-left transition-all ${
@@ -543,7 +547,9 @@ export default function CheckoutModal({
                       Physical tender
                     </span>
                   </button>
+                  ) : null}
 
+                  {allowsGlobalPay ? (
                   <button
                     disabled={isCardDisabled}
                     onClick={() => setMethod("global_pay")}
@@ -573,15 +579,16 @@ export default function CheckoutModal({
                       Secure digital payment
                     </span>
                   </button>
+                  ) : null}
                 </div>
               </div>
 
               {method === "global_pay" && !hasCardConfigured && (
                 <div className="p-5 border border-[var(--desk-border)] rounded-2xl bg-[var(--desk-surface-subtle)] space-y-4">
                   <div>
-                    <h3 className="md-typescale-body-large font-light text-[var(--desk-text-primary)]">Setup Payment Card</h3>
+                    <h3 className="md-typescale-body-large font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.checkout_modal.text.setup_payment_card")}</h3>
                     <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
-                      Tokenize a card via OTP confirmation (same flow as Settings → Saved Cards).
+                      Tokenize a card via OTP confirmation.
                     </p>
                   </div>
                   {cardSetupError && (
@@ -601,7 +608,7 @@ export default function CheckoutModal({
                       <input
                         type="text"
                         inputMode="numeric"
-                        placeholder="OTP code"
+                        placeholder={t("retailer_desktop.settings.cards.text.otp_code")}
                         value={cardOtpCode}
                         onChange={(e) => setCardOtpCode(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm"
@@ -663,7 +670,7 @@ export default function CheckoutModal({
                 <div className="p-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-light rounded-xl flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} />
-                    <span>The following items are out of stock:</span>
+                    <span>{t("retailer_desktop.checkout_modal.text.the_following_items_are_out_of_stock")}</span>
                   </div>
                   <ul className="list-disc list-inside pl-6 space-y-1">
                     {oosItems.map((id) => (

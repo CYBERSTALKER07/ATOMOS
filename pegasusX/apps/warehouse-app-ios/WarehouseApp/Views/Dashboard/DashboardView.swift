@@ -8,6 +8,7 @@ struct DashboardView: View {
     @State private var loading = true
     @State private var hasData = false
     @State private var error: String?
+    @State private var commandJump: CommandStatusJump?
 
     private var gridMin: CGFloat {
         horizontalSizeClass == .regular ? 180 : 140
@@ -37,14 +38,6 @@ struct DashboardView: View {
                                 columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
                                 spacing: LabTheme.spacingMD
                             ) {
-                                KpiTile(title: "Active Orders", value: "\(stats.activeOrders)", systemImage: "cart", tint: .accentColor)
-                                KpiTile(
-                                    title: "Completed",
-                                    value: "\(stats.completedToday)",
-                                    systemImage: "checkmark.circle",
-                                    tint: LabTheme.success,
-                                    chip: stats.completedToday > 0 ? ("DONE", LabTheme.success) : nil
-                                )
                                 KpiTile(
                                     title: "Pending Dispatch",
                                     value: "\(stats.pendingDispatch)",
@@ -52,9 +45,7 @@ struct DashboardView: View {
                                     tint: LabTheme.warning,
                                     chip: stats.pendingDispatch > 5 ? ("ALERT", LabTheme.destructive) : nil
                                 )
-                                KpiTile(title: "Revenue Today", value: "\(stats.todayRevenue / 1000)K", systemImage: "banknote", tint: .accentColor)
-                                KpiTile(title: "On Route", value: "\(stats.driversOnRoute)", systemImage: "location", tint: LabTheme.live)
-                                KpiTile(title: "Idle Drivers", value: "\(stats.driversIdle)", systemImage: "person.badge.clock", tint: LabTheme.secondaryLabel)
+                                KpiTile(title: "Active Orders", value: "\(stats.activeOrders)", systemImage: "cart", tint: .accentColor)
                                 KpiTile(title: "Vehicles", value: "\(stats.totalVehicles)", systemImage: "truck.box", tint: .accentColor)
                                 KpiTile(
                                     title: "Low Stock",
@@ -63,11 +54,52 @@ struct DashboardView: View {
                                     tint: LabTheme.warning,
                                     chip: stats.lowStockCount > 0 ? ("ALERT", LabTheme.destructive) : nil
                                 )
-                                KpiTile(title: "Staff", value: "\(stats.totalStaff)", systemImage: "person.2", tint: .accentColor)
+                                KpiTile(title: "Drivers", value: "\(stats.totalDrivers)", systemImage: "person.2", tint: .accentColor)
+                                KpiTile(
+                                    title: "Completed",
+                                    value: stats.completedTodayAvailable ? "\(stats.completedToday)" : "unavailable",
+                                    systemImage: "checkmark.circle",
+                                    tint: LabTheme.success
+                                )
+                                KpiTile(title: "Revenue Today", value: stats.todayRevenueAvailable ? "\(stats.todayRevenue / 1000)K" : "unavailable", systemImage: "banknote", tint: .accentColor)
                             }
 
-                            if !stats.fleetStatus.isEmpty {
-                                FleetStatusBreakdown(entries: stats.fleetStatus)
+                            StatusStackView(
+                                dictionary: orderStatusFunnel,
+                                counts: stats.ordersByStatus,
+                                source: "live",
+                                onSelect: { commandJump = CommandStatusJump(status: $0) }
+                            )
+                            StatusStackView(
+                                dictionary: truckDutyStatuses,
+                                counts: stats.truckDuty,
+                                source: "live"
+                            )
+                            if !stats.holdReasons.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Hold reasons")
+                                        .font(.subheadline.bold())
+                                    ForEach(stats.holdReasons, id: \.code) { row in
+                                        Text("\(row.code) · \(row.count)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            HStack {
+                                SourceChip(source: stats.demandSource)
+                                Text(stats.demandSource == "empty" ? "Planner empty" : "Demand \(stats.demandSource)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .accessibilityIdentifier("gs-u-demand-source")
+                            if !stats.historyAvailable {
+                                HStack {
+                                    SourceChip(source: "unavailable")
+                                    Text("History unavailable")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
                         }
                         .labReadableWidth()
@@ -76,13 +108,16 @@ struct DashboardView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Dashboard")
+            .navigationTitle("portal.nav.dashboard")
+            .navigationDestination(item: $commandJump) { jump in
+                OrdersView(initialState: jump.status)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                    Button("common.action.sign_out", systemImage: "rectangle.portrait.and.arrow.right") {
                         tokenStore.clear()
                     }
                 }
@@ -111,26 +146,5 @@ struct DashboardView: View {
             }
             if !silent { loading = false }
         }
-    }
-}
-
-private struct FleetStatusBreakdown: View {
-    let entries: [FleetStatusEntry]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            WarehouseSectionHeader(
-                title: "Fleet status tracking",
-                subtitle: "Manifest and driver states"
-            )
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: LabTheme.spacingSM) {
-                    ForEach(entries, id: \.self) { entry in
-                        WarehouseStatusBadge(text: "\(entry.status): \(entry.count)")
-                    }
-                }
-            }
-        }
-        .labCard()
     }
 }

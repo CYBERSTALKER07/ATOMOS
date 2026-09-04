@@ -7,8 +7,10 @@ import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 
-private const val DEFAULT_LAT = 41.2995
-private const val DEFAULT_LNG = 69.2401
+fun defaultWarehouseCoordinates(): Pair<Double, Double> {
+    val c = com.pegasus.design.network.sessionMapCenter()
+    return (c?.lat ?: 0.0) to (c?.lng ?: 0.0)
+}
 
 suspend fun appendWarehouseNode(
     ops: SupplierOperationsRepository,
@@ -29,6 +31,12 @@ suspend fun appendWarehouseNode(
             isActive = node.isActive,
             isOnShift = node.isOnShift,
             transferMode = node.transferMode.ifBlank { "TRUCK" },
+            coLocateWithFactoryId = node.coLocateWithFactoryId,
+            primaryFactoryId = node.primaryFactoryId,
+            secondaryFactoryId = node.secondaryFactoryId,
+            assignedFactoryIds = node.assignedFactoryIds.takeIf { it.isNotEmpty() },
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
+            coverageCities = node.coverageCities.takeIf { it.isNotEmpty() },
         )
     } + SupplierTopologyWarehouseInput(
         warehouseId = null,
@@ -51,6 +59,7 @@ suspend fun appendWarehouseNode(
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
         )
     }
     val resp = ops.updateTopology(SupplierTopologyUpdateRequest(warehouses = warehouses, factories = factories))
@@ -77,6 +86,12 @@ suspend fun appendFactoryNode(
             isActive = node.isActive,
             isOnShift = node.isOnShift,
             transferMode = node.transferMode.ifBlank { "TRUCK" },
+            coLocateWithFactoryId = node.coLocateWithFactoryId,
+            primaryFactoryId = node.primaryFactoryId,
+            secondaryFactoryId = node.secondaryFactoryId,
+            assignedFactoryIds = node.assignedFactoryIds.takeIf { it.isNotEmpty() },
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
+            coverageCities = node.coverageCities.takeIf { it.isNotEmpty() },
         )
     }
     val factories = topology.factories.map { node ->
@@ -88,6 +103,7 @@ suspend fun appendFactoryNode(
             lat = node.lat,
             lng = node.lng,
             isActive = node.isActive,
+            countryCode = node.countryCode.takeIf { it.isNotBlank() },
         )
     } + SupplierTopologyFactoryInput(
         factoryId = null,
@@ -102,5 +118,3 @@ suspend fun appendFactoryNode(
     if (!resp.isSuccessful) error("save_failed_${resp.code()}")
     resp.body() ?: error("topology_empty")
 }
-
-fun defaultWarehouseCoordinates(): Pair<Double, Double> = DEFAULT_LAT to DEFAULT_LNG

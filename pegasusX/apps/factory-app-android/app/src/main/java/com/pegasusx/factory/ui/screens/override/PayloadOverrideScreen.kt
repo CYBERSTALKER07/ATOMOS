@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.override
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -81,6 +83,7 @@ import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private data class MoveTransferCandidate(
     val sourceManifestId: String,
@@ -306,7 +309,7 @@ fun PayloadOverrideScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading payload override",
+                title = stringResource(R.string.mobile_factory_ui_loading_payload_override),
                 body = "Fetching live loading manifests that can be rebalanced or released.",
                 modifier = Modifier
                     .fillMaxSize()

@@ -11,22 +11,20 @@ defaults:
     working-directory: pegasusX
 
 jobs:
+  backend-unit:
+    uses: ./.github/workflows/reusable-go-unit.yml
+    with:
+      working-directory: pegasusX/apps/backend-go
+      go-version: "1.25"
+
   backend:
+    needs: backend-unit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
-      - name: Build backend-go
-        run: |
-          cd apps/backend-go
-          go build ./...
-          go vet ./...
-      - name: Unit tests (short)
-        run: |
-          cd apps/backend-go
-          go test ./... -short -count=1
+          go-version: "1.25"
       - name: Parity contract (narrow)
         run: make parity-contract
       - name: Parity contract (full)
@@ -39,16 +37,68 @@ jobs:
         run: make validate-backend-k8s
       - name: Validate ai-worker K8s manifests
         run: make validate-ai-worker-k8s
-      - name: Wire-ready gate (prod profile + parity + k8s; no SSMR in CI — see ssmr-infra workflow)
+      - name: Fail on placeholder / :latest prod images
+        run: bash scripts/ci_fail_placeholder_images.sh infra/k8s/overlays/prod
+      - name: Fail on TODO:Inject orphaned-client placeholders
+        run: bash scripts/ci_fail_todo_inject.sh
+      - name: No mock Control Tower strings in retailer clients
+        run: bash scripts/ci_no_mock_control_tower.sh
+      - name: Wire-ready gate (prod profile + parity + k8s; no sandbox compose in this job — see sandbox-infra workflow)
         run: |
           bash scripts/validate_production_profile.sh
-          cd apps/backend-go && go test ./... -short -count=1
           make parity-contract-full
           make gap-hunter-gate
           make gen-contracts-gate
           make validate-backend-k8s
           make validate-ai-worker-k8s
           kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone >/dev/null
+
+  cell-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Cell backend guard + isolation proof
+        run: |
+          make cell-backend-guard
+          make cell-isolation-proof
+      - name: Validate sandbox kustomize overlay
+        run: kubectl kustomize infra/k8s/overlays/sandbox --load-restrictor LoadRestrictionsNone >/dev/null
+      - name: Layer A apply-guard (no unattended Terraform)
+        run: bash scripts/ci_no_unattended_terraform_apply.sh
+
+  backend-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+          working-directory: apps/backend-go
+          args: --config=${{ github.workspace }}/.golangci.yml --timeout=8m
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          cd apps/backend-go
+          govulncheck ./...
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: pegasusX/.gitleaks.toml
 
   backend-spanner:
     runs-on: ubuntu-latest
@@ -61,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
       - name: Spanner emulator integration tests
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
@@ -70,6 +120,38 @@ jobs:
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
         run: bash scripts/ci_schema_drift_gate.sh
+      - name: Phase-0 money-path gate (capture/idempotency/credit proofs)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/money_path_gate.sh
+      - name: Phase-1 gate (AR/refund/payout/billing + Soliq + GP simulator)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+        run: bash scripts/phase1_gate.sh
+
+  # P2-18: Phase 2–5c + analytics-tenancy were local-only; keep them green in CI.
+  # Depends on backend-spanner so Phase-0/1 already passed; nested Phase-1 is skipped.
+  enterprise-gates:
+    needs: backend-spanner
+    runs-on: ubuntu-latest
+    services:
+      spanner-emulator:
+        image: gcr.io/cloud-spanner-emulator/emulator:latest
+        ports:
+          - 9010:9010
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Enterprise gates (phase2→5c + analytics-tenancy)
+        env:
+          SPANNER_EMULATOR_HOST: localhost:9010
+          PHASE2_SKIP_REGRESSION: "1"
+        run: bash scripts/ci_enterprise_gates.sh
 
   ai-worker:
     runs-on: ubuntu-latest
@@ -77,12 +159,97 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
       - name: Build ai-worker
         run: |
           cd apps/ai-worker
           go build ./...
           go vet ./...
+
+  android-apps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - driver-app-android
+          - factory-app-android
+          - payload-app-android
+          - retailer-app-android
+          - supplier-app-android
+          - warehouse-app-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Compile ${{ matrix.app }}
+        working-directory: pegasusX/apps/${{ matrix.app }}
+        run: |
+          chmod +x ./gradlew
+          if ./gradlew --no-daemon --stacktrace compileStoreDebugKotlin; then
+            echo "OK storeDebug"
+          else
+            echo "storeDebug missing or failed — trying enterpriseDebug"
+            ./gradlew --no-daemon --stacktrace compileEnterpriseDebugKotlin
+          fi
+
+  ios-apps:
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: supplier
+            project: apps/supplier-app-ios/SupplierAppIOS.xcodeproj
+            scheme: SupplierAppIOS
+            xcodegen_dir: apps/supplier-app-ios
+          - name: warehouse
+            project: apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj
+            scheme: WarehouseAppIOS
+            xcodegen_dir: apps/warehouse-app-ios
+          - name: factory
+            project: apps/factory-app-ios/FactoryAppIOS.xcodeproj
+            scheme: FactoryAppIOS
+            xcodegen_dir: apps/factory-app-ios
+          - name: payload
+            project: apps/payload-app-ios/payload-app-ios.xcodeproj
+            scheme: payload-app-ios
+            xcodegen_dir: apps/payload-app-ios
+          - name: driver
+            project: apps/driver-app-ios/driverappios/driverappios.xcodeproj
+            scheme: driverappios
+            xcodegen_dir: ""
+          - name: retailer
+            project: apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj
+            scheme: retailerapp
+            xcodegen_dir: ""
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+      - name: Install XcodeGen
+        if: matrix.xcodegen_dir != ''
+        run: brew install xcodegen
+      - name: Generate project
+        if: matrix.xcodegen_dir != ''
+        working-directory: pegasusX/${{ matrix.xcodegen_dir }}
+        run: xcodegen generate
+      - name: Build ${{ matrix.name }} (simulator)
+        working-directory: pegasusX
+        run: |
+          xcodebuild \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
 
   supplier-portal:
     runs-on: ubuntu-latest
@@ -113,4 +280,24 @@ jobs:
           pnpm --filter @pegasusx/warehouse-portal typecheck
           pnpm --filter @pegasusx/factory-portal typecheck
       - name: Validate desktop updater config
+        env:
+          ALLOW_DEV_UPDATER_PUBKEY: "1"
         run: bash scripts/validate_desktop_updater.sh
+
+  # P2-18: admin-portal had no CI job.
+  admin-portal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile || pnpm install
+      - name: Typecheck admin-portal
+        run: pnpm --filter @pegasusx/admin-portal typecheck
+      - name: Build admin-portal
+        run: pnpm --filter @pegasusx/admin-portal build

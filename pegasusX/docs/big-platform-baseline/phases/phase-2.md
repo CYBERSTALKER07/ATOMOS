@@ -1,5 +1,8 @@
 # Phase 2 — Planning Depth + WMS/TMS
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Scope
 
 - Full **MEIO** + scenario workbench  

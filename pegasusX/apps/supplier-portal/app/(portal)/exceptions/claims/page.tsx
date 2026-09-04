@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -12,10 +13,12 @@ import { CLAIM_SETTLEMENT_MODES } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { PageChrome } from "@/components/PageChrome";
+import { moneyCurrency } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
 
 export default function ClaimsQueuePage() {
+  const t = usePortalT();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [statusFilter, setStatusFilter] = useState("OPEN");
   const [settlementMode, setSettlementMode] = useState<ClaimSettlementMode>("LEDGER_ONLY");
@@ -34,7 +37,7 @@ export default function ClaimsQueuePage() {
       });
       setClaims(body.claims ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_claims_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_claims_failed"));
     } finally {
       setLoading(false);
     }
@@ -61,7 +64,7 @@ export default function ClaimsQueuePage() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "approve_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.approve_failed"));
     } finally {
       setBusyId(null);
     }
@@ -75,7 +78,7 @@ export default function ClaimsQueuePage() {
       });
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "reject_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.reject_failed"));
     } finally {
       setBusyId(null);
     }
@@ -83,13 +86,13 @@ export default function ClaimsQueuePage() {
 
   return (
     <PageChrome
-      title="Claims queue"
-      description="Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve."
+      title={t("supplier_portal.exceptions.claims.text.claims_queue")}
+      description={t("supplier_portal.residual.text.post_delivery_damage_missing_and_os_and_d_claims_choose_settleme")}
       icon="warning"
       loading={loading}
       error={error}
       empty={!loading && claims.length === 0}
-      emptyMessage="No claims in this filter. Retailer post-delivery claims appear here within the 48h window."
+      emptyMessage={t("supplier_portal.residual.text.no_claims_in_this_filter_retailer_post_delivery_claims_appear_he")}
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <label className="md-typescale-label-large flex items-center gap-2">
@@ -150,7 +153,7 @@ export default function ClaimsQueuePage() {
               <span className="font-mono">{c.retailer_id}</span>
             </p>
             <p className="mt-1 text-sm text-[var(--color-md-outline)]">
-              Amount {c.amount_minor ?? 0} {c.currency ?? "UZS"} ·{" "}
+              Amount {c.amount_minor ?? 0} {moneyCurrency(c.currency)} ·{" "}
               {c.created_at ? new Date(c.created_at).toLocaleString() : "—"}
             </p>
             {c.description ? <p className="mt-2">{c.description}</p> : null}

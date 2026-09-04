@@ -5,10 +5,10 @@ import { FlowShell } from './FlowShell';
 
 const LAYERS = [
   { label: 'Role apps', sub: 'Portal · Mobile · Desktop' },
-  { label: 'Go API', sub: 'Role-scoped routes' },
-  { label: 'Spanner', sub: 'Transactional writes' },
-  { label: 'Kafka + Redis', sub: 'Events · cache' },
-  { label: 'WebSocket', sub: 'Live fanout' },
+  { label: 'Platform API', sub: 'Role-scoped routes' },
+  { label: 'Shared record', sub: 'Transactional writes' },
+  { label: 'Events + cache', sub: 'Events · cache' },
+  { label: 'Live updates', sub: 'Instant screen sync' },
 ];
 
 type Props = { config?: FlowConfig };
