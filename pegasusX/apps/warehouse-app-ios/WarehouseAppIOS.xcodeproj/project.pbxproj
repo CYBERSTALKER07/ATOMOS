@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B9B000000000000000000001 /* WarehouseTacticalTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000001 /* WarehouseTacticalTheme.swift */; };
+		B9B000000000000000000002 /* TacticalWorkbenchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000002 /* TacticalWorkbenchView.swift */; };
+		B9B000000000000000000003 /* TacticalKpiCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000003 /* TacticalKpiCard.swift */; };
+		B9B000000000000000000004 /* TacticalGaugeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000004 /* TacticalGaugeCard.swift */; };
+		B9B000000000000000000005 /* TacticalLedProgressBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000005 /* TacticalLedProgressBar.swift */; };
+		B9B000000000000000000006 /* TacticalStageStepper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000006 /* TacticalStageStepper.swift */; };
+		B9B000000000000000000007 /* TacticalActivityTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000007 /* TacticalActivityTimeline.swift */; };
+		B9B000000000000000000008 /* TacticalStatusBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000008 /* TacticalStatusBadge.swift */; };
+		B9B000000000000000000009 /* TacticalInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A000000000000000000009 /* TacticalInspectorView.swift */; };
 		01384C9B79B567F1F72BC249 /* WarehouseLocationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2609561D9AA56F496B5921FC /* WarehouseLocationModels.swift */; };
 		024E670C70C3EAC531A5B22A /* OrderOpsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52DB625DC4A7551A59A8C33F /* OrderOpsActions.swift */; };
 		03F9774647A7DEC80ABCA125 /* StatusStack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 873869563410791F2EBF21DC /* StatusStack.swift */; };
@@ -125,6 +134,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B9A000000000000000000001 /* WarehouseTacticalTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseTacticalTheme.swift; sourceTree = "<group>"; };
+		B9A000000000000000000002 /* TacticalWorkbenchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalWorkbenchView.swift; sourceTree = "<group>"; };
+		B9A000000000000000000003 /* TacticalKpiCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalKpiCard.swift; sourceTree = "<group>"; };
+		B9A000000000000000000004 /* TacticalGaugeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalGaugeCard.swift; sourceTree = "<group>"; };
+		B9A000000000000000000005 /* TacticalLedProgressBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalLedProgressBar.swift; sourceTree = "<group>"; };
+		B9A000000000000000000006 /* TacticalStageStepper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalStageStepper.swift; sourceTree = "<group>"; };
+		B9A000000000000000000007 /* TacticalActivityTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalActivityTimeline.swift; sourceTree = "<group>"; };
+		B9A000000000000000000008 /* TacticalStatusBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalStatusBadge.swift; sourceTree = "<group>"; };
+		B9A000000000000000000009 /* TacticalInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TacticalInspectorView.swift; sourceTree = "<group>"; };
 		0082A56E3C64024A01089CA8 /* ForecastConfidenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastConfidenceView.swift; sourceTree = "<group>"; };
 		0101A3B8233E0C365615F34B /* InventoryStockList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryStockList.swift; sourceTree = "<group>"; };
 		05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentConfigView.swift; sourceTree = "<group>"; };
@@ -296,6 +314,7 @@
 		0C83ED539474E932CE013133 /* Layout */ = {
 			isa = PBXGroup;
 			children = (
+				B9A000000000000000000002 /* TacticalWorkbenchView.swift */,
 				9525F799C2B2BD8556F32254 /* ResponsiveGridContentWrapper.swift */,
 				B0062B7BA7DDE4B1606B6BDC /* ResponsiveGridView.swift */,
 				61747FD56F8E6A031DC64753 /* WarehouseAdaptiveShell.swift */,
@@ -315,9 +334,24 @@
 			path = Returns;
 			sourceTree = "<group>";
 		};
+		B9G000000000000000000001 /* Tactical */ = {
+			isa = PBXGroup;
+			children = (
+				B9A000000000000000000003 /* TacticalKpiCard.swift */,
+				B9A000000000000000000004 /* TacticalGaugeCard.swift */,
+				B9A000000000000000000005 /* TacticalLedProgressBar.swift */,
+				B9A000000000000000000006 /* TacticalStageStepper.swift */,
+				B9A000000000000000000007 /* TacticalActivityTimeline.swift */,
+				B9A000000000000000000008 /* TacticalStatusBadge.swift */,
+				B9A000000000000000000009 /* TacticalInspectorView.swift */,
+			);
+			path = Tactical;
+			sourceTree = "<group>";
+		};
 		0DBE66718720C75AFFD6EA64 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				B9G000000000000000000001 /* Tactical */,
 				3ED4612F5ADA60A999C1ABB6 /* Dispatch */,
 				C5A8FCA2782F8D49E661AA4E /* Inventory */,
 				89C7204C949F3829D6350487 /* Orders */,
@@ -683,6 +717,7 @@
 		CED0DD6B60441C57330C3B3B /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				B9A000000000000000000001 /* WarehouseTacticalTheme.swift */,
 				C824961AAD7954F52915E79C /* PegasusTheme.swift */,
 			);
 			path = Theme;
@@ -883,6 +918,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B9B000000000000000000001 /* WarehouseTacticalTheme.swift in Sources */,
+				B9B000000000000000000002 /* TacticalWorkbenchView.swift in Sources */,
+				B9B000000000000000000003 /* TacticalKpiCard.swift in Sources */,
+				B9B000000000000000000004 /* TacticalGaugeCard.swift in Sources */,
+				B9B000000000000000000005 /* TacticalLedProgressBar.swift in Sources */,
+				B9B000000000000000000006 /* TacticalStageStepper.swift in Sources */,
+				B9B000000000000000000007 /* TacticalActivityTimeline.swift in Sources */,
+				B9B000000000000000000008 /* TacticalStatusBadge.swift in Sources */,
+				B9B000000000000000000009 /* TacticalInspectorView.swift in Sources */,
 				E669C875AC849610CE44BD49 /* APIClient.swift in Sources */,
 				DF988D85CB05E90DF362F864 /* AddressLocationField.swift in Sources */,
 				74040992C244ADCBC029836B /* AnalyticsChartGrid.swift in Sources */,

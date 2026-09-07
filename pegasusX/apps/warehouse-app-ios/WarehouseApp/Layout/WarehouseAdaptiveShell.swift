@@ -4,20 +4,26 @@ import Network
 struct WarehouseAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
+    @Environment(TokenStore.self) private var tokenStore
+
     @State private var sidebarSelection: WarehouseSection? = .dashboard
-    @State private var isSidebarExpanded = true
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var compactTab: WarehouseCompactTab = .dashboard
+    @State private var showInspector: Bool = false
+    @State private var searchFilter: String = ""
+
     @State private var pathMonitor: NWPathMonitor?
     @State private var wasOffline = false
 
     var body: some View {
         Group {
             if horizontalSizeClass == .regular {
-                regularShell
+                regularControlTowerShell
             } else {
-                compactShell
+                compactFloorSuiteShell
             }
         }
+        .tint(TacticalTheme.accentCobalt)
         .onAppear { startNetworkMonitor() }
         .onDisappear {
             pathMonitor?.cancel()
@@ -25,61 +31,264 @@ struct WarehouseAdaptiveShell: View {
         }
     }
 
-    private var regularShell: some View {
-        CollapsibleSidebar(
-            title: "Pegasus Warehouse",
-            isExpanded: $isSidebarExpanded,
-            selection: $sidebarSelection,
-            groups: sidebarGroups,
-        ) {
+    // MARK: - iPad Control Tower 3-Column Split View
+    private var regularControlTowerShell: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            sidebarView
+                .navigationSplitViewColumnWidth(min: 240, ideal: 270, max: 320)
+        } content: {
+            contentColumnView
+                .navigationSplitViewColumnWidth(min: 340, ideal: 400, max: 500)
+        } detail: {
+            detailWorkbenchView
+        }
+        .inspector(isPresented: $showInspector) {
+            TacticalInspectorView(
+                title: sidebarSelection?.rawValue ?? "Warehouse Depot",
+                subtitle: "ZONE UZ-TAS-01 · DOCK BAY 3",
+                status: "ACTIVE"
+            )
+            .inspectorColumnWidth(min: 300, ideal: 340, max: 420)
+        }
+    }
+
+    // MARK: - Sidebar Navigation Rail
+    private var sidebarView: some View {
+        VStack(spacing: 0) {
+            // Tactical Brand Header
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "shippingbox.and.arrow.backward.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(TacticalTheme.accentCobalt)
+
+                    Text("PEGASUS")
+                        .font(.system(size: 15, weight: .heavy))
+                        .tracking(1.5)
+                        .foregroundStyle(TacticalTheme.textPrimary)
+
+                    Text("WH")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .foregroundStyle(TacticalTheme.accentCobalt)
+                        .background(TacticalTheme.accentCobalt.opacity(0.15))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+
+                    Spacer()
+
+                    Circle()
+                        .fill(wasOffline ? TacticalTheme.statusDanger : TacticalTheme.statusSuccess)
+                        .frame(width: 8, height: 8)
+                        .overlay(
+                            Circle()
+                                .stroke((wasOffline ? TacticalTheme.statusDanger : TacticalTheme.statusSuccess).opacity(0.4), lineWidth: 2)
+                        )
+                }
+
+                Text("DEPOT: UZ-TAS-01 (TASHKENT)")
+                    .tacticalMicroLabel()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            // Search Filter
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 12))
+                    .foregroundStyle(TacticalTheme.textTertiary)
+                TextField("Filter sections...", text: $searchFilter)
+                    .font(.system(size: 13))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(TacticalTheme.surfaceSunken)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(TacticalTheme.border, lineWidth: 0.5))
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
+
+            Divider()
+                .background(TacticalTheme.border)
+
+            // Grouped Navigation List
+            List(selection: $sidebarSelection) {
+                ForEach(filteredSidebarGroups, id: \.title) { group in
+                    Section(header: Text(group.title).tacticalMicroLabel()) {
+                        ForEach(group.items, id: \.self) { section in
+                            NavigationLink(value: section) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: section.icon)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .frame(width: 20)
+                                        .foregroundStyle(
+                                            sidebarSelection == section
+                                                ? TacticalTheme.accentCobalt
+                                                : TacticalTheme.textSecondary
+                                        )
+
+                                    Text(section.rawValue)
+                                        .font(.system(size: 13, weight: sidebarSelection == section ? .bold : .medium))
+                                        .foregroundStyle(
+                                            sidebarSelection == section
+                                                ? TacticalTheme.textPrimary
+                                                : TacticalTheme.textSecondary
+                                        )
+
+                                    Spacer()
+                                }
+                                .padding(.vertical, 2)
+                            }
+                            .listRowBackground(
+                                sidebarSelection == section
+                                    ? TacticalTheme.surfaceSubtle
+                                    : Color.clear
+                            )
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+            .background(TacticalTheme.surface)
+
+            // Operator Footer Capsule
+            Divider()
+                .background(TacticalTheme.border)
+
+            HStack(spacing: 10) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(TacticalTheme.accentCobalt)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DEPOT SUPERVISOR")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(TacticalTheme.textPrimary)
+                    Text("ON-DUTY SHIFT A")
+                        .tacticalMicroLabel()
+                }
+
+                Spacer()
+
+                Button {
+                    tokenStore.clear()
+                } label: {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 14))
+                        .foregroundStyle(TacticalTheme.textTertiary)
+                        .frame(width: 32, height: 32)
+                        .background(TacticalTheme.surfaceSunken)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(14)
+            .background(TacticalTheme.surfaceRaised)
+        }
+        .background(TacticalTheme.surface)
+        .navigationTitle("Command Rail")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: - Content Operations Feed
+    private var contentColumnView: some View {
+        Group {
             if let section = sidebarSelection {
                 sectionView(section)
             } else {
-                ContentUnavailableView("Select a section", systemImage: "sidebar.left")
+                ContentUnavailableView("Select a Section", systemImage: "sidebar.left")
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        showInspector.toggle()
+                    }
+                } label: {
+                    Image(systemName: showInspector ? "sidebar.right" : "sidebar.right")
+                        .foregroundStyle(showInspector ? TacticalTheme.accentCobalt : TacticalTheme.textSecondary)
+                }
             }
         }
     }
 
-    private var sidebarGroups: [(title: String, items: [CollapsibleSidebarItem<WarehouseSection>])] {
-        [
-            ("Primary", items(for: WarehouseSection.primarySections)),
-            ("Fulfillment", items(for: WarehouseSection.fulfillmentSections)),
-            ("Inventory", items(for: WarehouseSection.inventorySections)),
-            ("Operations", items(for: WarehouseSection.operationsSections)),
-            ("Portal only", items(for: WarehouseSection.portalSections)),
-        ]
+    // MARK: - Detail Workbench
+    private var detailWorkbenchView: some View {
+        TacticalWorkbenchView(
+            section: sidebarSelection ?? .dashboard,
+            onInspect: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    showInspector.toggle()
+                }
+            }
+        )
     }
 
-    private func items(for sections: [WarehouseSection]) -> [CollapsibleSidebarItem<WarehouseSection>] {
-        sections.map { CollapsibleSidebarItem(tag: $0, label: $0.rawValue, icon: $0.icon) }
-    }
-
-    private var compactShell: some View {
+    // MARK: - iPhone Floor Suite Shell
+    private var compactFloorSuiteShell: some View {
         TabView(selection: $compactTab) {
             sectionView(.dashboard)
-                .tabItem { Label("portal.nav.dashboard", systemImage: WarehouseSection.dashboard.icon) }
+                .tabItem {
+                    Label("Command", systemImage: "antenna.radiowaves.left.and.right")
+                }
                 .tag(WarehouseCompactTab.dashboard)
 
-            sectionView(.dispatch)
-                .tabItem { Label("portal.nav.dispatch", systemImage: WarehouseSection.dispatch.icon) }
-                .tag(WarehouseCompactTab.dispatch)
+            NavigationStack {
+                ManifestsView()
+            }
+            .tabItem {
+                Label("Inbound", systemImage: "doc.text")
+            }
+            .tag(WarehouseCompactTab.inbound)
 
             sectionView(.inventory)
-                .tabItem { Label("portal.nav.floor", systemImage: WarehouseSection.inventory.icon) }
+                .tabItem {
+                    Label("Floor", systemImage: "archivebox")
+                }
                 .tag(WarehouseCompactTab.floor)
 
-            sectionView(.demandForecast)
-                .tabItem { Label("portal.nav.planning", systemImage: WarehouseSection.demandForecast.icon) }
-                .tag(WarehouseCompactTab.plan)
+            sectionView(.dispatch)
+                .tabItem {
+                    Label("Dispatch", systemImage: "paperplane")
+                }
+                .tag(WarehouseCompactTab.dispatch)
 
             NavigationStack {
                 MoreHubView()
             }
-            .tabItem { Label("mobile_warehouse.ui.more", systemImage: "ellipsis.circle") }
+            .tabItem {
+                Label("Hub", systemImage: "ellipsis.circle")
+            }
             .tag(WarehouseCompactTab.more)
         }
     }
 
+    // MARK: - Filtered Groups for Sidebar
+    private var sidebarGroups: [(title: String, items: [WarehouseSection])] {
+        [
+            ("Primary Command", WarehouseSection.primarySections),
+            ("Fulfillment & Staging", WarehouseSection.fulfillmentSections),
+            ("Inventory & Bins", WarehouseSection.inventorySections),
+            ("Operations Control", WarehouseSection.operationsSections),
+            ("Portal Administration", WarehouseSection.portalSections)
+        ]
+    }
+
+    private var filteredSidebarGroups: [(title: String, items: [WarehouseSection])] {
+        if searchFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return sidebarGroups
+        }
+        let query = searchFilter.lowercased()
+        return sidebarGroups.compactMap { group in
+            let filteredItems = group.items.filter { $0.rawValue.lowercased().contains(query) }
+            return filteredItems.isEmpty ? nil : (title: group.title, items: filteredItems)
+        }
+    }
+
+    // MARK: - Section View Resolver
     @ViewBuilder
     private func sectionView(_ section: WarehouseSection) -> some View {
         switch section {
@@ -116,7 +325,7 @@ struct WarehouseAdaptiveShell: View {
         case .preorders:
             NavigationStack { PreordersView() }
         case .stockCommitments:
-            NavigationStack { StockCommitmentsView() }
+            StockCommitmentsView()
         case .tomorrowBoard:
             NavigationStack { TomorrowBoardView() }
         case .replenishment:
@@ -161,11 +370,7 @@ struct WarehouseAdaptiveShell: View {
         let monitor = NWPathMonitor()
         monitor.pathUpdateHandler = { path in
             DispatchQueue.main.async {
-                if path.status == .satisfied {
-                    wasOffline = false
-                } else {
-                    wasOffline = true
-                }
+                wasOffline = (path.status != .satisfied)
             }
         }
         monitor.start(queue: DispatchQueue(label: "com.pegasusx.warehouse.network"))
