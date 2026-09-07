@@ -72,30 +72,14 @@ func TestSoakGate_EnoughProposalsButNoMatchedOrdersDenies(t *testing.T) {
 func TestPlaceAllowedForRetailer_RequiresFlagAndGate(t *testing.T) {
 	s := newSoakTestService()
 	seedShadowProposals(s, "org1", 25)
-	// Flag off → false regardless of gate.
+	// Invariant: Auto-orders are strictly draft only. Live placement is permanently disabled.
 	s.autoOrderPlaceEnabled = false
 	if s.placeAllowedForRetailer(context.Background(), "org1") {
 		t.Fatal("place must be blocked when process flag is off")
 	}
-	// Flag on but no matched orders (env gate defaults) → false.
 	s.autoOrderPlaceEnabled = true
-	t.Setenv("AUTO_ORDER_SOAK_GATE_DISABLED", "")
-	if s.placeAllowedForRetailer(context.Background(), "org1") {
-		t.Fatal("place must be blocked when soak gate fails")
-	}
-	// Break-glass bypass → true + audited.
 	t.Setenv("AUTO_ORDER_SOAK_GATE_DISABLED", "true")
-	if !s.placeAllowedForRetailer(context.Background(), "org1") {
-		t.Fatal("place must be allowed when gate disabled and flag on")
-	}
-	if len(s.soakBypassAudits) != 1 {
-		t.Fatalf("expected one soak bypass audit, got %d", len(s.soakBypassAudits))
-	}
-	// Second call dedupes audit.
-	if !s.placeAllowedForRetailer(context.Background(), "org1") {
-		t.Fatal("place must stay allowed on second bypass")
-	}
-	if len(s.soakBypassAudits) != 1 {
-		t.Fatalf("expected deduped soak bypass audit, got %d", len(s.soakBypassAudits))
+	if s.placeAllowedForRetailer(context.Background(), "org1") {
+		t.Fatal("place must remain permanently disabled: auto-orders are draft only")
 	}
 }

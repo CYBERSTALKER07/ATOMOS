@@ -11,6 +11,20 @@ Current source code is the only status SoT. Docs and prior chat are hypotheses.
 - Blast radius on every edit.
 - Load `honest-code-gate`. Canonical product tree: `pegasusX/`.
 
+# STRICT TWO-SYSTEM ARCHITECTURAL BOUNDARY (DO NOT MERGE OR CROSS-POLLUTE)
+Within the `V.O.I.D` workspace, there are TWO completely distinct, parallel architectural systems:
+
+1. **`pegasusX/` — Global Enterprise Multi-Tenant Cloud Architecture**:
+   - Google Cloud Spanner (`schema/spanner.ddl`) multi-tenant (`SupplierId`), Apache Kafka, distributed multi-cell.
+2. **`pegasus.x/` — Sovereign Lean Single-Tenant / National Operating Core**:
+   - PostgreSQL 16 (`pgx/v5`) + Redis 7, lean transactional outbox, Servercore Tashkent sovereign deployment, Tauri v2 Desktops, Telegram Bot/MiniApp.
+
+### Rules of Engagement:
+- **Zero Contamination**: Do NOT mix Spanner code/DDL into `pegasus.x`. Do NOT downgrade `pegasusX` to PostgreSQL.
+- **Cross-Scan & Feature Sync**: Scan `pegasusX` for missing domain models, business logic, and UI workflows, then implement them natively into `pegasus.x`.
+- **Active Priority Gap**: Fleet Management (Vehicles/Trucks), Driver Onboarding & Management, Dynamic Driver-Vehicle Daily Shift Assignments, Mid-Shift Hot-Swapping, and Pre-trip Vehicle Inspections (DVIR).
+
+
 See `.github/instructions/honest-code-gate.instructions.md`.
 
 **Retrieval:** `.agents/memory/WORKSPACE.md` + `graph_retrieve.py` + live code. Persist verified facts only. `.agents/skills/graph-retrieval-memory/references/always-on.md`.

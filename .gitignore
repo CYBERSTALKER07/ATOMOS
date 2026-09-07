@@ -79,6 +79,8 @@ pegasus/backend-go
 pegasus/*-ai-worker
 node_modules/
 dist/
+pegasus.x/
+
 
 # === CodeGraph Cache ===
 .cgr-*

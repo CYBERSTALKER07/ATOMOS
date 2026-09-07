@@ -3,7 +3,6 @@ package retailer
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,7 +14,6 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"google.golang.org/api/iterator"
 )
 
@@ -103,10 +101,17 @@ func (s *Service) HandleAutoOrderRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rawMode := strings.TrimSpace(r.URL.Query().Get("mode"))
-	mode := NormalizeExecutionMode(rawMode)
-	if rawMode != "" && mode == "" {
+	if strings.EqualFold(rawMode, "place") {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
-			"error": "invalid_mode", "allowed": "shadow,draft,place",
+			"error":   "auto_order_draft_only",
+			"message": "Auto-orders are draft only; automated order placement is disabled. Review draft cart lines to place orders.",
+		})
+		return
+	}
+	mode := NormalizeExecutionMode(rawMode)
+	if rawMode != "" && (mode == "" || mode == AutoOrderModeOff) {
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+			"error": "invalid_mode", "allowed": "shadow,draft",
 		})
 		return
 	}
@@ -117,18 +122,11 @@ func (s *Service) HandleAutoOrderRun(w http.ResponseWriter, r *http.Request) {
 			mode = AutoOrderModeDraft
 		}
 	}
-	if mode != AutoOrderModeShadow && mode != AutoOrderModeDraft && mode != AutoOrderModePlace {
+	if mode != AutoOrderModeShadow && mode != AutoOrderModeDraft {
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
-			"error": "invalid_mode", "allowed": "shadow,draft,place",
+			"error": "invalid_mode", "allowed": "shadow,draft",
 		})
 		return
-	}
-	if mode == AutoOrderModePlace {
-		role := auth.EffectiveRetailerRole(claims)
-		if role != "OWNER" && role != "ADMIN" && role != "MANAGER" {
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "place_requires_manager"})
-			return
-		}
 	}
 	run := s.RunAutoOrderForRetailer(r.Context(), orgID, mode)
 	writeJSON(w, http.StatusOK, run)
@@ -468,120 +466,34 @@ func (s *Service) markBucket(key, value string) {
 	st.mu.Unlock()
 }
 
-// runAutoOrderPlace groups candidates by supplier and creates real orders via OrderCreator.
+// runAutoOrderPlace enforces that auto-orders are draft only: live order placement is disabled.
 func (s *Service) runAutoOrderPlace(ctx context.Context, orgID, bucket string, cands []AutoOrderCandidate, run *AutoOrderRun) {
-	if s.orderCreator == nil || !s.placeAllowedForRetailer(ctx, orgID) {
-		// Soft fall-through: still draft so operators are not stuck
-		for _, c := range cands {
-			run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "place_unavailable"})
-		}
-		if s.orderCreator == nil {
-			run.Message = "place_unavailable_no_order_creator"
-		} else {
-			run.Message = "place_blocked_by_soak_gate_or_flag"
-		}
-		// Draft fallback for ops continuity
-		now := s.now().UTC()
-		for _, c := range cands {
-			if c.SupplierID == "" {
-				continue
-			}
-			if s.cartRepo != nil {
-				_ = s.cartRepo.UpsertItems(ctx, []CartItem{{
-					CartItemID: s.newID(), RetailerID: orgID, SupplierID: c.SupplierID,
-					ProductID: aoFirstNonEmpty(c.ProductID, c.SKU), Quantity: c.Qty,
-					Currency: autoOrderCartCurrency(ctx, c.SupplierID), UpdatedAt: now,
-				}})
-			}
-			key := orgID + "|" + bucket + "|" + AutoOrderModePlace + "|" + c.SKU
-			s.markBucket(key, run.RunID)
-			run.DraftLines++
-		}
-		if run.DraftLines > 0 {
-			run.Message = "drafted_place_unavailable_fallback"
-		}
-		return
+	// Invariant: Auto-orders are strictly draft only. Live order placement is permanently disabled.
+	for _, c := range cands {
+		run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "auto_order_draft_only"})
 	}
-
-	// Group by supplier
-	groups := map[string][]AutoOrderCandidate{}
+	run.Message = "auto_order_draft_only"
+	now := s.now().UTC()
 	for _, c := range cands {
 		if c.SupplierID == "" {
-			run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "missing_supplier"})
 			continue
 		}
-		groups[c.SupplierID] = append(groups[c.SupplierID], c)
+		if s.cartRepo != nil {
+			_ = s.cartRepo.UpsertItems(ctx, []CartItem{{
+				CartItemID: s.newID(), RetailerID: orgID, SupplierID: c.SupplierID,
+				ProductID: aoFirstNonEmpty(c.ProductID, c.SKU), Quantity: c.Qty,
+				Currency: autoOrderCartCurrency(ctx, c.SupplierID), UpdatedAt: now,
+			}})
+		}
+		key := orgID + "|" + bucket + "|" + AutoOrderModeDraft + "|" + c.SKU
+		s.markBucket(key, run.RunID)
+		run.DraftLines++
 	}
-
-	lat, lng, h3, locID := s.autoOrderDeliveryGeo(ctx, orgID)
-	if !autoOrderGeoValid(lat, lng, h3) {
-		for sid := range groups {
-			for _, c := range groups[sid] {
-				run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: "retailer_geo_missing"})
-			}
-		}
-		run.Message = "retailer_geo_missing"
-		return
+	if run.DraftLines > 0 {
+		run.Message = "drafted_auto_order_draft_only"
 	}
-
-	placedAny := false
-	skippedAny := false
-	for supplierID, lines := range groups {
-		var orderLines []order.LineItem
-		var skus []string
-		for _, c := range lines {
-			unitPrice := int64(100) // placeholder; Create normalizes/quotes when Spanner products exist
-			if c.Name == "" {
-				c.Name = c.SKU
-			}
-			orderLines = append(orderLines, order.LineItem{
-				SKU: c.SKU, Name: c.Name, Quantity: c.Qty, UnitPrice: unitPrice,
-			})
-			skus = append(skus, c.SKU)
-		}
-		req := order.CreateRequest{
-			LineItems:  orderLines,
-			H3Cell:     h3,
-			Lat:        lat,
-			Lng:        lng,
-			LocationID: locID,
-			SupplierID: supplierID,
-			Source:     order.OrderSourceAutoOrder,
-		}
-		resp, err := s.orderCreator.Create(ctx, orgID, req)
-		if err != nil {
-			skippedAny = true
-			reason := "create_failed"
-			if errors.Is(err, order.ErrCreditLimitBreached) {
-				reason = "credit_block"
-			}
-			for _, c := range lines {
-				run.Skipped = append(run.Skipped, AutoOrderSkip{SKU: c.SKU, Reason: reason})
-			}
-			continue
-		}
-		placedAny = true
-		for _, c := range lines {
-			key := orgID + "|" + bucket + "|" + AutoOrderModePlace + "|" + c.SKU
-			s.markBucket(key, resp.OrderID)
-			s.persistAutoOrderBucket(ctx, orgID, bucket, AutoOrderModePlace, c.SKU, run.RunID, resp.OrderID)
-			run.PlacedLines++
-			s.markReorderSuggestionConverted(ctx, orgID, c.SKU)
-		}
-		run.PlacedOrders = append(run.PlacedOrders, AutoOrderPlacedOrder{
-			OrderID:    resp.OrderID,
-			SupplierID: supplierID,
-			LineCount:  len(lines),
-			TotalMinor: resp.TotalMinor,
-			SKUs:       skus,
-		})
-	}
-	if placedAny && skippedAny {
-		run.Status = "PARTIAL"
-		run.Message = "orders_placed_partial"
-	} else if placedAny {
-		run.Message = "orders_placed"
-	}
+	run.PlacedLines = 0
+	run.PlacedOrders = nil
 }
 
 func autoOrderGeoValid(lat, lng float64, h3 string) bool {

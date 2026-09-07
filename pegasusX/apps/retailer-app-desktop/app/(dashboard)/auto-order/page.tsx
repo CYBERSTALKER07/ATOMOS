@@ -185,7 +185,7 @@ export default function AutoOrderPage() {
     fetchSoakGate,
   ]);
 
-  const runAutoOrder = async (mode: "shadow" | "draft" | "place") => {
+  const runAutoOrder = async (mode: "shadow" | "draft") => {
     setRunning(true);
     setRunningMode(mode);
     setSyncMessage(null);
@@ -204,22 +204,11 @@ export default function AutoOrderPage() {
         const detail =
           json.error === "forbidden" && json.permission
             ? `Missing permission: ${json.permission}`
-            : json.error === "place_requires_manager"
-              ? "Place requires OWNER, ADMIN, or MANAGER"
-              : json.error || `run_failed_${res.status}`;
+            : json.error || `run_failed_${res.status}`;
         throw new Error(detail);
       }
       setLastRun(json);
-      const placed = json.placed_lines ?? 0;
-      const orders = json.placed_orders?.length ?? 0;
-      if (mode === "place") {
-        setSyncMessage(
-          placed > 0
-            ? `Place run: ${placed} line(s) in ${orders} order(s)` +
-                (json.message ? ` — ${json.message}` : "")
-            : `Place run ${json.status}${json.message ? `: ${json.message}` : ""}`,
-        );
-      } else if (mode === "shadow") {
+      if (mode === "shadow") {
         setSyncMessage(
           json.status === "OK" || json.status === "PARTIAL"
             ? `Shadow run: ${json.draft_lines} proposal(s) recorded (no orders)` +
@@ -374,27 +363,14 @@ export default function AutoOrderPage() {
               type="button"
               disabled={running || isLoading || executionMode === "off"}
               onClick={() => void runAutoOrder("draft")}
-              className="portal-btn portal-btn--ghost h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
+              className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
             >
               {running && runningMode === "draft" ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
-                <Play size={16} />
-              )}
-              {running && runningMode === "draft" ? "Drafting…" : "Draft now"}
-            </button>
-            <button
-              type="button"
-              disabled={running || isLoading || executionMode === "off"}
-              onClick={() => setPlaceConfirmOpen(true)}
-              className="portal-btn portal-btn--primary h-11 px-5 rounded-xl font-light inline-flex items-center gap-2 disabled:opacity-60"
-            >
-              {running && runningMode === "place" ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
                 <ShoppingCart size={16} />
               )}
-              {running && runningMode === "place" ? "Placing…" : "Place now"}
+              {running && runningMode === "draft" ? "Drafting…" : "Draft to cart"}
             </button>
             <button
               type="button"
@@ -411,50 +387,6 @@ export default function AutoOrderPage() {
           </div>
         }
       >
-        {placeConfirmOpen && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.45)" }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="place-confirm-title"
-          >
-            <div className="max-w-md w-full rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-6 shadow-xl">
-              <h2
-                id="place-confirm-title"
-                className="text-lg font-medium text-[var(--desk-text-primary)] mb-2"
-              >
-                Create real supplier orders?
-              </h2>
-              <p className="text-sm text-[var(--desk-text-secondary)] mb-4">
-                Place mode creates real procurement orders via the order
-                aggregate (AUTO_ORDER). Requires primary location geo, place
-                permission, and server flag{" "}
-                <code className="text-xs">AUTO_ORDER_PLACE_ENABLED</code>. This
-                cannot be undone as a draft.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="portal-btn portal-btn--ghost h-10 px-4 rounded-xl"
-                  onClick={() => setPlaceConfirmOpen(false)}
-                  disabled={running}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="portal-btn portal-btn--primary h-10 px-4 rounded-xl"
-                  disabled={running}
-                  onClick={() => void runAutoOrder("place")}
-                >
-                  Confirm place
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {syncMessage && (
           <div
             className={`mb-6 flex items-center gap-2 p-3 rounded-xl border ${
@@ -483,15 +415,14 @@ export default function AutoOrderPage() {
           </h3>
           <p className="text-xs text-[var(--desk-text-tertiary)] mb-4">
             How aggressive globally. Scopes below choose which SKUs participate. Off disables
-            worker action. Shadow is recommended until acceptance looks good.
+            worker action. Shadow records simulated proposals. Draft adds items to cart for checkout review.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {(
               [
                 ["off", "Off"],
-                ["shadow", "Shadow"],
-                ["draft", "Draft cart"],
-                ["place", "Place orders"],
+                ["shadow", "Shadow (Simulation)"],
+                ["draft", "Draft cart (Review Required)"],
               ] as const
             ).map(([mode, label]) => (
               <button
@@ -505,12 +436,12 @@ export default function AutoOrderPage() {
                 onClick={() => void setExecutionMode(mode)}
               >
                 {label}
-                {mode === "place" ? " *" : mode === "shadow" ? " ✓" : ""}
+                {mode === "shadow" ? " ✓" : ""}
               </button>
             ))}
           </div>
           <p className="mt-3 text-xs text-[var(--desk-text-tertiary)]">
-            * Place still needs AUTO_ORDER_PLACE_ENABLED + manager permission.
+            Auto-orders are draft only. Recommended lines are placed into your cart for review and explicit manual checkout.
             {settings?.shadow_stats
               ? ` · 30d WAPE ${(settings.shadow_stats.wape * 100).toFixed(0)}% · accept ${(settings.shadow_stats.unmodified_accept_rate * 100).toFixed(0)}% (${settings.shadow_stats.proposal_count} proposals)`
               : ""}

@@ -135,24 +135,10 @@ func (s *Service) recordSoakGateBypass(ctx context.Context, orgID, source string
 	)
 }
 
-// placeAllowedForRetailer combines dual-control place flag evaluation with the
-// per-retailer soak gate. Used by the worker before honoring ExecutionMode=place.
+// placeAllowedForRetailer enforces the invariant that auto-orders are draft only.
+// Automated live order placement is permanently disabled across all retailers.
 func (s *Service) placeAllowedForRetailer(ctx context.Context, orgID string) bool {
-	enabled := s.autoOrderPlaceEnabled
-	if s.placeFlags != nil && strings.TrimSpace(orgID) != "" {
-		if on, _, err := s.placeFlags.Evaluate(ctx, "AUTO_ORDER_PLACE_ENABLED", "RETAILER", orgID); err == nil {
-			enabled = on
-		}
-	}
-	if !enabled {
-		return false
-	}
-	if bypass, source := s.soakGateBypassed(ctx, orgID); bypass {
-		s.recordSoakGateBypass(ctx, orgID, source)
-		return true
-	}
-	cfg := SoakGateConfigFromEnv()
-	return s.EvaluateSoakGate(ctx, orgID, cfg).Allowed
+	return false
 }
 
 func envInt64(k string, def int64) int64 {

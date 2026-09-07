@@ -9,19 +9,19 @@ const (
 	AutoOrderModeOff    = "off"
 	AutoOrderModeShadow = "shadow"
 	AutoOrderModeDraft  = "draft"
+	// AutoOrderModePlace is deprecated/disallowed: auto-orders must be draft only.
 	AutoOrderModePlace  = "place"
 )
 
 // NormalizeExecutionMode returns a canonical mode. Empty → draft (backward compat).
+// Invariant: Auto-orders are draft only; 'place' is coerced to 'draft'.
 func NormalizeExecutionMode(raw string) string {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case AutoOrderModeOff:
 		return AutoOrderModeOff
 	case AutoOrderModeShadow:
 		return AutoOrderModeShadow
-	case AutoOrderModePlace:
-		return AutoOrderModePlace
-	case AutoOrderModeDraft, "":
+	case AutoOrderModePlace, AutoOrderModeDraft, "":
 		return AutoOrderModeDraft
 	default:
 		return ""
@@ -30,7 +30,8 @@ func NormalizeExecutionMode(raw string) string {
 
 // ValidExecutionMode reports whether mode is one of the supported values.
 func ValidExecutionMode(mode string) bool {
-	return NormalizeExecutionMode(mode) != "" || strings.TrimSpace(mode) == ""
+	m := strings.ToLower(strings.TrimSpace(mode))
+	return m == "" || m == AutoOrderModeOff || m == AutoOrderModeShadow || m == AutoOrderModeDraft
 }
 
 // AutoOrderShadowEnabled gates shadow proposal persistence (SSMR on by default via env).

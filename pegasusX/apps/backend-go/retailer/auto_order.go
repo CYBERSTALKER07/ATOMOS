@@ -148,28 +148,24 @@ func (s *Service) HandleAutoOrderPatch(w http.ResponseWriter, r *http.Request) {
 			settings.ExecutionMode = AutoOrderModeShadow
 		}
 		if req.ExecutionMode != nil {
-			mode := NormalizeExecutionMode(*req.ExecutionMode)
-			if mode == "" && strings.TrimSpace(*req.ExecutionMode) != "" {
+			raw := strings.ToLower(strings.TrimSpace(*req.ExecutionMode))
+			if raw == AutoOrderModePlace {
 				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
-					"error": "invalid_execution_mode", "allowed": "off,shadow,draft,place",
+					"error":   "auto_order_draft_only",
+					"message": "Auto-orders are draft only; execution mode 'place' is not permitted.",
 				})
 				return
 			}
-			if mode == AutoOrderModePlace {
-				claims, ok := auth.FromContext(r.Context())
-				if !ok || !auth.HasRetailerPerm(claims, auth.PermOrderPlace) {
-					writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "permission": auth.PermOrderPlace})
-					return
-				}
-				role := auth.EffectiveRetailerRole(claims)
-				if role != "OWNER" && role != "ADMIN" && role != "MANAGER" {
-					writeJSON(w, http.StatusForbidden, map[string]string{"error": "place_requires_manager"})
-					return
-				}
+			if !ValidExecutionMode(raw) {
+				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+					"error": "invalid_execution_mode", "allowed": "off,shadow,draft",
+				})
+				return
 			}
+			mode := NormalizeExecutionMode(raw)
 			if mode == AutoOrderModeOff {
 				settings.GlobalEnabled = false
-			} else if mode == AutoOrderModeShadow || mode == AutoOrderModeDraft || mode == AutoOrderModePlace {
+			} else if mode == AutoOrderModeShadow || mode == AutoOrderModeDraft {
 				// Selecting an active mode implies global master on unless off.
 				if !settings.GlobalEnabled && !hasAnyScopedEnable(settings) {
 					settings.GlobalEnabled = true

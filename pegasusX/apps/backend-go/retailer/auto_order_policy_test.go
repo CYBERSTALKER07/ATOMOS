@@ -11,7 +11,7 @@ func TestNormalizeExecutionMode(t *testing.T) {
 		"DRAFT":  AutoOrderModeDraft,
 		"shadow": AutoOrderModeShadow,
 		"off":    AutoOrderModeOff,
-		"place":  AutoOrderModePlace,
+		"place":  AutoOrderModeDraft, // Invariant: Auto-orders are draft only
 		"bogus":  "",
 	}
 	for in, want := range cases {
