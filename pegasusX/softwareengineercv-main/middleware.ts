@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-/** Sync `?lang=en|ru` into the language cookie for SSR + hreflang targets. */
+const SUPPORTED_LANGS = ['en', 'ru', 'es', 'de', 'fr', 'zh', 'ja', 'ar', 'pt', 'tr', 'uz'];
+
+/** Sync `?lang=...` into the language cookie for SSR + hreflang targets. */
 export function middleware(request: NextRequest) {
   const lang = request.nextUrl.searchParams.get('lang');
-  if (lang !== 'en' && lang !== 'ru') {
+  if (!lang || !SUPPORTED_LANGS.includes(lang)) {
     return NextResponse.next();
   }
 
