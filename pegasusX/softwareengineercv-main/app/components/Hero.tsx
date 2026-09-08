@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ArrowRight, Layers, LayoutDashboard } from 'lucide-react';
 import ParticleText from './ParticleText';
+import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import IsometricTerrain from './IsometricTerrain';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
@@ -16,8 +17,8 @@ export default function Hero() {
   const [visualMode, setVisualMode] = useState<'wireframe' | 'dashboard'>('wireframe');
 
   const textRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const subtitleRef = useRef<HTMLHeadingElement>(null);
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
@@ -106,9 +107,47 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      className="min-h-screen relative flex items-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-12 sm:pb-16"
+      className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16"
     >
-      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Decorative Curved Loops for desktop / Mac */}
+      {!isMobile && (
+        <>
+          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0">
+            <CurvedLoop
+              marqueeText="PEGASUS  "
+              speed={1.5}
+              curveAmount={900}
+              direction="right"
+              interactive={false}
+              className="fill-white"
+            />
+          </div>
+
+          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 scale-x-[-1]">
+            <CurvedLoop
+              marqueeText="PEGASUS  "
+              speed={1.5}
+              curveAmount={500}
+              direction="left"
+              interactive={false}
+              className="fill-white"
+            />
+          </div>
+
+          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 rotate-180 scale-x-[-1]">
+            <CurvedLoop
+              marqueeText="PEGASUS  "
+              speed={1.5}
+              curveAmount={200}
+              direction="right"
+              interactive={false}
+              className="fill-white"
+            />
+          </div>
+        </>
+      )}
+
+      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Tactical Framed Container from reference layout */}
         <div className="border border-white/15 bg-[#000000] shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/15">
           {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
@@ -117,34 +156,47 @@ export default function Hero() {
             className="flex flex-col justify-between p-8 sm:p-12 lg:p-14 xl:p-16 relative z-10"
           >
             <div className="space-y-6">
-              {/* Primary Headline */}
-              <div>
-                <h1
-                  ref={titleRef}
-                  className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-normal tracking-tight text-white leading-[1.08]"
-                >
+              {/* Primary Headline with Interactive ParticleText */}
+              <div className="space-y-2">
+                <div ref={titleRef} className="w-full h-24 sm:h-28 md:h-32 xl:h-36">
                   <span className="sr-only">{t('hero_title')}</span>
-                  <span className="block font-semibold text-white tracking-tight mb-2">
-                    Pegasus.
-                  </span>
-                  <span
-                    ref={subtitleRef}
-                    className="block text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-white/90 min-h-[1.25em]"
-                  >
-                    <TextType
-                      key={language}
-                      text={typedPhrases}
-                      typingSpeed={isMobile ? 90 : 70}
-                      pauseDuration={1600}
-                      deletingSpeed={isMobile ? 60 : 45}
-                      showCursor={true}
-                      cursorCharacter="|"
-                      loop={true}
-                      textColors={['#FFFFFF', '#C0C0C0']}
-                      className="font-light"
-                      cursorClassName="text-white font-light"
-                    />
-                  </span>
+                  <ParticleText
+                    text="Pegasus"
+                    particleSize={2.2}
+                    density={4}
+                    color="#f8fafc"
+                    highlightColor="#10B981"
+                    scatter={160}
+                    gatherDuration={1500}
+                    stagger={350}
+                    pointerRepel={42}
+                    repelRadius={120}
+                    idleDrift={0.6}
+                    trigger="mount"
+                    fontSize="clamp(3.2rem, 6.5vw, 6rem)"
+                    fontWeight={800}
+                    textAlign="left"
+                    glow
+                  />
+                </div>
+
+                <h1
+                  ref={subtitleRef}
+                  className="block text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-white/90 min-h-[1.25em]"
+                >
+                  <TextType
+                    key={language}
+                    text={typedPhrases}
+                    typingSpeed={isMobile ? 90 : 70}
+                    pauseDuration={1600}
+                    deletingSpeed={isMobile ? 60 : 45}
+                    showCursor={true}
+                    cursorCharacter="|"
+                    loop={true}
+                    textColors={['#FFFFFF', '#C0C0C0']}
+                    className="font-light"
+                    cursorClassName="text-white font-light"
+                  />
                 </h1>
               </div>
 
@@ -240,6 +292,30 @@ export default function Hero() {
           </div>
         </div>
       </div>
+
+      {/* Scroll Indicator */}
+      <button
+        className="absolute bottom-3 left-1/2 transform -translate-x-1/2 cursor-pointer z-20 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
+        onClick={scrollToNext}
+        aria-label="Scroll to next section"
+      >
+        <div className="flex flex-col items-center gap-1.5 text-white/60 group-hover:text-[#FBFF63] transition-colors duration-300">
+          <span className="text-[10px] font-mono tracking-widest uppercase">{t('hero_scroll')}</span>
+          <svg
+            className="w-4 h-4 animate-bounce"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            />
+          </svg>
+        </div>
+      </button>
     </section>
   );
 }

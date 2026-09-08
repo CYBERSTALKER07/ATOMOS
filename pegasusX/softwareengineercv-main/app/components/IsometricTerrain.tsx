@@ -29,16 +29,18 @@ export default function IsometricTerrain() {
     let isVisible = true;
     let animationFrameId: number;
 
-    // Detect low-end hardware capabilities
+    // Detect hardware capabilities (Macs and desktop PCs are high-performance Tier 1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
-    const concurrency = nav?.hardwareConcurrency ?? 4;
-    const deviceMemory = nav?.deviceMemory ?? 4;
-    const isLowEndDevice = isMobile || concurrency <= 4 || deviceMemory <= 4;
+    const isMac = typeof navigator !== 'undefined' && /Mac|Macintosh|Mac OS/i.test(nav?.userAgent || nav?.platform || '');
+    const concurrency = nav?.hardwareConcurrency ?? 8;
+    const deviceMemory = nav?.deviceMemory;
+    // Only flag as low-end if definitely not a Mac, and mobile or genuinely resource-constrained
+    const isLowEndDevice = !isMac && (isMobile || concurrency <= 2 || (deviceMemory !== undefined && deviceMemory <= 3));
 
     // Dynamic grid density & resolution settings based on device tier
-    const COLS = isLowEndDevice ? 18 : 26;
-    const ROWS = isLowEndDevice ? 18 : 26;
+    const COLS = isLowEndDevice ? 18 : 28;
+    const ROWS = isLowEndDevice ? 18 : 28;
     const targetFps = isLowEndDevice ? 30 : 60;
     const frameInterval = 1000 / targetFps;
 
