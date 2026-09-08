@@ -20,6 +20,7 @@ export interface ParticleTextProps {
   fontFamily?: string;
   glow?: boolean;
   textAlign?: 'left' | 'center' | 'right';
+  as?: 'div' | 'h1' | 'span';
   className?: string;
   style?: CSSProperties;
 }
@@ -111,6 +112,7 @@ const ParticleText = ({
   fontFamily = 'inherit',
   glow = true,
   textAlign = 'left',
+  as: Tag = 'div',
   className = '',
   style
 }: ParticleTextProps) => {
@@ -474,26 +476,26 @@ const ParticleText = ({
   if (isLowEnd) {
     return (
       <div className={`relative flex items-center h-full w-full ${className}`} style={style}>
-        <h1
+        <Tag
           className="font-extrabold tracking-tight text-white drop-shadow-[0_0_24px_rgba(16,185,129,0.3)]"
           style={{ fontSize: typeof fontSize === 'string' ? fontSize : `${fontSize}px`, fontWeight }}
         >
           {text}
-        </h1>
+        </Tag>
       </div>
     );
   }
 
   return (
-    <h1
-      ref={containerRef}
+    <Tag
+      ref={containerRef as any}
       className={`relative block h-full min-h-[240px] w-full overflow-hidden touch-none ${className}`}
       style={style}
       aria-label={text}
     >
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
       <span className="sr-only">{text}</span>
-    </h1>
+    </Tag>
   );
 };
 

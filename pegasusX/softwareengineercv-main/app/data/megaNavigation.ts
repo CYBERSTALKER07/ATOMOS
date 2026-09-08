@@ -86,6 +86,10 @@ export const MEGA_NAV_CATEGORIES: MegaNavCategory[] = [
     label: 'Solutions',
     viewAllHref: '/solutions',
     links: [
+      { slug: 'global-logistics', label: 'Global Logistics', description: 'Multi-region cells, cross-border freight & carrier networks.', href: '/global-logistics', badge: 'NEW' },
+      { slug: 'supply-chain-software', label: 'Supply Chain Software', description: 'End-to-end Order-to-Cash execution across 6 roles.', href: '/supply-chain-software', badge: 'NEW' },
+      { slug: 'logistics-automation', label: 'Logistics Automation', description: 'Automated CVRP routing, yard gates & payment reconciliation.', href: '/logistics-automation', badge: 'NEW' },
+      { slug: 'global-markets', label: 'Global Markets (16)', description: 'Sovereign regional clusters across 16 countries.', href: '/markets', badge: 'NEW' },
       { slug: 'dispatch-the-right-load', label: 'Dispatch the Right Load', description: 'Peak-window misloads eliminated with visual boards.', href: '/capabilities/smarter-dispatch', flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
       { slug: 'visual-dispatch-engine', label: 'Visual Dispatch Engine', description: 'Match trucks to orders with warehouse override.', href: '/capabilities/smarter-dispatch', flow: 'dispatchBoard', relatedProjectSlug: 'dispatch-engine' },
       { slug: 'fleet-visibility', label: 'Fleet Visibility', description: 'See your fleet as it moves — planned vs actual.', href: '/capabilities/live-fleet-tracking', flow: 'fleetMap', relatedProjectSlug: 'fleet-telemetry' },

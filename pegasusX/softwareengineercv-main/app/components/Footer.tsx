@@ -66,6 +66,9 @@ export default function Footer() {
 
   const platformLinks = [
     { name: t('nav_platform'), href: '/platform' },
+    { name: t('nav_global_logistics', 'Global Logistics'), href: '/global-logistics' },
+    { name: t('nav_supply_chain_software', 'Supply Chain Software'), href: '/supply-chain-software' },
+    { name: t('nav_logistics_automation', 'Logistics Automation'), href: '/logistics-automation' },
     { name: t('footer_order_lifecycle'), href: '/platform/order-lifecycle' },
     { name: t('footer_how_it_works'), href: '/platform/how-pegasus-works' },
     { name: t('footer_trust'), href: '/platform/trust-reliability' },
@@ -82,6 +85,9 @@ export default function Footer() {
     { name: t('nav_tour'), href: '/platform' },
     { name: t('cloud_eco_nav', 'Cloud ecosystem'), href: '/cloud-ecosystem' },
     { name: t('footer_apps_deploy'), href: '/apps-deploy' },
+    { name: t('nav_alternatives', 'TMS Alternatives'), href: '/alternatives' },
+    { name: t('nav_compare', 'TMS Comparisons'), href: '/compare' },
+    { name: t('nav_markets', 'Global Markets'), href: '/markets' },
   ];
 
   return (
@@ -204,9 +210,9 @@ export default function Footer() {
 
       {/* Huge text */}
       <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <h1 className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
+        <p aria-hidden="true" className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
           pegasus
-        </h1>
+        </p>
       </div>
 
       {/* Copyright */}

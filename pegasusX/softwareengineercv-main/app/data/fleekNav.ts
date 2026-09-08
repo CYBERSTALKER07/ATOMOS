@@ -12,7 +12,7 @@ export const FLEEK_NAV_LINKS_RU = [
   { label: 'Технологии', href: '/technology' },
 ] as const;
 
-export function getFleekNavLinks(lang: 'en' | 'ru' = 'en') {
+export function getFleekNavLinks(lang: string = 'en') {
   return lang === 'ru' ? FLEEK_NAV_LINKS_RU : FLEEK_NAV_LINKS;
 }
 

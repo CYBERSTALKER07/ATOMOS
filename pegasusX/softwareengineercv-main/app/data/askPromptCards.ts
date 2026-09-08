@@ -73,6 +73,6 @@ export const PEGASUS_ASK_PROMPTS_RU: AskPromptSectionContent = {
   cards: [],
 };
 
-export function getAskPromptContent(lang: 'en' | 'ru' = 'en'): AskPromptSectionContent {
+export function getAskPromptContent(lang: string = 'en'): AskPromptSectionContent {
   return lang === 'ru' ? PEGASUS_ASK_PROMPTS_RU : PEGASUS_ASK_PROMPTS;
 }

@@ -302,6 +302,6 @@ export const ROLES_DATA_RU: RoleData[] = [
   }
 ];
 
-export function getRolesData(lang: 'en' | 'ru' = 'en'): RoleData[] {
+export function getRolesData(lang: string = 'en'): RoleData[] {
   return lang === 'ru' ? ROLES_DATA_RU : ROLES_DATA;
 }

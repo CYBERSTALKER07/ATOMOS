@@ -118,17 +118,17 @@ const MONTH_RU: Record<string, string> = {
   Jan: 'Янв',
 };
 
-export function localizeMonthLabel(label: string, lang: 'en' | 'ru' = 'en'): string {
+export function localizeMonthLabel(label: string, lang: string = 'en'): string {
   if (lang !== 'ru') return label;
   const [mon, year] = label.split(' ');
   return `${MONTH_RU[mon] ?? mon} ${year ?? ''}`.trim();
 }
 
-export function formatUsd(value: number, lang: 'en' | 'ru' = 'en'): string {
+export function formatUsd(value: number, lang: string = 'en'): string {
   return value.toLocaleString(lang === 'ru' ? 'ru-RU' : 'en-US');
 }
 
-export function getLocalizedCities(lang: 'en' | 'ru' = 'en'): LogisticsCityAnalytics[] {
+export function getLocalizedCities(lang: string = 'en'): LogisticsCityAnalytics[] {
   if (lang !== 'ru') return LOGISTICS_CITIES;
   const names: Record<string, string> = {
     'new-york': 'Нью-Йорк',

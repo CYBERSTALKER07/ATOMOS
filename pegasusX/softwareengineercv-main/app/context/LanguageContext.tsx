@@ -1,9 +1,21 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { translations, TranslationKey } from '../lib/i18n/translations';
+import { translations, TranslationKey, Language } from '../lib/i18n/translations';
 
-export type Language = 'en' | 'ru';
+const VALID_LANGS: Language[] = [
+  'en',
+  'ru',
+  'es',
+  'de',
+  'fr',
+  'zh',
+  'ja',
+  'ar',
+  'pt',
+  'tr',
+  'uz',
+];
 
 interface LanguageContextType {
   language: Language;
@@ -19,15 +31,20 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode; initialLang
 }) => {
   const [language, setLanguageState] = useState<Language>(initialLanguage);
 
+  const applyDomLanguage = useCallback((lang: Language) => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, []);
+
   useEffect(() => {
     // Prefer explicit ?lang= for hreflang / shareable language links
     const params = new URLSearchParams(window.location.search);
-    const queryLang = params.get('lang');
-    if (queryLang === 'en' || queryLang === 'ru') {
+    const queryLang = params.get('lang') as Language | null;
+    if (queryLang && VALID_LANGS.includes(queryLang)) {
       setLanguageState(queryLang);
       localStorage.setItem('pegasus_lang', queryLang);
       document.cookie = `pegasus_lang=${queryLang}; path=/; max-age=31536000; SameSite=Lax`;
-      document.documentElement.lang = queryLang;
+      applyDomLanguage(queryLang);
       return;
     }
 
@@ -36,34 +53,32 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode; initialLang
     const langCookie = cookies.find((row) => row.startsWith('pegasus_lang='));
     let storedLang = langCookie ? (langCookie.split('=')[1] as Language) : null;
 
-    // Fallback to localStorage if cookie isn't there (e.g. migration)
+    // Fallback to localStorage if cookie isn't there
     if (!storedLang) {
       storedLang = localStorage.getItem('pegasus_lang') as Language;
-      if (storedLang === 'en' || storedLang === 'ru') {
-        // Sync cookie from local storage
+      if (storedLang && VALID_LANGS.includes(storedLang)) {
         document.cookie = `pegasus_lang=${storedLang}; path=/; max-age=31536000; SameSite=Lax`;
       }
     }
 
-    if (storedLang === 'en' || storedLang === 'ru') {
+    if (storedLang && VALID_LANGS.includes(storedLang)) {
       setLanguageState(storedLang);
-      document.documentElement.lang = storedLang;
-    } else if (initialLanguage) {
+      applyDomLanguage(storedLang);
+    } else if (initialLanguage && VALID_LANGS.includes(initialLanguage)) {
       setLanguageState(initialLanguage);
-      document.documentElement.lang = initialLanguage;
+      applyDomLanguage(initialLanguage);
     } else {
-      const browserLang = navigator.language.startsWith('ru') ? 'ru' : 'en';
-      setLanguageState(browserLang);
-      document.cookie = `pegasus_lang=${browserLang}; path=/; max-age=31536000; SameSite=Lax`;
-      document.documentElement.lang = browserLang;
+      setLanguageState('en');
+      applyDomLanguage('en');
     }
-  }, [initialLanguage]);
+  }, [initialLanguage, applyDomLanguage]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('pegasus_lang', lang);
     document.cookie = `pegasus_lang=${lang}; path=/; max-age=31536000; SameSite=Lax`;
     document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   }, []);
 
   const t = useCallback((key: TranslationKey | string, fallback?: string): string => {

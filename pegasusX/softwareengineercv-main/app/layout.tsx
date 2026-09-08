@@ -36,32 +36,50 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords:
       lang === 'ru'
         ? [
-            'логистическое ПО',
+            'Pegasus',
+            'Pegasus Logistics',
+            'Глобальная логистика',
+            'ПО для цепей поставок',
+            'Автоматизация логистики',
+            'Transportation Management System',
+            'TMS система',
             'система диспетчеризации',
             'мониторинг автопарка',
-            'сеть поставщиков',
+            'оптимизация маршрутов',
+            'управление цепочками поставок',
             'управление складом',
             'отслеживание доставки',
             'сверка платежей',
-            'last mile',
-            'Pegasus',
+            'last mile delivery',
+            'Pegasus TMS',
             'логистическая платформа',
-            'цепь поставок',
-            'наложенный платёж',
+            'Samsara аналоги',
           ]
         : [
+            'Pegasus',
+            'Pegasus Logistics',
+            'Global Logistics',
+            'Supply Chain Software',
+            'Logistics Automation',
+            'Transportation Management System',
+            'TMS software',
+            'Fleet dispatch software',
+            'Route optimization software',
+            'Supply chain management',
+            'Delivery management system',
             'logistics software',
             'dispatch system',
             'fleet tracking',
             'supplier network',
             'warehouse management',
-            'delivery tracking',
             'payment reconciliation',
             'last mile delivery',
-            'Pegasus',
-            'logistics platform',
-            'supply chain operations',
-            'cash on delivery',
+            'Pegasus TMS',
+            'Samsara alternative',
+            'Rose Rocket alternative',
+            'Motive alternative',
+            'Turvo alternative',
+            'Onfleet alternative',
           ],
     authors: [{ name: SITE_NAME }],
     creator: SITE_NAME,
@@ -137,12 +155,10 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const lang = await getServerLanguage();
-  const skipLabel =
-    lang === 'ru'
-      ? translations.ru.skip_to_content
-      : translations.en.skip_to_content;
+  const dict = translations[lang] ?? translations.en;
+  const skipLabel = dict.skip_to_content || 'Skip to content';
   return (
-    <html lang={lang}>
+    <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <head>
         <meta name="theme-color" content="#000000" />
       </head>

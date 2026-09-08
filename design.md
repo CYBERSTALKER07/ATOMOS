@@ -134,6 +134,45 @@ Derived from `pinterest_935833997591669334.jpg`:
 - Rows: 1px hairline border bottom (`border-b border-[var(--desk-border)]`), subtle hover highlight (`hover:bg-[var(--desk-surface-subtle)]/60`).
 - Cell formatting: Monospace for numbers/dates, rounded-full status pill with dot, user avatar thumbnail with title & subtitle, toggle switch for status flags.
 
+### 8. Modern Squircle & Tactile Component Suite (Vocalyn / Avito / Aerolytic / Tactical Lime)
+
+#### A. Metric Stat Card (`MetricCard` — Vocalyn / Aerolytic Blueprint)
+- **Container**: `bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl p-6 shadow-xs hover:border-[var(--desk-border-strong)] transition-all`
+- **Header**: Metric label on left (`text-xs font-semibold uppercase tracking-wider text-[var(--desk-text-tertiary)]`) + Squircle/circular icon badge on right (`w-10 h-10 rounded-2xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-primary)] border border-[var(--desk-border)]/60`).
+- **Main Metric**: Massive bold numeric display (`text-3xl lg:text-4xl font-bold font-mono tabular-nums tracking-tight text-[var(--desk-text-primary)]`).
+- **Delta/Subvalue**: Trend chip with icon (`+14.2%` in pastel emerald) + context note.
+- **Footer**: Crisp hairline divider (`border-t border-[var(--desk-border)] mt-4 pt-3.5`) with action link & right arrow (`text-xs font-semibold text-[var(--desk-text-secondary)] hover:text-[var(--desk-text-primary)] transition-colors flex items-center justify-between group`).
+
+#### B. Hero Status Banner (`HeroStatusCard` — Avito "Autoload in Progress" Blueprint)
+- **Container**: Soft gradient surface (`bg-gradient-to-r from-blue-50/70 via-sky-50/60 to-indigo-100/70` in light mode; `bg-gradient-to-r from-slate-900/90 via-sky-950/40 to-blue-900/40 border border-white/10` in dark mode) with `rounded-3xl p-6`.
+- **Top Row**: Status title (`Autoload / Wave In Progress`), timestamp caption, and toggle switch (`rounded-full bg-black dark:bg-white text-white dark:text-black`).
+- **Progress Bar**: Smooth continuous pill progress bar (`rounded-full h-2 bg-neutral-200/80 dark:bg-white/10`) with glowing active fill.
+- **Live Counter Chips**: Inline pill telemetry counters with mini icons (`417 Confirmed`, `26 Picking`, `391 Dispatched`).
+- **Alert Strip**: Bottom integrated informational notice with information icon.
+
+#### C. Activity Heatmap Grid (`ActivityHeatmapGrid` — Avito Blueprint)
+- **Container**: Squircle card (`rounded-3xl bg-[var(--desk-surface)] border border-[var(--desk-border)] p-6`).
+- **Header**: Title + Segmented time pill controller (`[ Day | Week | Month | Year | Spreadsheet ]`) + quick action circular buttons (`Reports`, `+`, `Clock`, `Download`, `Gear`).
+- **Matrix**: Days of the week (Mo–Su) × Time intervals (8am–7pm) rendered as rounded rectangular pills (`rounded-md`).
+- **Color Scale**: Soft pastel-to-magenta intensity gradient (light mode) or electric cobalt-to-cyan gradient (dark mode), with neutral muted blocks for inactive/zero intervals.
+- **Interactive Tooltip**: Floating rounded card with active cell count readout (`417 Orders`).
+
+#### D. Tactical Electric Lime Punch CTA (`TacticalLimeButton` — Reference 5 Blueprint)
+- **Active / Primary CTA**: High-voltage electric lime pill (`bg-[#D4FF32] text-black font-semibold text-xs px-5 py-2.5 rounded-full hover:brightness-105 active:scale-95 transition-all shadow-xs`).
+- **Secondary / Disabled CTA**: Muted neutral pill (`bg-neutral-200 dark:bg-white/10 text-neutral-600 dark:text-neutral-400 font-medium text-xs px-5 py-2.5 rounded-full`).
+
+#### E. Profile / Node Squircle Card (`ProfileSquircleCard` — Avito Blueprint)
+- **Container**: Left sidebar or inspector card with dark squircle avatar/brand box (`rounded-[26px] bg-black text-white p-5 flex items-center justify-center font-bold text-lg`).
+- **Identity**: Entity title (`re:Store`, `PepsiCo Bottlers UZ`, `Tashkent Central Hub`) + star rating & reviews badge (`★ 4.9 · 857 reviews`).
+- **Balance / Telemetry Pills**: Dual pill containers (`Wallet $780`, `Upfront $3,480`, `Credit Limit $25k`) with `rounded-2xl bg-[var(--desk-surface-subtle)] p-3 border border-[var(--desk-border)]`.
+- **Quick Action Badges**: Circular icon action nodes with notification counter chips.
+
+#### F. Pill Search Bar (`PillSearchBar` — Avito Blueprint)
+- **Container**: Fully rounded pill search bar (`rounded-full bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] px-4 py-2 flex items-center gap-3`).
+- **Prefix**: Segmented `Catalog` or `Category` pill button with dropdown chevron.
+- **Input**: Clean search input with placeholder (`Search routes, orders, listings...`).
+- **Suffix**: `⌘K` keyboard shortcut badge + quick action circular buttons (`+`, filter, notifications).
+
 ---
 
 ## 6. Forbidden Anti-Patterns (STRICTLY PROHIBITED)

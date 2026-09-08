@@ -4,6 +4,9 @@ import { ALL_TOPICS } from '@/app/data/topicPages';
 import { SOLUTIONS_ACCORDION_DATA } from '@/app/data/solutionsAccordionData';
 import { ROLES_DATA } from '@/app/data/rolesData';
 import { projects } from '@/app/data/projects';
+import { COMPETITORS_DATA } from '@/app/data/competitorsData';
+import { INDUSTRIES_DATA } from '@/app/data/industriesData';
+import { MARKETS_DATA } from '@/app/data/marketsData';
 import { SITE_URL, languageAlternates } from '@/app/lib/seo';
 
 function entry(
@@ -24,7 +27,13 @@ function entry(
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     entry('/', { changeFrequency: 'weekly', priority: 1 }),
+    entry('/global-logistics', { changeFrequency: 'weekly', priority: 0.98 }),
+    entry('/supply-chain-software', { changeFrequency: 'weekly', priority: 0.98 }),
+    entry('/logistics-automation', { changeFrequency: 'weekly', priority: 0.98 }),
+    entry('/alternatives', { changeFrequency: 'weekly', priority: 0.95 }),
+    entry('/compare', { changeFrequency: 'weekly', priority: 0.95 }),
     entry('/solutions', { changeFrequency: 'weekly', priority: 0.95 }),
+    entry('/markets', { changeFrequency: 'weekly', priority: 0.95 }),
     entry('/roles', { changeFrequency: 'weekly', priority: 0.9 }),
     entry('/projects', { changeFrequency: 'weekly', priority: 0.85 }),
     entry('/desktop-apps', { changeFrequency: 'monthly', priority: 0.8 }),
@@ -35,6 +44,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
     entry('/contact', { changeFrequency: 'monthly', priority: 0.8 }),
     entry('/resume', { changeFrequency: 'monthly', priority: 0.8 }),
   ];
+
+  const marketPages: MetadataRoute.Sitemap = MARKETS_DATA.map((m) =>
+    entry(`/markets/${m.slug}`, { changeFrequency: 'weekly', priority: 0.9 })
+  );
+
+  const alternativePages: MetadataRoute.Sitemap = COMPETITORS_DATA.map((c) =>
+    entry(`/alternatives/${c.slug}`, { changeFrequency: 'weekly', priority: 0.9 })
+  );
+
+  const comparePages: MetadataRoute.Sitemap = COMPETITORS_DATA.map((c) =>
+    entry(`/compare/pegasus-vs-${c.slug}`, { changeFrequency: 'weekly', priority: 0.85 })
+  );
+
+  const industryPages: MetadataRoute.Sitemap = INDUSTRIES_DATA.map((ind) =>
+    entry(`/solutions/industry/${ind.slug}`, { changeFrequency: 'weekly', priority: 0.85 })
+  );
 
   const solutionPages: MetadataRoute.Sitemap = SOLUTIONS_ACCORDION_DATA.flatMap((sol) =>
     sol.useCases
@@ -60,6 +85,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     ...staticPages,
+    ...marketPages,
+    ...alternativePages,
+    ...comparePages,
+    ...industryPages,
     ...solutionPages,
     ...rolePages,
     ...projectPages,

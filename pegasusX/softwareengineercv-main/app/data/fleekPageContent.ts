@@ -152,7 +152,7 @@ export const DEFAULT_IMPACT_METRIC_RU: FleekImpactMetric = {
   unit: '%',
 };
 
-export function getTickerForHub(hubId?: string, lang: 'en' | 'ru' = 'en'): FleekTickerItem[] {
+export function getTickerForHub(hubId?: string, lang: string = 'en'): FleekTickerItem[] {
   const map = lang === 'ru' ? HUB_TICKERS_RU : HUB_TICKERS;
   const fallback = lang === 'ru' ? DEFAULT_TICKER_RU : DEFAULT_TICKER;
   if (hubId && map[hubId]) return map[hubId];
@@ -177,18 +177,18 @@ export const FLEEK_STACK_FEATURES_RU = [
   'АВТООБНОВЛЕНИЕ ЭКРАНА',
 ] as const;
 
-export function getAxiomStats(lang: 'en' | 'ru' = 'en'): FleekStat[] {
+export function getAxiomStats(lang: string = 'en'): FleekStat[] {
   return lang === 'ru' ? DEFAULT_AXIOM_STATS_RU : DEFAULT_AXIOM_STATS;
 }
 
-export function getBlobStats(lang: 'en' | 'ru' = 'en'): FleekBlobStat[] {
+export function getBlobStats(lang: string = 'en'): FleekBlobStat[] {
   return lang === 'ru' ? DEFAULT_BLOB_STATS_RU : DEFAULT_BLOB_STATS;
 }
 
-export function getImpactMetric(lang: 'en' | 'ru' = 'en'): FleekImpactMetric {
+export function getImpactMetric(lang: string = 'en'): FleekImpactMetric {
   return lang === 'ru' ? DEFAULT_IMPACT_METRIC_RU : DEFAULT_IMPACT_METRIC;
 }
 
-export function getStackFeatures(lang: 'en' | 'ru' = 'en'): string[] {
+export function getStackFeatures(lang: string = 'en'): string[] {
   return [...(lang === 'ru' ? FLEEK_STACK_FEATURES_RU : FLEEK_STACK_FEATURES)];
 }

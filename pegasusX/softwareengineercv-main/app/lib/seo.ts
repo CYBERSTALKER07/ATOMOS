@@ -33,6 +33,15 @@ export function languageAlternates(path = ''): Record<string, string> {
   const join = base.includes('?') ? '&' : '?';
   return {
     en: `${base}${join}lang=en`,
+    es: `${base}${join}lang=es`,
+    de: `${base}${join}lang=de`,
+    fr: `${base}${join}lang=fr`,
+    zh: `${base}${join}lang=zh`,
+    ja: `${base}${join}lang=ja`,
+    ar: `${base}${join}lang=ar`,
+    pt: `${base}${join}lang=pt`,
+    tr: `${base}${join}lang=tr`,
+    uz: `${base}${join}lang=uz`,
     ru: `${base}${join}lang=ru`,
     'x-default': `${base}${join}lang=en`,
   };
@@ -116,15 +125,22 @@ export function pageMetadata({
 export function organizationJsonLd(language: Language = 'en') {
   const description =
     language === 'ru'
-      ? 'Pegasus — операционная система логистики для сетей под управлением поставщика: диспетчеризация, мониторинг автопарка, платежи и реалтайм-координация шести ролей.'
-      : DEFAULT_DESCRIPTION;
+      ? 'Pegasus — глобальное программное обеспечение для управления цепочками поставок и автоматизации логистики: диспетчеризация, мониторинг автопарка, платежи и реалтайм-координация шести ролей.'
+      : 'Pegasus is the global supply chain software and logistics automation platform for supplier-led networks — dispatch, fleet tracking, payments, and coordination across six roles.';
 
   return {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
+    '@type': ['Organization', 'Corporation'],
     '@id': `${SITE_URL}/#organization`,
     name: SITE_NAME,
-    legalName: SITE_NAME,
+    legalName: 'Pegasus Global Logistics & Supply Chain Technologies',
+    alternateName: [
+      'Pegasus Global Logistics',
+      'Pegasus Supply Chain Software',
+      'Pegasus Logistics Automation',
+      'Pegasus TMS',
+      'Pegasus Logistics Operating System',
+    ],
     description,
     url: SITE_URL,
     logo: {
@@ -134,24 +150,88 @@ export function organizationJsonLd(language: Language = 'en') {
       height: 512,
     },
     image: absoluteAsset(BRAND_LOGO),
-    sameAs: ['https://t.me/DominusMunerum'],
+    sameAs: [
+      'https://t.me/DominusMunerum',
+      'https://en.wikipedia.org/wiki/Supply_chain_management',
+      'https://en.wikipedia.org/wiki/Logistics_automation',
+      'https://en.wikipedia.org/wiki/Transportation_management_system',
+      'https://en.wikipedia.org/wiki/Logistics',
+    ],
     contactPoint: [
       {
         '@type': 'ContactPoint',
         contactType: 'sales',
         email: 'cyberstalkerx7@gmail.com',
         url: absoluteUrl('/contact'),
-        availableLanguage: ['English', 'Russian'],
+        availableLanguage: [
+          'English',
+          'Spanish',
+          'German',
+          'French',
+          'Chinese',
+          'Japanese',
+          'Arabic',
+          'Portuguese',
+          'Turkish',
+          'Uzbek',
+          'Russian',
+        ],
       },
     ],
+    areaServed: [
+      'Worldwide',
+      'US',
+      'EU',
+      'GB',
+      'DE',
+      'FR',
+      'ES',
+      'CN',
+      'JP',
+      'AE',
+      'SA',
+      'TR',
+      'UZ',
+      'BR',
+      'MX',
+      'IN',
+      'SG',
+      'CA',
+      'AU',
+    ],
     knowsAbout: [
-      'Logistics Software',
-      'Fleet Management',
-      'Dispatch Operations',
-      'Supply Chain',
+      'Global Logistics',
+      'Supply Chain Software',
+      'Logistics Automation',
+      'Transportation Management System',
+      'Fleet Dispatch Software',
+      'Route Optimization Software',
+      'Warehouse Automation',
+      'Last-Mile Delivery Optimization',
+      'B2B Freight Coordination',
       'Payment Reconciliation',
-      'Warehouse Management',
-      'Last-Mile Delivery',
+      'Logística Global',
+      'Software de Cadena de Suministro',
+      'Automatización Logística',
+      'Globale Logistik',
+      'Supply-Chain-Software',
+      'Logistikautomatisierung',
+      'Logistique Mondiale',
+      'Logiciel Supply Chain',
+      '全球物流',
+      '供应链软件',
+      '物流自动化',
+      'グローバル物流',
+      'サプライチェーンソフトウェア',
+      'الخدمات اللوجستية العالمية',
+      'برمجيات سلاسل الإمداد',
+      'أتمتة الخدمات اللوجستية',
+      'Logística Global',
+      'Software de Cadeia de Suprimentos',
+      'Global Lojistik',
+      'Tedarik Zinciri Yazılımı',
+      'Global logistika',
+      'Taʼminot zanjiri dasturi',
     ],
   };
 }
@@ -161,16 +241,46 @@ export function websiteJsonLd(language: Language = 'en') {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     '@id': `${SITE_URL}/#website`,
-    name: SITE_NAME,
+    name: 'Pegasus — Global Logistics & Supply Chain Software Automation',
+    alternateName: [
+      'Pegasus',
+      'Pegasus Logistics',
+      'Pegasus Global Logistics',
+      'Pegasus Supply Chain Software',
+      'Pegasus Logistics Automation',
+      'Pegasus TMS',
+    ],
     description: DEFAULT_DESCRIPTION,
     url: SITE_URL,
-    inLanguage: language === 'ru' ? ['ru-RU', 'en-US'] : ['en-US', 'ru-RU'],
+    inLanguage: [
+      'en',
+      'es',
+      'de',
+      'fr',
+      'zh',
+      'ja',
+      'ar',
+      'pt',
+      'tr',
+      'uz',
+      'ru',
+    ],
     publisher: { '@id': `${SITE_URL}/#organization` },
-    potentialAction: {
-      '@type': 'CommunicateAction',
-      target: absoluteUrl('/contact'),
-      name: language === 'ru' ? 'Связаться с Pegasus' : 'Contact Pegasus',
-    },
+    potentialAction: [
+      {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${SITE_URL}/alternatives?q={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
+      {
+        '@type': 'CommunicateAction',
+        target: absoluteUrl('/contact'),
+        name: language === 'ru' ? 'Связаться с Pegasus' : 'Contact Pegasus',
+      },
+    ],
   };
 }
 
@@ -179,24 +289,43 @@ export function softwareApplicationJsonLd(language: Language = 'en') {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
     '@id': `${SITE_URL}/#software`,
-    name: SITE_NAME,
-    applicationCategory: 'BusinessApplication',
+    name: `${SITE_NAME} — Global Logistics & Supply Chain Software`,
+    alternateName: [
+      'Pegasus',
+      'Pegasus Logistics',
+      'Pegasus Global Logistics',
+      'Pegasus Supply Chain Software',
+      'Pegasus Logistics Automation',
+      'Pegasus TMS',
+    ],
+    applicationCategory: 'BusinessApplication, LogisticsSoftware, SupplyChainSoftware, FleetManagementSoftware',
+    applicationSubCategory: 'Global Logistics, Supply Chain Management & Fleet Automation',
     operatingSystem: 'Web, Windows, macOS, Android, iOS',
     inLanguage: language === 'ru' ? 'ru' : 'en',
     description:
       language === 'ru'
-        ? 'Операционная система логистики под управлением поставщика: диспетчерские доски, карты автопарка, сверка казначейства и приложения для склада, ритейлера, водителя, завода и ворот.'
-        : 'Supplier-led logistics operating system with dispatch boards, fleet live maps, treasury reconciliation, and role-specific apps for warehouse, retailer, driver, factory, and gate teams.',
+        ? 'Глобальная B2B система управления цепочками поставок и автоматизации логистики: умная диспетчеризация автопарка, оптимизация маршрутов CVRP, сверка казначейства и приложения для 6 ролей.'
+        : 'Global supply chain software and logistics automation operating system with multi-stop route optimization, real-time fleet telemetry, warehouse gate control, and treasury reconciliation.',
     offers: {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
       description:
         language === 'ru'
-          ? 'Свяжитесь для enterprise-лицензирования'
-          : 'Contact for enterprise licensing',
+          ? 'Свяжитесь для enterprise-демонстрации и внедрения'
+          : 'Contact for enterprise demo and deployment',
       url: absoluteUrl('/join'),
     },
+    featureList: [
+      'Global Logistics & Multi-Region Cell Cloud Architecture',
+      'Enterprise Supply Chain Management (SCM) & Multi-Enterprise Execution',
+      'Logistics Automation & Automated Dispatch Optimization (Google OR-Tools CVRP)',
+      'Real-Time Global Fleet Telemetry & GPS Tracking',
+      'Multi-Role Supply Chain Orchestration across 6 Roles',
+      'Warehouse Gate Terminal & Digital Chain of Custody Barcode Seals',
+      'Point-of-Delivery Invoice Settlement & Automated Treasury Reconciliation',
+      'Bi-Directional ERP & WMS Integrations (SAP, NetSuite, 1C)',
+    ],
     url: SITE_URL,
     provider: { '@id': `${SITE_URL}/#organization` },
   };

@@ -306,6 +306,6 @@ export const SOLUTIONS_ACCORDION_DATA_RU: AccordionSolution[] = [
   },
 ];
 
-export function getSolutionsAccordionData(lang: 'en' | 'ru' = 'en'): AccordionSolution[] {
+export function getSolutionsAccordionData(lang: string = 'en'): AccordionSolution[] {
   return lang === 'ru' ? SOLUTIONS_ACCORDION_DATA_RU : SOLUTIONS_ACCORDION_DATA;
 }

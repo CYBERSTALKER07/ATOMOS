@@ -33,6 +33,8 @@ const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Companies = dynamic(() => import('./components/Companies'));
 const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
+const TenityOrbitBentoSection = dynamic(() => import('./components/TenityOrbitBentoSection'));
+const SpurIntelligenceSection = dynamic(() => import('./components/SpurIntelligenceSection'));
 const Licensing = dynamic(() => import('./components/Licensing'));
 const Footer = dynamic(() => import('./components/Footer'));
 
@@ -143,9 +145,14 @@ export default async function Home() {
 
         <section id="section-showcase">
           <ShowcaseWall />
+          <TenityOrbitBentoSection />
           <PegasusTestimonialsSection />
           <Projects />
           <Companies />
+        </section>
+
+        <section id="section-intelligence" className="relative z-10">
+          <SpurIntelligenceSection />
         </section>
 
         <section id="section-deploy">

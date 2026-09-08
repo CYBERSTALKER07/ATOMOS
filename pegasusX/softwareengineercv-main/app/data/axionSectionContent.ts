@@ -148,15 +148,15 @@ export const DEFAULT_TECH_FEATURES_RU: AxionTechFeature[] = [
   },
 ];
 
-export function getDefaultSolutions(lang: 'en' | 'ru' = 'en'): AxionSolutionCard[] {
+export function getDefaultSolutions(lang: string = 'en'): AxionSolutionCard[] {
   return lang === 'ru' ? DEFAULT_SOLUTIONS_RU : DEFAULT_SOLUTIONS;
 }
 
-export function getDefaultIndustries(lang: 'en' | 'ru' = 'en'): AxionIndustryCard[] {
+export function getDefaultIndustries(lang: string = 'en'): AxionIndustryCard[] {
   return lang === 'ru' ? DEFAULT_INDUSTRIES_RU : DEFAULT_INDUSTRIES;
 }
 
-export function getDefaultTechFeatures(lang: 'en' | 'ru' = 'en'): AxionTechFeature[] {
+export function getDefaultTechFeatures(lang: string = 'en'): AxionTechFeature[] {
   return lang === 'ru' ? DEFAULT_TECH_FEATURES_RU : DEFAULT_TECH_FEATURES;
 }
 

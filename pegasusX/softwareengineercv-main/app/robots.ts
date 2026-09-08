@@ -43,6 +43,16 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
         disallow,
       },
+      {
+        userAgent: 'YandexBot',
+        allow: '/',
+        disallow,
+      },
+      {
+        userAgent: 'Baiduspider',
+        allow: '/',
+        disallow,
+      },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL,

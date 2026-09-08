@@ -325,18 +325,18 @@ function mergeProject(en: Project): Project {
 
 export const projectsRu: Project[] = projectsEn.map(mergeProject);
 
-export function getProjects(lang: 'en' | 'ru' = 'en'): Project[] {
+export function getProjects(lang: string = 'en'): Project[] {
   return lang === 'ru' ? projectsRu : projectsEn;
 }
 
 export function getProjectBySlugLocalized(
   slug: string,
-  lang: 'en' | 'ru' = 'en'
+  lang: string = 'en'
 ): Project | undefined {
   return getProjects(lang).find((p) => p.slug === slug);
 }
 
-export function getAllCategoriesLocalized(lang: 'en' | 'ru' = 'en'): string[] {
+export function getAllCategoriesLocalized(lang: string = 'en'): string[] {
   return Array.from(new Set(getProjects(lang).map((p) => p.category)));
 }
 

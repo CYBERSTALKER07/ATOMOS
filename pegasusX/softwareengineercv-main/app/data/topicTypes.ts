@@ -62,6 +62,7 @@ export type TopicContent = {
 export type BilingualContent = {
   en: TopicContent;
   ru?: TopicContent;
+  [lang: string]: TopicContent | undefined;
 };
 
 export type TopicPage = {

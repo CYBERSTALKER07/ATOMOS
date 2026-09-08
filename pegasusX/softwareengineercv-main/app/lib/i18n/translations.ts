@@ -1,5 +1,16 @@
-export const translations = {
-  en: {
+import {
+  SPANISH_DICT,
+  GERMAN_DICT,
+  FRENCH_DICT,
+  CHINESE_DICT,
+  JAPANESE_DICT,
+  ARABIC_DICT,
+  PORTUGUESE_DICT,
+  TURKISH_DICT,
+  UZBEK_DICT,
+} from './multilingualDicts';
+
+const EN_DICT = {
     // Navigation & Header
     nav_platform: 'Platform',
     nav_solutions: 'Solutions',
@@ -11,15 +22,15 @@ export const translations = {
     nav_all_modules: 'All Modules',
     
     // Hero
-    hero_title: 'Supplier-Led Logistics Platform',
-    hero_subtitle: 'Dispatch, fleet tracking, payments, and coordination across every team in your network.',
-    hero_desc: 'Run supplier-led logistics from one platform — dispatch, tracking, payments, and coordination across every team in your network.',
+    hero_title: 'Pegasus — Global Logistics, Supply Chain Software & Automation',
+    hero_subtitle: 'Global logistics, enterprise supply chain software, and fleet automation across your entire enterprise network.',
+    hero_desc: 'Run global logistics and supply chain operations from one platform — automated dispatch, real-time fleet telemetry, warehouse gate control, and instant payment reconciliation.',
     hero_explore: 'Explore Platform',
     hero_demo: 'Request Demo',
-    hero_type_1: 'Logistics Platform',
-    hero_type_2: 'Dispatch System',
-    hero_type_3: 'Fleet Tracking',
-    hero_type_4: 'Payment Confidence',
+    hero_type_1: 'Global Logistics',
+    hero_type_2: 'Supply Chain Software',
+    hero_type_3: 'Logistics Automation',
+    hero_type_4: 'Fleet Dispatch & Telematics',
     hero_scroll: 'SCROLL',
 
     // Testimonial / CTO Section
@@ -454,13 +465,13 @@ export const translations = {
     skills_c10_desc: 'Eliminate yard congestion with algorithmic slotting. Synchronize arrival windows with live unload speeds and labor availability.',
     skills_c11_title: 'Geofence\nTriggers',
     skills_c11_desc: 'Automate status updates, notify receivers, and prepare staging areas precisely when a vehicle breaches virtual perimeter boundaries.',
-    meta_home_title: 'Logistics Operating System for Supplier Networks',
-    meta_home_desc: 'Pegasus is the logistics operating system for supplier-led networks — dispatch, fleet tracking, payments, and coordination across supplier, warehouse, retailer, driver, factory, and gate teams.',
-    meta_root_title: 'Logistics Operating System',
-    meta_root_desc: 'Pegasus is the logistics operating system for supplier-led networks. Dispatch, fleet tracking, payments, and realtime coordination across six roles.',
-    meta_og_desc: 'Run supplier-led logistics from one platform — dispatch, tracking, payments, and coordination across every team in your network.',
-    meta_twitter_desc: 'Dispatch, fleet tracking, payments, and realtime coordination for supplier-led logistics networks.',
-    meta_solutions_title: 'Solutions',
+    meta_home_title: 'Global Logistics & Supply Chain Software Automation',
+    meta_home_desc: 'Pegasus is the global logistics & supply chain software platform delivering end-to-end automation across suppliers, warehouses, factories, drivers, & retailers.',
+    meta_root_title: 'Global Logistics & Supply Chain Software Automation',
+    meta_root_desc: 'Pegasus is the global logistics operating system and supply chain software platform delivering real-time automation, dispatching, fleet tracking, and payments.',
+    meta_og_desc: 'Orchestrate global logistics and supply chain operations on one platform — automated dispatch, fleet tracking, payments, and 6-role coordination.',
+    meta_twitter_desc: 'Global logistics and supply chain software with automated fleet dispatch, real-time telemetry, and treasury reconciliation.',
+    meta_solutions_title: 'B2B Transportation & Dispatch Solutions',
     meta_solutions_desc: 'Pegasus solutions for supplier control, warehouse dispatch, retailer tracking, treasury reconciliation, driver execution, factory loading, and gate returns — one platform across six roles.',
     'promo_apps-deploy_title': 'Apps across every surface',
     'promo_apps-deploy_body': 'Mobile, desktop, and web apps for every role — one shared order record.',
@@ -557,8 +568,9 @@ export const translations = {
     btn_view_project: 'View Project',
     footer_about: 'About',
     skip_to_content: 'Skip to content',
-  },
-  ru: {
+};
+
+const RU_DICT = {
     // Navigation & Header
     nav_platform: 'Платформа',
     nav_solutions: 'Решения',
@@ -570,15 +582,15 @@ export const translations = {
     nav_all_modules: 'Все модули',
 
     // Hero
-    hero_title: 'Платформа управления логистикой',
-    hero_subtitle: 'Диспетчеризация, мониторинг автопарка, платежи и координация всех звеньев цепи поставок.',
-    hero_desc: 'Управляйте поставками из единой системы — от распределения рейсов и отслеживания транспорта до сверки платежей и взаимодействия 6 ключевых ролей.',
+    hero_title: 'Pegasus — Глобальная логистика, ПО для цепей поставок и автоматизация',
+    hero_subtitle: 'Глобальная логистика, корпоративное ПО для цепей поставок и автоматизация автопарка для всей сети.',
+    hero_desc: 'Управляйте глобальной логистикой и цепями поставок из единой системы — умная диспетчеризация, мониторинг автопарка в реальном времени, контроль ворот и мгновенные расчёты.',
     hero_explore: 'Изучить платформу',
     hero_demo: 'Запросить демо',
-    hero_type_1: 'Логистическая платформа',
-    hero_type_2: 'Система диспетчеризации',
-    hero_type_3: 'Мониторинг автопарка',
-    hero_type_4: 'Финансовая прозрачность',
+    hero_type_1: 'Глобальная логистика',
+    hero_type_2: 'ПО для цепей поставок',
+    hero_type_3: 'Автоматизация логистики',
+    hero_type_4: 'Диспетчеризация и телеметрия',
     hero_scroll: 'ПРОКРУТКА',
 
     // Testimonial / CTO Section
@@ -1014,13 +1026,13 @@ export const translations = {
     skills_c10_desc: 'Уберите заторы на площадке алгоритмическим слотированием. Синхронизируйте окна прибытия с живой скоростью разгрузки и доступностью труда.',
     skills_c11_title: 'Геофенс-\nтриггеры',
     skills_c11_desc: 'Автоматизируйте статусы, уведомляйте получателей и готовьте зоны staging в момент пересечения виртуального периметра.',
-    meta_home_title: 'ОС логистики для сетей поставщика',
-    meta_home_desc: 'Pegasus — операционная система логистики для сетей под управлением поставщика: диспетчеризация, мониторинг автопарка, платежи и координация поставщика, склада, ритейлера, водителя, завода и ворот.',
-    meta_root_title: 'Операционная система логистики',
-    meta_root_desc: 'Pegasus — операционная система логистики для сетей под управлением поставщика. Диспетчеризация, мониторинг автопарка, платежи и реалтайм-координация шести ролей.',
-    meta_og_desc: 'Ведите логистику под управлением поставщика на одной платформе — диспетчеризация, отслеживание, платежи и координация всех команд сети.',
-    meta_twitter_desc: 'Диспетчеризация, мониторинг автопарка, платежи и реалтайм-координация для логистических сетей под управлением поставщика.',
-    meta_solutions_title: 'Решения',
+    meta_home_title: 'Глобальная логистика, ПО цепей поставок и автоматизация',
+    meta_home_desc: 'Pegasus — глобальная платформа логистики и ПО для управления цепями поставок: автоматизация диспетчеризации, мониторинг транспорта и сверка взаиморасчётов.',
+    meta_root_title: 'Глобальная логистика, ПО для цепей поставок и автоматизация',
+    meta_root_desc: 'Pegasus — глобальная платформа управления логистикой и цепями поставок, обеспечивающая сквозную автоматизацию, диспетчеризацию, трекинг и расчёты.',
+    meta_og_desc: 'Управляйте глобальной логистикой и цепями поставок на единой платформе — автоматизация диспетчеризации, мониторинг транспорта и расчёты 6 ролей.',
+    meta_twitter_desc: 'Глобальная логистика, ПО для цепей поставок, автоматизация маршрутов и расчёты для сетей дистрибуции.',
+    meta_solutions_title: 'B2B-решения для транспорта и логистики',
     meta_solutions_desc: 'Решения Pegasus для контроля поставщика, диспетчеризации склада, отслеживания ритейлера, сверки казначейства, исполнения водителем, погрузки на заводе и возвратов на воротах — одна платформа для шести ролей.',
     'promo_apps-deploy_title': 'Приложения на каждой поверхности',
     'promo_apps-deploy_body': 'Мобильные, десктопные и веб-приложения для каждой роли — один общий учёт заказов.',
@@ -1117,9 +1129,22 @@ export const translations = {
     btn_view_project: 'Смотреть проект',
     footer_about: 'О нас',
     skip_to_content: 'Перейти к содержимому',
+};
 
-  },
+export const translations = {
+  en: EN_DICT,
+  ru: RU_DICT,
+  es: { ...EN_DICT, ...SPANISH_DICT },
+  de: { ...EN_DICT, ...GERMAN_DICT },
+  fr: { ...EN_DICT, ...FRENCH_DICT },
+  zh: { ...EN_DICT, ...CHINESE_DICT },
+  ja: { ...EN_DICT, ...JAPANESE_DICT },
+  ar: { ...EN_DICT, ...ARABIC_DICT },
+  pt: { ...EN_DICT, ...PORTUGUESE_DICT },
+  tr: { ...EN_DICT, ...TURKISH_DICT },
+  uz: { ...EN_DICT, ...UZBEK_DICT },
 } as const;
 
-export type TranslationKey = keyof typeof translations.en;
+export type TranslationKey = keyof typeof EN_DICT;
 export type Language = keyof typeof translations;
+

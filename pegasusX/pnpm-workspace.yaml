@@ -5,7 +5,6 @@ packages:
   - "apps/warehouse-portal"
   - "apps/factory-portal"
   - "apps/payload-terminal"
-  - "apps/marketing-site"
   - "packages/types"
   - "packages/api-core"
   - "packages/api-react"

@@ -326,8 +326,6 @@ backend-build:
 supplier-portal-dev:
 	cd apps/supplier-portal && pnpm dev
 
-marketing-site-dev:
-	cd apps/marketing-site && pnpm dev
 
 terraform-init:
 	cd infra/terraform && terraform init -backend-config=backend-ssmr.hcl

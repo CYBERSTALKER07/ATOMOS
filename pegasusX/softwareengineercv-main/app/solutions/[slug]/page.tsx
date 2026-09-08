@@ -8,7 +8,7 @@ import SiteNav from '@/app/components/explore/SiteNav';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
-function findSolution(slug: string, lang: 'en' | 'ru') {
+function findSolution(slug: string, lang: string) {
   for (const sol of getSolutionsAccordionData(lang)) {
     const found = sol.useCases.find((uc) => uc.slug === slug);
     if (found) return { useCase: found, parent: sol };
