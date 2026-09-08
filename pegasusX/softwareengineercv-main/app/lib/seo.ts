@@ -9,7 +9,7 @@ function resolveSiteUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.URL ??
     process.env.DEPLOY_PRIME_URL ??
-    'https://pegasus.io';
+    'https://xn--pgasus-p3a.org';
   return candidate.replace(/\/$/, '');
 }
 
@@ -78,7 +78,7 @@ export function pageMetadata({
   const isDefaultOg = image === OG_IMAGE;
 
   return {
-    title,
+    title: typeof title === 'string' && title.includes(SITE_NAME) ? { absolute: title } : title,
     description,
     alternates: {
       canonical,
