@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import { ArrowRight, Layers, LayoutDashboard } from 'lucide-react';
 import ParticleText from './ParticleText';
-import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
-import ChamferButton from './ChamferButton';
+import IsometricTerrain from './IsometricTerrain';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -13,10 +13,11 @@ export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
   const { t, language } = useLanguage();
+  const [visualMode, setVisualMode] = useState<'wireframe' | 'dashboard'>('wireframe');
 
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const subtitleRef = useRef<HTMLDivElement>(null);
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
@@ -28,45 +29,67 @@ export default function Hero() {
     t('hero_type_4'),
   ];
 
+  const isRu = language === 'ru';
+  const metrics = [
+    {
+      label: isRu ? 'АКТИВНЫЕ ЯЧЕЙКИ' : 'ACTIVE CELLS',
+      value: '16 Nodes',
+    },
+    {
+      label: isRu ? 'ОБЪЁМ ИНТЕНТОВ' : 'DAILY INTENTS',
+      value: '2.4M+',
+    },
+    {
+      label: isRu ? 'РОЛЕВЫЕ ПОВЕРХНОСТИ' : 'CONNECTED ROLES',
+      value: '6 Surfaces',
+    },
+    {
+      label: isRu ? 'АПТАЙМ СЕТИ' : 'GLOBAL UPTIME',
+      value: '99.99%',
+    },
+  ];
+
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Skip GSAP animations on mobile - just use simple fade-in
       if (isMobile || prefersReducedMotion) {
-        gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
-          opacity: 1,
-          x: 0,
-          y: 0
-        });
+        gsap.set(
+          [titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current],
+          { opacity: 1, x: 0, y: 0 }
+        );
         return;
       }
 
-      // Desktop animations only
       const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       timeline
-        .fromTo(visualRef.current,
-          { opacity: 0, x: 100 },
-          { opacity: 1, x: 0, duration: 1.2 }
+        .fromTo(
+          visualRef.current,
+          { opacity: 0, scale: 0.96 },
+          { opacity: 1, scale: 1, duration: 1.1 }
         )
-        .fromTo(titleRef.current,
-          { opacity: 0, y: 50 },
-          { opacity: 1, y: 0, duration: 1 },
-          '-=0.8'
+        .fromTo(
+          titleRef.current,
+          { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.9 },
+          '-=0.7'
         )
-        .fromTo(subtitleRef.current,
-          { opacity: 0, y: 30 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.6'
-        )
-        .fromTo(descRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
+        .fromTo(
+          subtitleRef.current,
+          { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.7 },
           '-=0.5'
         )
-        .fromTo(ctaRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.3'
+        .fromTo(
+          descRef.current,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.7 },
+          '-=0.5'
+        )
+        .fromTo(
+          ctaRef.current,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.7 },
+          '-=0.4'
         );
     });
 
@@ -81,159 +104,143 @@ export default function Hero() {
   };
 
   return (
-    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
-      {/* Corner Loops - Hidden on mobile */}
-      {!isMobile && (
-        <>
-          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={900}
-              direction="right"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-
-          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={500}
-              direction="left"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-
-          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 rotate-180 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={200}
-              direction="right"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-        </>
-      )}
-
-      <div className="page-shell py-12 sm:py-16 lg:py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-12 items-center">
-          {/* Content Side - Left */}
-          <div ref={textRef} className="space-y-8 order-1">
-            <div>
-              <h1 ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 mb-2">
-                <span className="sr-only">{t('hero_title')}</span>
-                <ParticleText
-                  text="Pegasus"
-                  particleSize={2.2}
-                  density={4}
-                  color="#f8fafc"
-                  highlightColor="#10B981"
-                  scatter={160}
-                  gatherDuration={1500}
-                  stagger={350}
-                  pointerRepel={42}
-                  repelRadius={120}
-                  idleDrift={0.6}
-                  trigger="mount"
-                  fontSize="clamp(3.5rem, 10vw, 7.5rem)"
-                  fontWeight={800}
-                  textAlign="left"
-                  glow
-                />
-              </h1>
-
-              <div ref={subtitleRef} className="mb-6">
-                <TextType
-                  key={language}
-                  text={typedPhrases}
-                  typingSpeed={isMobile ? 100 : 75}
-                  pauseDuration={1500}
-                  deletingSpeed={isMobile ? 70 : 50}
-                  showCursor={true}
-                  cursorCharacter="|"
-                  loop={true}
-                  textColors={['#FFFFFF', '#C0C0C0']}
-                  className="text-2xl md:text-3xl lg:text-4xl font-light text-white"
-                  cursorClassName="text-white font-light"
-                />
+    <section
+      id="hero"
+      className="min-h-screen relative flex items-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-12 sm:pb-16"
+    >
+      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Tactical Framed Container from reference layout */}
+        <div className="border border-white/15 bg-[#000000] shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/15">
+          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
+          <div
+            ref={textRef}
+            className="flex flex-col justify-between p-8 sm:p-12 lg:p-14 xl:p-16 relative z-10"
+          >
+            <div className="space-y-6">
+              {/* Primary Headline */}
+              <div>
+                <h1
+                  ref={titleRef}
+                  className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-normal tracking-tight text-white leading-[1.08]"
+                >
+                  <span className="sr-only">{t('hero_title')}</span>
+                  <span className="block font-semibold text-white tracking-tight mb-2">
+                    Pegasus.
+                  </span>
+                  <span
+                    ref={subtitleRef}
+                    className="block text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-white/90 min-h-[1.25em]"
+                  >
+                    <TextType
+                      key={language}
+                      text={typedPhrases}
+                      typingSpeed={isMobile ? 90 : 70}
+                      pauseDuration={1600}
+                      deletingSpeed={isMobile ? 60 : 45}
+                      showCursor={true}
+                      cursorCharacter="|"
+                      loop={true}
+                      textColors={['#FFFFFF', '#C0C0C0']}
+                      className="font-light"
+                      cursorClassName="text-white font-light"
+                    />
+                  </span>
+                </h1>
               </div>
 
-              <div className="w-full max-w-xl h-[1px] bg-white/20 mb-6" />
-
+              {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
+                className="text-sm sm:text-base md:text-lg text-white/60 font-light leading-relaxed max-w-lg pt-1"
               >
                 {t('hero_desc')}
               </p>
             </div>
 
-            {/* CTA Buttons */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
-              <ChamferButton onClick={scrollToNext} variant="fill">
-                {t('hero_explore')}
-              </ChamferButton>
-              <ChamferButton href="/join" variant="ghost">
-                {t('hero_demo')}
-              </ChamferButton>
+            {/* Outlined Action Buttons matching reference layout */}
+            <div ref={ctaRef} className="pt-8 sm:pt-12 flex flex-wrap items-center gap-4">
+              <button
+                onClick={scrollToNext}
+                className="inline-flex items-center justify-center gap-3 px-8 py-3.5 border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all text-xs sm:text-sm font-medium tracking-widest uppercase text-white group"
+              >
+                <span>{t('hero_explore')}</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+
+              <a
+                href="/join"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 text-white/70 hover:text-white transition-all text-xs sm:text-sm font-medium tracking-widest uppercase"
+              >
+                <span>{t('hero_demo')}</span>
+              </a>
             </div>
           </div>
 
-          {/* Visual Side — break out to viewport with 16px side gutters on small screens, 70px on sm */}
+          {/* RIGHT COLUMN: 3D Isometric Wireframe Graphic & Bottom Metrics Bar */}
           <div
             ref={visualRef}
-            className="relative order-2 w-[calc(100vw-32px)] max-w-[calc(100vw-32px)] ml-[calc(50%-50vw+16px)] sm:w-[calc(100vw-140px)] sm:max-w-[calc(100vw-140px)] sm:ml-[calc(50%-50vw+70px)] lg:ml-0 lg:w-full lg:max-w-none"
+            className="flex flex-col justify-between bg-black relative overflow-hidden"
           >
-            <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[600px] overflow-hidden shadow-2xl bg-black rounded-tl-[120px] sm:rounded-tl-[160px] lg:rounded-tl-[200px] rounded-br-[60px] sm:rounded-br-[80px] lg:rounded-br-[100px] border-none">
-              <div className="absolute inset-0">
-                <img
-                  src="/EbszSCwA.jpeg"
-                  alt="Pegasus Logistics Platform Dashboard Interface"
-                  className="h-full w-full object-cover"
-                />
-              </div>
+            {/* Mode Switcher pill */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-none text-[10px] font-mono uppercase tracking-wider text-white/60">
+              <button
+                onClick={() => setVisualMode('wireframe')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 transition-colors ${
+                  visualMode === 'wireframe'
+                    ? 'bg-white text-black font-semibold'
+                    : 'text-white/60 hover:text-white'
+                }`}
+                aria-label="3D Wireframe View"
+              >
+                <Layers className="w-3 h-3" />
+                <span>Topology</span>
+              </button>
+              <button
+                onClick={() => setVisualMode('dashboard')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 transition-colors ${
+                  visualMode === 'dashboard'
+                    ? 'bg-white text-black font-semibold'
+                    : 'text-white/60 hover:text-white'
+                }`}
+                aria-label="Platform Preview View"
+              >
+                <LayoutDashboard className="w-3 h-3" />
+                <span>Platform</span>
+              </button>
+            </div>
 
-              {isMobile && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />
-                  <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-white" />
-                  <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-white" />
-                  <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-white" />
+            {/* Upper Area: Visual Display */}
+            <div className="flex-1 min-h-[380px] sm:min-h-[460px] lg:min-h-[500px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+              {visualMode === 'wireframe' ? (
+                <IsometricTerrain />
+              ) : (
+                <div className="relative w-full h-full max-w-xl max-h-[440px] overflow-hidden border border-white/15 bg-black p-2 shadow-2xl">
+                  <img
+                    src="/EbszSCwA.jpeg"
+                    alt="Pegasus Logistics Platform Interface"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
+            </div>
+
+            {/* Bottom Metric Bar: 4-stat row strictly following the reference image */}
+            <div className="border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 bg-black">
+              {metrics.map((m, idx) => (
+                <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
+                  <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-white/45 uppercase mb-1 truncate">
+                    {m.label}
+                  </span>
+                  <span className="text-base sm:text-lg lg:text-xl font-mono font-medium text-white tracking-tight">
+                    {m.value}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Scroll Indicator */}
-      <button
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer z-10 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
-        onClick={scrollToNext}
-        aria-label="Scroll to next section"
-      >
-        <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-sm font-light tracking-widest">{t('hero_scroll')}</span>
-          <svg
-            className="w-6 h-6 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </div>
-      </button>
     </section>
   );
 }
+
