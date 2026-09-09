@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { ArrowRight, Layers, LayoutDashboard } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
@@ -14,7 +14,6 @@ export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
   const { t, language } = useLanguage();
-  const [visualMode, setVisualMode] = useState<'wireframe' | 'dashboard'>('wireframe');
 
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -233,47 +232,9 @@ export default function Hero() {
             ref={visualRef}
             className="flex flex-col justify-between bg-black relative overflow-hidden"
           >
-            {/* Mode Switcher pill */}
-            <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-none text-[10px] font-mono uppercase tracking-wider text-white/60">
-              <button
-                onClick={() => setVisualMode('wireframe')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 transition-colors ${
-                  visualMode === 'wireframe'
-                    ? 'bg-white text-black font-semibold'
-                    : 'text-white/60 hover:text-white'
-                }`}
-                aria-label="3D Wireframe View"
-              >
-                <Layers className="w-3 h-3" />
-                <span>Topology</span>
-              </button>
-              <button
-                onClick={() => setVisualMode('dashboard')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 transition-colors ${
-                  visualMode === 'dashboard'
-                    ? 'bg-white text-black font-semibold'
-                    : 'text-white/60 hover:text-white'
-                }`}
-                aria-label="Platform Preview View"
-              >
-                <LayoutDashboard className="w-3 h-3" />
-                <span>Platform</span>
-              </button>
-            </div>
-
-            {/* Upper Area: Visual Display */}
+            {/* Upper Area: Pure 3D Isometric Wireframe Visual */}
             <div className="flex-1 min-h-[380px] sm:min-h-[460px] lg:min-h-[500px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-              {visualMode === 'wireframe' ? (
-                <IsometricTerrain />
-              ) : (
-                <div className="relative w-full h-full max-w-xl max-h-[440px] overflow-hidden border border-white/15 bg-black p-2 shadow-2xl">
-                  <img
-                    src="/EbszSCwA.jpeg"
-                    alt="Pegasus Logistics Platform Interface"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
+              <IsometricTerrain />
             </div>
 
             {/* Bottom Metric Bar: 4-stat row strictly following the reference image */}
