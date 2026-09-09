@@ -38,12 +38,12 @@ export default function AssistantPage() {
             <span>BACK TO ECOSYSTEM</span>
           </Link>
           <span className="text-white/20">|</span>
-          <span className="text-xs font-mono font-bold tracking-wider text-[#E2FD52] uppercase">
+          <span className="text-xs font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
             PEGASUS AI ASSISTANT (OPENUI)
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#E2FD52] animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-pulse" />
           <span className="text-[11px] font-mono text-white/50">GENUI ACTIVE</span>
         </div>
       </header>
