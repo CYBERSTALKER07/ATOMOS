@@ -430,6 +430,15 @@ export default function SiteAssistant() {
                 </div>
 
                 <div className="site-assistant__head-actions">
+                  <Link
+                    href="/assistant"
+                    className="site-assistant__toggle-fullscreen text-[#E2FD52] border border-[#E2FD52]/40 hover:bg-[#E2FD52] hover:text-black font-mono transition-colors"
+                    title="Open OpenUI Agent Workspace"
+                    onClick={() => setOpen(false)}
+                  >
+                    OpenUI Agent ↗
+                  </Link>
+
                   <button
                     type="button"
                     className="site-assistant__toggle-fullscreen"
