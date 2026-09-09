@@ -301,14 +301,14 @@ const PillNav: React.FC<PillNavProps> = ({
     ['--pill-bg']: pillColor,
     ['--hover-text']: hoveredPillTextColor,
     ['--pill-text']: resolvedPillTextColor,
-    ['--nav-h']: '42px',
+    ['--nav-h']: '40px',
     ['--logo']: '36px',
-    ['--pill-pad-x']: '12px',
+    ['--pill-pad-x']: '10px',
     ['--pill-gap']: '2px'
   } as React.CSSProperties;
 
   const basePillClasses =
-    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
   const pillStyleBase: React.CSSProperties = {
     background: 'var(--pill-bg, #fff)',
@@ -327,9 +327,9 @@ const PillNav: React.FC<PillNavProps> = ({
         }
       }}
     >
-      <div className="relative pointer-events-none px-4 py-3">
+      <div className="relative pointer-events-none px-4 sm:px-6 py-2.5">
         <nav
-          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
+          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-[1600px] mx-auto ${className}`}
           aria-label="Primary"
           style={cssVars}
         >

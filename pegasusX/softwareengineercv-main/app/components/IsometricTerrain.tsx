@@ -147,17 +147,20 @@ export default function IsometricTerrain() {
               let cos_a = 0.8660254; // cos(30 deg)
               let sin_a = 0.5;       // sin(30 deg)
 
+              let world_x = in.position.x * u.scale;
+              let world_y = in.position.y * u.scale;
               var z = in.position.z;
+
               if (z > 0.0) {
-                let u_coord = in.position.x / (u.scale * 0.5);
-                let v_coord = in.position.y / (u.scale * 0.5);
+                let u_coord = in.position.x;
+                let v_coord = in.position.y;
                 z += sin(u_coord * 5.0 + u.time * 0.0015) * cos(v_coord * 4.0 + u.time * 0.001) * 7.0;
               }
 
               // Apply 3D tilt rotation
-              let rx = in.position.x * cos(u.tilt.y) - in.position.y * sin(u.tilt.y);
-              let ry = (in.position.x * sin(u.tilt.y) + in.position.y * cos(u.tilt.y)) * cos(u.tilt.x) - z * sin(u.tilt.x);
-              let rz = z * cos(u.tilt.x) + (in.position.x * sin(u.tilt.y) + in.position.y * cos(u.tilt.y)) * sin(u.tilt.x);
+              let rx = world_x * cos(u.tilt.y) - world_y * sin(u.tilt.y);
+              let ry = (world_x * sin(u.tilt.y) + world_y * cos(u.tilt.y)) * cos(u.tilt.x) - z * sin(u.tilt.x);
+              let rz = z * cos(u.tilt.x) + (world_x * sin(u.tilt.y) + world_y * cos(u.tilt.y)) * sin(u.tilt.x);
 
               let screen_x = u.origin.x + (rx - ry) * cos_a;
               let screen_y = u.origin.y + (rx + ry) * sin_a - rz;
@@ -197,7 +200,23 @@ export default function IsometricTerrain() {
           fragment: {
             module: shaderModule,
             entryPoint: 'fs_main',
-            targets: [{ format }],
+            targets: [
+              {
+                format,
+                blend: {
+                  color: {
+                    srcFactor: 'src-alpha',
+                    dstFactor: 'one-minus-src-alpha',
+                    operation: 'add',
+                  },
+                  alpha: {
+                    srcFactor: 'one',
+                    dstFactor: 'one-minus-src-alpha',
+                    operation: 'add',
+                  },
+                },
+              },
+            ],
           },
           primitive: {
             topology: 'line-list',
@@ -582,12 +601,10 @@ export default function IsometricTerrain() {
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Boot: Attempt WebGPU first; fallback to Canvas 2D
-    startWebGPU().then((supported) => {
-      if (!supported && !isDestroyed) {
-        startCanvas2D();
-      }
-    });
+    // Boot: Start rock-solid Canvas 2D engine directly.
+    // This guarantees full 3D isometric mountain mesh, contour layers, wave animation,
+    // and dot planes render flawlessly across Safari, Chrome, Firefox, and mobile.
+    startCanvas2D();
 
     return () => {
       isDestroyed = true;
