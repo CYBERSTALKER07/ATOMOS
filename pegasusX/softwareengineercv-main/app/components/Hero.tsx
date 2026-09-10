@@ -157,11 +157,11 @@ export default function Hero() {
             <div className="space-y-6">
               {/* Primary Headline with Interactive ParticleText */}
               <div className="space-y-3">
-                <div ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 xl:h-52">
+                <div ref={titleRef} className="w-full h-32 sm:h-40 md:h-48 xl:h-56">
                   <span className="sr-only">{t('hero_title')}</span>
                   <ParticleText
                     text="Pegasus"
-                    particleSize={2.4}
+                    particleSize={2.6}
                     density={4}
                     color="#f8fafc"
                     highlightColor="#10B981"
@@ -172,7 +172,7 @@ export default function Hero() {
                     repelRadius={120}
                     idleDrift={0.6}
                     trigger="mount"
-                    fontSize="clamp(3.5rem, 7vw, 6.8rem)"
+                    fontSize="clamp(4.2rem, 8.5vw, 8rem)"
                     fontWeight={800}
                     textAlign="left"
                     glow
@@ -181,7 +181,7 @@ export default function Hero() {
 
                 <h1
                   ref={subtitleRef}
-                  className="block text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-normal text-white min-h-[1.25em] tracking-tight leading-[1.15]"
+                  className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-normal text-white min-h-[1.25em] tracking-tight leading-[1.08]"
                 >
                   <TextType
                     key={language}
@@ -202,7 +202,7 @@ export default function Hero() {
               {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-base sm:text-lg md:text-xl xl:text-2xl text-white/70 font-light leading-relaxed max-w-xl pt-2"
+                className="text-lg sm:text-xl md:text-2xl text-white/70 font-light leading-relaxed max-w-2xl pt-2"
               >
                 {t('hero_desc')}
               </p>
@@ -241,10 +241,10 @@ export default function Hero() {
             <div className="border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 bg-black">
               {metrics.map((m, idx) => (
                 <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
-                  <span className="text-[11px] sm:text-xs font-mono tracking-wider text-white/50 uppercase mb-1 truncate">
+                  <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-white/45 uppercase mb-1 truncate">
                     {m.label}
                   </span>
-                  <span className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-mono font-bold text-white tracking-tight">
+                  <span className="text-base sm:text-lg lg:text-xl font-mono font-medium text-white tracking-tight">
                     {m.value}
                   </span>
                 </div>
