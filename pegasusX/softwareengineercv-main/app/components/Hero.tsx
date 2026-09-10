@@ -156,12 +156,12 @@ export default function Hero() {
           >
             <div className="space-y-6">
               {/* Primary Headline with Interactive ParticleText */}
-              <div className="space-y-2">
-                <div ref={titleRef} className="w-full h-20 sm:h-24 md:h-28 xl:h-32">
+              <div className="space-y-3">
+                <div ref={titleRef} className="w-full h-28 sm:h-36 md:h-44 xl:h-52">
                   <span className="sr-only">{t('hero_title')}</span>
                   <ParticleText
                     text="Pegasus"
-                    particleSize={2.2}
+                    particleSize={2.4}
                     density={4}
                     color="#f8fafc"
                     highlightColor="#10B981"
@@ -172,7 +172,7 @@ export default function Hero() {
                     repelRadius={120}
                     idleDrift={0.6}
                     trigger="mount"
-                    fontSize="clamp(2.8rem, 5.5vw, 5.2rem)"
+                    fontSize="clamp(3.5rem, 7vw, 6.8rem)"
                     fontWeight={800}
                     textAlign="left"
                     glow
@@ -181,7 +181,7 @@ export default function Hero() {
 
                 <h1
                   ref={subtitleRef}
-                  className="block text-2xl sm:text-3xl md:text-4xl xl:text-5xl font-light text-white/90 min-h-[1.25em] tracking-tight"
+                  className="block text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-normal text-white min-h-[1.25em] tracking-tight leading-[1.15]"
                 >
                   <TextType
                     key={language}
@@ -202,7 +202,7 @@ export default function Hero() {
               {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-sm sm:text-base md:text-lg text-white/60 font-light leading-relaxed max-w-lg pt-1"
+                className="text-base sm:text-lg md:text-xl xl:text-2xl text-white/70 font-light leading-relaxed max-w-xl pt-2"
               >
                 {t('hero_desc')}
               </p>
@@ -212,15 +212,15 @@ export default function Hero() {
             <div ref={ctaRef} className="pt-8 sm:pt-10 flex flex-wrap items-center gap-4">
               <button
                 onClick={scrollToNext}
-                className="inline-flex items-center justify-center gap-3 px-8 py-3.5 border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all text-xs sm:text-sm font-medium tracking-widest uppercase text-white group"
+                className="inline-flex items-center justify-center gap-3 px-10 py-4 border border-white/35 hover:border-white hover:bg-white hover:text-black transition-all text-sm sm:text-base font-semibold tracking-widest uppercase text-white group"
               >
                 <span>{t('hero_explore')}</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
               </button>
 
               <a
                 href="/join"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/30 text-white/70 hover:text-white transition-all text-xs sm:text-sm font-medium tracking-widest uppercase"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/80 hover:text-white transition-all text-sm sm:text-base font-semibold tracking-widest uppercase"
               >
                 <span>{t('hero_demo')}</span>
               </a>
@@ -241,10 +241,10 @@ export default function Hero() {
             <div className="border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 bg-black">
               {metrics.map((m, idx) => (
                 <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
-                  <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-white/45 uppercase mb-1 truncate">
+                  <span className="text-[11px] sm:text-xs font-mono tracking-wider text-white/50 uppercase mb-1 truncate">
                     {m.label}
                   </span>
-                  <span className="text-base sm:text-lg lg:text-xl font-mono font-medium text-white tracking-tight">
+                  <span className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-mono font-bold text-white tracking-tight">
                     {m.value}
                   </span>
                 </div>
