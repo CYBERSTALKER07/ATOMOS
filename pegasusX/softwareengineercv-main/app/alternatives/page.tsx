@@ -6,6 +6,8 @@ import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { Check, X, Minus, ArrowRight, Shield, Zap, RefreshCw, Cpu } from 'lucide-react';
+import DossierHero from '@/app/components/dossier/DossierHero';
+import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -38,21 +40,14 @@ export default async function AlternativesPage() {
       />
       <SiteNav />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Header */}
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Cpu className="w-3.5 h-3.5 text-white" />
-            {isRu ? 'Руководство покупателя TMS 2026' : '2026 TMS Evaluation Guide'}
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase">
-            {isRu ? 'Альтернативы системам управления транспортом' : 'Transportation Management Software Alternatives'}
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
-            {isRu
-              ? 'Ищете замену устаревшим монолитам или дорогим телематическим контрактам? Ознакомьтесь с независимым сравнением ведущих платформ для B2B-логистики.'
-              : 'Looking to replace legacy monoliths or restrictive telematics contracts? Review our objective breakdown of the leading platforms for B2B fleet dispatch and physical goods distribution.'}
-          </p>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
+        {/* Dossier Hero Section */}
+        <div className="mb-14">
+          <DossierHero
+            {...DOSSIER_PAGE_CONFIGS['alternatives']}
+            tabLabel={isRu ? 'PEGASUS / АЛЬТЕРНАТИВЫ' : 'PEGASUS / ALTERNATIVES'}
+            className="!px-0"
+          />
         </div>
 
         {/* Evaluation Pillars */}

@@ -19,6 +19,8 @@ import {
   breadcrumbJsonLd,
   jsonLdGraphScript,
 } from '@/app/lib/seo';
+import DossierHero from '@/app/components/dossier/DossierHero';
+import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -59,9 +61,9 @@ export default async function MarketsHubPage() {
       />
       <SiteNav activeHref="/markets" />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
+        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-6">
           <Link href="/" className="hover:text-white transition-colors">
             {isRu ? 'Главная' : 'Home'}
           </Link>
@@ -69,36 +71,13 @@ export default async function MarketsHubPage() {
           <span className="text-white/80">Markets</span>
         </div>
 
-        {/* Hero */}
-        <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Globe2 className="w-3.5 h-3.5 text-blue-400" />
-            <span>Worldwide Coverage · 16 Strategic Corridors</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
-            Global Logistics & Supply Chain Markets
-          </h1>
-
-          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
-            Sovereign, cloned cell architectures and low-latency cloud clusters delivering real-time logistics automation in any country and language.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              <span>Request Regional Deployment Demo</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/global-logistics"
-              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Global Architecture Overview
-            </Link>
-          </div>
+        {/* Dossier Hero Section */}
+        <div className="mb-14">
+          <DossierHero
+            {...DOSSIER_PAGE_CONFIGS['markets']}
+            tabLabel={isRu ? 'PEGASUS / РЫНКИ' : 'PEGASUS / MARKETS'}
+            className="!px-0"
+          />
         </div>
 
         {/* Regional Cell Clusters Summary */}

@@ -27,6 +27,9 @@ import {
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 
+import DossierHero from '@/app/components/dossier/DossierHero';
+import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
   const isRu = lang === 'ru';
@@ -96,9 +99,9 @@ export default async function SupplyChainSoftwarePage() {
       />
       <SiteNav activeHref="/supply-chain-software" />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
+        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-6">
           <Link href="/" className="hover:text-white transition-colors">
             {isRu ? 'Главная' : 'Home'}
           </Link>
@@ -106,36 +109,13 @@ export default async function SupplyChainSoftwarePage() {
           <span className="text-white/80">Supply Chain Software</span>
         </div>
 
-        {/* Hero Section */}
-        <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Boxes className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Next-Generation Multi-Enterprise Execution</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
-            Enterprise Supply Chain Software
-          </h1>
-
-          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
-            Unify order intake, multi-depot inventory reservation, carrier routing, and treasury settlement in one synchronized execution platform.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              <span>Request Supply Chain Demo</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/projects"
-              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Browse All 6 Role Apps
-            </Link>
-          </div>
+        {/* Dossier Hero Section */}
+        <div className="mb-14">
+          <DossierHero
+            {...DOSSIER_PAGE_CONFIGS['supply-chain-software']}
+            tabLabel={isRu ? 'PEGASUS / ЦЕПИ ПОСТАВОК' : 'PEGASUS / SUPPLY CHAIN'}
+            className="!px-0"
+          />
         </div>
 
         {/* Core Capabilities Grid */}
