@@ -56,27 +56,31 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
 
   return (
     <LanguageProvider initialLanguage={initialLanguage}>
-      <ReactLenis
-        root
-        options={{
-          lerp: 0.08,
-          duration: 1.2,
-          smoothWheel: !isLowEnd && !isMobile,
-          syncTouch: false,
-        }}
-      >
-        {allowHeavyFx && !isAssistantPage ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
-        {allowHoverFx && !isAssistantPage ? (
-          <TargetCursor
-            targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
-            spinDuration={2}
-            cursorColor="#ffffff"
-            cursorColorOnTarget="#10B981"
-          />
-        ) : null}
-        {children}
-        <SiteAssistant />
-      </ReactLenis>
+      {isAssistantPage ? (
+        children
+      ) : (
+        <ReactLenis
+          root
+          options={{
+            lerp: 0.08,
+            duration: 1.2,
+            smoothWheel: !isLowEnd && !isMobile,
+            syncTouch: false,
+          }}
+        >
+          {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
+          {allowHoverFx ? (
+            <TargetCursor
+              targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
+              spinDuration={2}
+              cursorColor="#ffffff"
+              cursorColorOnTarget="#10B981"
+            />
+          ) : null}
+          {children}
+          <SiteAssistant />
+        </ReactLenis>
+      )}
     </LanguageProvider>
   );
 };
