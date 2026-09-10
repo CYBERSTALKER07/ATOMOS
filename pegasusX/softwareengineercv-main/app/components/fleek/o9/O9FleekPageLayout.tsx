@@ -12,15 +12,6 @@ import O9CapabilityShowcase, { type O9CapabilityCard } from './O9CapabilityShowc
 import O9InsightCards from './O9InsightCards';
 import O9SplitTourCTA from './O9SplitTourCTA';
 import { useLanguage } from '@/app/context/LanguageContext';
-import {
-  TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
-  TacticalInstrumentsSection,
-  BrandEcosystemSpec,
-  DiamondMatrixTickerSection,
-  getSectionConfigForPage,
-} from '@/app/components/sections';
 
 export type O9FleekPageLayoutProps = {
   variant?: 'full' | 'secondary';
@@ -87,34 +78,6 @@ export default function O9FleekPageLayout({
   const valueTabs = getBusinessValueTabs(hubId, outcomes, language);
   const testimonials = getTestimonials(language);
   const footerCta = showTourCta ? (tourCta ?? <O9SplitTourCTA relatedProjectSlug={relatedProjectSlug} />) : null;
-  const isSolutionsPage = hubId === 'solutions' || categoryHref === '/solutions' || categoryHref.startsWith('/solutions');
-  const sectionConfig = getSectionConfigForPage(hubId);
-
-  const renderSignatureSection = () => {
-    if (isSolutionsPage) return null;
-    if (hubId === 'technology') {
-      return <TacticalInstrumentsSection />;
-    }
-    if (hubId === 'apps-deploy') {
-      return <BrandEcosystemSpec />;
-    }
-    if (hubId === 'platform') {
-      return <RadialHubSpokeSection config={sectionConfig.radial} />;
-    }
-    if (hubId === 'roles') {
-      return <BranchingTimelineSection config={sectionConfig.timeline} />;
-    }
-    if (hubId === 'company') {
-      return (
-        <BrandEcosystemSpec
-          title="_ Pegasus Organization"
-          badge="SOVEREIGN CORE"
-          description="Pegasus builds deterministic infrastructure for mission-critical logistics, providing high-reliability cloud tools and local sovereign stacks."
-        />
-      );
-    }
-    return <TacticalPillarsBento config={sectionConfig.pillars} />;
-  };
 
   return (
     <div className="o9-page">
@@ -130,7 +93,6 @@ export default function O9FleekPageLayout({
         proofItems={proofItems}
         showProofStrip={showProofStrip}
       />
-      {renderSignatureSection()}
       {showInsightCards ? <O9InsightCards /> : null}
       {showMarketing ? (
         <>

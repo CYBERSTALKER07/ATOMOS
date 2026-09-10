@@ -6,11 +6,6 @@ import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { ArrowRight, GitCompare, ShieldCheck } from 'lucide-react';
-import DossierHero from '@/app/components/dossier/DossierHero';
-import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
-import {
-  TacticalInstrumentsSection,
-} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -43,14 +38,21 @@ export default async function CompareHubPage() {
       />
       <SiteNav />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
-        {/* Dossier Hero Section */}
-        <div className="mb-14">
-          <DossierHero
-            {...DOSSIER_PAGE_CONFIGS['compare']}
-            tabLabel={isRu ? 'PEGASUS / СРАВНЕНИЯ' : 'PEGASUS / COMPARISON'}
-            className="!px-0"
-          />
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
+        {/* Header */}
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+            <GitCompare className="w-3.5 h-3.5 text-white" />
+            {isRu ? 'Аналитика и сравнение логистического ПО' : 'Objective Software Analysis'}
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase">
+            {isRu ? 'Сравнение систем управления логистикой' : 'Head-to-Head TMS Comparisons'}
+          </h1>
+          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
+            {isRu
+              ? 'Честное и прямое сравнение Pegasus с ведущими телематическими, брокерскими и экспедиторскими платформами на рынке.'
+              : 'Direct, architectural comparisons of Pegasus against leading telematics, brokerage, and dispatch platforms. Learn which platform aligns with your operational profile.'}
+          </p>
         </div>
 
         {/* Comparison Cards */}
@@ -93,13 +95,6 @@ export default async function CompareHubPage() {
             </div>
           ))}
         </div>
-
-        {/* Dedicated Signature Section: Tactical Benchmark Instruments */}
-        <TacticalInstrumentsSection
-          eyebrow="COMPARATIVE BENCHMARK INSTRUMENTS"
-          title="Architectural Precision: Pegasus vs Legacy Systems"
-          description="Real-world performance instruments comparing sub-second algorithmic dispatch, immutable cryptographic ledger audits, and adaptive load balancing against monolithic TMS architectures."
-        />
 
         {/* Methodology Note */}
         <section className="mt-20 p-8 rounded-2xl bg-white/[0.02] border border-white/10">

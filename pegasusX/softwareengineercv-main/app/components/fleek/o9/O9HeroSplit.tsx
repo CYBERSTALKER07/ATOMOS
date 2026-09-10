@@ -5,8 +5,6 @@ import type { ReactNode } from 'react';
 import { O9Hero, O9ProofStrip } from '@/app/components/page-sections/o9/O9Hero';
 import type { ProofItem } from '@/app/data/topicTypes';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
-import DossierHero from '@/app/components/dossier/DossierHero';
-import { getDossierConfig } from '@/app/components/dossier/dossierPageConfigs';
 
 type O9HeroSplitProps = {
   categoryLabel: string;
@@ -37,26 +35,6 @@ export default function O9HeroSplit({
   proofItems = DEFAULT_PROOF,
   showProofStrip = true,
 }: O9HeroSplitProps) {
-  const dossierConfig = getDossierConfig(categoryHref);
-  const isSolutionsPage = categoryHref?.startsWith('/solutions');
-
-  if (dossierConfig && !isSolutionsPage) {
-    return (
-      <section className="o9-hero-split o9-hero-split--dossier w-full pt-4 pb-2">
-        <DossierHero
-          {...dossierConfig}
-          tabLabel={dossierConfig.tabLabel || categoryLabel}
-          className="my-1 sm:my-2"
-        />
-        {showProofStrip ? (
-          <div className="o9-hero-split__proof max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-            <O9ProofStrip items={proofItems} />
-          </div>
-        ) : null}
-      </section>
-    );
-  }
-
   const hasVisual = Boolean(visual || imageSrc);
 
   return (

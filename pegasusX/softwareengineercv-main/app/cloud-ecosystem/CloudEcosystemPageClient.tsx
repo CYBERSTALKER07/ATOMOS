@@ -6,12 +6,6 @@ import Footer from '@/app/components/Footer';
 import PageSection from '@/app/components/layout/PageSection';
 import SectionHeader from '@/app/components/layout/SectionHeader';
 import CloudEcosystemBento from '@/app/components/CloudEcosystemBento';
-import DossierHero from '@/app/components/dossier/DossierHero';
-import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
-import {
-  BranchingTimelineSection,
-  SECTION_PAGE_CONFIGS,
-} from '@/app/components/sections';
 import { useLanguage } from '@/app/context/LanguageContext';
 import {
   CLOUD_ECOSYSTEM_CATEGORIES,
@@ -34,14 +28,17 @@ export default function CloudEcosystemPageClient() {
     <div className="relative bg-black min-h-screen">
       <SiteNav activeHref="/cloud-ecosystem" />
 
-      <PageSection className="pt-24 md:pt-28 border-b border-white/10">
-        <div className="mb-10 w-full">
-          <DossierHero
-            {...DOSSIER_PAGE_CONFIGS['cloud-ecosystem']}
-            tabLabel={isRu ? 'PEGASUS / ОБЛАЧНАЯ ЭКОСИСТЕМА' : 'PEGASUS / CLOUD ECOSYSTEM'}
-            className="!px-0"
-          />
-        </div>
+      <PageSection className="pt-28 md:pt-32 border-b border-white/10">
+        <SectionHeader
+          align="left"
+          eyebrow={t('cloud_eco_eyebrow', 'Cloud ecosystem')}
+          title={t('cloud_eco_page_title', 'Every layer of the cloud, mapped')}
+          description={t(
+            'cloud_eco_page_desc',
+            'Pegasus runs on Google Cloud with Spanner as the system of record, Kafka for live events, Redis for hot cache, GKE for servers, and the delivery stack that ships every role app.',
+          )}
+          className="mb-8 max-w-3xl"
+        />
 
         <div className="flex flex-wrap gap-2 mb-10">
           <button
@@ -72,9 +69,6 @@ export default function CloudEcosystemPageClient() {
         </div>
 
         <CloudEcosystemBento items={items} />
-
-        {/* Dedicated Signature Section: Branching Timeline */}
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['cloud-ecosystem'].timeline} />
 
         <div className="mt-12 flex flex-col sm:flex-row gap-3">
           <Link

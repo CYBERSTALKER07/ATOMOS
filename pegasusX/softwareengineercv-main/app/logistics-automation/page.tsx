@@ -27,13 +27,6 @@ import {
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 
-import DossierHero from '@/app/components/dossier/DossierHero';
-import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
-import {
-  RadialHubSpokeSection,
-  SECTION_PAGE_CONFIGS,
-} from '@/app/components/sections';
-
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
   const isRu = lang === 'ru';
@@ -103,9 +96,9 @@ export default async function LogisticsAutomationPage() {
       />
       <SiteNav activeHref="/logistics-automation" />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-6">
+        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
           <Link href="/" className="hover:text-white transition-colors">
             {isRu ? 'Главная' : 'Home'}
           </Link>
@@ -113,13 +106,36 @@ export default async function LogisticsAutomationPage() {
           <span className="text-white/80">Logistics Automation</span>
         </div>
 
-        {/* Dossier Hero Section */}
-        <div className="mb-14">
-          <DossierHero
-            {...DOSSIER_PAGE_CONFIGS['logistics-automation']}
-            tabLabel={isRu ? 'PEGASUS / АВТОМАТИЗАЦИЯ' : 'PEGASUS / LOGISTICS AUTOMATION'}
-            className="!px-0"
-          />
+        {/* Hero Section */}
+        <div className="border-b border-white/10 pb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Algorithmic Fleet & Yard Orchestration</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
+            Intelligent Logistics Automation
+          </h1>
+
+          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
+            Automate vehicle routing, visual dispatch load balancing, warehouse gate inspections, and treasury reconciliation with zero manual latency.
+          </p>
+
+          <div className="mt-10 flex flex-wrap gap-4">
+            <Link
+              href="/join"
+              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
+            >
+              <span>See Automation in Action</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/capabilities/smarter-dispatch"
+              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+            >
+              Dispatch Optimization Guide
+            </Link>
+          </div>
         </div>
 
         {/* Benchmarks / ROI Bar */}
@@ -150,8 +166,94 @@ export default async function LogisticsAutomationPage() {
           </div>
         </section>
 
-        {/* Dedicated Signature Section: Radial Hub-and-Spoke Topology */}
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['logistics-automation'].radial} />
+        {/* 5 Automation Pillars */}
+        <section className="mt-24">
+          <div className="mb-10">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-400">
+              Automation Modules
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
+              Five Automated Engines Powering Pegasus
+            </h2>
+            <p className="text-sm text-white/60 font-light mt-2 max-w-2xl">
+              From morning route calculation to evening treasury closure, every operational step is governed by deterministic business logic.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+                <Route className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                1. Automated CVRP Routing
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Mathematical multi-stop route optimization balancing vehicle weight limits, cubic space, customer time windows, and traffic patterns with Google OR-Tools.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+                <ScanLine className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                2. Automated Staging & Gate Check
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Digital barcode seals verify every pallet and prevent outbound truck dispatch errors before vehicles exit the loading terminal gate.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                3. Automated Geofence Status
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Live vehicle telemetry triggers automatic arrival status, notifying receiving managers and preparing loading bays the moment a truck enters the perimeter.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                4. Automated Proof of Delivery
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Barcode scan verification at the retailer counter captures item-level receipt, glass signature, and photo validation with instant cloud sync.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
+                <Receipt className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                5. Automated Treasury Balancing
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Point-of-delivery cash collection, commercial trade credit, and dispute offsets are immediately posted to the general ledger with zero manual reconciliation.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
+                <RefreshCw className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold uppercase text-white mb-2">
+                Human Override Architecture
+              </h3>
+              <p className="text-xs text-white/70 leading-relaxed font-light">
+                Automation serves the floor. Dispatchers and warehouse managers retain 1-click manual override capability for rush orders and sick driver substitutions.
+              </p>
+            </div>
+          </div>
+        </section>
 
         {/* Logistics Automation FAQ */}
         <section className="mt-24">

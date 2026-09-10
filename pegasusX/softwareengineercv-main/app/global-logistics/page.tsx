@@ -26,12 +26,6 @@ import {
   jsonLdGraphScript,
 } from '@/app/lib/seo';
 
-import DossierHero from '@/app/components/dossier/DossierHero';
-import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
-import {
-  DiamondMatrixTickerSection,
-} from '@/app/components/sections';
-
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
   const isRu = lang === 'ru';
@@ -100,9 +94,9 @@ export default async function GlobalLogisticsPage() {
       />
       <SiteNav activeHref="/global-logistics" />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-6">
+        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
           <Link href="/" className="hover:text-white transition-colors">
             {isRu ? 'Главная' : 'Home'}
           </Link>
@@ -110,21 +104,90 @@ export default async function GlobalLogisticsPage() {
           <span className="text-white/80">Global Logistics</span>
         </div>
 
-        {/* Dossier Hero Section */}
-        <div className="mb-14">
-          <DossierHero
-            {...DOSSIER_PAGE_CONFIGS['global-logistics']}
-            tabLabel={isRu ? 'PEGASUS / ГЛОБАЛЬНАЯ ЛОГИСТИКА' : 'PEGASUS / GLOBAL LOGISTICS'}
-            className="!px-0"
-          />
+        {/* Hero Header */}
+        <div className="border-b border-white/10 pb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+            <Globe2 className="w-3.5 h-3.5 text-blue-400" />
+            <span>Global Scale Enterprise Infrastructure</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
+            Global Logistics Operating System
+          </h1>
+
+          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
+            Orchestrate multi-region supplier networks, automated cross-border carrier fleets, and real-time inventory fulfillment on one synchronized cloud platform.
+          </p>
+
+          <div className="mt-10 flex flex-wrap gap-4">
+            <Link
+              href="/join"
+              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
+            >
+              <span>Schedule Global Architecture Demo</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/platform"
+              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+            >
+              Explore Cloud Architecture
+            </Link>
+          </div>
         </div>
 
-        {/* Dedicated Signature Section: Diamond Matrix Corridor Telemetry */}
-        <DiamondMatrixTickerSection
-          eyebrow="GLOBAL SOVEREIGN CELLS"
-          title="Planetary Cell Mesh & Cross-Border Telemetry"
-          description="Synchronous read-write transactions and multi-region state consistency across European, Central Asian, and American corridors with zero cross-tenant interference."
-        />
+        {/* Key Operational Pillars */}
+        <section className="mt-20">
+          <div className="mb-10">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
+              Distributed Infrastructure
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
+              Architected for Global Scale & Sovereignty
+            </h2>
+            <p className="text-sm text-white/60 font-light mt-2 max-w-2xl">
+              Eliminate cross-continental data lag and regulatory friction with sovereign, cloned cell clusters that communicate over high-speed distributed consensus pipelines.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+                <Server className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold uppercase text-white mb-3">
+                Multi-Region Cell Architecture
+              </h3>
+              <p className="text-sm text-white/70 leading-relaxed font-light">
+                Isolated geographic cells (e.g. EU, US, Central Asia) deliver zero-latency localized operations with automated cross-cell synchronization via Google Cloud Spanner and Kafka Outbox.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+                <Radio className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold uppercase text-white mb-3">
+                Cross-Border Fleet Telemetry
+              </h3>
+              <p className="text-sm text-white/70 leading-relaxed font-light">
+                Continuous high-frequency GPS tracking and dead-reckoning algorithms maintain real-time vehicle visibility even through cellular dead-zones, international borders, and transit tunnels.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold uppercase text-white mb-3">
+                Digital Chain of Custody
+              </h3>
+              <p className="text-sm text-white/70 leading-relaxed font-light">
+                Cryptographically validated gate barcode scans, automated tamper-evident seals, and immutable state machines guarantee complete physical accountability from factory to store shelf.
+              </p>
+            </div>
+          </div>
+        </section>
 
         {/* Global Logistics Architecture Comparison */}
         <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">
