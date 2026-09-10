@@ -58,14 +58,14 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
     <div ref={containerRef} className={`inline-flex items-center gap-1.5 ${className}`}>
       {/* Primary EN | RU Sliding Pill Toggle (Always Front and Center) */}
       <div
-        className="lang-switcher relative inline-grid grid-cols-2 items-center rounded-full border border-white/20 bg-black/60 p-0.5 backdrop-blur-md"
+        className="lang-switcher relative inline-grid grid-cols-2 items-center rounded-none border border-white/20 bg-black/60 p-0.5 backdrop-blur-md"
         role="group"
         aria-label="Language Toggle"
       >
         {isCoreLang && (
           <span
             aria-hidden
-            className="lang-switcher__thumb pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_4px_12px_rgba(0,0,0,0.35)]"
+            className="lang-switcher__thumb pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-none bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_4px_12px_rgba(0,0,0,0.35)]"
             style={{
               transform: language === 'ru' ? 'translateX(100%)' : 'translateX(0)',
               transition: 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)',
@@ -84,7 +84,7 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
             onMouseLeave={() => setHovered(null)}
             onFocus={() => setHovered(code)}
             onBlur={() => setHovered(null)}
-            className="lang-switcher__btn relative z-10 px-2.5 py-1 text-[11px] font-mono font-semibold tracking-wider rounded-full transition-[color,background-color,transform] duration-200 ease-out"
+            className="lang-switcher__btn relative z-10 px-2.5 py-1 text-[11px] font-mono font-semibold tracking-wider rounded-none transition-[color,background-color,transform] duration-200 ease-out"
             style={btnStyle(code)}
             aria-pressed={language === code}
             aria-label={code === 'en' ? 'Switch language to English' : 'Переключить язык на Русский'}
@@ -99,7 +99,7 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
         <button
           type="button"
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className={`flex items-center gap-1 px-2 py-1 rounded-full border transition-all text-[11px] font-mono backdrop-blur-md ${
+          className={`flex items-center gap-1 px-2 py-1 rounded-none border transition-all text-[11px] font-mono backdrop-blur-md ${
             !isCoreLang
               ? 'border-white bg-white text-black font-semibold'
               : 'border-white/20 bg-black/60 hover:bg-white/10 text-white/60 hover:text-white'
@@ -118,7 +118,7 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
         {isDropdownOpen && (
           <div
             role="listbox"
-            className="absolute right-0 mt-2 w-52 max-h-80 overflow-y-auto rounded-xl border border-white/15 bg-black/95 p-1.5 shadow-2xl backdrop-blur-2xl z-[9999] animate-in fade-in zoom-in-95 duration-150"
+            className="absolute right-0 mt-2 w-52 max-h-80 overflow-y-auto rounded-none border border-white/15 bg-black/95 p-1.5 shadow-2xl backdrop-blur-2xl z-[9999] animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-widest text-white/40 border-b border-white/10 mb-1">
               Global Corridors & Languages
@@ -135,7 +135,7 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
                     setLanguage(lang.code);
                     setIsDropdownOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors text-left ${
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-none text-xs font-mono transition-colors text-left ${
                     isSelected
                       ? 'bg-white text-black font-bold'
                       : 'text-white/80 hover:bg-white/10 hover:text-white'

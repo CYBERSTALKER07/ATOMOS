@@ -103,9 +103,11 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     };
 
     const initialOffset = getOffset();
+    let hasMoved = false;
     gsap.set(cursor, {
       xPercent: -50,
       yPercent: -50,
+      opacity: 0,
       x: window.innerWidth / 2 - initialOffset.x,
       y: window.innerHeight / 2 - initialOffset.y
     });
@@ -150,8 +152,29 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
     tickerFnRef.current = tickerFn;
 
-    const moveHandler = (e: MouseEvent) => moveCursor(e.clientX, e.clientY);
+    const moveHandler = (e: MouseEvent) => {
+      if (!hasMoved && cursorRef.current) {
+        hasMoved = true;
+        gsap.to(cursorRef.current, { opacity: 1, duration: 0.2, overwrite: 'auto' });
+      }
+      moveCursor(e.clientX, e.clientY);
+    };
     window.addEventListener('mousemove', moveHandler);
+
+    const windowLeaveHandler = () => {
+      if (cursorRef.current) {
+        gsap.to(cursorRef.current, { opacity: 0, duration: 0.2, overwrite: 'auto' });
+      }
+    };
+    const windowEnterHandler = () => {
+      if (cursorRef.current && hasMoved) {
+        gsap.to(cursorRef.current, { opacity: 1, duration: 0.2, overwrite: 'auto' });
+      }
+    };
+    document.addEventListener('mouseleave', windowLeaveHandler);
+    document.addEventListener('mouseenter', windowEnterHandler);
+    window.addEventListener('blur', windowLeaveHandler);
+    window.addEventListener('focus', windowEnterHandler);
 
     const scrollHandler = () => {
       if (!activeTarget || !cursorRef.current) return;
@@ -327,6 +350,10 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
         gsap.ticker.remove(tickerFnRef.current);
       }
       window.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseleave', windowLeaveHandler);
+      document.removeEventListener('mouseenter', windowEnterHandler);
+      window.removeEventListener('blur', windowLeaveHandler);
+      window.removeEventListener('focus', windowEnterHandler);
       window.removeEventListener('mouseover', enterHandler as EventListener);
       window.removeEventListener('scroll', scrollHandler);
       window.removeEventListener('resize', resizeHandler);

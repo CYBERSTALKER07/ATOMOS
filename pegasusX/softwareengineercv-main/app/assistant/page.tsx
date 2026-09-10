@@ -22,6 +22,25 @@ const llm = fetchLLM({
   messageFormat: vercelAIMessageFormat,
 });
 
+const STARTERS = [
+  {
+    displayText: 'Audit Multi-Tenant Fleet Allocation',
+    prompt: 'Audit current fleet allocation across Tashkent and regional hubs, checking vehicle status and active driver pairings.',
+  },
+  {
+    displayText: 'Explain Spanner Double-Entry Ledger',
+    prompt: 'Explain the Cloud Spanner transactional double-entry ledger invariants for supplier-to-retailer balance settlement.',
+  },
+  {
+    displayText: 'Simulate Dispatch & Route CVRP',
+    prompt: 'Simulate an automated dispatch wave using Google OR-Tools CVRP optimizer with capacity and time-window constraints.',
+  },
+  {
+    displayText: 'Inspect Driver DVIR Pre-Trip Workflow',
+    prompt: 'Walk through the DVIR vehicle pre-trip inspection workflow and how critical defects block dispatch ignition.',
+  },
+];
+
 export default function AssistantPage() {
   const mode = useSystemThemeMode();
 
@@ -55,7 +74,16 @@ export default function AssistantPage() {
           componentLibrary={openuiLibrary}
           agentName="Pegasus AI Assistant"
           theme={{ mode: 'dark' }}
-        />
+          starters={STARTERS}
+          starterVariant="long"
+        >
+          <AgentInterface.Welcome
+            title="Pegasus Ecosystem Intelligence"
+            description="Autonomous logistics reasoning, real-time fleet analytics, and generative UI visualization for supplier-led networks."
+            starters={STARTERS}
+            starterVariant="long"
+          />
+        </AgentInterface>
       </main>
     </div>
   );

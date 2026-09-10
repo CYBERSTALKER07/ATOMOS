@@ -308,7 +308,7 @@ const PillNav: React.FC<PillNavProps> = ({
   } as React.CSSProperties;
 
   const basePillClasses =
-    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
   const pillStyleBase: React.CSSProperties = {
     background: 'var(--pill-bg, #fff)',
@@ -339,7 +339,7 @@ const PillNav: React.FC<PillNavProps> = ({
             ref={el => {
               logoRef.current = el;
             }}
-            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none rounded-none"
             style={{
               width: '64px',
               height: '64px',
@@ -356,7 +356,7 @@ const PillNav: React.FC<PillNavProps> = ({
 
           <div
             ref={navItemsRef}
-            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
+            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
             style={{
               height: 'var(--nav-h)',
               background: 'var(--base, #000)'
@@ -405,7 +405,7 @@ const PillNav: React.FC<PillNavProps> = ({
                     </span>
                     {isActive && (
                       <span
-                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-3 rounded-full z-[4]"
+                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-1 z-[4]"
                         style={{ background: 'var(--base, #000)' }}
                         aria-hidden="true"
                       />
@@ -510,7 +510,7 @@ const PillNav: React.FC<PillNavProps> = ({
         {(!showMenuButton && !categories) ? (
           <div
             ref={mobileMenuRef}
-            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
+            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
             style={{
               ...cssVars,
               background: 'var(--base, #000)'
@@ -532,7 +532,7 @@ const PillNav: React.FC<PillNavProps> = ({
                 };
 
                 const linkClasses =
-                  'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+                  'block py-3 px-4 text-[16px] font-medium rounded-none transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
                 return (
                   <li key={item.href}>

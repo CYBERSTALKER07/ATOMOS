@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import SiteAssistant from '@/app/components/SiteAssistant';
 import { LanguageProvider } from '@/app/context/LanguageContext';
 import type { Language } from '@/app/lib/i18n/translations';
@@ -16,6 +17,8 @@ interface ClientLayoutProps {
 }
 
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }) => {
+  const pathname = usePathname();
+  const isAssistantPage = pathname?.startsWith('/assistant');
   const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
 
   useEffect(() => {
@@ -62,8 +65,8 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
           syncTouch: false,
         }}
       >
-        {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
-        {allowHoverFx ? (
+        {allowHeavyFx && !isAssistantPage ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
+        {allowHoverFx && !isAssistantPage ? (
           <TargetCursor
             targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
             spinDuration={2}
