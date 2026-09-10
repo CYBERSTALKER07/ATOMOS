@@ -149,19 +149,19 @@ export default function Hero() {
       <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Tactical Framed Container from reference layout */}
         <div className="border border-white/15 bg-[#000000] shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/15">
-          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA — Positioned lower down matching reference */}
+          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA — Anchored lower down matching reference */}
           <div
             ref={textRef}
-            className="flex flex-col justify-end p-8 sm:p-12 lg:p-14 xl:p-16 relative z-10 min-h-[520px] lg:min-h-[680px] xl:min-h-[740px] pt-16 sm:pt-24 lg:pt-36 xl:pt-48"
+            className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
           >
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Primary Headline with Interactive ParticleText */}
-              <div className="space-y-3">
-                <div ref={titleRef} className="w-full h-32 sm:h-40 md:h-48 xl:h-56">
+              <div className="space-y-2">
+                <div ref={titleRef} className="w-full h-20 sm:h-24 md:h-28 xl:h-32">
                   <span className="sr-only">{t('hero_title')}</span>
                   <ParticleText
                     text="Pegasus"
-                    particleSize={2.6}
+                    particleSize={2.4}
                     density={4}
                     color="#f8fafc"
                     highlightColor="#10B981"
@@ -172,7 +172,7 @@ export default function Hero() {
                     repelRadius={120}
                     idleDrift={0.6}
                     trigger="mount"
-                    fontSize="clamp(4.2rem, 8.5vw, 8rem)"
+                    fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
                     fontWeight={800}
                     textAlign="left"
                     glow
@@ -181,7 +181,7 @@ export default function Hero() {
 
                 <h1
                   ref={subtitleRef}
-                  className="block text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-normal text-white min-h-[1.25em] tracking-tight leading-[1.08]"
+                  className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white min-h-[1.25em] tracking-tight leading-[1.12]"
                 >
                   <TextType
                     key={language}
@@ -202,25 +202,25 @@ export default function Hero() {
               {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-lg sm:text-xl md:text-2xl text-white/70 font-light leading-relaxed max-w-2xl pt-2"
+                className="text-sm sm:text-base md:text-lg text-white/60 font-light leading-relaxed max-w-lg pt-1"
               >
                 {t('hero_desc')}
               </p>
             </div>
 
-            {/* Outlined Action Buttons matching reference layout */}
-            <div ref={ctaRef} className="pt-8 sm:pt-10 flex flex-wrap items-center gap-4">
+            {/* Outlined Action Buttons matching reference layout — clearly visible inside frame */}
+            <div ref={ctaRef} className="pt-6 sm:pt-8 flex flex-wrap items-center gap-4">
               <button
                 onClick={scrollToNext}
-                className="inline-flex items-center justify-center gap-3 px-10 py-4 border border-white/35 hover:border-white hover:bg-white hover:text-black transition-all text-sm sm:text-base font-semibold tracking-widest uppercase text-white group"
+                className="inline-flex items-center justify-center gap-3 px-8 py-3.5 border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase text-white group"
               >
                 <span>{t('hero_explore')}</span>
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </button>
 
               <a
                 href="/join"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/80 hover:text-white transition-all text-sm sm:text-base font-semibold tracking-widest uppercase"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/70 hover:text-white transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase"
               >
                 <span>{t('hero_demo')}</span>
               </a>
@@ -230,10 +230,10 @@ export default function Hero() {
           {/* RIGHT COLUMN: 3D Isometric Wireframe Graphic & Bottom Metrics Bar — Starts high up */}
           <div
             ref={visualRef}
-            className="flex flex-col justify-between bg-black relative overflow-hidden min-h-[520px] lg:min-h-[680px] xl:min-h-[740px]"
+            className="flex flex-col justify-between bg-black relative overflow-hidden min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
           >
             {/* Upper Area: Pure 3D Isometric Wireframe Visual positioned high */}
-            <div className="flex-1 min-h-[360px] sm:min-h-[440px] lg:min-h-[480px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+            <div className="flex-1 min-h-[340px] sm:min-h-[420px] lg:min-h-[460px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
               <IsometricTerrain />
             </div>
 
