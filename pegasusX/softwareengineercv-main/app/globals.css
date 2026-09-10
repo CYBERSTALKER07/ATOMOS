@@ -22,40 +22,19 @@
   --lane-muted: rgba(255, 255, 255, 0.1);
 }
 
-/* Single Unified Splash Screen */
+/* Single Unified Splash Screen (X / Twitter style clean minimal splash) */
 html.splash-done #app-splash-screen {
   display: none !important;
 }
 
-@keyframes splashLogoEnter {
-  0% {
-    opacity: 0;
-    transform: scale(0.88);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes splashOverlayFadeOut {
-  0% {
-    opacity: 1;
-    visibility: visible;
-  }
-  100% {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-}
-
-.splash-logo-anim {
-  animation: splashLogoEnter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+#app-splash-screen {
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .splash-screen-fadeout {
-  animation: splashOverlayFadeOut 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Unified page rail — one width and gutter across marketing sections */

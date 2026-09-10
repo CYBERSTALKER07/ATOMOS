@@ -30,7 +30,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
         return;
       }
 
-      const holdDuration = isLowEnd || prefersReducedMotion ? 900 : 1800;
+      const holdDuration = isLowEnd || prefersReducedMotion ? 400 : 700;
       const timer = setTimeout(() => {
         const splash = document.getElementById('app-splash-screen');
         if (splash) {
@@ -41,7 +41,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
             try {
               sessionStorage.setItem('hasSeenSplash', 'true');
             } catch (e) {}
-          }, 700);
+          }, 300);
         } else {
           document.documentElement.classList.add('splash-done');
           try {

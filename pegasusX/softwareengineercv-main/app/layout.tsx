@@ -178,13 +178,11 @@ export default async function RootLayout({
           className="fixed inset-0 z-[10006] bg-black flex items-center justify-center overflow-hidden pointer-events-auto"
           aria-label="Pegasus Loading"
         >
-          <div className="flex items-center justify-center splash-logo-anim">
-            <img
-              src="/pegasus.jpg"
-              alt="Pegasus Logo"
-              className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl"
-            />
-          </div>
+          <img
+            src="/pegasus.jpg"
+            alt="Pegasus Logo"
+            className="w-14 h-14 sm:w-16 sm:h-16 object-contain select-none"
+          />
         </div>
         <a
           href="#main-content"
