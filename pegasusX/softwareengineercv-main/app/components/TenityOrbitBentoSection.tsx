@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 type TenityOrbitBentoSectionProps = {
@@ -17,96 +18,87 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
       className={`relative w-full bg-[#000000] py-16 sm:py-24 px-4 sm:px-6 md:px-8 lg:px-12 select-none overflow-hidden ${className}`}
     >
       <div className="w-full max-w-[1440px] mx-auto flex flex-col gap-5">
-        {/* Top Grid Row: Lime Capsule Card + Dark Events Circular Portals + High-Tech Telemetry Card */}
+        {/* Top Grid Row: Lime Capsule Card + Dark Images Circular Portals + High-Tech Telemetry Card */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch min-h-[340px]">
-          {/* 1. Lime Card: The Latest from our Orbit */}
+          {/* 1. Lime Card: Autonomous Fleet Orbit */}
           <div className="md:col-span-3 bg-[#CEFF00] text-black rounded-3xl md:rounded-l-3xl md:rounded-r-full p-8 sm:p-10 flex flex-col justify-center relative overflow-hidden transition-transform duration-300 hover:-translate-y-1 shadow-[0_10px_40px_rgba(206,255,0,0.18)]">
             <h3 className="font-title text-3xl sm:text-4xl lg:text-[42px] font-bold leading-[1.08] tracking-tight text-black max-w-[220px]">
               {isRu ? (
                 <>
-                  Последнее <br />
-                  из нашего <br />
-                  Orbit
+                  Автономная <br />
+                  логистика <br />
+                  и флот
                 </>
               ) : (
                 <>
-                  The Latest <br />
-                  from our <br />
-                  Orbit
+                  Autonomous <br />
+                  Fleet &amp; <br />
+                  Dispatch
                 </>
               )}
             </h3>
           </div>
 
-          {/* 2. Center Card: Pitch-Black Card with Lime-Accented Circular Tactical Radar & Orbit Portals */}
+          {/* 2. Center Card: Pitch-Black Card with Lime-Accented Circular Tactical Image Portals */}
           <div className="md:col-span-6 bg-[#09090B] border border-[#CEFF00]/25 rounded-3xl p-6 sm:p-8 flex items-center justify-around gap-4 relative overflow-hidden shadow-2xl">
-            {/* Left Circle: Upcoming Events Radar Portal */}
-            <div className="relative group/circle cursor-pointer w-44 h-44 sm:w-56 sm:h-56 rounded-full overflow-hidden border-2 border-[#CEFF00]/50 hover:border-[#CEFF00] bg-black shadow-[0_0_30px_rgba(206,255,0,0.15)] flex-shrink-0 transition-all duration-300 flex flex-col items-center justify-center">
-              {/* Tactical Radar Background */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                <div className="w-3/4 h-3/4 rounded-full border border-dashed border-[#CEFF00]/40 animate-[spin_20s_linear_infinite]" />
-                <div className="absolute w-1/2 h-1/2 rounded-full border border-[#CEFF00]/30" />
-                <div className="absolute w-full h-[1px] bg-[#CEFF00]/20" />
-                <div className="absolute h-full w-[1px] bg-[#CEFF00]/20" />
-              </div>
+            {/* Left Circle: Autonomous Dispatch & Optimization Portal */}
+            <div className="relative group/circle cursor-pointer w-44 h-44 sm:w-56 sm:h-56 rounded-full overflow-hidden border-2 border-[#CEFF00]/60 hover:border-[#CEFF00] bg-black shadow-[0_0_30px_rgba(206,255,0,0.2)] flex-shrink-0 transition-all duration-300">
+              <Image
+                src="/Unknown-8.jpg"
+                alt={isRu ? "Оптимизация маршрутов Pegasus" : "Autonomous Route Optimization"}
+                fill
+                className="object-cover transition-transform duration-500 group-hover/circle:scale-110"
+                sizes="(max-width: 640px) 176px, 224px"
+              />
+              {/* Tactical Vignette Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20" />
 
-              {/* Animated Radar Sweep */}
-              <div className="absolute inset-0 bg-[conic-gradient(from_0deg,transparent_0deg,rgba(206,255,0,0.25)_60deg,transparent_60.1deg)] animate-[spin_4s_linear_infinite] pointer-events-none rounded-full" />
-
-              {/* Live Blip */}
-              <div className="relative z-10 flex flex-col items-center gap-2">
-                <div className="relative flex items-center justify-center">
-                  <span className="absolute w-6 h-6 rounded-full bg-[#CEFF00]/30 animate-ping" />
-                  <span className="w-3.5 h-3.5 rounded-full bg-[#CEFF00] shadow-[0_0_12px_#CEFF00]" />
-                </div>
-                <div className="px-2 py-0.5 rounded bg-[#CEFF00]/10 border border-[#CEFF00]/40 text-[10px] font-mono uppercase tracking-widest text-[#CEFF00]">
-                  Live Pulse
-                </div>
-              </div>
-
-              {/* Label */}
-              <span className="absolute bottom-5 left-0 right-0 text-center font-title text-[#CEFF00] text-sm sm:text-base font-bold tracking-tight z-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
-                {isRu ? 'Предстоящие события' : 'Upcoming Events'}
-              </span>
-            </div>
-
-            {/* Right Circle: Orbital Trajectory Portal */}
-            <div className="relative group/circle cursor-pointer w-44 h-44 sm:w-56 sm:h-56 rounded-full overflow-hidden border-2 border-[#CEFF00]/50 hover:border-[#CEFF00] bg-black shadow-[0_0_30px_rgba(206,255,0,0.15)] flex-shrink-0 transition-all duration-300 flex flex-col items-center justify-center">
-              {/* Concentric Gyroscope Rings */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-[85%] h-[85%] rounded-full border border-[#CEFF00]/30 animate-[spin_12s_linear_infinite]" />
-                <div className="absolute w-[60%] h-[60%] rounded-full border border-dashed border-[#CEFF00]/50 animate-[spin_8s_linear_infinite_reverse]" />
-                <div className="absolute w-[35%] h-[35%] rounded-full border border-[#CEFF00]/40" />
-                {/* Orbiting Satellite Node */}
-                <div className="absolute w-full h-full animate-[spin_6s_linear_infinite]">
-                  <div className="w-2.5 h-2.5 rounded-full bg-[#CEFF00] shadow-[0_0_10px_#CEFF00] absolute top-2 left-1/2 -translate-x-1/2" />
-                </div>
-              </div>
-
-              {/* Center Launch Icon / Core */}
-              <div className="relative z-10 flex flex-col items-center gap-1.5">
-                <svg
-                  className="w-8 h-8 text-[#CEFF00] drop-shadow-[0_0_10px_rgba(206,255,0,0.6)] transform group-hover/circle:-translate-y-1 group-hover/circle:scale-110 transition-transform duration-300"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
-                  <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-                  <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-                  <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-                </svg>
-                <span className="text-[10px] font-mono tracking-widest text-[#CEFF00]/80 uppercase">
-                  Telemetry
+              {/* Badge */}
+              <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                <span className="px-2.5 py-0.5 rounded-full bg-black/80 border border-[#CEFF00]/60 text-[9px] font-mono font-bold tracking-widest text-[#CEFF00] uppercase backdrop-blur-sm">
+                  OR-TOOLS CVRP
                 </span>
               </div>
 
-              <span className="absolute bottom-5 left-0 right-0 text-center font-title text-[#CEFF00] text-sm sm:text-base font-bold tracking-tight z-10 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
-                {isRu ? 'Орбитальная Сеть' : 'Orbit Trajectory'}
-              </span>
+              {/* Label */}
+              <div className="absolute bottom-4 left-0 right-0 px-2 text-center z-10">
+                <span className="block font-title text-[#CEFF00] text-sm sm:text-base font-bold tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                  {isRu ? 'Маршрутизация' : 'Algorithmic Dispatch'}
+                </span>
+                <span className="block text-[10px] font-mono text-zinc-300 uppercase tracking-wider mt-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  {isRu ? 'Суб-секундный расчет' : 'Sub-second CVRP'}
+                </span>
+              </div>
+            </div>
+
+            {/* Right Circle: Fleet Terminal & Telematics Portal */}
+            <div className="relative group/circle cursor-pointer w-44 h-44 sm:w-56 sm:h-56 rounded-full overflow-hidden border-2 border-[#CEFF00]/60 hover:border-[#CEFF00] bg-black shadow-[0_0_30px_rgba(206,255,0,0.2)] flex-shrink-0 transition-all duration-300">
+              <Image
+                src="/Unknown-5.jpg"
+                alt={isRu ? "Телеметрия флота и терминалы" : "Fleet Terminal & Telematics"}
+                fill
+                className="object-cover transition-transform duration-500 group-hover/circle:scale-110"
+                sizes="(max-width: 640px) 176px, 224px"
+              />
+              {/* Tactical Vignette Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20" />
+
+              {/* Badge */}
+              <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                <span className="px-2.5 py-0.5 rounded-full bg-black/80 border border-[#CEFF00]/60 text-[9px] font-mono font-bold tracking-widest text-[#CEFF00] uppercase backdrop-blur-sm">
+                  LIVE TELEMATICS
+                </span>
+              </div>
+
+              {/* Label */}
+              <div className="absolute bottom-4 left-0 right-0 px-2 text-center z-10">
+                <span className="block font-title text-[#CEFF00] text-sm sm:text-base font-bold tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                  {isRu ? 'Флот и терминалы' : 'Fleet & Terminal'}
+                </span>
+                <span className="block text-[10px] font-mono text-zinc-300 uppercase tracking-wider mt-0.5 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                  {isRu ? 'IoT датчики и шлюзы' : 'IoT Sensors & Gates'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -144,10 +136,10 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
             <div className="pt-3 border-t border-[#CEFF00]/15 flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-white uppercase tracking-wider">
-                  {isRu ? 'Инновационный Узел' : 'Global Hub Matrix'}
+                  {isRu ? 'Суверенный Узел' : 'Sovereign Hub Matrix'}
                 </div>
                 <div className="text-[10px] font-mono text-[#CEFF00]/80 mt-0.5">
-                  5,400+ TPS Distributed
+                  120,000+ Orders/Day
                 </div>
               </div>
               <div className="w-7 h-7 rounded-full bg-[#CEFF00]/10 border border-[#CEFF00]/40 flex items-center justify-center text-[#CEFF00] group-hover:bg-[#CEFF00] group-hover:text-black transition-colors">
@@ -159,7 +151,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
 
         {/* Bottom Grid Row: Giant Lime Capsule with 100+ Metric & Halftone Vector Globe + Pure Black/Lime Card */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch min-h-[360px]">
-          {/* 4. Giant Lime Capsule: 100+ PoCs + Pure SVG Halftone Globe */}
+          {/* 4. Giant Lime Capsule: 100+ Enterprise Hubs + Pure SVG Halftone Globe */}
           <div className="md:col-span-9 bg-[#CEFF00] text-black rounded-3xl md:rounded-l-3xl md:rounded-r-full p-8 sm:p-12 lg:p-14 flex flex-col md:flex-row justify-between items-center relative overflow-hidden transition-transform duration-300 hover:-translate-y-1 shadow-[0_15px_50px_rgba(206,255,0,0.22)]">
             {/* Left side: Metric & Subtext */}
             <div className="flex flex-col justify-between h-full z-10 w-full md:w-1/2">
@@ -168,8 +160,8 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
               </div>
               <p className="font-semibold text-sm sm:text-base md:text-lg text-black/95 leading-[1.35] max-w-sm mt-8 md:mt-12">
                 {isRu
-                  ? 'Пилотных проектов (PoC), реализованных через Visa Innovation Program Europe'
-                  : 'PoCs facilitated through the Visa Innovation Program Europe'}
+                  ? 'Распределительных центров и терминалов под управлением единой суверенной платформы'
+                  : 'Enterprise distribution hubs and fleet terminals coordinated with zero data divergence'}
               </p>
             </div>
 
@@ -243,24 +235,22 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
             </div>
           </div>
 
-          {/* 5. Pure Black & Lime Card: One of Denmark's largest AI rounds */}
+          {/* 5. Pure Black & Lime Card: High-Speed Sovereign Architecture */}
           <div className="md:col-span-3 bg-[#09090B] border border-[#CEFF00]/30 text-white rounded-3xl md:rounded-l-3xl md:rounded-r-full p-8 sm:p-10 flex flex-col justify-center relative overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:border-[#CEFF00] shadow-2xl">
             <h3 className="font-title text-2xl sm:text-3xl lg:text-[34px] font-bold leading-[1.15] tracking-tight text-[#CEFF00]">
               {isRu ? (
                 <>
-                  Один из <br />
-                  крупнейших <br />
-                  раундов в <br />
-                  сфере ИИ <br />
-                  в Дании
+                  Суверенная <br />
+                  логистическая <br />
+                  ОС для <br />
+                  предприятий
                 </>
               ) : (
                 <>
-                  One of <br />
-                  Denmark&apos;s <br />
-                  largest <br />
-                  AI/Deeptech <br />
-                  rounds
+                  Sub-second <br />
+                  sovereign <br />
+                  logistics OS <br />
+                  for fleets
                 </>
               )}
             </h3>
