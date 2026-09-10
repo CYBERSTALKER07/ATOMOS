@@ -8,6 +8,12 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { ArrowRight, GitCompare, ShieldCheck } from 'lucide-react';
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -90,6 +96,11 @@ export default async function CompareHubPage() {
             </div>
           ))}
         </div>
+
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['alternatives'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['alternatives'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['alternatives'].radial} />
 
         {/* Methodology Note */}
         <section className="mt-20 p-8 rounded-2xl bg-white/[0.02] border border-white/10">

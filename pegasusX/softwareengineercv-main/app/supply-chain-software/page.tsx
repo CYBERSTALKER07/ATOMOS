@@ -29,6 +29,12 @@ import {
 
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -118,58 +124,10 @@ export default async function SupplyChainSoftwarePage() {
           />
         </div>
 
-        {/* Core Capabilities Grid */}
-        <section className="mt-20">
-          <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-emerald-400">
-              End-to-End Orchestration
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
-              Synchronizing Every Link in Your Supply Chain
-            </h2>
-            <p className="text-sm text-white/60 font-light mt-2 max-w-2xl">
-              Eliminate information silos, misallocated inventory, and delayed payments with a single source of operational truth.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
-                <Workflow className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Order-to-Cash (O2C) State Machine
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Governed transaction states prevent order drops and ghost status updates. Every change triggers atomic outbox events across warehouse staging and retailer mobile apps.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
-                <Database className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Multi-Depot Inventory Locking
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Real-time stock reservation guards prevent stock-outs and concurrent over-committing across regional warehouses, production factories, and distribution hubs.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
-                <FileCheck2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Point-of-Delivery Treasury
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Reconcile physical cash-on-delivery (COD) handoffs, credit terms, and digital invoice sign-offs instantly as drivers complete deliveries, with zero month-end balance discrepancies.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['supply-chain-software'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['supply-chain-software'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['supply-chain-software'].radial} />
 
         {/* 6 Roles Section */}
         <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">

@@ -29,6 +29,12 @@ import {
 
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -146,94 +152,10 @@ export default async function LogisticsAutomationPage() {
           </div>
         </section>
 
-        {/* 5 Automation Pillars */}
-        <section className="mt-24">
-          <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-400">
-              Automation Modules
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
-              Five Automated Engines Powering Pegasus
-            </h2>
-            <p className="text-sm text-white/60 font-light mt-2 max-w-2xl">
-              From morning route calculation to evening treasury closure, every operational step is governed by deterministic business logic.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
-                <Route className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                1. Automated CVRP Routing
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Mathematical multi-stop route optimization balancing vehicle weight limits, cubic space, customer time windows, and traffic patterns with Google OR-Tools.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
-                <ScanLine className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                2. Automated Staging & Gate Check
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Digital barcode seals verify every pallet and prevent outbound truck dispatch errors before vehicles exit the loading terminal gate.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                3. Automated Geofence Status
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Live vehicle telemetry triggers automatic arrival status, notifying receiving managers and preparing loading bays the moment a truck enters the perimeter.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                4. Automated Proof of Delivery
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Barcode scan verification at the retailer counter captures item-level receipt, glass signature, and photo validation with instant cloud sync.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
-                <Receipt className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                5. Automated Treasury Balancing
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Point-of-delivery cash collection, commercial trade credit, and dispute offsets are immediately posted to the general ledger with zero manual reconciliation.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
-                <RefreshCw className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold uppercase text-white mb-2">
-                Human Override Architecture
-              </h3>
-              <p className="text-xs text-white/70 leading-relaxed font-light">
-                Automation serves the floor. Dispatchers and warehouse managers retain 1-click manual override capability for rush orders and sick driver substitutions.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['logistics-automation'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['logistics-automation'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['logistics-automation'].radial} />
 
         {/* Logistics Automation FAQ */}
         <section className="mt-24">

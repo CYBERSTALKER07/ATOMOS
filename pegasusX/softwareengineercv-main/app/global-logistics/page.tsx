@@ -28,6 +28,12 @@ import {
 
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -116,58 +122,10 @@ export default async function GlobalLogisticsPage() {
           />
         </div>
 
-        {/* Key Operational Pillars */}
-        <section className="mt-20">
-          <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
-              Distributed Infrastructure
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
-              Architected for Global Scale & Sovereignty
-            </h2>
-            <p className="text-sm text-white/60 font-light mt-2 max-w-2xl">
-              Eliminate cross-continental data lag and regulatory friction with sovereign, cloned cell clusters that communicate over high-speed distributed consensus pipelines.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
-                <Server className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Multi-Region Cell Architecture
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Isolated geographic cells (e.g. EU, US, Central Asia) deliver zero-latency localized operations with automated cross-cell synchronization via Google Cloud Spanner and Kafka Outbox.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
-                <Radio className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Cross-Border Fleet Telemetry
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Continuous high-frequency GPS tracking and dead-reckoning algorithms maintain real-time vehicle visibility even through cellular dead-zones, international borders, and transit tunnels.
-              </p>
-            </div>
-
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold uppercase text-white mb-3">
-                Digital Chain of Custody
-              </h3>
-              <p className="text-sm text-white/70 leading-relaxed font-light">
-                Cryptographically validated gate barcode scans, automated tamper-evident seals, and immutable state machines guarantee complete physical accountability from factory to store shelf.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['global-logistics'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['global-logistics'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['global-logistics'].radial} />
 
         {/* Global Logistics Architecture Comparison */}
         <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">

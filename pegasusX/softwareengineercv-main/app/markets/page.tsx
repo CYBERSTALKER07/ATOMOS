@@ -21,6 +21,12 @@ import {
 } from '@/app/lib/seo';
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -111,6 +117,11 @@ export default async function MarketsHubPage() {
             <span className="text-xs text-white/50 font-mono mt-1 block">2ms TAS-IX / 5ms SG</span>
           </div>
         </section>
+
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['markets'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['markets'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['markets'].radial} />
 
         {/* Markets Directory Grid */}
         <section className="mt-20">

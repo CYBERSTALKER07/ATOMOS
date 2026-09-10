@@ -8,6 +8,12 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { Check, X, Minus, ArrowRight, Shield, Zap, RefreshCw, Cpu } from 'lucide-react';
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  SECTION_PAGE_CONFIGS,
+} from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -50,50 +56,10 @@ export default async function AlternativesPage() {
           />
         </div>
 
-        {/* Evaluation Pillars */}
-        <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Независимость от "железа"' : 'Hardware Independence'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Избегайте многолетней аренды проприетарных черных ящиков. Современные системы работают на смартфонах водителей и открытых датчиках.'
-                : 'Avoid 36-60 month proprietary black-box hardware leases. Modern platforms leverage driver mobile devices and open telematics APIs.'}
-            </p>
-          </div>
-
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
-              <RefreshCw className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Сквозной B2B контур (6 ролей)' : 'Full 6-Role Closed Loop'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Объединение поставщика, склада, фабрики, водителя, ритейлера и ворот в единой системе состояний с нулевыми потерями данных.'
-                : 'Connect suppliers, warehouses, factories, drivers, retailers, and security gates into one shared transactional state without dropped handoffs.'}
-            </p>
-          </div>
-
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Финансовая сверка' : 'Financial Reconciliation'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Прямая сверка наложенных платежей (COD), банковских переводов и доказательств доставки в казначействе день в день.'
-                : 'Same-day point-of-delivery cash-on-delivery reconciliation and instant credit limit validation directly within the operations core.'}
-            </p>
-          </div>
-        </section>
+        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['alternatives'].pillars} />
+        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['alternatives'].timeline} />
+        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['alternatives'].radial} />
 
         {/* Competitor Cards Grid */}
         <section className="mt-20">

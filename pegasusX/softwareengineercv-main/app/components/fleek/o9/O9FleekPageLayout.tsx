@@ -12,6 +12,12 @@ import O9CapabilityShowcase, { type O9CapabilityCard } from './O9CapabilityShowc
 import O9InsightCards from './O9InsightCards';
 import O9SplitTourCTA from './O9SplitTourCTA';
 import { useLanguage } from '@/app/context/LanguageContext';
+import {
+  TacticalPillarsBento,
+  BranchingTimelineSection,
+  RadialHubSpokeSection,
+  getSectionConfigForPage,
+} from '@/app/components/sections';
 
 export type O9FleekPageLayoutProps = {
   variant?: 'full' | 'secondary';
@@ -78,6 +84,8 @@ export default function O9FleekPageLayout({
   const valueTabs = getBusinessValueTabs(hubId, outcomes, language);
   const testimonials = getTestimonials(language);
   const footerCta = showTourCta ? (tourCta ?? <O9SplitTourCTA relatedProjectSlug={relatedProjectSlug} />) : null;
+  const isSolutionsPage = hubId === 'solutions' || categoryHref === '/solutions' || categoryHref.startsWith('/solutions');
+  const sectionConfig = getSectionConfigForPage(hubId);
 
   return (
     <div className="o9-page">
@@ -93,6 +101,13 @@ export default function O9FleekPageLayout({
         proofItems={proofItems}
         showProofStrip={showProofStrip}
       />
+      {!isSolutionsPage && (
+        <div className="o9-modular-sections space-y-4">
+          <TacticalPillarsBento config={sectionConfig.pillars} />
+          <BranchingTimelineSection config={sectionConfig.timeline} />
+          <RadialHubSpokeSection config={sectionConfig.radial} />
+        </div>
+      )}
       {showInsightCards ? <O9InsightCards /> : null}
       {showMarketing ? (
         <>
