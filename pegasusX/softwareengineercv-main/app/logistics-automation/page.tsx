@@ -30,8 +30,6 @@ import {
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
-  TacticalPillarsBento,
-  BranchingTimelineSection,
   RadialHubSpokeSection,
   SECTION_PAGE_CONFIGS,
 } from '@/app/components/sections';
@@ -152,9 +150,7 @@ export default async function LogisticsAutomationPage() {
           </div>
         </section>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
-        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['logistics-automation'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['logistics-automation'].timeline} />
+        {/* Dedicated Signature Section: Radial Hub-and-Spoke Topology */}
         <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['logistics-automation'].radial} />
 
         {/* Logistics Automation FAQ */}

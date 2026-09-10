@@ -16,6 +16,9 @@ import {
   TacticalPillarsBento,
   BranchingTimelineSection,
   RadialHubSpokeSection,
+  TacticalInstrumentsSection,
+  BrandEcosystemSpec,
+  DiamondMatrixTickerSection,
   getSectionConfigForPage,
 } from '@/app/components/sections';
 
@@ -87,6 +90,32 @@ export default function O9FleekPageLayout({
   const isSolutionsPage = hubId === 'solutions' || categoryHref === '/solutions' || categoryHref.startsWith('/solutions');
   const sectionConfig = getSectionConfigForPage(hubId);
 
+  const renderSignatureSection = () => {
+    if (isSolutionsPage) return null;
+    if (hubId === 'technology') {
+      return <TacticalInstrumentsSection />;
+    }
+    if (hubId === 'apps-deploy') {
+      return <BrandEcosystemSpec />;
+    }
+    if (hubId === 'platform') {
+      return <RadialHubSpokeSection config={sectionConfig.radial} />;
+    }
+    if (hubId === 'roles') {
+      return <BranchingTimelineSection config={sectionConfig.timeline} />;
+    }
+    if (hubId === 'company') {
+      return (
+        <BrandEcosystemSpec
+          title="_ Pegasus Organization"
+          badge="SOVEREIGN CORE"
+          description="Pegasus builds deterministic infrastructure for mission-critical logistics, providing high-reliability cloud tools and local sovereign stacks."
+        />
+      );
+    }
+    return <TacticalPillarsBento config={sectionConfig.pillars} />;
+  };
+
   return (
     <div className="o9-page">
       <O9HeroSplit
@@ -101,13 +130,7 @@ export default function O9FleekPageLayout({
         proofItems={proofItems}
         showProofStrip={showProofStrip}
       />
-      {!isSolutionsPage && (
-        <div className="o9-modular-sections space-y-4">
-          <TacticalPillarsBento config={sectionConfig.pillars} />
-          <BranchingTimelineSection config={sectionConfig.timeline} />
-          <RadialHubSpokeSection config={sectionConfig.radial} />
-        </div>
-      )}
+      {renderSignatureSection()}
       {showInsightCards ? <O9InsightCards /> : null}
       {showMarketing ? (
         <>

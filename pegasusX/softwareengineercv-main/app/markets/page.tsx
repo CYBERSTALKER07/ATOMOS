@@ -22,10 +22,7 @@ import {
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
-  TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
-  SECTION_PAGE_CONFIGS,
+  DiamondMatrixTickerSection,
 } from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -118,10 +115,12 @@ export default async function MarketsHubPage() {
           </div>
         </section>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
-        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['markets'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['markets'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['markets'].radial} />
+        {/* Dedicated Signature Section: Regional Corridor Diamond Matrix */}
+        <DiamondMatrixTickerSection
+          eyebrow="REGIONAL CORRIDOR METRICS"
+          title="National Highway & Regional Corridors"
+          description="Real-time freight rates, delivery throughput, and cash treasury reconciliation across Tashkent, Samarkand, Bukhara, and Fergana corridors."
+        />
 
         {/* Markets Directory Grid */}
         <section className="mt-20">

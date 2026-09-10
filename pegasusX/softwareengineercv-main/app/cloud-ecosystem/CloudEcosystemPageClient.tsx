@@ -9,9 +9,7 @@ import CloudEcosystemBento from '@/app/components/CloudEcosystemBento';
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
-  TacticalPillarsBento,
   BranchingTimelineSection,
-  RadialHubSpokeSection,
   SECTION_PAGE_CONFIGS,
 } from '@/app/components/sections';
 import { useLanguage } from '@/app/context/LanguageContext';
@@ -75,10 +73,8 @@ export default function CloudEcosystemPageClient() {
 
         <CloudEcosystemBento items={items} />
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
-        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['cloud-ecosystem'].pillars} />
+        {/* Dedicated Signature Section: Branching Timeline */}
         <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['cloud-ecosystem'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['cloud-ecosystem'].radial} />
 
         <div className="mt-12 flex flex-col sm:flex-row gap-3">
           <Link

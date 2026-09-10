@@ -9,10 +9,7 @@ import { ArrowRight, GitCompare, ShieldCheck } from 'lucide-react';
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
-  TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
-  SECTION_PAGE_CONFIGS,
+  TacticalInstrumentsSection,
 } from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -97,10 +94,12 @@ export default async function CompareHubPage() {
           ))}
         </div>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
-        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['alternatives'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['alternatives'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['alternatives'].radial} />
+        {/* Dedicated Signature Section: Tactical Benchmark Instruments */}
+        <TacticalInstrumentsSection
+          eyebrow="COMPARATIVE BENCHMARK INSTRUMENTS"
+          title="Architectural Precision: Pegasus vs Legacy Systems"
+          description="Real-world performance instruments comparing sub-second algorithmic dispatch, immutable cryptographic ledger audits, and adaptive load balancing against monolithic TMS architectures."
+        />
 
         {/* Methodology Note */}
         <section className="mt-20 p-8 rounded-2xl bg-white/[0.02] border border-white/10">

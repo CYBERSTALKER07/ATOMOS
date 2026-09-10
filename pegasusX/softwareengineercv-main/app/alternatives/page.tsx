@@ -10,8 +10,6 @@ import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
   TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
   SECTION_PAGE_CONFIGS,
 } from '@/app/components/sections';
 
@@ -56,10 +54,8 @@ export default async function AlternativesPage() {
           />
         </div>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        {/* Dedicated Signature Section: Tactical Pillars Bento */}
         <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['alternatives'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['alternatives'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['alternatives'].radial} />
 
         {/* Competitor Cards Grid */}
         <section className="mt-20">

@@ -31,8 +31,6 @@ import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
   TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
   SECTION_PAGE_CONFIGS,
 } from '@/app/components/sections';
 
@@ -124,10 +122,8 @@ export default async function SupplyChainSoftwarePage() {
           />
         </div>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
+        {/* Dedicated Signature Section: Tactical Pillars Bento */}
         <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['supply-chain-software'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['supply-chain-software'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['supply-chain-software'].radial} />
 
         {/* 6 Roles Section */}
         <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">

@@ -29,10 +29,7 @@ import {
 import DossierHero from '@/app/components/dossier/DossierHero';
 import { DOSSIER_PAGE_CONFIGS } from '@/app/components/dossier/dossierPageConfigs';
 import {
-  TacticalPillarsBento,
-  BranchingTimelineSection,
-  RadialHubSpokeSection,
-  SECTION_PAGE_CONFIGS,
+  DiamondMatrixTickerSection,
 } from '@/app/components/sections';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -122,10 +119,12 @@ export default async function GlobalLogisticsPage() {
           />
         </div>
 
-        {/* Modular Sections: Pillars Bento, Branching Timeline, and Radial Hub-Spoke */}
-        <TacticalPillarsBento config={SECTION_PAGE_CONFIGS['global-logistics'].pillars} />
-        <BranchingTimelineSection config={SECTION_PAGE_CONFIGS['global-logistics'].timeline} />
-        <RadialHubSpokeSection config={SECTION_PAGE_CONFIGS['global-logistics'].radial} />
+        {/* Dedicated Signature Section: Diamond Matrix Corridor Telemetry */}
+        <DiamondMatrixTickerSection
+          eyebrow="GLOBAL SOVEREIGN CELLS"
+          title="Planetary Cell Mesh & Cross-Border Telemetry"
+          description="Synchronous read-write transactions and multi-region state consistency across European, Central Asian, and American corridors with zero cross-tenant interference."
+        />
 
         {/* Global Logistics Architecture Comparison */}
         <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">
