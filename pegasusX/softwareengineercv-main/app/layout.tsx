@@ -162,8 +162,8 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (!sessionStorage.getItem('hasSeenSplash')) {
-                  document.documentElement.classList.add('needs-splash');
+                if (sessionStorage.getItem('hasSeenSplash')) {
+                  document.documentElement.classList.add('splash-done');
                 }
               } catch (e) {}
             `,
@@ -174,15 +174,17 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-black`}
       >
         <div
-          id="pre-splash-overlay"
-          className="fixed inset-0 z-[10006] bg-black hidden items-center justify-center pointer-events-none [.needs-splash_&]:flex"
-          aria-hidden="true"
+          id="app-splash-screen"
+          className="fixed inset-0 z-[10006] bg-black flex items-center justify-center overflow-hidden pointer-events-auto"
+          aria-label="Pegasus Loading"
         >
-          <img
-            src="/pegasus.jpg"
-            alt="Pegasus Logo"
-            className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl"
-          />
+          <div className="flex items-center justify-center splash-logo-anim">
+            <img
+              src="/pegasus.jpg"
+              alt="Pegasus Logo"
+              className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl"
+            />
+          </div>
         </div>
         <a
           href="#main-content"

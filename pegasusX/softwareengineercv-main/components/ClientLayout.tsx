@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import SplashScreen from './SplashScreen';
+import React, { useEffect } from 'react';
 import SiteAssistant from '@/app/components/SiteAssistant';
 import { LanguageProvider } from '@/app/context/LanguageContext';
 import type { Language } from '@/app/lib/i18n/translations';
@@ -17,27 +16,40 @@ interface ClientLayoutProps {
 }
 
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }) => {
-  const [showSplash, setShowSplash] = useState(false);
   const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
 
   useEffect(() => {
     try {
-      const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-      if (!hasSeenSplash) {
-        setShowSplash(true);
-        sessionStorage.setItem('hasSeenSplash', 'true');
+      if (sessionStorage.getItem('hasSeenSplash')) {
+        document.documentElement.classList.add('splash-done');
+        const splash = document.getElementById('app-splash-screen');
+        if (splash) splash.style.display = 'none';
+        return;
       }
-    } catch (e) {
-      // ignore
-    } finally {
-      // Clean up static pre-splash overlay once React hydrates
-      const pre = document.getElementById('pre-splash-overlay');
-      if (pre) {
-        pre.style.display = 'none';
-      }
-      document.documentElement.classList.remove('needs-splash');
-    }
-  }, []);
+
+      const holdDuration = isLowEnd || prefersReducedMotion ? 900 : 1800;
+      const timer = setTimeout(() => {
+        const splash = document.getElementById('app-splash-screen');
+        if (splash) {
+          splash.classList.add('splash-screen-fadeout');
+          setTimeout(() => {
+            splash.style.display = 'none';
+            document.documentElement.classList.add('splash-done');
+            try {
+              sessionStorage.setItem('hasSeenSplash', 'true');
+            } catch (e) {}
+          }, 700);
+        } else {
+          document.documentElement.classList.add('splash-done');
+          try {
+            sessionStorage.setItem('hasSeenSplash', 'true');
+          } catch (e) {}
+        }
+      }, holdDuration);
+
+      return () => clearTimeout(timer);
+    } catch (e) {}
+  }, [isLowEnd, prefersReducedMotion]);
 
   return (
     <LanguageProvider initialLanguage={initialLanguage}>
@@ -59,14 +71,8 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
             cursorColorOnTarget="#10B981"
           />
         ) : null}
-        {showSplash && (
-          <SplashScreen
-            onComplete={() => setShowSplash(false)}
-            duration={isLowEnd || prefersReducedMotion ? 1200 : 2500}
-          />
-        )}
         {children}
-        {!showSplash ? <SiteAssistant /> : null}
+        <SiteAssistant />
       </ReactLenis>
     </LanguageProvider>
   );

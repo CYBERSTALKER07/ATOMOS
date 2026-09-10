@@ -22,13 +22,40 @@
   --lane-muted: rgba(255, 255, 255, 0.1);
 }
 
-/* Pre-hydration splash veil to prevent split-second website preview */
-html.needs-splash body {
-  overflow: hidden;
+/* Single Unified Splash Screen */
+html.splash-done #app-splash-screen {
+  display: none !important;
 }
 
-html.needs-splash #pre-splash-overlay {
-  display: flex !important;
+@keyframes splashLogoEnter {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes splashOverlayFadeOut {
+  0% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.splash-logo-anim {
+  animation: splashLogoEnter 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.splash-screen-fadeout {
+  animation: splashOverlayFadeOut 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
 /* Unified page rail — one width and gutter across marketing sections */
