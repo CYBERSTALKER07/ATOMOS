@@ -11,6 +11,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --font-geist-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-title: "Avenir Next", "Avenir Next LT Pro", Avenir, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
   --page-max: 80rem;
@@ -6187,6 +6189,45 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 .site-assistant__launcher:hover {
   transform: scale(1.04);
   border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Glowing Squircle Launchers (Exact match to media_1788986948871.png) */
+.glowing-squircle-launcher {
+  position: relative;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 1.25rem;
+  background: #000000;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.15),
+    0 0 18px 2px rgba(255, 255, 255, 0.28),
+    0 0 38px 6px rgba(255, 255, 255, 0.14),
+    0 10px 30px rgba(0, 0, 0, 0.95);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              box-shadow 0.2s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glowing-squircle-launcher:hover {
+  transform: translateY(-2px) scale(1.05);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 26px 4px rgba(255, 255, 255, 0.42),
+    0 0 52px 10px rgba(255, 255, 255, 0.22),
+    0 16px 36px rgba(0, 0, 0, 0.98);
+}
+
+.glowing-squircle-launcher:active {
+  transform: scale(0.96);
 }
 
 .site-assistant__launcher-logo {

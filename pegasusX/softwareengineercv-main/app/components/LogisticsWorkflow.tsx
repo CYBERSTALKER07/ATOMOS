@@ -1,317 +1,708 @@
 'use client';
 
+import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { useEffect, useRef, useState, useMemo } from 'react';
-import PageSection from './layout/PageSection';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import {
-  ReactFlow,
-  Background,
-  Handle,
-  Position,
-  useNodesState,
-  useEdgesState,
-  MarkerType
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { AnimatedSvgEdge } from '../../components/animated-svg-edge';
 
-gsap.registerPlugin(ScrollTrigger);
+type WorkflowTab = 'stack' | 'supplier' | 'warehouse' | 'retailer' | 'fleet';
 
-type WorkflowRole = 'supplier' | 'warehouse' | 'retailer' | 'fleet';
-
-const WORKFLOW_DATA = {
-  supplier: {
-    nodes: [
-      { id: 's1', x: 80, y: 150, type: 'start', icon: 'email', title: 'Order Received', subtitle: 'EDI/API' },
-      { id: 's2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'AI Inventory Check', subtitle: 'Auto-allocation' },
-      { id: 's3', x: 680, y: 50, type: 'rect', icon: 'if', title: 'Stock Available?', subtitle: 'Condition' },
-      { id: 's4', x: 980, y: 50, type: 'rect', icon: 'code', title: 'Release to Floor', subtitle: 'WMS Sync' },
-      { id: 's5', x: 680, y: 250, type: 'rect', icon: 'edit', title: 'Backorder', subtitle: 'Manual Review' },
-      { id: 's6', x: 1280, y: 50, type: 'rect', icon: 'agent', title: 'Quality Assurance', subtitle: 'Vision AI' },
-      { id: 's7', x: 1580, y: 50, type: 'rect', icon: 'send_email', title: 'Dispatch Alert', subtitle: 'To Carrier' },
-    ],
-    connections: [
-      { from: 's1', to: 's2' },
-      { from: 's2', to: 's3' },
-      { from: 's3', to: 's4' },
-      { from: 's2', to: 's5', branch: true },
-      { from: 's4', to: 's6', items: '2 pallets' },
-      { from: 's6', to: 's7' },
-    ]
-  },
-  warehouse: {
-    nodes: [
-      { id: 'w1', x: 80, y: 150, type: 'start', icon: 'telegram', title: 'Inbound Alert', subtitle: 'Carrier ETA' },
-      { id: 'w2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'Dock Scheduling', subtitle: 'AI Optimizer' },
-      { id: 'w3', x: 680, y: 150, type: 'rect', icon: 'code', title: 'Scan & Sort', subtitle: 'IoT Sensors' },
-      { id: 'w4', x: 980, y: 50, type: 'rect', icon: 'if', title: 'QC Pass?', subtitle: 'Condition' },
-      { id: 'w5', x: 1280, y: 50, type: 'rect', icon: 'edit', title: 'Putaway', subtitle: 'Forklift Task' },
-      { id: 'w6', x: 980, y: 250, type: 'rect', icon: 'send_email', title: 'Quarantine', subtitle: 'Alert Supplier' },
-      { id: 'w7', x: 1580, y: 50, type: 'rect', icon: 'agent', title: 'Inventory Sync', subtitle: 'ERP Update' },
-    ],
-    connections: [
-      { from: 'w1', to: 'w2' },
-      { from: 'w2', to: 'w3' },
-      { from: 'w3', to: 'w4' },
-      { from: 'w3', to: 'w6', branch: true },
-      { from: 'w4', to: 'w5', items: 'Passed' },
-      { from: 'w5', to: 'w7' },
-    ]
-  },
-  retailer: {
-    nodes: [
-      { id: 'r1', x: 80, y: 150, type: 'start', icon: 'if', title: 'Low Stock Alert', subtitle: 'POS System' },
-      { id: 'r2', x: 380, y: 150, type: 'rect', icon: 'agent', title: 'Demand Forecast', subtitle: 'AI Predictor' },
-      { id: 'r3', x: 680, y: 150, type: 'rect', icon: 'code', title: 'Auto-Reorder', subtitle: 'Create PO' },
-      { id: 'r4', x: 980, y: 150, type: 'rect', icon: 'email', title: 'Supplier Conf', subtitle: 'EDI 855' },
-      { id: 'r5', x: 1280, y: 150, type: 'rect', icon: 'telegram', title: 'ASN Received', subtitle: 'Inbound Prep' },
-      { id: 'r6', x: 1580, y: 150, type: 'rect', icon: 'edit', title: 'Shelf Restock', subtitle: 'Store Task' },
-    ],
-    connections: [
-      { from: 'r1', to: 'r2' },
-      { from: 'r2', to: 'r3' },
-      { from: 'r3', to: 'r4' },
-      { from: 'r4', to: 'r5', items: 'PO Sent' },
-      { from: 'r5', to: 'r6' }
-    ]
-  },
-  fleet: {
-    nodes: [
-      { id: 'f1', x: 80, y: 150, type: 'start', icon: 'agent', title: 'Route Optimizer', subtitle: 'AI Dispatch' },
-      { id: 'f2', x: 380, y: 150, type: 'rect', icon: 'code', title: 'Vehicle Assign', subtitle: 'TMS' },
-      { id: 'f3', x: 680, y: 50, type: 'rect', icon: 'if', title: 'Weather Clear?', subtitle: 'API Check' },
-      { id: 'f4', x: 980, y: 50, type: 'rect', icon: 'telegram', title: 'Driver Brief', subtitle: 'Mobile App' },
-      { id: 'f5', x: 680, y: 250, type: 'rect', icon: 'agent', title: 'Reroute', subtitle: 'Dynamic Path' },
-      { id: 'f6', x: 1280, y: 50, type: 'rect', icon: 'edit', title: 'Delivery Conf', subtitle: 'ePOD' },
-      { id: 'f7', x: 1580, y: 50, type: 'rect', icon: 'send_email', title: 'Invoice Client', subtitle: 'Billing' },
-    ],
-    connections: [
-      { from: 'f1', to: 'f2' },
-      { from: 'f2', to: 'f3' },
-      { from: 'f2', to: 'f5', branch: true },
-      { from: 'f3', to: 'f4' },
-      { from: 'f5', to: 'f4', branch: true },
-      { from: 'f4', to: 'f6', items: 'Live Track' },
-      { from: 'f6', to: 'f7' },
-    ]
-  }
-};
-
-const ROLE_LABELS = {
-  supplier: 'SUPPLIER',
-  warehouse: 'WAREHOUSE',
-  retailer: 'RETAILER',
-  fleet: 'FLEET'
-};
-
-function WorkflowIcon({ type, className = "" }: { type: string, className?: string }) {
-  const commonProps = {
-    className,
-    fill: "currentColor",
-    style: { imageRendering: 'pixelated' as const }
-  };
-
-  switch (type) {
-    case 'email':
-      return <svg {...commonProps} viewBox="0 0 17.333 16"><path d="M 17.037 5.445 L 9.037 0.112 C 8.813 -0.037 8.521 -0.037 8.297 0.112 L 0.297 5.445 C 0.111 5.569 0 5.777 0 6 L 0 14.667 C 0 15.403 0.597 16 1.333 16 L 16 16 C 16.736 16 17.333 15.403 17.333 14.667 L 17.333 6 C 17.333 5.777 17.222 5.569 17.037 5.445 Z M 6.06 10.667 L 1.333 14 L 1.333 7.295 Z M 7.424 11.334 L 9.909 11.334 L 14.628 14.667 L 2.705 14.667 Z M 11.273 10.667 L 16 7.295 L 16 14 Z" /></svg>;
-    case 'if':
-      return <svg {...commonProps} viewBox="0 0 20.466 19"><path d="M 20.279 8.527 L 17.203 11.939 C 16.926 12.247 16.531 12.423 16.117 12.423 L 10.231 12.423 L 10.231 18.269 C 10.231 18.673 9.904 19 9.5 19 C 9.096 19 8.769 18.673 8.769 18.269 L 8.769 12.423 L 1.462 12.423 C 0.654 12.423 0 11.769 0 10.962 L 0 5.115 C 0 4.308 0.654 3.654 1.462 3.654 L 8.769 3.654 L 8.769 0.731 C 8.769 0.327 9.096 0 9.5 0 C 9.904 0 10.231 0.327 10.231 0.731 L 10.231 3.654 L 16.117 3.654 C 16.531 3.654 16.926 3.83 17.203 4.138 L 20.279 7.55 C 20.529 7.828 20.529 8.249 20.279 8.527 Z" /></svg>;
-    case 'edit':
-      return <svg {...commonProps} viewBox="0 0 16.001 16"><path d="M 15.626 3.949 L 12.05 0.375 C 11.81 0.135 11.485 0 11.145 0 C 10.806 0 10.48 0.135 10.24 0.375 L 0.375 10.24 C 0.134 10.479 -0.001 10.805 0 11.145 L 0 14.72 C 0 15.427 0.573 16 1.28 16 L 14.72 16 C 15.073 16 15.36 15.713 15.36 15.36 C 15.36 15.006 15.073 14.72 14.72 14.72 L 6.666 14.72 L 15.626 5.76 C 15.866 5.52 16.001 5.194 16.001 4.855 C 16.001 4.515 15.866 4.189 15.626 3.949 Z M 12.8 6.775 L 9.226 3.2 L 11.146 1.28 L 14.72 4.855 Z" /></svg>;
-    case 'agent':
-      return <svg {...commonProps} viewBox="0 0 19 24"><path d="M 15.74 1.317 C 16.043 0.238 14.996 -0.4 14.04 0.281 L 0.693 9.79 C -0.344 10.528 -0.181 12 0.938 12 L 4.453 12 L 4.453 11.973 L 11.303 11.973 L 5.721 13.943 L 3.261 22.683 C 2.957 23.762 4.004 24.4 4.96 23.719 L 18.307 14.21 C 19.344 13.472 19.181 12 18.062 12 L 12.732 12 Z" /></svg>;
-    case 'code':
-      return <svg {...commonProps} viewBox="0 0 18.909 16"><path d="M 17.455 0 L 1.455 0 C 0.651 0 0 0.651 0 1.455 L 0 14.545 C 0 15.349 0.651 16 1.455 16 L 17.455 16 C 18.258 16 18.909 15.349 18.909 14.545 L 18.909 1.455 C 18.909 0.651 18.258 0 17.455 0 Z M 6.255 9.6 C 6.576 9.841 6.641 10.297 6.4 10.618 C 6.159 10.94 5.703 11.005 5.382 10.764 L 2.473 8.582 C 2.29 8.444 2.182 8.229 2.182 8 C 2.182 7.771 2.29 7.556 2.473 7.418 L 5.382 5.236 C 5.703 4.995 6.159 5.06 6.4 5.382 C 6.641 5.703 6.576 6.159 6.255 6.4 L 4.121 8 Z M 11.608 3.109 L 8.699 13.291 C 8.632 13.545 8.432 13.743 8.177 13.809 C 7.922 13.874 7.652 13.797 7.47 13.607 C 7.288 13.416 7.224 13.142 7.301 12.891 L 10.21 2.709 C 10.326 2.33 10.724 2.114 11.105 2.223 C 11.486 2.332 11.71 2.726 11.608 3.109 Z M 16.436 8.582 L 13.527 10.764 C 13.206 11.005 12.75 10.94 12.509 10.618 C 12.268 10.297 12.333 9.841 12.655 9.6 L 14.788 8 L 12.655 6.4 C 12.333 6.159 12.268 5.703 12.509 5.382 C 12.75 5.06 13.206 4.995 13.527 5.236 L 16.436 7.418 C 16.619 7.556 16.727 7.771 16.727 8 C 16.727 8.229 16.619 8.444 16.436 8.582 Z" /></svg>;
-    case 'send_email':
-      return <svg {...commonProps} viewBox="0 0 14.282 15.997"><path d="M 14.282 7.989 C 14.283 8.404 14.06 8.786 13.698 8.989 L 1.704 15.847 C 1.532 15.944 1.337 15.996 1.139 15.997 C 0.77 15.995 0.424 15.814 0.211 15.511 C -0.002 15.209 -0.055 14.822 0.068 14.473 L 1.997 8.763 C 2.035 8.648 2.142 8.57 2.262 8.568 L 7.425 8.568 C 7.584 8.569 7.735 8.503 7.843 8.388 C 7.952 8.272 8.007 8.117 7.997 7.959 C 7.97 7.654 7.713 7.422 7.407 7.425 L 2.264 7.425 C 2.141 7.425 2.032 7.347 1.993 7.231 L 0.064 1.521 C -0.093 1.073 0.044 0.574 0.407 0.269 C 0.77 -0.037 1.285 -0.087 1.699 0.145 L 13.699 6.994 C 14.059 7.196 14.282 7.576 14.282 7.989 Z" /></svg>;
-    case 'telegram':
-      return <svg {...commonProps} viewBox="0 0 17.92 16"><path d="M 17.671 0.175 C 17.469 0.001 17.187 -0.048 16.938 0.049 L 0.725 6.394 C 0.253 6.578 -0.041 7.051 0.005 7.556 C 0.05 8.06 0.423 8.474 0.92 8.571 L 5.121 9.396 L 5.121 14.08 C 5.119 14.602 5.436 15.072 5.921 15.266 C 6.404 15.464 6.96 15.346 7.321 14.968 L 9.347 12.867 L 12.561 15.68 C 12.792 15.886 13.091 15.999 13.401 16 C 13.537 16 13.672 15.978 13.801 15.937 C 14.231 15.8 14.556 15.446 14.655 15.006 L 17.902 0.88 C 17.961 0.62 17.872 0.349 17.671 0.175 Z M 13.403 14.72 L 6.789 8.92 L 16.309 2.097 Z" /></svg>;
-    default:
-      return <svg {...commonProps} viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle></svg>;
-  }
+interface ToolNode {
+  id: string;
+  name: string;
+  sub: string;
+  bgColor?: string;
+  textColor?: string;
+  icon: React.ReactNode;
 }
 
-const WorkflowCustomNode = ({ data }: any) => {
+interface TreeBranch {
+  category: string;
+  nodes: ToolNode[];
+}
+
+interface TreeData {
+  centerLabel: string;
+  subtitle: string;
+  topLeft: TreeBranch;
+  bottomLeft: TreeBranch;
+  topRight: TreeBranch;
+  bottomRight: TreeBranch;
+}
+
+// ── Icons for Stack & Logistics Nodes ──
+function OpenAIIcon() {
   return (
-    <div className={`
-      group w-[260px] p-5 ${data.type === 'start' ? 'rounded-l-[24px] rounded-r-[12px]' : 'rounded-[12px]'} bg-[#0d0d0d] border border-white/20 shadow-xl 
-      flex items-center relative
-    `}>
-      {data.type !== 'start' && <Handle type="target" position={Position.Left} className="w-2 h-2 bg-white !border-none !-ml-1" />}
-      <Handle type="source" position={Position.Right} className="w-2 h-2 bg-white !border-none !-mr-1" />
-
-      <div className="flex items-center gap-4 w-full">
-        <div className="shrink-0 text-white flex items-center justify-center bg-white/5 p-3 rounded-lg border border-white/10">
-          <WorkflowIcon type={data.icon} className="w-6 h-6" />
-        </div>
-        <div className="flex flex-col text-left truncate leading-tight">
-          <span className="text-sm font-mono text-white/90">{data.title}</span>
-          {data.subtitle && <span className="text-xs font-sans text-white/50 tracking-wide mt-1">{data.subtitle}</span>}
-        </div>
-      </div>
-    </div>
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+      <path d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.91 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 8.487a4.485 4.485 0 0 1 2.365-1.98v5.673a.792.792 0 0 0 .393.685l5.82 3.372-2.02 1.166a.08.08 0 0 1-.073.006l-4.84-2.794a4.499 4.499 0 0 1-1.645-6.128zm14.168 4.25-5.84-3.372 2.02-1.166a.08.08 0 0 1 .073-.006l4.84 2.793a4.502 4.502 0 0 1-.685 8.12v-5.688a.79.79 0 0 0-.408-.681zm2.757-4.148-4.78-2.763a.777.777 0 0 0-.784 0l-5.84 3.37v-2.332a.08.08 0 0 1 .033-.062L12.72 4.01a4.499 4.499 0 0 1 6.545 4.589zm-8.815-5.328a4.485 4.485 0 0 1 2.876 1.04l-.141.081-4.779 2.758a.795.795 0 0 0-.392.681v6.737l-2.02-1.168a.071.071 0 0 1-.038-.052V8.905a4.504 4.504 0 0 1 4.494-4.494zm1.085 7.76-2.614-1.509 2.614-1.509 2.614 1.509-2.614 1.509z" />
+    </svg>
   );
+}
+
+function ClaudeIcon() {
+  return (
+    <span className="font-serif font-black text-sm tracking-tighter text-[#D97757]">
+      A\
+    </span>
+  );
+}
+
+function GeminiIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-5 h-5 text-black" fill="currentColor">
+      <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12z" />
+    </svg>
+  );
+}
+
+function MistralIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+      <path d="M3 3h4v4H3V3zm14 0h4v4h-4V3zM3 17h4v4H3v-4zm14 0h4v4h-4v-4zM7 7h10v4H7V7zm3 4h4v6h-4v-6z" />
+    </svg>
+  );
+}
+
+function SupabaseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+      <path d="M21.362 9.354H12V.396a.396.396 0 0 0-.716-.233L.392 13.914a.396.396 0 0 0 .31.632H12v8.958a.396.396 0 0 0 .716.233l10.892-13.751a.396.396 0 0 0-.246-.632z" />
+    </svg>
+  );
+}
+
+function LangChainIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function ReactIcon() {
+  return (
+    <svg viewBox="-11.5 -10.232 23 20.463" className="w-5 h-5 text-[#087ea4]" fill="currentColor">
+      <circle cx="0" cy="0" r="2.05" />
+      <g stroke="currentColor" strokeWidth="1" fill="none">
+        <ellipse rx="11" ry="4.2" />
+        <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+        <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+      </g>
+    </svg>
+  );
+}
+
+function ViteIcon() {
+  return (
+    <span className="font-mono font-bold text-xs text-white">
+      V
+    </span>
+  );
+}
+
+function SvelteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+      <path d="M20.5 8.7c-.5-1.5-1.6-2.7-3.1-3.4L11.5 2C9.9 1.2 8 .9 6.2 1.4c-1.8.5-3.3 1.6-4.2 3.1-.9 1.5-1.2 3.3-.8 5 .4 1.7 1.5 3.2 3 4.1l2.3 1.4-1.5 2.6c-.7 1.2-.8 2.6-.3 3.9.5 1.3 1.5 2.2 2.7 2.7 1.3.5 2.7.4 3.9-.3l5.9-3.4c1.2-.7 2.1-1.8 2.6-3.1.5-1.3.4-2.7-.3-3.9l-2.3-1.4 1.5-2.6c.9-1.2 1.2-2.5 1.2-3.8z" />
+    </svg>
+  );
+}
+
+function ShadcnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-4 h-4 text-white" fill="currentColor">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray="16 6" />
+    </svg>
+  );
+}
+
+function TailwindIcon() {
+  return (
+    <span className="font-mono font-bold text-xs text-white">
+      //
+    </span>
+  );
+}
+
+function MuiIcon() {
+  return (
+    <span className="font-sans font-black text-xs text-white">
+      M
+    </span>
+  );
+}
+
+function DaisyIcon() {
+  return (
+    <span className="font-sans font-black text-xs text-white">
+      D
+    </span>
+  );
+}
+
+function GenericLogisticsIcon({ label }: { label: string }) {
+  return (
+    <span className="font-mono text-[10px] font-bold text-white tracking-tighter">
+      {label}
+    </span>
+  );
+}
+
+// ── DATA FOR ALL TABS ──
+const ALL_TREES: Record<WorkflowTab, TreeData> = {
+  stack: {
+    centerLabel: 'WORKS WITH ANY STACK',
+    subtitle: 'Plug into any client, backend, vector DB, or UI design library',
+    topLeft: {
+      category: 'LLM',
+      nodes: [
+        { id: 'openai', name: 'OpenAI', sub: 'GPT-4o / o1', bgColor: '#FFFFFF', textColor: '#000000', icon: <OpenAIIcon /> },
+        { id: 'claude', name: 'Anthropic', sub: 'Claude 3.7', bgColor: '#F4ECE4', textColor: '#D97757', icon: <ClaudeIcon /> },
+        { id: 'gemini', name: 'Google', sub: 'Gemini 2.5', bgColor: '#FFFFFF', textColor: '#000000', icon: <GeminiIcon /> },
+        { id: 'mistral', name: 'Mistral', sub: 'Large 2', bgColor: '#FF7A1A', textColor: '#FFFFFF', icon: <MistralIcon /> },
+      ],
+    },
+    bottomLeft: {
+      category: 'Backend',
+      nodes: [
+        { id: 'supabase', name: 'Supabase', sub: 'Postgres pgvector', bgColor: '#1E293B', textColor: '#FFFFFF', icon: <SupabaseIcon /> },
+        { id: 'langchain', name: 'LangChain', sub: 'Orchestration', bgColor: '#0F172A', textColor: '#38bdf8', icon: <LangChainIcon /> },
+        { id: 'copilot', name: 'CopilotKit', sub: 'AI Co-pilot SDK', bgColor: '#EF4444', textColor: '#FFFFFF', icon: <span className="font-bold text-xs">C</span> },
+        { id: 'fastapi', name: 'Python / Go', sub: 'gRPC & REST', bgColor: '#FFFFFF', textColor: '#000000', icon: <OpenAIIcon /> },
+      ],
+    },
+    topRight: {
+      category: 'Client',
+      nodes: [
+        { id: 'react', name: 'React', sub: 'Next.js 15', bgColor: '#FFFFFF', textColor: '#000000', icon: <ReactIcon /> },
+        { id: 'vite', name: 'Vite', sub: 'SPA & PWA', bgColor: '#18181B', textColor: '#FFFFFF', icon: <ViteIcon /> },
+        { id: 'svelte', name: 'Svelte', sub: 'SvelteKit 2', bgColor: '#18181B', textColor: '#FF3E00', icon: <SvelteIcon /> },
+        { id: 'rn', name: 'React Native', sub: 'iOS / Android', bgColor: '#FFFFFF', textColor: '#000000', icon: <ReactIcon /> },
+      ],
+    },
+    bottomRight: {
+      category: 'Design library',
+      nodes: [
+        { id: 'shadcn', name: 'shadcn/ui', sub: 'Radix Primitives', bgColor: '#FFFFFF', textColor: '#000000', icon: <ShadcnIcon /> },
+        { id: 'tailwind', name: 'Tailwind CSS', sub: 'v4 Tokens', bgColor: '#18181B', textColor: '#38BDF8', icon: <TailwindIcon /> },
+        { id: 'mui', name: 'Material UI', sub: 'MUI Core v6', bgColor: '#818CF8', textColor: '#FFFFFF', icon: <MuiIcon /> },
+        { id: 'daisy', name: 'DaisyUI', sub: 'Semantic CSS', bgColor: '#EC4899', textColor: '#FFFFFF', icon: <DaisyIcon /> },
+      ],
+    },
+  },
+
+  supplier: {
+    centerLabel: 'SUPPLIER WORKFLOW CORE',
+    subtitle: 'Autonomous B2B order orchestration & inventory allocation',
+    topLeft: {
+      category: 'Inbound Orders',
+      nodes: [
+        { id: 's_edi', name: 'EDI 850', sub: 'B2B Purchase Order', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="EDI" /> },
+        { id: 's_api', name: 'REST API', sub: 'ERP Ingestion', bgColor: '#1E293B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="API" /> },
+        { id: 's_tg', name: 'Telegram Bot', sub: 'Direct Retailer PO', bgColor: '#0284C7', textColor: '#FFF', icon: <GenericLogisticsIcon label="TG" /> },
+        { id: 's_hook', name: 'Webhook', sub: 'Real-time Event', bgColor: '#FF7A1A', textColor: '#FFF', icon: <GenericLogisticsIcon label="HOOK" /> },
+      ],
+    },
+    bottomLeft: {
+      category: 'AI Inventory Check',
+      nodes: [
+        { id: 's_stock', name: 'Stock Check', sub: 'Realtime Matrix', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="STK" /> },
+        { id: 's_wms', name: 'WMS Sync', sub: 'Warehouse Bin Level', bgColor: '#047857', textColor: '#FFF', icon: <GenericLogisticsIcon label="WMS" /> },
+        { id: 's_safe', name: 'Safety Margin', sub: 'Demand Buffer', bgColor: '#7C3AED', textColor: '#FFF', icon: <GenericLogisticsIcon label="BUF" /> },
+        { id: 's_alloc', name: 'Auto-Allocate', sub: 'Batch Priority Lock', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="LOCK" /> },
+      ],
+    },
+    topRight: {
+      category: 'Release to Floor',
+      nodes: [
+        { id: 's_floor', name: 'Floor Release', sub: 'Digital Pick Ticket', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="REL" /> },
+        { id: 's_bar', name: 'Barcode Pick', sub: 'PDA Handheld', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="PDA" /> },
+        { id: 's_qa', name: 'Vision QA', sub: 'Visual Inspection AI', bgColor: '#18181B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="QA" /> },
+        { id: 's_pal', name: 'Palletize', sub: 'Weight & Dimension', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="PLT" /> },
+      ],
+    },
+    bottomRight: {
+      category: 'Dispatch Alert',
+      nodes: [
+        { id: 's_tms', name: 'TMS Routing', sub: 'Vehicle Assignment', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="TMS" /> },
+        { id: 's_eta', name: 'Carrier ETA', sub: 'GPS Fleet Link', bgColor: '#18181B', textColor: '#38BDF8', icon: <GenericLogisticsIcon label="ETA" /> },
+        { id: 's_asn', name: 'Outbox Event', sub: 'Kafka Fanout', bgColor: '#818CF8', textColor: '#FFF', icon: <GenericLogisticsIcon label="EVT" /> },
+        { id: 's_bill', name: 'Auto-Bill', sub: 'Tiyin Ledger Post', bgColor: '#EC4899', textColor: '#FFF', icon: <GenericLogisticsIcon label="BILL" /> },
+      ],
+    },
+  },
+
+  warehouse: {
+    centerLabel: 'WAREHOUSE DOCK ENGINE',
+    subtitle: 'Smart dock scheduling, conveyor IoT, and automated putaway',
+    topLeft: {
+      category: 'Inbound Alert',
+      nodes: [
+        { id: 'w_eta', name: 'Carrier ETA', sub: 'Dock Slot Reserved', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="ETA" /> },
+        { id: 'w_gate', name: 'Gate Check', sub: 'ANPR License Plate', bgColor: '#1E293B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="GATE" /> },
+        { id: 'w_dock', name: 'Dock Assign', sub: 'AI Door Optimizer', bgColor: '#0284C7', textColor: '#FFF', icon: <GenericLogisticsIcon label="DOCK" /> },
+        { id: 'w_seal', name: 'Seal Verify', sub: 'Tamper Audit', bgColor: '#FF7A1A', textColor: '#FFF', icon: <GenericLogisticsIcon label="SEAL" /> },
+      ],
+    },
+    bottomLeft: {
+      category: 'Scan & Sort',
+      nodes: [
+        { id: 'w_rfid', name: 'RFID Portal', sub: 'Bulk Pallet Ingest', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="RFID" /> },
+        { id: 'w_conv', name: 'Conveyor Sort', sub: 'High-speed Diverter', bgColor: '#047857', textColor: '#FFF', icon: <GenericLogisticsIcon label="SORT" /> },
+        { id: 'w_dim', name: 'Dimensioner', sub: 'Laser Cube Volumetric', bgColor: '#7C3AED', textColor: '#FFF', icon: <GenericLogisticsIcon label="DIM" /> },
+        { id: 'w_wgt', name: 'Scale Check', sub: 'Gross Weight Match', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="WGT" /> },
+      ],
+    },
+    topRight: {
+      category: 'QC Inspection',
+      nodes: [
+        { id: 'w_ai_qc', name: 'Visual AI', sub: 'Box Damage Detector', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="CAM" /> },
+        { id: 'w_temp', name: 'Cold Chain', sub: 'IoT Temp Logger', bgColor: '#18181B', textColor: '#38BDF8', icon: <GenericLogisticsIcon label="COLD" /> },
+        { id: 'w_batch', name: 'Batch Audit', sub: 'Expiry & Lot Match', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="LOT" /> },
+        { id: 'w_quar', name: 'Quarantine', sub: 'Auto-Hold Logic', bgColor: '#EF4444', textColor: '#FFF', icon: <GenericLogisticsIcon label="HOLD" /> },
+      ],
+    },
+    bottomRight: {
+      category: 'Putaway & Sync',
+      nodes: [
+        { id: 'w_fork', name: 'Forklift Nav', sub: 'Directed Putaway', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="FORK" /> },
+        { id: 'w_bin', name: 'Bin Assign', sub: 'Aisle/Bay/Tier', bgColor: '#18181B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="BIN" /> },
+        { id: 'w_erp', name: 'ERP Sync', sub: 'Double-entry Credit', bgColor: '#818CF8', textColor: '#FFF', icon: <GenericLogisticsIcon label="ERP" /> },
+        { id: 'w_asn_out', name: 'ASN Ack', sub: 'Supplier Webhook', bgColor: '#EC4899', textColor: '#FFF', icon: <GenericLogisticsIcon label="ACK" /> },
+      ],
+    },
+  },
+
+  retailer: {
+    centerLabel: 'RETAIL INVENTORY HUB',
+    subtitle: 'Demand forecasting, shelf replenishment, and multi-supplier orders',
+    topLeft: {
+      category: 'Demand Signal',
+      nodes: [
+        { id: 'r_pos', name: 'POS Velocity', sub: 'Hourly Sales Rate', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="POS" /> },
+        { id: 'r_alert', name: 'Low Stock Alert', sub: 'Buffer Breach', bgColor: '#EF4444', textColor: '#FFF', icon: <GenericLogisticsIcon label="WARN" /> },
+        { id: 'r_pred', name: 'AI Forecast', sub: 'Weekend Spikes', bgColor: '#0284C7', textColor: '#FFF', icon: <GenericLogisticsIcon label="PRED" /> },
+        { id: 'r_reord', name: 'Reorder Point', sub: 'Dynamic Safety Days', bgColor: '#FF7A1A', textColor: '#FFF', icon: <GenericLogisticsIcon label="ROP" /> },
+      ],
+    },
+    bottomLeft: {
+      category: 'Auto-Procure',
+      nodes: [
+        { id: 'r_po', name: 'Create PO', sub: 'Automated Draft', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="PO" /> },
+        { id: 'r_edi855', name: 'EDI 855', sub: 'Supplier Confirm', bgColor: '#047857', textColor: '#FFF', icon: <GenericLogisticsIcon label="CONF" /> },
+        { id: 'r_multi', name: 'Multi-Vendor', sub: 'Lowest Unit Landed', bgColor: '#7C3AED', textColor: '#FFF', icon: <GenericLogisticsIcon label="VEND" /> },
+        { id: 'r_escrow', name: 'Pack Escrow', sub: 'Hold Minor Units', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="ESC" /> },
+      ],
+    },
+    topRight: {
+      category: 'Inbound Prep',
+      nodes: [
+        { id: 'r_asn', name: 'ASN Received', sub: 'Manifest Match', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="ASN" /> },
+        { id: 'r_dock', name: 'Staging Bay', sub: 'Curbside Unload', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="BAY" /> },
+        { id: 'r_scan', name: 'Tally Scan', sub: 'Count Verification', bgColor: '#18181B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="SCAN" /> },
+        { id: 'r_cross', name: 'Cross-Dock', sub: 'Direct to Display', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="XDK" /> },
+      ],
+    },
+    bottomRight: {
+      category: 'Shelf Restock',
+      nodes: [
+        { id: 'r_shelf', name: 'Shelf Restock', sub: 'Facing Planogram', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="SHLF" /> },
+        { id: 'r_endcap', name: 'Endcap Promo', sub: 'Dynamic Tag Sync', bgColor: '#18181B', textColor: '#38BDF8', icon: <GenericLogisticsIcon label="TAG" /> },
+        { id: 'r_live', name: 'Store Ledger', sub: 'On-Hand Available', bgColor: '#818CF8', textColor: '#FFF', icon: <GenericLogisticsIcon label="QTY" /> },
+        { id: 'r_close', name: 'Close PO', sub: 'Release Escrow Pay', bgColor: '#EC4899', textColor: '#FFF', icon: <GenericLogisticsIcon label="PAID" /> },
+      ],
+    },
+  },
+
+  fleet: {
+    centerLabel: 'FLEET DISPATCH MATRIX',
+    subtitle: 'Dynamic route optimization, mid-shift re-routing, and DVIR telemetry',
+    topLeft: {
+      category: 'Routing & TMS',
+      nodes: [
+        { id: 'f_cvrp', name: 'CVRP Engine', sub: 'Google OR-Tools', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="CVRP" /> },
+        { id: 'f_truck', name: 'Vehicle Match', sub: 'Weight & Volume', bgColor: '#1E293B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="TRK" /> },
+        { id: 'f_driver', name: 'Driver Shift', sub: 'HOS Compliance', bgColor: '#0284C7', textColor: '#FFF', icon: <GenericLogisticsIcon label="DRV" /> },
+        { id: 'f_slot', name: 'Time Windows', sub: 'Delivery Windows', bgColor: '#FF7A1A', textColor: '#FFF', icon: <GenericLogisticsIcon label="WIN" /> },
+      ],
+    },
+    bottomLeft: {
+      category: 'Weather & Traffic',
+      nodes: [
+        { id: 'f_traf', name: 'Live Traffic', sub: 'Congestion Mesh', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="JAM" /> },
+        { id: 'f_wx', name: 'Weather Radar', sub: 'Storm & Snow Warn', bgColor: '#047857', textColor: '#FFF', icon: <GenericLogisticsIcon label="RADR" /> },
+        { id: 'f_reroute', name: 'Dynamic Reroute', sub: 'Mid-shift Hot Swap', bgColor: '#7C3AED', textColor: '#FFF', icon: <GenericLogisticsIcon label="SWP" /> },
+        { id: 'f_geofence', name: 'Geofence Ping', sub: 'Arrival Trigger', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="GEO" /> },
+      ],
+    },
+    topRight: {
+      category: 'Driver Telemetry',
+      nodes: [
+        { id: 'f_brief', name: 'Driver App', sub: 'Native Turn-by-Turn', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="APP" /> },
+        { id: 'f_dvir', name: 'Pre-trip DVIR', sub: 'Safety Checklist', bgColor: '#18181B', textColor: '#FFF', icon: <GenericLogisticsIcon label="DVIR" /> },
+        { id: 'f_gps', name: 'Breadcrumbs', sub: '1Hz Telemetry Ping', bgColor: '#18181B', textColor: '#CEFF00', icon: <GenericLogisticsIcon label="GPS" /> },
+        { id: 'f_speed', name: 'Speed Guard', sub: 'Safety Telematics', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="SPD" /> },
+      ],
+    },
+    bottomRight: {
+      category: 'Fulfillment',
+      nodes: [
+        { id: 'f_epod', name: 'ePOD Delivery', sub: 'Customer Signature', bgColor: '#FFFFFF', textColor: '#000', icon: <GenericLogisticsIcon label="EPOD" /> },
+        { id: 'f_photo', name: 'Proof Photo', sub: 'Curbside Drop Off', bgColor: '#18181B', textColor: '#38BDF8', icon: <GenericLogisticsIcon label="CAM" /> },
+        { id: 'f_inv', name: 'Auto-Invoice', sub: 'Immediate Billing', bgColor: '#818CF8', textColor: '#FFF', icon: <GenericLogisticsIcon label="INV" /> },
+        { id: 'f_done', name: 'Shift Close', sub: 'Vehicle Return Audit', bgColor: '#EC4899', textColor: '#FFF', icon: <GenericLogisticsIcon label="END" /> },
+      ],
+    },
+  },
 };
 
-const edgeTypes = {
-  animatedSvgEdge: AnimatedSvgEdge,
-};
-
-const nodeTypes = {
-  workflowNode: WorkflowCustomNode,
-};
+const TAB_OPTIONS: { id: WorkflowTab; label: string }[] = [
+  { id: 'stack', label: 'WORKS WITH ANY STACK' },
+  { id: 'supplier', label: 'SUPPLIER' },
+  { id: 'warehouse', label: 'WAREHOUSE' },
+  { id: 'retailer', label: 'RETAILER' },
+  { id: 'fleet', label: 'FLEET' },
+];
 
 export default function LogisticsWorkflow() {
   const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<WorkflowTab>('stack');
+  const [hoveredNode, setHoveredNode] = useState<ToolNode | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [activeRole, setActiveRole] = useState<WorkflowRole>('supplier');
-
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
-    const data = WORKFLOW_DATA[activeRole];
-    const newNodes = data.nodes.map((n) => ({
-      id: n.id,
-      type: 'workflowNode',
-      position: { x: n.x, y: n.y },
-      data: {
-        title: n.title,
-        subtitle: n.subtitle,
-        icon: n.icon,
-        type: n.type
-      }
-    }));
-
-    const newEdges = data.connections.map((c, i) => ({
-      id: `${activeRole}-edge-${i}`,
-      source: c.from,
-      target: c.to,
-      type: 'animatedSvgEdge',
-      data: {
-        duration: 3,
-        shape: c.items ? 'package' : 'box',
-        path: 'smoothstep'
-      },
-      label: c.items,
-      labelStyle: { fill: '#888', fontSize: 10, fontFamily: 'monospace' },
-      labelBgStyle: { fill: '#111', stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, rx: 10 },
-      labelBgPadding: [20, 8] as [number, number],
-      animated: true,
-      style: { stroke: 'rgba(255,255,255,0.15)', strokeWidth: 2, strokeDasharray: '4 4' },
-      markerEnd: { type: MarkerType.ArrowClosed, color: 'rgba(255,255,255,0.3)' }
-    }));
-
-    return { nodes: newNodes, edges: newEdges };
-  }, [activeRole]);
-
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  // When active role changes, update nodes and edges
-  useEffect(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
-
-  useEffect(() => {
-    // Initial scroll trigger for the whole component
-    let ctx = gsap.context(() => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "top 70%",
-        }
-      });
-
-      tl.fromTo(".wf-header",
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, stagger: 0.1, ease: "power3.out" }
-      );
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
+  const currentTree = ALL_TREES[activeTab];
 
   return (
-    <div ref={containerRef} className="bg-black w-full relative overflow-hidden font-sans border-t border-white/5 py-32">
-      <div className="w-[90%] max-w-[1600px] mx-auto z-10 relative">
-
-        {/* Header aligned left to match "armory" style */}
-        <div className="mb-12 wf-header">
-          <div className="flex items-center gap-3 text-white/40 mb-6">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M4 15l8-8 8 8" />
-            </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('workflow_eyebrow', 'Our Product')}</span>
+    <div className="bg-black w-full relative overflow-hidden font-sans border-t border-white/10 py-24 sm:py-32 select-none">
+      <div className="w-[94%] max-w-[1440px] mx-auto z-10 relative">
+        {/* Header */}
+        <div className="mb-10 text-center flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#CEFF00] animate-pulse" />
+            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">
+              {t('workflow_eyebrow', 'System Architecture')}
+            </span>
           </div>
-          <h2 className="text-5xl md:text-6xl font-medium tracking-tight mb-6 text-white leading-tight max-w-xl">
-            Build logic at scale
+
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-title font-bold tracking-tight text-white mb-4">
+            {activeTab === 'stack' ? 'Works with any stack' : 'Autonomous operational logic'}
           </h2>
-          <p className="text-white/50 max-w-xl text-base md:text-lg leading-relaxed">
-            {t('workflow_desc', 'Design, deploy, and manage sophisticated logistics workflows across every facet of your ecosystem. Switch roles below to view distinct operational logic.')}
+
+          <p className="text-white/50 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed">
+            {currentTree.subtitle}
           </p>
+
+          {/* Segmented Role / Stack Controller */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-[#09090B] border border-white/15 shadow-2xl max-w-2xl">
+            {TAB_OPTIONS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-200 cursor-pointer
+                  ${
+                    activeTab === tab.id
+                      ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* BENTO GRID LAYOUT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── PURE SVG & HTML ARCHITECTURE TREE (ZERO SCROLL TRAPPING) ── */}
+        <div className="relative w-full overflow-x-auto py-8">
+          <div className="min-w-[980px] lg:min-w-[1100px] max-w-[1240px] mx-auto relative h-[420px]">
+            {/* SVG Connecting Splines with Animated Flow Beams */}
+            <svg
+              viewBox="0 0 1200 420"
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="beamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#3b82f6" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+                </linearGradient>
+                <style>{`
+                  @keyframes pulseFlow {
+                    0% { stroke-dashoffset: 300; }
+                    100% { stroke-dashoffset: 0; }
+                  }
+                  .animate-flow-beam {
+                    animation: pulseFlow 3.5s linear infinite;
+                  }
+                  .animate-flow-beam-rev {
+                    animation: pulseFlow 3.5s linear infinite reverse;
+                  }
+                `}</style>
+              </defs>
 
-          {/* Workflow Editor Frame */}
-          <div className="lg:col-span-3 wf-header border border-white/10 bg-[#0a0a0a] rounded-xl overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[800px] relative">
+              {/* ── 1. Top-Left Spline + Horizontal Connector ── */}
+              {/* Spline: Center -> LLM Pill */}
+              <path
+                d="M 480 210 C 440 210, 420 95, 395 95"
+                stroke="#27272a"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M 480 210 C 440 210, 420 95, 395 95"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="24 160"
+                className="animate-flow-beam-rev"
+              />
+              {/* Horizontal line: LLM Pill -> Tool Nodes */}
+              <line x1="330" y1="95" x2="60" y2="95" stroke="#27272a" strokeWidth="1.5" />
+              <line
+                x1="330"
+                y1="95"
+                x2="60"
+                y2="95"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="20 120"
+                className="animate-flow-beam-rev"
+              />
 
-            {/* Left Sidebar */}
-            <div className="w-full md:w-[280px] border-b md:border-b-0 md:border-r border-white/10 bg-black flex flex-col z-20 shrink-0">
+              {/* ── 2. Bottom-Left Spline + Horizontal Connector ── */}
+              {/* Spline: Center -> Backend Pill */}
+              <path
+                d="M 480 210 C 440 210, 420 325, 400 325"
+                stroke="#27272a"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M 480 210 C 440 210, 420 325, 400 325"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="24 160"
+                className="animate-flow-beam-rev"
+              />
+              {/* Horizontal line: Backend Pill -> Tool Nodes */}
+              <line x1="315" y1="325" x2="60" y2="325" stroke="#27272a" strokeWidth="1.5" />
+              <line
+                x1="315"
+                y1="325"
+                x2="60"
+                y2="325"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="20 120"
+                className="animate-flow-beam-rev"
+              />
 
-              {/* Top Tabs for Roles */}
-              <div className="p-6 flex-1 flex flex-col gap-3">
-                <div className="text-[10px] tracking-widest uppercase text-white/40 font-mono mb-2">
-                  Workflow Role
+              {/* ── 3. Top-Right Spline + Horizontal Connector ── */}
+              {/* Spline: Center -> Client Pill */}
+              <path
+                d="M 720 210 C 760 210, 780 95, 805 95"
+                stroke="#27272a"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M 720 210 C 760 210, 780 95, 805 95"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="24 160"
+                className="animate-flow-beam"
+              />
+              {/* Horizontal line: Client Pill -> Tool Nodes */}
+              <line x1="875" y1="95" x2="1140" y2="95" stroke="#27272a" strokeWidth="1.5" />
+              <line
+                x1="875"
+                y1="95"
+                x2="1140"
+                y2="95"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="20 120"
+                className="animate-flow-beam"
+              />
+
+              {/* ── 4. Bottom-Right Spline + Horizontal Connector ── */}
+              {/* Spline: Center -> Design Library Pill */}
+              <path
+                d="M 720 210 C 760 210, 775 325, 780 325"
+                stroke="#27272a"
+                strokeWidth="1.5"
+              />
+              <path
+                d="M 720 210 C 760 210, 775 325, 780 325"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="24 160"
+                className="animate-flow-beam"
+              />
+              {/* Horizontal line: Design Library Pill -> Tool Nodes */}
+              <line x1="895" y1="325" x2="1140" y2="325" stroke="#27272a" strokeWidth="1.5" />
+              <line
+                x1="895"
+                y1="325"
+                x2="1140"
+                y2="325"
+                stroke="#3b82f6"
+                strokeWidth="2.5"
+                strokeDasharray="20 120"
+                className="animate-flow-beam"
+              />
+            </svg>
+
+            {/* ── CENTER PILL (Double-Bordered Monospace Badge) ── */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="p-1 rounded-2xl bg-[#141416] border border-[#27272a] shadow-[0_12px_40px_rgba(0,0,0,0.9)]">
+                <div className="px-6 py-3.5 rounded-xl bg-[#09090b] border border-white/10 flex items-center justify-center">
+                  <span className="font-mono text-xs sm:text-sm font-semibold tracking-wider text-white whitespace-nowrap">
+                    {currentTree.centerLabel}
+                  </span>
                 </div>
-                <div className="flex flex-col gap-2">
-                  {(Object.keys(ROLE_LABELS) as WorkflowRole[]).map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => setActiveRole(role)}
-                      className={`
-                        text-xs  py-4 rounded-none tracking-wide transition-colors text-left px-4 border
-                        ${activeRole === role
-                          ? 'bg-white text-black border-white'
-                          : 'border-white/10 bg-black/5 text-white/60 hover:text-white hover:bg-white/10'}
-                      `}
-                    >
-                      {ROLE_LABELS[role]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-6 border-t border-white/10 text-[10px] text-white/30 font-mono uppercase tracking-widest">
-                Auto <span className="opacity-0">saving...</span>
               </div>
             </div>
 
-            {/* Canvas Area with ReactFlow */}
-            <div className="flex-1 relative bg-transparent">
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                fitView
-                fitViewOptions={{ padding: 0.2 }}
-                proOptions={{ hideAttribution: true }}
-                className="bg-black"
-                defaultEdgeOptions={{ type: 'animatedSvgEdge' }}
-              >
-                <Background color="#333" gap={24} size={1} />
-              </ReactFlow>
+            {/* ── TOP-LEFT BRANCH (Category + Circular Nodes) ── */}
+            <div className="absolute top-[75px] left-[330px] z-20">
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
+                {currentTree.topLeft.category}
+              </div>
+            </div>
+            {/* Top-Left Circular Icons */}
+            <div className="absolute top-[75px] left-[60px] flex items-center gap-7 z-20">
+              {currentTree.topLeft.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="relative group/node"
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                >
+                  <div
+                    style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                  >
+                    {node.icon}
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-md bg-[#18181B] border border-white/20 text-white text-[10px] font-mono whitespace-nowrap opacity-0 pointer-events-none group-hover/node:opacity-100 transition-opacity duration-150 z-30 shadow-xl">
+                    <span className="font-bold">{node.name}</span>
+                    <span className="text-white/50 ml-1.5">({node.sub})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── BOTTOM-LEFT BRANCH (Category + Circular Nodes) ── */}
+            <div className="absolute top-[305px] left-[320px] z-20">
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
+                {currentTree.bottomLeft.category}
+              </div>
+            </div>
+            {/* Bottom-Left Circular Icons */}
+            <div className="absolute top-[305px] left-[60px] flex items-center gap-7 z-20">
+              {currentTree.bottomLeft.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="relative group/node"
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                >
+                  <div
+                    style={{ backgroundColor: node.bgColor || '#18181B', color: node.textColor || '#FFFFFF' }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                  >
+                    {node.icon}
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 rounded-md bg-[#18181B] border border-white/20 text-white text-[10px] font-mono whitespace-nowrap opacity-0 pointer-events-none group-hover/node:opacity-100 transition-opacity duration-150 z-30 shadow-xl">
+                    <span className="font-bold">{node.name}</span>
+                    <span className="text-white/50 ml-1.5">({node.sub})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── TOP-RIGHT BRANCH (Category + Circular Nodes) ── */}
+            <div className="absolute top-[75px] left-[800px] z-20">
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
+                {currentTree.topRight.category}
+              </div>
+            </div>
+            {/* Top-Right Circular Icons */}
+            <div className="absolute top-[75px] left-[915px] flex items-center gap-7 z-20">
+              {currentTree.topRight.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="relative group/node"
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                >
+                  <div
+                    style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                  >
+                    {node.icon}
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1 rounded-md bg-[#18181B] border border-white/20 text-white text-[10px] font-mono whitespace-nowrap opacity-0 pointer-events-none group-hover/node:opacity-100 transition-opacity duration-150 z-30 shadow-xl">
+                    <span className="font-bold">{node.name}</span>
+                    <span className="text-white/50 ml-1.5">({node.sub})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── BOTTOM-RIGHT BRANCH (Category + Circular Nodes) ── */}
+            <div className="absolute top-[305px] left-[780px] z-20">
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
+                {currentTree.bottomRight.category}
+              </div>
+            </div>
+            {/* Bottom-Right Circular Icons */}
+            <div className="absolute top-[305px] left-[940px] flex items-center gap-7 z-20">
+              {currentTree.bottomRight.nodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="relative group/node"
+                  onMouseEnter={() => setHoveredNode(node)}
+                  onMouseLeave={() => setHoveredNode(null)}
+                >
+                  <div
+                    style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                  >
+                    {node.icon}
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1 rounded-md bg-[#18181B] border border-white/20 text-white text-[10px] font-mono whitespace-nowrap opacity-0 pointer-events-none group-hover/node:opacity-100 transition-opacity duration-150 z-30 shadow-xl">
+                    <span className="font-bold">{node.name}</span>
+                    <span className="text-white/50 ml-1.5">({node.sub})</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
+        {/* Active Node Inspector Footer */}
+        {hoveredNode ? (
+          <div className="mt-4 flex items-center justify-center">
+            <div className="px-4 py-2 rounded-xl bg-[#121216] border border-[#CEFF00]/40 text-[#CEFF00] font-mono text-xs flex items-center gap-3 animate-fade-in shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-ping" />
+              <span>ACTIVE NODE: <strong>{hoveredNode.name}</strong></span>
+              <span className="text-white/50">|</span>
+              <span className="text-white/80">{hoveredNode.sub}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 text-center">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
+              Hover nodes to inspect integration telemetry // Zero scroll interception
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

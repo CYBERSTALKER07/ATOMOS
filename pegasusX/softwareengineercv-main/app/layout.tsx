@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 import { BRAND_LOGO } from "@/app/lib/siteAssets";
@@ -7,15 +6,13 @@ import { absoluteUrl, languageAlternates, SITE_NAME, SITE_URL } from "@/app/lib/
 import { getServerLanguage } from "@/app/lib/i18n/server";
 import { translations } from "@/app/lib/i18n/translations";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+const geistSans = {
+  variable: "font-sans",
+};
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const geistMono = {
+  variable: "font-mono",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();

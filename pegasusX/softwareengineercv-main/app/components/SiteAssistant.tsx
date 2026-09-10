@@ -561,22 +561,47 @@ export default function SiteAssistant() {
         </div>
       ) : null}
 
-      {/* Floating Action Button Launcher */}
+      {/* Floating Action Button Launchers (OpenUI AI + Chat Assistant) */}
       {!open ? (
-        <button
-          ref={launcherRef}
-          type="button"
-          className="site-assistant__launcher"
-          aria-expanded={open}
-          aria-controls={panelId}
-          aria-label={t('asst_open', 'Open assistant')}
-          onClick={() => setOpen(true)}
-        >
-          <img src="/pegasus.jpg" alt="" width={40} height={40} className="site-assistant__launcher-logo" />
-          <span className="site-assistant__badge" aria-hidden="true">
-            ⌘K
-          </span>
-        </button>
+        <div className="flex flex-col items-center gap-3">
+          {/* 1. OpenUI Generative Workspace Launcher */}
+          <Link
+            href="/assistant"
+            className="glowing-squircle-launcher group"
+            title="OpenUI AI Assistant"
+            aria-label="OpenUI AI Assistant"
+          >
+            <img
+              src="/icons/ai-orbit.svg"
+              alt="AI Assistant"
+              width={32}
+              height={32}
+              className="transition-transform duration-200 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+            />
+          </Link>
+
+          {/* 2. Chat Assistant Launcher Toggle */}
+          <button
+            ref={launcherRef}
+            type="button"
+            className="glowing-squircle-launcher group"
+            aria-expanded={open}
+            aria-controls={panelId}
+            aria-label={t('asst_open', 'Open assistant')}
+            onClick={() => setOpen(true)}
+          >
+            <img
+              src="/icons/chat-bubble.svg"
+              alt="Chat Assistant"
+              width={30}
+              height={30}
+              className="transition-transform duration-200 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+            />
+            <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 rounded-full bg-[#CEFF00] text-black font-mono text-[9px] font-bold tracking-tight shadow-md">
+              ⌘K
+            </span>
+          </button>
+        </div>
       ) : null}
     </div>
   );
