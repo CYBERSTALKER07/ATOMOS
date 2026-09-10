@@ -22,6 +22,15 @@
   --lane-muted: rgba(255, 255, 255, 0.1);
 }
 
+/* Pre-hydration splash veil to prevent split-second website preview */
+html.needs-splash body {
+  overflow: hidden;
+}
+
+html.needs-splash #pre-splash-overlay {
+  display: flex !important;
+}
+
 /* Unified page rail — one width and gutter across marketing sections */
 .page-shell {
   width: 100%;

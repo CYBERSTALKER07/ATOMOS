@@ -158,10 +158,32 @@ export default async function RootLayout({
     <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <head>
         <meta name="theme-color" content="#000000" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (!sessionStorage.getItem('hasSeenSplash')) {
+                  document.documentElement.classList.add('needs-splash');
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-black`}
       >
+        <div
+          id="pre-splash-overlay"
+          className="fixed inset-0 z-[10006] bg-black hidden items-center justify-center pointer-events-none [.needs-splash_&]:flex"
+          aria-hidden="true"
+        >
+          <img
+            src="/pegasus.jpg"
+            alt="Pegasus Logo"
+            className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl"
+          />
+        </div>
         <a
           href="#main-content"
           className="fixed top-4 left-4 z-[10001] bg-white text-black px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-light border-2 border-black"

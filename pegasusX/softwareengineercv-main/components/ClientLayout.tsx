@@ -19,10 +19,21 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
   const [showSplash, setShowSplash] = useState(false);
 
   useEffect(() => {
-    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-    if (!hasSeenSplash) {
-      setShowSplash(true);
-      sessionStorage.setItem('hasSeenSplash', 'true');
+    try {
+      const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
+      if (!hasSeenSplash) {
+        setShowSplash(true);
+        sessionStorage.setItem('hasSeenSplash', 'true');
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      // Clean up static pre-splash overlay once React hydrates
+      const pre = document.getElementById('pre-splash-overlay');
+      if (pre) {
+        pre.style.display = 'none';
+      }
+      document.documentElement.classList.remove('needs-splash');
     }
   }, []);
 
