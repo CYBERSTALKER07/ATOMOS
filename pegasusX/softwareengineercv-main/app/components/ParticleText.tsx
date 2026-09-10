@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 export interface ParticleTextProps {
   text?: string;
@@ -116,20 +117,8 @@ const ParticleText = ({
   className = '',
   style
 }: ParticleTextProps) => {
-  const [isLowEnd, setIsLowEnd] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const checkLowEnd = () => {
-      const low =
-        window.innerWidth <= 768 ||
-        'ontouchstart' in window ||
-        (typeof navigator !== 'undefined' && navigator.hardwareConcurrency <= 4) ||
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      setIsLowEnd(low);
-    };
-    checkLowEnd();
-  }, []);
+  const perf = usePerfProfile();
+  const isLowEnd = perf.isLowEnd || perf.isMobile || perf.prefersReducedMotion;
 
   const containerRef = useRef<HTMLHeadingElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -200,7 +189,14 @@ const ParticleText = ({
       ctx.fill();
     };
 
+    let isVisible = true;
+
     const render = (now: number): void => {
+      if (!isVisible) {
+        animationFrame = null;
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
       if (glow && !reducedMotion) {
@@ -276,7 +272,7 @@ const ParticleText = ({
 
       if (width <= 0 || height <= 0) return;
 
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr);
       canvas.width = Math.max(1, Math.floor(width * dpr));
       canvas.height = Math.max(1, Math.floor(height * dpr));
       canvas.style.width = '100%';
@@ -440,11 +436,25 @@ const ParticleText = ({
 
     const resizeObserver = new ResizeObserver(queueSample);
     resizeObserver.observe(container);
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const wasVisible = isVisible;
+        isVisible = !!entry?.isIntersecting;
+        if (isVisible && !wasVisible) {
+          ensureRenderLoop();
+        }
+      },
+      { rootMargin: '80px' }
+    );
+    io.observe(container);
+
     void sampleText();
 
     return () => {
       buildId += 1;
       resizeObserver.disconnect();
+      io.disconnect();
       reduceMotionQuery?.removeEventListener('change', handleReduceMotionChange);
       canvas.removeEventListener('pointerenter', handlePointerEnter);
       canvas.removeEventListener('pointermove', handlePointerMove);
@@ -470,7 +480,9 @@ const ParticleText = ({
     fontSize,
     fontWeight,
     fontFamily,
-    glow
+    glow,
+    isLowEnd,
+    perf.maxDpr
   ]);
 
   if (isLowEnd) {
@@ -489,7 +501,7 @@ const ParticleText = ({
   return (
     <Tag
       ref={containerRef as any}
-      className={`relative block h-full min-h-[240px] w-full overflow-hidden touch-none ${className}`}
+      className={`relative block h-full w-full overflow-hidden touch-none ${className}`}
       style={style}
       aria-label={text}
     >

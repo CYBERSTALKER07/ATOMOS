@@ -27,20 +27,19 @@ export default function IsometricTerrain() {
 
     let isDestroyed = false;
     let isVisible = true;
-    let animationFrameId: number;
+    let animationFrameId: number = 0;
+    let resumeRender: (() => void) | null = null;
 
-    // Detect hardware capabilities (Macs and desktop PCs are high-performance Tier 1)
+    // Detect hardware capabilities
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
-    const isMac = typeof navigator !== 'undefined' && /Mac|Macintosh|Mac OS/i.test(nav?.userAgent || nav?.platform || '');
     const concurrency = nav?.hardwareConcurrency ?? 8;
     const deviceMemory = nav?.deviceMemory;
-    // Only flag as low-end if definitely not a Mac, and mobile or genuinely resource-constrained
-    const isLowEndDevice = !isMac && (isMobile || concurrency <= 2 || (deviceMemory !== undefined && deviceMemory <= 3));
+    const isLowEndDevice = isMobile || concurrency <= 4 || (deviceMemory !== undefined && deviceMemory <= 4);
 
     // Dynamic grid density & resolution settings based on device tier
-    const COLS = isLowEndDevice ? 18 : 28;
-    const ROWS = isLowEndDevice ? 18 : 28;
+    const COLS = isLowEndDevice ? 16 : 28;
+    const ROWS = isLowEndDevice ? 16 : 28;
     const targetFps = isLowEndDevice ? 30 : 60;
     const frameInterval = 1000 / targetFps;
 
@@ -432,7 +431,7 @@ export default function IsometricTerrain() {
       const renderCanvas = (now: number) => {
         if (isDestroyed) return;
         if (!isVisible) {
-          animationFrameId = requestAnimationFrame(renderCanvas);
+          animationFrameId = 0;
           return;
         }
 
@@ -579,6 +578,14 @@ export default function IsometricTerrain() {
 
         if (!prefersReducedMotion) {
           animationFrameId = requestAnimationFrame(renderCanvas);
+        } else {
+          animationFrameId = 0;
+        }
+      };
+
+      resumeRender = () => {
+        if (!animationFrameId && !isDestroyed && isVisible && !prefersReducedMotion) {
+          animationFrameId = requestAnimationFrame(renderCanvas);
         }
       };
 
@@ -590,14 +597,22 @@ export default function IsometricTerrain() {
     // -------------------------------------------------------------
     const observer = new IntersectionObserver(
       ([entry]) => {
+        const wasVisible = isVisible;
         isVisible = entry.isIntersecting;
+        if (isVisible && !wasVisible && resumeRender) {
+          resumeRender();
+        }
       },
       { threshold: 0.05 }
     );
     observer.observe(currentContainer);
 
     const handleVisibilityChange = () => {
+      const wasVisible = isVisible;
       isVisible = document.visibilityState === 'visible';
+      if (isVisible && !wasVisible && resumeRender) {
+        resumeRender();
+      }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 

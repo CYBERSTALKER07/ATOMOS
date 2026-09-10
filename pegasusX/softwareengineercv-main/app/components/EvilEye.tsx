@@ -197,8 +197,19 @@ export default function EvilEye({
     rebuild();
 
     let raf = 0;
+    let isVisible = true;
+    let lastTime = 0;
+    const targetInterval = 1000 / 30;
+
     const tick = (now: number) => {
+      if (!isVisible) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
+      if (now - lastTime < targetInterval) return;
+      lastTime = now;
+
       const t = now * 0.001;
 
       mouse.x += (mouse.tx - mouse.x) * 0.07;
@@ -260,10 +271,23 @@ export default function EvilEye({
       }
     };
 
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const wasVisible = isVisible;
+        isVisible = !!entry?.isIntersecting;
+        if (isVisible && !wasVisible && !raf) {
+          raf = requestAnimationFrame(tick);
+        }
+      },
+      { rootMargin: '80px' }
+    );
+    io.observe(container);
+
     raf = requestAnimationFrame(tick);
 
     return () => {
-      cancelAnimationFrame(raf);
+      io.disconnect();
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('resize', rebuild);
       container.removeEventListener('mousemove', onMove);
       container.removeEventListener('mouseleave', onLeave);

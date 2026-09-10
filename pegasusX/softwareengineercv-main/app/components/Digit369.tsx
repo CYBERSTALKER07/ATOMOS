@@ -160,18 +160,13 @@ export default function Digit369({
     window.addEventListener('resize', resize);
     resize();
 
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        running = !!entry?.isIntersecting;
-      },
-      { rootMargin: '60px' }
-    );
-    io.observe(wrap);
-
     let last = 0;
     const tick = (now: number) => {
+      if (!running) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(tick);
-      if (!running) return;
       if (now - last < 40) return;
       last = now;
 
@@ -271,11 +266,23 @@ export default function Digit369({
       }
     };
 
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const wasRunning = running;
+        running = !!entry?.isIntersecting;
+        if (running && !wasRunning && !raf) {
+          raf = requestAnimationFrame(tick);
+        }
+      },
+      { rootMargin: '60px' }
+    );
+    io.observe(wrap);
+
     raf = requestAnimationFrame(tick);
 
     return () => {
       running = false;
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
       io.disconnect();
       wrap.removeEventListener('mousemove', onMove);
       window.removeEventListener('resize', resize);

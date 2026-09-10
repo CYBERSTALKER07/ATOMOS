@@ -6,6 +6,7 @@ import SiteAssistant from '@/app/components/SiteAssistant';
 import { LanguageProvider } from '@/app/context/LanguageContext';
 import type { Language } from '@/app/lib/i18n/translations';
 import { ReactLenis } from 'lenis/react';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
@@ -17,6 +18,7 @@ interface ClientLayoutProps {
 
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }) => {
   const [showSplash, setShowSplash] = useState(false);
+  const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
 
   useEffect(() => {
     try {
@@ -44,17 +46,25 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
         options={{
           lerp: 0.08,
           duration: 1.2,
-          smoothWheel: true,
+          smoothWheel: !isLowEnd && !isMobile,
+          syncTouch: false,
         }}
       >
-        <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} />
-        <TargetCursor
-          targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
-          spinDuration={2}
-          cursorColor="#ffffff"
-          cursorColorOnTarget="#10B981"
-        />
-        {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
+        {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
+        {allowHoverFx ? (
+          <TargetCursor
+            targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
+            spinDuration={2}
+            cursorColor="#ffffff"
+            cursorColorOnTarget="#10B981"
+          />
+        ) : null}
+        {showSplash && (
+          <SplashScreen
+            onComplete={() => setShowSplash(false)}
+            duration={isLowEnd || prefersReducedMotion ? 1200 : 2500}
+          />
+        )}
         {children}
         {!showSplash ? <SiteAssistant /> : null}
       </ReactLenis>
