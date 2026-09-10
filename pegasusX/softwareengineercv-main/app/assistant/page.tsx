@@ -52,6 +52,11 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
 
   return (
     <div className="flex flex-col items-center justify-center max-w-3xl w-full px-4 text-center my-auto py-6">
+      {/* Pegasus Logo Icon */}
+      <div className="w-12 h-12 mb-4 border border-white/10 bg-[#121216] flex items-center justify-center p-2 select-none shadow-[0_0_20px_rgba(255,255,255,0.06)]">
+        <img src="/pegasus.jpg" alt="Pegasus Logo" className="w-full h-full object-contain" />
+      </div>
+
       {/* Tactical Badge */}
       <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 border border-[#CEFF00]/30 bg-[#CEFF00]/10 text-[#CEFF00] font-mono text-[11px] uppercase tracking-wider">
         <span className="w-1.5 h-1.5 rounded-full bg-[#CEFF00] animate-pulse" />
@@ -115,9 +120,12 @@ export default function AssistantPage() {
             <span>BACK TO ECOSYSTEM</span>
           </Link>
           <span className="text-white/20">|</span>
-          <span className="text-xs font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
-            PEGASUS AI ASSISTANT (OPENUI)
-          </span>
+          <div className="flex items-center gap-2">
+            <img src="/pegasus.jpg" alt="Pegasus" className="w-5 h-5 object-contain" />
+            <span className="text-xs font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
+              PEGASUS AI ASSISTANT (OPENUI)
+            </span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-pulse" />
@@ -131,6 +139,7 @@ export default function AssistantPage() {
           llm={llm}
           componentLibrary={openuiLibrary}
           agentName="Pegasus AI Assistant"
+          logoUrl="/pegasus.jpg"
           theme={{ mode: 'dark' }}
           starters={STARTERS}
           starterVariant="long"

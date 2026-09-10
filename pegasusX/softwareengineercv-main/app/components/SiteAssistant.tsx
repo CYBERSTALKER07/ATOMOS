@@ -21,11 +21,11 @@ export default function SiteAssistant() {
         aria-label="Open Pegasus AI Assistant"
       >
         <img
-          src="/icons/ai-orbit.svg"
-          alt="AI Assistant"
-          width={32}
-          height={32}
-          className="transition-transform duration-200 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+          src="/pegasus.jpg"
+          alt="Pegasus AI Assistant"
+          width={34}
+          height={34}
+          className="w-8 h-8 sm:w-9 sm:h-9 object-contain select-none transition-transform duration-200 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
         />
         <span className="sr-only">Open Pegasus AI Assistant</span>
       </Link>
