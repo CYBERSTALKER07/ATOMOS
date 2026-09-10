@@ -165,6 +165,8 @@ export default async function RootLayout({
                 if (sessionStorage.getItem('hasSeenSplash')) {
                   document.documentElement.classList.add('splash-done');
                 }
+                const openuiDevtoolsFlag = Symbol.for('openui.devtools.autoMount');
+                window[openuiDevtoolsFlag] = true;
               } catch (e) {}
             `,
           }}

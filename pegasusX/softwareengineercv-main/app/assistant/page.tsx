@@ -123,7 +123,7 @@ export default function AssistantPage() {
           <div className="flex items-center gap-2">
             <img src="/pegasus.jpg" alt="Pegasus" className="w-5 h-5 object-contain" />
             <span className="text-xs font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
-              PEGASUS AI ASSISTANT (OPENUI)
+              PEGASUS AI ASSISTANT
             </span>
           </div>
         </div>

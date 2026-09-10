@@ -6865,3 +6865,18 @@ body:has(.openui-agent-container) {
 body:has(.openui-agent-container) aside[aria-label="Pegasus AI Assistant"] {
   display: none !important;
 }
+
+/* Obliterate OpenUI Devtools floating button / inspect widget completely */
+[data-openui-devtools-root],
+[data-openui-devtools-auto-mount],
+button[aria-label="Open OpenUI Inspect"],
+button[title*="OpenUI Inspect"],
+aside[aria-label="OpenUI Inspect"],
+aside[aria-label="OpenUI Debug"],
+div[style*="z-index: 2147483647"],
+div[style*="zIndex: 2147483647"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}

@@ -11,6 +11,14 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
 
+// Prevent OpenUI devtools from auto-mounting
+if (typeof window !== 'undefined') {
+  try {
+    const flag = Symbol.for('openui.devtools.autoMount');
+    (window as unknown as Record<symbol, boolean>)[flag] = true;
+  } catch (e) {}
+}
+
 interface ClientLayoutProps {
   children: React.ReactNode;
   initialLanguage?: Language;
@@ -22,6 +30,11 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
   const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
 
   useEffect(() => {
+    // Clean up any OpenUI devtools widgets if previously mounted
+    try {
+      document.querySelectorAll('[data-openui-devtools-root], [data-openui-devtools-auto-mount]').forEach((el) => el.remove());
+    } catch (e) {}
+
     try {
       if (sessionStorage.getItem('hasSeenSplash')) {
         document.documentElement.classList.add('splash-done');
