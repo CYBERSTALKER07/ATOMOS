@@ -304,56 +304,97 @@ export default function UserStoriesSection() {
 
       <div className="max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12">
         {/* Clean Big Section Title */}
-        <div className="pb-16">
+        <div className="pb-16 sm:pb-20">
           <h2 className="text-6xl sm:text-7xl lg:text-8xl font-medium tracking-tight text-white select-none">
             {title}
           </h2>
         </div>
 
-        {/* Stories Flow: exactly two stories */}
-        <div className="space-y-20 lg:space-y-24">
-          {stories.map((story) => (
-            <div key={story.id} className="relative">
-              {/* Persona (Left Side) */}
-              <div className="max-w-xl">
-                <div className="flex items-center space-x-4">
-                  <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border border-white/20 shrink-0 bg-[#161622] shadow-lg">
-                    <Image
-                      src={story.avatar}
-                      alt={story.name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 56px, 64px"
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">
-                      {story.name}
-                    </h3>
-                    <p className="text-xs font-mono text-[#8E8EA0] uppercase tracking-wider mt-0.5">
-                      {story.role}
-                    </p>
-                  </div>
+        {/* Stories Flow: Z-Layout (Alternating Left & Right) */}
+        <div className="space-y-24 lg:space-y-32">
+          {/* Row 1: Left Persona (Алексей) -> Right Story Card */}
+          <div className="relative">
+            {/* Persona 1 (Left) */}
+            <div className="max-w-xl">
+              <div className="flex items-center space-x-4">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border border-white/20 shrink-0 bg-[#161622] shadow-lg">
+                  <Image
+                    src={stories[0].avatar}
+                    alt={stories[0].name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 56px, 64px"
+                  />
                 </div>
-
-                <p className="mt-4 text-xs sm:text-sm text-[#8E8EA8] leading-relaxed max-w-lg">
-                  {story.personDescription}
-                </p>
-              </div>
-
-              {/* Curved Connector Hairline (Connecting Persona to User Story) */}
-              <div className="hidden md:block absolute left-20 top-[135px] w-48 h-20 border-l border-b border-[#2A2A38] rounded-bl-3xl pointer-events-none opacity-60" />
-
-              {/* User Story Floating White Bubble (Right Side) */}
-              <div className="mt-6 md:mt-2 md:ml-auto max-w-xl lg:max-w-2xl flex flex-col items-end">
-                <div className="relative w-full bg-white text-[#111116] p-6 sm:p-7 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
-                  <p className="text-sm sm:text-base leading-relaxed font-normal text-[#1A1A24]">
-                    {story.userStory}
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">
+                    {stories[0].name}
+                  </h3>
+                  <p className="text-xs font-mono text-[#8E8EA0] uppercase tracking-wider mt-0.5">
+                    {stories[0].role}
                   </p>
                 </div>
               </div>
+
+              <p className="mt-4 text-xs sm:text-sm text-[#8E8EA8] leading-relaxed max-w-lg">
+                {stories[0].personDescription}
+              </p>
             </div>
-          ))}
+
+            {/* Curved Connector Hairline (Flowing Left to Right) */}
+            <div className="hidden md:block absolute left-20 top-[135px] w-48 h-20 border-l border-b border-[#2A2A38] rounded-bl-3xl pointer-events-none opacity-60" />
+
+            {/* User Story Card 1 (Right) */}
+            <div className="mt-6 md:mt-2 md:ml-auto max-w-xl lg:max-w-2xl flex flex-col items-end">
+              <div className="relative w-full bg-white text-[#111116] p-6 sm:p-7 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
+                <p className="text-sm sm:text-base leading-relaxed font-normal text-[#1A1A24]">
+                  {stories[0].userStory}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 2: Right Persona (Елена) -> Left Story Card (Z-Pattern Mirror) */}
+          <div className="relative">
+            {/* Persona 2 (Right on Desktop) */}
+            <div className="max-w-xl md:ml-auto md:flex md:flex-col md:items-end md:text-right">
+              <div className="flex items-center space-x-4 md:flex-row-reverse md:space-x-reverse">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border border-white/20 shrink-0 bg-[#161622] shadow-lg">
+                  <Image
+                    src={stories[1].avatar}
+                    alt={stories[1].name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 56px, 64px"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">
+                    {stories[1].name}
+                  </h3>
+                  <p className="text-xs font-mono text-[#8E8EA0] uppercase tracking-wider mt-0.5">
+                    {stories[1].role}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-xs sm:text-sm text-[#8E8EA8] leading-relaxed max-w-lg">
+                {stories[1].personDescription}
+              </p>
+            </div>
+
+            {/* Curved Connector Hairline (Flowing Right to Left) */}
+            <div className="hidden md:block absolute right-20 top-[135px] w-48 h-20 border-r border-b border-[#2A2A38] rounded-br-3xl pointer-events-none opacity-60" />
+
+            {/* User Story Card 2 (Left on Desktop) */}
+            <div className="mt-6 md:mt-2 md:mr-auto max-w-xl lg:max-w-2xl flex flex-col items-start">
+              <div className="relative w-full bg-white text-[#111116] p-6 sm:p-7 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
+                <p className="text-sm sm:text-base leading-relaxed font-normal text-[#1A1A24]">
+                  {stories[1].userStory}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
