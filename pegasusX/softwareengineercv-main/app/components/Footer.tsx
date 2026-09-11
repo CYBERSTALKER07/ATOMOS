@@ -65,6 +65,7 @@ export default function Footer() {
   };
 
   const platformLinks = [
+    { name: t('nav_docs', 'Documentation'), href: '/docs' },
     { name: t('nav_platform'), href: '/platform' },
     { name: t('nav_global_logistics', 'Global Logistics'), href: '/global-logistics' },
     { name: t('nav_supply_chain_software', 'Supply Chain Software'), href: '/supply-chain-software' },

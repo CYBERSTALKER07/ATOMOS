@@ -41,6 +41,7 @@ export const DEFAULT_MEGA_PROMO: MegaNavPromo = {
 };
 
 export const MEGA_NAV_FOOTER_LINKS = [
+  { label: 'Documentation', href: '/docs' },
   { label: 'About', href: '/#about' },
   { label: 'Request Demo', href: '/join' },
   { label: 'Contact', href: '/contact' },
@@ -50,6 +51,7 @@ export const MEGA_NAV_FOOTER_LINKS = [
 export const getMegaNavFooterLinks = (t?: (key: string, fallback?: string) => string) => {
   if (!t) return MEGA_NAV_FOOTER_LINKS;
   return [
+    { label: t('nav_docs', 'Documentation'), href: '/docs' },
     { label: t('footer_about', 'About'), href: '/#about' },
     { label: t('nav_demo', 'Request Demo'), href: '/join' },
     { label: t('nav_contact', 'Contact'), href: '/contact' },
