@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Image from 'next/image';
-import { User, FileText, Sparkles } from 'lucide-react';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 type UserStoryItem = {
@@ -14,161 +13,306 @@ type UserStoryItem = {
   userStory: string;
 };
 
-const STORIES_RU: UserStoryItem[] = [
-  {
-    id: 'alexey',
-    name: 'Алексей',
-    role: 'Владелец бизнеса',
-    avatar: '/Unknown-5.jpg',
-    personDescription:
-      'Владелец небольшого бизнеса, специализирующегося на производстве и продаже спецодежды. Его компания предлагает разнообразные модели спецодежды для оптовых и розничных покупателей.',
-    userStory:
-      'Алексей, как владелец бизнеса хочет увидеть баланс своего счета и информацию о состоянии расчетов, чтобы понять, какую сумму ему нужно перевести контрагентам по совершенным сделкам.',
+const MULTILINGUAL_STORIES: Record<string, { title: string; stories: UserStoryItem[] }> = {
+  ru: {
+    title: 'User stories',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Алексей',
+        role: 'Владелец бизнеса',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Владелец небольшого бизнеса, специализирующегося на производстве и продаже спецодежды. Его компания предлагает разнообразные модели спецодежды для оптовых и розничных покупателей.',
+        userStory:
+          'Алексей, как владелец бизнеса хочет увидеть баланс своего счета и информацию о состоянии расчетов, чтобы понять, какую сумму ему нужно перевести контрагентам по совершенным сделкам.',
+      },
+      {
+        id: 'elena',
+        name: 'Елена',
+        role: 'Менеджер по работе с клиентами',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Менеджер по работе с клиентами. Она проводит переговоры, заключает договоры и оформляет все необходимые документы.',
+        userStory:
+          'Елена, как менеджер по работе с клиентами, хочет оперативно выставлять счета клиентам, чтобы они могли быстрее оплатить их и не тормозить рабочий процесс.',
+      },
+    ],
   },
-  {
-    id: 'elena',
-    name: 'Елена',
-    role: 'Менеджер по работе с клиентами',
-    avatar: '/Unknown-6.jpg',
-    personDescription:
-      'Менеджер по работе с клиентами. Она проводит переговоры, заключает договоры и оформляет все необходимые документы.',
-    userStory:
-      'Елена, как менеджер по работе с клиентами, хочет оперативно выставлять счета клиентам, чтобы они могли быстрее оплатить их и не тормозить рабочий процесс.',
+  en: {
+    title: 'User stories',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Alexey',
+        role: 'Business Owner',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Owner of a manufacturing and distribution business specializing in industrial apparel. His company supplies customized workwear to wholesale and retail buyers.',
+        userStory:
+          'Alexey, as a business owner, wants to view his real-time account balance and settlement status to clearly understand how much he needs to transfer to trade counterparties for completed transactions.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Client Relationship Manager',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Client relationship manager handling commercial negotiations, contractual agreements, and generating all necessary documentation for client accounts.',
+        userStory:
+          'Elena, as a client manager, wants to promptly issue invoices to clients so they can settle payments faster without stalling operational workflows.',
+      },
+    ],
   },
-  {
-    id: 'rustam',
-    name: 'Рустам',
-    role: 'Руководитель смены склада',
-    avatar: '/Unknown-8.jpg',
-    personDescription:
-      'Начальник логистического узла и диспетчерской. Координирует утренние волны сборки, упаковку паллет и подготовку путевых листов для 60 грузовых фур.',
-    userStory:
-      'Рустам, как диспетчер склада, хочет автоматически кластеризовать 1 500 заказов по объему и временным окнам за 5 минут, чтобы автопарк выезжал на маршрут строго по расписанию.',
+  uz: {
+    title: 'Foydalanuvchi hikoyalari',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Aleksey',
+        role: 'Biznes egasi',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Maxsus ish kiyimlari ishlab chiqarish va sotishga ixtisoslashgan kichik biznes egasi. Uning kompaniyasi ulgurji va chakana xaridorlar uchun turli modellarni taklif etadi.',
+        userStory:
+          'Aleksey, biznes egasi sifatida, hisob-kitob holati va hisob balansini aniq ko‘rishni xohlaydi, shunda u tuzilgan bitimlar bo‘yicha kontragentlarga qancha mablag‘ o‘tkazishi kerakligini biladi.',
+      },
+      {
+        id: 'elena',
+        name: 'Yelena',
+        role: 'Mijozlar bilan ishlash menejeri',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Mijozlar bilan ishlash menejeri. U muzokaralar olib boradi, shartnomalar tuzadi va barcha zarur hujjatlarni rasmiylashtiradi.',
+        userStory:
+          'Yelena, mijozlar menejeri sifatida, mijozlarga hisob-fakturalarni tezkorlik bilan chiqarishni xohlaydi, shunda ular to‘lovni tezroq amalga oshirib, ish jarayonini to‘xtatib qo‘ymaydi.',
+      },
+    ],
   },
-  {
-    id: 'alisher',
-    name: 'Алишер',
-    role: 'Водитель-экспедитор',
-    avatar: '/Unknown-10.jpg',
-    personDescription:
-      'Водитель городской доставки. Развозит продукцию по розничным торговым точкам, принимает оплату наличными (COD) и подтверждает передачу груза электронным актом.',
-    userStory:
-      'Алишер, как водитель доставки, хочет видеть точный порядок выгрузки ящиков и фиксировать прием наличных даже при отсутствии связи в подвальных магазинах с последующей синхронизацией.',
+  es: {
+    title: 'Historias de usuario',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Alexey',
+        role: 'Propietario de negocio',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Propietario de una pequeña empresa especializada en la confección y venta de ropa de trabajo para compradores mayoristas y minoristas.',
+        userStory:
+          'Alexey, como propietario de una empresa, quiere ver el saldo de su cuenta y el estado de liquidación para saber cuánto transferir a las contrapartes por acuerdos concluidos.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Gerente de cuentas',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Gerente de relaciones con clientes. Conduce negociaciones comerciales, formaliza contratos y emite toda la documentación requerida.',
+        userStory:
+          'Elena, como gerente de cuentas, quiere emitir facturas a los clientes de inmediato para que puedan pagar más rápido y no retrasar el flujo de trabajo.',
+      },
+    ],
   },
-];
-
-const STORIES_EN: UserStoryItem[] = [
-  {
-    id: 'alexey',
-    name: 'Alexey',
-    role: 'Business Owner',
-    avatar: '/Unknown-5.jpg',
-    personDescription:
-      'Owner of a manufacturing and distribution business specializing in industrial apparel. His company supplies customized workwear to both wholesale and retail clients.',
-    userStory:
-      'Alexey, as a business owner, wants to view his real-time ledger balance and accounts settlement status to know the exact payout amount due to trade counterparties.',
+  de: {
+    title: 'User Stories',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Alexey',
+        role: 'Geschäftsinhaber',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Inhaber eines mittelständischen Unternehmens für Berufsbekleidung. Beliefert Groß- und Einzelhandelskunden mit modernen Arbeitskleidungsmodellen.',
+        userStory:
+          'Alexey möchte als Geschäftsinhaber seinen Kontostand und den aktuellen Abrechnungsstatus einsehen, um zu verstehen, welche Beträge an Geschäftspartner zu überweisen sind.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Kundenbetreuerin',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Kundenbetreuerin für Handelspartner. Führt Verhandlungen, schließt Verträge ab und erstellt alle erforderlichen Versanddokumente.',
+        userStory:
+          'Elena möchte Rechnungen schnell an Kunden ausstellen, damit diese zügig bezahlen und der operative Prozess nicht ins Stocken gerät.',
+      },
+    ],
   },
-  {
-    id: 'elena',
-    name: 'Elena',
-    role: 'Client Relationship Manager',
-    avatar: '/Unknown-6.jpg',
-    personDescription:
-      'Client relationship manager handling commercial negotiations, contract approvals, and dispatch invoice generation across retail accounts.',
-    userStory:
-      'Elena, as a client manager, wants to issue verified invoices to retail stores instantly so they can settle payments promptly without slowing down the fulfillment pipeline.',
+  fr: {
+    title: 'Histoires utilisateurs',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Alexeï',
+        role: 'Chef d’entreprise',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Propriétaire d’une entreprise spécialisée dans la fabrication et la distribution de vêtements professionnels pour clients grossistes et détaillants.',
+        userStory:
+          'Alexeï souhaite visualiser le solde de son compte et l’état des règlements pour savoir quel montant transférer à ses contreparties pour les transactions conclues.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Responsable clientèle',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Responsable clientèle menant les négociations, la signature des contrats et l’émission de l’ensemble des pièces administratives.',
+        userStory:
+          'Elena souhaite facturer rapidement les clients afin d’accélérer les paiements et d’assurer la fluidité continue des opérations.',
+      },
+    ],
   },
-  {
-    id: 'rustam',
-    name: 'Rustam',
-    role: 'Warehouse Shift Lead',
-    avatar: '/Unknown-8.jpg',
-    personDescription:
-      'Distribution center supervisor coordinating morning pick waves, pallet packing, and manifest issuance for a 60-truck delivery fleet.',
-    userStory:
-      'Rustam, as a warehouse lead, wants automated CVRP clustering to batch 1,500 morning retail orders in under 5 minutes so trucks roll out on schedule.',
+  zh: {
+    title: '用户故事',
+    stories: [
+      {
+        id: 'alexey',
+        name: '阿列克谢',
+        role: '企业所有者',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          '一家专注于工业工作服制造与销售的企业负责人，为批发和零售买家提供丰富的产品线。',
+        userStory:
+          '阿列克谢希望实时查看其账户余额与清算状态，以便清楚掌握各项交易所产生应付账款，及时向交易方结算。',
+      },
+      {
+        id: 'elena',
+        name: '埃琳娜',
+        role: '客户关系经理',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          '负责商务洽谈、签署合作合同并出具各项必要交易凭据的客户关系经理。',
+        userStory:
+          '埃琳娜希望能够迅速向客户开具账单发票，以便客户加快付款速度，不阻碍订单履约与生产流程。',
+      },
+    ],
   },
-  {
-    id: 'alisher',
-    name: 'Alisher',
-    role: 'Fleet Delivery Driver',
-    avatar: '/Unknown-10.jpg',
-    personDescription:
-      'Last-mile delivery driver handling urban retail drops, cash-on-delivery (COD) till collection, and electronic proof-of-delivery signatures.',
-    userStory:
-      'Alisher, as a delivery driver, wants reverse-order loading guidance and offline cash-on-delivery logging so drops can be completed without cellular signal.',
+  ja: {
+    title: 'ユーザーストーリー',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'アレクセイ',
+        role: '事業主',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          '作業着の製造・販売を専門とするビジネスのオーナー。卸売および小売の顧客に向けて製品を展開しています。',
+        userStory:
+          'アレクセイは事業主として、完了した取引に対して取引先へ送金すべき金額を把握するため、口座残高と決済状況を即座に確認したいと考えています。',
+      },
+      {
+        id: 'elena',
+        name: 'エレーナ',
+        role: 'アカウントマネージャー',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          '顧客関係を担当するマネージャー。商談を行い、契約を締結し、必要なすべての書類を発行します。',
+        userStory:
+          'エレーナは顧客マネージャーとして、顧客が迅速に支払いを行い業務の流れを滞らせないよう、速やかに請求書を発行したいと考えています。',
+      },
+    ],
   },
-];
+  ar: {
+    title: 'قصص المستخدمين',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'أليكسي',
+        role: 'صاحب عمل',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'صاحب عمل متخصص في تصنيع وبيع ملابس العمل للشركات وتجار الجملة والتجزئة.',
+        userStory:
+          'يرغب أليكسي كصاحب عمل في الاطلاع على رصيد حسابه وحالة التسويات ليعرف بدقة المبالغ المستحقة للأطراف المقابلة.',
+      },
+      {
+        id: 'elena',
+        name: 'إيلينا',
+        role: 'مديرة علاقات العملاء',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'مديرة حسابات وعلاقات العملاء. تجري المفاوضات وتبرم العقود وتصدر كافة المستندات المطلوبة.',
+        userStory:
+          'ترغب إيلينا في إصدار الفواتير بسرعة للعملاء حتى يتمكنوا من الدفع دون تأخير سير العمل التشغيلي.',
+      },
+    ],
+  },
+  pt: {
+    title: 'Histórias de usuário',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Alexey',
+        role: 'Proprietário',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'Proprietário de uma empresa especializada na produção e venda de vestuário de trabalho para atacado e varejo.',
+        userStory:
+          'Alexey, como proprietário, quer ver o saldo de sua conta e o status dos acertos para saber o valor exato a ser transferido aos parceiros comerciais.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Gerente de contas',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Gerente de contas comerciais. Conduz negociações, fecha contratos e emite toda a documentação necessária.',
+        userStory:
+          'Elena quer emitir faturas aos clientes com agilidade para que eles possam pagar mais rápido sem travar os fluxos operacionais.',
+      },
+    ],
+  },
+  tr: {
+    title: 'Kullanıcı hikayeleri',
+    stories: [
+      {
+        id: 'alexey',
+        name: 'Aleksey',
+        role: 'İşletme Sahibi',
+        avatar: '/Unknown-5.jpg',
+        personDescription:
+          'İş kıyafetleri üretimi ve toptan/perakende satışı konusunda uzmanlaşmış işletme sahibi.',
+        userStory:
+          'Aleksey, tamamlanan işlemler doğrultusunda iş ortaklarına ne kadar ödeme yapacağını bilmek için hesap bakiyesini ve mutabakat durumunu net görmek istiyor.',
+      },
+      {
+        id: 'elena',
+        name: 'Elena',
+        role: 'Müşteri Yöneticisi',
+        avatar: '/Unknown-6.jpg',
+        personDescription:
+          'Müşteri ilişkileri yöneticisi. Görüşmeleri yürütür, sözleşmeleri imzalar ve tüm operasyonel belgeleri hazırlar.',
+        userStory:
+          'Elena, müşterilerin ödemeleri geciktirmeden yapabilmesi ve iş akışının aksamaması için faturaları hızlıca kesmek istiyor.',
+      },
+    ],
+  },
+};
 
 export default function UserStoriesSection() {
   const { language } = useLanguage();
-  const isRu = language === 'ru';
-  const stories = isRu ? STORIES_RU : STORIES_EN;
-  const [activeDot, setActiveDot] = useState(2);
+  const currentLocale = MULTILINGUAL_STORIES[language] || MULTILINGUAL_STORIES.en;
+  const { title, stories } = currentLocale;
 
   return (
     <section className="relative w-full bg-[#000000] text-white py-20 lg:py-28 overflow-hidden font-sans border-t border-[#1C1C24]">
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[radial-gradient(ellipse_at_top_right,_rgba(50,50,70,0.25)_0%,_transparent_70%)] pointer-events-none" />
-      <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(25,25,35,0.4)_0%,_transparent_70%)] pointer-events-none" />
+      {/* Subtle ambient lighting */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[radial-gradient(ellipse_at_top_right,_rgba(50,50,70,0.2)_0%,_transparent_70%)] pointer-events-none" />
+      <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-[radial-gradient(circle,_rgba(25,25,35,0.35)_0%,_transparent_70%)] pointer-events-none" />
 
       <div className="max-w-[1240px] mx-auto px-6 sm:px-8 lg:px-12">
-        {/* Top Header Metadata Bar (Matching Reference Image) */}
-        <div className="border-t border-b border-[#22222E] py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-[11px] font-mono tracking-wider text-[#8A8A9E] items-center">
-          <div>
-            <span className="block text-[#525266] uppercase text-[10px]">
-              {isRu ? 'АВТОР:' : 'AUTHOR:'}
-            </span>
-            <span className="text-white font-medium uppercase">
-              {isRu ? 'АНАСТАСИЯ СЕМЕНОВА' : 'ANASTASIA SEMENOVA'}
-            </span>
-          </div>
-
-          <div>
-            <span className="block text-[#525266] uppercase text-[10px]">
-              {isRu ? 'РАЗДЕЛ:' : 'SECTION:'}
-            </span>
-            <span className="text-white font-medium uppercase">
-              {isRu ? 'ОБОБЩЕНИЕ' : 'GENERALIZATION'}
-            </span>
-          </div>
-
-          {/* Center Pagination Dots */}
-          <div className="flex items-center justify-start md:justify-center space-x-1.5">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((dotIdx) => (
-              <button
-                key={dotIdx}
-                onClick={() => setActiveDot(dotIdx)}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  dotIdx === activeDot
-                    ? 'bg-white scale-125 shadow-[0_0_8px_rgba(255,255,255,0.8)]'
-                    : 'bg-[#3A3A4C] hover:bg-[#6E6E82]'
-                }`}
-                aria-label={`Slide ${dotIdx + 1}`}
-              />
-            ))}
-          </div>
-
-          <div className="text-left md:text-right">
-            <span className="block text-[#525266] uppercase text-[10px]">
-              IOS APP
-            </span>
-            <span className="text-white font-medium uppercase">
-              {isRu ? 'INVOICE CREATION FLOW' : 'INVOICE CREATION FLOW'}
-            </span>
-          </div>
-        </div>
-
-        {/* Big Bold Section Title */}
-        <div className="pt-16 pb-16">
+        {/* Clean Big Section Title */}
+        <div className="pb-16">
           <h2 className="text-6xl sm:text-7xl lg:text-8xl font-medium tracking-tight text-white select-none">
-            User stories
+            {title}
           </h2>
         </div>
 
-        {/* Stories Flow List */}
-        <div className="space-y-24">
-          {stories.map((story, index) => (
+        {/* Stories Flow: exactly two stories */}
+        <div className="space-y-20 lg:space-y-24">
+          {stories.map((story) => (
             <div key={story.id} className="relative">
               {/* Persona (Left Side) */}
               <div className="max-w-xl">
@@ -186,7 +330,7 @@ export default function UserStoriesSection() {
                     <h3 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">
                       {story.name}
                     </h3>
-                    <p className="text-xs font-mono text-[#8E8EA0] uppercase tracking-wider">
+                    <p className="text-xs font-mono text-[#8E8EA0] uppercase tracking-wider mt-0.5">
                       {story.role}
                     </p>
                   </div>
@@ -195,16 +339,10 @@ export default function UserStoriesSection() {
                 <p className="mt-4 text-xs sm:text-sm text-[#8E8EA8] leading-relaxed max-w-lg">
                   {story.personDescription}
                 </p>
-
-                {/* Person Pill Tag */}
-                <div className="mt-4 inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#121218] border border-[#272736] text-xs text-[#E0E0E8] font-medium shadow-sm">
-                  <span className="text-sm">👤</span>
-                  <span>Person</span>
-                </div>
               </div>
 
-              {/* Curved Connector Hairline (Connecting Person to User Story) */}
-              <div className="hidden md:block absolute left-24 top-[150px] w-48 h-24 border-l border-b border-[#2A2A38] rounded-bl-3xl pointer-events-none opacity-60" />
+              {/* Curved Connector Hairline (Connecting Persona to User Story) */}
+              <div className="hidden md:block absolute left-20 top-[135px] w-48 h-20 border-l border-b border-[#2A2A38] rounded-bl-3xl pointer-events-none opacity-60" />
 
               {/* User Story Floating White Bubble (Right Side) */}
               <div className="mt-6 md:mt-2 md:ml-auto max-w-xl lg:max-w-2xl flex flex-col items-end">
@@ -212,12 +350,6 @@ export default function UserStoriesSection() {
                   <p className="text-sm sm:text-base leading-relaxed font-normal text-[#1A1A24]">
                     {story.userStory}
                   </p>
-                </div>
-
-                {/* User Story Pill Tag */}
-                <div className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-[#121218] border border-[#272736] text-xs text-[#E0E0E8] font-medium shadow-sm">
-                  <span className="text-sm">📝</span>
-                  <span>User story</span>
                 </div>
               </div>
             </div>
