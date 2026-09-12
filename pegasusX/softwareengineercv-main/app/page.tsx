@@ -1,7 +1,6 @@
 import dynamic from 'next/dynamic';
 import Hero from './components/Hero';
 import About from './components/About';
-import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
 import LocalizedLaneDivider from './components/layout/LocalizedLaneDivider';
 import type { Metadata } from 'next';
@@ -27,7 +26,7 @@ const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPrompt
 const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
-const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
+const OperationsSection = dynamic(() => import('./components/OperationsSection'));
 const CloudEcosystemSection = dynamic(() => import('./components/CloudEcosystemSection'));
 const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
 const Projects = dynamic(() => import('./components/Projects'));
@@ -135,9 +134,12 @@ export default async function Home() {
           <EcosystemStats />
           <LogisticsWorkflow />
           <OurApproach />
-          <LocalizedLaneDivider index="04" labelKey="home_lane_operations" />
-          <Skills />
-          <DevelopmentTools />
+        </section>
+
+        <LocalizedLaneDivider index="04" labelKey="home_lane_operations" />
+
+        <section id="section-operations">
+          <OperationsSection />
           <CloudEcosystemSection />
         </section>
 
