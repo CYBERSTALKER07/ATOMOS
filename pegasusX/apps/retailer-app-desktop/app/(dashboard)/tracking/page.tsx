@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { AlertTriangle, RefreshCw, WifiOff } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,8 +18,6 @@ import NetworkPulsePanel from "../../../components/NetworkPulsePanel";
 import { TrackingMap } from "../../../components/tracking/TrackingMap";
 import { TrackingStatus } from "../../../components/tracking/TrackingStatus";
 
-
-const TASHKENT: [number, number] = [69.2401, 41.2995];
 
 const LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -74,6 +73,7 @@ function useColorScheme(): "light" | "dark" {
 }
 
 export default function TrackingPage() {
+  const t = usePortalT();
   const {
     data: trackingData,
     loading,
@@ -234,35 +234,35 @@ export default function TrackingPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Tracking access restricted for this account.",
+        message: t("retailer_desktop.residual.text.tracking_access_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing the latest known telemetry.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_the_latest_known_telemetry"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Telemetry sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.telemetry_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Event updates may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_event_updates_may_be_delayed"),
       };
     }
     if (isRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing live telemetry...",
+        message: t("retailer_desktop.residual.text.syncing_live_telemetry"),
       };
     }
     return null;
@@ -305,8 +305,8 @@ export default function TrackingPage() {
     >
       <PageChrome
         icon="tracking"
-        title="Telemetry Control"
-        description="Live fleet orchestration and inbound logistics monitoring."
+        title={t("retailer_desktop.tracking.text.telemetry_control")}
+        description={t("retailer_desktop.residual.text.live_fleet_orchestration_and_inbound_logistics_monitoring")}
         loading={loading && orders.length === 0}
         skeletonVariant="table"
         actions={
@@ -325,7 +325,7 @@ export default function TrackingPage() {
         }
       >
 
-      <PageSection title="Network pulse" description="Recent order and notification activity for your account.">
+      <PageSection title={t("retailer_desktop.tracking.text.network_pulse")} description={t("retailer_desktop.residual.text.recent_order_and_notification_activity_for_your_account")}>
         <NetworkPulsePanel />
       </PageSection>
 

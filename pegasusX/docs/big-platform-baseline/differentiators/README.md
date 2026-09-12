@@ -1,5 +1,8 @@
 # 8. Differentiators — Solutions Incumbents Do Not Solve Cleanly
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 Cash-heavy, multi-supplier, fiscalized, offline-first emerging-market B2B.
 
 | Doc | Topic |

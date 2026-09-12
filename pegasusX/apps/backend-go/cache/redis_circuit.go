@@ -223,3 +223,47 @@ func (c *CircuitBreakerBackend) Exists(ctx context.Context, key string) (bool, e
 	}
 	return exists, existsErr
 }
+
+func (c *CircuitBreakerBackend) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if c == nil || c.primary == nil {
+		return 0, nil
+	}
+	var res int64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		res, innerErr = c.primary.IncrBy(ctx, key, amount)
+		if innerErr == redis.Nil {
+			return nil
+		}
+		return innerErr
+	})
+	if c.useFallback(err) {
+		return c.fallback.IncrBy(ctx, key, amount)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return res, innerErr
+}
+
+func (c *CircuitBreakerBackend) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if c == nil || c.primary == nil {
+		return 0, nil
+	}
+	var res int64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		res, innerErr = c.primary.DecrBy(ctx, key, amount)
+		if innerErr == redis.Nil {
+			return nil
+		}
+		return innerErr
+	})
+	if c.useFallback(err) {
+		return c.fallback.DecrBy(ctx, key, amount)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return res, innerErr
+}

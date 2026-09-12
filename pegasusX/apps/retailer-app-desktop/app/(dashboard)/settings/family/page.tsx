@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -46,6 +47,7 @@ type MigrateResult = {
 };
 
 export default function FamilyMembersPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function FamilyMembersPage() {
         setFamilyGone(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load family members");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_load_family_members"));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export default function FamilyMembersPage() {
       setPhone("");
       await loadMembers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add family member");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_add_family_member"));
     } finally {
       setSaving(false);
     }
@@ -140,7 +142,7 @@ export default function FamilyMembersPage() {
       }
       await loadMembers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not remove family member");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.could_not_remove_family_member"));
     }
   };
 
@@ -174,7 +176,7 @@ export default function FamilyMembersPage() {
       setFamilyGone(json.family_writes === "gone");
       await loadMembers();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Migration failed");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.migration_failed"));
     } finally {
       setMigrating(false);
     }
@@ -186,15 +188,15 @@ export default function FamilyMembersPage() {
       setCopiedId(userId);
       window.setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      setError("Could not copy password to clipboard");
+      setError(t("retailer_desktop.residual.text.could_not_copy_password_to_clipboard"));
     }
   };
 
   return (
     <PageChrome
       icon="settings"
-      title="Family Members"
-      description="Legacy family list. Prefer Team staff — migrate when ready."
+      title={t("retailer_desktop.settings.family.text.family_members")}
+      description={t("retailer_desktop.residual.text.legacy_family_list_prefer_team_staff_migrate_when_ready")}
       loading={loading}
       skeletonVariant="form"
       actions={
@@ -210,7 +212,7 @@ export default function FamilyMembersPage() {
             type="button"
             onClick={() => router.push("/settings")}
             className="portal-btn portal-btn--ghost desk-icon-btn"
-            aria-label="Back to settings"
+            aria-label={t("retailer_desktop.settings.family.text.back_to_settings")}
           >
             <ArrowLeft size={18} />
           </button>
@@ -259,7 +261,7 @@ export default function FamilyMembersPage() {
         {migrateResult && (
           <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 space-y-4">
             <div>
-              <p className="font-light text-[var(--desk-text-primary)]">Migration result</p>
+              <p className="font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.settings.family.text.migration_result")}</p>
               <p className="text-sm text-[var(--desk-text-secondary)] mt-1">
                 {migrateResult.migrated?.length ?? 0} migrated ·{" "}
                 {migrateResult.skipped?.length ?? 0} skipped ·{" "}
@@ -337,13 +339,13 @@ export default function FamilyMembersPage() {
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Name"
+                placeholder={t("retailer_desktop.pos.text.name")}
                 className="h-11 px-4 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-canvas)]"
               />
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone (required for Team migrate)"
+                placeholder={t("retailer_desktop.settings.family.text.phone_required_for_team_migrate")}
                 className="h-11 px-4 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-canvas)]"
               />
             </div>
@@ -388,7 +390,7 @@ export default function FamilyMembersPage() {
         ) : members.length === 0 && !familyGone ? (
           <div className="rounded-2xl border border-dashed border-[var(--desk-border)] p-10 text-center">
             <Users size={28} className="mx-auto mb-3 text-[var(--desk-text-tertiary)]" />
-            <p className="font-light text-[var(--desk-text-primary)]">No family members yet</p>
+            <p className="font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.settings.family.text.no_family_members_yet")}</p>
             <p className="text-sm text-[var(--desk-text-secondary)] mt-1">
               Add members with a phone number, then migrate them to Team.
             </p>
@@ -408,7 +410,7 @@ export default function FamilyMembersPage() {
                   {member.phone ? (
                     <p className="text-xs text-[var(--desk-text-tertiary)]">{member.phone}</p>
                   ) : (
-                    <p className="text-xs text-amber-600">No phone — skipped on migrate</p>
+                    <p className="text-xs text-amber-600">{t("retailer_desktop.settings.family.text.no_phone_skipped_on_migrate")}</p>
                   )}
                 </div>
                 <button

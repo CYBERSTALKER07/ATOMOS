@@ -4,9 +4,10 @@ export const SUPPLIER_FLEET_LIVE_REFRESH_EVENTS = new Set([
   "MANIFEST_DISPATCHED",
   "MANIFEST_COMPLETED",
   "DISPATCH_COMMITTED",
-  "DRIVER_LOCATION_UPDATED",
   "ORDER_ASSIGNED",
 ]);
+
+export const SUPPLIER_LOCATION_PATCH_EVENTS = new Set(["DRIVER_LOCATION_UPDATED"]);
 
 /** Dispatch queue / manifest board refresh events. */
 export const SUPPLIER_DISPATCH_REFRESH_EVENTS = new Set([

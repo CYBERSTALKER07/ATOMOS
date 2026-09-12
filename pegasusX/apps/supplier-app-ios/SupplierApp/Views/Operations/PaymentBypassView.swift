@@ -13,16 +13,16 @@ struct PaymentBypassView: View {
                 SupplierSectionHeader(title: "Payment bypass")
             }
             Section {
-                TextField("Order ID (AWAITING_PAYMENT)", text: $orderId)
+                TextField("supplier_portal.operations.payment_bypass.text.order_id_awaiting_payment", text: $orderId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                TextField("Reason (optional)", text: $bypassReason)
+                TextField("warehouse_portal.inventory.text.reason_optional", text: $bypassReason)
                 Button(bypassing ? "Issuing…" : "Issue bypass token") {
                     showBypassConfirm = true
                 }
                 .disabled(bypassing || orderId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 if let bypassToken {
-                    Text("Driver token: \(bypassToken)")
+                    Text(L10n.format("mobile_supplier.ui.driver_token_bypasstoken_2", "\(bypassToken)"))
                         .font(.footnote.monospaced())
                 }
             }

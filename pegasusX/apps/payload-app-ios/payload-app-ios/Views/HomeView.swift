@@ -22,7 +22,7 @@ struct HomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading)
+            PulseStrip(events: viewModel.pulseEvents, loading: viewModel.pulseLoading, error: viewModel.pulseError)
             navigationRoot
         }
         .overlay {
@@ -72,7 +72,7 @@ struct HomeView: View {
                 onShowReDispatch: { id in Task { await viewModel.openReDispatch(orderId: id) } },
                 onScanProduct: { showProductScanner = true }
             )
-            .navigationTitle("Manifest")
+            .navigationTitle("warehouse_portal.manifests.text.manifest")
             .navigationSplitViewColumnWidth(min: 320, ideal: 720)
             .toolbar { detailToolbar }
         }
@@ -129,10 +129,10 @@ struct HomeView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button("Refresh manifest") {
+                Button("mobile_payload.ui.refresh_manifest") {
                     Task { await viewModel.refreshManifest() }
                 }
-                Button("Logout", role: .destructive) {
+                Button("mobile_payload.ui.logout", role: .destructive) {
                     tokenStore.logout()
                 }
             } label: {
@@ -330,7 +330,7 @@ private struct ProductScannerSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text("Scan product EAN")
+                Text("mobile_payload.ui.scan_product_ean")
                     .font(.system(size: 14, weight: .black, design: .monospaced))
                 EANBarcodeScannerView(onBarcode: { code in
                     Task {
@@ -341,10 +341,10 @@ private struct ProductScannerSheet: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("Product scan")
+            .navigationTitle("mobile_payload.ui.product_scan")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { isPresented = false }
+                    Button("common.action.close") { isPresented = false }
                 }
             }
         }
@@ -464,13 +464,13 @@ private struct ManifestWorkflow: View {
                     Button {
                         Task { await viewModel.startLoading() }
                     } label: {
-                        Text("Start Loading")
+                        Text("mobile_payload.ui.start_loading")
                             .font(.headline)
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.startingLoading)
-                    Text("Tap Start Loading to open the manifest for tap-check and per-order seal.")
+                    Text("mobile_payload.ui.tap_start_loading_to_open_the_manifest_for_tap_check_and_per_ord")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else if manifest.state == "LOADING" || manifest.state == "SEALED" {
@@ -500,7 +500,7 @@ private struct ManifestWorkflow: View {
                         } label: {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                Text("Seal Manifest").font(.headline)
+                                Text("mobile_payload.ui.seal_manifest").font(.headline)
                             }
                             .frame(maxWidth: .infinity, minHeight: 48)
                         }
@@ -543,7 +543,7 @@ private struct PostSealCountdownView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(TermTheme.secondary)
                 Spacer()
-                Text("ORD-\(orderId.suffix(6).uppercased())")
+                Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(orderId.suffix(6).uppercased())"))
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(TermTheme.accent)
             }
@@ -559,7 +559,7 @@ private struct PostSealCountdownView: View {
             }
             
             HStack {
-                Text("DOUBLE_CHECK_WINDOW: \(secondsLeft)s")
+                Text(L10n.format("mobile_payload.ui.double_check_window_secondslefts_2", "\(secondsLeft)"))
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundStyle(TermTheme.accent)
                 Spacer()
@@ -633,7 +633,7 @@ private struct AllSealedSuccessView: View {
                     VStack(spacing: 8) {
                         ForEach(dispatchCodes.sorted(by: { $0.key < $1.key }), id: \.key) { id, code in
                             HStack {
-                                Text("ORD-\(id.suffix(6).uppercased())")
+                                Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(id.suffix(6).uppercased())"))
                                     .font(.system(size: 14, weight: .black, design: .monospaced))
                                     .foregroundStyle(TermTheme.accent)
                                 Spacer()
@@ -766,7 +766,7 @@ private struct InjectOrderSheet: View {
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(TermTheme.secondary)
                     
-                    TextField("ORD-XXXXXX", text: $orderId)
+                    TextField("mobile_payload.ui.ord_xxxxxx", text: $orderId)
                         .font(.system(size: 20, weight: .black, design: .monospaced))
                         .padding(16)
                         .background(TermTheme.card)
@@ -779,7 +779,7 @@ private struct InjectOrderSheet: View {
                         .autocorrectionDisabled()
                         .disabled(injecting)
                     
-                    Text("Add an order mid-load. Scan an order label or enter the order ID.")
+                    Text("mobile_payload.ui.add_an_order_mid_load_scan_an_order_label_or_enter_the_order_id")
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(TermTheme.tertiary)
                         .padding(.horizontal, 4)
@@ -857,7 +857,7 @@ private struct ExceptionReasonSheet: View {
                         Text("EXCEPTION_REPORT")
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(TermTheme.secondary)
-                        Text("REMOVE_ORD-\(orderId.suffix(6).uppercased())")
+                        Text(L10n.format("mobile_payload.ui.remove_ord_uppercased", "\(orderId.suffix(6).uppercased())"))
                             .font(.system(size: 20, weight: .black, design: .monospaced))
                             .foregroundStyle(TermTheme.warn)
                     }
@@ -911,7 +911,7 @@ private struct ExceptionReasonSheet: View {
                         }
                     }
                     
-                    Text("3+ overflow attempts on this manifest will escalate to admin DLQ.")
+                    Text("mobile_payload.ui.3_overflow_attempts_on_this_manifest_will_escalate_to_admin_dlq")
                         .font(.system(size: 12, weight: .medium, design: .monospaced))
                         .foregroundStyle(TermTheme.tertiary)
                         .padding(.horizontal, 4)
@@ -944,7 +944,7 @@ private struct ReDispatchSheet: View {
                         Text("LOGISTICS_OPTIMIZER")
                             .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(TermTheme.secondary)
-                        Text("RE_DISPATCH_ORD-\(orderId.suffix(6).uppercased())")
+                        Text(L10n.format("mobile_payload.ui.re_dispatch_ord_uppercased", "\(orderId.suffix(6).uppercased())"))
                             .font(.system(size: 20, weight: .black, design: .monospaced))
                             .foregroundStyle(TermTheme.accent)
                     }
@@ -1042,7 +1042,7 @@ private struct ReDispatchSheet: View {
                 TermTheme.bg.opacity(0.8).ignoresSafeArea()
                 VStack(spacing: 16) {
                     ProgressView().tint(TermTheme.accent)
-                    Text("REASSIGNING_ORDER...")
+                    Text("mobile_payload.ui.reassigning_order")
                         .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundStyle(TermTheme.accent)
                 }

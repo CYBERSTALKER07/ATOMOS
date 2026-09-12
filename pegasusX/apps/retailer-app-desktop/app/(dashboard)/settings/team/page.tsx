@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -34,6 +35,7 @@ const ROLES = [
 ] as const;
 
 export default function TeamPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [items, setItems] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function TeamPage() {
       const json = (await res.json()) as { items?: Member[] };
       setItems(json.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load team");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_team"));
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ export default function TeamPage() {
       setForm({ name: "", phone: "", password: "", retailer_role: "CASHIER" });
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Invite failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.invite_failed"));
     } finally {
       setBusy(false);
     }
@@ -111,7 +113,7 @@ export default function TeamPage() {
       setBanner("Member deactivated");
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Deactivate failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.deactivate_failed"));
     } finally {
       setBusy(false);
     }
@@ -119,8 +121,8 @@ export default function TeamPage() {
 
   return (
     <PageChrome
-      title="Team"
-      description="Invite staff with roles. Owner cannot be demoted or deactivated."
+      title={t("retailer_desktop.settings.team.text.team")}
+      description={t("retailer_desktop.residual.text.invite_staff_with_roles_owner_cannot_be_demoted_or_deactivated")}
       actions={
         <button
           type="button"
@@ -168,7 +170,7 @@ export default function TeamPage() {
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="+998…"
+                placeholder={t("retailer_desktop.settings.team.text.998")}
               />
             </label>
             <label className="text-sm">
@@ -236,7 +238,7 @@ export default function TeamPage() {
                       </span>
                     )}
                     {!m.is_active && (
-                      <span className="ml-1 text-xs text-red-600">Inactive</span>
+                      <span className="ml-1 text-xs text-red-600">{t("retailer_desktop.settings.team.text.inactive")}</span>
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">

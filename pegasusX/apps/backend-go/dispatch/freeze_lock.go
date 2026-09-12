@@ -289,19 +289,7 @@ func emitFreezeLockRelease(ctx context.Context, buf outbox.TxnBuffer, lockID, su
 func freezeLockOutboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, event := range eventsList {
-		row := map[string]any{
-			"EventId":       event.EventID,
-			"AggregateType": event.AggregateType,
-			"AggregateId":   event.AggregateID,
-			"TopicName":     event.TopicName,
-			"Payload":       event.Payload,
-			"CreatedAt":     event.CreatedAt.UTC(),
-			"PublishedAt":   nil,
-		}
-		if event.PublishedAt != nil {
-			row["PublishedAt"] = event.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(event)))
 	}
 	return mutations
 }

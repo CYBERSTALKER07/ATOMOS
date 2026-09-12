@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { type ReactNode } from 'react';
 import type { BroadcastTemplate } from '@pegasusx/types';
 import { PageSection } from '@/components/PageSection';
@@ -48,11 +51,12 @@ export function OperationsBroadcastForm({
   onDeleteTemplate,
   onBroadcast,
 }: OperationsBroadcastFormProps) {
+  const t = usePortalT();
   return (
     <>
-      <PageSection title="Broadcast templates" description="Built-in depot starters plus your saved custom messages.">
+      <PageSection title={t("warehouse_portal.operations.operations_broadcast_form.text.broadcast_templates")} description={t("warehouse_portal.residual.text.built_in_depot_starters_plus_your_saved_custom_messages")}>
         {loading ? (
-          <p className="text-sm text-muted">Loading templates…</p>
+          <p className="text-sm text-muted">{t("warehouse_portal.operations.operations_broadcast_form.text.loading_templates")}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {templates.map((template) => (
@@ -81,18 +85,18 @@ export function OperationsBroadcastForm({
         )}
       </PageSection>
 
-      <PortalSection title="Send depot broadcast">
+      <PortalSection title={t("warehouse_portal.operations.operations_broadcast_form.text.send_depot_broadcast")}>
         <div className="grid gap-4 md:grid-cols-2">
-          <PortalField id="templateDate" label="Effective date (optional)">
+          <PortalField id="templateDate" label={t("warehouse_portal.residual.text.effective_date_optional")}>
             <PortalInput value={templateDate} onChange={(e) => setTemplateDate(e.target.value)} placeholder="2026-07-01" />
           </PortalField>
-          <PortalField id="customReason" label="Custom reason (optional)">
-            <PortalInput value={customReason} onChange={(e) => setCustomReason(e.target.value)} placeholder="Bay 2 closed" />
+          <PortalField id="customReason" label={t("warehouse_portal.residual.text.custom_reason_optional")}>
+            <PortalInput value={customReason} onChange={(e) => setCustomReason(e.target.value)} placeholder={t("warehouse_portal.operations.operations_broadcast_form.text.bay_2_closed")} />
           </PortalField>
-          <PortalField id="broadcastTitle" label="Title">
+          <PortalField id="broadcastTitle" label={t("supplier_portal.admin.control_center.field.title")}>
             <PortalInput value={title} onChange={(e) => setTitle(e.target.value)} />
           </PortalField>
-          <PortalField id="broadcastRole" label="Target role">
+          <PortalField id="broadcastRole" label={t("warehouse_portal.residual.text.target_role")}>
             <select
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               value={broadcastRole}
@@ -106,7 +110,7 @@ export function OperationsBroadcastForm({
             </select>
           </PortalField>
         </div>
-        <PortalField id="broadcastBody" label="Message">
+        <PortalField id="broadcastBody" label={t("warehouse_portal.residual.text.message")}>
           <textarea
             id="broadcastBody"
             className="min-h-[120px] w-full rounded-md border bg-background px-3 py-2 text-sm"

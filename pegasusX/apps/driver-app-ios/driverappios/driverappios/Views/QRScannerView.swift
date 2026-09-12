@@ -30,7 +30,7 @@ struct QRScannerView: View {
                     Button {
                         onCancel()
                     } label: {
-                        Text("Cancel")
+                        Text("common.action.cancel")
                             .font(.body.weight(.medium))
                             .foregroundStyle(.white)
                             .padding(12)
@@ -54,7 +54,7 @@ struct QRScannerView: View {
                     HStack(spacing: 10) {
                         ProgressView()
                             .tint(.white)
-                        Text("Processing...")
+                        Text("mobile_driver.ui.processing")
                             .font(.subheadline)
                             .foregroundStyle(.white)
                     }
@@ -69,16 +69,16 @@ struct QRScannerView: View {
             }
         }
         .alert("Camera Access Required", isPresented: $cameraPermissionDenied) {
-            Button("Close", role: .cancel) { onCancel() }
+            Button("common.action.close", role: .cancel) { onCancel() }
         } message: {
-            Text("Please enable camera access in Settings to scan QR codes.")
+            Text("mobile_driver.ui.please_enable_camera_access_in_settings_to_scan_qr_codes")
         }
         .alert(vm.alertTitle, isPresented: $vm.showAlert) {
             if vm.scanSucceeded {
                 Button("OK") { }
             } else {
-                Button("Rescan", role: .cancel) { }
-                Button("Close") { onCancel() }
+                Button("mobile_driver.ui.rescan", role: .cancel) { }
+                Button("common.action.close") { onCancel() }
             }
         } message: {
             Text(vm.alertMessage)

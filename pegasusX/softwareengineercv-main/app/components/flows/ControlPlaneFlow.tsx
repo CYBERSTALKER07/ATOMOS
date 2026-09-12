@@ -38,11 +38,11 @@ export default function ControlPlaneFlow({ config }: Props) {
   const r = 100;
 
   return (
-    <FlowShell title="ATOMOS control plane">
+    <FlowShell title="Pegasus control plane">
       <svg ref={ref} viewBox="0 0 800 280" className="w-full h-auto" aria-hidden>
         <circle cx={cx} cy={cy} r={36} fill="white" className="opacity-90" />
         <text x={cx} y={cy + 4} textAnchor="middle" className="fill-black text-[11px] font-mono">
-          SPANNER
+          TRUTH
         </text>
         {roles.map((role, i) => {
           const angle = (i / roles.length) * Math.PI * 2 - Math.PI / 2;

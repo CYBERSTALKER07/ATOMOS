@@ -84,26 +84,90 @@ func (s *Service) HandleListSupplierProfiles(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	// Desk flags: status / delinquency / open balance only (no credit-score product).
+	// Desk: status / delinquency / balance + G3 risk score (when CREDIT_SCORING_ENABLED).
 	type deskRow struct {
 		Profile
-		UtilizationBps int64 `json:"utilization_bps"`
-		NeedsAttention bool  `json:"needs_attention"`
+		UtilizationBps int64    `json:"utilization_bps"`
+		NeedsAttention bool     `json:"needs_attention"`
+		RiskScore      int64    `json:"risk_score"`
+		RiskTier       RiskTier `json:"risk_tier,omitempty"`
+		ScoringEnabled bool     `json:"scoring_enabled"`
 	}
 	rows := make([]deskRow, 0, len(list))
+	scoringOn := ScoringEnabled()
 	for _, p := range list {
-		row := deskRow{Profile: p}
+		row := deskRow{Profile: p, ScoringEnabled: scoringOn}
 		if p.CreditLimitMinor > 0 {
 			row.UtilizationBps = (p.CurrentBalanceMinor * 10000) / p.CreditLimitMinor
 		}
+		row.RiskScore = p.RiskScore
+		row.RiskTier = p.RiskTier
 		row.NeedsAttention = p.Status == StatusFrozen || p.Status == StatusBlacklisted ||
-			p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0
+			p.DelinquencyCount > 0 || p.CurrentBalanceMinor > 0 ||
+			(scoringOn && p.RiskScore > 0 && p.RiskScore <= ScoreAutoHoldMax())
 		rows = append(rows, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"profiles":    rows,
-		"supplier_id": supplierID,
-		"count":       len(rows),
+		"profiles":         rows,
+		"supplier_id":      supplierID,
+		"count":            len(rows),
+		"scoring_enabled":  scoringOn,
+		"scoring_version":  "g3_v1",
+	})
+}
+
+// HandleGetScores serves GET /v1/supplier/credit-scores?retailer_ids=a,b
+func (s *Service) HandleGetScores(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return
+	}
+	if !ScoringEnabled() {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"scores": map[string]any{}, "scoring_enabled": false, "reason": "CREDIT_SCORING_ENABLED off",
+		})
+		return
+	}
+	raw := strings.TrimSpace(r.URL.Query().Get("retailer_ids"))
+	ids := []string{}
+	if raw != "" {
+		for _, p := range strings.Split(raw, ",") {
+			if id := strings.TrimSpace(p); id != "" {
+				ids = append(ids, id)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		// All desk profiles for supplier.
+		list, err := s.ListSupplierProfiles(r.Context(), supplierID, "", 100)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+		for _, p := range list {
+			ids = append(ids, p.RetailerID)
+		}
+	}
+	scores, err := s.GetScoresForRetailers(r.Context(), supplierID, ids)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"scores":          scores,
+		"scoring_enabled": true,
+		"scoring_version": "g3_v1",
+		"count":           len(scores),
 	})
 }
 

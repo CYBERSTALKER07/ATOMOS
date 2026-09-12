@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import type { CatalogProduct, SupplierPromotion } from "@pegasusx/types";
@@ -9,10 +10,11 @@ import {
   supplierPromotionCreateKey,
   supplierPromotionDeactivateKey,
   supplierPromotionUpdateKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { PageChrome } from '@/components/PageChrome';
 
 export default function ProductPricingPage() {
+  const t = usePortalT();
   const params = useParams<{ productId: string }>();
   const productId = params.productId;
   const [product, setProduct] = useState<CatalogProduct | null>(null);
@@ -51,7 +53,7 @@ export default function ProductPricingPage() {
           }
         }
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed")))
       .finally(() => setLoading(false));
   }, [productId]);
 
@@ -59,13 +61,13 @@ export default function ProductPricingPage() {
     if (!product) return;
     const parsed = Number.parseFloat(priceMajor.replace(",", "."));
     if (!Number.isFinite(parsed) || parsed < 0) {
-      setError("Enter a valid list price.");
+      setError(t("supplier_portal.residual.text.enter_a_valid_list_price"));
       return;
     }
     if (saleEnabled) {
       const bps = Number.parseInt(saleDiscountBps, 10);
       if (!Number.isFinite(bps) || bps <= 0) {
-        setError("Sale discount must be greater than zero.");
+        setError(t("supplier_portal.residual.text.sale_discount_must_be_greater_than_zero"));
         return;
       }
     }
@@ -143,7 +145,7 @@ export default function ProductPricingPage() {
       }
       setProduct({ ...product, price_minor: priceMinor, version: product.version + 1 });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_failed"));
     } finally {
       setSaving(false);
     }
@@ -153,11 +155,11 @@ export default function ProductPricingPage() {
     <PageChrome
       icon="pricing"
       title={product?.name ?? "Product pricing"}
-      description="List price and optional product-scoped sale discount."
+      description={t("supplier_portal.residual.text.list_price_and_optional_product_scoped_sale_discount")}
       loading={loading}
       error={error}
       empty={!product && !loading}
-      emptyMessage="Product not found."
+      emptyMessage={t("supplier_portal.residual.text.product_not_found")}
     >
       {product ? (
         <div className="md-card p-6 space-y-6 max-w-xl">
@@ -167,11 +169,11 @@ export default function ProductPricingPage() {
           </label>
           <label className="flex items-center gap-3">
             <input type="checkbox" checked={saleEnabled} onChange={(e) => setSaleEnabled(e.target.checked)} />
-            <span className="md-typescale-body-medium">On sale</span>
+            <span className="md-typescale-body-medium">{t("supplier_portal.pricing._product_id_.text.on_sale")}</span>
           </label>
           {saleEnabled ? (
             <label className="block space-y-1">
-              <span className="md-typescale-label-medium">Discount (bps)</span>
+              <span className="md-typescale-label-medium">{t("supplier_portal.pricing._product_id_.text.discount_bps")}</span>
               <input className="md-input w-full" value={saleDiscountBps} onChange={(e) => setSaleDiscountBps(e.target.value)} />
               <span className="text-sm text-[var(--color-md-outline)]">100 bps = 1% off list price.</span>
             </label>
@@ -186,13 +188,14 @@ export default function ProductPricingPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-[var(--surface)] w-full max-w-md rounded-xl shadow-xl overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-[var(--border)]">
-              <h2 className="text-xl font-semibold">Preview Pricing Impact</h2>
+              <h2 className="text-xl font-semibold">{t("supplier_portal.pricing._product_id_.text.preview_pricing_impact")}</h2>
             </div>
             
             <div className="p-6 space-y-4">
               {(() => {
                 const oldList = product.price_minor;
-                const oldSale = activeSale ? oldList * (1 - activeSale.discount_bps / 10000) : oldList;
+                const discountBps = activeSale ? (activeSale.discount_bps ?? activeSale.tiers?.[0]?.discount_bps ?? 0) : 0;
+                const oldSale = activeSale ? oldList * (1 - discountBps / 10000) : oldList;
                 
                 const parsedList = Number.parseFloat(priceMajor.replace(",", "."));
                 const newList = Math.round(parsedList * 100);
@@ -205,22 +208,22 @@ export default function ProductPricingPage() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-3 bg-[var(--field-background)] rounded-lg">
-                        <div className="text-sm text-[var(--muted)]">Old List Price</div>
+                        <div className="text-sm text-[var(--muted)]">{t("supplier_portal.pricing._product_id_.text.old_list_price")}</div>
                         <div className="font-mono mt-1">{formatMinor(oldList)}</div>
                       </div>
                       <div className="p-3 bg-[var(--field-background)] rounded-lg">
-                        <div className="text-sm text-[var(--muted)]">New List Price</div>
+                        <div className="text-sm text-[var(--muted)]">{t("supplier_portal.pricing._product_id_.text.new_list_price")}</div>
                         <div className="font-mono mt-1">{formatMinor(newList)}</div>
                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-3 bg-[var(--field-background)] rounded-lg">
-                        <div className="text-sm text-[var(--muted)]">Old Sale Price</div>
+                        <div className="text-sm text-[var(--muted)]">{t("supplier_portal.pricing._product_id_.text.old_sale_price")}</div>
                         <div className="font-mono mt-1">{formatMinor(oldSale)}</div>
                       </div>
                       <div className="p-3 bg-[var(--field-background)] rounded-lg">
-                        <div className="text-sm text-[var(--muted)]">New Sale Price</div>
+                        <div className="text-sm text-[var(--muted)]">{t("supplier_portal.pricing._product_id_.text.new_sale_price")}</div>
                         <div className="font-mono mt-1 font-light text-[var(--primary)]">{formatMinor(newSale)}</div>
                       </div>
                     </div>

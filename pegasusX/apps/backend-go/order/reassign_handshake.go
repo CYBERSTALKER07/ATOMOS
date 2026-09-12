@@ -2,12 +2,14 @@ package order
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // HandleReassignHandshake serves POST /v1/fleet/orders/{orderID}/reassign-handshake.
@@ -30,21 +32,22 @@ func (s *Service) HandleReassignHandshake(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if s.driverHub != nil {
-		siblings, err := s.repo.FindSiblingDriversForOrder(r.Context(), orderID)
-		if err == nil && len(siblings) > 1 {
+	siblings, err := s.repo.FindSiblingDriversForOrder(r.Context(), orderID)
+	if err == nil && len(siblings) > 1 {
+		_, _ = s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			buf := outbox.NewSpannerTxnBuffer(txn)
 			for _, sib := range siblings {
 				if sib != claims.Subject {
-					payload := map[string]any{
-						"type":     "REASSIGN_HANDSHAKE_COMPLETED",
-						"order_id": orderID,
-						"message":  "The other driver has started the reassigned order.",
-					}
-					b, _ := json.Marshal(payload)
-					go s.driverHub.Broadcast(context.Background(), "driver:"+sib, b)
+					outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
+						BaseEvent: events.BaseEvent{Type: events.EventReassignHandshakeCompleted},
+						OrderID:   orderID,
+						DriverID:  sib,
+						Message:   "The other driver has started the reassigned order.",
+					})
 				}
 			}
-		}
+			return buf.Flush(ctx)
+		})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

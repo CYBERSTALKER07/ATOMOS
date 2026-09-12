@@ -2,56 +2,27 @@ package returns
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
 )
 
 // NormalizeBarcode strips non-digits and validates EAN-13 / GTIN-14 checksum when possible.
 func NormalizeBarcode(raw string) (string, error) {
-	digits := make([]byte, 0, len(raw))
-	for i := 0; i < len(raw); i++ {
-		if raw[i] >= '0' && raw[i] <= '9' {
-			digits = append(digits, raw[i])
-		}
-	}
-	code := string(digits)
-	if code == "" {
-		return "", fmt.Errorf("barcode_required")
-	}
-	switch len(code) {
-	case 8, 12, 13, 14:
-		if !validGTINChecksum(code) {
+	code, err := gs1.NormalizeGTIN(raw)
+	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "gtin_required"):
+			return "", fmt.Errorf("barcode_required")
+		case strings.Contains(err.Error(), "checksum"):
 			return "", fmt.Errorf("invalid_barcode_checksum")
+		case strings.Contains(err.Error(), "length"):
+			return "", fmt.Errorf("unsupported_barcode_length")
+		default:
+			return "", err
 		}
-	default:
-		return "", fmt.Errorf("unsupported_barcode_length")
 	}
 	return code, nil
-}
-
-func validGTINChecksum(code string) bool {
-	n := len(code)
-	if n < 8 {
-		return false
-	}
-	sum := 0
-	for i := 0; i < n-1; i++ {
-		d, err := strconv.Atoi(string(code[i]))
-		if err != nil {
-			return false
-		}
-		posFromRight := n - 1 - i
-		if posFromRight%2 == 1 {
-			sum += d * 3
-		} else {
-			sum += d
-		}
-	}
-	check, err := strconv.Atoi(string(code[n-1]))
-	if err != nil {
-		return false
-	}
-	return (10-(sum%10))%10 == check
 }
 
 // SuggestedDisposition maps amend reason to a default gate disposition.

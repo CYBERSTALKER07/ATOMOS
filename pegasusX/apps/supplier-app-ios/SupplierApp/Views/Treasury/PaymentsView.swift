@@ -23,13 +23,13 @@ struct PaymentsView: View {
 
                     Section("Totals by currency") {
                         if authority.totalsByCurrency.isEmpty {
-                            Text("No totals available.").foregroundStyle(.secondary)
+                            Text("mobile_supplier.ui.no_totals_available").foregroundStyle(.secondary)
                         }
                         ForEach(authority.totalsByCurrency, id: \.currency) { row in
                             HStack {
                                 Text(row.currency).fontWeight(.medium)
                                 Spacer()
-                                Text("\(row.entryCount) entries").font(.caption).foregroundStyle(.secondary)
+                                Text(L10n.format("mobile_supplier.ui.entrycount_entries", "\(row.entryCount)")).font(.caption).foregroundStyle(.secondary)
                                 Text(MoneyFormat.minor(row.amountMinorTotal, currency: row.currency))
                             }
                             .font(.subheadline)
@@ -38,12 +38,12 @@ struct PaymentsView: View {
 
                     Section("Reconciliation mismatches") {
                         if mismatches.isEmpty {
-                            Text("No non-zero mismatches detected.").foregroundStyle(.secondary)
+                            Text("mobile_supplier.ui.no_non_zero_mismatches_detected").foregroundStyle(.secondary)
                         }
                         ForEach(mismatches) { row in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(row.gateway) · \(row.currency)").fontWeight(.medium)
+                                    Text(L10n.format("mobile_supplier.ui.gateway_currency", "\(row.gateway)", "\(row.currency)")).fontWeight(.medium)
                                     Spacer()
                                     Text(MoneyFormat.minor(row.netAmountMinor, currency: row.currency))
                                         .foregroundStyle(SupplierTheme.destructive)
@@ -61,16 +61,16 @@ struct PaymentsView: View {
 
                     Section("Settlement groups") {
                         if authority.items.isEmpty {
-                            Text("No settlement groups found.").foregroundStyle(.secondary)
+                            Text("mobile_supplier.ui.no_settlement_groups_found").foregroundStyle(.secondary)
                         }
                         ForEach(authority.items) { row in
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("\(row.gateway) · \(row.entryType)").fontWeight(.medium)
+                                    Text(L10n.format("mobile_supplier.ui.gateway_entrytype", "\(row.gateway)", "\(row.entryType)")).fontWeight(.medium)
                                     Spacer()
                                     Text(MoneyFormat.minor(row.amountMinorTotal, currency: row.currency))
                                 }
-                                Text("\(row.currency) · \(row.entryCount) entries")
+                                Text(L10n.format("mobile_supplier.ui.currency_entrycount_entries", "\(row.currency)", "\(row.entryCount)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -83,7 +83,7 @@ struct PaymentsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Payments")
+        .navigationTitle("portal.nav.payments")
         .task { await load() }
     }
 

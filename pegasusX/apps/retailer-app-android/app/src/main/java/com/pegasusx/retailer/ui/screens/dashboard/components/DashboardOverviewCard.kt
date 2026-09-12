@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dashboard.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.retailer.ui.components.RetailerMetricTile
 import com.pegasusx.retailer.ui.theme.PegasusSpacing
+import com.pegasusx.retailer.R
 
 @Composable
 fun DashboardOverviewCard(
@@ -30,12 +33,12 @@ fun DashboardOverviewCard(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "Retail operations",
+                    text = stringResource(R.string.mobile_retailer_ui_retail_operations),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Track deliveries, restock faster, and act on demand signals from one place.",
+                    text = stringResource(R.string.mobile_retailer_ui_track_deliveries_restock_faster_and_act_on_demand_signals_from_o),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -46,17 +49,17 @@ fun DashboardOverviewCard(
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 RetailerMetricTile(
-                    label = "Active orders",
+                    label = stringResource(R.string.portal_page_orders_filter_active_tab),
                     value = activeOrderCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 RetailerMetricTile(
-                    label = "Suggestions",
+                    label = stringResource(R.string.mobile_retailer_ui_suggestions),
                     value = predictionCount.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 RetailerMetricTile(
-                    label = "Recent items",
+                    label = stringResource(R.string.mobile_retailer_ui_recent_items),
                     value = recentProductCount.toString(),
                     modifier = Modifier.weight(1f),
                 )

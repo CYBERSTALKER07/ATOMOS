@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TransferListView: View {
+    var initialFilter: String? = nil
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var transfers: [Transfer] = []
     @State private var loading = true
@@ -78,16 +79,16 @@ struct TransferListView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Transfers")
+            .navigationTitle("portal.nav.transfers")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Create", systemImage: "plus") {
+                    Button("mobile_factory.ui.create", systemImage: "plus") {
                         showCreateTransfer = true
                     }
                     .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
@@ -106,8 +107,13 @@ struct TransferListView: View {
                 ContentUnavailableView(
                     "Select a Transfer",
                     systemImage: "arrow.left.arrow.right",
-                    description: Text("Choose a transfer from the list.")
+                    description: Text("mobile_factory.ui.choose_a_transfer_from_the_list")
                 )
+            }
+        }
+        .task(id: initialFilter) {
+            if let initialFilter, !initialFilter.isEmpty {
+                selectedFilter = initialFilter
             }
         }
         .task(id: selectedFilter) { await load() }
@@ -115,8 +121,7 @@ struct TransferListView: View {
             realtimeClient.connect(
                 onStateChange: { _ in },
                 onEvent: { event in
-                    guard let eventType = event.eventType else { return }
-                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                    guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                     Task { await load(silent: true) }
                 }
             )

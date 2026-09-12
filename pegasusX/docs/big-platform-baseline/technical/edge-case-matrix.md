@@ -1,5 +1,8 @@
 # Edge-Case Matrix Template
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 Every feature PR fills this table (copy into PR description).
 
 | Category | Cases to cover | Pass criteria |

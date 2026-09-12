@@ -57,9 +57,16 @@ func (h *Handlers) HandleList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
-	supplierID := strings.TrimSpace(claims.SupplierID)
-	if supplierID == "" && h.SupplierID != nil {
-		supplierID = strings.TrimSpace(h.SupplierID())
+	seed := ""
+	if h.SupplierID != nil {
+		seed = strings.TrimSpace(h.SupplierID())
+	}
+	// PreferTenant already fail-closes when enforced + authenticated with no tenant;
+	// do not undo that with an unconditional seed fallback.
+	supplierID := auth.PreferTenantSupplierID(r.Context(), seed)
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required", "code": "TENANT_REQUIRED"})
+		return
 	}
 	status := CreditNoteStatus(strings.TrimSpace(r.URL.Query().Get("status")))
 	limit := 50
@@ -113,9 +120,43 @@ func (h *Handlers) HandleIssue(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "issued"})
 }
 
+// reverseWarehouseStaff allows native warehouse staff and warehouse admins (B7 WH-P0-3).
+func reverseWarehouseStaff(claims auth.Claims) bool {
+	if claims.Role == auth.RoleWarehouse || claims.Role == auth.RoleWarehouseAdmin {
+		return true
+	}
+	return claims.Role == auth.RoleAdmin && claims.SupplierRole == auth.RoleWarehouseAdmin
+}
+
+// resolveReverseWarehouseID pins body warehouse_id to JWT home node / ops scope.
+// Body may only restate the home node; mismatch → scope violation.
+func resolveReverseWarehouseID(r *http.Request, claims auth.Claims, bodyWarehouseID string) (string, string) {
+	home := strings.TrimSpace(auth.EffectiveWarehouseOpsID(r.Context()))
+	if home == "" {
+		if claims.HomeNodeType == auth.HomeNodeWarehouse {
+			home = strings.TrimSpace(claims.HomeNodeID)
+		}
+	}
+	bodyWH := strings.TrimSpace(bodyWarehouseID)
+	if home != "" {
+		if bodyWH != "" && bodyWH != home {
+			return "", "warehouse_scope_violation"
+		}
+		return home, ""
+	}
+	// No home node: only unscoped supplier ADMIN may use body warehouse_id.
+	if claims.Role == auth.RoleAdmin && claims.SupplierRole != auth.RoleWarehouseAdmin {
+		if bodyWH == "" {
+			return "", "warehouse_id_required"
+		}
+		return bodyWH, ""
+	}
+	return "", "warehouse_scope_missing"
+}
+
 func (h *Handlers) HandleReceiveReverse(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleWarehouse {
+	if !ok || !reverseWarehouseStaff(claims) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -128,9 +169,14 @@ func (h *Handlers) HandleReceiveReverse(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	wh := strings.TrimSpace(body.WarehouseID)
-	if wh == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
+	// B7 WH-P0-3: never trust body warehouse_id over JWT home node.
+	wh, scopeErr := resolveReverseWarehouseID(r, claims, body.WarehouseID)
+	if scopeErr != "" {
+		code := http.StatusForbidden
+		if scopeErr == "warehouse_id_required" {
+			code = http.StatusBadRequest
+		}
+		writeJSON(w, code, map[string]string{"error": scopeErr})
 		return
 	}
 	if err := h.Svc.ReceiveReverseTask(r.Context(), taskID, wh, body.ReceivedQty, claims.Subject); err != nil {
@@ -153,6 +199,26 @@ func (h *Handlers) HandleOrderLines(w http.ResponseWriter, r *http.Request) {
 	orderID := strings.TrimSpace(r.URL.Query().Get("order_id"))
 	if orderID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	supplierID := strings.TrimSpace(claims.SupplierID)
+	if t, ok := auth.TenantFromContext(r.Context()); ok {
+		supplierID = t.SupplierID
+	}
+	if supplierID == "" && h.SupplierID != nil {
+		supplierID = strings.TrimSpace(h.SupplierID())
+	}
+	if supplierID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "tenant_required"})
+		return
+	}
+	owned, err := h.Svc.OrderOwnedBySupplier(r.Context(), orderID, supplierID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "ownership_check_failed"})
+		return
+	}
+	if !owned {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
 		return
 	}
 	lines, err := h.Svc.OrderLinesForCredit(r.Context(), orderID)
@@ -180,7 +246,7 @@ func (h *Handlers) HandleOrderLines(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handlers) HandleListReverseTasks(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleWarehouse {
+	if !ok || !reverseWarehouseStaff(claims) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -188,6 +254,21 @@ func (h *Handlers) HandleListReverseTasks(w http.ResponseWriter, r *http.Request
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 	if status == "" {
 		status = "OPEN"
+	}
+	// B7 WH-P0-3: pin list to home node; query warehouse_id may restate it only.
+	home := strings.TrimSpace(auth.EffectiveWarehouseOpsID(r.Context()))
+	if home == "" && claims.HomeNodeType == auth.HomeNodeWarehouse {
+		home = strings.TrimSpace(claims.HomeNodeID)
+	}
+	if home == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_missing"})
+		return
+	}
+	if warehouseID == "" {
+		warehouseID = home
+	} else if warehouseID != home {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_violation"})
+		return
 	}
 	tasks, err := h.Svc.ListReverseTasks(r.Context(), warehouseID, status, 50)
 	if err != nil {

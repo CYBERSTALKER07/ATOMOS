@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouse
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun DeliveryZonesList(warehouses: List<SupplierTopologyWarehouse>, modifier: Modifier = Modifier) {
@@ -28,7 +31,7 @@ fun DeliveryZonesList(warehouses: List<SupplierTopologyWarehouse>, modifier: Mod
                 Column(Modifier.padding(PegasusSpacing.lg)) {
                     Text(node.name.ifEmpty { "Unnamed warehouse" }, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Radius ${node.coverageRadiusKm} km · %.4f, %.4f".format(node.lat, node.lng),
+                        stringResource(R.string.mobile_supplier_ui_radius_coverageradiuskm_km_4f_4f, node.coverageRadiusKm).format(node.lat, node.lng),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                     )

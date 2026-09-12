@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,17 @@ const (
 	FiscalProviderPegasus   = "PEGASUS"    // platform commercial receipt (default product path)
 	FiscalProviderGlobalPay = "GLOBAL_PAY" // payment-provider receipt (optional secondary)
 	FiscalProviderMySoliq   = "MY_SOLIQ"   // tax OFD — deferred until Soliq sandbox creds
+
+	// BuyerAcceptancePending / Accepted / Rejected / Expired are the Soliq EHF
+	// buyer-clearance states (parallel to ADR-009 COMPLETED).
+	BuyerAcceptancePending  = "PENDING"
+	BuyerAcceptanceAccepted = "ACCEPTED"
+	BuyerAcceptanceRejected = "REJECTED"
+	BuyerAcceptanceExpired  = "EXPIRED"
+
+	// BuyerAcceptanceWindowDefault is the UZ EHF buyer clearance window (10 days
+	// per soliq-ehf-integration.md). Overridable via BUYER_ACCEPTANCE_DAYS.
+	BuyerAcceptanceWindowDefault = 10 * 24 * time.Hour
 
 	// FiscalOFDTimeout is the hard timeout per external receipt call (P0 T8/T9).
 	FiscalOFDTimeout = 8 * time.Second
@@ -82,25 +94,25 @@ func isTerminalMoneyStatus(st Status) bool {
 
 // FiscalReceiptRow is one immutable OFD attempt (supplier-scoped leg).
 type FiscalReceiptRow struct {
-	OrderID           string
-	AttemptID         string
-	SupplierID        string
-	RetailerID        string
-	Provider          string
-	Status            string
-	FiscalReceiptID   string
-	FiscalQR          string
-	AmountMinor       int64
-	Currency          string
-	PaymentMethod     string
-	ProviderPayload   []byte
-	ErrorCode         string
-	ErrorMessage      string
-	ReasonCode        string
-	ActorID           string
-	TraceID           string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
+	OrderID         string
+	AttemptID       string
+	SupplierID      string
+	RetailerID      string
+	Provider        string
+	Status          string
+	FiscalReceiptID string
+	FiscalQR        string
+	AmountMinor     int64
+	Currency        string
+	PaymentMethod   string
+	ProviderPayload []byte
+	ErrorCode       string
+	ErrorMessage    string
+	ReasonCode      string
+	ActorID         string
+	TraceID         string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 // FiscalProvider calls the OFD / tax receipt API asynchronously from a worker.
@@ -128,8 +140,47 @@ type FiscalCreateResult struct {
 	RawPayload      []byte
 }
 
+// FiscalCorrectiveRequest issues a corrective (credit-note) receipt that
+// references the original fiscal receipt — UZ practice for refunds/returns.
+type FiscalCorrectiveRequest struct {
+	AttemptID         string
+	OrderID           string
+	SupplierID        string
+	RetailerID        string
+	OriginalReceiptID string
+	AmountMinor       int64
+	Currency          string
+	ReasonCode        string
+}
+
+// CorrectiveFiscalProvider is an optional extension of FiscalProvider for the
+// refund corrective chain. Providers that cannot issue corrective receipts do
+// not implement it; callers type-assert and record the gap instead of faking.
+type CorrectiveFiscalProvider interface {
+	CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error)
+}
+
 func defaultFiscalProvider() FiscalProvider {
 	return ProviderFromEnv()
+}
+
+// requireFiscalPack fails closed when the shipped pack cannot fiscalize (GS-M2).
+// Pack fiscal_adapter is the law (PEPPOL/planned → unimplemented). Cell runtime
+// PEGASUS/FAKE is still allowed outside production — that disagreement keeps
+// checkout_reads_this false.
+func (s *Service) requireFiscalPack(ctx context.Context, supplierID string) error {
+	pack, err := auth.FiscalPackFromContext(ctx, supplierID)
+	if err != nil {
+		return err
+	}
+	if _, err := auth.PackFiscalAdapter(pack); err != nil {
+		return err
+	}
+	runtime := FiscalProviderPegasus
+	if s != nil {
+		runtime = s.ProviderName()
+	}
+	return auth.AssertFiscalRuntime(pack, runtime)
 }
 
 func (s *Service) fiscalProvider() FiscalProvider {
@@ -165,24 +216,14 @@ func (s *Service) ProviderName() string {
 		}
 		return FiscalProviderPegasus
 	default:
-		// hardFailProvider and unknown → report configured intent
-		cfg := strings.ToUpper(strings.TrimSpace(os.Getenv("FISCAL_PROVIDER")))
-		switch cfg {
-		case FiscalProviderMySoliq, "MYSOLIQ", "SOLIQ", "OFD":
-			return FiscalProviderMySoliq
-		case FiscalProviderFake:
-			return FiscalProviderFake
-		case FiscalProviderGlobalPay:
-			return FiscalProviderGlobalPay
-		default:
-			return FiscalProviderPegasus
-		}
+		// hardFailProvider and unknown → report resolved intent (G1.B defaults).
+		return ResolveFiscalProviderName()
 	}
 }
 
 // newFiscalPendingRow builds a PENDING supplier-leg attempt for capture txn.
 // amountMinor is the fiscalized cash/card amount (received cash or order total).
-func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptID string, amountMinor int64) FiscalReceiptRow {
+func (s *Service) newFiscalPendingRow(ctx context.Context, orderRecord Order, paymentMethod, attemptID string, amountMinor int64) FiscalReceiptRow {
 	now := time.Now().UTC()
 	if s != nil && s.now != nil {
 		now = s.now().UTC()
@@ -196,7 +237,9 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 	}
 	currency := strings.TrimSpace(orderRecord.Currency)
 	if currency == "" {
-		currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			currency = cur
+		}
 	}
 	if amountMinor < 0 {
 		amountMinor = 0
@@ -226,7 +269,9 @@ func (s *Service) newFiscalPendingRow(orderRecord Order, paymentMethod, attemptI
 func emitCashVariance(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, driverID string, expected, received int64, note string) error {
 	currency := strings.TrimSpace(orderRecord.Currency)
 	if currency == "" {
-		currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			currency = cur
+		}
 	}
 	shortfall := expected - received
 	if shortfall < 0 {
@@ -325,6 +370,57 @@ func emitOrderForceCompleted(ctx context.Context, txn outbox.TxnBuffer, orderRec
 	})
 }
 
+func emitBuyerAcceptance(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, eventType, status string) error {
+	deadline := ""
+	if orderRecord.BuyerAcceptanceDeadline != nil {
+		deadline = orderRecord.BuyerAcceptanceDeadline.UTC().Format(time.RFC3339Nano)
+	}
+	ts := orderRecord.UpdatedAt
+	if ts.IsZero() {
+		ts = time.Now().UTC()
+	}
+	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, orderRecord.OrderID, events.TopicMain, events.BuyerAcceptanceEvent{
+		BaseEvent:  events.BaseEvent{Type: eventType, Timestamp: ts.Format(time.RFC3339Nano)},
+		OrderID:    orderRecord.OrderID,
+		SupplierID: orderRecord.SupplierID,
+		RetailerID: orderRecord.RetailerID,
+		EhfID:      orderRecord.LatestFiscalReceiptID,
+		Status:     status,
+		Deadline:   deadline,
+	})
+}
+
+// stampBuyerAcceptancePending marks the order for the Soliq EHF buyer-clearance
+// poller. Only applies to MY_SOLIQ (real EHF); PEGASUS/FAKE commercial receipts
+// have no buyer-acceptance window. ADR-009 still completes the order; this is
+// the parallel track that gates reverse-settlement on REJECT.
+func stampBuyerAcceptancePending(orderRecord *Order, provider string, now time.Time) bool {
+	if orderRecord == nil || provider != FiscalProviderMySoliq {
+		return false
+	}
+	if strings.TrimSpace(orderRecord.BuyerAcceptanceStatus) != "" &&
+		orderRecord.BuyerAcceptanceStatus != BuyerAcceptancePending {
+		// Already resolved (ACCEPTED/REJECTED/EXPIRED) — do not reopen.
+		return false
+	}
+	orderRecord.BuyerAcceptanceStatus = BuyerAcceptancePending
+	deadline := now.Add(buyerAcceptanceWindow())
+	orderRecord.BuyerAcceptanceDeadline = &deadline
+	return true
+}
+
+func buyerAcceptanceWindow() time.Duration {
+	raw := strings.TrimSpace(os.Getenv("BUYER_ACCEPTANCE_DAYS"))
+	if raw == "" {
+		return BuyerAcceptanceWindowDefault
+	}
+	days, err := strconv.Atoi(raw)
+	if err != nil || days <= 0 {
+		return BuyerAcceptanceWindowDefault
+	}
+	return time.Duration(days) * 24 * time.Hour
+}
+
 // emitPaymentCaptureFiscal wires PAYMENT_CLEARED + FISCAL_RECEIPT_REQUESTED for a capture txn.
 // Does NOT emit ORDER_FINALIZED (ADR-009).
 func emitPaymentCaptureFiscal(ctx context.Context, txn outbox.TxnBuffer, orderRecord Order, row FiscalReceiptRow, paymentMethod string) error {
@@ -397,17 +493,25 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		LineItems:     orderRecord.LineItems,
 	}
 	if req.Currency == "" {
-		req.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			req.Currency = cur
+		}
 	}
 
-	ofdCtx, cancel := context.WithTimeout(ctx, FiscalOFDTimeout)
-	defer cancel()
-	result, provErr := s.fiscalProvider().CreateReceipt(ofdCtx, req)
-	if provErr == nil && ofdCtx.Err() != nil {
-		provErr = ofdCtx.Err()
-	}
-	if provErr != nil && errors.Is(ofdCtx.Err(), context.DeadlineExceeded) {
-		provErr = fmt.Errorf("ofd_timeout: %w", ofdCtx.Err())
+	var result FiscalCreateResult
+	var provErr error
+	if packErr := s.requireFiscalPack(ctx, orderRecord.SupplierID); packErr != nil {
+		provErr = packErr
+	} else {
+		ofdCtx, cancel := context.WithTimeout(ctx, FiscalOFDTimeout)
+		result, provErr = s.fiscalProvider().CreateReceipt(ofdCtx, req)
+		if provErr == nil && ofdCtx.Err() != nil {
+			provErr = ofdCtx.Err()
+		}
+		if provErr != nil && errors.Is(ofdCtx.Err(), context.DeadlineExceeded) {
+			provErr = fmt.Errorf("ofd_timeout: %w", ofdCtx.Err())
+		}
+		cancel()
 	}
 
 	now := s.now().UTC()
@@ -428,7 +532,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 
 	if provErr != nil {
 		row.Status = FiscalAttemptFailed
-		if errors.Is(ofdCtx.Err(), context.DeadlineExceeded) || strings.Contains(provErr.Error(), "ofd_timeout") {
+		if strings.Contains(provErr.Error(), "ofd_timeout") || errors.Is(provErr, context.DeadlineExceeded) {
 			row.ErrorCode = "OFD_TIMEOUT"
 		} else {
 			row.ErrorCode = "OFD_ERROR"
@@ -468,6 +572,7 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
 	orderRecord.FiscalReceiptUpdate = &row
+	buyerPending := stampBuyerAcceptancePending(&orderRecord, s.ProviderName(), now)
 	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -484,6 +589,11 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 		}
 		if err := emitFiscalReceiptSucceeded(ctx, txn, row); err != nil {
 			return err
+		}
+		if buyerPending {
+			if err := emitBuyerAcceptance(ctx, txn, orderRecord, events.EventBuyerAcceptancePending, BuyerAcceptancePending); err != nil {
+				return err
+			}
 		}
 		return emitOrderFinalized(ctx, txn, orderRecord)
 	})
@@ -511,6 +621,7 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 	orderRecord.LatestFiscalAttemptID = existing.AttemptID
 	orderRecord.FiscalizedAt = &now
 	orderRecord.UpdatedAt = now
+	buyerPending := stampBuyerAcceptancePending(&orderRecord, s.ProviderName(), now)
 	_ = s.ApplyClaimWindowSnapshot(ctx, &orderRecord, now)
 
 	inTxn := func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -524,6 +635,11 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 			Reason:         "fiscal_succeeded_idempotent",
 		}); err != nil {
 			return err
+		}
+		if buyerPending {
+			if err := emitBuyerAcceptance(ctx, txn, orderRecord, events.EventBuyerAcceptancePending, BuyerAcceptancePending); err != nil {
+				return err
+			}
 		}
 		return emitOrderFinalized(ctx, txn, orderRecord)
 	})
@@ -556,6 +672,9 @@ func (s *Service) RetryFiscal(ctx context.Context, claims auth.Claims, orderID s
 	if orderRecord.Status != StatusFiscalFailed {
 		return CollectCashResponse{}, ErrFiscalNotFailed
 	}
+	if err := s.requireFiscalPack(ctx, orderRecord.SupplierID); err != nil {
+		return CollectCashResponse{}, err
+	}
 	if claims.Role == auth.RoleDriver {
 		if strings.TrimSpace(orderRecord.DriverID) == "" || strings.TrimSpace(orderRecord.DriverID) != strings.TrimSpace(claims.Subject) {
 			return CollectCashResponse{}, ErrOrderForbidden
@@ -580,7 +699,7 @@ func (s *Service) RetryFiscal(ctx context.Context, claims auth.Claims, orderID s
 		}
 	}
 	attemptID := s.newID()
-	row := s.newFiscalPendingRow(orderRecord, payMethod, attemptID, amountMinor)
+	row := s.newFiscalPendingRow(ctx, orderRecord, payMethod, attemptID, amountMinor)
 	previousStatus := orderRecord.Status
 	orderRecord.Status = StatusFiscalizing
 	orderRecord.FiscalStatus = FiscalStatusPending
@@ -620,9 +739,9 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 		return nil
 	}
 
-	countryCode := "UZ"
-	if orderRecord.Currency == "KZT" {
-		countryCode = "KZ"
+	countryCode, err := auth.CountryFromContext(ctx, orderRecord.SupplierID)
+	if err != nil {
+		return err
 	}
 
 	regime, found, err := s.taxSvc.Repo().GetActiveRegime(ctx, txn, countryCode, time.Now().UTC())
@@ -633,16 +752,20 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 		return fmt.Errorf("no active tax regime found for country %s", countryCode)
 	}
 
+	var actualVat int64 = 0
+	if len(regime.VatRatesBps) > 0 {
+		actualVat = regime.VatRatesBps[0]
+	}
 	for _, line := range orderRecord.LineItems {
 		net := line.Quantity * line.UnitPrice
-		vat := (net * regime.VatRateBps) / 10000
+		vat := (net * actualVat) / 10000
 		gross := net + vat
 
 		snap := tax.OrderLineFiscalSnapshot{
 			OrderId:     orderRecord.OrderID,
 			OrderLineId: line.SKU,
 			RegimeId:    regime.Id,
-			VatRateBps:  regime.VatRateBps,
+			VatRateBps:  actualVat,
 			NetMinor:    net,
 			VatMinor:    vat,
 			GrossMinor:  gross,
@@ -727,7 +850,9 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 		UpdatedAt:     now,
 	}
 	if row.Currency == "" {
-		row.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(ctx, orderRecord.SupplierID); err == nil {
+			row.Currency = cur
+		}
 	}
 
 	previousStatus := orderRecord.Status
@@ -743,7 +868,7 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 		if err := s.stampTaxRegimeTxn(ctx, txn, &orderRecord); err != nil {
 			return err
 		}
-		
+
 		if err := s.AssertMoneyCoversDelivery(ctx, orderID, 0, 0); err != nil {
 			delivered, _ := s.getDeliveredGrossMinor(ctx, orderID)
 			paid, _ := s.getCapturedPaymentMinor(ctx, orderID)

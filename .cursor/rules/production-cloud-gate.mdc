@@ -1,0 +1,48 @@
+---
+description: Cloud, API, infra, and deploy questions require a codebase readiness gate. Say YES to wiring cloud only if apps, backend, and data flow actually work.
+alwaysApply: true
+---
+
+# Production / cloud wiring gate
+
+When the user asks to **wire cloud**, **connect APIs**, **deploy**, **GCP/GKE/Terraform**, **infra**, **third-party keys**, or **is this production-ready** — analyze the **codebase first**. Do not start cloud work because a plan or matrix looks complete.
+
+## YES to cloud wiring only if ALL are true (proved this session)
+
+1. **Product spine works in code** — order → dispatch → payload/driver → pay-at-delivery → fiscal/settlement (or the product's real spine) is REAL, not THEATRE, on the claimed path.
+2. **Data plane** — mutations use durable SoT (Spanner RW + same-txn outbox, not memory/`Apply` theatre). Consumers and WS fanout exist for user-visible state.
+3. **All shipped role-row clients** call the live API (or are explicitly deferred in code comments + ledger, not silently missing).
+4. **Tests** — unit + integration (or SSMR/CI-equivalent) for the spine are green **after** a re-read of the edited files.
+5. Remaining work is **secrets, env, DNS, IAM** — not new product logic.
+
+If any item fails → **NO**. List blockers ranked. Offer the next **code** phase, not a cloud checklist.
+
+## Hard split
+
+| Layer A (code) | Layer B (cloud) |
+|---|---|
+| State machines, clients, events, honesty of empty/error | GSM secrets, PSP/OFD keys, GKE, Terraform apply |
+
+Cloud day must not invent features. If connecting a key would require new business logic, **you are not ready**.
+
+## pegasusX
+
+- Follow `gap-hunter` + `docs/SUBSTANCE_GATE.md` + `docs/PROD_READINESS_SEQUENCE.md`.
+- Residual registers (Soliq, FCM, OR-Tools pods) are **ops**, not proof the apps are done — and ops does not override missing code.
+
+```text
+❌ "Parity matrix is green, we can wire GCP now."
+✅ "NO. Factory dispatch is a stub (≤2 CREATED transfers). Warehouse treasury invoices always []. Close those before Layer B keys."
+```
+
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

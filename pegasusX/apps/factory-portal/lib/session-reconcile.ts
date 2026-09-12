@@ -1,4 +1,4 @@
-import { reconcileSession } from '@pegasusx/api-client';
+import { reconcileSession } from '@pegasusx/api-core';
 import { apiFetch, factoryApiBaseUrl, readTokenFromCookie } from './auth';
 import { notifyFactorySessionReconciled } from './factory-reconnect';
 
@@ -6,7 +6,7 @@ import { notifyFactorySessionReconciled } from './factory-reconnect';
 export async function reconcileFactorySession(): Promise<void> {
   await reconcileSession({
     role: 'factory',
-    baseUrl: factoryApiBaseUrl,
+    baseUrl: factoryApiBaseUrl(),
     getAuthToken: () => readTokenFromCookie() || null,
     fetchImpl: (input, init) => {
       const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;

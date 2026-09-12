@@ -1,5 +1,8 @@
 # 4. Last-Mile & Exception Mastery
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 PegasusX core strength + extensions. All paths keep inventory and money consistent with the order status machine.
 
 | Doc | Topic |

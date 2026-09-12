@@ -1,118 +1,142 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
-import { projects, getAllCategories } from '../data/projects';
-import SiteNav from '../components/explore/SiteNav';
-import Footer from '../components/Footer';
-import ContentCard, { EDITORIAL_IMAGES } from '../components/ContentCard';
-import { bentoPlacement, bentoVariant } from '../lib/bento';
 import Link from 'next/link';
+import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
+import { getAllCategories } from '@/app/data/projects';
+import {
+  getAllCategoriesLocalized,
+  getEnCategoryForSlug,
+  getProjects,
+} from '@/app/data/projects_ru';
+import { bentoPlacement, bentoVariant } from '@/app/lib/bento';
+import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
+import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function AllProjectsPage() {
-  const headerRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
   const gridRef = useRef<HTMLDivElement>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
 
-  useEffect(() => {
-    if (headerRef.current) {
-      gsap.fromTo(
-        headerRef.current,
-        { opacity: 0, y: -50 },
-        { opacity: 1, y: 0, duration: 1, ease: 'power3.out' }
-      );
-    }
-  }, []);
+  const projects = useMemo(() => getProjects(language), [language]);
+  const enCategories = useMemo(() => getAllCategories(), []);
+  const localizedCategories = useMemo(
+    () => getAllCategoriesLocalized(language),
+    [language]
+  );
+  // Keep filter keyed to EN category so switching language doesn't break selection.
+  const categories = useMemo(
+    () => ['All', ...enCategories],
+    [enCategories]
+  );
+  const categoryLabel = (enCat: string) => {
+    if (enCat === 'All') return t('projects_filter_all', 'All');
+    if (language !== 'ru') return enCat;
+    const idx = enCategories.indexOf(enCat);
+    return idx >= 0 ? localizedCategories[idx] ?? enCat : enCat;
+  };
+  const filteredProjects =
+    selectedCategory === 'All'
+      ? projects
+      : projects.filter((p) => getEnCategoryForSlug(p.slug) === selectedCategory);
+
+  const featured = filteredProjects[0];
 
   useEffect(() => {
-    if (gridRef.current) {
-      gsap.fromTo(
-        gridRef.current.children,
-        { opacity: 0, y: 30, scale: 0.9 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: 'power3.out'
-        }
-      );
-    }
+    if (!gridRef.current) return;
+    gsap.fromTo(
+      gridRef.current.children,
+      { opacity: 0, y: 24 },
+      { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }
+    );
   }, [selectedCategory]);
 
-  const categories = ['All', ...getAllCategories()];
-  const filteredProjects = selectedCategory === 'All' 
-    ? projects 
-    : projects.filter(p => p.category === selectedCategory);
-
   return (
-    <div className="min-h-screen bg-black text-white">
-      <SiteNav activeHref="/projects" />
+    <FleekSecondaryLayout
+      activeHref="/projects"
+      sectionTitle={t('projects_section_title', 'MODULES')}
+      title={t('projects_title', 'All Modules')}
+      summary={`${t('projects_summary_prefix', 'Explore ')}${filteredProjects.length}${t('projects_summary_suffix', ' modules powering supplier-led logistics — dispatch, payments, fleet, and role apps on one shared order record.')}`}
+      secondaryHref="/platform"
+      secondaryLabel={t('btn_explore_platform', 'EXPLORE PLATFORM')}
+      hubId="capabilities"
+      dataExtra={
+        <ImpactMetricCard
+          metric={{
+            client: 'NOVA',
+            title: t('projects_coverage_title', 'Module coverage'),
+            description: t('projects_coverage_desc', 'Performance score across dispatch, fleet, and treasury modules.'),
+            value: 72,
+            unit: '%',
+          }}
+        />
+      }
+      section06={
+        <>
+          <Link
+            href="/join"
+            className="fleek-btn fleek-btn--accent fixed bottom-8 right-8 z-50"
+          >
+            {t('nav_demo', 'Request Demo →')}
+          </Link>
 
-      {/* Floating "Join Us" Button */}
-      <Link
-        href="/join"
-        className="editorial-btn editorial-btn--shadow fixed bottom-8 right-8 z-50"
-      >
-        Request Demo →
-      </Link>
-
-      <div className="container mx-auto px-4 py-20 md:py-32">
-        {/* Header */}
-        <div ref={headerRef} className="text-center mb-12 md:mb-16">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-light mb-4 md:mb-6 text-white">
-            All Modules
-          </h1>
-          <div className="w-20 h-1 bg-white rounded-full mx-auto mb-6 md:mb-8" />
-          <p className="text-base md:text-xl text-gray-300 max-w-3xl mx-auto px-4">
-            Explore {filteredProjects.length} {selectedCategory !== 'All' ? selectedCategory : ''} modules powering supplier-led logistics on Pegasus
-          </p>
-        </div>
-
-        {/* Category Filter */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-12 md:mb-16">
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`editorial-btn editorial-btn--sm ${
-                selectedCategory === category ? 'editorial-btn--active' : ''
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-
-        {/* Projects Grid */}
-        <div ref={gridRef} className="editorial-bento max-w-7xl mx-auto">
-          {filteredProjects.map((project, index) => (
-            <ContentCard
-              key={project.id}
-              variant={bentoVariant(index)}
-              tone={index % 7 === 0 ? 'light' : 'dark'}
-              tag={project.category}
-              title={project.title}
-              description={project.description}
-              image={project.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
-              href={`/projects/${project.slug}`}
-              ctaLabel="READ MORE"
-              ctaStyle="link"
-              className={bentoPlacement(index)}
-            />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredProjects.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-xl text-gray-400">No modules found in this category.</p>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                className={`fleek-btn ${selectedCategory === category ? 'fleek-btn--accent' : ''}`}
+              >
+                {categoryLabel(category)}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
 
-      <Footer />
-    </div>
+          {featured && selectedCategory === 'All' ? (
+            <div className="mt-12">
+              <ContentCard
+                variant="featured"
+                tone="light"
+                tag={featured.category}
+                title={featured.title}
+                description={featured.description}
+                image={featured.image || EDITORIAL_IMAGES[0]}
+                href={`/projects/${featured.slug}`}
+                ctaLabel={t('nav_modules', 'VIEW MODULE')}
+                ctaStyle="button"
+              />
+            </div>
+          ) : null}
+
+          <section className="docs-section mt-16">
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              {t('projects_heading', 'Modules covered on the Pegasus platform')}
+            </h2>
+            <div ref={gridRef} className="editorial-bento mt-10 max-w-7xl">
+              {filteredProjects
+                .filter((p) => !(selectedCategory === 'All' && p.id === featured?.id))
+                .map((project, index) => (
+                  <ContentCard
+                    key={project.id}
+                    variant={bentoVariant(index)}
+                    tone={index % 7 === 0 ? 'light' : 'dark'}
+                    tag={project.category}
+                    title={project.title}
+                    description={project.description}
+                    image={project.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
+                    href={`/projects/${project.slug}`}
+                    ctaLabel={t('btn_read_more', 'READ MORE')}
+                    ctaStyle="link"
+                    className={bentoPlacement(index)}
+                  />
+                ))}
+            </div>
+          </section>
+        </>
+      }
+    />
   );
 }

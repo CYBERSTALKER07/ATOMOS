@@ -22,7 +22,7 @@ struct ComplianceAuditView: View {
                         metricRow("Claim mismatches", value: summary.claimMismatchCount)
                         metricRow("Credit freezes", value: summary.creditFreezeCount)
                         if !summary.generatedAt.isEmpty {
-                            Text("Generated \(summary.generatedAt)")
+                            Text(L10n.format("mobile_supplier.ui.generated_generatedat", "\(summary.generatedAt)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -32,10 +32,10 @@ struct ComplianceAuditView: View {
                             ForEach(openFiscal) { row in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(row.orderId).font(.subheadline.monospaced())
-                                    Text("\(row.status) · \(row.fiscalStatus)")
+                                    Text(L10n.format("mobile_supplier.ui.status_fiscalstatus", "\(row.status)", "\(row.fiscalStatus)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Button("View receipt") {
+                                    Button("mobile_supplier.ui.view_receipt") {
                                         Task { await openReceipt(orderId: row.orderId) }
                                     }
                                     .font(.caption.weight(.semibold))
@@ -48,10 +48,10 @@ struct ComplianceAuditView: View {
                             ForEach(forceCompletes) { row in
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(row.orderId).font(.subheadline.monospaced())
-                                    Text("Reason \(row.reasonCode.isEmpty ? "—" : row.reasonCode)")
+                                    Text(L10n.format("mobile_supplier.ui.reason_reasoncode", "\(row.reasonCode.isEmpty ? "—" : row.reasonCode)"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Button("View receipt") {
+                                    Button("mobile_supplier.ui.view_receipt") {
                                         Task { await openReceipt(orderId: row.orderId) }
                                     }
                                     .font(.caption.weight(.semibold))
@@ -68,7 +68,7 @@ struct ComplianceAuditView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Compliance audit")
+        .navigationTitle("portal.nav.compliance_audit")
         .task { await load() }
         .refreshable { await load(silent: true) }
     }

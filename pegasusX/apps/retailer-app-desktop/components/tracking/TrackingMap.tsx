@@ -1,15 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
+import { useMemo, useEffect, useRef } from "react";
 import { Truck, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Skeleton } from "../Skeleton";
 import EmptyState from "../EmptyState";
-import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
+import MapGL, { Layer, Marker, NavigationControl, Source } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { PageSection } from "../PageSection";
 import type { TrackingOrder } from "../../lib/types";
-
-const TASHKENT: [number, number] = [69.2401, 41.2995];
+import { moneyCurrency } from "../../lib/payment-catalog";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
@@ -76,21 +79,51 @@ export function TrackingMap({
   selectedOrder,
   setSelectedOrder,
 }: TrackingMapProps) {
+  const t = usePortalT();
   const mapRef = useRef<maplibregl.Map | null>(null);
+
+  const routeLines = useMemo(() => {
+    const features = visibleOrders
+      .map((order) => {
+        const coords = order.route_geometry?.coordinates;
+        if (!coords || coords.length < 2) return null;
+        return {
+          type: "Feature" as const,
+          properties: { order_id: order.order_id },
+          geometry: {
+            type: "LineString" as const,
+            coordinates: coords.map((p) => [p.lng, p.lat] as [number, number]),
+          },
+        };
+      })
+      .filter((f): f is NonNullable<typeof f> => f !== null);
+    return { type: "FeatureCollection" as const, features };
+  }, [visibleOrders]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || visibleOrders.length === 0) return;
     const bounds = new maplibregl.LngLatBounds();
-    for (const o of visibleOrders)
-      bounds.extend([o.driver_longitude!, o.driver_latitude!]);
-    map.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 600 });
+    let hasBounds = false;
+    for (const o of visibleOrders) {
+      if (o.driver_longitude != null && o.driver_latitude != null) {
+        bounds.extend([o.driver_longitude, o.driver_latitude]);
+        hasBounds = true;
+      }
+      for (const p of o.route_geometry?.coordinates ?? []) {
+        bounds.extend([p.lng, p.lat]);
+        hasBounds = true;
+      }
+    }
+    if (hasBounds && !bounds.isEmpty()) {
+      map.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 600 });
+    }
   }, [visibleOrders]);
 
   return (
       <PageSection
-        title="Live map"
-        description="Driver positions for active inbound deliveries."
+        title={t("retailer_desktop.tracking.tracking_map.text.live_map")}
+        description={t("retailer_desktop.residual.text.driver_positions_for_active_inbound_deliveries")}
         className="flex-1 min-h-[500px] flex flex-col"
       >
       <div className="relative flex-1 min-h-[500px] rounded-2xl overflow-hidden border border-[var(--desk-border)] !mt-0 !p-0">
@@ -133,11 +166,7 @@ export function TrackingMap({
         <MapGL
           mapLib={maplibregl}
           mapStyle={colorScheme === "dark" ? DARK_STYLE : LIGHT_STYLE}
-          initialViewState={{
-            longitude: TASHKENT[0],
-            latitude: TASHKENT[1],
-            zoom: 12,
-          }}
+          initialViewState={mapInitialViewState(readCachedAuthSession()?.pack)}
           style={{ width: "100%", height: "100%" }}
           onLoad={(e) => {
             mapRef.current = e.target;
@@ -145,14 +174,30 @@ export function TrackingMap({
           onClick={() => setSelectedOrder(null)}
         >
           <NavigationControl position="top-right" />
+          {routeLines.features.length > 0 ? (
+            <Source id="tracking-routes" type="geojson" data={routeLines}>
+              <Layer
+                id="tracking-routes-line"
+                type="line"
+                paint={{
+                  "line-color": "#2563eb",
+                  "line-width": 4,
+                  "line-opacity": 0.85,
+                }}
+              />
+            </Source>
+          ) : null}
           {visibleOrders.map((order) => {
+            if (order.driver_longitude == null || order.driver_latitude == null) {
+              return null;
+            }
             const isApproaching =
               order.is_approaching || order.state === "ARRIVED";
             return (
               <Marker
                 key={order.order_id}
-                longitude={order.driver_longitude!}
-                latitude={order.driver_latitude!}
+                longitude={order.driver_longitude}
+                latitude={order.driver_latitude}
                 anchor="center"
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();
@@ -241,7 +286,7 @@ export function TrackingMap({
                   </p>
                   <p className="md-typescale-title-medium font-light text-[var(--desk-text-primary)] tabular-nums">
                     {formatAmount(selectedOrder.total_amount)}{" "}
-                    <small className="text-[10px] ml-0.5 opacity-60">UZS</small>
+                    <small className="text-[10px] ml-0.5 opacity-60">{moneyCurrency()}</small>
                   </p>
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-black text-[10px] tracking-widest">

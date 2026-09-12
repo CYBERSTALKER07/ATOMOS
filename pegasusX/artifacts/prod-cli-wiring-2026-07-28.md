@@ -69,7 +69,7 @@
 | ManagedCertificate Active | Needs DNS A → `136.69.43.141` |
 | SUCCESS Global Pay verify | Needs real merchant password |
 | Soliq OFD | Deferred by product decision |
-| optimizer-core / OSRM | Not deployed (optional) |
+| optimizer-core / OSRM | Not deployed (optional). Geometry primary is Google Routes when Maps key has Routes API — see [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md) |
 | HPA minReplicas=3 | Insufficient CPU on current 3-node pool |
 
 ---

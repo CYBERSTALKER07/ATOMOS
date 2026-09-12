@@ -13,7 +13,7 @@ struct VehiclesList: View {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label)
                                 .font(.headline)
-                            Text("\(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
+                            Text(L10n.format("mobile_warehouse.ui.vehicleclass_capacityvu_vu", "\(vehicle.vehicleClass)", "\(vehicle.capacityVu)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(vehicle.assignedDriverName ?? "Unassigned")

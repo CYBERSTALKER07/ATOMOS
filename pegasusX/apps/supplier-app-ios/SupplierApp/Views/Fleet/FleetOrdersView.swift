@@ -18,14 +18,14 @@ struct FleetOrdersView: View {
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 4) {
                             Text(row.orderId).font(.headline)
-                            Text("\(row.status) · Driver \(row.driverId ?? "—")").font(.subheadline)
-                            if let routeId = row.routeId { Text("Route \(routeId)").font(.caption) }
+                            Text(L10n.format("mobile_supplier.ui.status_driver_driverid", "\(row.status)", "\(row.driverId ?? "—")")).font(.subheadline)
+                            if let routeId = row.routeId { Text(L10n.format("mobile_supplier.ui.route_routeid_2", "\(routeId)")).font(.caption) }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Fleet orders")
+        .navigationTitle("supplier_portal.fleet.orders.text.fleet_orders")
         .task { await load() }
     }
 

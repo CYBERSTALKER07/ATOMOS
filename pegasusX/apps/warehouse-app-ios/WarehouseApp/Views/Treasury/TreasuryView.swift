@@ -13,9 +13,9 @@ struct TreasuryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("View", selection: $selectedSegment) {
-                    Text("Overview").tag(0)
-                    Text("Invoices").tag(1)
-                    Text("Payment").tag(2)
+                    Text("portal.nav.overview").tag(0)
+                    Text("warehouse_portal.treasury.text.invoices").tag(1)
+                    Text("mobile_warehouse.ui.payment").tag(2)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -40,12 +40,12 @@ struct TreasuryView: View {
                                     columns: [GridItem(.adaptive(minimum: gridMin), spacing: LabTheme.spacingMD)],
                                     spacing: LabTheme.spacingMD
                                 ) {
-                                    KpiTile(title: "Balance", value: "\(overview.balance.formatted()) UZS", systemImage: "banknote", tint: .accentColor)
-                                    KpiTile(title: "Receivable", value: "\(overview.totalReceivable.formatted()) UZS", systemImage: "arrow.down.circle", tint: LabTheme.warning)
-                                    KpiTile(title: "Collected", value: "\(overview.totalCollected.formatted()) UZS", systemImage: "checkmark.circle", tint: LabTheme.success)
+                                    KpiTile(title: "Balance", value: "\(overview.balance.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "banknote", tint: .accentColor)
+                                    KpiTile(title: "Receivable", value: "\(overview.totalReceivable.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "arrow.down.circle", tint: LabTheme.warning)
+                                    KpiTile(title: "Collected", value: "\(overview.totalCollected.formatted()) \(packCurrency(MarketPackStore.pack))", systemImage: "checkmark.circle", tint: LabTheme.success)
                                     KpiTile(
                                         title: "Overdue",
-                                        value: "\(overview.overdueAmount.formatted()) UZS",
+                                        value: "\(overview.overdueAmount.formatted()) \(packCurrency(MarketPackStore.pack))",
                                         systemImage: "exclamationmark.triangle",
                                         tint: LabTheme.destructive,
                                         chip: overview.overdueAmount > 0 ? ("ALERT", LabTheme.destructive) : nil
@@ -63,10 +63,10 @@ struct TreasuryView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Treasury")
+            .navigationTitle("portal.nav.treasury")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

@@ -1,13 +1,14 @@
 'use client';
 import React, { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function SystemLoadWidget() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Add a cool loading animation for the circles
       gsap.fromTo('.system-load-circle',
         { strokeDashoffset: 1000 },
         { strokeDashoffset: 130, duration: 2, ease: 'power3.out', delay: 0.5 }
@@ -22,10 +23,8 @@ export default function SystemLoadWidget() {
 
   return (
     <div ref={containerRef} className="bg-[#000000] border border-white/5 p-6 rounded flex flex-col relative shadow-2xl overflow-hidden h-full">
-      {/* Background ambient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] bg-white/[0.02] blur-[50px] rounded-full pointer-events-none" />
 
-      {/* Header */}
       <div className="flex justify-between items-start mb-8 relative z-10">
         <div className="flex gap-3 items-center">
           <div className="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-white border border-white/10">
@@ -34,8 +33,12 @@ export default function SystemLoadWidget() {
             </svg>
           </div>
           <div>
-            <h3 className="text-sm font-medium text-white">System Load</h3>
-            <p className="text-[11px] text-white/40 uppercase tracking-wider font-mono mt-0.5">Active neural processing</p>
+            <h3 className="text-sm font-medium text-white">
+              {t('sysload_title', 'System Load')}
+            </h3>
+            <p className="text-[11px] text-white/40 uppercase tracking-wider font-mono mt-0.5">
+              {t('sysload_subtitle', 'Active neural processing')}
+            </p>
           </div>
         </div>
         <div className="text-white/40">
@@ -45,19 +48,15 @@ export default function SystemLoadWidget() {
         </div>
       </div>
 
-      {/* Main Radial Chart Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative z-10 py-4">
         <div className="relative w-[180px] h-[180px] flex items-center justify-center">
           <svg width="180" height="180" viewBox="0 0 180 180" className="-rotate-90">
-            {/* Background track */}
             <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="6" />
-            {/* Outer dotted ring */}
             <circle cx="90" cy="90" r="70" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4 4" />
-            {/* Progress track */}
             <circle cx="90" cy="90" r="80" fill="none" stroke="white" strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 80}
-              strokeDashoffset={2 * Math.PI * 80 * (1 - 0.987)} // 98.7%
+              strokeDashoffset={2 * Math.PI * 80 * (1 - 0.987)}
               className="system-load-circle"
             />
           </svg>
@@ -69,16 +68,19 @@ export default function SystemLoadWidget() {
         </div>
       </div>
 
-      {/* Footer Stats */}
       <div className="grid grid-cols-2 gap-4 mt-6 relative z-10 pt-4 border-t border-white/5">
         <div className="flex flex-col gap-1 system-load-value">
           <div className="w-8 h-[2px] bg-white/20 mb-1" />
-          <span className="text-xs text-white/40 uppercase font-mono tracking-wider">Core Systems</span>
+          <span className="text-xs text-white/40 uppercase font-mono tracking-wider">
+            {t('sysload_core', 'Core Systems')}
+          </span>
           <span className="text-lg font-medium text-white">62%</span>
         </div>
         <div className="flex flex-col gap-1 system-load-value">
           <div className="w-8 h-[2px] bg-white/20 mb-1" />
-          <span className="text-xs text-white/40 uppercase font-mono tracking-wider">Memory Allocation</span>
+          <span className="text-xs text-white/40 uppercase font-mono tracking-wider">
+            {t('sysload_memory', 'Memory Allocation')}
+          </span>
           <span className="text-lg font-medium text-white">15%</span>
         </div>
       </div>

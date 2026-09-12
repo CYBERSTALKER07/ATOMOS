@@ -48,11 +48,11 @@ struct AddressLocationField: View {
       }
       .disabled(locating || resolving)
       if pinned {
-        Text("Pinned for dispatch routing")
+        Text("supplier_portal.location_picker.text.pinned_for_dispatch_routing")
           .font(.caption)
           .foregroundStyle(.secondary)
       } else if resolving {
-        Text("Resolving address…")
+        Text("factory_portal.location_picker.text.resolving_address")
           .font(.caption)
           .foregroundStyle(.secondary)
       }

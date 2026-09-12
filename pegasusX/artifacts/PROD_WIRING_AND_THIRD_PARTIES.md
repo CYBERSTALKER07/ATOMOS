@@ -1,8 +1,15 @@
 # Production wiring status + third-party inventory
 
+> **HISTORICAL / FROZEN (2026-07-28 snapshot, re-bannered 2026-08-12).**  
+> Prefer [`../context/current_status.md`](../context/current_status.md) · [`../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md).  
+> TLS/DNS/ManagedCert and optimizer SSMR rows in body may be outdated (SSMR ManagedCert Active; optimizer SSMR replicas 1; prod 0).
+
+
 **Date:** 2026-07-28  
 **Stack:** `pegasus-503013` / `pegasusx-ssmr-gke` / ns `pegasusx-ssmr`  
 **Scope:** What is already wired on GCP via CLI, what still needs you, and which **non-GCP / non–Global Pay** third parties the product uses.
+
+> **Supersession (2026-08-05):** Maps + optimizer runtime truth lives in [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Treat §C below as historical; Google Routes is now the primary geometry path when the Maps key has Routes API enabled.
 
 ---
 
@@ -82,15 +89,15 @@ These are the external products the monorepo is designed to talk to. **Bold = ne
 
 If **Global Pay is the only PSP**, you can leave others as webhook secrets only (already non-dev randoms for some).
 
-### C. Maps / routing (mostly Google already)
+### C. Maps / routing / dispatch solver
 
 | Service | Purpose | Notes |
 |---------|---------|-------|
-| **Google Maps Platform** | Geocode, Places autocomplete | **Already wired** (key restricted) |
-| **OSRM** (self-hosted or public) | Road routing | Env `ROUTING_OSRM_URL` — optional; not deployed on SSMR |
-| **optimizer-core** (your OR-Tools sidecar) | Dispatch optimization | Points to undeployed `optimizer-core` service |
+| **Google Maps Platform** | Geocode, Places, **Routes** (primary polyline) | Server key in GSM; `ROUTING_PROVIDER=auto` |
+| **OSRM** (self-hosted) | Optional geometry fallback | `ROUTING_OSRM_URL` + PVC extract; often empty on SSMR |
+| **optimizer-core** (OR-Tools) | Dispatch VRP | **Code-wired, cloud undeployed** (SSMR omit / prod replicas 0) |
 
-OSRM/optimizer are **not** third-party SaaS if you self-host them in GKE later.
+See [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). OSRM/optimizer are **not** third-party SaaS when self-hosted.
 
 ### D. Observability / ops (optional SaaS)
 

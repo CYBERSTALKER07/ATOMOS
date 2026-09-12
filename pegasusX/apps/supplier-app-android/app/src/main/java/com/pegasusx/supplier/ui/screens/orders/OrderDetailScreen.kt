@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,8 +17,12 @@ import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.components.SupplierStatusChip
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
+
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +116,7 @@ fun OrderDetailScreen(
                         enabled = reason.isNotBlank(),
                     ) { Text("Notify retailer") }
                 },
-                dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text("Back") } },
+                dismissButton = { TextButton(onClick = { showReasonStep = false }) { Text(stringResource(R.string.common_action_back)) } },
             )
         } else {
             DatePickerDialog(
@@ -167,10 +173,10 @@ fun OrderDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Order ${orderId.take(8)}…") },
+                title = { Text(stringResource(R.string.mobile_supplier_ui_order_take, orderId.take(8))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -198,6 +204,51 @@ fun OrderDetailScreen(
                                 Text(formatMinorAmount(it.totalMinor, it.currency), style = MaterialTheme.typography.bodyMedium)
                             }
                             Text(orderId, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            
+                            if ((detail?.state ?: detail?.status ?: listOrder?.status.orEmpty()) == "AWAITING_PAYMENT") {
+                                Spacer(Modifier.height(PegasusSpacing.md))
+                                ElevatedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.elevatedCardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(PegasusSpacing.md)) {
+                                        Text("Emergency Payment Bypass", style = MaterialTheme.typography.titleSmall)
+                                        Spacer(Modifier.height(4.dp))
+                                        Text("Generate bypass code for driver if POS terminal failed.", style = MaterialTheme.typography.bodySmall)
+                                        Spacer(Modifier.height(PegasusSpacing.md))
+                                        Button(
+                                            onClick = {
+                                                acting = true
+                                                scope.launch {
+                                                    try {
+                                                        val resp = ops.issuePaymentBypass(com.pegasusx.supplier.data.model.PaymentBypassRequest(orderId = orderId), java.util.UUID.randomUUID().toString())
+                                                        if (resp.isSuccessful && resp.body() != null) {
+                                                            error = "Token: ${resp.body()!!.bypassToken}"
+                                                        } else {
+                                                            error = "Failed to issue token (${resp.code()})"
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        error = e.message
+                                                    } finally {
+                                                        acting = false
+                                                    }
+                                                }
+                                            },
+                                            enabled = !acting,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.error,
+                                                contentColor = MaterialTheme.colorScheme.onError
+                                            ),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Issue Bypass Token")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -216,7 +267,7 @@ fun OrderDetailScreen(
                         ListItem(
                             headlineContent = { Text(item.productName ?: item.productId ?: "—") },
                             supportingContent = {
-                                Text("Qty ${item.quantity ?: 0} · Unit ${item.unitPrice ?: 0}")
+                                Text(stringResource(R.string.mobile_supplier_ui_qty_quantity_0_unit_unitprice_0, item.quantity ?: 0, item.unitPrice ?: 0))
                             },
                         )
                     }

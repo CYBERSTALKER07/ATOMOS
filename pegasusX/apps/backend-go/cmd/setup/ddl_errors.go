@@ -19,8 +19,13 @@ func isBenignDDLConflict(err error) bool {
 		return false
 	}
 	switch st.Code() {
-	case codes.AlreadyExists, codes.FailedPrecondition:
+	case codes.AlreadyExists:
 		return true
+	case codes.FailedPrecondition:
+		msg := strings.ToLower(st.Message())
+		return strings.Contains(msg, "already exists") ||
+			strings.Contains(msg, "duplicate name in schema") ||
+			strings.Contains(msg, "duplicate")
 	case codes.InvalidArgument:
 		msg := strings.ToLower(st.Message())
 		return strings.Contains(msg, "already exists") ||

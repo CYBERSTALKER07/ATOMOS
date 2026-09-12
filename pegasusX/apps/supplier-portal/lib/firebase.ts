@@ -7,19 +7,26 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
   connectAuthEmulator,
-  signInWithCustomToken,
   signInWithPhoneNumber,
   type Auth,
   type ConfirmationResult,
-  type User,
 } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "demo-key",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ,
   authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo-pegasus.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-pegasus",
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ,
 };
+
+
+if (!firebaseConfig.apiKey && typeof process !== "undefined" && process.env.NODE_ENV === "development") {
+  firebaseConfig.apiKey = "demo-key";
+  firebaseConfig.authDomain = "demo-pegasus.firebaseapp.com";
+  firebaseConfig.projectId = "demo-pegasus";
+} else if (!firebaseConfig.apiKey) {
+  throw new Error("Firebase config missing in production");
+}
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const auth: Auth = getAuth(app);
@@ -47,28 +54,13 @@ if (
   (auth as any)._emulatorConnected = true;
 }
 
-export async function exchangeCustomToken(customToken: string): Promise<string> {
-  if (!customToken) return "";
-  try {
-    const cred = await signInWithCustomToken(auth, customToken);
-    return await cred.user.getIdToken();
-  } catch (err) {
-    console.warn("[firebase] custom token exchange failed:", err);
-    return "";
-  }
-}
-
-export async function getFirebaseIdToken(): Promise<string> {
-  const user: User | null = auth.currentUser;
-  if (!user) return "";
-  try {
-    return await user.getIdToken(false);
-  } catch {
-    return "";
-  }
-}
-
 export async function firebaseSignOut(): Promise<void> {
+  try {
+    const { cacheClearAll } = await import("@pegasusx/desktop-cache");
+    await cacheClearAll();
+  } catch {
+    // ignore cache wipe failures
+  }
   try {
     await auth.signOut();
   } catch {

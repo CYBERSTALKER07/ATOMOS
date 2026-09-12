@@ -79,8 +79,12 @@ func CheckProximity(
 	}
 
 	// 2. H3 match (fast path)
-	driverH3, err := h3.LatLngToCell(h3.NewLatLng(driverLoc.Lat, driverLoc.Lng), cfg.H3Resolution)
-	if err == nil && driverH3.String() == retailerH3 {
+	res := cfg.H3Resolution
+	if res <= 0 {
+		res = SettlementH3Resolution
+	}
+	driverH3, err := h3.LatLngToCell(h3.NewLatLng(driverLoc.Lat, driverLoc.Lng), res)
+	if err == nil && (driverH3.String() == retailerH3 || h3CellsCompatible(driverH3.String(), retailerH3)) {
 		return true, "H3", nil
 	}
 

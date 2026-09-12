@@ -6,10 +6,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowRight, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import PixelBlast from './PixelBlast';
 import LetterGlitch from './LetterGlitch';
 import { gsap } from 'gsap';
-import { useReducedMotion } from '../hooks/useDevice';
+import { useReducedMotion, usePerfProfile } from '../hooks/useDevice';
 import {
   DEFAULT_MEGA_PROMO,
   MEGA_NAV_CATEGORIES,
@@ -154,6 +153,7 @@ export default function MegaMenuOverlay({
   categories = MEGA_NAV_CATEGORIES,
 }: MegaMenuOverlayProps) {
   const prefersReducedMotion = useReducedMotion();
+  const { allowHoverFx } = usePerfProfile();
   const [activeId, setActiveId] = useState(categories[0]?.id ?? 'platform');
   const [mounted, setMounted] = useState(open);
   const [portalReady, setPortalReady] = useState(false);
@@ -303,27 +303,7 @@ export default function MegaMenuOverlay({
       aria-label="Site navigation"
       aria-hidden={!open}
     >
-      <div className="absolute inset-0 pointer-events-auto z-0 mix-blend-screen opacity-50">
-        <PixelBlast
-          variant="circle"
-          pixelSize={4}
-          color="#ffffff"
-          patternScale={2}
-          patternDensity={1}
-          pixelSizeJitter={0.5}
-          enableRipples
-          rippleSpeed={0.4}
-          rippleThickness={0.12}
-          rippleIntensityScale={1.5}
-          liquid
-          liquidStrength={0.12}
-          liquidRadius={1.2}
-          liquidWobbleSpeed={5}
-          speed={0.6}
-          edgeFade={0.25}
-          transparent
-        />
-      </div>
+      <div className="absolute inset-0 pointer-events-none z-0 opacity-40 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.12)_0%,transparent_55%)]" />
       <div className="mega-menu__inner relative z-10 !pt-[80px]">
 
         <div className="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:gap-16 w-full max-w-7xl mx-auto pt-8">
@@ -372,12 +352,16 @@ export default function MegaMenuOverlay({
                 prefetch={false}
               >
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0">
-                  <LetterGlitch
-                    glitchSpeed={50}
-                    centerVignette={true}
-                    outerVignette={true}
-                    smooth={true}
-                  />
+                  {allowHoverFx ? (
+                    <LetterGlitch
+                      glitchSpeed={50}
+                      centerVignette={true}
+                      outerVignette={true}
+                      smooth={true}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-white/5" />
+                  )}
                 </div>
                 <span className="text-white font-bold tracking-widest uppercase text-sm relative z-10">
                   {activeCategory?.viewAllLabel ?? 'VIEW ALL'} &gt;

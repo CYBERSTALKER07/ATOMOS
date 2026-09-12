@@ -71,7 +71,7 @@ func (s *Service) updatePreorderLines(
 	ctx context.Context,
 	current Order,
 	requestedLines []LineItem,
-	emit func(outbox.TxnBuffer) error,
+	emit func(outbox.TxnBuffer, Order) error,
 ) (Order, error) {
 	prevLines := append([]LineItem(nil), current.LineItems...)
 	fulfillable, _, err := s.applyPreorderInventoryGuard(ctx, current.SupplierID, current.WarehouseID, prevLines, requestedLines)
@@ -82,6 +82,11 @@ func (s *Service) updatePreorderLines(
 	current.TotalMinor = totalMinorForLines(fulfillable)
 	err = s.repo.UpdateOrderWithTxn(ctx, current, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return reconcilePreorderReservationsInTxn(ctx, txn, current.SupplierID, current.WarehouseID, current.Source, prevLines, fulfillable)
-	}, emit)
+	}, func(txn outbox.TxnBuffer) error {
+		if emit != nil {
+			return emit(txn, current)
+		}
+		return nil
+	})
 	return current, err
 }

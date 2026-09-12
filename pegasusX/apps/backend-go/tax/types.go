@@ -16,17 +16,16 @@ var (
 
 // TaxRegimeVersion is a versioned, temporal tax configuration.
 type TaxRegimeVersion struct {
-    Id            string          `json:"id"`
-    CountryCode   string          `json:"country_code"`
-    EffectiveFrom time.Time       `json:"effective_from"`
-    EffectiveTo   *time.Time      `json:"effective_to,omitempty"`
-    Currency      string          `json:"currency"`
-    VatRateBps    int64           `json:"vat_rate_bps"`
-    Simplified    bool            `json:"simplified"`
-    RulesJson     json.RawMessage `json:"rules_json,omitempty"`
-    CreatedAt     time.Time       `json:"created_at"`
-    CreatedBy     string          `json:"created_by"`
-    UpdatedAt     time.Time       `json:"updated_at"`
+    Id              string          `json:"id"`
+    CountryCode     string          `json:"country_code"`
+    EffectiveFrom   time.Time       `json:"effective_from"`
+    EffectiveTo     *time.Time      `json:"effective_to,omitempty"`
+    Currency        string          `json:"currency"`
+    VatRatesBps     []int64         `json:"vat_rates_bps"`
+    SimplifiedRules json.RawMessage `json:"simplified_rules,omitempty"`
+    CreatedAt       time.Time       `json:"created_at"`
+    CreatedBy       string          `json:"created_by"`
+    UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 // OrderLineFiscalSnapshot is an immutable record of the tax configuration
@@ -45,11 +44,10 @@ type OrderLineFiscalSnapshot struct {
 
 // CreateRegimeRequest is the input for creating a new tax regime version.
 type CreateRegimeRequest struct {
-	CountryCode   string          `json:"country_code"`
-	EffectiveFrom time.Time       `json:"effective_from"`
-	EffectiveTo   *time.Time      `json:"effective_to,omitempty"`
-	Currency      string          `json:"currency"`
-	VatRateBps    int64           `json:"vat_rate_bps"`
-	Simplified    bool            `json:"simplified"`
-	RulesJson     json.RawMessage `json:"rules_json,omitempty"`
+	CountryCode     string          `json:"country_code"`
+	EffectiveFrom   time.Time       `json:"effective_from"`
+	EffectiveTo     *time.Time      `json:"effective_to,omitempty"`
+	Currency        string          `json:"currency"`
+	VatRatesBps     []int64         `json:"vat_rates_bps"`
+	SimplifiedRules json.RawMessage `json:"simplified_rules,omitempty"`
 }

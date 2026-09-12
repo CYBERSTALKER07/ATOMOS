@@ -29,7 +29,7 @@ export const projects: Project[] = [
       'The core dispatch module helps warehouse teams assign orders to trucks on a live board — with optional smart suggestions based on area, capacity, and eligibility.',
     category: 'Dispatch',
     tags: ['Dispatch', 'Warehouse', 'Fleet', 'Operations'],
-    technologies: ['Go', 'Spanner', 'Next.js', 'WebSocket'],
+    technologies: ['Dispatch', 'Orders', 'Web', 'Live updates'],
     github: '#',
     features: [
       'Visual truck and order selection',
@@ -61,7 +61,7 @@ export const projects: Project[] = [
       'Suppliers manage catalog, order vetting, dispatch preview, topology, and treasury from one dashboard — across warehouses, factories, and retailers.',
     category: 'Platform',
     tags: ['Supplier', 'Network', 'Treasury', 'Portal'],
-    technologies: ['Next.js', 'TypeScript', 'Go API', 'Spanner'],
+    technologies: ['Web', 'Desktop', 'Platform', 'Orders'],
     github: '#',
     features: [
       'Order vetting before fulfillment',
@@ -93,7 +93,7 @@ export const projects: Project[] = [
       'Native driver apps guide routes stop by stop, confirm deliveries and payments, and report live progress back to ops and retailers.',
     category: 'Mobile',
     tags: ['Driver', 'Routes', 'Mobile', 'Delivery'],
-    technologies: ['Kotlin', 'SwiftUI', 'Go API', 'Telemetry'],
+    technologies: ['Kotlin', 'SwiftUI', 'Platform API', 'Telemetry'],
     github: '#',
     features: [
       'Sealed manifest before departure',
@@ -125,7 +125,7 @@ export const projects: Project[] = [
       'Retailers browse supplier catalogs, place orders, choose delivery windows, and track shipments live — without calling support.',
     category: 'Web Application',
     tags: ['Retailer', 'Checkout', 'Tracking', 'Catalog'],
-    technologies: ['Next.js', 'Tauri', 'React Native', 'Payments'],
+    technologies: ['Web', 'Desktop', 'Native', 'Payments'],
     github: '#',
     features: [
       'Catalog with delivery zone checks',
@@ -157,7 +157,7 @@ export const projects: Project[] = [
       'Ops teams and retailers see where every truck is, whether it is on plan, and when deliveries will land — with deviation alerts before complaints.',
     category: 'Fleet',
     tags: ['Telemetry', 'Maps', 'Realtime', 'Ops'],
-    technologies: ['MapLibre', 'Go', 'WebSocket', 'Redis'],
+    technologies: ['Maps', 'Platform', 'Live updates', 'Cache'],
     github: '#',
     features: [
       'Live vs delayed vehicle status',
@@ -189,7 +189,7 @@ export const projects: Project[] = [
       'From retailer checkout to driver cash collection to supplier treasury — payments stay aligned with duplicate protection and a clear audit trail.',
     category: 'Payments',
     tags: ['Payments', 'Treasury', 'Reconciliation', 'Ledger'],
-    technologies: ['Go', 'Spanner', 'Webhooks', 'Idempotency'],
+    technologies: ['Platform', 'Orders', 'Payments', 'Safe retries'],
     github: '#',
     features: [
       'Card and cash-on-delivery paths',
@@ -205,7 +205,7 @@ export const projects: Project[] = [
     ],
     learnings: [
       'Financial integrity in physical logistics',
-      'Idempotent payment progression',
+      'Safe-retry payment progression',
       'Treasury views operators actually use',
     ],
     status: 'completed',
@@ -221,7 +221,7 @@ export const projects: Project[] = [
       'Warehouse portals combine pre-order hubs, stock reservations, visual dispatch, and fleet maps for depot teams running daily load planning.',
     category: 'Warehouse',
     tags: ['Warehouse', 'Inventory', 'Dispatch', 'Portal'],
-    technologies: ['Next.js', 'Go', 'WebSocket', 'Android'],
+    technologies: ['Web', 'Platform', 'Live updates', 'Android'],
     github: '#',
     features: [
       'Morning dispatch board',
@@ -253,7 +253,7 @@ export const projects: Project[] = [
       'Factory teams track manifests through loading, sealing, and handoff — with supply requests flowing cleanly to warehouse fulfillment partners.',
     category: 'Factory',
     tags: ['Factory', 'Manifests', 'Loading', 'Supply'],
-    technologies: ['Next.js', 'Go', 'Mobile', 'Realtime'],
+    technologies: ['Web', 'Platform', 'Mobile', 'Realtime'],
     github: '#',
     features: [
       'Manifest load and seal workflow',
@@ -284,8 +284,8 @@ export const projects: Project[] = [
     longDescription:
       'The public-facing site explains Pegasus capabilities, roles, solutions, and customer outcomes — with the same bold visual language as the product brand.',
     category: 'Platform',
-    tags: ['Marketing', 'Next.js', 'Brand', 'Product'],
-    technologies: ['Next.js', 'TypeScript', 'GSAP', 'Tailwind CSS'],
+    tags: ['Marketing', 'Web', 'Brand', 'Product'],
+    technologies: ['Web', 'Motion', 'Brand', 'Product'],
     github: '#',
     features: [
       'Solutions and capability deep dives',
@@ -317,7 +317,7 @@ export const projects: Project[] = [
       'Gate teams scan, load, and seal manifests before trucks depart — blocking drivers until the load is verified and recorded.',
     category: 'Operations',
     tags: ['Gate', 'Seal', 'Terminal', 'Accountability'],
-    technologies: ['Expo', 'Android', 'Go API', 'Realtime'],
+    technologies: ['Expo', 'Android', 'Platform API', 'Realtime'],
     github: '#',
     features: [
       'Per-truck manifest scanning',
@@ -349,7 +349,7 @@ export const projects: Project[] = [
       'Suppliers define warehouses, factories, and service areas once — every downstream team inherits the same network map and order rules.',
     category: 'Platform',
     tags: ['Topology', 'Network', 'Zones', 'Multi-site'],
-    technologies: ['Go', 'Spanner', 'H3', 'Portal'],
+    technologies: ['Platform', 'Orders', 'Delivery zones', 'Portal'],
     github: '#',
     features: [
       'Warehouse and factory seeding',
@@ -380,13 +380,13 @@ export const projects: Project[] = [
     longDescription:
       'When status changes anywhere in the network, connected apps refresh within seconds — warehouses, drivers, retailers, and suppliers stay aligned.',
     category: 'Realtime',
-    tags: ['WebSocket', 'Events', 'Ops', 'Sync'],
-    technologies: ['Kafka', 'Redis', 'WebSocket', 'Go'],
+    tags: ['live updates', 'Events', 'Ops', 'Sync'],
+    technologies: ['Events', 'Cache', 'Live updates', 'Platform'],
     github: '#',
     features: [
       'Role-scoped live updates',
       'Silent refresh on connected clients',
-      'Post-commit cache invalidation',
+      'Post-commit screen refresh',
       'Cross-pod websocket relay',
       'Ops boards without manual refresh',
     ],
@@ -397,7 +397,7 @@ export const projects: Project[] = [
     ],
     learnings: [
       'Realtime as an ops reliability feature',
-      'Event contracts across role rows',
+      'Event contracts across roles',
       'Live coordination at network scale',
     ],
     status: 'completed',

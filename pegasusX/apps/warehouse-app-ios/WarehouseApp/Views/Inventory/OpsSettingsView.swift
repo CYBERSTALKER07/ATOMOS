@@ -14,7 +14,7 @@ struct OpsSettingsView: View {
     @State private var expressEnabled = false
     @State private var expressStockFloor = "0"
     @State private var feeBaseMinor = "0"
-    @State private var feeCurrency = "UZS"
+    @State private var feeCurrency = ""
     @State private var feeTiers: [FeeTierDraft] = [FeeTierDraft(maxKm: "5", feeMinor: "0")]
     @State private var clearFeeRules = true
     @State private var scheduleJSON = "{\n  \"is_24h\": true\n}"
@@ -36,11 +36,11 @@ struct OpsSettingsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else {
                 Form {
@@ -82,10 +82,10 @@ struct OpsSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Ops settings")
+        .navigationTitle("mobile_warehouse.ui.ops_settings")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task { load() }
@@ -151,7 +151,7 @@ struct OpsSettingsView: View {
                 expressStockFloor = String(settings.expressStockFloor)
                 if let rules = settings.deliveryFeeRules {
                     feeBaseMinor = String(rules.baseFeeMinor)
-                    feeCurrency = rules.currency.isEmpty ? "UZS" : rules.currency
+                    feeCurrency = rules.currency
                     feeTiers = rules.tiers.map {
                         FeeTierDraft(
                             maxKm: $0.maxKm.map { String($0) } ?? "",
@@ -164,13 +164,16 @@ struct OpsSettingsView: View {
                     clearFeeRules = false
                 } else {
                     feeBaseMinor = "0"
-                    feeCurrency = "UZS"
+                    feeCurrency = ""
                     feeTiers = [FeeTierDraft(maxKm: "5", feeMinor: "0")]
                     clearFeeRules = true
                 }
                 if let schedule = settings.operatingSchedule {
                     scheduleJSON = schedule.prettyJSONString()
                     applyScheduleFields(from: schedule)
+                }
+                if let packCurrency = try? await WarehouseService.paymentConfig().currencyCode, !packCurrency.isEmpty {
+                    feeCurrency = packCurrency
                 }
             } catch {
                 self.error = error.localizedDescription
@@ -196,7 +199,7 @@ struct OpsSettingsView: View {
         }
         let schedule = object.mapValues { AnyCodable($0) }
         let deliveryRules: DeliveryFeeRules? = clearFeeRules ? nil : DeliveryFeeRules(
-            currency: feeCurrency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "UZS" : feeCurrency,
+            currency: feeCurrency.trimmingCharacters(in: .whitespacesAndNewlines),
             baseFeeMinor: Int64(feeBaseMinor) ?? 0,
             tiers: feeTiers.map {
                 let trimmed = $0.maxKm.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +41,7 @@ import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusRedSoft
 import com.pegasusx.retailer.ui.theme.StatusTeal
 import com.pegasusx.retailer.ui.theme.StatusTealSoft
+import com.pegasusx.retailer.R
 
 /**
  * Order Card — B&W minimalist matching iOS activeOrderCard / pendingOrderCard.
@@ -89,7 +92,7 @@ fun OrderCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Order #${order.id.takeLast(3)}",
+                        stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                     )
@@ -99,7 +102,7 @@ fun OrderCard(
                 Spacer(Modifier.height(2.dp))
 
                 Text(
-                    "${order.itemCount} items · ${order.displayTotal}",
+                    stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

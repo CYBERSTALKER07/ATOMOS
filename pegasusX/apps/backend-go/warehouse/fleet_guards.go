@@ -42,7 +42,10 @@ func readDriverAssignmentState(ctx context.Context, txn *spanner.ReadWriteTransa
 	row, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID},
 		[]string{"SupplierId", "HomeNodeType", "HomeNodeId", "VehicleId"})
 	if err != nil {
-		return driverAssignmentState{}, errDriverNotFound
+		if spanner.ErrCode(err) == 5 { // codes.NotFound
+			return driverAssignmentState{}, errDriverNotFound
+		}
+		return driverAssignmentState{}, fmt.Errorf("read driver row: %w", err)
 	}
 	var state driverAssignmentState
 	var homeNodeType, homeNodeID, vehicleID spanner.NullString
@@ -53,10 +56,10 @@ func readDriverAssignmentState(ctx context.Context, txn *spanner.ReadWriteTransa
 	state.HomeNodeType = strings.TrimSpace(homeNodeType.StringVal)
 	state.HomeNodeID = strings.TrimSpace(homeNodeID.StringVal)
 	state.VehicleID = strings.TrimSpace(vehicleID.StringVal)
-	if state.SupplierID != supplierID {
+	if supplierID != "" && state.SupplierID != "" && state.SupplierID != supplierID {
 		return driverAssignmentState{}, errDriverNotFound
 	}
-	if warehouseID != "" && (!strings.EqualFold(state.HomeNodeType, "WAREHOUSE") || state.HomeNodeID != warehouseID) {
+	if warehouseID != "" && (!strings.EqualFold(state.HomeNodeType, "WAREHOUSE") || (state.HomeNodeID != "" && state.HomeNodeID != warehouseID)) {
 		return driverAssignmentState{}, errDriverNotFound
 	}
 	return state, nil
@@ -117,19 +120,27 @@ func countActiveOrdersForVehicle(ctx context.Context, txn *spanner.ReadWriteTran
 }
 
 func readDriverByVehicle(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID, vehicleID, excludeDriverID string) (*driverAssignmentState, error) {
+	sql := `SELECT DriverId, SupplierId, COALESCE(HomeNodeType,''), COALESCE(HomeNodeId,''), COALESCE(VehicleId,'')
+	      FROM Drivers
+	      WHERE VehicleId = @vid
+	        AND HomeNodeType = 'WAREHOUSE'
+	        AND DriverId != @exclude`
+	params := map[string]any{
+		"vid":     vehicleID,
+		"exclude": excludeDriverID,
+	}
+	if supplierID != "" {
+		sql += " AND SupplierId = @sid"
+		params["sid"] = supplierID
+	}
+	if warehouseID != "" {
+		sql += " AND HomeNodeId = @wid"
+		params["wid"] = warehouseID
+	}
+	sql += " LIMIT 1"
 	stmt := spanner.Statement{
-		SQL: `SELECT DriverId, SupplierId, COALESCE(HomeNodeType,''), COALESCE(HomeNodeId,''), COALESCE(VehicleId,'')
-		      FROM Drivers
-		      WHERE SupplierId = @sid AND VehicleId = @vid
-		        AND HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @wid
-		        AND DriverId != @exclude
-		      LIMIT 1`,
-		Params: map[string]any{
-			"sid":     supplierID,
-			"vid":     vehicleID,
-			"wid":     warehouseID,
-			"exclude": excludeDriverID,
-		},
+		SQL:    sql,
+		Params: params,
 	}
 	iter := txn.Query(ctx, stmt)
 	defer iter.Stop()

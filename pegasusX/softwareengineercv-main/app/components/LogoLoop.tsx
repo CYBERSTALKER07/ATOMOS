@@ -134,10 +134,11 @@ const useAnimationLoop = (
     const track = trackRef.current;
     if (!track) return;
 
+    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
     const prefersReduced =
       typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      ((window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ||
+        (nav && (nav.hardwareConcurrency <= 4 || (nav.deviceMemory !== undefined && nav.deviceMemory <= 4))));
 
     if (seqWidth > 0) {
       offsetRef.current = ((offsetRef.current % seqWidth) + seqWidth) % seqWidth;
@@ -153,9 +154,8 @@ const useAnimationLoop = (
 
     const animate = (timestamp: number) => {
       if (!active) {
-        idleRef.current = window.setTimeout(() => {
-          rafRef.current = requestAnimationFrame(animate);
-        }, 400);
+        rafRef.current = null;
+        lastTimestampRef.current = null;
         return;
       }
 
@@ -223,6 +223,22 @@ export const LogoLoop = React.memo<LogoLoopProps>(
     const [seqWidth, setSeqWidth] = useState<number>(0);
     const [copyCount, setCopyCount] = useState<number>(ANIMATION_CONFIG.MIN_COPIES);
     const [isHovered, setIsHovered] = useState<boolean>(false);
+    const [isInView, setIsInView] = useState<boolean>(true);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const io = new IntersectionObserver(
+        ([entry]) => {
+          setIsInView(!!entry?.isIntersecting);
+        },
+        { rootMargin: '80px' }
+      );
+      io.observe(container);
+
+      return () => io.disconnect();
+    }, []);
 
     const targetVelocity = useMemo(() => {
       const magnitude = Math.abs(speed);
@@ -246,7 +262,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
 
     useImageLoader(seqRef, updateDimensions, [logos, gap, logoHeight]);
 
-    useAnimationLoop(trackRef, targetVelocity, seqWidth, isHovered, pauseOnHover, active);
+    useAnimationLoop(trackRef, targetVelocity, seqWidth, isHovered, pauseOnHover, active && isInView);
 
     const cssVariables = useMemo(
       () =>

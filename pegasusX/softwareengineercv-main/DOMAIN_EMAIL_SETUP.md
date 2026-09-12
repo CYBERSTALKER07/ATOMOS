@@ -16,7 +16,7 @@ Currently, emails are sent from `onboarding@resend.dev`. To receive emails from 
 
 1. A domain name you own (e.g., `yourdomain.com`)
 2. Access to your domain's DNS settings
-3. Resend account (already set up with API key: `re_e3ijpzP5_Nb6z64cAvgvcZCsG6axRPN9C`)
+3. Resend account (create an API key in the Resend dashboard)
 
 ## 🚀 Step-by-Step Setup
 
@@ -79,10 +79,10 @@ from: 'Customer Contact <contact@yourdomain.com>',
 Add your domain to `.env.local`:
 
 ```env
-RESEND_API_KEY=re_9Bh87n1H_8XQ2Aj4CPhjhW3dJufQLxaTb
-RECIPIENT_EMAIL=shsoliyev@aut-edu.uz
+RESEND_API_KEY=re_your_api_key_here
+RECIPIENT_EMAIL=you@example.com
 NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-SENDER_DOMAIN=yourdomain.com
+RESEND_FROM_EMAIL=Pegasus Contact <contact@yourdomain.com>
 ```
 
 ## 📧 Recommended Email Addresses

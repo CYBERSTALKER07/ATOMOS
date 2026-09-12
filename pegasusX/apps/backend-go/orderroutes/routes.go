@@ -13,13 +13,11 @@ import (
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service             *order.Service
-	ClaimsService       *claims.Service
-	TaxService          *tax.Service
-	ComplianceHandler   *compliance.Handler
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service           *order.Service
+	ClaimsService     *claims.Service
+	TaxService        *tax.Service
+	ComplianceHandler *compliance.Handler
+	AllowAuthBypass   bool
 }
 
 // RegisterRoutes mounts the order endpoints.
@@ -38,7 +36,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin)).Get("/v1/warehouse/orders/{orderID}/receipt", d.Service.HandleGetWarehouseOrderReceipt)
 
 		gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/order/create", d.Service.HandleCreate)
+		gr.With(auth.RequireRole(auth.RoleRetailer)).Get("/v1/order/currencies", d.Service.HandleOrderCurrencies)
+		gr.With(auth.RequireRole(auth.RoleRetailer, auth.RoleAdmin)).Get("/v1/retailer/parent-orders/{parentOrderID}", d.Service.HandleGetParentOrder)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Patch("/v1/order/{orderID}/status", d.Service.HandleUpdateStatus)
+		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Post("/v1/finance/drafts", d.Service.HandleCreateFinancialDraft)
+		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/finance/drafts/review", d.Service.HandleReviewFinancialDraft)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleFactoryAdmin)).Post("/v1/orders/{orderID}/assign", d.Service.HandleAssignOrder)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/arrive", d.Service.HandleMarkArrived)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/proximity-unlock", d.Service.HandleProximityUnlock)
@@ -51,6 +53,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/order/collect-cash", d.Service.HandleCollectCash)
 		gr.With(auth.RequireRole(auth.RoleDriver, auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/fiscal/retry", d.Service.HandleFiscalRetry)
 		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/force-complete", d.Service.HandleForceComplete)
+		// Refunds: supplier admin or warehouse admin initiates; provider-confirmed.
+		gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin)).Post("/v1/order/{orderID}/refunds", d.Service.HandleInitiateRefund)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/supplier/shop-closed/resolve", d.Service.HandleResolveShopClosed)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/fleet/route/request-early-complete", d.Service.HandleRequestEarlyComplete)
 		gr.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/delivery/confirm-payment-bypass", d.Service.HandleConfirmPaymentBypass)
@@ -93,8 +97,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, mount)
 }

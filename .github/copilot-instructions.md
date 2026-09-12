@@ -1,3 +1,25 @@
+<!-- HONESTY_OVERRIDE -->
+
+# HONESTY OVERRIDE (absolute — read before all other doctrine)
+
+Living product: **`pegasusX/`**. Do not plan or ship from `pegasus/` or frozen `.docx`.
+Runtime additive notes, ACT logs, matrices labeled **Wired**, and prior chat are **hypotheses — not status**.
+
+1. **Code is SoT.** Live-path trace this session (route → persist or honest fail → outbox/WS → clients). File:line required.
+2. **Forbidden without that proof:** wired, done, implemented, production-ready, cloud-ready, we can start connecting cloud, everything works.
+3. **Docs vs code.** Code wins. Name THEATRE (`{status:ok}`, always-`[]`, in-memory sold as durable) and DOC DRIFT.
+4. **Cloud / API / infra / deploy.** YES only if backend + shipped role-row apps + data flow are REAL and tests passed after re-reading edits. Remaining work must be secrets/env/IAM only. Else NO + ranked blockers.
+5. **Phased execution.** After a plan lands: re-read every edit, re-trace, run unit + integration/CI-equivalent. If it failed, replan — do not announce done.
+6. **Blast radius** on every create/edit: other files, role-row clients, cloud config, downstream features.
+7. **Research:** skills (`honest-code-gate`, `gap-hunter`) → official docs/web → proven OSS/big-tech algorithms. Else invent tested in-house logic.
+
+Full text: `.github/instructions/honest-code-gate.instructions.md`  
+Two-Tier Verification Gate (MANDATORY on every edit — Bazel/Kythe CodeGraph + Targeted Raw Reading):
+1. Tier 1 — Bazel/Kythe Dynamic CodeGraph (Global Radar): run BEFORE touching code to discover blast radius, reverse dependencies, and taint violations (`python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json`, `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>`, `make codegraph-advanced-audit`).
+2. Tier 2 — Targeted Raw Reading (Local Microscope): NEVER rely on the graph alone. Open and raw-read the exact files identified in Tier 1 to inspect runtime conditionals, guard clauses, transaction closures, and error handling. Re-read every edit after writing. See `.agents/skills/codegraph-deep-audit/SKILL.md`.
+
+---
+
 # Project Guidelines & F.R.I.D.A.Y. Initialization Protocol
 
 Use this priority stack while executing: safety and data integrity first, code completeness (updating all connected layers) second, direct user intent third, code-doc sync fourth, and optimization/style constraints fifth.
@@ -68,7 +90,7 @@ Runtime additive note (2026-05-19): Sprint-3 forecast tournament core surface no
 - **Ambiguity Rule**: If user requests are ambiguous or conflicting, seek clarification before proceeding to avoid misaligned execution. If clarification is not possible, prioritize safety and data integrity while making conservative assumptions.
 # Codebase Traversal Protocol (Augment Mode)
 
-You are operating in a massive codebase. Do NOT rely on your pre-trained memory. You must act as a graph-traversal engine before writing or suggesting any code. The codebase itself is your primary source of truth, but it must be kept in perfect sync with the documentation.
+You are operating in a massive codebase. Do NOT rely on your pre-trained memory. You must act as a graph-traversal engine before writing or suggesting any code. The codebase itself is your primary source of truth. Documentation must be updated to match code — never treat docs, runtime notes, or matrices as proof a feature is wired. HONESTY OVERRIDE above wins on every status/cloud question.
 
 **Retrieval Constraint Summary:**
 | Category | Requirement |
@@ -1299,3 +1321,15 @@ These skills are loaded on-demand when their trigger keywords appear. Each is a 
 | `or-tools-sidecar-optimization` | OR-Tools sidecar topology, VRP/CP-SAT adapters, integer scaling, deterministic UUID-index maps | Solver contract drift, timeout behavior regressions, outbox-bypass mutations from optimization workers |
 
 All skills live in `.agents/skills/<name>/SKILL.md` and cross-reference both this document and `intrusions.md`.
+
+
+# Universal Agent & Engineering Guidelines
+When developing, designing, or planning, always ensure to account for:
+- Gaps, edge cases, and comprehensive feature validation.
+- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
+- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
+- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
+- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
+- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
+- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
+- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.

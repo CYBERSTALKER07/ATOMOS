@@ -19,8 +19,8 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
@@ -100,6 +100,14 @@ if (wsCodegenEnabled) {
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasusx.retailer"
     compileSdk = 35
 
@@ -107,8 +115,8 @@ android {
         applicationId = "com.pegasusx.retailer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "BASE_URL", "\"http://$devHost:8180/\"")

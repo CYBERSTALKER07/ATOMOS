@@ -20,7 +20,7 @@ struct ClientPolicyBanner: View {
                     HStack {
                         Spacer()
                         if !force, let onDismiss {
-                            Button("Later", action: onDismiss)
+                            Button("mobile_payload.ui.later", action: onDismiss)
                                 .buttonStyle(.borderless)
                         }
                         Button(force ? "Update now" : "Update") {

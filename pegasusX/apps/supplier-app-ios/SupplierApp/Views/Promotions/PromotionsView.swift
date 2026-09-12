@@ -34,7 +34,7 @@ struct PromotionsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if let sim = simResults[promo.promotionId] {
-                                Text("P&L sandbox: \(sim.projectedVolume) units · margin \(sim.projectedMarginMinor / 100) (\(Int(sim.marginDeltaPct))%)")
+                                Text(L10n.format("mobile_supplier.ui.p_l_sandbox_projectedvolume_units_margin_projectedmarginminor_100_margin", "\(sim.projectedVolume)", "\(sim.projectedMarginMinor / 100)", "\(Int(sim.marginDeltaPct))"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -57,13 +57,13 @@ struct PromotionsView: View {
                                     discountBps = String(promo.discountBps)
                                     showEdit = true
                                 } label: {
-                                    Text("Edit")
+                                    Text("supplier_portal.demand.signals.text.edit")
                                 }
                                 .tint(.blue)
                                 Button(role: .destructive) {
                                     Task { await deactivate(promo.promotionId) }
                                 } label: {
-                                    Text("Deactivate")
+                                    Text("supplier_portal.demand.signals.text.deactivate")
                                 }
                             }
                         }
@@ -72,10 +72,10 @@ struct PromotionsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Promotions")
+        .navigationTitle("portal.nav.promotions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("New") { showCreate = true }
+                Button("mobile_supplier.ui.new") { showCreate = true }
             }
         }
         .task { await load() }
@@ -89,20 +89,20 @@ struct PromotionsView: View {
         .sheet(isPresented: $showCreate) {
             NavigationStack {
                 Form {
-                    TextField("Name", text: $name)
-                    TextField("Discount (bps)", text: $discountBps)
+                    TextField("retailer_desktop.pos.text.name", text: $name)
+                    TextField("supplier_portal.pricing._product_id_.text.discount_bps", text: $discountBps)
                         .keyboardType(.numberPad)
-                    Text("Default scope: all products, all retailers.")
+                    Text("mobile_supplier.ui.default_scope_all_products_all_retailers")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .navigationTitle("New promotion")
+                .navigationTitle("mobile_supplier.ui.new_promotion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showCreate = false }
+                        Button("common.action.cancel") { showCreate = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Create") { Task { await create() } }
+                        Button("mobile_supplier.ui.create") { Task { await create() } }
                     }
                 }
             }
@@ -111,20 +111,20 @@ struct PromotionsView: View {
         .sheet(isPresented: $showEdit) {
             NavigationStack {
                 Form {
-                    TextField("Name", text: $name)
-                    TextField("Discount (bps)", text: $discountBps)
+                    TextField("retailer_desktop.pos.text.name", text: $name)
+                    TextField("supplier_portal.pricing._product_id_.text.discount_bps", text: $discountBps)
                         .keyboardType(.numberPad)
                 }
-                .navigationTitle("Edit promotion")
+                .navigationTitle("mobile_supplier.ui.edit_promotion")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
+                        Button("common.action.cancel") {
                             showEdit = false
                             editingPromotion = nil
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Save") { Task { await saveEdit() } }
+                        Button("common.action.save") { Task { await saveEdit() } }
                     }
                 }
             }

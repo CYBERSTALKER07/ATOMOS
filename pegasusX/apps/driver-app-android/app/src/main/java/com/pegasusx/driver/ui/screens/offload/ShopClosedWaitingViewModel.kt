@@ -26,6 +26,9 @@ data class ShopClosedUiState(
     val showBypassInput: Boolean = false,
     val bypassConfirmed: Boolean = false,
     val queuedOffline: Boolean = false,
+    val photoUrl: String = "",
+    val photoLocalPath: String = "",
+    val reported: Boolean = false,
     val error: String? = null
 )
 
@@ -34,6 +37,7 @@ class ShopClosedWaitingViewModel @Inject constructor(
     private val api: DriverApi,
     private val webSocket: DriverWebSocket,
     private val offlineQueue: DriverOfflineQueue,
+    private val mediaUpload: com.pegasusx.driver.data.remote.MediaUploadService,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ShopClosedUiState())
@@ -93,6 +97,32 @@ class ShopClosedWaitingViewModel @Inject constructor(
         }
     }
 
+    fun attachShopClosedPhoto(orderId: String, uri: android.net.Uri) {
+        viewModelScope.launch {
+            _state.update { it.copy(isSubmitting = true, error = null) }
+            try {
+                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    mediaUpload.compressJpegUri(uri)
+                }
+                val local = mediaUpload.savePodJpeg(orderId, "shop_closed", bytes)
+                val url = runCatching {
+                    mediaUpload.uploadJpegBytes(bytes, purpose = "credit_proof", orderId = orderId)
+                }.getOrDefault("")
+                _state.update {
+                    it.copy(
+                        isSubmitting = false,
+                        photoLocalPath = local,
+                        photoUrl = url,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(isSubmitting = false, error = e.message ?: "Photo failed")
+                }
+            }
+        }
+    }
+
     fun reportShopClosed(
         orderId: String,
         reason: String = "CLOSED",
@@ -102,6 +132,27 @@ class ShopClosedWaitingViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             _state.update { it.copy(isSubmitting = true, error = null) }
+            val current = _state.value
+            var proof = photoUrl?.takeIf { it.isNotBlank() }
+                ?: current.photoUrl.takeIf { it.isNotBlank() }
+            if (proof.isNullOrBlank() && current.photoLocalPath.isNotBlank()) {
+                runCatching {
+                    proof = mediaUpload.uploadJpegBytes(
+                        mediaUpload.readLocalJpeg(current.photoLocalPath),
+                        purpose = "credit_proof",
+                        orderId = orderId,
+                    )
+                }
+            }
+            if (proof.isNullOrBlank() && current.photoLocalPath.isBlank()) {
+                _state.update {
+                    it.copy(
+                        isSubmitting = false,
+                        error = "Photo required — photograph the closed storefront before reporting.",
+                    )
+                }
+                return@launch
+            }
             val ts = offlineQueue.nowIso()
             val body = buildMap {
                 put("order_id", orderId)
@@ -109,15 +160,24 @@ class ShopClosedWaitingViewModel @Inject constructor(
                 put("client_timestamp", ts)
                 latitude?.let { put("latitude", it.toString()) }
                 longitude?.let { put("longitude", it.toString()) }
-                photoUrl?.takeIf { it.isNotBlank() }?.let { put("photo_url", it) }
+                if (!proof.isNullOrBlank()) put("photo_url", proof)
+                if (current.photoLocalPath.isNotBlank() && proof.isNullOrBlank()) {
+                    put("photo_local_path", current.photoLocalPath)
+                }
             }
             val key = DriverIdempotencyKeys.reportShopClosed(orderId)
             try {
-                api.reportShopClosed(body, key)
-                _state.update { it.copy(isSubmitting = false) }
+                if (proof.isNullOrBlank()) throw java.io.IOException("network_required_for_upload")
+                api.reportShopClosed(
+                    body.filterKeys { it != "photo_local_path" },
+                    key,
+                )
+                _state.update { it.copy(isSubmitting = false, reported = true) }
             } catch (e: Exception) {
                 Log.e("ShopClosed", "Failed to report: ${e.message}")
-                if (DriverOfflineActionCatalog.isNetworkEnqueueable(e)) {
+                if (DriverOfflineActionCatalog.isNetworkEnqueueable(e) ||
+                    e.message == "network_required_for_upload"
+                ) {
                     offlineQueue.enqueueMap(
                         endpoint = DriverOfflineActionCatalog.ENDPOINT_SHOP_CLOSED,
                         body = body,
@@ -128,6 +188,7 @@ class ShopClosedWaitingViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             isSubmitting = false,
+                            reported = true,
                             queuedOffline = true,
                             error = "Offline — shop-closed queued for sync",
                         )

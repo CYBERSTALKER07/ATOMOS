@@ -3,7 +3,8 @@
 ## Preconditions
 
 - Branch `main` includes gap-closure routes (`cashreconroutes`, `creditnoteroutes`), workers, and supplier-portal pages.
-- Flags off on staging: `CASH_RECONCILIATION_REQUIRED=false`, `CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=false`, `CREDIT_NOTE_AUTO_FROM_CLAIM=false`, `CREDIT_SCORE_ENFORCEMENT_ENABLED=false`.
+- Flags off on staging: `CASH_RECONCILIATION_REQUIRED=false`, `CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=false`, `CREDIT_NOTE_AUTO_FROM_CLAIM=false`.
+- Do **not** set `CREDIT_SCORE_ENFORCEMENT_ENABLED` — credit risk scoring removed Phase A (dead flag; zero Go refs).
 
 ## Verify build
 
@@ -30,14 +31,14 @@ make phase0-migrate   # or your staging Spanner DDL job
 1. `backend-go`
 2. `supplier-portal`
 
-Sync Secret Manager / env from `.env.example` for the four flags above.
+Sync Secret Manager / env from `.env.example` for the credit-note + cash-recon flags above.
 
 ## Smoke (flags off)
 
 | Surface | Check |
 |---------|--------|
 | `/compliance` | Dashboard loads |
-| `/credit/collections` | List with score columns |
+| `/credit/collections` | AR / dunning list loads (no score columns — scoring removed) |
 | `/exceptions` | Merged finance exceptions |
 | `/finance/credit-notes` | List + create |
 | `/treasury/cash-reconciliations` | List |

@@ -92,8 +92,16 @@ struct FleetMapView: View {
                                 onShopClosed: { orderId in
                                     navPath.append("shop-closed-waiting")
                                 },
-                                onCreditDelivery: { orderId in
-                                    Task { await vm.markCreditDelivery(orderId: orderId) }
+                                onCreditDelivery: { orderId, photoUrl, signatureUrl, photoLocal, sigLocal in
+                                    Task {
+                                        await vm.markCreditDelivery(
+                                            orderId: orderId,
+                                            photoProofUrl: photoUrl.isEmpty ? nil : photoUrl,
+                                            signatureUrl: signatureUrl.isEmpty ? nil : signatureUrl,
+                                            photoLocalPath: photoLocal,
+                                            signatureLocalPath: sigLocal
+                                        )
+                                    }
                                 }
                             )
                             .toolbar(.hidden, for: .navigationBar)

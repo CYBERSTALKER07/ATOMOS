@@ -4,6 +4,7 @@ import UIKit
 enum OrderMutationAction: String, Identifiable {
     case reject
     case overflow
+    case paymentBypass
 
     var id: String { rawValue }
 }
@@ -32,23 +33,23 @@ struct OrderDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else if let order {
                 let showReceipt = ["COMPLETED", "FISCALIZING", "FISCAL_FAILED"].contains(order.state.uppercased())
                 ResponsiveGridContentWrapper {
                     Section("Summary") {
                         LabeledContent("State", value: order.state)
-                        LabeledContent("Total", value: "\(order.totalUzs.formatted()) UZS")
+                        LabeledContent("Total", value: "\(order.totalUzs.formatted()) \(packCurrency(MarketPackStore.pack))")
                         LabeledContent("Retailer", value: order.retailerName.isEmpty ? "—" : order.retailerName)
                         LabeledContent("Order ID", value: order.orderId)
                             .font(.caption.monospaced())
                         if showReceipt {
-                            Button("View Pegasus receipt") {
+                            Button("mobile_warehouse.ui.view_pegasus_receipt") {
                                 Task { await openReceipt() }
                             }
                         }
@@ -66,10 +67,10 @@ struct OrderDetailView: View {
                 }
             }
         }
-        .navigationTitle("Order detail")
+        .navigationTitle("mobile_warehouse.ui.order_detail")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task { load() }
@@ -78,20 +79,20 @@ struct OrderDetailView: View {
                 Form {
                     DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                     Section {
-                        TextField("Reason", text: $reasonInput, axis: .vertical)
+                        TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                             .lineLimit(3...5)
                     } footer: {
-                        Text("The retailer is notified and can accept or reject the new date.")
+                        Text("mobile_warehouse.ui.the_retailer_is_notified_and_can_accept_or_reject_the_new_date")
                     }
                 }
-                .navigationTitle("Propose new date")
+                .navigationTitle("mobile_warehouse.ui.propose_new_date")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showProposeSheet = false }
+                        Button("common.action.cancel") { showProposeSheet = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Send") { submitPropose() }
+                        Button("mobile_warehouse.ui.send") { submitPropose() }
                             .disabled(mutating || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
@@ -110,7 +111,7 @@ struct OrderDetailView: View {
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(rec.driverName).foregroundColor(.primary)
-                                        Text("\(rec.vehicleClass) • \(rec.licensePlate)").font(.caption).foregroundColor(.secondary)
+                                        Text(L10n.format("mobile_warehouse.ui.vehicleclass_licenseplate", "\(rec.vehicleClass)", "\(rec.licensePlate)")).font(.caption).foregroundColor(.secondary)
                                     }
                                     Spacer()
                                     if selectedDriverId == rec.driverId {
@@ -122,18 +123,18 @@ struct OrderDetailView: View {
                     }
                     Section("Options") {
                         Toggle("Partial Reassignment", isOn: $isPartialReassign)
-                        TextField("Reason (optional)", text: $reasonInput, axis: .vertical)
+                        TextField("warehouse_portal.inventory.text.reason_optional", text: $reasonInput, axis: .vertical)
                             .lineLimit(2...4)
                     }
                 }
-                .navigationTitle("Reassign Order")
+                .navigationTitle("supplier_portal.orders.re_dispatch_dialog.text.reassign_order")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") { showReassignSheet = false }
+                        Button("common.action.cancel") { showReassignSheet = false }
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Confirm") { submitReassign() }
+                        Button("mobile_warehouse.ui.confirm") { submitReassign() }
                             .disabled(selectedDriverId == nil || mutating)
                     }
                 }
@@ -226,6 +227,12 @@ struct OrderDetailView: View {
         Task {
             defer { mutating = false }
             do {
+                if action == .paymentBypass {
+                    let response = try await WarehouseOperationsService.issuePaymentBypass(orderId: orderId)
+                    statusMessage = "Token: \(response.bypassToken ?? "Unknown")"
+                    return
+                }
+
                 let response: WarehouseOrderMutationResponse
                 switch action {
                 case .reject:
@@ -237,6 +244,8 @@ struct OrderDetailView: View {
                     response = try await WarehouseOperationsService.rejectOrder(orderId: orderId, reason: reason)
                 case .overflow:
                     response = try await WarehouseOperationsService.overflowOrder(orderId: orderId, reason: reasonInput.isEmpty ? nil : reasonInput)
+                case .paymentBypass:
+                    fatalError("Handled above")
                 }
                 statusMessage = "Order updated · \(response.status)"
                 reasonInput = ""
@@ -253,6 +262,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Cancel order?"
         case .overflow: return "Return to dispatch pool?"
+        case .paymentBypass: return "Issue Payment Bypass?"
         }
     }
 
@@ -260,6 +270,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Enter a cancellation reason in the field above before confirming."
         case .overflow: return "Optional reason can be entered above."
+        case .paymentBypass: return "Generate a token for the driver if the POS terminal failed."
         }
     }
 
@@ -267,6 +278,7 @@ struct OrderDetailView: View {
         switch action {
         case .reject: return "Cancel order"
         case .overflow: return "Return to pool"
+        case .paymentBypass: return "Issue Bypass Token"
         }
     }
 

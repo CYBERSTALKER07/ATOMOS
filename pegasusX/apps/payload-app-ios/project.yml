@@ -56,22 +56,32 @@ targets:
           - EANBarcodeScannerView.swift
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: payload-app-ios/Assets.xcassets
       - path: payload-app-ios/GoogleService-Info.plist
+      - path: payload-app-ios/PrivacyInfo.xcprivacy
     info:
       path: payload-app-ios/Info.plist
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     dependencies:
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist
+        CODE_SIGN_ENTITLEMENTS: payload-app-ios/PayloadApp.entitlements
   payload-app-iosTests:
     type: bundle.unit-test
     platform: iOS

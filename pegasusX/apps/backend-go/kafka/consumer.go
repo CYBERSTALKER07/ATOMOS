@@ -41,6 +41,8 @@ var (
 
 type EventHandler func(ctx context.Context, msg kafka.Message) error
 
+type DLQHook func(ctx context.Context, msg kafka.Message, reason error) error
+
 type DLQWriter interface {
 	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
 	Close() error
@@ -53,6 +55,7 @@ type ConsumerDeps struct {
 	Topics      []string
 	Handler     EventHandler
 	DLQWriter   DLQWriter
+	OnDLQ       DLQHook
 	MaxAttempts int
 	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH for Managed Kafka.
 	Auth kafkautil.ClientAuth
@@ -72,7 +75,7 @@ type consumerReader interface {
 
 func NewConsumer(deps ConsumerDeps) *Consumer {
 	if deps.MaxAttempts <= 0 {
-		deps.MaxAttempts = 3
+		deps.MaxAttempts = 4
 	}
 	dialer, err := kafkautil.Dialer(deps.Auth)
 	if err != nil {
@@ -159,19 +162,31 @@ func (c *Consumer) dispatch(ctx context.Context, m kafka.Message) error {
 }
 
 func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic in kafka handler: %v", r)
-			slog.ErrorContext(ctx, "panic recovered in kafka consumer", "err", err, "trace_id", TraceIDFromMessage(m))
-			consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
-		}
-	}()
-
 	for attempt := 1; attempt <= c.deps.MaxAttempts; attempt++ {
-		err = c.deps.Handler(ctx, m)
-		if err == nil {
+		var attemptErr error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					attemptErr = fmt.Errorf("panic in kafka handler: %v", r)
+					slog.ErrorContext(ctx, "panic recovered in kafka consumer attempt",
+						"err", attemptErr,
+						"attempt", attempt,
+						"max", c.deps.MaxAttempts,
+						"topic", c.deps.Topic,
+						"partition", m.Partition,
+						"trace_id", TraceIDFromMessage(m),
+					)
+					consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
+				}
+			}()
+			attemptErr = c.deps.Handler(ctx, m)
+		}()
+
+		if attemptErr == nil {
 			return nil
 		}
+		err = attemptErr
+
 		slog.WarnContext(ctx, "kafka handler error",
 			"err", err,
 			"attempt", attempt,
@@ -180,6 +195,7 @@ func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err
 			"partition", m.Partition,
 			"trace_id", TraceIDFromMessage(m),
 		)
+
 		if attempt < c.deps.MaxAttempts {
 			backoff := retryBackoffWithJitter(attempt)
 			select {
@@ -209,6 +225,12 @@ func (c *Consumer) sendToDLQ(ctx context.Context, m kafka.Message, reason error)
 	}
 	if err := c.deps.DLQWriter.WriteMessages(ctx, dlqMsg); err != nil {
 		return fmt.Errorf("write dlq message: %w", err)
+	}
+	if c.deps.OnDLQ != nil {
+		if hookErr := c.deps.OnDLQ(ctx, m, reason); hookErr != nil {
+			slog.ErrorContext(ctx, "kafka dlq hook failed", "err", hookErr, "topic", c.deps.Topic)
+			return fmt.Errorf("dlq hook: %w", hookErr)
+		}
 	}
 	return nil
 }

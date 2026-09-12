@@ -17,8 +17,8 @@ val localProps = Properties().also { props ->
     if (f.exists()) props.load(f.inputStream())
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
-val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasusx.app")
+val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasusx.app")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
 val firebaseAuthEmulator = localProps.getProperty("firebase.auth.emulator", "false") == "true"
 val firebaseAuthEmulatorHost = localProps.getProperty("firebase.auth.emulator.host", "10.0.2.2")
@@ -95,6 +95,14 @@ tasks.named("preBuild") {
 }
 
 android {
+
+    // pegasusx-i18n-generated: shared en/ru/uz string catalogs
+    sourceSets {
+        getByName("main") {
+            res.srcDir(rootProject.file("../../packages/i18n/generated/android"))
+        }
+    }
+
     namespace = "com.pegasus.payload"
     compileSdk = 35
 
@@ -102,8 +110,8 @@ android {
         applicationId = "com.pegasus.payload"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -166,6 +174,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation(project(":mobile-design"))
+    implementation(project(":mobile-kit"))
 
     // Compose
     implementation("androidx.compose.ui:ui")

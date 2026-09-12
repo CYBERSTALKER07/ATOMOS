@@ -96,6 +96,7 @@ def require_docs() -> None:
 
 
 def require_release_gates() -> None:
+    read_text("scripts/smoke_sandbox.sh")
     read_text("scripts/smoke_ssmr.sh")
     read_text("scripts/validate_ai_worker_k8s.sh")
     read_text("scripts/validate_launch_readiness.py")
@@ -109,8 +110,10 @@ def require_release_gates() -> None:
     )
     package = read_json("package.json")
     scripts = package.get("scripts", {})
+    if scripts.get("infra:sandbox:test") != "bash scripts/smoke_sandbox.sh":
+        fail("package.json scripts.infra:sandbox:test must run the sandbox smoke harness")
     if scripts.get("infra:ssmr:test") != "bash scripts/smoke_ssmr.sh":
-        fail("package.json scripts.infra:ssmr:test must run the SSMR smoke harness")
+        fail("package.json scripts.infra:ssmr:test must run the SSMR smoke harness alias")
     if scripts.get("infra:k8s:validate") != "bash scripts/validate_ai_worker_k8s.sh":
         fail("package.json scripts.infra:k8s:validate must run the ai-worker manifest validator")
     if scripts.get("infra:launch:validate") != "python3 scripts/validate_launch_readiness.py":
@@ -155,6 +158,7 @@ def require_platform_evidence() -> None:
         "infra/terraform/main.tf",
         "infra/terraform/gke.tf",
         "infra/terraform/variables.tf",
+        "infra/docker-compose.sandbox.yml",
         "infra/docker-compose.ssmr.yml",
         "apps/backend-go/platform/handlers.go",
         "scripts/parity/role_row_contract_check.sh",

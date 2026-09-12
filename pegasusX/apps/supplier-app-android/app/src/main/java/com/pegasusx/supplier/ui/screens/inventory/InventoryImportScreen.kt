@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -12,14 +14,15 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.ImportSessionCreateRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.TokenHolder
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.ui.PegasusRuntimeBanner
+import com.pegasus.design.ui.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.pegasusx.supplier.R
 
 private enum class ImportWizardStep { CREATE, INGEST, MAPPING, APPROVE, APPLY }
 
@@ -46,7 +49,7 @@ fun InventoryImportScreen(
                 title = { Text("Inventory import") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -60,7 +63,7 @@ fun InventoryImportScreen(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
-                "Step ${step.ordinal + 1} of 5 — ${step.name.lowercase().replaceFirstChar { it.uppercase() }}",
+                stringResource(R.string.mobile_supplier_ui_step_ordinal_1_of_5_uppercase, step.ordinal + 1, step.name.lowercase().replaceFirstChar { it.uppercase() }),
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -102,7 +105,7 @@ fun InventoryImportScreen(
                     ) { Text("Create session") }
                 }
                 ImportWizardStep.INGEST -> {
-                    Text("Session: $sessionId", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.mobile_supplier_ui_session_sessionid, sessionId), style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = csvBody,
                         onValueChange = { csvBody = it },

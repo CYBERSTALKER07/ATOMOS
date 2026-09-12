@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { ScoredException } from "@pegasusx/types";
@@ -8,6 +9,7 @@ import { createSupplierApi } from "@/lib/api";
 const api = createSupplierApi();
 
 export function ScoredExceptionsPanel({ limit = 10 }: { limit?: number }) {
+  const t = usePortalT();
   const [rows, setRows] = useState<ScoredException[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +20,7 @@ export function ScoredExceptionsPanel({ limit = 10 }: { limit?: number }) {
     api
       .listScoredExceptions(limit)
       .then((resp) => setRows(resp.exceptions ?? []))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_scored_exceptions_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_scored_exceptions_failed")))
       .finally(() => setLoading(false));
   }, [limit]);
 
@@ -27,7 +29,7 @@ export function ScoredExceptionsPanel({ limit = 10 }: { limit?: number }) {
   }, [load]);
 
   if (loading) {
-    return <p className="text-sm text-gray-400">Loading scored exceptions…</p>;
+    return <p className="text-sm text-gray-400">{t("supplier_portal.control_tower.scored_exceptions_panel.text.loading_scored_exceptions")}</p>;
   }
 
   if (error) {
@@ -39,7 +41,7 @@ export function ScoredExceptionsPanel({ limit = 10 }: { limit?: number }) {
   }
 
   if (rows.length === 0) {
-    return <p className="text-sm text-gray-400">No open scored exceptions.</p>;
+    return <p className="text-sm text-gray-400">{t("supplier_portal.control_tower.scored_exceptions_panel.text.no_open_scored_exceptions")}</p>;
   }
 
   return (

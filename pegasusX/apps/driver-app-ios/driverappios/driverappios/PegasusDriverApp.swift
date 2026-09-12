@@ -151,7 +151,7 @@ private struct DriverOutdatedGate: View {
                     .font(.system(size: 52, weight: .bold))
                     .foregroundStyle(LabTheme.warning)
 
-                Text("App Update Required")
+                Text("mobile_driver.ui.app_update_required")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(LabTheme.fg)
 
@@ -162,7 +162,7 @@ private struct DriverOutdatedGate: View {
                     .padding(.horizontal, LabTheme.s24)
 
                 Button(action: onSignOut) {
-                    Text("Sign Out")
+                    Text("common.action.sign_out")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                         .frame(maxWidth: .infinity)

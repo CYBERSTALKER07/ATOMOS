@@ -30,15 +30,22 @@ class TokenManager @Inject constructor(@ApplicationContext context: Context) {
 
     fun getToken(): String? = prefs.getString(KEY_JWT, null)
 
-    /** Firebase ID token — preferred over legacy JWT when non-null */
-    fun saveFirebaseIdToken(token: String) {
-        prefs.edit().putString(KEY_FIREBASE_ID_TOKEN, token).apply()
+    /** Session JWT for HTTP/WS Bearer. Firebase ID is OTP `id_token` body only. */
+    fun getPreferredToken(): String? = httpAuthorizationToken(getToken(), null)
+
+    companion object {
+        private const val KEY_JWT = "jwt_token"
+        private const val KEY_USER_ID = "user_id"
+        private const val KEY_USER_NAME = "user_name"
+
+        fun httpAuthorizationToken(sessionJwt: String?, @Suppress("UNUSED_PARAMETER") firebaseIdToken: String?): String? {
+            val jwt = sessionJwt?.trim().orEmpty()
+            if (jwt.isNotEmpty()) {
+                return jwt
+            }
+            return null
+        }
     }
-
-    fun getFirebaseIdToken(): String? = prefs.getString(KEY_FIREBASE_ID_TOKEN, null)
-
-    /** Returns Firebase ID token if available, otherwise legacy JWT */
-    fun getPreferredToken(): String? = getFirebaseIdToken() ?: getToken()
 
     fun saveUserId(userId: String) {
         prefs.edit().putString(KEY_USER_ID, userId).apply()
@@ -55,16 +62,10 @@ class TokenManager @Inject constructor(@ApplicationContext context: Context) {
     fun clearToken() {
         prefs.edit()
             .remove(KEY_JWT)
-            .remove(KEY_FIREBASE_ID_TOKEN)
+            .remove("firebase_id_token")
             .remove(KEY_USER_ID)
             .remove(KEY_USER_NAME)
             .apply()
     }
 
-    companion object {
-        private const val KEY_JWT = "jwt_token"
-        private const val KEY_FIREBASE_ID_TOKEN = "firebase_id_token"
-        private const val KEY_USER_ID = "user_id"
-        private const val KEY_USER_NAME = "user_name"
-    }
 }

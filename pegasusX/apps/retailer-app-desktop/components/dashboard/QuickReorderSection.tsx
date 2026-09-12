@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 import { motion } from "framer-motion";
 import { Package, ArrowUpRight } from "lucide-react";
@@ -16,15 +19,16 @@ export function QuickReorderSection({
   onRefresh,
   onAddToCart,
 }: QuickReorderSectionProps) {
+  const t = usePortalT();
   return (
     <PageSection
-      title="Quick Reorder"
-      description="Stage repeat purchases from your approved catalog."
+      title={t("retailer_desktop.dashboard.quick_reorder_section.text.quick_reorder")}
+      description={t("retailer_desktop.residual.text.stage_repeat_purchases_from_your_approved_catalog")}
     >
       {reorderProducts.length === 0 ? (
         <EmptyState
-          headline="No products ready for reorder"
-          body="Catalog feeds are still populating reorder candidates."
+          headline={t("retailer_desktop.residual.text.no_products_ready_for_reorder")}
+          body={t("retailer_desktop.residual.text.catalog_feeds_are_still_populating_reorder_candidates")}
           variant="no-products"
           action="Sync"
           onAction={onRefresh}

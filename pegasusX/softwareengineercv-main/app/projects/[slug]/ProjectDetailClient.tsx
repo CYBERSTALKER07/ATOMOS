@@ -3,294 +3,188 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { projects } from '@/app/data/projects';
-import ContentCard, { EDITORIAL_IMAGES } from '../../components/ContentCard';
-import { BENTO_THREE } from '../../lib/bento';
-import SiteNav from '@/app/components/explore/SiteNav';
-import Footer from '@/app/components/Footer';
+import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
+import { BENTO_THREE } from '@/app/lib/bento';
+import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
+import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
 import type { Project } from '@/app/data/projects';
+import {
+  getEnCategoryForSlug,
+  getProjectBySlugLocalized,
+  getProjects,
+} from '@/app/data/projects_ru';
+import { useLanguage } from '@/app/context/LanguageContext';
 
-gsap.registerPlugin(ScrollTrigger);
+const STATUS_RU: Record<Project['status'], string> = {
+  completed: 'завершён',
+  'in-progress': 'в работе',
+  archived: 'в архиве',
+};
 
-export default function ProjectDetailClient({ project }: { project: Project }) {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const featuresRef = useRef<HTMLDivElement>(null);
-  const techRef = useRef<HTMLDivElement>(null);
+export default function ProjectDetailClient({ project: projectProp }: { project: Project }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
+  const project =
+    getProjectBySlugLocalized(projectProp.slug, language) ?? projectProp;
 
   useEffect(() => {
-    if (!heroRef.current) return;
-
-    const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-    timeline
-      .fromTo(heroRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1 }
-      )
-      .fromTo(contentRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.8 },
-        '-=0.5'
-      );
-
-    if (featuresRef.current) {
-      gsap.fromTo(featuresRef.current.children,
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.6,
-          stagger: 0.1,
-          scrollTrigger: {
-            trigger: featuresRef.current,
-            start: 'top 80%',
-          }
-        }
-      );
-    }
-
-    if (techRef.current) {
-      gsap.fromTo(techRef.current.children,
-        { opacity: 0, scale: 0.8 },
-        {
-          opacity: 1,
-          scale: 1,
-          duration: 0.5,
-          stagger: 0.05,
-          scrollTrigger: {
-            trigger: techRef.current,
-            start: 'top 80%',
-          }
-        }
-      );
-    }
+    if (!bodyRef.current) return;
+    gsap.fromTo(bodyRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' });
   }, []);
 
+  const enCategory = getEnCategoryForSlug(project.slug);
+  const related = getProjects(language)
+    .filter(
+      (p) =>
+        getEnCategoryForSlug(p.slug) === enCategory && p.id !== project.id
+    )
+    .slice(0, 3);
+  const statusLabel =
+    language === 'ru'
+      ? STATUS_RU[project.status]
+      : project.status.replace('-', ' ');
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      <SiteNav activeHref="/projects" />
-
-      {/* Hero Section */}
-      <section className="min-h-screen relative flex items-center justify-center overflow-hidden pt-20">
-        <div className="container mx-auto px-4 py-12 md:py-20 relative z-10">
-          <div ref={heroRef} className="max-w-5xl mx-auto text-center">
-            {/* Back Button */}
-            <Link href="/projects" className="editorial-btn editorial-btn--sm mb-6 md:mb-8">
-              ← Back to Projects
+    <FleekSecondaryLayout
+      activeHref="/projects"
+      sectionTitle={project.category.toUpperCase()}
+      title={project.title}
+      summary={project.description}
+      primaryHref="/join"
+      primaryLabel={t('nav_demo', 'REQUEST DEMO')}
+      secondaryHref={project.liveUrl || project.github}
+      secondaryLabel={project.liveUrl ? t('projects_live_demo', 'LIVE DEMO') : 'GITHUB'}
+      hubId="capabilities"
+      stackFeatures={project.features.slice(0, 6)}
+      relatedProjectSlug={project.slug}
+      dataExtra={
+        <ImpactMetricCard
+          metric={{
+            client: project.category,
+            title: project.title,
+            description: project.longDescription.slice(0, 120),
+            value: 72,
+            unit: '%',
+          }}
+        />
+      }
+      section06={
+        <>
+          <p className="mb-6">
+            <Link href="/projects" className="fleek-btn">
+              {t('projects_back', '← All modules')}
             </Link>
+          </p>
 
-            {/* Status Badge */}
-            <div className="mb-4 md:mb-6">
-              <span className={`inline-block px-4 md:px-6 py-2 border-2 border-white rounded-2xl font-light text-xs md:text-sm ${
-                project.status === 'completed' ? 'bg-white text-black' :
-                project.status === 'in-progress' ? 'bg-[#FBFF63] text-black border-[#FBFF63]' :
-                'bg-black text-white opacity-70'
-              }`}>
-                {project.status === 'completed' ? '✓ COMPLETED' :
-                 project.status === 'in-progress' ? '⚡ IN PROGRESS' :
-                 '📦 ARCHIVED'}
-              </span>
-            </div>
+          <div ref={bodyRef} className="space-y-8">
+            <section className="docs-section">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">{t('sec_why_it_matters', 'why it matters')}</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight">{t('projects_about', 'About this module')}</h2>
+              <p className="mt-6 max-w-3xl leading-relaxed text-white/70">{project.longDescription}</p>
+              <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="docs-card">
+                  <dt className="font-mono text-[10px] uppercase tracking-widest text-white/40">{t('sec_status', 'Status')}</dt>
+                  <dd className="mt-2 text-sm text-white/80">{statusLabel}</dd>
+                </div>
+                <div className="docs-card">
+                  <dt className="font-mono text-[10px] uppercase tracking-widest text-white/40">{t('sec_category', 'Category')}</dt>
+                  <dd className="mt-2 text-sm text-white/80">{project.category}</dd>
+                </div>
+                <div className="docs-card">
+                  <dt className="font-mono text-[10px] uppercase tracking-widest text-white/40">{t('projects_tech', 'Stack')}</dt>
+                  <dd className="mt-2 text-sm text-white/80">
+                    {project.technologies.slice(0, 4).join(' · ') || 'Pegasus'}
+                  </dd>
+                </div>
+                <div className="docs-card">
+                  <dt className="font-mono text-[10px] uppercase tracking-widest text-white/40">{t('sec_date', 'Date')}</dt>
+                  <dd className="mt-2 text-sm text-white/80">{project.date}</dd>
+                </div>
+              </dl>
+            </section>
 
-            {/* Title */}
-            <h1 className="text-3xl md:text-5xl lg:text-7xl font-light mb-4 md:mb-6">
-              {project.title}
-            </h1>
+            <section className="docs-section">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">{t('sec_capabilities', 'core capabilities')}</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight">{t('projects_features', 'Key features')}</h2>
+              <ul className="docs-cap-grid mt-8">
+                {project.features.map((f) => (
+                  <li key={f} className="docs-card text-sm text-white/80">{f}</li>
+                ))}
+              </ul>
+            </section>
 
-            <div className="w-20 md:w-24 h-1 bg-white rounded-full mx-auto mb-6 md:mb-8" />
+            <section className="docs-section">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">{t('sec_edge_cases', 'edge cases')}</p>
+              <div className="mt-8 grid gap-4 md:grid-cols-2">
+                <div className="docs-card">
+                  <h3 className="text-xl font-semibold">{t('sec_challenges', 'Challenges')}</h3>
+                  <ul className="mt-4 space-y-2 text-sm text-white/65">
+                    {project.challenges.map((c) => (
+                      <li key={c}>· {c}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="docs-card">
+                  <h3 className="text-xl font-semibold">{t('sec_learnings', 'Learnings')}</h3>
+                  <ul className="mt-4 space-y-2 text-sm text-white/65">
+                    {project.learnings.map((l) => (
+                      <li key={l}>· {l}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </section>
 
-            {/* Description */}
-            <p className="text-base md:text-xl lg:text-2xl text-gray-300 mb-6 md:mb-8 max-w-3xl mx-auto">
-              {project.description}
-            </p>
-
-            {/* Category & Date */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 mb-8 md:mb-12">
-              <span 
-                className="px-4 py-2 text-black font-light rounded-2xl"
-                style={{ backgroundColor: project.color }}
-              >
-                {project.category}
-              </span>
-              <span className="hidden sm:block text-gray-400">•</span>
-              <span className="text-gray-400 text-sm md:text-base">{project.date}</span>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
+            <div className="flex flex-wrap gap-3">
+              <Link href="/join" className="fleek-btn fleek-btn--accent">{t('nav_demo', 'Request demo')}</Link>
               <a
                 href={project.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="editorial-btn"
+                className="fleek-btn"
               >
-                View on GitHub →
+                {t('projects_view_github')}
               </a>
-              {project.liveUrl && (
-                <a
-                  href={project.liveUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="editorial-btn"
-                >
-                  Live Demo →
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Content Section */}
-      <section className="py-12 md:py-20 bg-white text-black">
-        <div className="container mx-auto px-4">
-          <div ref={contentRef} className="max-w-5xl mx-auto">
-            <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">About This Project</h2>
-              <div className="w-20 h-1 bg-black rounded-full mb-4 md:mb-6" />
-              <p className="text-base md:text-lg lg:text-xl leading-relaxed text-gray-800">
-                {project.longDescription}
-              </p>
             </div>
 
-            <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8">Technologies Used</h2>
-              <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
-              <div ref={techRef} className="flex flex-wrap gap-2 md:gap-3">
-                {project.technologies.map((tech, index) => (
+            {project.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {project.tags.slice(0, 8).map((tag) => (
                   <span
-                    key={index}
-                    className="editorial-btn editorial-btn--sm editorial-btn--on-light"
-                  >
-                    {tech}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-12 md:mb-16">
-              <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8">Tags</h2>
-              <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
-              <div className="flex flex-wrap gap-2 md:gap-3">
-                {project.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="editorial-btn editorial-btn--sm editorial-btn--on-light editorial-btn--inverted"
+                    key={tag}
+                    className="border border-white/15 px-2 py-1 font-mono text-[10px] text-white/60"
                   >
                     #{tag}
                   </span>
                 ))}
               </div>
-            </div>
+            ) : null}
           </div>
-        </div>
-      </section>
 
-      {/* Features Section */}
-      <section className="py-12 md:py-20 bg-black text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-light mb-4">Key Features</h2>
-              <div className="w-20 h-1 bg-white rounded-full mx-auto" />
-            </div>
-
-            <div ref={featuresRef} className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {project.features.map((feature, index) => (
-                <div
-                  key={index}
-                  className="p-4 md:p-6 border-2 border-white rounded-2xl hover:bg-white hover:text-black transition-all duration-300"
-                >
-                  <div className="flex items-start gap-3 md:gap-4">
-                    <span className="text-xl md:text-2xl">✓</span>
-                    <p className="text-sm md:text-lg">{feature}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Challenges & Learnings */}
-      <section className="py-12 md:py-20 bg-white text-black">
-        <div className="container mx-auto px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
-              <div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">Challenges</h2>
-                <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
-                <ul className="space-y-3 md:space-y-4">
-                  {project.challenges.map((challenge, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <span className="text-lg md:text-xl mt-1">⚠️</span>
-                      <p className="text-sm md:text-base lg:text-lg">{challenge}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-4 md:mb-6">Key Learnings</h2>
-                <div className="w-20 h-1 bg-black rounded-full mb-6 md:mb-8" />
-                <ul className="space-y-3 md:space-y-4">
-                  {project.learnings.map((learning, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <span className="text-lg md:text-xl mt-1">💡</span>
-                      <p className="text-sm md:text-base lg:text-lg">{learning}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Related Projects */}
-      <section className="py-12 md:py-20 bg-black text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-light mb-4">More Projects</h2>
-              <div className="w-20 h-1 bg-white rounded-full mx-auto mb-4 md:mb-6" />
-              <p className="text-sm md:text-lg text-gray-300">
-                Check out other projects in the {project.category} category
-              </p>
-            </div>
-
-            <div className="editorial-bento max-w-6xl mx-auto mb-8 md:mb-12">
-              {projects
-                .filter(p => p.category === project.category && p.id !== project.id)
-                .slice(0, 3)
-                .map((relatedProject, index) => (
+          {related.length > 0 ? (
+            <section className="docs-section mt-12">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">{t('sec_more_in')}</p>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight">{t('projects_more')} — {project.category}</h2>
+              <div className="editorial-bento mt-10">
+                {related.map((r, index) => (
                   <ContentCard
-                    key={relatedProject.id}
+                    key={r.id}
                     variant={index === 1 ? 'split' : 'vertical'}
                     tone={index === 1 ? 'light' : 'dark'}
-                    tag={relatedProject.category}
-                    title={relatedProject.title}
-                    description={relatedProject.description}
-                    image={relatedProject.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
-                    href={`/projects/${relatedProject.slug}`}
-                    ctaLabel="READ MORE"
+                    tag={r.category}
+                    title={r.title}
+                    description={r.description}
+                    image={r.image || EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
+                    href={`/projects/${r.slug}`}
+                    ctaLabel={t('content_read_more')}
                     className={BENTO_THREE[index]}
                   />
                 ))}
-            </div>
-
-            <div className="text-center">
-              <Link href="/projects" className="editorial-btn">
-                VIEW ALL MODULES
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+              </div>
+            </section>
+          ) : null}
+        </>
+      }
+    />
   );
 }

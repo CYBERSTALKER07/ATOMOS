@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +28,7 @@ import com.pegasusx.driver.ui.theme.StatusBlue
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
+import com.pegasusx.driver.R
 
 @Composable
 fun OffloadActionFooter(
@@ -63,7 +66,7 @@ fun OffloadActionFooter(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "Shop Closed / No Answer",
+                text = stringResource(R.string.mobile_driver_ui_shop_closed_no_answer),
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp
             )
@@ -95,7 +98,7 @@ fun OffloadActionFooter(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "Deliver on Credit",
+                text = stringResource(R.string.mobile_driver_ui_deliver_on_credit),
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp
             )
@@ -128,7 +131,7 @@ fun OffloadActionFooter(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Report Missing Items",
+                    text = stringResource(R.string.mobile_driver_ui_report_missing_items),
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp
                 )

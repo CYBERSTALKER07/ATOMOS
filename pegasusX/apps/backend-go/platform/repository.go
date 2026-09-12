@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // PolicyRow is the durable client version policy for a role/platform/channel tuple.
@@ -28,6 +29,8 @@ type DeviceTokenRow struct {
 	ActorRole string
 	Platform  string
 	Token     string
+	DeviceID  string
+	SessionID string
 	UpdatedAt time.Time
 }
 
@@ -42,6 +45,8 @@ type DeviceTokenRepository interface {
 	UpsertToken(ctx context.Context, row DeviceTokenRow) error
 	ListTokens(ctx context.Context, actorID, actorRole string) ([]string, error)
 	DeleteToken(ctx context.Context, token string) error
+	PurgeStaleToken(ctx context.Context, token string, sessionID string) error
+	DeleteTokenBySession(ctx context.Context, actorID string, sessionID string) error
 }
 
 // MemoryPolicyRepository is the scaffold fallback when Spanner is unavailable.
@@ -58,13 +63,13 @@ func NewMemoryPolicyRepository() *MemoryPolicyRepository {
 			key := policyKey(role, platform, "production")
 			r.rows[key] = PolicyRow{
 				Role: role, Platform: platform, Channel: "production",
-				MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+				MinimumVersion: "1.0.0", RecommendedVersion: "1.0.1",
 			}
 			// Website-only enterprise channel defaults (manifest URL filled at evaluate).
 			entKey := policyKey(role, platform, EnterpriseChannel)
 			r.rows[entKey] = PolicyRow{
 				Role: role, Platform: platform, Channel: EnterpriseChannel,
-				MinimumVersion: "0.0.0", RecommendedVersion: "0.0.0",
+				MinimumVersion: "1.0.0", RecommendedVersion: "1.0.1",
 				UpdateURL: DefaultEnterpriseManifestURL(role, platform),
 			}
 		}
@@ -172,6 +177,8 @@ func (r *SpannerDeviceTokenRepository) UpsertToken(ctx context.Context, row Devi
 			"ActorId":   row.ActorID,
 			"ActorRole": row.ActorRole,
 			"Platform":  row.Platform,
+			"DeviceId":  spanner.NullString{StringVal: row.DeviceID, Valid: row.DeviceID != ""},
+			"SessionId": spanner.NullString{StringVal: row.SessionID, Valid: row.SessionID != ""},
 			"UpdatedAt": spanner.CommitTimestamp,
 		})
 		return txn.BufferWrite([]*spanner.Mutation{m})
@@ -204,7 +211,7 @@ func (r *SpannerDeviceTokenRepository) ListTokens(ctx context.Context, actorID, 
 		if err := row.Columns(&token); err != nil {
 			return nil, err
 		}
-		if token != "" {
+		if IsFCMRegistrationToken(token, "") {
 			tokens = append(tokens, token)
 		}
 	}
@@ -219,6 +226,79 @@ func (r *SpannerDeviceTokenRepository) DeleteToken(ctx context.Context, token st
 	})
 	if err != nil {
 		return fmt.Errorf("delete device token: %w", err)
+	}
+	return nil
+}
+
+// PurgeStaleToken conditionally deletes the token only if the stored SessionId matches sessionID
+// (or if sessionID is empty for backward compatibility). If a newer session has registered the token, deletion is skipped.
+func (r *SpannerDeviceTokenRepository) PurgeStaleToken(ctx context.Context, token string, sessionID string) error {
+	if token == "" {
+		return nil
+	}
+	if sessionID == "" {
+		return r.DeleteToken(ctx, token)
+	}
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "DeviceTokens", spanner.Key{token}, []string{"SessionId"})
+		if err != nil {
+			if spanner.ErrCode(err) == codes.NotFound {
+				return nil
+			}
+			return err
+		}
+		var currentSession spanner.NullString
+		if err := row.Columns(&currentSession); err != nil {
+			return err
+		}
+		if currentSession.Valid && currentSession.StringVal != "" && currentSession.StringVal != sessionID {
+			return nil
+		}
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Delete("DeviceTokens", spanner.Key{token}),
+		})
+	})
+	if err != nil {
+		return fmt.Errorf("purge stale device token: %w", err)
+	}
+	return nil
+}
+
+// DeleteTokenBySession deletes all tokens for an actor registered with a specific session ID.
+func (r *SpannerDeviceTokenRepository) DeleteTokenBySession(ctx context.Context, actorID string, sessionID string) error {
+	if actorID == "" || sessionID == "" {
+		return nil
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT Token FROM DeviceTokens
+			WHERE ActorId = @aid AND SessionId = @sid`,
+		Params: map[string]any{"aid": actorID, "sid": sessionID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	var mutations []*spanner.Mutation
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query tokens by session: %w", err)
+		}
+		var token string
+		if err := row.Columns(&token); err != nil {
+			return err
+		}
+		mutations = append(mutations, spanner.Delete("DeviceTokens", spanner.Key{token}))
+	}
+	if len(mutations) == 0 {
+		return nil
+	}
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("delete tokens by session: %w", err)
 	}
 	return nil
 }
@@ -251,7 +331,7 @@ func (r *MemoryDeviceTokenRepository) ListTokens(ctx context.Context, actorID, a
 	defer r.mu.RUnlock()
 	var out []string
 	for _, row := range r.tokens {
-		if row.ActorID == actorID && row.ActorRole == actorRole {
+		if row.ActorID == actorID && row.ActorRole == actorRole && IsFCMRegistrationToken(row.Token, row.Platform) {
 			out = append(out, row.Token)
 		}
 	}
@@ -264,5 +344,39 @@ func (r *MemoryDeviceTokenRepository) DeleteToken(ctx context.Context, token str
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.tokens, token)
+	return nil
+}
+
+// PurgeStaleToken conditionally removes a token if its SessionID matches sessionID or sessionID is empty.
+func (r *MemoryDeviceTokenRepository) PurgeStaleToken(ctx context.Context, token string, sessionID string) error {
+	_ = ctx
+	if token == "" {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	row, ok := r.tokens[token]
+	if !ok {
+		return nil
+	}
+	if sessionID == "" || row.SessionID == "" || row.SessionID == sessionID {
+		delete(r.tokens, token)
+	}
+	return nil
+}
+
+// DeleteTokenBySession removes all tokens for actorID registered with sessionID.
+func (r *MemoryDeviceTokenRepository) DeleteTokenBySession(ctx context.Context, actorID string, sessionID string) error {
+	_ = ctx
+	if actorID == "" || sessionID == "" {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for token, row := range r.tokens {
+		if row.ActorID == actorID && row.SessionID == sessionID {
+			delete(r.tokens, token)
+		}
+	}
 	return nil
 }

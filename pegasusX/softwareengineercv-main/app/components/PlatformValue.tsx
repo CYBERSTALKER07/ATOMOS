@@ -1,5 +1,6 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,6 +14,8 @@ import SectionHeader from './layout/SectionHeader';
 gsap.registerPlugin(ScrollTrigger);
 
 export default function PlatformValue() {
+  const { t } = useLanguage();
+
   const { isMobile } = useIsMobile();
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -72,7 +75,7 @@ export default function PlatformValue() {
             
             </div>
             <div className="editorial-card__body">
-              <p className="editorial-tag">Platform overview</p>
+              <p className="editorial-tag">{t('platform_value_eyebrow', 'Platform overview')}</p>
               <h3 className="editorial-card__title">
                 See Pegasus with your network in mind
               </h3>

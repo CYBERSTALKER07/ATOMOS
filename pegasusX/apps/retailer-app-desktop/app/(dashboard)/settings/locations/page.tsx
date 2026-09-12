@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -24,6 +25,7 @@ type Location = {
 };
 
 export default function LocationsPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [items, setItems] = useState<Location[]>([]);
   const [activeId, setActiveId] = useState<string>("");
@@ -51,7 +53,7 @@ export default function LocationsPage() {
       setItems(json.items ?? []);
       setActiveId(json.active_location_id ?? "");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load locations");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_locations"));
     } finally {
       setLoading(false);
     }
@@ -88,7 +90,7 @@ export default function LocationsPage() {
       setForm({ name: "", delivery_address: "", lat: "", lng: "" });
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Create failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.create_failed"));
     } finally {
       setBusy(false);
     }
@@ -105,7 +107,7 @@ export default function LocationsPage() {
       setBanner("Primary location updated (shop delivery address mirrored)");
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Set primary failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.set_primary_failed"));
     } finally {
       setBusy(false);
     }
@@ -135,7 +137,7 @@ export default function LocationsPage() {
       setActiveId(id);
       setBanner("Active branch switched");
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Switch failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.switch_failed"));
     } finally {
       setBusy(false);
     }
@@ -143,8 +145,8 @@ export default function LocationsPage() {
 
   return (
     <PageChrome
-      title="Locations"
-      description="Branches and delivery addresses. Solo shops get one primary automatically."
+      title={t("retailer_desktop.settings.locations.text.locations")}
+      description={t("retailer_desktop.residual.text.branches_and_delivery_addresses_solo_shops_get_one_primary_autom")}
       actions={
         <button
           type="button"

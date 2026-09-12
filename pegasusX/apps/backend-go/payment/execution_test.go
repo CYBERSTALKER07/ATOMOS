@@ -29,6 +29,7 @@ func TestProviderExecutionRouter_DefaultGateway(t *testing.T) {
 	defer ts.Close()
 
 	exec := newGlobalPayProviderExecutorWithSimulator("dev", "svc", "", "", ts.URL)
+	exec.allowStub = true
 	router := NewProviderExecutionRouter(ProviderExecutionRouterConfig{})
 	router.SetExecutor("GLOBAL_PAY", exec)
 

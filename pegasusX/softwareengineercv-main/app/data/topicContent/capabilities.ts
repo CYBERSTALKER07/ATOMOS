@@ -8,7 +8,7 @@ export const capabilitiesTopics = {
     outcomes: ['Visual board first', 'AI suggestions opt-in', 'Force-dispatch audited'],
     howItWorks: defaultHowItWorks([
       ['Eligibility engine', 'Orders filtered by payment, zone, and stock.'],
-      ['Capacity matching', 'Binpack-aware load planning.'],
+      ['Capacity matching', 'Load packing-aware load planning.'],
       ['Human confirm', 'Warehouse lead commits every load.'],
     ]),
     flow: 'dispatchBoard',
@@ -16,12 +16,12 @@ export const capabilitiesTopics = {
   }),
   'reliable-updates': seedContent({
     title: 'Reliable Updates',
-    summary: 'Outbox pattern — consistent state across every app after mutations.',
+    summary: 'Reliable updates — consistent state across every app after mutations.',
     problem: 'Stale screens after writes cause double dispatch and payment errors.',
-    outcomes: ['Transactional outbox', 'Kafka fanout', 'WS silent refresh'],
+    outcomes: ['Reliable change events', 'live updates', 'automatic screen refresh'],
     howItWorks: defaultHowItWorks([
       ['Single write path', 'Handlers follow verify-validate-save-refresh-notify.'],
-      ['Durable events', 'Outbox consumed with idempotency.'],
+      ['Durable events', 'Outbox consumed with safe retries.'],
       ['Live UI', 'Clients refresh on envelope receipt.'],
     ]),
     flow: 'realtimePipeline',
@@ -44,7 +44,7 @@ export const capabilitiesTopics = {
     title: 'Live Fleet Tracking',
     summary: 'Telemetry with planned vs actual routes on ops and retailer maps.',
     problem: 'Without planned geometry, “delayed” is meaningless.',
-    outcomes: ['OSRM planned routes', 'Live telemetry overlay', 'Deviation detection'],
+    outcomes: ['routing planned routes', 'Live telemetry overlay', 'Deviation detection'],
     howItWorks: defaultHowItWorks([
       ['Attach plan at dispatch', 'Route geometry stored on manifest.'],
       ['Ingest driver GPS', 'Loss-tolerant HTTP posts.'],
@@ -55,12 +55,12 @@ export const capabilitiesTopics = {
   }),
   'instant-coordination': seedContent({
     title: 'Instant Coordination',
-    summary: 'WebSocket refresh across web and mobile within seconds of mutations.',
+    summary: 'live refresh across web and mobile within seconds of mutations.',
     problem: 'Polling dashboards lag during peak order days.',
     outcomes: ['Per-role WS hubs', 'Claims-scoped rooms', 'Envelope contract from types'],
     howItWorks: defaultHowItWorks([
       ['Connect with claims', 'JWT scopes determine inbox room.'],
-      ['Receive envelopes', 'Typed events trigger silent refresh.'],
+      ['Receive envelopes', 'Typed events trigger automatic refresh.'],
       ['Stay consistent', 'Same contract on portal and native.'],
     ]),
     flow: 'realtimePipeline',

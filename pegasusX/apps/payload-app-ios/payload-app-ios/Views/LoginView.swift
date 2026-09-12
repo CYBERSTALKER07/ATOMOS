@@ -39,7 +39,7 @@ struct LoginView: View {
                             Text("PHONE")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(TermTheme.tertiary)
-                            TextField("+998 …", text: $viewModel.phone)
+                            TextField("mobile_payload.ui.998", text: $viewModel.phone)
                                 .keyboardType(.phonePad)
                                 .textContentType(.telephoneNumber)
                                 .focused($focus, equals: .phone)
@@ -56,7 +56,7 @@ struct LoginView: View {
 
                         if viewModel.mode == .otp, viewModel.otpSent {
                             VStack(alignment: .leading, spacing: TermTheme.s8) {
-                                Text("VERIFICATION CODE")
+                                Text("mobile_payload.ui.verification_code")
                                     .font(.system(size: 10, weight: .bold, design: .monospaced))
                                     .foregroundStyle(TermTheme.tertiary)
                                 TextField("000000", text: Binding(
@@ -136,7 +136,7 @@ struct LoginView: View {
                             Button {
                                 Task { await viewModel.sendOtp() }
                             } label: {
-                                Text("RESEND CODE")
+                                Text("mobile_payload.ui.resend_code")
                                     .font(.system(size: 13, weight: .bold, design: .monospaced))
                                     .frame(maxWidth: .infinity, minHeight: 44)
                             }

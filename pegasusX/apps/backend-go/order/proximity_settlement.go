@@ -18,7 +18,7 @@ import (
 )
 
 // Settlement proximity: payment modes unlock only when driver is physically
-// at the stop (design §4.1). Tighter than approach geofence (500 m).
+// at the stop (design §4.1). Tighter than pack breach_radius_meters.
 const (
 	SettlementProximityRadiusM = 100.0
 	// SettlementH3Resolution: res 9 ~174 m edge — cell match ≈ doorstep.
@@ -46,9 +46,9 @@ var (
 
 // ProximityUnlockRequest is POST /v1/delivery/proximity-unlock.
 type ProximityUnlockRequest struct {
-	OrderID         string  `json:"order_id"`
-	Latitude        float64 `json:"latitude"`
-	Longitude       float64 `json:"longitude"`
+	OrderID   string  `json:"order_id"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 	// ClientTimestamp RFC3339 — when the location sample was taken (offline replay).
 	ClientTimestamp string `json:"client_timestamp,omitempty"`
 	// ForceBypassToken optional supervisor token (supervised MANUAL/FORCE_BYPASS).
@@ -67,6 +67,11 @@ type ProximityUnlockResponse struct {
 	Message             string  `json:"message,omitempty"`
 }
 
+// SettlementH3Cell returns the resolution 9 H3 cell for doorstep settlement / perimeter checks.
+func SettlementH3Cell(lat, lng float64) string {
+	return proximity.SettlementH3Cell(lat, lng)
+}
+
 // EvaluateSettlementProximity returns method + distance if within settlement radius or H3 match.
 // Pure function — no I/O. Used by unlock handler and tests.
 func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float64, orderH3Cell string) (method string, distanceM float64, ok bool) {
@@ -79,9 +84,8 @@ func EvaluateSettlementProximity(driverLat, driverLng, orderLat, orderLng float6
 
 	// H3 cell match (preferred when order has cell).
 	if strings.TrimSpace(orderH3Cell) != "" {
-		cell, err := proximity.PanicSafeLatLngToCell(driverLat, driverLng, SettlementH3Resolution)
-		if err == nil {
-			driverCell := cell.String()
+		driverCell := proximity.SettlementH3Cell(driverLat, driverLng)
+		if driverCell != "" {
 			// Accept exact match at settlement res or prefix match against stored cell.
 			if driverCell == orderH3Cell || h3CellsCompatible(driverCell, orderH3Cell) {
 				if orderLat != 0 || orderLng != 0 {
@@ -221,13 +225,13 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
 		}
 		var (
-			status                               string
-			version                              int64
-			driverCol, retailerCol, supplierCol  spanner.NullString
-			orderLat, orderLng                   float64
-			h3Cell                               spanner.NullString
-			proxAt                               spanner.NullTime
-			proxMethod                           spanner.NullString
+			status                              string
+			version                             int64
+			driverCol, retailerCol, supplierCol spanner.NullString
+			orderLat, orderLng                  float64
+			h3Cell                              spanner.NullString
+			proxAt                              spanner.NullTime
+			proxMethod                          spanner.NullString
 		)
 		if err := row.Columns(&status, &version, &driverCol, &retailerCol, &supplierCol,
 			&orderLat, &orderLng, &h3Cell, &proxAt, &proxMethod); err != nil {
@@ -301,11 +305,11 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 		}
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId":              req.OrderID,
-				"ProximityUnlockedAt":  unlockedAt,
-				"ProximityMethod":      method,
-				"Version":              version + 1,
-				"UpdatedAt":            unlockedAt,
+				"OrderId":             req.OrderID,
+				"ProximityUnlockedAt": unlockedAt,
+				"ProximityMethod":     method,
+				"Version":             version + 1,
+				"UpdatedAt":           unlockedAt,
 			}),
 		}
 		for _, e := range buf.events {

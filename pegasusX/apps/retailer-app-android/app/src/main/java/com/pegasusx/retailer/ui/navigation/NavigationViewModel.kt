@@ -14,6 +14,7 @@ import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.formatRetailerAmount
+import com.pegasusx.retailer.data.model.selectableRetailerCatalogCodes
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.PendingPaymentSession
 import com.pegasusx.retailer.services.PendingOrderSyncScheduler
@@ -68,6 +69,7 @@ data class NavigationUiState(
     val unreadNotificationCount: Int = 0,
     val clientPolicyMessage: String? = null,
     val clientPolicyForce: Boolean = false,
+    val allowedCardGateways: List<String> = emptyList(),
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -75,7 +77,8 @@ data class NavigationUiState(
     val floatingTotalDisplay: String
         get() {
             val total = activeOrders.sumOf { it.totalAmount }
-            val currency = activeOrders.firstOrNull()?.currency ?: "UZS"
+            val currency = activeOrders.firstOrNull()?.currency?.ifBlank { null }
+                ?: com.pegasusx.retailer.data.model.sessionPackCurrency()
             return if (total > 0) formatRetailerAmount(total, currency) else ""
         }
     val floatingCountdownIso: String?
@@ -90,12 +93,12 @@ data class NavigationUiState(
 }
 
 private fun PendingPaymentSession.toRetailerPaymentEvent(): RetailerWSMessage {
-    val normalizedGateway = gateway.ifBlank { "GLOBAL_PAY" }
+    val normalizedGateway = gateway.orEmpty().ifBlank { "GLOBAL_PAY" }
     return RetailerWSMessage(
         type = "PAYMENT_REQUIRED",
         orderId = orderId,
         invoiceId = invoiceId ?: "",
-        sessionId = sessionId,
+        sessionId = sessionId.orEmpty(),
         amount = lockedAmount,
         originalAmount = lockedAmount,
         availableCardGateways = if (normalizedGateway == "CASH") emptyList() else listOf(normalizedGateway),
@@ -131,6 +134,7 @@ class NavigationViewModel @Inject constructor(
         }
         loadActiveOrders()
         loadPendingPayments()
+        loadPaymentCatalog()
         loadNotificationBadge()
         loadClientPolicy()
         connectWebSocket()
@@ -155,6 +159,19 @@ class NavigationViewModel @Inject constructor(
         loadPendingPayments(reconcile = true)
         loadClientPolicy()
         PendingOrderSyncScheduler.enqueue(appContext)
+    }
+
+    private fun loadPaymentCatalog() {
+        viewModelScope.launch {
+            try {
+                val resp = api.getPaymentCatalog()
+                _uiState.update {
+                    it.copy(allowedCardGateways = selectableRetailerCatalogCodes(resp.catalog))
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(allowedCardGateways = emptyList()) }
+            }
+        }
     }
 
     fun loadNotificationBadge() {
@@ -272,17 +289,37 @@ class NavigationViewModel @Inject constructor(
         _uiState.update { it.copy(shopClosedAlert = null) }
     }
 
-    suspend fun respondToShopClosed(orderId: String, response: String): Result<Unit> {
+    suspend fun respondToShopClosed(
+        orderId: String,
+        response: String,
+        photoUrl: String? = null,
+    ): Result<Unit> {
         return try {
+            if (response == "AUTHORIZE_BYPASS" && photoUrl.isNullOrBlank()) {
+                return Result.failure(
+                    IllegalArgumentException("Doorway / drop-off photo is required to authorize bypass."),
+                )
+            }
+            val body = mutableMapOf("order_id" to orderId, "response" to response)
+            if (!photoUrl.isNullOrBlank()) {
+                body["photo_url"] = photoUrl.trim()
+            }
             api.shopClosedResponse(
-                mapOf("order_id" to orderId, "response" to response),
+                body,
                 "shop-closed-response:$orderId:$response",
             )
             clearShopClosedAlert()
             loadActiveOrders()
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            val msg = e.message.orEmpty()
+            if (msg.contains("photo_url_required_for_bypass")) {
+                Result.failure(
+                    IllegalArgumentException("Doorway / drop-off photo is required to authorize bypass."),
+                )
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -409,6 +446,7 @@ class NavigationViewModel @Inject constructor(
                 .filter {
                     it.type == "FISCAL_RECEIPT_REQUESTED" ||
                         it.type == "PAYMENT_CLEARED" ||
+                        it.type == "SPLIT_PAYMENT_CREATED" ||
                         (it.type == "ORDER_STATUS_CHANGED" && it.state.equals("FISCALIZING", true))
                 }
                 .collect { msg ->

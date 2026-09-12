@@ -9,7 +9,7 @@ Kotlin + Jetpack Compose Material 3 tablet app for payload operators.
 
 - Default API: `http://10.0.2.2:8180` (emulator → host pegasusX backend)
 - Auth: `POST /v1/auth/payloader/login` (phone + PIN)
-- WebSocket: `/v1/ws?token=...`
+- WebSocket: `/v1/ws` with `Authorization: Bearer <session JWT>` (no query token)
 
 ```bash
 cd pegasusX/apps/payload-app-android

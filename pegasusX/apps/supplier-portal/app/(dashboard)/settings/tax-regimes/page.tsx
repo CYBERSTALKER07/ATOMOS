@@ -1,10 +1,12 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { useLiveData } from "@/lib/hooks";
 import { supplierFetch } from "@/lib/auth";
+import { sessionPackCurrency } from "@pegasusx/api-core";
 import {
   RefreshCw,
   Plus,
@@ -31,6 +33,7 @@ type TaxRegimeResponse = {
 };
 
 export default function TaxRegimesPage() {
+  const t = usePortalT();
   const [country] = useState("UZ");
   const { data, loading, isRefreshing, mutate } = useLiveData<TaxRegimeResponse>(
     `/v1/admin/tax-regimes?country=${country}&limit=50`
@@ -40,7 +43,7 @@ export default function TaxRegimesPage() {
   
   const [formData, setFormData] = useState({
     country_code: "UZ",
-    currency: "UZS",
+    currency: sessionPackCurrency(),
     effective_from: "",
     vat_rate_bps: "1200",
     simplified: false
@@ -68,7 +71,7 @@ export default function TaxRegimesPage() {
       setIsCreating(false);
       setFormData({
         country_code: "UZ",
-        currency: "UZS",
+        currency: sessionPackCurrency(),
         effective_from: "",
         vat_rate_bps: "1200",
         simplified: false
@@ -92,8 +95,8 @@ export default function TaxRegimesPage() {
 
   return (
     <PageChrome
-      title="Tax Regimes"
-      description="Manage historical and future tax rates"
+      title={t("portal.nav.tax_regimes")}
+      description={t("supplier_portal.residual.text.manage_historical_and_future_tax_rates")}
       actions={
         <div className="flex gap-2">
           <button
@@ -121,7 +124,7 @@ export default function TaxRegimesPage() {
     >
       {isCreating && (
         <div className="mb-6 animate-in slide-in-from-top-4 fade-in duration-200">
-          <PageSection title="Create New Tax Regime">
+          <PageSection title={t("supplier_portal.settings.tax_regimes.text.create_new_tax_regime")}>
             <form onSubmit={handleCreate} className="space-y-4 p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -208,11 +211,11 @@ export default function TaxRegimesPage() {
         </div>
       )}
 
-      <PageSection title="Tax Regime History" className="p-0">
+      <PageSection title={t("supplier_portal.settings.tax_regimes.text.tax_regime_history")} className="p-0">
         {loading && !data ? (
-          <div className="p-8 text-center text-[var(--desk-text-secondary)]">Loading regimes...</div>
+          <div className="p-8 text-center text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.tax_regimes.text.loading_regimes")}</div>
         ) : !data || data.regimes.length === 0 ? (
-          <div className="p-8 text-center text-[var(--desk-text-secondary)]">No tax regimes found.</div>
+          <div className="p-8 text-center text-[var(--desk-text-secondary)]">{t("supplier_portal.settings.tax_regimes.text.no_tax_regimes_found")}</div>
         ) : (
           <div className="divide-y divide-[var(--desk-border)]">
             {data.regimes.map((regime, i) => (

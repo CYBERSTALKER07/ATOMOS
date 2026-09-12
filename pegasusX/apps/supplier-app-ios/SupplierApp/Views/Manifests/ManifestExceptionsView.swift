@@ -22,10 +22,10 @@ struct ManifestExceptionsView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(row.reason).font(.headline)
-                                Text("Manifest \(row.manifestId.prefix(8))…").font(.caption)
-                                Text("Order \(row.orderId.prefix(8))… · attempts \(row.attemptCount)").font(.caption)
+                                Text(L10n.format("mobile_supplier.ui.manifest_prefix", "\(row.manifestId.prefix(8))")).font(.caption)
+                                Text(L10n.format("mobile_supplier.ui.order_prefix_attempts_attemptcount", "\(row.orderId.prefix(8))", "\(row.attemptCount)")).font(.caption)
                                 if row.escalated {
-                                    Text("Escalated").font(.caption).foregroundStyle(.red)
+                                    Text("factory_portal.residual.text.escalated").font(.caption).foregroundStyle(.red)
                                 }
                             }
                         }
@@ -33,7 +33,7 @@ struct ManifestExceptionsView: View {
                 }
             }
         }
-        .navigationTitle("Gate exceptions")
+        .navigationTitle("factory_portal.manifest_exceptions.text.gate_exceptions")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Toggle("Escalated", isOn: $escalatedOnly)

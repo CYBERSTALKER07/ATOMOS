@@ -34,6 +34,14 @@ struct RidesListView: View {
                     .padding(.bottom, 8)
                 }
 
+                RemainingStopsStepper(stops: RemainingStops.remaining(vm.orders)) { id in
+                    if let mission = vm.pendingMissions.first(where: { $0.id == id }) {
+                        vm.selectMission(mission)
+                    }
+                }
+                .padding(.horizontal, LabTheme.s16)
+                .padding(.bottom, 8)
+
                 if vm.isLoadingMissions {
                     ManifestLoadingView()
                 } else if vm.pendingMissions.isEmpty {

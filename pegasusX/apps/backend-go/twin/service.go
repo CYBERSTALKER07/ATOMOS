@@ -50,9 +50,10 @@ func (s *Service) GetStopTwin(ctx context.Context, routeID, stopID string) (*Sto
 
 // Write API triggered by the outbox consumer
 
-func (s *Service) HandleRouteStarted(ctx context.Context, routeID, driverID string, stopsCount int64) error {
+func (s *Service) HandleRouteStarted(ctx context.Context, routeID, driverID, supplierID string, stopsCount int64) error {
 	rt := RouteTwin{
 		RouteID:        routeID,
+		SupplierID:     supplierID,
 		DriverID:       driverID,
 		Status:         "ACTIVE",
 		RemainingStops: stopsCount,

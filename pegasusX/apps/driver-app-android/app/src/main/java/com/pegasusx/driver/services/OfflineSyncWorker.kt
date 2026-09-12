@@ -13,6 +13,7 @@ import com.pegasusx.driver.data.model.PendingMutationEntity
 import com.pegasusx.driver.data.model.SyncBatchDelivery
 import com.pegasusx.driver.data.model.SyncBatchRequest
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.data.remote.MediaUploadService
 import com.pegasusx.driver.data.remote.TokenHolder
 import com.pegasusx.driver.offline.DriverOfflineActionCatalog
 import com.pegasusx.driver.util.DriverIdempotencyKeys
@@ -38,6 +39,7 @@ class OfflineSyncWorker @AssistedInject constructor(
     private val pendingDao: PendingMutationDao,
     private val json: Json,
     private val httpClient: OkHttpClient,
+    private val mediaUpload: MediaUploadService,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -168,7 +170,14 @@ class OfflineSyncWorker @AssistedInject constructor(
         }
         val url = BuildConfig.API_BASE_URL.trimEnd('/') + "/" +
             DriverOfflineActionCatalog.normalize(mutation.endpoint)
-        val body = mutation.payloadJson.toRequestBody(JSON_MEDIA)
+        // Replay capture-time coords — never substitute live GPS on flush (§8.8).
+        val withCoords = applyCapturedCoords(mutation)
+        val payload = resolvePodLocalFiles(mutation.endpoint, withCoords, mutation.orderId)
+            ?: run {
+                pendingDao.recordAttempt(mutation.id, "pod_upload_failed")
+                return FlushOutcome.RETRY
+            }
+        val body = payload.toRequestBody(JSON_MEDIA)
         val request = Request.Builder()
             .url(url)
             .method(mutation.method.ifBlank { "POST" }, body)
@@ -185,6 +194,75 @@ class OfflineSyncWorker @AssistedInject constructor(
             pendingDao.recordAttempt(mutation.id, e.message ?: "network_error")
             maybeDead(mutation, e.message ?: "network_error")
         }
+    }
+
+    /**
+     * Upload local PoD JPEG paths before credit / shop-closed flush.
+     * Returns null when upload is required but fails (keep pending).
+     */
+    private suspend fun resolvePodLocalFiles(endpoint: String, payloadJson: String, orderId: String): String? {
+        val ep = DriverOfflineActionCatalog.normalize(endpoint)
+        if (ep != DriverOfflineActionCatalog.ENDPOINT_CREDIT &&
+            ep != DriverOfflineActionCatalog.ENDPOINT_SHOP_CLOSED
+        ) {
+            return payloadJson
+        }
+        return try {
+            val obj = JSONObject(payloadJson)
+            val photoLocal = obj.optString("photo_local_path").trim()
+            val sigLocal = obj.optString("signature_local_path").trim()
+            if (photoLocal.isNotEmpty() && obj.optString("photo_proof_url").isBlank() &&
+                obj.optString("photo_url").isBlank()
+            ) {
+                val url = mediaUpload.uploadJpegBytes(
+                    mediaUpload.readLocalJpeg(photoLocal),
+                    purpose = "credit_proof",
+                    orderId = orderId.ifBlank { null },
+                )
+                if (ep == DriverOfflineActionCatalog.ENDPOINT_CREDIT) {
+                    obj.put("photo_proof_url", url)
+                } else {
+                    obj.put("photo_url", url)
+                }
+                obj.remove("photo_local_path")
+            }
+            if (sigLocal.isNotEmpty() && obj.optString("signature_url").isBlank()) {
+                val url = mediaUpload.uploadJpegBytes(
+                    mediaUpload.readLocalJpeg(sigLocal),
+                    purpose = "credit_proof",
+                    orderId = orderId.ifBlank { null },
+                )
+                obj.put("signature_url", url)
+                obj.remove("signature_local_path")
+            }
+            if (ep == DriverOfflineActionCatalog.ENDPOINT_CREDIT &&
+                obj.optString("photo_proof_url").isBlank()
+            ) {
+                return null
+            }
+            if (ep == DriverOfflineActionCatalog.ENDPOINT_SHOP_CLOSED &&
+                obj.optString("photo_url").isBlank()
+            ) {
+                return null
+            }
+            obj.toString()
+        } catch (e: Exception) {
+            Log.w(TAG, "PoD local upload failed: ${e.message}")
+            null
+        }
+    }
+
+    /** Force payload lat/lng to the values stored at enqueue time. */
+    private fun applyCapturedCoords(mutation: PendingMutationEntity): String {
+        val lat = mutation.capturedLat ?: return mutation.payloadJson
+        val lng = mutation.capturedLng ?: return mutation.payloadJson
+        return runCatching {
+            val obj = JSONObject(mutation.payloadJson)
+            obj.put("latitude", lat)
+            obj.put("longitude", lng)
+            mutation.capturedAtMs?.let { obj.put("captured_at_ms", it) }
+            obj.toString()
+        }.getOrDefault(mutation.payloadJson)
     }
 
     private suspend fun handleHttp(mutation: PendingMutationEntity, code: Int, detail: String): FlushOutcome {

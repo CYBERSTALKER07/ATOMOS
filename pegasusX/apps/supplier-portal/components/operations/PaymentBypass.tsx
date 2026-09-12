@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import { PageSection } from '@/components/PageSection';
 
@@ -24,8 +27,9 @@ export function PaymentBypass({
   onConfirmBypassChange,
   onPaymentBypass,
 }: PaymentBypassProps) {
+  const t = usePortalT();
   return (
-    <PageSection title="Payment bypass" description="Issue a one-time driver token for AWAITING_PAYMENT orders.">
+    <PageSection title={t("supplier_portal.operations.payment_bypass.text.payment_bypass")} description={t("supplier_portal.residual.text.issue_a_one_time_driver_token_for_awaiting_payment_orders")}>
       <div className="space-y-3">
         <label className="block space-y-1">
           <span className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
@@ -33,7 +37,7 @@ export function PaymentBypass({
           </span>
           <input
             className="md-input-outlined w-full font-mono"
-            placeholder="Order ID (AWAITING_PAYMENT)"
+            placeholder={t("supplier_portal.operations.payment_bypass.text.order_id_awaiting_payment")}
             value={orderId}
             onChange={(e) => onOrderIdChange(e.target.value)}
           />
@@ -44,7 +48,7 @@ export function PaymentBypass({
           </span>
           <input
             className="md-input-outlined w-full"
-            placeholder="Reason"
+            placeholder={t("supplier_portal.admin.control_center.field.reason")}
             value={bypassReason}
             onChange={(e) => onBypassReasonChange(e.target.value)}
           />

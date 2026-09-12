@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import PageSection from './layout/PageSection';
 import SystemLoadWidget from './SystemLoadWidget';
+import { useLanguage } from '../context/LanguageContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -49,8 +50,40 @@ const TAB_DATA = {
 export default function EcosystemStats() {
   const [activeTab, setActiveTab] = useState<keyof typeof TAB_DATA>('supplier');
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
 
   const data = TAB_DATA[activeTab];
+  const tabDataRu: typeof TAB_DATA | null = language === 'ru' ? {
+    supplier: {
+      title: 'Центр операций поставщика',
+      subtitle: 'Видимость исходящего исполнения и диспетчеризации в реальном времени',
+      card1: { title: 'Объём заказов', subtitle: 'Активная исходящая обработка', value: '8.2K', unit: 'Заказов в день', percent: 92, stat1: '99%', label1: 'ЗАПОЛНЕНИЕ', stat2: '2M', label2: 'ЕДИНИЦ', metric: '98.7%' },
+      card2: { title: 'SLA диспетчеризации', subtitle: 'Мониторинг выезда вовремя', metric: '99.99%', bars: [45, 75, 35, 90, 55, 100, 40, 65] },
+      card3: { title: 'Здоровье запасов', subtitle: 'Глобальная доступность стока', value: '94%', stat1: '12K', label1: 'SKU', stat2: '45', label2: 'ПЛОЩАДОК', metric: '8.4M' },
+    },
+    warehouse: {
+      title: 'Диспетчерская склада',
+      subtitle: 'Живой мониторинг ворот, рамп и пропускной способности DC',
+      card1: { title: 'Загрузка рамп', subtitle: 'Живая обработка на воротах', value: '14', unit: 'Активных ворот', percent: 75, stat1: '85%', label1: 'ЗАГРУЗКА', stat2: '1.2K', label2: 'ПАЛЛЕТ', metric: '92.4%' },
+      card2: { title: 'Время кросс-дока', subtitle: 'Внутренние SLA транзита', metric: '42m', bars: [60, 50, 80, 40, 70, 90, 50, 85] },
+      card3: { title: 'Пропускная способность', subtitle: 'Часовой обработанный объём', value: '840', stat1: '150', label1: 'ГРУЗОВИКОВ', stat2: '3', label2: 'СМЕНЫ', metric: '1.2M' },
+    },
+    retailer: {
+      title: 'Хаб сети ритейлеров',
+      subtitle: 'Статусы доставки в магазины и метрики разгрузки',
+      card1: { title: 'Статус доставки', subtitle: 'Живая телеметрия автопарка', value: '142', unit: 'Активных маршрутов', percent: 88, stat1: '96%', label1: 'ВОВРЕМЯ', stat2: '4K', label2: 'ОСТАНОВОК', metric: '96.2%' },
+      card2: { title: 'SLA разгрузки', subtitle: 'Мониторинг времени оборота', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
+      card3: { title: 'Принятый объём', subtitle: 'Единиц принято за день', value: '12.5K', stat1: '99%', label1: 'СОВПАДЕНИЕ', stat2: '15', label2: 'DC', metric: '3.4M' },
+    },
+    fleet: {
+      title: 'Глобальная телеметрия автопарка',
+      subtitle: 'Живое отслеживание ТС, расход топлива и эффективность маршрутов',
+      card1: { title: 'Активный транспорт', subtitle: 'ТС сейчас на маршруте', value: '450', unit: 'Грузовиков', percent: 95, stat1: '1.2K', label1: 'ВОДИТЕЛЕЙ', stat2: '99%', label2: 'АПТАЙМ', metric: '99.9%' },
+      card2: { title: 'Топливная эффективность', subtitle: 'Средний расход', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
+      card3: { title: 'Общий пробег', subtitle: 'Дневная дистанция', value: '85K', stat1: '400', label1: 'МАРШРУТОВ', stat2: '12', label2: 'ЗОН', metric: '2.1M' },
+    },
+  } as any : null;
+  const localizedData = (tabDataRu?.[activeTab] ?? data);
 
   useEffect(() => {
     // Advanced staggered entrance animation
@@ -84,10 +117,10 @@ export default function EcosystemStats() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 15l8-8 8 8" />
             </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Ecosystem Statistics</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
           </div>
           <h2 id="ecosystem-stats-heading" className="text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
-            Optimized for the entire chain
+            {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
 
         </div>
@@ -118,13 +151,13 @@ export default function EcosystemStats() {
                   </div>
 
                   {/* Secondary large widget */}
-                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 group- group-hover:bg-[#0000000]">
+                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 hover:border-white/15">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </div>
-                        <span className="text-base font-medium text-white/90">Revenue Impact</span>
+                        <span className="text-base font-medium text-white/90">{t('ecosystem_revenue', 'Revenue Impact')}</span>
                       </div>
                       <span className="text-xs font-mono text-green-400">+12.4%</span>
                     </div>
@@ -141,20 +174,20 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card1.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card1.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card1.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card1.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-8">{data.card1.subtitle}</div>
+                <div className="text-sm text-white/40 mb-8">{localizedData.card1.subtitle}</div>
 
                 <div className="flex-1 flex items-center justify-center relative">
-                  <svg width="220" height="220" className="-rotate-90 drop-shadow-xl">
+                  <svg viewBox="0 0 220 220" className="w-full max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
                     <circle cx="110" cy="110" r="85" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
                     {/* ticks */}
                     <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
@@ -164,40 +197,40 @@ export default function EcosystemStats() {
                     </g>
                     <circle cx="110" cy="110" r="85" fill="none" stroke="white" strokeWidth="20"
                       strokeDasharray={2 * Math.PI * 85}
-                      strokeDashoffset={(2 * Math.PI * 85) * (1 - data.card1.percent / 100)}
+                      strokeDashoffset={(2 * Math.PI * 85) * (1 - localizedData.card1.percent / 100)}
                       className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-4xl font-light tracking-tight text-white">{data.card1.value}</span>
-                    <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">{data.card1.unit}</span>
+                    <span className="text-4xl font-light tracking-tight text-white">{localizedData.card1.value}</span>
+                    <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">{localizedData.card1.unit}</span>
                   </div>
 
                   <div className="absolute left-0 bottom-0 flex flex-col gap-4">
                     <div>
-                      <div className="text-xs text-white/90">{data.card1.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label1}</div>
+                      <div className="text-xs text-white/90">{localizedData.card1.stat1}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label1}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-white/90">{data.card1.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label2}</div>
+                      <div className="text-xs text-white/90">{localizedData.card1.stat2}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label2}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card2.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card2.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card2.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card2.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-10">{data.card2.subtitle}</div>
+                <div className="text-sm text-white/40 mb-10">{localizedData.card2.subtitle}</div>
 
                 <div className="flex-1 flex items-end justify-between relative px-2 pb-6">
                   <div className="absolute top-[35%] left-0 right-0 border-t border-dashed border-white/10" />
@@ -205,7 +238,7 @@ export default function EcosystemStats() {
                     SLA TARGET
                   </div>
 
-                  {data.card2.bars.map((h, i) => (
+                  {localizedData.card2.bars.map((h, i) => (
                     <div key={i} className="flex flex-col items-center gap-1.5 relative z-0 h-[180px] justify-end">
                       {i === 4 ? (
                         <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FF3366] to-[#33CCFF] absolute -top-5 shadow-[0_0_12px_rgba(255,51,102,0.8)] z-10" />
@@ -219,20 +252,20 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card3.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card3.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card3.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card3.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-8">{data.card3.subtitle}</div>
+                <div className="text-sm text-white/40 mb-8">{localizedData.card3.subtitle}</div>
 
                 <div className="flex-1 flex flex-col items-center justify-end relative pt-4 pb-4">
-                  <svg width="320" height="170" className="overflow-visible drop-shadow-xl absolute top-4">
+                  <svg viewBox="0 0 320 170" className="w-full max-w-[320px] h-auto overflow-visible drop-shadow-xl absolute top-4">
                     <g className="text-white/15" strokeWidth="1.5">
                       {[...Array(35)].map((_, i) => (
                         <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
@@ -246,17 +279,17 @@ export default function EcosystemStats() {
                   </svg>
 
                   <div className="absolute top-[80px] flex flex-col items-center pointer-events-none">
-                    <span className="text-6xl font-light tracking-tight text-white">{data.card3.value}</span>
+                    <span className="text-6xl font-light tracking-tight text-white">{localizedData.card3.value}</span>
                   </div>
 
                   <div className="w-full flex justify-between px-12 mt-32 z-10">
                     <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{data.card3.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
+                      <div className="text-xs text-white/90">{localizedData.card3.stat1}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label1}</div>
                     </div>
                     <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{data.card3.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
+                      <div className="text-xs text-white/90">{localizedData.card3.stat2}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label2}</div>
                     </div>
                   </div>
                 </div>

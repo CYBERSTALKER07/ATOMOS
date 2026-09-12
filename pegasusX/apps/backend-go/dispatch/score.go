@@ -2,6 +2,8 @@ package dispatch
 
 import (
 	"math"
+	"os"
+	"strings"
 )
 
 // Default multi-objective weights (sum of positive terms ≈ 0.95; empty-mile subtracted).
@@ -13,21 +15,45 @@ const (
 	WeightShopClosed    = 0.10
 	WeightWindowSlack   = 0.05
 	WeightEmptyMileCost = 0.05
+
+	MatrixSourceHaversine = "haversine"
+	MatrixSourceOSRM      = "osrm"
 )
 
 // ScoreContext carries depot / clock for pure scoring (no I/O).
 type ScoreContext struct {
-	DepotLat    float64
-	DepotLng    float64
-	NowMinutes  int // minutes since midnight; <0 → ignore window slack
-	MaxH3Ring   int // spatial normalization; 0 → default 4
-	CellLookup  func(lat, lng float64) string
+	DepotLat   float64
+	DepotLng   float64
+	NowMinutes int // minutes since midnight; <0 → ignore window slack
+	MaxH3Ring  int // spatial normalization; 0 → default 4
+	CellLookup func(lat, lng float64) string
+	// RoadKm optional road-network distance (km). When set and DISPATCH_SCORE_USE_OSRM,
+	// spatial/empty-mile terms prefer road km over Haversine (G6.D).
+	RoadKm func(fromLat, fromLng, toLat, toLng float64) (km float64, ok bool)
+	// MatrixSource is honesty label for callers (haversine|osrm). Empty → haversine.
+	MatrixSource string
+}
+
+// DispatchScoreUseOSRM gates road-matrix preference in ScoreCandidate (default false).
+func DispatchScoreUseOSRM() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("DISPATCH_SCORE_USE_OSRM")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 // ScoreCandidate ranks assigning `order` onto an existing route or a new route for `driver`.
 // When route is nil, scores opening a new route with driver.
 // Missing PriorityScore / DriverScore / ShopClosedRisk use neutral mid defaults.
+// Cold-chain: order.RequiresColdChain && !driver.HasRefrigeration → -1 (G6.C).
 func ScoreCandidate(route *DispatchRoute, order DispatchableOrder, driver AvailableDriver, ctx ScoreContext) float64 {
+	// G6.C: cold-chain hard refuse when vehicle lacks reefer (align with OR-Tools filter).
+	if order.RequiresColdChain && !driver.HasRefrigeration {
+		return -1
+	}
+	// Hazardous without certified cab → refuse.
+	if order.IsHazardous && !driver.HazmatCertified {
+		return -1
+	}
+
 	maxCap := driver.MaxVolumeVU * TetrisBuffer
 	if route != nil && route.MaxVolume > 0 {
 		maxCap = route.MaxVolume
@@ -70,8 +96,8 @@ func ScoreCandidate(route *DispatchRoute, order DispatchableOrder, driver Availa
 		if orderCell != "" && routeCell != "" && orderCell == routeCell {
 			spatialFit = 1.0
 		} else {
-			// Haversine proxy normalized to ~max ring distance.
-			d := haversineKm(order.Lat, order.Lng, routeLat, routeLng)
+			// Road matrix when available; else Haversine proxy (G6.D).
+			d := distanceKm(order.Lat, order.Lng, routeLat, routeLng, ctx)
 			maxKm := 8.0
 			if ctx.MaxH3Ring > 0 {
 				maxKm = float64(ctx.MaxH3Ring) * 2.5
@@ -114,11 +140,11 @@ func ScoreCandidate(route *DispatchRoute, order DispatchableOrder, driver Availa
 	emptyMile := 0.0
 	if route == nil {
 		// New truck: cost of deadhead from depot to first stop.
-		emptyMile = clamp01(haversineKm(ctx.DepotLat, ctx.DepotLng, order.Lat, order.Lng) / 15.0)
+		emptyMile = clamp01(distanceKm(ctx.DepotLat, ctx.DepotLng, order.Lat, order.Lng, ctx) / 15.0)
 	} else if orderCount == 0 {
-		emptyMile = clamp01(haversineKm(ctx.DepotLat, ctx.DepotLng, order.Lat, order.Lng) / 15.0)
+		emptyMile = clamp01(distanceKm(ctx.DepotLat, ctx.DepotLng, order.Lat, order.Lng, ctx) / 15.0)
 	} else {
-		emptyMile = clamp01(haversineKm(routeLat, routeLng, order.Lat, order.Lng) / 10.0)
+		emptyMile = clamp01(distanceKm(routeLat, routeLng, order.Lat, order.Lng, ctx) / 10.0)
 	}
 
 	score := WeightVolumeFit*volumeFit +
@@ -132,6 +158,27 @@ func ScoreCandidate(route *DispatchRoute, order DispatchableOrder, driver Availa
 	// Mild load-balance preference when scores otherwise equal: fewer stops wins slightly.
 	score -= 0.001 * float64(orderCount)
 	return score
+}
+
+// ResolveMatrixSource returns haversine|osrm honesty label for preview/API.
+func ResolveMatrixSource(ctx ScoreContext) string {
+	if src := strings.TrimSpace(ctx.MatrixSource); src != "" {
+		return src
+	}
+	if DispatchScoreUseOSRM() && ctx.RoadKm != nil {
+		return MatrixSourceOSRM
+	}
+	return MatrixSourceHaversine
+}
+
+// distanceKm prefers road matrix when flag+callback present; else Haversine.
+func distanceKm(lat1, lng1, lat2, lng2 float64, ctx ScoreContext) float64 {
+	if DispatchScoreUseOSRM() && ctx.RoadKm != nil {
+		if km, ok := ctx.RoadKm(lat1, lng1, lat2, lng2); ok && km >= 0 {
+			return km
+		}
+	}
+	return haversineKm(lat1, lng1, lat2, lng2)
 }
 
 // SelectBestScoredVehicle picks the capacity-feasible driver with the best ScoreCandidate for a new route.

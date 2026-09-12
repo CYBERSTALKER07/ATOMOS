@@ -1,0 +1,235 @@
+# Gate-0 pegasusX CI — backend lint/race/vuln + secret scan.
+# Native mobile matrices live in pegasusx-native-mobile-build.yml (all 12 apps).
+name: PegasusX CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "pegasusX/**"
+      - ".github/workflows/pegasusx-ci.yml"
+      - ".github/workflows/pegasusx-native-mobile-build.yml"
+      - ".github/workflows/reusable-go-unit.yml"
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - "pegasusX/**"
+      - ".github/workflows/pegasusx-ci.yml"
+      - ".github/workflows/pegasusx-native-mobile-build.yml"
+      - ".github/workflows/reusable-go-unit.yml"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pegasusx-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-unit:
+    name: Backend — build · vet · test · race
+    uses: ./.github/workflows/reusable-go-unit.yml
+    with:
+      working-directory: pegasusX/apps/backend-go
+      go-version: "1.26.0"
+
+  backend:
+    name: Backend — parity · k8s
+    needs: backend-unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Match local toolchain (1.26); go.mod declares 1.25 minimum.
+          go-version: "1.26.0"
+          cache: true
+          cache-dependency-path: |
+            pegasusX/apps/backend-go/go.sum
+            pegasusX/go.work.sum
+      - name: Sync Go workspace
+        working-directory: pegasusX
+        run: go work sync
+      - name: Install kubectl (for kustomize render)
+        run: |
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -fsSL -o /tmp/kubectl "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          fi
+          kubectl version --client
+      - name: Parity + contract gates
+        working-directory: pegasusX
+        run: |
+          make parity-contract
+          make parity-contract-full
+          make gap-hunter-gate
+          make gen-contracts-gate
+      - name: K8s + placeholder image gates
+        working-directory: pegasusX
+        run: |
+          make validate-backend-k8s
+          make validate-ai-worker-k8s
+          bash scripts/ci_fail_placeholder_images.sh infra/k8s/overlays/prod
+          bash scripts/validate_production_profile.sh
+          kubectl kustomize infra/k8s/overlays/prod --load-restrictor LoadRestrictionsNone >/dev/null
+
+  cell-isolation:
+    name: Cell isolation + sandbox overlay (no apply)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+          cache-dependency-path: pegasusX/apps/backend-go/go.sum
+      - name: Install kubectl (kustomize)
+        run: |
+          if ! command -v kubectl >/dev/null 2>&1; then
+            curl -fsSL -o /tmp/kubectl "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            sudo install -m 0755 /tmp/kubectl /usr/local/bin/kubectl
+          fi
+      - name: Cell backend guard + isolation proof
+        working-directory: pegasusX
+        run: |
+          make cell-backend-guard
+          make cell-isolation-proof
+      - name: Validate sandbox kustomize overlay
+        working-directory: pegasusX
+        run: kubectl kustomize infra/k8s/overlays/sandbox --load-restrictor LoadRestrictionsNone >/dev/null
+      - name: Layer A apply-guard (no unattended Terraform)
+        run: bash pegasusX/scripts/ci_no_unattended_terraform_apply.sh
+
+  backend-lint:
+    name: Backend — golangci · govulncheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+          cache-dependency-path: |
+            pegasusX/apps/backend-go/go.sum
+            pegasusX/go.work.sum
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+          working-directory: pegasusX/apps/backend-go
+          args: --config=${{ github.workspace }}/pegasusX/.golangci.yml --timeout=8m
+      - name: govulncheck
+        working-directory: pegasusX/apps/backend-go
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+        continue-on-error: true
+
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
+            | tar -xz -C /tmp
+          sudo install -m 0755 /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+      - name: Scan pegasusX tree
+        run: |
+          gitleaks detect \
+            --source pegasusX \
+            --config pegasusX/.gitleaks.toml \
+            --verbose \
+            --redact \
+            --exit-code 1
+
+  ai-worker:
+    name: AI worker — build · vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pegasusX/apps/ai-worker/go.mod
+          cache: true
+      - name: Build + vet
+        working-directory: pegasusX/apps/ai-worker
+        run: |
+          go build ./...
+          go vet ./...
+
+  desktop:
+    name: Desktop portals — test · typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install workspace
+        working-directory: pegasusX
+        run: pnpm install --frozen-lockfile || pnpm install
+      - name: Package + portal tests
+        working-directory: pegasusX
+        run: |
+          pnpm --filter @pegasusx/desktop-bridge test
+          pnpm --filter @pegasusx/desktop-cache test
+          pnpm --filter @pegasusx/retailer-app-desktop test
+          pnpm --filter @pegasusx/supplier-portal test
+          pnpm --filter @pegasusx/warehouse-portal test
+          pnpm --filter @pegasusx/factory-portal test
+      - name: Typecheck portals
+        working-directory: pegasusX
+        run: |
+          pnpm --filter @pegasusx/retailer-app-desktop typecheck
+          pnpm --filter @pegasusx/supplier-portal typecheck
+          pnpm --filter @pegasusx/warehouse-portal typecheck
+          pnpm --filter @pegasusx/factory-portal typecheck
+      - name: Validate desktop updater config
+        working-directory: pegasusX
+        env:
+          # Committed tauri.conf.json may still hold dev.pub until release apply injects prod.
+          ALLOW_DEV_UPDATER_PUBKEY: "1"
+        run: bash scripts/validate_desktop_updater.sh
+
+  sandbox-infra:
+    name: pegasusX sandbox smoke gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.0"
+          cache: true
+          cache-dependency-path: |
+            pegasusX/apps/backend-go/go.sum
+            pegasusX/go.work.sum
+      - name: Sync Go workspace
+        working-directory: pegasusX
+        run: go work sync
+      - name: Run isolated sandbox smoke gate
+        working-directory: pegasusX
+        run: make test-sandbox-infra
+
+  mobile-gate-hint:
+    name: Mobile gate (see pegasusx-native-mobile-build)
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "All 12 native apps are compiled by workflow: pegasusx-native-mobile-build.yml"
+          echo "Android: compile + assembleEnterpriseDebug matrix (6 apps)"
+          echo "iOS: xcodegen (where needed) + xcodebuild simulator matrix (6 apps)"

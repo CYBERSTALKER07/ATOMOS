@@ -51,7 +51,7 @@ func TestForwardGeocodeCacheHitMiss(t *testing.T) {
 	ctx := context.Background()
 	loc := ResolvedLocation{Address: "1 Test St", Lat: 1.23, Lng: 4.56, Formatted: "1 Test St"}
 	raw, _ := json.Marshal(loc)
-	backend.data[forwardCacheKey("1 test st")] = raw
+	backend.data[forwardCacheKey("uz", "1 test st")] = raw
 
 	got, err := svc.ForwardGeocode(ctx, "1 Test St")
 	if err != nil {
@@ -73,7 +73,7 @@ func TestAutocompleteCacheRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	predictions := []AutocompletePrediction{{PlaceID: "p1", Description: "123 Main"}}
 	raw, _ := json.Marshal(predictions)
-	key := autocompleteCacheKey("123 ma")
+	key := autocompleteCacheKey("uz", "123 ma")
 	backend.data[key] = raw
 
 	got, err := svc.Autocomplete(ctx, "123 ma")
@@ -84,3 +84,29 @@ func TestAutocompleteCacheRoundTrip(t *testing.T) {
 		t.Fatalf("unexpected predictions: %+v", got)
 	}
 }
+
+func TestCountryNamespacedCacheIsolation(t *testing.T) {
+	backend := &countingBackend{data: make(map[string][]byte)}
+	c := cache.New(backend, nil)
+	svc := NewService("", c)
+
+	ctx := context.Background()
+	locUZ := ResolvedLocation{Address: "Tashkent Store", Lat: 41.31, Lng: 69.28}
+	rawUZ, _ := json.Marshal(locUZ)
+	backend.data[forwardCacheKey("uz", "main street")] = rawUZ
+
+	locKZ := ResolvedLocation{Address: "Almaty Store", Lat: 43.25, Lng: 76.92}
+	rawKZ, _ := json.Marshal(locKZ)
+	backend.data[forwardCacheKey("kz", "main street")] = rawKZ
+
+	gotUZ, err := svc.ForwardGeocode(ctx, "main street", "UZ")
+	if err != nil || gotUZ.Address != "Tashkent Store" {
+		t.Fatalf("expected Tashkent Store for UZ, got %v (err: %v)", gotUZ, err)
+	}
+
+	gotKZ, err := svc.ForwardGeocode(ctx, "main street", "KZ")
+	if err != nil || gotKZ.Address != "Almaty Store" {
+		t.Fatalf("expected Almaty Store for KZ, got %v (err: %v)", gotKZ, err)
+	}
+}
+

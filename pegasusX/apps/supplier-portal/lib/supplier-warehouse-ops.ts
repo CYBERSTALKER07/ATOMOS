@@ -1,7 +1,7 @@
 import {
   warehouseOrderProposeDeliveryKey,
   warehouseOrderRejectKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import { createSupplierApi } from '@/lib/api';
 
 const api = createSupplierApi();

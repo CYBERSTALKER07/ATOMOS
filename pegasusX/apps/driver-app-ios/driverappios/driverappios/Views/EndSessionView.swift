@@ -66,10 +66,10 @@ struct EndSessionView: View {
             VStack(alignment: .leading, spacing: LabTheme.s20) {
                 // Title
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("End Session")
+                    Text("mobile_driver.ui.end_session")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
-                    Text("Go offline and end your driving session")
+                    Text("mobile_driver.ui.go_offline_and_end_your_driving_session")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(LabTheme.fgSecondary)
                 }
@@ -80,7 +80,7 @@ struct EndSessionView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 14))
                             .foregroundStyle(LabTheme.destructive)
-                        Text("Complete or return active orders before ending your session.")
+                        Text("mobile_driver.ui.complete_or_return_active_orders_before_ending_your_session")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(LabTheme.destructive)
                     }
@@ -134,7 +134,7 @@ struct EndSessionView: View {
                             ProgressView()
                                 .tint(LabTheme.buttonFg)
                         } else {
-                            Text("End Session")
+                            Text("mobile_driver.ui.end_session")
                                 .font(.system(size: 15, weight: .bold))
                                 .foregroundStyle(canConfirm ? LabTheme.buttonFg : LabTheme.fgTertiary)
                         }

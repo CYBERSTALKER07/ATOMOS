@@ -45,7 +45,7 @@ func (s *Service) VerifyHandshake(ctx context.Context, claims auth.Claims, req V
 	}
 
 	// Geofence (Haversine) check
-	distanceM, err := validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	distanceM, err := validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return VerifyHandshakeResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
@@ -96,16 +96,15 @@ func (s *Service) UpdateOrderDuringDelivery(ctx context.Context, claims auth.Cla
 		return UpdateOrderDuringDeliveryResponse{}, ErrOrderForbidden
 	}
 
-	// Geofence check
-	_, err = validateRequiredGeofence(req.Latitude, req.Longitude, o)
+	// Geofence check (validates spoofing even when the mutator is not implemented).
+	_, err = validateRequiredGeofence(ctx, req.Latitude, req.Longitude, o)
 	if err != nil {
 		return UpdateOrderDuringDeliveryResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// Add adjustments and create DeliverySessionAdjustments logic here.
-
-	return UpdateOrderDuringDeliveryResponse{
-		Success: true,
-		Message: "Order updated successfully during delivery",
-	}, nil
+	// B1 M-P0-2 / G1.C: never report success without a Spanner write + outbox.
+	// Mid-delivery line adjust is not a durable product path — use amend / missing-items / partial-offload.
+	return UpdateOrderDuringDeliveryResponse{}, errors.New(
+		"not_implemented: use_amend_or_partial_offload — POST amend, missing-items, or partial-offload; mid-delivery update has no durable writer",
+	)
 }

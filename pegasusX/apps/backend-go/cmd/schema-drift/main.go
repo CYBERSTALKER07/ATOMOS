@@ -5,10 +5,13 @@
 //	SPANNER_PROJECT=… SPANNER_INSTANCE=… SPANNER_DATABASE=… go run ./cmd/schema-drift
 //	# emulator:
 //	SPANNER_EMULATOR_HOST=localhost:9010 go run ./cmd/schema-drift
+//	# offline file parity only (no Spanner):
+//	go run ./cmd/schema-drift -offline
 package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -24,8 +27,25 @@ import (
 )
 
 func main() {
+	offline := flag.Bool("offline", false, "only check migrations vs schema/spanner.ddl (no Spanner)")
+	flag.Parse()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
+
+	mig, ddl, err := schemadrift.FindSchemaPaths()
+	if err != nil {
+		slog.Error("schema-drift-FAIL", "err", err)
+		os.Exit(1)
+	}
+	if err := schemadrift.AssertMigrationTableParity(mig, ddl); err != nil {
+		slog.Error("schema-drift-FAIL", "check", "migration_parity", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("schema-drift-ok", "check", "migration_parity", "migrations", mig, "ddl", ddl)
+	if *offline {
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -47,14 +67,15 @@ func main() {
 	}
 	defer client.Close()
 
-	if err := schemadrift.AssertShopClosedSchema(ctx, client); err != nil {
+	if err := schemadrift.AssertLiveSchema(ctx, client); err != nil {
 		slog.Error("schema-drift-FAIL", "database", dbPath, "err", err)
 		os.Exit(1)
 	}
 
 	slog.Info("schema-drift-ok",
 		"database", dbPath,
-		"check", "shop_closed_proximity_partial",
+		"check", "shop_closed+required_product_tables",
+		"required_tables", len(schemadrift.RequiredProductTables),
 	)
 }
 

@@ -98,6 +98,48 @@ spec:
                   name: backend-go-secrets
                   key: google-maps-api-key
                   optional: true
+            - name: FISCAL_MY_SOLIQ_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-base-url
+                  optional: true
+            - name: FISCAL_MY_SOLIQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-api-key
+                  optional: true
+            - name: FISCAL_MY_SOLIQ_TIN
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-tin
+                  optional: true
+            - name: FISCAL_MY_SOLIQ_SIGNER
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-signer
+                  optional: true
+            - name: FISCAL_MY_SOLIQ_PKCS12_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-pkcs12-password
+                  optional: true
+            - name: PLAYMOBILE_LOGIN
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: playmobile-login
+                  optional: true
+            - name: PLAYMOBILE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: playmobile-password
+                  optional: true
             - name: FIREBASE_CREDENTIALS_PATH
               value: /var/secrets/firebase/service-account.json
           volumeMounts:
@@ -120,8 +162,8 @@ spec:
             failureThreshold: 3
           resources:
             requests:
-              cpu: 10m
-              memory: 128Mi
+              cpu: 250m
+              memory: 256Mi
             limits:
               cpu: "1000m"
               memory: 512Mi

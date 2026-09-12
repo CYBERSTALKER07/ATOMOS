@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -31,7 +32,10 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-var errDispatchLockNotFound = errors.New("dispatch_lock_not_found")
+var (
+	errDispatchLockNotFound = errors.New("dispatch_lock_not_found")
+	errWarehouseIDRequired  = errors.New("warehouse_id_required")
+)
 
 // DemandPlanner exposes the warehouse-facing demand projection owned by the
 // order aggregate.
@@ -71,27 +75,30 @@ type WarehouseOpsVehiclesQuery func(ctx context.Context, warehouseID string) ([]
 
 // Service stores additive in-memory data for warehouse operational surfaces.
 type Service struct {
-	repo           Repository
-	planner        DemandPlanner
-	analyticsQuery WarehouseAnalyticsQuery
-	opsOrders      WarehouseOpsOrdersQuery
-	opsDrivers     WarehouseOpsDriversQuery
-	opsVehicles    WarehouseOpsVehiclesQuery
-	cache          *cache.Cache
-	idem           idempotency.Store
-	spannerClient  *spanner.Client
-	manifestStore  *manifest.Store
-	routeGeometryBuilder *routing.GeometryBuilder
-	locations            telemetry.LastLocationReader
-	supplierHub          *ws.Hub
-	warehouseHub         *ws.Hub
-	driverHub              *ws.Hub
-	retailerHub            *ws.Hub
-	log            *slog.Logger
+	repo                  Repository
+	planner               DemandPlanner
+	analyticsQuery        WarehouseAnalyticsQuery
+	opsOrders             WarehouseOpsOrdersQuery
+	opsDrivers            WarehouseOpsDriversQuery
+	opsVehicles           WarehouseOpsVehiclesQuery
+	gatewayBreakdownQuery func(ctx context.Context, warehouseID, period string) ([]map[string]any, bool)
+	platformFeeQuery      func(ctx context.Context, warehouseID, period string) (int64, bool)
+	cache                 *cache.Cache
+	idem                  idempotency.Store
+	spannerClient         *spanner.Client
+	redisClient           *redis.Client
+	manifestStore         *manifest.Store
+	routeGeometryBuilder  *routing.GeometryBuilder
+	locations             telemetry.LastLocationReader
+	supplierHub           *ws.Hub
+	warehouseHub          *ws.Hub
+	driverHub             *ws.Hub
+	retailerHub           *ws.Hub
+	log                   *slog.Logger
 
-	supplierID string
-	currency   string
-	now        func() time.Time
+	seedSupplierID string
+	currency       string
+	now            func() time.Time
 
 	mu     sync.RWMutex
 	orders []OrderRow
@@ -103,32 +110,34 @@ type Service struct {
 	fallbackDepotLat float64
 	fallbackDepotLng float64
 
-	portalSeeded      bool
-	drivers           []PortalDriver
-	vehicles          []PortalVehicle
-	staff             []portalStaff
-	products          []portalProduct
-	manifests         []portalManifest
-	retailers         []portalRetailer
-	returns           []portalReturnItem
-	insights          []replenishmentInsight
-	internalTransfers map[string]memoryTransferRow
+	portalSeeded          bool
+	drivers               []PortalDriver
+	vehicles              []PortalVehicle
+	staff                 []portalStaff
+	products              []portalProduct
+	manifests             []portalManifest
+	retailers             []portalRetailer
+	returns               []portalReturnItem
+	insights              []replenishmentInsight
+	internalTransfers     map[string]memoryTransferRow
 	broadcastTemplatesMem map[string][]customBroadcastTemplateRow
-	firebaseVerifier  auth.FirebaseVerifier
-	orderStock        OrderStockReader
+	firebaseVerifier      auth.FirebaseVerifier
+	orderStock            OrderStockReader
+	resolveSupplyContext  func(ctx context.Context, warehouseID string) (warehouseSupplyContext, error)
 }
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo           Repository
-	Planner        DemandPlanner
-	AnalyticsQuery WarehouseAnalyticsQuery
-	OpsOrders      WarehouseOpsOrdersQuery
-	OpsDrivers     WarehouseOpsDriversQuery
-	OpsVehicles    WarehouseOpsVehiclesQuery
-	Cache          *cache.Cache
-	Idem           idempotency.Store
+	Repo                 Repository
+	Planner              DemandPlanner
+	AnalyticsQuery       WarehouseAnalyticsQuery
+	OpsOrders            WarehouseOpsOrdersQuery
+	OpsDrivers           WarehouseOpsDriversQuery
+	OpsVehicles          WarehouseOpsVehiclesQuery
+	Cache                *cache.Cache
+	Idem                 idempotency.Store
 	Spanner              *spanner.Client
+	RedisClient          *redis.Client
 	ManifestStore        *manifest.Store
 	RouteGeometryBuilder *routing.GeometryBuilder
 	Locations            telemetry.LastLocationReader
@@ -136,8 +145,11 @@ type ServiceConfig struct {
 	WarehouseHub         *ws.Hub
 	DriverHub            *ws.Hub
 	RetailerHub          *ws.Hub
-	Log            *slog.Logger
+	Log                  *slog.Logger
 
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID string
 	Currency   string
 	Now        func() time.Time
@@ -157,7 +169,7 @@ type InventoryRow struct {
 	ProductName      string `json:"product_name"`
 	Quantity         int64  `json:"quantity"`
 	QuantityOnHand   int64  `json:"quantity_on_hand"`
-	ReorderThreshold   int64  `json:"reorder_threshold"`
+	ReorderThreshold int64  `json:"reorder_threshold"`
 	OutOfStockPolicy string `json:"out_of_stock_policy"`
 	EffectivePolicy  string `json:"effective_policy"`
 	UpdatedAt        string `json:"updated_at"`
@@ -207,18 +219,23 @@ func NewService(c ServiceConfig) *Service {
 		c.Log = slog.Default()
 	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		c.Currency = packCurrencyDefault()
+	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
 	}
 	return &Service{
-		repo:             c.Repo,
-		planner:          c.Planner,
-		analyticsQuery:   c.AnalyticsQuery,
-		opsOrders:        c.OpsOrders,
-		opsDrivers:       c.OpsDrivers,
-		opsVehicles:      c.OpsVehicles,
-		cache:            c.Cache,
-		idem:             c.Idem,
+		repo:                 c.Repo,
+		planner:              c.Planner,
+		analyticsQuery:       c.AnalyticsQuery,
+		opsOrders:            c.OpsOrders,
+		opsDrivers:           c.OpsDrivers,
+		opsVehicles:          c.OpsVehicles,
+		cache:                c.Cache,
+		idem:                 c.Idem,
 		spannerClient:        c.Spanner,
+		redisClient:          c.RedisClient,
 		manifestStore:        c.ManifestStore,
 		routeGeometryBuilder: c.RouteGeometryBuilder,
 		locations:            c.Locations,
@@ -226,17 +243,17 @@ func NewService(c ServiceConfig) *Service {
 		warehouseHub:         c.WarehouseHub,
 		driverHub:            c.DriverHub,
 		retailerHub:          c.RetailerHub,
-		log:              c.Log,
-		supplierID:       c.SupplierID,
-		currency:         c.Currency,
-		now:              c.Now,
-		jwtSecret:        c.JWTSecret,
-		jwtIssuer:        c.JWTIssuer,
-		optimizerClient:  c.OptimizerClient,
-		planCounters:     c.PlanCounters,
-		fallbackDepotLat: c.FallbackDepotLat,
-		fallbackDepotLng: c.FallbackDepotLng,
-		firebaseVerifier: c.FirebaseVerifier,
+		log:                  c.Log,
+		seedSupplierID:       seedID,
+		currency:             c.Currency,
+		now:                  c.Now,
+		jwtSecret:            c.JWTSecret,
+		jwtIssuer:            c.JWTIssuer,
+		optimizerClient:      c.OptimizerClient,
+		planCounters:         c.PlanCounters,
+		fallbackDepotLat:     c.FallbackDepotLat,
+		fallbackDepotLng:     c.FallbackDepotLng,
+		firebaseVerifier:     c.FirebaseVerifier,
 	}
 }
 
@@ -317,13 +334,14 @@ func (s *Service) HandleDemandForecast(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	products := s.productDemandForecast(r.Context(), warehouseID, days)
+	products, source := s.productDemandForecast(r.Context(), warehouseID, days)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"warehouse_id":  warehouseID,
 		"forecast_days": days,
 		"generated_at":  s.now().UTC().Format(time.RFC3339Nano),
 		"series":        series,
 		"products":      products,
+		"source":        source,
 	})
 }
 
@@ -402,7 +420,7 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	nowTS := s.now().UTC().Format(time.RFC3339Nano)
 	req := SupplyRequest{
 		RequestID:                uuid.NewString(),
-		SupplierID:               s.supplierID,
+		SupplierID:               s.resolveSupplierScope(r.Context()),
 		WarehouseID:              warehouseID,
 		FactoryID:                topology.FactoryID,
 		TransferMode:             topology.TransferMode,
@@ -420,15 +438,15 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	eventPayload := events.WarehouseEvent{
-		BaseEvent:   events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
-		RequestID:   req.RequestID,
-		SupplierID:  s.supplierID,
-		WarehouseID: req.WarehouseID,
-		FactoryID:   req.FactoryID,
-		TransferMode: req.TransferMode,
-		Status:      req.Status,
-		Projected:   req.ProjectedUnits,
-		Committed:   req.CommittedUnits,
+		BaseEvent:         events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
+		RequestID:         req.RequestID,
+		SupplierID:        s.resolveSupplierScope(r.Context()),
+		WarehouseID:       req.WarehouseID,
+		FactoryID:         req.FactoryID,
+		TransferMode:      req.TransferMode,
+		Status:            req.Status,
+		Projected:         req.ProjectedUnits,
+		Committed:         req.CommittedUnits,
 		Pending:           req.PendingConfirmationUnits,
 		RequestedBy:       req.RequestedBy,
 		CoverageDays:      int64(req.CoverageDays),
@@ -443,13 +461,13 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+		s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.resolveSupplierScope(r.Context()), warehouseID))
 	}
 
 	s.broadcastSupplyRequestUpdate(r.Context(), warehouseID, req)
 	s.log.Info(
 		"warehouse supply request submitted",
-		"supplier_id", s.supplierID,
+		"supplier_id", s.resolveSupplierScope(r.Context()),
 		"warehouse_id", warehouseID,
 		"request_id", req.RequestID,
 		"projected_units", req.ProjectedUnits,
@@ -473,9 +491,10 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 		return nil
 	}
 
-	warehouseID := payload.WarehouseID
+	warehouseID := strings.TrimSpace(payload.WarehouseID)
 	if warehouseID == "" {
-		warehouseID = "wh-1"
+		s.log.Warn("missing warehouse_id in supply request accepted payload", "request_id", requestID)
+		return errWarehouseIDRequired
 	}
 
 	status := "ACKNOWLEDGED"
@@ -488,7 +507,7 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 			BaseEvent:   events.BaseEvent{Type: events.EventSupplyRequestUpdate, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
 			RequestID:   requestID,
 			WarehouseID: warehouseID,
-			SupplierID:  s.supplierID,
+			SupplierID:  s.resolveSupplierScope(ctx),
 			FactoryID:   payload.FactoryID,
 			Status:      status,
 		})
@@ -499,12 +518,12 @@ func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes 
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(ctx, warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+		s.cache.Invalidate(ctx, warehouseSupplyRequestsKey(s.resolveSupplierScope(ctx), warehouseID))
 	}
 	s.broadcastSupplyRequestUpdate(ctx, warehouseID, SupplyRequest{
 		RequestID:   requestID,
 		WarehouseID: warehouseID,
-		SupplierID:  s.supplierID,
+		SupplierID:  s.resolveSupplierScope(ctx),
 		FactoryID:   payload.FactoryID,
 		Status:      status,
 		State:       status,
@@ -532,7 +551,7 @@ func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 	for _, v := range lockMap {
 		locks = append(locks, map[string]any{
 			"lock_id":      v.LockID,
-			"supplier_id":  s.supplierID,
+			"supplier_id":  s.resolveSupplierScope(r.Context()),
 			"warehouse_id": warehouseID,
 			"factory_id":   "",
 			"lock_type":    "MANUAL_DISPATCH",
@@ -601,7 +620,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged, Timestamp: nowTS},
 			LockID:      lock.LockID,
 			WarehouseID: warehouseID,
-			SupplierID:  s.supplierID,
+			SupplierID:  s.resolveSupplierScope(r.Context()),
 			Status:      "ACTIVE",
 			Action:      "ACQUIRED",
 			RequestID:   lock.EntityID,
@@ -615,11 +634,11 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if s.cache != nil {
-			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.supplierID))
+			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.resolveSupplierScope(r.Context())))
 		}
 
 		s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
-		s.log.Info("warehouse dispatch lock acquired", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lock.LockID)
+		s.log.Info("warehouse dispatch lock acquired", "supplier_id", s.resolveSupplierScope(r.Context()), "warehouse_id", warehouseID, "lock_id", lock.LockID)
 		resp := map[string]any{
 			"lock_id":   lock.LockID,
 			"lock_type": lockType,
@@ -668,7 +687,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged, Timestamp: s.now().Format(time.RFC3339Nano)},
 				LockID:      lockID,
 				WarehouseID: warehouseID,
-				SupplierID:  s.supplierID,
+				SupplierID:  s.resolveSupplierScope(r.Context()),
 				Status:      "RELEASED",
 				Action:      "RELEASED",
 				RequestedBy: claims.Subject,
@@ -685,12 +704,12 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if s.cache != nil {
-			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.supplierID))
+			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.resolveSupplierScope(r.Context())))
 		}
 
 		s.broadcastWarehouseEvent(r.Context(), warehouseID, map[string]any{
 			"type":         events.EventWarehouseDispatchLockChanged,
-			"supplier_id":  s.supplierID,
+			"supplier_id":  s.resolveSupplierScope(r.Context()),
 			"warehouse_id": warehouseID,
 			"lock_id":      lockID,
 			"entity_type":  released.EntityType,
@@ -699,7 +718,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			"action":       "RELEASED",
 			"timestamp":    s.now().Format(time.RFC3339Nano),
 		})
-		s.log.Info("warehouse dispatch lock released", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lockID)
+		s.log.Info("warehouse dispatch lock released", "supplier_id", s.resolveSupplierScope(r.Context()), "warehouse_id", warehouseID, "lock_id", lockID)
 		resp := map[string]any{"status": "released", "lock_id": lockID}
 		respBytes, _ := json.Marshal(resp)
 		w.Header().Set("Content-Type", "application/json")
@@ -721,8 +740,8 @@ func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID strin
 	if err != nil {
 		return
 	}
-	if s.supplierHub != nil && s.supplierID != "" {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, raw)
+	if s.supplierHub != nil && s.resolveSupplierScope(ctx) != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.resolveSupplierScope(ctx), raw)
 	}
 	if s.warehouseHub != nil && warehouseID != "" {
 		s.warehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, raw)
@@ -805,51 +824,14 @@ func warehouseIDFromRequest(r *http.Request) string {
 }
 
 func (s *Service) analyticsSupplierID(ctx context.Context) string {
-	if claims, ok := auth.FromContext(ctx); ok {
-		if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
-			return supplierID
-		}
-		if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
-			return supplierID
-		}
-	}
-	if supplierID, ok := auth.ResolveSupplierID(ctx); ok {
-		if trimmed := strings.TrimSpace(supplierID); trimmed != "" {
-			return trimmed
-		}
-	}
-	return strings.TrimSpace(s.supplierID)
+	return s.resolveSupplierScope(ctx)
 }
 
 func (s *Service) resolveAnalyticsSupplierID(r *http.Request) string {
-	if r != nil {
-		if supplierID := s.analyticsSupplierID(r.Context()); supplierID != "" {
-			return supplierID
-		}
-		if s.jwtSecret != "" {
-			if cookie, err := r.Cookie(auth.CookieName); err == nil && strings.TrimSpace(cookie.Value) != "" {
-				if claims, err := auth.Parse(cookie.Value, s.jwtSecret); err == nil {
-					if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
-						return supplierID
-					}
-					if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
-						return supplierID
-					}
-				}
-			}
-			if token := auth.BearerToken(r); token != "" {
-				if claims, err := auth.Parse(token, s.jwtSecret); err == nil {
-					if supplierID := strings.TrimSpace(claims.SupplierID); supplierID != "" {
-						return supplierID
-					}
-					if supplierID := strings.TrimSpace(claims.Subject); supplierID != "" {
-						return supplierID
-					}
-				}
-			}
-		}
+	if r == nil {
+		return s.resolveSupplierScope(context.Background())
 	}
-	return strings.TrimSpace(s.supplierID)
+	return s.resolveSupplierScope(r.Context())
 }
 
 // effectiveWarehouseID resolves warehouse scope for transfer mutations. Supplier
@@ -876,7 +858,7 @@ func (s *Service) effectiveWarehouseID(ctx context.Context, r *http.Request) (st
 
 func (s *Service) defaultWarehouseIDForSupplier(ctx context.Context, supplierID string) (string, error) {
 	if s.memoryTransfersEnabled() {
-		return "ssmr-warehouse-1", nil
+		return "", errors.New("no warehouse for supplier")
 	}
 	if s.spannerClient == nil {
 		return "", errors.New("warehouse resolver unavailable")

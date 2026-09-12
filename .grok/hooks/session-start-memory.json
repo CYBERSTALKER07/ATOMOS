@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .agents/skills/graph-retrieval-memory/scripts/seed_workspace_memory.py || true"
+          }
+        ]
+      }
+    ]
+  }
+}

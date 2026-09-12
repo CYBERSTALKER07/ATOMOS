@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -99,11 +100,130 @@ func (s *Service) HandlePlanningScenarioRun(w http.ResponseWriter, r *http.Reque
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
 	var in planning.ScenarioInput
 	_ = json.Unmarshal(body, &in)
-	result, err := svc.RunScenario(r.Context(), s.scopedSupplierID(r), in)
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.RunScenario(r.Context(), s.scopedSupplierID(r), claims.Subject, in)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_run_failed"})
 		return
 	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// HandlePlanningScenarioList serves GET /v1/supplier/planning/scenarios.
+func (s *Service) HandlePlanningScenarioList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	rows, err := svc.ListScenarios(r.Context(), s.scopedSupplierID(r), 20)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_list_failed"})
+		return
+	}
+	if rows == nil {
+		rows = []planning.ScenarioResult{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"scenarios": rows})
+}
+
+// HandlePlanningScenarioClone serves POST /v1/supplier/planning/scenarios/{scenarioID}/clone.
+func (s *Service) HandlePlanningScenarioClone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	scenarioID := chi.URLParam(r, "scenarioID")
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
+	var in planning.ScenarioCloneInput
+	_ = json.Unmarshal(body, &in)
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.CloneScenario(r.Context(), s.scopedSupplierID(r), scenarioID, claims.Subject, in)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_clone_failed"})
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
+}
+
+// HandlePlanningScenarioCompare serves POST /v1/supplier/planning/scenarios/compare.
+func (s *Service) HandlePlanningScenarioCompare(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 8*1024))
+	var in planning.ScenarioCompareRequest
+	if err := json.Unmarshal(body, &in); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_body"})
+		return
+	}
+	result, err := svc.CompareScenarios(r.Context(), s.scopedSupplierID(r), in.ScenarioIDs)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		if strings.Contains(err.Error(), "compare_requires_two") {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "compare_requires_two_scenarios"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_compare_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// HandlePlanningScenarioPublish serves POST /v1/supplier/planning/scenarios/{scenarioID}/publish.
+func (s *Service) HandlePlanningScenarioPublish(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	scenarioID := chi.URLParam(r, "scenarioID")
+	claims, _ := auth.FromContext(r.Context())
+	result, err := svc.PublishScenario(r.Context(), s.scopedSupplierID(r), scenarioID, claims.Subject)
+	if err != nil {
+		if errors.Is(err, planning.ErrScenarioNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "scenario_not_found"})
+			return
+		}
+		if errors.Is(err, planning.ErrScenarioPublishConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "scenario_publish_conflict"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "scenario_publish_failed"})
+		return
+	}
+	s.broadcastSupplierPlanningEvent(r.Context(), s.scopedSupplierID(r), "", map[string]any{
+		"type":        "planning.scenario.published.v1",
+		"scenario_id": result.ScenarioID,
+		"version":     result.Version,
+		"supplier_id": result.SupplierID,
+	})
 	writeJSON(w, http.StatusOK, result)
 }
 
@@ -176,24 +296,100 @@ func (s *Service) HandleGovernedAgentHook(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, result)
 }
 
-// HandleReplenishmentPolicies serves GET /v1/supplier/replenishment/policies.
+// HandleReplenishmentPolicies serves GET/PATCH /v1/supplier/replenishment/policies.
 func (s *Service) HandleReplenishmentPolicies(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
 	if s.portalSpanner == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "policies_unavailable"})
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	_ = replenishment.EnsurePolicy(r.Context(), s.portalSpanner, sid)
-	policy, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
-		return
+	switch r.Method {
+	case http.MethodGet:
+		_ = replenishment.EnsurePolicy(r.Context(), s.portalSpanner, sid)
+		policy, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, policy)
+	case http.MethodPatch:
+		body, ok := readMutationBody(w, r, 8*1024)
+		if !ok {
+			return
+		}
+		key, handled := s.guardMutationReplay(w, r, body)
+		if handled {
+			return
+		}
+		cur, err := replenishment.LoadPolicy(r.Context(), s.portalSpanner, sid)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_load_failed"})
+			return
+		}
+		var patch struct {
+			AutoApproveStable         *bool    `json:"auto_approve_stable"`
+			AutoApprovePredictivePush *bool    `json:"auto_approve_predictive_push"`
+			MaxDailyTransferUnits     *int64   `json:"max_daily_transfer_units"`
+			MinConfidenceScore        *float64 `json:"min_confidence_score"`
+			TargetServiceLevel        *float64 `json:"target_service_level"`
+			LeadTimeDays              *int64   `json:"lead_time_days"`
+			LeadTimeSigmaDays         *float64 `json:"lead_time_sigma_days"`
+		}
+		if err := json.Unmarshal(body, &patch); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		if patch.AutoApproveStable != nil {
+			cur.AutoApproveStable = *patch.AutoApproveStable
+		}
+		if patch.AutoApprovePredictivePush != nil {
+			cur.AutoApprovePredictivePush = *patch.AutoApprovePredictivePush
+		}
+		if patch.MaxDailyTransferUnits != nil {
+			cur.MaxDailyTransferUnits = *patch.MaxDailyTransferUnits
+		}
+		if patch.MinConfidenceScore != nil {
+			cur.MinConfidenceScore = *patch.MinConfidenceScore
+		}
+		if patch.TargetServiceLevel != nil {
+			sl := *patch.TargetServiceLevel
+			if sl < 0.5 || sl > 0.999 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "target_service_level_out_of_range"})
+				return
+			}
+			cur.TargetServiceLevel = sl
+		}
+		if patch.LeadTimeDays != nil {
+			if *patch.LeadTimeDays < 1 || *patch.LeadTimeDays > 90 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lead_time_days_out_of_range"})
+				return
+			}
+			cur.LeadTimeDays = *patch.LeadTimeDays
+		}
+		if patch.LeadTimeSigmaDays != nil {
+			if *patch.LeadTimeSigmaDays < 0 || *patch.LeadTimeSigmaDays > 30 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lead_time_sigma_days_out_of_range"})
+				return
+			}
+			cur.LeadTimeSigmaDays = *patch.LeadTimeSigmaDays
+		}
+		cur.SupplierID = sid
+		if err := replenishment.UpsertPolicy(r.Context(), s.portalSpanner, cur); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "policy_upsert_failed"})
+			return
+		}
+		// S-P1-2: defensive cache bust (policy readers may adopt this key later).
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), "supplier:replenishment:policy:"+sid)
+		}
+		respBytes, _ := json.Marshal(cur)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(respBytes)
+		s.storeMutationReplay(r.Context(), key, body, http.StatusOK, respBytes)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
-	writeJSON(w, http.StatusOK, policy)
 }
 
 func (s *Service) broadcastSupplierPlanningEvent(ctx context.Context, supplierID, warehouseID string, payload map[string]any) {
@@ -240,6 +436,35 @@ func (s *Service) HandlePlanningSeasonalOverrides(w http.ResponseWriter, r *http
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandlePlanningSeasonalEstimate serves POST /v1/supplier/planning/seasonal-estimate.
+// Flag-gated by FORECAST_SEASONAL_ESTIMATE_ENABLED. Returns YoY/month suggestions;
+// optional persist_drafts upserts inactive overrides for review (never auto-activates).
+func (s *Service) HandlePlanningSeasonalEstimate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if !planning.SeasonalEstimateEnabled() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "seasonal_estimate_disabled"})
+		return
+	}
+	svc := s.planningService()
+	if svc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "planning_unavailable"})
+		return
+	}
+	var body struct {
+		PersistDrafts bool `json:"persist_drafts"`
+	}
+	_ = json.NewDecoder(io.LimitReader(r.Body, 4*1024)).Decode(&body)
+	result, err := svc.EstimateCalendarMultipliers(r.Context(), s.scopedSupplierID(r), time.Time{}, body.PersistDrafts)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 // HandlePlanningSignalIngest serves POST /v1/supplier/planning/signals/ingest.

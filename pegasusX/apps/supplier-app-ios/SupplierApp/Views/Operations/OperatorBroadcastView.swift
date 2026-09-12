@@ -27,9 +27,9 @@ struct OperatorBroadcastView: View {
                         }
                     }
                 }
-                TextField("Closure / effective date (optional)", text: $templateDate)
-                TextField("Title", text: $title)
-                TextField("Message", text: $bodyText, axis: .vertical)
+                TextField("mobile_supplier.ui.closure_effective_date_optional", text: $templateDate)
+                TextField("supplier_portal.admin.control_center.field.title", text: $title)
+                TextField("warehouse_portal.residual.text.message", text: $bodyText, axis: .vertical)
                     .lineLimit(3...6)
                 Picker("Target role", selection: $broadcastRole) {
                     ForEach(broadcastRoles, id: \.self) { role in

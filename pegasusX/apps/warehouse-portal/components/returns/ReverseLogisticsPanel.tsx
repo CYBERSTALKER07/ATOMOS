@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
@@ -19,6 +20,7 @@ const taskId = (t: ReverseTask) => t.TaskId ?? t.task_id ?? '';
 const orderId = (t: ReverseTask) => t.OrderId ?? t.order_id ?? '';
 
 export function ReverseLogisticsPanel() {
+  const t = usePortalT();
   const [tasks, setTasks] = useState<ReverseTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,9 +70,9 @@ export function ReverseLogisticsPanel() {
     await load();
   }
 
-  if (loading) return <p className="text-sm text-gray-500">Loading reverse tasks…</p>;
+  if (loading) return <p className="text-sm text-gray-500">{t("warehouse_portal.returns.reverse_logistics_panel.text.loading_reverse_tasks")}</p>;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
-  if (tasks.length === 0) return <p className="text-sm text-gray-500">No open credit-note reverse tasks.</p>;
+  if (tasks.length === 0) return <p className="text-sm text-gray-500">{t("warehouse_portal.returns.reverse_logistics_panel.text.no_open_credit_note_reverse_tasks")}</p>;
 
   return (
     <ul className="divide-y text-sm">

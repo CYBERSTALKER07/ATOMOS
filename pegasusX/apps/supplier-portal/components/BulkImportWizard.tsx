@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState, useRef } from 'react';
 
 export function BulkImportWizard({
@@ -9,6 +12,7 @@ export function BulkImportWizard({
   onClose: () => void;
   onImport: (rows: any[]) => void;
 }) {
+  const t = usePortalT();
   const [step, setStep] = useState<'upload' | 'map' | 'review'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
@@ -55,14 +59,14 @@ export function BulkImportWizard({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-[var(--surface)] w-full max-w-2xl rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
-          <h2 className="text-xl font-semibold">Bulk Import Wizard</h2>
+          <h2 className="text-xl font-semibold">{t("supplier_portal.bulk_import_wizard.text.bulk_import_wizard")}</h2>
           <button onClick={onClose} className="text-[var(--muted)] hover:text-current">&times;</button>
         </div>
         
         <div className="p-6 flex-1 overflow-y-auto">
           {step === 'upload' && (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-[var(--border)] rounded-lg">
-              <p className="mb-4 text-sm text-[var(--muted)]">Upload a CSV file to import products</p>
+              <p className="mb-4 text-sm text-[var(--muted)]">{t("supplier_portal.bulk_import_wizard.text.upload_a_csv_file_to_import_products")}</p>
               <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
               <button 
                 type="button" 
@@ -76,7 +80,7 @@ export function BulkImportWizard({
 
           {step === 'map' && (
             <div className="space-y-4">
-              <p className="text-sm">Map your CSV columns to product fields:</p>
+              <p className="text-sm">{t("supplier_portal.bulk_import_wizard.text.map_your_csv_columns_to_product_fields")}</p>
               <div className="grid grid-cols-2 gap-4">
                 {['name', 'price', 'barcode', 'category', 'vu'].map(field => (
                   <label key={field} className="flex flex-col gap-1 text-sm">
@@ -104,10 +108,10 @@ export function BulkImportWizard({
                 <table className="min-w-full text-sm text-left">
                   <thead className="bg-[var(--field-background)] border-b border-[var(--border)]">
                     <tr>
-                      <th className="px-3 py-2">Name</th>
-                      <th className="px-3 py-2">Price</th>
-                      <th className="px-3 py-2">Barcode</th>
-                      <th className="px-3 py-2">Category</th>
+                      <th className="px-3 py-2">{t("supplier_portal.analytics.knowledge_graph.text.name")}</th>
+                      <th className="px-3 py-2">{t("supplier_portal.pricing.retailer_overrides.text.price")}</th>
+                      <th className="px-3 py-2">{t("supplier_portal.catalog.components.catalog_table.text.barcode")}</th>
+                      <th className="px-3 py-2">{t("supplier_portal.catalog.components.catalog_table.text.category")}</th>
                       <th className="px-3 py-2">VU</th>
                     </tr>
                   </thead>
@@ -134,10 +138,10 @@ export function BulkImportWizard({
         </div>
 
         <div className="px-6 py-4 border-t border-[var(--border)] flex justify-end gap-3 bg-[var(--field-background)]">
-          <button type="button" onClick={onClose} className="md-btn md-btn-outlined px-4 py-2">Cancel</button>
+          <button type="button" onClick={onClose} className="md-btn md-btn-outlined px-4 py-2">{t("common.action.cancel")}</button>
           
           {step === 'map' && (
-            <button type="button" onClick={() => setStep('review')} className="md-btn md-btn-filled px-4 py-2">Continue</button>
+            <button type="button" onClick={() => setStep('review')} className="md-btn md-btn-filled px-4 py-2">{t("supplier_portal.bulk_import_wizard.text.continue")}</button>
           )}
           {step === 'review' && (
             <button 

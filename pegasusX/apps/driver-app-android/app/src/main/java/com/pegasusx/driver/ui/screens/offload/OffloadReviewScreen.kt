@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -60,6 +62,7 @@ import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.StatusBlue
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -98,11 +101,11 @@ fun OffloadReviewScreen(
                 .padding(top = 56.dp, start = 8.dp, end = 16.dp, bottom = 8.dp)
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = lab.fg)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back), tint = lab.fg)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "OFFLOAD REVIEW",
+                    text = stringResource(R.string.mobile_driver_ui_offload_review),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -162,7 +165,7 @@ fun OffloadReviewScreen(
                                 textDecoration = if (audit.isFullyRejected) TextDecoration.LineThrough else null
                             )
                             Text(
-                                text = "${audit.item.quantity}× · ${audit.item.unitPrice.formattedAmount()}/ea",
+                                text = stringResource(R.string.mobile_driver_ui_quantity_formattedamount_ea, audit.item.quantity, audit.item.unitPrice.formattedAmount()),
                                 fontSize = 11.sp,
                                 color = lab.fgTertiary
                             )
@@ -190,7 +193,7 @@ fun OffloadReviewScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.RemoveCircle,
-                                    contentDescription = "Reduce rejected",
+                                    contentDescription = stringResource(R.string.mobile_driver_ui_reduce_rejected),
                                     tint = if (audit.rejected > 0) StatusRed else lab.fgTertiary,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -215,7 +218,7 @@ fun OffloadReviewScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.AddCircle,
-                                    contentDescription = "Increase rejected",
+                                    contentDescription = stringResource(R.string.mobile_driver_ui_increase_rejected),
                                     tint = if (audit.rejected < audit.item.quantity) StatusRed else lab.fgTertiary,
                                     modifier = Modifier.size(22.dp)
                                 )
@@ -270,16 +273,15 @@ fun OffloadReviewScreen(
             }
         }
 
-        // Damage photo proof (required for DAMAGED / WRONG_ITEM)
-        if (state.hasRejections && state.needsPhotoProof) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+        // PoD / damage photo proof (required for credit leave; also for DAMAGED / WRONG_ITEM)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
                 Text(
-                    text = "DAMAGE PHOTO",
+                    text = stringResource(R.string.mobile_driver_ui_proof_of_delivery_photo),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -320,7 +322,7 @@ fun OffloadReviewScreen(
                 state.photoPreviewUri?.let { uri ->
                     AsyncImage(
                         model = uri,
-                        contentDescription = "Damage proof",
+                        contentDescription = stringResource(R.string.mobile_driver_ui_damage_proof),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(140.dp)
@@ -328,10 +330,20 @@ fun OffloadReviewScreen(
                         contentScale = ContentScale.Crop,
                     )
                 }
+            Text(
+                text = stringResource(R.string.mobile_driver_ui_required_for_credit_leave_and_for_damaged_or_wrong_item_rejectio),
+                fontSize = 11.sp,
+                color = lab.fgTertiary,
+            )
+            com.pegasusx.driver.ui.components.SignaturePad(
+                onSignedJpeg = { bytes -> viewModel.saveSignatureJpeg(bytes) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            if (state.signatureLocalPath.isNotBlank() || state.signatureUrl.isNotBlank()) {
                 Text(
-                    text = "Required for damaged or wrong-item rejections.",
-                    fontSize = 11.sp,
-                    color = lab.fgTertiary,
+                    text = "Signature saved",
+                    fontSize = 12.sp,
+                    color = lab.fg,
                 )
             }
         }

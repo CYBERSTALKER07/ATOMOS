@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { Loader2 } from "lucide-react";
@@ -27,6 +28,7 @@ type SellThroughResponse = {
  * GET /v1/retailer/insights/sell-through
  */
 export function SellThroughPanel() {
+  const t = usePortalT();
   const [items, setItems] = useState<SellThroughItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export function SellThroughPanel() {
       setItems(Array.isArray(data.items) ? data.items : []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.load_failed"));
       setItems([]);
     } finally {
       setLoading(false);
@@ -84,12 +86,12 @@ export function SellThroughPanel() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-wide text-[var(--desk-text-tertiary)]">
-                <th className="py-2 pr-3">Day</th>
+                <th className="py-2 pr-3">{t("retailer_desktop.insights.sell_through_panel.text.day")}</th>
                 <th className="py-2 pr-3">SKU</th>
-                <th className="py-2 pr-3">Net sold</th>
-                <th className="py-2 pr-3">Sold</th>
-                <th className="py-2 pr-3">Voided</th>
-                <th className="py-2">Source</th>
+                <th className="py-2 pr-3">{t("retailer_desktop.insights.sell_through_panel.text.net_sold")}</th>
+                <th className="py-2 pr-3">{t("retailer_desktop.hq.text.sold")}</th>
+                <th className="py-2 pr-3">{t("retailer_desktop.hq.text.voided")}</th>
+                <th className="py-2">{t("retailer_desktop.insights.sell_through_panel.text.source")}</th>
               </tr>
             </thead>
             <tbody>

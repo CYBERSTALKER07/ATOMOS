@@ -22,8 +22,11 @@ fun HexagonalControlTowerMap(
 ) {
     val h3 = remember { H3Core.newInstance() }
 
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    val centerLatLng = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
+
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(LatLng(37.74, -122.4), 11f)
+        position = CameraPosition.fromLatLngZoom(centerLatLng, 11f)
     }
 
     // A dark map style JSON to match the dashboard aesthetic

@@ -1,0 +1,118 @@
+backend-setup-1  | go: downloading cloud.google.com/go/spanner v1.94.0
+backend-setup-1  | go: downloading google.golang.org/grpc v1.82.1
+backend-setup-1  | go: downloading google.golang.org/api v0.287.1
+backend-setup-1  | go: downloading cloud.google.com/go v0.123.0
+backend-setup-1  | go: downloading github.com/google/uuid v1.6.0
+backend-setup-1  | go: downloading firebase.google.com/go/v4 v4.15.0
+backend-setup-1  | go: downloading github.com/go-chi/chi/v5 v5.2.2
+backend-setup-1  | go: downloading golang.org/x/crypto v0.53.0
+backend-setup-1  | go: downloading github.com/redis/go-redis/v9 v9.19.0
+backend-setup-1  | go: downloading github.com/go-chi/chi v1.5.4
+backend-setup-1  | go: downloading github.com/prometheus/client_golang v1.23.2
+backend-setup-1  | go: downloading golang.org/x/sync v0.21.0
+backend-setup-1  | go: downloading cloud.google.com/go/firestore v1.21.0
+backend-setup-1  | go: downloading golang.org/x/oauth2 v0.36.0
+backend-setup-1  | go: downloading github.com/segmentio/kafka-go v0.4.51
+backend-setup-1  | go: downloading github.com/phpdave11/gofpdf v1.4.2
+backend-setup-1  | go: downloading github.com/uber/h3-go/v4 v4.2.0
+backend-setup-1  | go: downloading cloud.google.com/go/storage v1.59.2
+backend-setup-1  | go: downloading github.com/pkg/sftp v1.13.9
+backend-setup-1  | go: downloading github.com/adyen/adyen-go-api-library/v21 v21.2.0
+backend-setup-1  | go: downloading github.com/stripe/stripe-go/v76 v76.25.0
+backend-setup-1  | go: downloading github.com/gorilla/websocket v1.5.3
+backend-setup-1  | go: downloading golang.org/x/time v0.15.0
+backend-setup-1  | go: downloading cloud.google.com/go/monitoring v1.29.0
+backend-setup-1  | go: downloading github.com/GoogleCloudPlatform/grpc-gcp-go/grpcgcp v1.6.0
+backend-setup-1  | go: downloading github.com/googleapis/gax-go/v2 v2.23.0
+backend-setup-1  | go: downloading go.opencensus.io v0.24.0
+backend-setup-1  | go: downloading go.opentelemetry.io/contrib/detectors/gcp v1.43.0
+backend-setup-1  | go: downloading cloud.google.com/go/iam v1.11.0
+backend-setup-1  | go: downloading cloud.google.com/go/longrunning v1.2.0
+backend-setup-1  | go: downloading go.opentelemetry.io/otel v1.44.0
+backend-setup-1  | go: downloading go.opentelemetry.io/otel/metric v1.44.0
+backend-setup-1  | go: downloading go.opentelemetry.io/otel/trace v1.44.0
+backend-setup-1  | go: downloading go.opentelemetry.io/otel/sdk/metric v1.44.0
+backend-setup-1  | go: downloading google.golang.org/protobuf v1.36.11
+backend-setup-1  | go: downloading google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7
+backend-setup-1  | go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260630182238-925bb5da69e7
+backend-setup-1  | go: downloading google.golang.org/genproto v0.0.0-20260319201613-d00831a3d3e7
+backend-setup-1  | go: downloading go.opentelemetry.io/otel/sdk v1.44.0
+backend-setup-1  | go: downloading github.com/MicahParks/keyfunc v1.9.0
+backend-setup-1  | go: downloading github.com/golang-jwt/jwt/v4 v4.5.0
+backend-setup-1  | go: downloading github.com/beorn7/perks v1.0.1
+backend-setup-1  | go: downloading github.com/cespare/xxhash/v2 v2.3.0
+backend-setup-1  | go: downloading github.com/prometheus/client_model v0.6.2
+backend-setup-1  | go: downloading github.com/prometheus/common v0.66.1
+backend-setup-1  | go: downloading github.com/prometheus/procfs v0.16.1
+backend-setup-1  | go: downloading cloud.google.com/go/compute/metadata v0.9.0
+backend-setup-1  | go: downloading golang.org/x/net v0.56.0
+backend-setup-1  | go: downloading go.mozilla.org/pkcs7 v0.9.0
+backend-setup-1  | go: downloading github.com/kr/fs v0.1.0
+backend-setup-1  | go: downloading cloud.google.com/go/compute v1.54.0
+backend-setup-1  | go: downloading cloud.google.com/go/auth v0.20.0
+backend-setup-1  | go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0
+backend-setup-1  | go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.32.0
+backend-setup-1  | go: downloading cloud.google.com/go/auth/oauth2adapt v0.2.8
+backend-setup-1  | go: downloading go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0
+backend-setup-1  | go: downloading go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0
+backend-setup-1  | go: downloading github.com/go-logr/logr v1.4.3
+backend-setup-1  | go: downloading golang.org/x/sys v0.46.0
+backend-setup-1  | go: downloading go.uber.org/atomic v1.11.0
+backend-setup-1  | go: downloading github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822
+backend-setup-1  | go: downloading go.yaml.in/yaml/v2 v2.4.2
+backend-setup-1  | go: downloading github.com/google/s2a-go v0.1.9
+backend-setup-1  | go: downloading github.com/googleapis/enterprise-certificate-proxy v0.3.17
+backend-setup-1  | go: downloading github.com/go-logr/stdr v1.2.2
+backend-setup-1  | go: downloading go.opentelemetry.io/auto/sdk v1.2.1
+backend-setup-1  | go: downloading github.com/envoyproxy/go-control-plane/envoy v1.37.0
+backend-setup-1  | go: downloading github.com/klauspost/compress v1.18.0
+backend-setup-1  | go: downloading github.com/pierrec/lz4/v4 v4.1.18
+backend-setup-1  | go: downloading github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0
+backend-setup-1  | go: downloading github.com/spiffe/go-spiffe/v2 v2.6.0
+backend-setup-1  | go: downloading github.com/cncf/xds/go v0.0.0-20260202195803-dba9d589def2
+backend-setup-1  | go: downloading github.com/envoyproxy/go-control-plane v0.14.0
+backend-setup-1  | go: downloading github.com/felixge/httpsnoop v1.0.4
+backend-setup-1  | go: downloading golang.org/x/text v0.38.0
+backend-setup-1  | go: downloading github.com/go-jose/go-jose/v4 v4.1.4
+backend-setup-1  | go: downloading cel.dev/expr v0.25.1
+backend-setup-1  | go: downloading github.com/envoyproxy/protoc-gen-validate v1.3.3
+backend-setup-1  | {"time":"2026-08-11T12:21:50.534228467Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:21:50.627946925Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.ddaa2ea46cbf3257.1.3.6.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 1
+backend-setup-1  | {"time":"2026-08-11T12:21:53.380029801Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:21:53.47025451Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.7a2682673c136780.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 2
+backend-setup-1  | {"time":"2026-08-11T12:21:56.121280719Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:21:56.212308344Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.25e16a1d4776aa1a.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 3
+backend-setup-1  | {"time":"2026-08-11T12:21:58.905562221Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:21:59.006061679Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.25f4c700354d15cb.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 4
+backend-setup-1  | {"time":"2026-08-11T12:22:01.662998264Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:01.755191375Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.7e36ecd0ac86e825.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 5
+backend-setup-1  | {"time":"2026-08-11T12:22:04.428188376Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:04.517953417Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.af9d0e3fd6a190d0.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 6
+backend-setup-1  | {"time":"2026-08-11T12:22:07.195479294Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:07.285241877Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.09d92f388a862f35.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 7
+backend-setup-1  | {"time":"2026-08-11T12:22:10.006679128Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:10.099639045Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.531d4f6e4393154b.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 8
+backend-setup-1  | {"time":"2026-08-11T12:22:12.75638213Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:12.846240505Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.0dcde93cd373339c.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 9
+backend-setup-1  | {"time":"2026-08-11T12:22:15.523751464Z","level":"INFO","msg":"seed supplier ensured","supplier_id":"sup_61d822c6ab9714ca11f20db9","name":"SSMR Supplier","country":"UZ","currency":"UZS"}
+backend-setup-1  | {"time":"2026-08-11T12:22:15.613965589Z","level":"ERROR","msg":"ensure seed supplier","err":"ensure demo scope links: ensure demo scope links: spanner: code = \"FailedPrecondition\", desc = \"A new row in table Suppliers does not specify a non-null value for NOT NULL column: CountryCode\", requestID = \"1.28539cbc8992704d.1.3.5.1\""}
+backend-setup-1  | exit status 1
+backend-setup-1  | spanner bootstrap retry 10

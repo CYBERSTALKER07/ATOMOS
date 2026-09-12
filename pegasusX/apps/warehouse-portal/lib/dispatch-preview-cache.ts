@@ -1,4 +1,4 @@
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 import type {
   WarehouseDispatchDriver,
   WarehouseDispatchOrder,
@@ -36,7 +36,9 @@ export function dispatchPreviewCacheKey(
 export async function getDispatchPreviewCache(
   key: string,
 ): Promise<DispatchPreviewSnapshot | null> {
-  return cacheGet<DispatchPreviewSnapshot>(key);
+  return cacheGet<DispatchPreviewSnapshot>(key, {
+    maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+  });
 }
 
 export async function setDispatchPreviewCache(

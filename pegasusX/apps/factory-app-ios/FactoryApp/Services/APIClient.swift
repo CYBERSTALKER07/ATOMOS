@@ -7,7 +7,7 @@ final class APIClient: Sendable {
     // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
     // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
     // for backend reachability over Wi-Fi.
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -19,8 +19,18 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL = URL(string: "https://api.pegasus.uz/")!
+    private let bootstrapURL: URL = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let s: String
+        if raw.isEmpty { s = "https://api.pegasusx.app/" }
+        else if raw.hasSuffix("/") { s = raw }
+        else { s = raw + "/" }
+        return URL(string: s)!
+    }()
     #endif
+
+    private var baseURL: URL { pinnedAPIBaseURL(bootstrap: bootstrapURL) }
 
     private let session: URLSession
     private let decoder: JSONDecoder
@@ -32,6 +42,13 @@ final class APIClient: Sendable {
         session = URLSession(configuration: config)
         decoder = JSONDecoder()
         encoder = JSONEncoder()
+    }
+
+    func registerDeviceToken(token: String, platform: String = "ios") async throws {
+        let _: [String: String] = try await post(
+            "v1/user/device-token",
+            body: DeviceTokenRequest(token: token, platform: platform)
+        )
     }
 
     // MARK: - GET

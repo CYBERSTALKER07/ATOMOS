@@ -28,5 +28,9 @@
         "context7_api_key": "ctx7sk-8d86082e-30d7-4d08-a9ab-693b6c000af2",
       },
     },
+    "code-graph": {
+      "command": "bash",
+      "args": ["/Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/run_mcp_server.sh"]
+    }
   },
 }

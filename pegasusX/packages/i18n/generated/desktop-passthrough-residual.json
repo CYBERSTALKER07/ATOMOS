@@ -1,0 +1,978 @@
+[
+  {
+    "key": "factory_portal.residual.text.approved",
+    "en": "Approved"
+  },
+  {
+    "key": "factory_portal.residual.text.dlq_threshold",
+    "en": "DLQ threshold"
+  },
+  {
+    "key": "factory_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "factory_portal.residual.text.escalated",
+    "en": "Escalated"
+  },
+  {
+    "key": "factory_portal.residual.text.exception_queue",
+    "en": "Exception queue"
+  },
+  {
+    "key": "factory_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "factory_portal.residual.text.high_priority",
+    "en": "High priority"
+  },
+  {
+    "key": "factory_portal.residual.text.in_flight",
+    "en": "In flight"
+  },
+  {
+    "key": "factory_portal.residual.text.in_production",
+    "en": "In production"
+  },
+  {
+    "key": "factory_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "factory_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "factory_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "factory_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "factory_portal.residual.text.rows_highlighted_when_attempt_count_reaches_dlq_threshold",
+    "en": "Rows highlighted when attempt count reaches DLQ threshold."
+  },
+  {
+    "key": "factory_portal.residual.text.submitted",
+    "en": "Submitted"
+  },
+  {
+    "key": "factory_portal.transfers.create.text.ord",
+    "en": "ord_…"
+  },
+  {
+    "key": "retailer_desktop.residual.text.ai_signals",
+    "en": "AI Signals"
+  },
+  {
+    "key": "retailer_desktop.residual.text.approved",
+    "en": "Approved"
+  },
+  {
+    "key": "retailer_desktop.residual.text.arrived",
+    "en": "Arrived"
+  },
+  {
+    "key": "retailer_desktop.residual.text.arriving",
+    "en": "Arriving"
+  },
+  {
+    "key": "retailer_desktop.residual.text.assist_tickets",
+    "en": "Assist tickets"
+  },
+  {
+    "key": "retailer_desktop.residual.text.auto_accepted",
+    "en": "Auto-Accepted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.card_sales_require_network_use_cash_offline",
+    "en": "Card sales require network. Use cash offline."
+  },
+  {
+    "key": "retailer_desktop.residual.text.cash_collection",
+    "en": "Cash Collection"
+  },
+  {
+    "key": "retailer_desktop.residual.text.company",
+    "en": "Company"
+  },
+  {
+    "key": "retailer_desktop.residual.text.connection_restored_verify_response_before_retrying",
+    "en": "Connection restored — verify response before retrying."
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_deactivate_card",
+    "en": "Could not deactivate card"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_set_default_card",
+    "en": "Could not set default card"
+  },
+  {
+    "key": "retailer_desktop.residual.text.could_not_start_card_tokenization",
+    "en": "Could not start card tokenization"
+  },
+  {
+    "key": "retailer_desktop.residual.text.create_failed_2",
+    "en": "create_failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "retailer_desktop.residual.text.in_transit",
+    "en": "In Transit"
+  },
+  {
+    "key": "retailer_desktop.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.loaded",
+    "en": "Loaded"
+  },
+  {
+    "key": "retailer_desktop.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "retailer_desktop.residual.text.network_offline_showing_the_latest_cached_dock_queue",
+    "en": "Network offline. Showing the latest cached dock queue."
+  },
+  {
+    "key": "retailer_desktop.residual.text.operational_region",
+    "en": "Operational Region"
+  },
+  {
+    "key": "retailer_desktop.residual.text.park_hold_requires_network_use_local_auto_park_offline",
+    "en": "Park hold requires network (use local auto-park offline)."
+  },
+  {
+    "key": "retailer_desktop.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "retailer_desktop.residual.text.postal_code",
+    "en": "Postal code"
+  },
+  {
+    "key": "retailer_desktop.residual.text.primary_contact",
+    "en": "Primary Contact"
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_access_restricted",
+    "en": "Procurement access restricted"
+  },
+  {
+    "key": "retailer_desktop.residual.text.procurement_is_offline",
+    "en": "Procurement is offline"
+  },
+  {
+    "key": "retailer_desktop.residual.text.quarantined",
+    "en": "Quarantined"
+  },
+  {
+    "key": "retailer_desktop.residual.text.receiving_window_closes",
+    "en": "Receiving window closes"
+  },
+  {
+    "key": "retailer_desktop.residual.text.receiving_window_opens",
+    "en": "Receiving window opens"
+  },
+  {
+    "key": "retailer_desktop.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "retailer_desktop.residual.text.reorder_now",
+    "en": "REORDER NOW"
+  },
+  {
+    "key": "retailer_desktop.residual.text.sales_7d",
+    "en": "Sales 7d"
+  },
+  {
+    "key": "retailer_desktop.residual.text.shop_closed",
+    "en": "Shop Closed"
+  },
+  {
+    "key": "retailer_desktop.residual.text.staged_cart",
+    "en": "Staged Cart"
+  },
+  {
+    "key": "retailer_desktop.residual.text.suppliers",
+    "en": "Suppliers"
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_intelligence_feeds",
+    "en": "Syncing intelligence feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.syncing_procurement_feeds",
+    "en": "Syncing procurement feeds..."
+  },
+  {
+    "key": "retailer_desktop.residual.text.tax_id_vat",
+    "en": "Tax ID / VAT"
+  },
+  {
+    "key": "retailer_desktop.residual.text.turn_on_only_what_your_shop_needs_solo_shops_run_on_core_alone",
+    "en": "Turn on only what your shop needs. Solo shops run on Core alone."
+  },
+  {
+    "key": "retailer_desktop.settings.team.text.998",
+    "en": "+998…"
+  },
+  {
+    "key": "supplier_portal.admin.empathy.title",
+    "en": "Empathy Engine"
+  },
+  {
+    "key": "supplier_portal.auth.login.brand_title",
+    "en": "Pegasus Hub"
+  },
+  {
+    "key": "supplier_portal.auth.login.email_placeholder",
+    "en": "admin@void.pegasus.uz"
+  },
+  {
+    "key": "supplier_portal.auth.login.http_error",
+    "en": "HTTP {status}"
+  },
+  {
+    "key": "supplier_portal.auth.register.brand_title",
+    "en": "Pegasus Hub"
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.company_name_placeholder",
+    "en": "Pegasus Beverages Ltd."
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.email_placeholder",
+    "en": "info@company.uz"
+  },
+  {
+    "key": "supplier_portal.auth.register.step1.phone_placeholder",
+    "en": "901234567"
+  },
+  {
+    "key": "supplier_portal.auth.register.step3.company_reg_number_placeholder",
+    "en": "MYF-001-UZ"
+  },
+  {
+    "key": "supplier_portal.auth.register.step3.tax_id_placeholder",
+    "en": "STIR-12345678"
+  },
+  {
+    "key": "supplier_portal.billing_setup.gateway.global_pay.label",
+    "en": "Global Pay"
+  },
+  {
+    "key": "supplier_portal.catalog._product_id_.text.ean_gtin",
+    "en": "EAN / GTIN"
+  },
+  {
+    "key": "supplier_portal.compliance.text.ehf_id",
+    "en": "EHF ID"
+  },
+  {
+    "key": "supplier_portal.credit.policy.text.ret",
+    "en": "ret_…"
+  },
+  {
+    "key": "supplier_portal.residual.text.28d_actual_units",
+    "en": "28d actual units"
+  },
+  {
+    "key": "supplier_portal.residual.text.28d_forecast_units",
+    "en": "28d forecast units"
+  },
+  {
+    "key": "supplier_portal.residual.text.accept_failed",
+    "en": "accept_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.account_number",
+    "en": "Account number"
+  },
+  {
+    "key": "supplier_portal.residual.text.adjust_failed",
+    "en": "adjust_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.adyen",
+    "en": "Adyen"
+  },
+  {
+    "key": "supplier_portal.residual.text.airwallex",
+    "en": "Airwallex"
+  },
+  {
+    "key": "supplier_portal.residual.text.approve_failed",
+    "en": "approve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.arrived",
+    "en": "Arrived"
+  },
+  {
+    "key": "supplier_portal.residual.text.auto_approve_predictive_push",
+    "en": "Auto-approve predictive push"
+  },
+  {
+    "key": "supplier_portal.residual.text.auto_approve_stable",
+    "en": "Auto-approve stable"
+  },
+  {
+    "key": "supplier_portal.residual.text.baseline_rows",
+    "en": "Baseline rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.baseline_sla",
+    "en": "Baseline SLA"
+  },
+  {
+    "key": "supplier_portal.residual.text.bootstrap_failed",
+    "en": "bootstrap_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.bulk_create_failed",
+    "en": "bulk_create_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.category_id",
+    "en": "Category ID"
+  },
+  {
+    "key": "supplier_portal.residual.text.company_registration_number",
+    "en": "Company registration number"
+  },
+  {
+    "key": "supplier_portal.residual.text.complete_setup",
+    "en": "Complete setup"
+  },
+  {
+    "key": "supplier_portal.residual.text.configured",
+    "en": "Configured"
+  },
+  {
+    "key": "supplier_portal.residual.text.country",
+    "en": "Country"
+  },
+  {
+    "key": "supplier_portal.residual.text.coverage_radius_km",
+    "en": "Coverage radius (km)"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_draft_failed",
+    "en": "create_draft_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.create_failed_2",
+    "en": "create_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.deactivate_failed_2",
+    "en": "deactivate_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.defaults_failed",
+    "en": "defaults_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.demand_baseline",
+    "en": "Demand baseline"
+  },
+  {
+    "key": "supplier_portal.residual.text.demand_predictions",
+    "en": "Demand predictions"
+  },
+  {
+    "key": "supplier_portal.residual.text.discount_bps_500_5",
+    "en": "Discount (bps, 500 = 5%)"
+  },
+  {
+    "key": "supplier_portal.residual.text.dismiss_failed",
+    "en": "dismiss_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.dispatch_execute_failed",
+    "en": "dispatch_execute_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.dispute_rows",
+    "en": "Dispute rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.enable_failed",
+    "en": "enable_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.ends_at_rfc3339",
+    "en": "Ends at (RFC3339)"
+  },
+  {
+    "key": "supplier_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "supplier_portal.residual.text.feed_unavailable_apply_ddl_or_wait_for_pos",
+    "en": "feed_unavailable_apply_ddl_or_wait_for_pos"
+  },
+  {
+    "key": "supplier_portal.residual.text.fleet_orders_failed",
+    "en": "fleet_orders_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_units",
+    "en": "Forecast units"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_units_24h",
+    "en": "Forecast units (24h)"
+  },
+  {
+    "key": "supplier_portal.residual.text.forecast_value",
+    "en": "Forecast value"
+  },
+  {
+    "key": "supplier_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "supplier_portal.residual.text.gln_13_digits",
+    "en": "GLN (13 digits)"
+  },
+  {
+    "key": "supplier_portal.residual.text.gs1_company_prefix_7_10_digits",
+    "en": "GS1 company prefix (7–10 digits)"
+  },
+  {
+    "key": "supplier_portal.residual.text.hold_failed",
+    "en": "hold_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.import_apply_failed",
+    "en": "import_apply_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.import_approve_failed",
+    "en": "import_approve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.import_wizard_failed",
+    "en": "import_wizard_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.in_transit",
+    "en": "In transit"
+  },
+  {
+    "key": "supplier_portal.residual.text.ingest_lag",
+    "en": "Ingest lag"
+  },
+  {
+    "key": "supplier_portal.residual.text.internal_co_located",
+    "en": "Internal / co-located"
+  },
+  {
+    "key": "supplier_portal.residual.text.invalid_limit",
+    "en": "invalid_limit"
+  },
+  {
+    "key": "supplier_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "supplier_portal.residual.text.issue_failed",
+    "en": "issue_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.latest_events_across_your_network",
+    "en": "Latest events across your network."
+  },
+  {
+    "key": "supplier_portal.residual.text.ledger_rows",
+    "en": "Ledger rows"
+  },
+  {
+    "key": "supplier_portal.residual.text.lines_failed",
+    "en": "lines_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_claims_failed",
+    "en": "load_claims_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_demand_analytics_failed",
+    "en": "load_demand_analytics_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_exceptions_failed",
+    "en": "load_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_factories_failed",
+    "en": "load_factories_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_flywheel_failed",
+    "en": "load_flywheel_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_geo_report_failed",
+    "en": "load_geo_report_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_knowledge_graph_failed",
+    "en": "load_knowledge_graph_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifest_exceptions_failed",
+    "en": "load_manifest_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifest_failed",
+    "en": "load_manifest_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_manifests_failed",
+    "en": "load_manifests_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_playbook_runs_failed",
+    "en": "load_playbook_runs_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_playbooks_failed",
+    "en": "load_playbooks_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_pricing_failed",
+    "en": "load_pricing_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_profile_failed",
+    "en": "load_profile_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_reconciliation_failed",
+    "en": "load_reconciliation_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_replenishment_policies_failed",
+    "en": "load_replenishment_policies_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_returns_failed",
+    "en": "load_returns_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_scored_exceptions_failed",
+    "en": "load_scored_exceptions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_segmentation_failed",
+    "en": "load_segmentation_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_signals_failed",
+    "en": "load_signals_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_suggestions_failed",
+    "en": "load_suggestions_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_supplier_analytics_failed",
+    "en": "load_supplier_analytics_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_supply_lanes_failed",
+    "en": "load_supply_lanes_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_topology_failed",
+    "en": "load_topology_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.load_warehouses_failed",
+    "en": "load_warehouses_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.loaded",
+    "en": "Loaded"
+  },
+  {
+    "key": "supplier_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "supplier_portal.residual.text.meio_network",
+    "en": "MEIO network"
+  },
+  {
+    "key": "supplier_portal.residual.text.mismatch_groups",
+    "en": "Mismatch groups"
+  },
+  {
+    "key": "supplier_portal.residual.text.monthly_salary_payout",
+    "en": "Monthly salary payout"
+  },
+  {
+    "key": "supplier_portal.residual.text.patch_failed",
+    "en": "patch_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "supplier_portal.residual.text.pipeline",
+    "en": "Pipeline"
+  },
+  {
+    "key": "supplier_portal.residual.text.planning_outcomes_unavailable",
+    "en": "planning_outcomes_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.planning_unavailable",
+    "en": "planning_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.policy_update_failed",
+    "en": "policy_update_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.postal_code",
+    "en": "Postal code"
+  },
+  {
+    "key": "supplier_portal.residual.text.predictions",
+    "en": "Predictions"
+  },
+  {
+    "key": "supplier_portal.residual.text.preview",
+    "en": "Preview"
+  },
+  {
+    "key": "supplier_portal.residual.text.preview_failed",
+    "en": "preview_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.priority_higher_wins_ties",
+    "en": "Priority (higher wins ties)"
+  },
+  {
+    "key": "supplier_portal.residual.text.product_id",
+    "en": "product_id"
+  },
+  {
+    "key": "supplier_portal.residual.text.projections",
+    "en": "Projections"
+  },
+  {
+    "key": "supplier_portal.residual.text.quantity_on_hand",
+    "en": "quantity_on_hand"
+  },
+  {
+    "key": "supplier_portal.residual.text.recent_financial_transactions",
+    "en": "Recent financial transactions."
+  },
+  {
+    "key": "supplier_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "supplier_portal.residual.text.registered",
+    "en": "Registered"
+  },
+  {
+    "key": "supplier_portal.residual.text.reject_failed",
+    "en": "reject_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.reorder_threshold",
+    "en": "reorder_threshold"
+  },
+  {
+    "key": "supplier_portal.residual.text.resolve_failed",
+    "en": "resolve_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailer_id_required",
+    "en": "retailer_id_required"
+  },
+  {
+    "key": "supplier_portal.residual.text.retailers_collect_cash_reconcile_manually",
+    "en": "Retailers collect cash; reconcile manually."
+  },
+  {
+    "key": "supplier_portal.residual.text.review_automated_exception_playbooks_deactivate_rules_you_do_not",
+    "en": "Review automated exception playbooks. Deactivate rules you do not want suggested."
+  },
+  {
+    "key": "supplier_portal.residual.text.sale_discount_must_be_greater_than_zero",
+    "en": "Sale discount must be greater than zero."
+  },
+  {
+    "key": "supplier_portal.residual.text.savdo_kreditini_yoqish_ilovada_qaytarib_bo_lmaydi",
+    "en": "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_factory_failed",
+    "en": "save_factory_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_failed",
+    "en": "save_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_profile_failed",
+    "en": "save_profile_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_replenishment_policies_failed",
+    "en": "save_replenishment_policies_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_topology_failed",
+    "en": "save_topology_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.save_warehouse_failed",
+    "en": "save_warehouse_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.scenario_failed",
+    "en": "scenario_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.secret_ref",
+    "en": "secret_ref"
+  },
+  {
+    "key": "supplier_portal.residual.text.settlement_net_authority",
+    "en": "Settlement net (authority)"
+  },
+  {
+    "key": "supplier_portal.residual.text.signal_status_unavailable",
+    "en": "signal_status_unavailable"
+  },
+  {
+    "key": "supplier_portal.residual.text.single_tenant_logistics_control_plane",
+    "en": "Single-tenant logistics control plane."
+  },
+  {
+    "key": "supplier_portal.residual.text.skip_failed",
+    "en": "skip_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.skus",
+    "en": "SKUs"
+  },
+  {
+    "key": "supplier_portal.residual.text.sla_risk",
+    "en": "SLA risk"
+  },
+  {
+    "key": "supplier_portal.residual.text.starts_at_rfc3339",
+    "en": "Starts at (RFC3339)"
+  },
+  {
+    "key": "supplier_portal.residual.text.stockout_skus",
+    "en": "Stockout SKUs"
+  },
+  {
+    "key": "supplier_portal.residual.text.swift_bic",
+    "en": "SWIFT / BIC"
+  },
+  {
+    "key": "supplier_portal.residual.text.tax_id_vat_tin",
+    "en": "Tax ID (VAT / TIN)"
+  },
+  {
+    "key": "supplier_portal.residual.text.text",
+    "en": "Включить торговый кредит — необратимо в приложении"
+  },
+  {
+    "key": "supplier_portal.residual.text.title_and_body_required",
+    "en": "title_and_body_required"
+  },
+  {
+    "key": "supplier_portal.residual.text.traceability_load_failed",
+    "en": "traceability_load_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.truck_replenishment",
+    "en": "Truck replenishment"
+  },
+  {
+    "key": "supplier_portal.residual.text.twin_routes_failed",
+    "en": "twin_routes_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.undo",
+    "en": "Undo"
+  },
+  {
+    "key": "supplier_portal.residual.text.unit_vu_must_be_a_positive_number",
+    "en": "Unit VU must be a positive number."
+  },
+  {
+    "key": "supplier_portal.residual.text.units_per_case_must_be_a_positive_integer_when_selling_by_case",
+    "en": "Units per case must be a positive integer when selling by case."
+  },
+  {
+    "key": "supplier_portal.residual.text.update_retailer_failed",
+    "en": "update_retailer_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.update_sku_failed",
+    "en": "update_sku_failed"
+  },
+  {
+    "key": "supplier_portal.residual.text.utilization",
+    "en": "Utilization"
+  },
+  {
+    "key": "supplier_portal.residual.text.version",
+    "en": "Version"
+  },
+  {
+    "key": "supplier_portal.residual.text.wape_28d",
+    "en": "WAPE (28d)"
+  },
+  {
+    "key": "supplier_portal.residual.text.warehouse_id",
+    "en": "warehouse_id"
+  },
+  {
+    "key": "supplier_portal.residual.text.wh_inbound_cap",
+    "en": "WH inbound cap"
+  },
+  {
+    "key": "supplier_portal.residual.text.write_off_failed",
+    "en": "write_off_failed"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.csv",
+    "en": "csv"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.grant_type_client_credentials",
+    "en": "grant_type=client_credentials"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.json",
+    "en": "json"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.pxk",
+    "en": "pxk_…"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.sftp_edi",
+    "en": "SFTP + EDI"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.xml",
+    "en": "xml"
+  },
+  {
+    "key": "warehouse_portal.residual.text.base_fee_minor",
+    "en": "Base fee (minor)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.beyond_tier_fee_minor",
+    "en": "Beyond-tier fee (minor)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.built_in_depot_starters_plus_your_saved_custom_messages",
+    "en": "Built-in depot starters plus your saved custom messages."
+  },
+  {
+    "key": "warehouse_portal.residual.text.critical_urgency",
+    "en": "Critical urgency"
+  },
+  {
+    "key": "warehouse_portal.residual.text.enter_the_6_digit_code",
+    "en": "Enter the 6-digit code"
+  },
+  {
+    "key": "warehouse_portal.residual.text.finance_permission_required",
+    "en": "finance_permission_required"
+  },
+  {
+    "key": "warehouse_portal.residual.text.free_within_km",
+    "en": "Free within km"
+  },
+  {
+    "key": "warehouse_portal.residual.text.geolocation_is_not_supported_in_this_browser",
+    "en": "Geolocation is not supported in this browser."
+  },
+  {
+    "key": "warehouse_portal.residual.text.gln_13_digits",
+    "en": "GLN (13 digits)"
+  },
+  {
+    "key": "warehouse_portal.residual.text.invalid_verification_code",
+    "en": "Invalid verification code"
+  },
+  {
+    "key": "warehouse_portal.residual.text.load_failed",
+    "en": "load_failed"
+  },
+  {
+    "key": "warehouse_portal.residual.text.location_permission_denied",
+    "en": "Location permission denied."
+  },
+  {
+    "key": "warehouse_portal.residual.text.message",
+    "en": "Message"
+  },
+  {
+    "key": "warehouse_portal.residual.text.outstanding",
+    "en": "Outstanding"
+  },
+  {
+    "key": "warehouse_portal.residual.text.paid",
+    "en": "Paid"
+  },
+  {
+    "key": "warehouse_portal.residual.text.pegasusx",
+    "en": "pegasusX"
+  },
+  {
+    "key": "warehouse_portal.residual.text.register",
+    "en": "Register"
+  },
+  {
+    "key": "warehouse_portal.residual.text.single_tenant_logistics_control_plane",
+    "en": "Single-tenant logistics control plane."
+  },
+  {
+    "key": "warehouse_portal.residual.text.sku_level_asap_scheduled_demand_vs_on_hand",
+    "en": "SKU-level ASAP + scheduled demand vs on-hand"
+  },
+  {
+    "key": "warehouse_portal.residual.text.target_role",
+    "en": "Target role"
+  }
+]

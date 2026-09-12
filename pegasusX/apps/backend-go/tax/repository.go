@@ -33,7 +33,7 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 func (r *SpannerRepository) GetActiveRegime(ctx context.Context, txn *spanner.ReadWriteTransaction, countryCode string, ts time.Time) (TaxRegimeVersion, bool, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT Id, CountryCode, EffectiveFrom, EffectiveTo, Currency,
-		             VatRateBps, Simplified, RulesJson, CreatedAt, CreatedBy, UpdatedAt
+		             VatRatesBps, SimplifiedRules, CreatedAt, CreatedBy, UpdatedAt
 		      FROM TaxRegimeVersions
 		      WHERE CountryCode = @country
 		        AND EffectiveFrom <= @ts
@@ -71,7 +71,7 @@ func (r *SpannerRepository) GetRegime(ctx context.Context, id string) (TaxRegime
 	row, err := r.client.Single().ReadRow(ctx, "TaxRegimeVersions",
 		spanner.Key{id},
 		[]string{"Id", "CountryCode", "EffectiveFrom", "EffectiveTo", "Currency",
-			"VatRateBps", "Simplified", "RulesJson", "CreatedAt", "CreatedBy", "UpdatedAt"})
+			"VatRatesBps", "SimplifiedRules", "CreatedAt", "CreatedBy", "UpdatedAt"})
 	if err != nil {
 		if spanner.ErrCode(err) == 5 { // NOT_FOUND
 			return TaxRegimeVersion{}, false, nil
@@ -91,7 +91,7 @@ func (r *SpannerRepository) ListRegimes(ctx context.Context, countryCode string,
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT Id, CountryCode, EffectiveFrom, EffectiveTo, Currency,
-		             VatRateBps, Simplified, RulesJson, CreatedAt, CreatedBy, UpdatedAt
+		             VatRatesBps, SimplifiedRules, CreatedAt, CreatedBy, UpdatedAt
 		      FROM TaxRegimeVersions
 		      WHERE CountryCode = @country
 		      ORDER BY EffectiveFrom DESC
@@ -148,7 +148,7 @@ func (r *SpannerRepository) InsertLineSnapshot(ctx context.Context, txn *spanner
 		OrderId:     s.OrderId,
 		OrderLineId: s.OrderLineId,
 		RegimeId:    s.RegimeId,
-		VatRateBps:  s.VatRateBps,
+		VatRateBps:  s.VatRateBps, // this tracks the single applied rate out of the array
 		NetMinor:    s.NetMinor,
 		VatMinor:    s.VatMinor,
 		GrossMinor:  s.GrossMinor,
@@ -168,36 +168,61 @@ func (r *SpannerRepository) InsertLineSnapshot(ctx context.Context, txn *spanner
 func scanRegime(row *spanner.Row) (TaxRegimeVersion, error) {
 	var r TaxRegimeVersion
 	var effectiveTo spanner.NullTime
-	var rulesJson spanner.NullJSON
+	var simplifiedRules spanner.NullJSON
+
+	// Must read vatRates using []spanner.NullInt64 or direct []int64. Wait, direct []int64 can panic if null.
+	// So we'll use a local var for it if nulls are possible, or just []spanner.NullInt64.
+	// Since ARRAY<INT64> can have NULL elements or be NULL itself, let's read into []spanner.NullInt64.
+	var vatRatesBps []spanner.NullInt64
 
 	if err := row.Columns(
 		&r.Id, &r.CountryCode, &r.EffectiveFrom, &effectiveTo, &r.Currency,
-		&r.VatRateBps, &r.Simplified, &rulesJson, &r.CreatedAt, &r.CreatedBy, &r.UpdatedAt,
+		&vatRatesBps, &simplifiedRules, &r.CreatedAt, &r.CreatedBy, &r.UpdatedAt,
 	); err != nil {
 		return TaxRegimeVersion{}, fmt.Errorf("scan regime: %w", err)
 	}
 	if effectiveTo.Valid {
 		r.EffectiveTo = &effectiveTo.Time
 	}
-	if rulesJson.Valid {
-		raw, _ := json.Marshal(rulesJson.Value)
-		r.RulesJson = raw
+	
+	for _, bps := range vatRatesBps {
+		if bps.Valid {
+			r.VatRatesBps = append(r.VatRatesBps, bps.Int64)
+		}
+	}
+	if r.VatRatesBps == nil {
+		r.VatRatesBps = []int64{}
+	}
+
+	if simplifiedRules.Valid {
+		raw, _ := json.Marshal(simplifiedRules.Value)
+		r.SimplifiedRules = raw
 	}
 	return r, nil
 }
 
 func regimeToMutation(r TaxRegimeVersion) (*spanner.Mutation, error) {
 	cols := []string{"Id", "CountryCode", "EffectiveFrom", "EffectiveTo", "Currency",
-		"VatRateBps", "Simplified", "RulesJson", "CreatedAt", "CreatedBy", "UpdatedAt"}
+		"VatRatesBps", "SimplifiedRules", "CreatedAt", "CreatedBy", "UpdatedAt"}
+	
 	var effectiveTo interface{} = nil
 	if r.EffectiveTo != nil {
 		effectiveTo = *r.EffectiveTo
 	}
-	var rulesJson interface{} = nil
-	if len(r.RulesJson) > 0 {
-		rulesJson = spanner.NullJSON{Value: json.RawMessage(r.RulesJson), Valid: true}
+	
+	var simplifiedRules interface{} = nil
+	if len(r.SimplifiedRules) > 0 {
+		simplifiedRules = spanner.NullJSON{Value: json.RawMessage(r.SimplifiedRules), Valid: true}
 	}
+	
+	// Convert []int64 to []spanner.NullInt64 to ensure it maps correctly if we need,
+	// but Spanner client accepts []int64 natively for ARRAY<INT64>.
+	vatRates := r.VatRatesBps
+	if vatRates == nil {
+		vatRates = []int64{}
+	}
+
 	return spanner.InsertOrUpdate("TaxRegimeVersions", cols,
 		[]interface{}{r.Id, r.CountryCode, r.EffectiveFrom, effectiveTo, r.Currency,
-			r.VatRateBps, r.Simplified, rulesJson, spanner.CommitTimestamp, r.CreatedBy, spanner.CommitTimestamp}), nil
+			vatRates, simplifiedRules, spanner.CommitTimestamp, r.CreatedBy, spanner.CommitTimestamp}), nil
 }

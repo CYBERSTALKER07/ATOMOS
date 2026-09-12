@@ -1,0 +1,4 @@
+PX_E2E_MULTI_SUPPLIER_REGISTER_OK
+{"time":"2026-08-11T17:59:50.294156+05:00","level":"ERROR","msg":"ssmr smokecheck failed","check":"parent-order","err":"parent split checkout status 422 body={\"error\":\"multi_supplier_checkout_failed: supplier bd3cf632-cdc4-40d6-8d02-2564d2697977: line_items[0].sku PARENT-SKU-B-86bc0fe1 failed to resolve price: price_not_found\",\"supplier_errors\":[{\"supplier_id\":\"bd3cf632-cdc4-40d6-8d02-2564d2697977\",\"error\":\"line_items[0].sku PARENT-SKU-B-86bc0fe1 failed to resolve price: price_not_found\"}]}\n (h3=8920a52d203ffff)"}
+exit status 1
+EXIT:1

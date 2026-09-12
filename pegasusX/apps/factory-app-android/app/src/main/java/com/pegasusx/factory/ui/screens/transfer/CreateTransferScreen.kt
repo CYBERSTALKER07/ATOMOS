@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,6 +48,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,7 +161,7 @@ fun CreateTransferScreen(
     ) { innerPadding ->
         when {
             loadingFleet -> PegasusLoadingState(
-                title = "Preparing form",
+                title = stringResource(R.string.mobile_factory_ui_preparing_form),
                 body = "Loading fleet assignment options.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -183,7 +186,7 @@ fun CreateTransferScreen(
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 Text(
-                    text = "Stage a factory-to-warehouse movement. Volume is captured in VU.",
+                    text = stringResource(R.string.mobile_factory_ui_stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -268,7 +271,7 @@ fun CreateTransferScreen(
                         )
                         vehicles.forEach { vehicle ->
                             DropdownMenuItem(
-                                text = { Text("${vehicle.plateNo} · ${vehicle.state}") },
+                                text = { Text(stringResource(R.string.mobile_factory_ui_plateno_state, vehicle.plateNo, vehicle.state)) },
                                 onClick = {
                                     vehicleId = vehicle.vehicleId
                                     vehicleMenuExpanded = false

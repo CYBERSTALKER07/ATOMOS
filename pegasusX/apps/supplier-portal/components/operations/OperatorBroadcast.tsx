@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import Link from 'next/link';
 import { PageSection } from '@/components/PageSection';
@@ -30,8 +33,9 @@ export function OperatorBroadcast({
   onTemplateDateChange,
   onBroadcast,
 }: OperatorBroadcastProps) {
+  const t = usePortalT();
   return (
-    <PageSection title="Operator broadcast" description="Fan out a message to supplier WS rooms by role.">
+    <PageSection title={t("supplier_portal.operations.operator_broadcast.text.operator_broadcast")} description={t("supplier_portal.residual.text.fan_out_a_message_to_supplier_ws_rooms_by_role")}>
       <p className="md-typescale-body-small mb-3 text-[var(--color-md-outline)]">
         Signal ingest health and planning projections live on{" "}
         <Link href={"/settings/planning" as any} className="underline text-[var(--color-md-primary)]">
@@ -78,11 +82,11 @@ export function OperatorBroadcast({
       <div className="space-y-3">
         <label className="block space-y-1">
           <span className="md-typescale-label-medium" style={{ color: "var(--desk-text-secondary)" }}>
-            Title
+            {t("supplier_portal.admin.control_center.field.title")}
           </span>
           <input
             className="md-input-outlined w-full"
-            placeholder="Title"
+            placeholder={t("supplier_portal.admin.control_center.field.title")}
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
           />
@@ -93,7 +97,7 @@ export function OperatorBroadcast({
           </span>
           <textarea
             className="md-input-outlined w-full min-h-24"
-            placeholder="Message body"
+            placeholder={t("supplier_portal.operations.operator_broadcast.text.message_body")}
             value={body}
             onChange={(e) => onBodyChange(e.target.value)}
           />

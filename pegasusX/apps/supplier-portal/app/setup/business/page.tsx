@@ -1,9 +1,10 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierBusinessSetupKey } from "@pegasusx/api-client";
+import { supplierBusinessSetupKey } from "@pegasusx/api-core";
 import {
   SetupCallout,
   SetupField,
@@ -30,6 +31,7 @@ const INITIAL: BusinessState = {
 };
 
 export default function BusinessSetupPage() {
+  const t = usePortalT();
   const [state, setState] = useState<BusinessState>(INITIAL);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -78,8 +80,8 @@ export default function BusinessSetupPage() {
     <>
       <SetupPageHeader
         icon="supplier"
-        title="Business details"
-        subtitle="Legal and location information used for invoicing, compliance, and delivery routing."
+        title={t("supplier_portal.auth.register.header.business_title")}
+        subtitle={t("supplier_portal.residual.text.legal_and_location_information_used_for_invoicing_compliance_and")}
       />
 
       <SetupCallout>
@@ -88,25 +90,25 @@ export default function BusinessSetupPage() {
 
       <SetupSection
         icon="kyc"
-        title="Tax & registration"
-        description="Required for compliance and payout verification."
+        title={t("supplier_portal.setup.business.text.tax_and_registration")}
+        description={t("supplier_portal.residual.text.required_for_compliance_and_payout_verification")}
       >
-        <SetupField id="taxId" label="Tax ID (VAT / TIN)" error={errors.taxId} hint="Minimum 5 characters.">
+        <SetupField id="taxId" label={t("supplier_portal.residual.text.tax_id_vat_tin")} error={errors.taxId} hint="Minimum 5 characters.">
           <SetupInput
             id="taxId"
             error={errors.taxId}
             value={state.taxId}
             autoComplete="off"
-            placeholder="e.g. GB123456789"
+            placeholder={t("supplier_portal.setup.business.text.e_g_gb123456789")}
             onChange={(e) => setState((s) => ({ ...s, taxId: e.target.value }))}
           />
         </SetupField>
-        <SetupField id="registrationNumber" label="Company registration number" optional error={errors.registrationNumber}>
+        <SetupField id="registrationNumber" label={t("supplier_portal.residual.text.company_registration_number")} optional error={errors.registrationNumber}>
           <SetupInput
             id="registrationNumber"
             value={state.registrationNumber}
             autoComplete="off"
-            placeholder="Companies House or local registry ID"
+            placeholder={t("supplier_portal.setup.business.text.companies_house_or_local_registry_id")}
             onChange={(e) => setState((s) => ({ ...s, registrationNumber: e.target.value }))}
           />
         </SetupField>
@@ -114,21 +116,21 @@ export default function BusinessSetupPage() {
 
       <SetupSection
         icon="pin"
-        title="Headquarters location"
-        description="Your registered business address — not a warehouse dispatch point."
+        title={t("supplier_portal.setup.business.text.headquarters_location")}
+        description={t("supplier_portal.residual.text.your_registered_business_address_not_a_warehouse_dispatch_point")}
       >
-        <SetupField id="headquartersAddress" label="Street address" error={errors.headquartersAddress}>
+        <SetupField id="headquartersAddress" label={t("supplier_portal.residual.text.street_address")} error={errors.headquartersAddress}>
           <SetupInput
             id="headquartersAddress"
             error={errors.headquartersAddress}
             value={state.headquartersAddress}
             autoComplete="street-address"
-            placeholder="Building, street, suite"
+            placeholder={t("supplier_portal.setup.business.text.building_street_suite")}
             onChange={(e) => setState((s) => ({ ...s, headquartersAddress: e.target.value }))}
           />
         </SetupField>
         <div className="setup-grid-2">
-          <SetupField id="city" label="City" error={errors.city}>
+          <SetupField id="city" label={t("supplier_portal.analytics.demand.signals.text.city")} error={errors.city}>
             <SetupInput
               id="city"
               error={errors.city}
@@ -137,7 +139,7 @@ export default function BusinessSetupPage() {
               onChange={(e) => setState((s) => ({ ...s, city: e.target.value }))}
             />
           </SetupField>
-          <SetupField id="postalCode" label="Postal code" error={errors.postalCode}>
+          <SetupField id="postalCode" label={t("supplier_portal.residual.text.postal_code")} error={errors.postalCode}>
             <SetupInput
               id="postalCode"
               value={state.postalCode}
@@ -151,8 +153,8 @@ export default function BusinessSetupPage() {
       {submitError ? <SetupCallout variant="error">{submitError}</SetupCallout> : null}
 
       <SetupFooter
-        skip={{ label: "Skip for now", onClick: skip, disabled: submitting }}
-        primary={{ label: "Save & continue", onClick: submit, disabled: submitting, loading: submitting }}
+        skip={{ label: t("common.action.skip_for_now"), onClick: skip, disabled: submitting }}
+        primary={{ label: t("supplier_portal.residual.text.save_and_continue"), onClick: submit, disabled: submitting, loading: submitting }}
       />
     </>
   );

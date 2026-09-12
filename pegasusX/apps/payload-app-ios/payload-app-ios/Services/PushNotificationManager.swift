@@ -2,14 +2,8 @@ import Foundation
 import UIKit
 import UserNotifications
 
-/// PushNotificationManager — APNs permission + token lifecycle for the PAYLOAD iPad app.
-///
-/// Mirrors the pattern in retailer-app-ios. Uses pure `UNUserNotificationCenter`
-/// (no Firebase SDK); the backend `/v1/user/device-token` accepts any opaque
-/// string + `platform: "IOS"` and routes delivery server-side.
-///
-/// Tap-action deep-links call `onOpenPanel` so the HomeView can reveal the
-/// in-app notifications sheet.
+/// FCM registration token lifecycle. APNs hex is never POSTed — Admin Messaging
+/// send only accepts Firebase registration tokens.
 @MainActor
 @Observable
 final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate {
@@ -24,34 +18,26 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     var onOpenPanel: (() -> Void)?
 
     private let api = APIClient.shared
+    private let storedTokenKey = "pegasus_push_token"
 
     private override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
     }
 
-    // MARK: - Permission
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
 
     func requestAuthorization() async {
+        if isRunningTests { return }
         do {
             let center = UNUserNotificationCenter.current()
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
             isAuthorized = granted
-            if granted {
-                UIApplication.shared.registerForRemoteNotifications()
-            }
+            UIApplication.shared.registerForRemoteNotifications()
         } catch {
             errorMessage = error.localizedDescription
-        }
-    }
-
-    // MARK: - Token lifecycle (called from AppDelegate)
-
-    func didRegisterForRemoteNotifications(deviceToken data: Data) {
-        let token = data.map { String(format: "%02.2hhx", $0) }.joined()
-        self.deviceToken = token
-        Task {
-            _ = try? await api.registerDeviceToken(token)
         }
     }
 
@@ -59,9 +45,22 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         errorMessage = error.localizedDescription
     }
 
-    // MARK: - UNUserNotificationCenterDelegate
+    func didReceiveFCMToken(_ token: String?) async {
+        let trimmed = token?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return }
+        deviceToken = trimmed
+        UserDefaults.standard.set(trimmed, forKey: storedTokenKey)
+        await uploadStoredTokenIfPossible()
+    }
 
-    /// Present banners while the app is foregrounded.
+    func uploadStoredTokenIfPossible() async {
+        if isRunningTests { return }
+        let token = (deviceToken ?? UserDefaults.standard.string(forKey: storedTokenKey) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty, TokenStore.shared.isAuthenticated else { return }
+        _ = try? await api.registerDeviceToken(token)
+    }
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
@@ -69,7 +68,6 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         [.banner, .sound, .badge]
     }
 
-    /// Handle notification tap — deep-link into the notifications panel.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse

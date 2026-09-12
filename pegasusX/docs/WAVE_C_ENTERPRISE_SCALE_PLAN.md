@@ -1,5 +1,10 @@
 # Wave C — Enterprise-scale design (L8–L11) for prod readiness
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
 **Date:** 2026-08-04  
 **Status:** Product answers **LOCKED** (design review 2026-08-04)  
 **Repo:** pegasusX  
@@ -154,7 +159,7 @@ Not “clear cart only.”
 |------|---------|---------|
 | `MULTI_ORG_LOGIN_ENABLED` | **off** | Multi-membership picker path |
 | `HQ_ANALYTICS_ENABLED` | off | HQ APIs + writers gate |
-| `POS_HOLDS_ENABLED` | off | Parked carts |
+| `POS_HOLDS_ENABLED` | pilot default on | Parked carts |
 | `OFFLINE_COUNT_ENABLED` | off | Count commit + 409 protocol |
 | `ASSIST_SLA_ENABLED` | off | SLA worker |
 
@@ -306,7 +311,7 @@ C3 parked carts before full HQ UI: simpler, immediate operational value.
 | DDL | `schema/migrations/20260811_retailer_pos_holds.ddl` + `spanner.ddl` |
 | Service | `retailer/pos_holds.go` — park/list/resume/void |
 | Invariants | **No OnHand/stock writes**; resume **same LocationId only**; TTL **24h** |
-| Flag | `POS_HOLDS_ENABLED` default off → 404 `POS_HOLDS_DISABLED` |
+| Flag | `POS_HOLDS_ENABLED` pilot default on; set `false` → 404 `POS_HOLDS_DISABLED` |
 | Routes | `GET/POST /v1/retailer/pos/holds`, `…/{holdID}/resume`, `…/void` |
 | Tests | `pos_holds_test.go` PASS |
 | SSMR | DDL applied when gcloud available |

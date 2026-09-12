@@ -37,7 +37,7 @@ func (s *Service) memoryFactoryID() string {
 
 func (s *Service) memoryResolveWarehouseFactory(_ context.Context, warehouseID string) (factoryID, supplierID string, err error) {
 	_ = warehouseID
-	supplierID = strings.TrimSpace(s.supplierID)
+	supplierID = strings.TrimSpace(s.seedSupplierID)
 	if supplierID == "" {
 		supplierID = "supplier-demo"
 	}
@@ -123,7 +123,7 @@ func (s *Service) ensureMemoryDemoReceiveTransferLocked() {
 	s.internalTransfers[demoID] = memoryTransferRow{
 		TransferID:    demoID,
 		FactoryID:     s.memoryFactoryID(),
-		SupplierID:    strings.TrimSpace(s.supplierID),
+		SupplierID:    strings.TrimSpace(s.seedSupplierID),
 		State:         "IN_TRANSIT",
 		TotalVolumeVU: 12,
 	}

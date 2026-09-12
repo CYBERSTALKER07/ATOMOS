@@ -1,13 +1,29 @@
 {
   "name": "@pegasusx/admin-portal",
   "private": true,
-  "version": "0.0.0",
-  "description": "Deprecated stub — canonical admin/supplier surface is supplier-portal",
+  "version": "1.0.1",
+  "description": "PegasusX platform admin console — tenant lifecycle + feature-flag governance (PLATFORM_ADMIN)",
   "scripts": {
-    "dev": "node ./redirect.mjs",
-    "build": "node ./redirect.mjs --check",
-    "start": "node ./redirect.mjs",
-    "tauri:dev": "node ./redirect.mjs",
-    "tauri:build": "node ./redirect.mjs --check"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pegasusx/types": "workspace:*",
+    "@pegasusx/ui-kit": "workspace:*",
+    "next": "^15.0.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.9"
   }
 }

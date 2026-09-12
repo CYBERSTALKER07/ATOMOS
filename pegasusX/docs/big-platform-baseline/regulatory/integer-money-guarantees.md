@@ -1,5 +1,8 @@
 # Integer Money Everywhere + Zero-Leak Guarantees
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 ## Law
 
 All money fields are **int64 minor units**. No float for:

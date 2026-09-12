@@ -1,0 +1,47 @@
+# 7. Correctness, Concurrency, Money, and Fiscal Reality — Verified Register
+
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](../../PROD_READINESS_SEQUENCE.md) · [`ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](../ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](../../FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
+This section consolidates the backend truth the brief demands be accurately reflected. Items are ranked by severity; all are code-verified with file:line.
+
+## 7.1 P0 — correctness / legality (fix before anything else)
+
+| # | Defect | Evidence | Consequence |
+|---|---|---|---|
+| 1 | **Card capture permanently broken + fire-and-forget.** `CaptureCardPayment` uses gateway key `"GLOBALPAY"`; executor map is keyed `"GLOBAL_PAY"`; router normalizes only case/whitespace → lookup miss → every capture errors. Callers: post-commit goroutine (log-only) and backorder sweeper (skips). Worse: `CompleteOrder` pre-records the leg `CAPTURED` **in-txn** before any PSP call | `payment/service.go:653`; `payment/execution.go:140,224-236`; `order/service.go:1899-1929`; `order/backorder_sweeper.go:51-55` | **Ledger asserts money collected that never was; silent financial loss; deferred-payment orders stuck BACKORDERED forever** |
+| 2 | **Legal fiscalization non-functional as shipped.** `MY_SOLIQ` provider's `signer` field is assigned nowhere; `CreateReceipt` always errors `"mysoliq: no EDSSigner configured"`. Default provider `PEGASUS` issues platform receipts explicitly `"tax_ofd": false`. The 18-state machine's FISCALIZING hard-gate creates false assurance of fiscal compliance | `order/fiscal_provider.go:129,232-234`; `order/fiscal_provider_pegasus.go:13-15,78-79`; gate at `order/service.go:1527-1538` | **Orders complete without legally mandated OFD receipts; flipping the flag halts completions at 100% FISCAL_FAILED** |
+| 3 | **Silent PSP stub-success on empty Global Pay credentials.** Capture → `gp_capture_stub_`, refund → `gp_refund_stub_`, status → `gp_status_stub_paid` — all returning nil error. Dormant landmine: `WebhookReconciler` (not yet wired) maps the stub status to a `SignatureValid: true` PAID webhook | `payment/global_pay_executor.go:112-120,251-258,312-320`; `payment/reconciliation.go:57,66-108` | Refunds reported that never happened; if reconciler is wired with empty creds, stuck sessions auto-"pay" themselves |
+| 4 | **Shop-closed timeout worker can deliver on credit without recording debt.** Credit-profile read failure is warn-only; order still becomes `DELIVERED_ON_CREDIT`; inline balance math ignores `ReservedMinor` (double-counts vs reserve-at-create) and hardcodes `MaxAutoCreditMinor: 50000000` | `order/worker_shop_closed.go:91-165` | Uncollected debt invisible to AR; credit limit math corrupted |
+| 5 | **Payment idempotency not DB-enforced.** `OrderPaymentLegs.IdempotencyKey` has no unique index; `PaymentLedgerEntries` none. Replay protection lives only in Redis with 24h TTL; middleware is header-optional | `spanner.ddl:1667`; `idempotency/middleware.go:45-120`; `bootstrap/bootstrap.go:419-430` | A retry after TTL double-records a financial leg |
+| 6 | **AR inert behind default-off flags.** `AR_INVOICES_ENABLED` off → `OpenFromCreditLeave` silently returns nil (no invoice created); `AR_DUNNING_ENABLED` off → no step machine. Local/staging envs enable neither | `ar/service.go:18-21,88-96`; `ar/dunning_worker.go:13-16,66` | Credit leave-behind accrues profile debt while aging/dunning/collections produce nothing — AR blindness by configuration |
+| 7 | **Partner REST order create ignores contract-required idempotency** | `partner/handlers.go:37-63` vs `contracts/partner.openapi.yaml:494-499` | ERP retry = duplicate orders |
+| 8 | **Kafka single broker, RF=1** | `infra/k8s/kafka.yaml:42-47` | Entire event/webhook/EDI backbone dies with one pod |
+| 9 | **Inventory negative-stock clamp hides shrinkage.** `AdjustStock` silently floors at 0 | `inventory/repository.go:166-169` | Stock drift masked; reservation math trusts clamped numbers |
+| 10 | **All status integrity is app-level.** 155 tables, 1 CHECK constraint; FSM validator at 4 call sites vs ~65 direct status writes | `spanner.ddl:1273`; `order/state_machine.go:14-81`; call sites `order/service.go:1523,2153`, `order/preorder_sweeper.go:168,241` | One new ad-hoc writer = illegal transitions, invisible to the DB |
+| 11 | **Fail-open payer authorization.** Payer GET/PUT check ownership only *if claims exist*; `POST /v1/payers` has no role gate | `payment/crud_handlers.go:52-57,76-81`; `paymentroutes/routes.go:43` | IDOR-shaped exposure under any auth-bypass configuration |
+| 12 | **Committed hygiene hazards** — `.env.local` (with `JWT_SECRET`) committed; 90MB compiled `backend-go` binary tracked; `bootstrap.go.bak`, `spanner.ddl.orig` stale artifacts; patch scripts at root | repo root | Secret rotation required; repo confusion |
+
+## 7.2 What is genuinely strong (do not refactor away)
+
+- **Transactional outbox, correctly built**: event rows buffered inside the Spanner closure and committed in the same `txn.BufferWrite` as the state mutation (`order/repository_spanner.go:28-38,187`); relay with lease claiming (`outbox/spanner_store.go:87-170`), 250ms tick, jittered backoff, stuck-event watchdog (`outbox/relay.go:88-203`); Kafka publisher with `RequiredAcks=all`, no auto-topic-creation (`outbox/kafka_publisher.go:79-90`); consumer dedup on `event_id` (`kafka/event_dedup_middleware.go:17-18`).
+- **Optimistic concurrency enforced** on orders, credit profiles, inventory, AR dunning (`order/repository_spanner.go:208-215`; `credit/repository.go:238,299,377,485`; `ar/service.go`).
+- **Money discipline**: integer minor units end-to-end; basis points for VAT/discounts; `math/big` FX with half-away-from-zero rounding, overflow checks, fail-closed on missing rate (`fxrates/convert.go:101-146`); currency-mismatch gates at checkout, webhook, and payment service.
+- **Fail-closed production validation**: dev secrets and memory fallback rejected under `PEGASUSX_ENV=production` (`bootstrap/config_validate.go:11-49`; `REQUIRE_INFRA_ADAPTERS` default true).
+- **Payment webhook verification done right**: Global Pay settlement re-verified out-of-band against the gateway before acceptance (`payment/global_pay_webhook.go:80-91`) — defeats forgery even with a leaked secret.
+- **Idempotency middleware** scoped by principal+route with SHA-256 body hash, 409-on-conflict semantics (`idempotency/middleware.go:61-86`) — mirrored client-side across web/iOS/Android.
+- **Test coverage**: ~25% test-file ratio in the backend including a full FSM transition matrix; Spanner emulator integration tests in CI; only 1 TODO and 3 panics in 812 non-test files; 57 mock/stub hits concentrated in known areas (payment stubs, simulator, fiscal FAKE provider).
+
+## 7.3 The AR/credit engine as implemented (vs plan)
+
+`CREDIT_COLLECTIONS_ENGINE_PLAN.md`'s "current state" is stale — the plan was largely executed. Implemented and verified: credit profiles with limit/balance/reserved/available/version; `CheckOrder` gate (`no_credit_limit`, `credit_limit_breached`); idempotent reservations at order create; same-txn `MarkBalanceInTxn` on credit leave; `SupplierCreditPrograms`/`RetailerPaymentTerms` with policy audit; AR open items with buckets `CURRENT/1_30/31_60/61_90/90_PLUS`; dunning step machine `DUE_SOON(T−3)→OVERDUE→ESC1(+7)→ESC2(+14)→CREDIT_HOLD(+21)→COLLECTIONS(+30)` with grace, monotonic advancement, delinquency bump on first overdue, auto-hold via `HoldRelationship`, inbox+FCM notify — all wired (`bootstrap/bootstrap.go:1247-1270`) behind `AR_*` flags. **Deliberately absent: risk scoring** (removed in Phase A; three gap-closure runbooks still instruct enabling its dead flag — docs error, not code error). **Actually missing:** SMS/email/WhatsApp transports; fee schedule; payout execution; refund initiation.
+
+## 7.4 Fiscal reality, precisely
+
+- Framework: immutable attempt rows, `FISCALIZING/FISCAL_FAILED` states, max-3 attempts, force-complete with closed reason codes (role-gated), Kafka-consumed worker results, cash-bag freeze while fiscal open, late-webhook money guard — all real (`order/fiscal.go`).
+- Providers: `ProviderFromEnv` selects `PEGASUS` (default; commercial receipts, `"tax_ofd": false`), `FAKE` (SSMR hooks), `MY_SOLIQ` (real EHF HTTP client with idempotency + permanent/retry classification — **but signer never injected**), `GLOBAL_PAY`. Misconfiguration hard-fails (`hardFailProvider`) rather than silently faking — good.
+- `fiscal/uzbekistan.go` is a dead mock referenced only by its own test.
+- Tax regime versioning is real: country-scoped, effective-dated VAT regimes with overlap validation (`tax/service.go:38-80`), consumed by fiscal snapshots and credit notes.
+- **Net:** you cannot legally close a Soliq-mandated sale today. The distance is small in code (inject an EDS signer, sandbox credentials, then prove `PX_E2E_SOLIQ_SANDBOX_OK`) and large in procurement (credentials, certification).

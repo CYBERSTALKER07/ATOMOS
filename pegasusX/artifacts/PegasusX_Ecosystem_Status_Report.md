@@ -1,5 +1,10 @@
 # PegasusX Ecosystem Status Report
 
+
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`../docs/DOCS_SOURCE_OF_TRUTH.md`](../docs/DOCS_SOURCE_OF_TRUTH.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md) · [`../context/current_status.md`](../context/current_status.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
 **Audit date:** 2026-07-31  
 **Closure pass:** 2026-08-01 (no-mocks + SSMR marker proof)  
 **Ops refresh:** 2026-08-02 (`nomock4`, DNS/TLS Active, Firebase clients in-tree)  

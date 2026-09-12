@@ -1,0 +1,40 @@
+name: pegasusX sandbox infra gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/sandbox-infra.yml'
+      - 'pegasusX/**'
+  push:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/sandbox-infra.yml'
+      - 'pegasusX/**'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-infra:
+    name: pegasusX sandbox smoke gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pegasusX/apps/backend-go/go.mod
+          cache: true
+
+      - name: Sync Go workspace
+        working-directory: pegasusX
+        run: go work sync
+
+      - name: Run isolated sandbox smoke gate
+        working-directory: pegasusX
+        run: make test-sandbox-infra

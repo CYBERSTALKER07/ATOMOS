@@ -96,12 +96,10 @@ func (s *Service) WarehouseProposeDeliveryDate(ctx context.Context, ops *auth.Wa
 	if err := assertWarehouseOrderScope(current, resolvedOps); err != nil {
 		return RetailerOrderLifecycleResponse{}, err
 	}
-	
-	loc := proximity.TashkentLocation
-	if current.Timezone != "" {
-		if l, err := time.LoadLocation(current.Timezone); err == nil {
-			loc = l
-		}
+
+	loc, locErr := resolveCalendarLocation(ctx, current.SupplierID, current.Timezone)
+	if locErr != nil {
+		return RetailerOrderLifecycleResponse{}, locErr
 	}
 
 	if err := orderEligibleForDeliveryProposal(s.now(), loc, current); err != nil {

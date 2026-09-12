@@ -49,33 +49,34 @@ const (
 	EventRetailerLocationCreated = "RETAILER_LOCATION_CREATED"
 	EventRetailerLocationUpdated = "RETAILER_LOCATION_UPDATED"
 	// Retail OS Phase 3
-	EventStoreStockReceived    = "STORE_STOCK_RECEIVED"
-	EventStoreStockAdjusted    = "STORE_STOCK_ADJUSTED"
-	EventStoreStockTransferred = "STORE_STOCK_TRANSFERRED"
-	EventStoreStockCounted     = "STORE_STOCK_COUNTED"
-	EventStoreStockClaimHold   = "STORE_STOCK_CLAIM_HOLD"
+	EventStoreStockReceived        = "STORE_STOCK_RECEIVED"
+	EventStoreStockAdjusted        = "STORE_STOCK_ADJUSTED"
+	EventStoreStockTransferred     = "STORE_STOCK_TRANSFERRED"
+	EventStoreStockCounted         = "STORE_STOCK_COUNTED"
+	EventReceivingVarianceReported = "RECEIVING_VARIANCE_REPORTED"
+	EventStoreStockClaimHold       = "STORE_STOCK_CLAIM_HOLD"
 	// Retail OS Phase 4
-	EventPosSessionOpened  = "POS_SESSION_OPENED"
-	EventPosSessionClosed  = "POS_SESSION_CLOSED"
-	EventPosSaleCompleted  = "POS_SALE_COMPLETED"
-	EventPosSaleVoided     = "POS_SALE_VOIDED"
+	EventPosSessionOpened = "POS_SESSION_OPENED"
+	EventPosSessionClosed = "POS_SESSION_CLOSED"
+	EventPosSaleCompleted = "POS_SALE_COMPLETED"
+	EventPosSaleVoided    = "POS_SALE_VOIDED"
 	// L3 sell-through flywheel
 	EventRetailerSellThroughUpdated = "RETAILER_SELL_THROUGH_UPDATED"
 	// B4 flywheel broadcast to suppliers (sku/qty/day only — no POS internals)
 	EventDemandSignal = "DEMAND_SIGNAL"
 	// Retail OS Phase 5
-	EventRetailerClockIn          = "RETAILER_CLOCK_IN"
-	EventRetailerClockOut         = "RETAILER_CLOCK_OUT"
-	EventRetailerShiftOpened      = "RETAILER_SHIFT_OPENED"
-	EventRetailerShiftClosed      = "RETAILER_SHIFT_CLOSED"
-	EventRetailerShiftVariance    = "RETAILER_SHIFT_CASH_VARIANCE"
+	EventRetailerClockIn       = "RETAILER_CLOCK_IN"
+	EventRetailerClockOut      = "RETAILER_CLOCK_OUT"
+	EventRetailerShiftOpened   = "RETAILER_SHIFT_OPENED"
+	EventRetailerShiftClosed   = "RETAILER_SHIFT_CLOSED"
+	EventRetailerShiftVariance = "RETAILER_SHIFT_CASH_VARIANCE"
 	// Retail OS Phase 6
-	EventRetailerSectionCreated      = "RETAILER_SECTION_CREATED"
-	EventRetailerSectionUpdated      = "RETAILER_SECTION_UPDATED"
-	EventRetailerSectionSkuMapped    = "RETAILER_SECTION_SKU_MAPPED"
-	EventRetailerStaffSectionAssigned = "RETAILER_STAFF_SECTION_ASSIGNED"
-	EventRetailerAssistTicketOpened  = "RETAILER_ASSIST_TICKET_OPENED"
-	EventRetailerAssistTicketClaimed = "RETAILER_ASSIST_TICKET_CLAIMED"
+	EventRetailerSectionCreated        = "RETAILER_SECTION_CREATED"
+	EventRetailerSectionUpdated        = "RETAILER_SECTION_UPDATED"
+	EventRetailerSectionSkuMapped      = "RETAILER_SECTION_SKU_MAPPED"
+	EventRetailerStaffSectionAssigned  = "RETAILER_STAFF_SECTION_ASSIGNED"
+	EventRetailerAssistTicketOpened    = "RETAILER_ASSIST_TICKET_OPENED"
+	EventRetailerAssistTicketClaimed   = "RETAILER_ASSIST_TICKET_CLAIMED"
 	EventRetailerAssistTicketCompleted = "RETAILER_ASSIST_TICKET_COMPLETED"
 	EventRetailerAssistTicketCancelled = "RETAILER_ASSIST_TICKET_CANCELLED"
 	// Wave C4.1: SLA breach (OPEN past SlaDueAt)
@@ -94,12 +95,23 @@ const (
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
 	EventWarehouseLocationUpdated     = "WAREHOUSE_LOCATION_UPDATED"
 	EventWarehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"
+	EventWarehouseBroadcast           = "WAREHOUSE_BROADCAST"
+	EventSupplierBroadcast            = "SUPPLIER_BROADCAST"
 
 	// @Sync(SupplyRequestEvent)
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventSupplyRequestAccepted        = "SUPPLY_REQUEST_ACCEPTED"
 	EventSupplyRequestUpdate          = "SUPPLY_REQUEST_UPDATE"
 	EventFactorySupplyRequestUpdate   = "FACTORY_SUPPLY_REQUEST_UPDATE"
+	// EventFactorySLABreach is emitted when an open supply request passes sla_due_at (G7.1)
+	// or a factory transfer misses dampened transit (P5-E). Payload includes kind:
+	// supply_request | transfer_transit.
+	EventFactorySLABreach = "FACTORY_SLA_BREACH"
+	// P5 planning — names already on generated client WS enums; emit for real.
+	EventPullMatrixCompleted  = "PULL_MATRIX_COMPLETED"
+	EventLookAheadCompleted   = "LOOK_AHEAD_COMPLETED"
+	EventNetworkModeChanged   = "NETWORK_MODE_CHANGED"
+	EventLoyaltyPointsEarned  = "LOYALTY_POINTS_EARNED"
 
 	// @Sync(SystemEvent)
 	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"
@@ -110,26 +122,61 @@ const (
 	EventWarehouseTransferCreated  = "WAREHOUSE_TRANSFER_CREATED"
 	EventWarehouseTransferReceived = "WAREHOUSE_TRANSFER_RECEIVED"
 	EventSupplyTransferApproaching = "SUPPLY_TRANSFER_APPROACHING"
+	EventSupplyTransferArrived     = "SUPPLY_TRANSFER_ARRIVED"
+
+	// @Sync(WarehouseEvent)
+	EventInventoryQuantityUpdated = "INVENTORY_QUANTITY_UPDATED"
+	EventInventoryPolicyUpdated   = "INVENTORY_POLICY_UPDATED"
+	EventWMSPutaway               = "WMS_PUTAWAY"
+	EventWMSPickConfirmed         = "WMS_PICK_CONFIRMED"
+	EventWMSCycleApproved         = "WMS_CYCLE_APPROVED"
+	EventWMSTemperatureBreach     = "WMS_TEMPERATURE_BREACH"
 
 	// @Sync(FactoryEvent)
 	EventFactoryCreated         = "FACTORY_CREATED"
 	EventFactoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
+	EventFactoryStaffCreated    = "FACTORY_STAFF_CREATED"
+	EventFactoryStaffPasswordSet = "FACTORY_STAFF_PASSWORD_SET"
+	// EventFactoryTransferCreated is factory-plane internal transfer create (P3-C).
+	// @Sync(WarehouseTransferEvent)
+	EventFactoryTransferCreated = "TRANSFER_CREATED"
 
 	// @Sync(OrderEvent)
-	EventOrderCreated          = "ORDER_CREATED"
-	EventOrderStatusChanged    = "ORDER_STATUS_CHANGED"
-	EventOrderValidationFailed = "ORDER_VALIDATION_FAILED"
-	EventOrderAssigned         = "ORDER_ASSIGNED"
-	EventOrderReassigned       = "ORDER_REASSIGNED"
-	EventOrderFinalized        = "ORDER_FINALIZED"
-	EventMissingItemsReported  = "MISSING_ITEMS_REPORTED"
-	EventOrderAmended          = "ORDER_AMENDED"
-	EventOrderAllocated        = "ORDER_ALLOCATED"
-	EventAllocationPolicyApplied = "ALLOCATION_POLICY_APPLIED"
+	EventOrderCreated               = "ORDER_CREATED"
+	EventOrderStatusChanged         = "ORDER_STATUS_CHANGED"
+	EventOrderValidationFailed      = "ORDER_VALIDATION_FAILED"
+	EventOrderAssigned              = "ORDER_ASSIGNED"
+	EventOrderReassigned            = "ORDER_REASSIGNED"
+	EventReassignHandshakeCompleted = "REASSIGN_HANDSHAKE_COMPLETED"
+	EventOrderFinalized             = "ORDER_FINALIZED"
+	EventMissingItemsReported       = "MISSING_ITEMS_REPORTED"
+	EventOrderAmended               = "ORDER_AMENDED"
+	EventOrderAllocated             = "ORDER_ALLOCATED"
+	EventAllocationPolicyApplied    = "ALLOCATION_POLICY_APPLIED"
 	EventAllocationFairShareApplied = "ALLOCATION_FAIR_SHARE_APPLIED"
-	EventRetailerSegmentUpdated   = "RETAILER_SEGMENT_UPDATED"
-	EventSkuClassUpdated          = "SKU_CLASS_UPDATED"
-	EventServicePolicyUpdated     = "SERVICE_POLICY_UPDATED"
+	EventRetailerSegmentUpdated     = "RETAILER_SEGMENT_UPDATED"
+	EventSkuClassUpdated            = "SKU_CLASS_UPDATED"
+	EventServicePolicyUpdated       = "SERVICE_POLICY_UPDATED"
+	// @Sync(SupplierServicePromiseEvent)
+	EventSupplierServicePromiseCreated  = "SUPPLIER_SERVICE_PROMISE_CREATED"
+	EventSupplierServicePromiseBreached = "SUPPLIER_SERVICE_PROMISE_BREACHED"
+	// @Sync(LotRecallEvent)
+	EventLotRecallInitiated = "LOT_RECALL_INITIATED"
+	EventLotQuarantined     = "LOT_QUARANTINED"
+	EventLotReleased        = "LOT_RELEASED"
+
+	// B3 M-P0-6: multi-supplier parent rollup lifecycle (same txn as ParentOrders write).
+	EventParentOrderCreated = "PARENT_ORDER_CREATED"
+	EventParentOrderUpdated = "PARENT_ORDER_UPDATED"
+
+	// B4 M-P1-5: supplier org credit program / relationship terms lifecycle.
+	EventSupplierCreditProgramChanged = "SUPPLIER_CREDIT_PROGRAM_CHANGED"
+	EventSupplierCreditTermsChanged   = "SUPPLIER_CREDIT_TERMS_CHANGED"
+
+	// B4 M-P1-4: control tower playbook + run bus.
+	EventControlTowerPlaybookChanged = "CONTROL_TOWER_PLAYBOOK_CHANGED"
+	EventControlTowerRunCreated      = "CONTROL_TOWER_RUN_CREATED"
+	EventControlTowerRunUpdated      = "CONTROL_TOWER_RUN_UPDATED"
 
 	// @Sync(AIRecommendationEvent)
 	EventAIRecommendationCreated = "AI_RECOMMENDATION_CREATED"
@@ -139,17 +186,32 @@ const (
 	EventRouteCreated   = "ROUTE_CREATED"
 	EventRouteReordered = "ROUTE_REORDERED"
 
+	// @Sync(RouteEvent)
+	EventDispatchRequested = "DISPATCH_REQUESTED"
+	EventDispatchPlanned   = "DISPATCH_PLANNED"
+
 	// @Sync(FinanceEvent)
 	EventSplitPaymentCreated = "SPLIT_PAYMENT_CREATED"
 	EventPaymentCleared      = "PAYMENT_CLEARED"
 	EventPaymentFailed       = "PAYMENT_FAILED"
 	EventPaymentRequired     = "PAYMENT_REQUIRED"
 	EventSettlementRequired  = "SETTLEMENT_REQUIRED"
+	// @Sync(FinanceEvent) refund lifecycle (provider-confirmed reversal legs)
+	EventRefundRequested = "REFUND_REQUESTED"
+	EventRefundSucceeded = "REFUND_SUCCEEDED"
+	EventRefundFailed    = "REFUND_FAILED"
+	// @Sync(FiscalReceiptEvent) fiscal corrective chain (credit note EHF)
+	EventFiscalCorrectiveRequested = "FISCAL_CORRECTIVE_REQUESTED"
 
 	// @Sync(FiscalReceiptEvent) ADR-009 fiscal hard-gate
 	EventFiscalReceiptRequested = "FISCAL_RECEIPT_REQUESTED"
 	EventFiscalReceiptSucceeded = "FISCAL_RECEIPT_SUCCEEDED"
 	EventFiscalReceiptFailed    = "FISCAL_RECEIPT_FAILED"
+	// @Sync(BuyerAcceptanceEvent) Soliq EHF buyer clearance (parallel to ADR-009 COMPLETED)
+	EventBuyerAcceptancePending  = "BUYER_ACCEPTANCE_PENDING"
+	EventBuyerAcceptanceAccepted = "BUYER_ACCEPTANCE_ACCEPTED"
+	EventBuyerAcceptanceRejected = "BUYER_ACCEPTANCE_REJECTED"
+	EventBuyerAcceptanceExpired  = "BUYER_ACCEPTANCE_EXPIRED"
 	// @Sync(OrderForceCompletedEvent)
 	EventOrderForceCompleted = "ORDER_FORCE_COMPLETED"
 	// @Sync(CashVarianceEvent) cash collect shortfall / overage (integer Tiyin)
@@ -158,22 +220,24 @@ const (
 
 	// @Sync(LogisticsException) claims / OS&D / reverse logistics
 	EventClaimFiled                 = "CLAIM_FILED"
+	EventClaimUnderReview           = "CLAIM_UNDER_REVIEW"
 	EventClaimResolved              = "CLAIM_RESOLVED"
 	EventLogisticsExceptionReported = "LOGISTICS_EXCEPTION_REPORTED"
 	EventReverseLogisticsRequired   = "REVERSE_LOGISTICS_REQUIRED"
 	EventLogisticsTelemetry         = "LOGISTICS_TELEMETRY"
 
 	// @Sync(ManifestEvent)
-	EventManifestDraftCreated   = "MANIFEST_DRAFT_CREATED"
-	EventManifestLoadingStarted = "MANIFEST_LOADING_STARTED"
-	EventManifestOrderInjected  = "MANIFEST_ORDER_INJECTED"
-	EventManifestOrderException = "MANIFEST_ORDER_EXCEPTION"
-	EventManifestDLQEscalation  = "MANIFEST_DLQ_ESCALATION"
-	EventManifestRebalanced     = "MANIFEST_REBALANCED"
-	EventManifestCancelled      = "MANIFEST_CANCELLED"
-	EventManifestSealed         = "MANIFEST_SEALED"
-	EventManifestDispatched     = "MANIFEST_DISPATCHED"
-	EventManifestCompleted      = "MANIFEST_COMPLETED"
+	EventManifestDraftCreated      = "MANIFEST_DRAFT_CREATED"
+	EventManifestLoadingStarted    = "MANIFEST_LOADING_STARTED"
+	EventManifestOrderInjected     = "MANIFEST_ORDER_INJECTED"
+	EventManifestOrderException    = "MANIFEST_ORDER_EXCEPTION"
+	EventManifestExceptionResolved = "MANIFEST_EXCEPTION_RESOLVED"
+	EventManifestDLQEscalation     = "MANIFEST_DLQ_ESCALATION"
+	EventManifestRebalanced        = "MANIFEST_REBALANCED"
+	EventManifestCancelled         = "MANIFEST_CANCELLED"
+	EventManifestSealed            = "MANIFEST_SEALED"
+	EventManifestDispatched        = "MANIFEST_DISPATCHED"
+	EventManifestCompleted         = "MANIFEST_COMPLETED"
 
 	// @Sync(SplitShipmentEvent)
 	// EventSplitShipmentCreated fires when a warehouse admin approves splitting
@@ -202,10 +266,10 @@ const (
 	EventShopClosedBypassOffload = "SHOP_CLOSED_BYPASS_OFFLOAD"
 
 	// Enhanced shop-closed / proximity / partial offload (Phase-1 last-mile).
-	EventShopClosedTimeout   = "SHOP_CLOSED_TIMEOUT"
-	EventProximityUnlocked   = "PROXIMITY_UNLOCKED"
-	EventPartialOffload      = "PARTIAL_OFFLOAD"
-	EventCreditLeave         = "CREDIT_LEAVE"
+	EventShopClosedTimeout = "SHOP_CLOSED_TIMEOUT"
+	EventProximityUnlocked = "PROXIMITY_UNLOCKED"
+	EventPartialOffload    = "PARTIAL_OFFLOAD"
+	EventCreditLeave       = "CREDIT_LEAVE"
 
 	// @Sync(CreditDeliveryEvent)
 	EventCreditDeliveryMarked   = "CREDIT_DELIVERY_MARKED"
@@ -239,6 +303,8 @@ const (
 	EventSupplierReturnResolved    = "SUPPLIER_RETURN_RESOLVED"
 	EventDriverReturnApproaching   = "DRIVER_RETURN_APPROACHING"
 	EventReturnReceivedAtWarehouse = "RETURN_RECEIVED_AT_WAREHOUSE"
+	// B7 WH-P0-5: inbound scan progress (qty bump before confirm).
+	EventReturnScanReceived = "RETURN_SCAN_RECEIVED"
 
 	// @Sync(ConditionEvent)
 	EventOrderConditionReported = "ORDER_CONDITION_REPORTED"
@@ -247,6 +313,20 @@ const (
 	EventRetailerCreditProfileChanged = "RETAILER_CREDIT_PROFILE_CHANGED"
 	// @Sync(CreditLimitEvent)
 	EventRetailerCreditLimitBreached = "RETAILER_CREDIT_LIMIT_BREACHED"
+
+	// @Sync(ARInvoiceEvent) accounts-receivable open items
+	EventARInvoiceOpened  = "AR_INVOICE_OPENED"
+	EventARInvoicePayment = "AR_INVOICE_PAYMENT"
+	EventARInvoiceDunned  = "AR_INVOICE_DUNNED"
+	EventARInvoiceSettled = "AR_INVOICE_SETTLED"
+	// B6 M-P1-6: aging bucket recompute leaves the bus.
+	EventARInvoiceAgingUpdated = "AR_INVOICE_AGING_UPDATED"
+	// @Sync(PayoutBatchEvent) supplier payout lifecycle
+	EventPayoutBatchGenerated  = "PAYOUT_BATCH_GENERATED"
+	EventPayoutBatchExported   = "PAYOUT_BATCH_EXPORTED"
+	EventPayoutBatchDispatched = "PAYOUT_BATCH_DISPATCHED"
+	EventPayoutBatchPaid       = "PAYOUT_BATCH_PAID"
+	EventPayoutPolicyUpdated   = "PAYOUT_POLICY_UPDATED"
 
 	// @Sync(ProductEvent)
 	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
@@ -264,10 +344,13 @@ const (
 	EventPreOrderDateRejected = "PRE_ORDER_DATE_REJECTED"
 
 	// @Sync(PlanningEvent)
-	EventReplenishmentAutoApproved    = "REPLENISHMENT_AUTO_APPROVED"
-	EventReplenishmentInsightCreated  = "REPLENISHMENT_INSIGHT_CREATED"
+	EventReplenishmentAutoApproved   = "REPLENISHMENT_AUTO_APPROVED"
+	EventReplenishmentInsightCreated = "REPLENISHMENT_INSIGHT_CREATED"
+	// S-P1-2: supplier PATCH /v1/supplier/replenishment/policies bus event.
+	EventReplenishmentPolicyUpdated   = "REPLENISHMENT_POLICY_UPDATED"
 	EventDispatchZoneOverride         = "DISPATCH_ZONE_OVERRIDE"
 	EventPlanningMEIORecommendation   = "planning.meio.recommendation.v1"
+	EventPlanningScenarioPublished    = "planning.scenario.published.v1"
 	EventDemandBaselineUpdated        = "DEMAND_BASELINE_UPDATED"
 	EventPlanningAgentBroadcast       = "PLANNING_AGENT_BROADCAST"
 	EventPlanningForecastUpdated      = "PLANNING_FORECAST_UPDATED"
@@ -291,6 +374,8 @@ const (
 	AggregateWarehouse             = "Warehouse"
 	AggregateFactory               = "Factory"
 	AggregateOrder                 = "Order"
+	AggregateParentOrder           = "ParentOrder"
+	AggregateControlTower          = "ControlTower"
 	AggregateClaim                 = "Claim"
 	AggregateAIRecommendation      = "AIRecommendation"
 	AggregateRoute                 = "Route"
@@ -303,6 +388,11 @@ const (
 	AggregateConditionReport       = "ConditionReport"
 	AggregateCreditProfile         = "CreditProfile"
 	AggregateDemandSignal          = "DemandSignal"
+	AggregateARInvoice             = "ARInvoice"
+	AggregatePayoutBatch           = "PayoutBatch"
+	AggregatePayoutPolicy          = "PayoutPolicy"
+	AggregateCountryOverride       = "CountryOverride"
+	AggregateLotRecall             = "LotRecall"
 )
 
 func topicFromEnv(key string, fallback string) string {

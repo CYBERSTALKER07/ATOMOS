@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 type Service struct {
@@ -31,6 +32,23 @@ func (s *Service) SubmitReconciliation(ctx context.Context, req SubmitReconcilia
 	driverID := strings.TrimSpace(req.DriverId)
 	if driverID == "" {
 		return nil, fmt.Errorf("driver_id required")
+	}
+	supplierID := strings.TrimSpace(req.SupplierId)
+	if supplierID == "" && s.repo != nil {
+		if sid, err := s.repo.ResolveDriverSupplierID(ctx, driverID); err == nil && strings.TrimSpace(sid) != "" {
+			supplierID = strings.TrimSpace(sid)
+		}
+	}
+	if supplierID == "" {
+		supplierID = auth.PreferTenantSupplierID(ctx, "")
+	}
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(ctx); ok {
+			supplierID = strings.TrimSpace(sid)
+		}
+	}
+	if supplierID == "" {
+		supplierID = "sup_61d822c6ab9714ca11f20db9"
 	}
 	shiftDate := req.ShiftDate
 	if shiftDate.IsZero() {
@@ -58,6 +76,7 @@ func (s *Service) SubmitReconciliation(ctx context.Context, req SubmitReconcilia
 
 	cr := CashReconciliation{
 		ReconciliationId:  uuid.New().String(),
+		SupplierId:        supplierID,
 		DriverId:          driverID,
 		RouteId:           req.RouteId,
 		ShiftDate:         shiftDate,

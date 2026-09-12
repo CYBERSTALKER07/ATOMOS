@@ -28,14 +28,14 @@ struct NotificationsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("portal.nav.notifications")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { viewModel.toggleNotificationsPanel() }
+                    Button("common.action.close") { viewModel.toggleNotificationsPanel() }
                 }
                 if viewModel.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Mark all read") { viewModel.markAllNotificationsRead() }
+                        Button("mobile_payload.ui.mark_all_read") { viewModel.markAllNotificationsRead() }
                     }
                 }
             }

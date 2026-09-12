@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.home.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +27,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
+import com.pegasusx.driver.R
 
 @Composable
 fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
@@ -54,13 +57,13 @@ fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Open Map",
+                    text = stringResource(R.string.mobile_driver_ui_open_map),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg
                 )
                 Text(
-                    text = "$pendingCount deliveries waiting",
+                    text = stringResource(R.string.mobile_driver_ui_pendingcount_deliveries_waiting),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = lab.fgSecondary

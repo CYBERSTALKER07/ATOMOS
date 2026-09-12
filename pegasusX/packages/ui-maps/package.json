@@ -1,0 +1,33 @@
+{
+  "name": "@pegasusx/ui-maps",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.0.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@pegasusx/api-core": "workspace:*",
+    "@pegasusx/types": "workspace:*",
+    "@deck.gl/geo-layers": "^9.3.5",
+    "@deck.gl/layers": "^9.3.5",
+    "@deck.gl/react": "^9.3.5",
+    "@types/mapbox-gl": "^3.4.1",
+    "deck.gl": "^9.3.5",
+    "h3-js": "^4.5.0",
+    "mapbox-gl": "^3.20.0",
+    "maplibre-gl": "^5.19.0",
+    "react-map-gl": "^8.1.0"
+  }
+}

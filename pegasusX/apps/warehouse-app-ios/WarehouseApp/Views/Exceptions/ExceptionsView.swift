@@ -13,11 +13,11 @@ struct ExceptionsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await load() } }
+                        Button("common.action.retry") { Task { await load() } }
                     }
                 } else if rows.isEmpty {
                     ContentUnavailableView("No open exceptions", systemImage: "exclamationmark.bubble")
@@ -35,7 +35,7 @@ struct ExceptionsView: View {
                                 }
                             }
                             if !row.manifestId.isEmpty {
-                                Text("Manifest \(row.manifestId)")
+                                Text(L10n.format("mobile_warehouse.ui.manifest_manifestid", "\(row.manifestId)"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -51,10 +51,10 @@ struct ExceptionsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Exception triage")
+            .navigationTitle("warehouse_portal.exceptions.text.exception_triage")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
                 }
             }
             .task { await load() }

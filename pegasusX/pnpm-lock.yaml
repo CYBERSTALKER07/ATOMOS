@@ -8,6 +8,43 @@ importers:
 
   .: {}
 
+  apps/admin-portal:
+    dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@pegasusx/ui-kit':
+        specifier: workspace:*
+        version: link:../../packages/ui-kit
+      next:
+        specifier: ^15.0.0
+        version: 15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
+      react-dom:
+        specifier: 19.0.0
+        version: 19.0.0(react@19.0.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.41
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.15)
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@20.19.41)(jsdom@29.1.1)(vite@8.0.16(@types/node@20.19.41)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
   apps/factory-portal:
     dependencies:
       '@heroui/react':
@@ -16,12 +53,18 @@ importers:
       '@heroui/styles':
         specifier: ^3.1.0
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
-      '@pegasusx/api-client':
+      '@pegasusx/api-core':
         specifier: workspace:*
-        version: link:../../packages/api-client
+        version: link:../../packages/api-core
+      '@pegasusx/api-react':
+        specifier: workspace:*
+        version: link:../../packages/api-react
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
+      '@pegasusx/desktop-cache':
+        specifier: workspace:*
+        version: link:../../packages/desktop-cache
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui
@@ -307,9 +350,12 @@ importers:
       '@heroui/styles':
         specifier: ^3.1.0
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
-      '@pegasusx/api-client':
+      '@pegasusx/api-core':
         specifier: workspace:*
-        version: link:../../packages/api-client
+        version: link:../../packages/api-core
+      '@pegasusx/api-react':
+        specifier: workspace:*
+        version: link:../../packages/api-react
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
@@ -458,9 +504,12 @@ importers:
       '@heroui/styles':
         specifier: ^3.0.2
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
-      '@pegasusx/api-client':
+      '@pegasusx/api-core':
         specifier: workspace:*
-        version: link:../../packages/api-client
+        version: link:../../packages/api-core
+      '@pegasusx/api-react':
+        specifier: workspace:*
+        version: link:../../packages/api-react
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
@@ -470,18 +519,30 @@ importers:
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui
+      '@pegasusx/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@pegasusx/pulse-ui':
         specifier: workspace:*
         version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@pegasusx/ui-charts':
+        specifier: workspace:*
+        version: link:../../packages/ui-charts
       '@pegasusx/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
+      '@pegasusx/ui-maps':
+        specifier: workspace:*
+        version: link:../../packages/ui-maps
       '@pegasusx/validation':
         specifier: workspace:*
         version: link:../../packages/validation
+      '@pegasusx/ws-refresh-contract':
+        specifier: workspace:*
+        version: link:../../packages/ws-refresh-contract
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.11.0
@@ -582,9 +643,12 @@ importers:
       '@heroui/styles':
         specifier: ^3.1.0
         version: 3.1.0(tailwind-merge@3.4.0)(tailwindcss@4.3.0)
-      '@pegasusx/api-client':
+      '@pegasusx/api-core':
         specifier: workspace:*
-        version: link:../../packages/api-client
+        version: link:../../packages/api-core
+      '@pegasusx/api-react':
+        specifier: workspace:*
+        version: link:../../packages/api-react
       '@pegasusx/desktop-bridge':
         specifier: workspace:*
         version: link:../../packages/desktop-bridge
@@ -594,15 +658,24 @@ importers:
       '@pegasusx/explain-ui':
         specifier: workspace:*
         version: link:../../packages/explain-ui
+      '@pegasusx/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@pegasusx/pulse-ui':
         specifier: workspace:*
         version: link:../../packages/pulse-ui
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@pegasusx/ui-charts':
+        specifier: workspace:*
+        version: link:../../packages/ui-charts
       '@pegasusx/ui-kit':
         specifier: workspace:*
         version: link:../../packages/ui-kit
+      '@pegasusx/ui-maps':
+        specifier: workspace:*
+        version: link:../../packages/ui-maps
       '@pegasusx/ws-refresh-contract':
         specifier: workspace:*
         version: link:../../packages/ws-refresh-contract
@@ -707,8 +780,17 @@ importers:
         specifier: ^4.1.9
         version: 4.1.9(@types/node@20.19.41)(jsdom@29.1.1)(vite@8.0.16(@types/node@20.19.41)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
 
-  packages/api-client:
+  packages/api-core:
     dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
+
+  packages/api-react:
+    dependencies:
+      '@pegasusx/api-core':
+        specifier: workspace:*
+        version: link:../api-core
       '@pegasusx/types':
         specifier: workspace:*
         version: link:../types
@@ -819,7 +901,72 @@ importers:
 
   packages/types: {}
 
+  packages/ui-charts:
+    dependencies:
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
+      '@types/d3':
+        specifier: ^7.4.3
+        version: 7.4.3
+      d3:
+        specifier: ^7.9.0
+        version: 7.9.0
+      next:
+        specifier: '>=14'
+        version: 15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
+      recharts:
+        specifier: ^3.9.1
+        version: 3.9.1(@types/react@19.2.15)(react-dom@19.2.0(react@19.0.0))(react-is@18.3.1)(react@19.0.0)(redux@5.0.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   packages/ui-kit:
+    dependencies:
+      '@pegasusx/api-core':
+        specifier: workspace:*
+        version: link:../api-core
+      '@pegasusx/api-react':
+        specifier: workspace:*
+        version: link:../api-react
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
+      framer-motion:
+        specifier: ^12.42.2
+        version: 12.42.2(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
+      lucide-react:
+        specifier: ^1.23.0
+        version: 1.23.0(react@19.0.0)
+      next:
+        specifier: '>=14'
+        version: 15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
+      react-virtuoso:
+        specifier: ^4.12.5
+        version: 4.18.10(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^26.4.0
+        version: 26.4.0
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
+      react:
+        specifier: 19.0.0
+        version: 19.0.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
+  packages/ui-maps:
     dependencies:
       '@deck.gl/geo-layers':
         specifier: ^9.3.5
@@ -830,27 +977,21 @@ importers:
       '@deck.gl/react':
         specifier: ^9.3.5
         version: 9.3.5(@deck.gl/core@9.3.5)(@deck.gl/widgets@9.3.5(@deck.gl/core@9.3.5)(@luma.gl/core@9.3.5))(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
-      '@types/d3':
-        specifier: ^7.4.3
-        version: 7.4.3
+      '@pegasusx/api-core':
+        specifier: workspace:*
+        version: link:../api-core
+      '@pegasusx/types':
+        specifier: workspace:*
+        version: link:../types
       '@types/mapbox-gl':
         specifier: ^3.4.1
         version: 3.5.0
-      d3:
-        specifier: ^7.9.0
-        version: 7.9.0
       deck.gl:
         specifier: ^9.3.5
         version: 9.3.5(@arcgis/core@4.34.8)(@luma.gl/gltf@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/engine@9.3.5(@luma.gl/core@9.3.5)(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5)))(@luma.gl/shadertools@9.3.5(@luma.gl/core@9.3.5))(@luma.gl/webgl@9.3.5(@luma.gl/core@9.3.5))(@math.gl/web-mercator@4.1.0)(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
-      framer-motion:
-        specifier: ^12.42.2
-        version: 12.42.2(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
       h3-js:
         specifier: ^4.5.0
         version: 4.5.0
-      lucide-react:
-        specifier: ^1.23.0
-        version: 1.23.0(react@19.0.0)
       mapbox-gl:
         specifier: ^3.20.0
         version: 3.24.0
@@ -863,12 +1004,6 @@ importers:
       react-map-gl:
         specifier: ^8.1.0
         version: 8.1.1(mapbox-gl@3.24.0)(maplibre-gl@5.24.0)(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
-      react-virtuoso:
-        specifier: ^4.12.5
-        version: 4.18.10(react-dom@19.2.0(react@19.0.0))(react@19.0.0)
-      recharts:
-        specifier: ^3.9.1
-        version: 3.9.1(@types/react@19.2.15)(react-dom@19.2.0(react@19.0.0))(react-is@18.3.1)(react@19.0.0)(redux@5.0.1)
     devDependencies:
       '@types/react':
         specifier: ^19.0.0
@@ -876,6 +1011,9 @@ importers:
       react:
         specifier: 19.0.0
         version: 19.0.0
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
 
   packages/validation:
     dependencies:
@@ -4281,6 +4419,9 @@ packages:
   '@types/node@24.13.2':
     resolution: {integrity: sha512-fRa09kZTgu8o71KFcDjUFuc7F+dEbZYZmkI0mg5YBTRs0yMKjYHsq/c0urDKeDb+D5qVgXOdFcuu+DZPKOITwA==}
 
+  '@types/node@26.4.0':
+    resolution: {integrity: sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ==}
+
   '@types/offscreencanvas@2019.7.3':
     resolution: {integrity: sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A==}
 
@@ -5426,6 +5567,7 @@ packages:
 
   crypto-js@4.2.0:
     resolution: {integrity: sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==}
+    deprecated: Active development of CryptoJS has been discontinued. This library is no longer maintained.
 
   css-in-js-utils@3.1.0:
     resolution: {integrity: sha512-fJAcud6B3rRu+KHYk+Bwf+WFL2MDCJJ1XG9x137tJQ0xYxor7XziQtuGFbWNdqrvF4Tk26O3H73nfVqXt/fW1A==}
@@ -7773,6 +7915,11 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
+  nanoid@3.3.17:
+    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
+    engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
+
   napi-postinstall@0.3.4:
     resolution: {integrity: sha512-PHI5f1O0EP5xJ9gQmFGMS6IZcrVvTjpXjz7Na41gTE7eE2hK11lg04CECCYEEjdc17EV4DO+fkGEtt7TpTaTiQ==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
@@ -8179,6 +8326,10 @@ packages:
 
   postcss@8.5.15:
     resolution: {integrity: sha512-FfR8sjd4em2T6fb3I2MwAJU7HWVMr9zba+enmQeeWFfCbm+UOC/0X4DS8XtpUTMwWMGbjKYP7xjfNekzyGmB3A==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
   potpack@1.0.2:
@@ -8693,6 +8844,11 @@ packages:
 
   semver@7.8.1:
     resolution: {integrity: sha512-rkVq3IXh+4FDGch+KwzX3aV9W3kO54GyEgpvBzSyctDA6Xtd7RJQV1xmXbeQp5v7+VzLOfVqiutSE6GICgPFvg==}
+    engines: {node: '>=10'}
+    hasBin: true
+
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -9334,6 +9490,9 @@ packages:
 
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
   undici@7.27.1:
     resolution: {integrity: sha512-UDdpiex+mzigiyrXrGbiUaF4HzTNhKbh2vRNFaTMzcqmLIPrZxaCtwo/1TMSuWoM1Xz3WiTo9KdgI3kRqYzJGg==}
@@ -10036,15 +10195,15 @@ snapshots:
 
   '@babel/core@7.29.0':
     dependencies:
-      '@babel/code-frame': 7.29.0
-      '@babel/generator': 7.29.1
-      '@babel/helper-compilation-targets': 7.28.6
-      '@babel/helper-module-transforms': 7.28.6(@babel/core@7.29.0)
+      '@babel/code-frame': 7.29.7
+      '@babel/generator': 7.29.7
+      '@babel/helper-compilation-targets': 7.29.7
+      '@babel/helper-module-transforms': 7.29.7(@babel/core@7.29.0)
       '@babel/helpers': 7.29.2
-      '@babel/parser': 7.29.3
-      '@babel/template': 7.28.6
-      '@babel/traverse': 7.29.0
-      '@babel/types': 7.29.0
+      '@babel/parser': 7.29.7
+      '@babel/template': 7.29.7
+      '@babel/traverse': 7.29.7
+      '@babel/types': 7.29.7
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
       debug: 4.4.3(supports-color@8.1.1)
@@ -10263,8 +10422,8 @@ snapshots:
 
   '@babel/helpers@7.29.2':
     dependencies:
-      '@babel/template': 7.28.6
-      '@babel/types': 7.29.0
+      '@babel/template': 7.29.7
+      '@babel/types': 7.29.7
 
   '@babel/highlight@7.25.9':
     dependencies:
@@ -10439,8 +10598,8 @@ snapshots:
   '@babel/plugin-transform-class-static-block@7.28.6(@babel/core@7.29.0)':
     dependencies:
       '@babel/core': 7.29.0
-      '@babel/helper-create-class-features-plugin': 7.29.3(@babel/core@7.29.0)
-      '@babel/helper-plugin-utils': 7.28.6
+      '@babel/helper-create-class-features-plugin': 7.29.7(@babel/core@7.29.0)
+      '@babel/helper-plugin-utils': 7.29.7
     transitivePeerDependencies:
       - supports-color
 
@@ -10481,7 +10640,7 @@ snapshots:
   '@babel/plugin-transform-export-namespace-from@7.27.1(@babel/core@7.29.0)':
     dependencies:
       '@babel/core': 7.29.0
-      '@babel/helper-plugin-utils': 7.28.6
+      '@babel/helper-plugin-utils': 7.29.7
 
   '@babel/plugin-transform-flow-strip-types@7.27.1(@babel/core@7.29.0)':
     dependencies:
@@ -13502,7 +13661,7 @@ snapshots:
       hermes-profile-transformer: 0.0.6
       node-stream-zip: 1.15.0
       ora: 5.4.1
-      semver: 7.8.1
+      semver: 7.8.5
       strip-ansi: 5.2.0
       wcwidth: 1.0.1
       yaml: 2.9.0
@@ -13579,7 +13738,7 @@ snapshots:
       node-fetch: 2.7.0
       open: 6.4.0
       ora: 5.4.1
-      semver: 7.8.1
+      semver: 7.8.5
       shell-quote: 1.8.3
       sudo-prompt: 9.2.1
     transitivePeerDependencies:
@@ -13609,7 +13768,7 @@ snapshots:
       fs-extra: 8.1.0
       graceful-fs: 4.2.11
       prompts: 2.4.2
-      semver: 7.8.1
+      semver: 7.8.5
     transitivePeerDependencies:
       - bufferutil
       - encoding
@@ -14685,6 +14844,10 @@ snapshots:
   '@types/node@24.13.2':
     dependencies:
       undici-types: 7.18.2
+
+  '@types/node@26.4.0':
+    dependencies:
+      undici-types: 8.3.0
 
   '@types/offscreencanvas@2019.7.3': {}
 
@@ -19091,6 +19254,8 @@ snapshots:
 
   nanoid@3.3.12: {}
 
+  nanoid@3.3.17: {}
+
   napi-postinstall@0.3.4: {}
 
   nativewind@4.2.5(react-native-reanimated@4.2.1(react-native-worklets@0.8.3(@babel/core@7.29.0)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native-svg@15.15.3(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.2.0))(react@19.2.0))(react-native@0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.2.0))(react@19.2.0)(tailwindcss@3.4.19(yaml@2.9.0)):
@@ -19124,6 +19289,30 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
       styled-jsx: 5.1.6(@babel/core@7.29.0)(react@19.1.0)
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 15.5.12
+      '@next/swc-darwin-x64': 15.5.12
+      '@next/swc-linux-arm64-gnu': 15.5.12
+      '@next/swc-linux-arm64-musl': 15.5.12
+      '@next/swc-linux-x64-gnu': 15.5.12
+      '@next/swc-linux-x64-musl': 15.5.12
+      '@next/swc-win32-arm64-msvc': 15.5.12
+      '@next/swc-win32-x64-msvc': 15.5.12
+      babel-plugin-react-compiler: 1.0.0
+      sharp: 0.34.5
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+
+  next@15.5.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      '@next/env': 15.5.12
+      '@swc/helpers': 0.5.15
+      caniuse-lite: 1.0.30001793
+      postcss: 8.4.31
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      styled-jsx: 5.1.6(react@19.0.0)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.12
       '@next/swc-darwin-x64': 15.5.12
@@ -19512,13 +19701,19 @@ snapshots:
 
   postcss@8.4.31:
     dependencies:
-      nanoid: 3.3.12
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
   postcss@8.5.15:
     dependencies:
       nanoid: 3.3.12
+      picocolors: 1.1.1
+      source-map-js: 1.2.1
+
+  postcss@8.5.23:
+    dependencies:
+      nanoid: 3.3.17
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -19870,7 +20065,7 @@ snapshots:
       convert-source-map: 2.0.0
       react: 19.1.0
       react-native: 0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.1.0)
-      semver: 7.8.1
+      semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
     optional: true
@@ -19891,7 +20086,7 @@ snapshots:
       convert-source-map: 2.0.0
       react: 19.2.0
       react-native: 0.83.2(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.3(@babel/core@7.29.0))(@types/react@19.2.15)(react@19.2.0)
-      semver: 7.8.1
+      semver: 7.8.5
     transitivePeerDependencies:
       - supports-color
 
@@ -20403,6 +20598,8 @@ snapshots:
 
   semver@7.8.1: {}
 
+  semver@7.8.5: {}
+
   send@0.19.2:
     dependencies:
       debug: 2.6.9
@@ -20472,7 +20669,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
-      semver: 7.8.1
+      semver: 7.8.5
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -21115,6 +21312,8 @@ snapshots:
 
   undici-types@7.18.2: {}
 
+  undici-types@8.3.0: {}
+
   undici@7.27.1: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
@@ -21320,7 +21519,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.15
+      postcss: 8.5.23
       rolldown: 1.0.3
       tinyglobby: 0.2.17
     optionalDependencies:

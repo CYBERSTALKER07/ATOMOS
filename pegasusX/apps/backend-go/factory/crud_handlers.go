@@ -46,6 +46,14 @@ func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
 	if req.FactoryID == "" {
 		req.FactoryID = uuid.New().String()
 	}
+	applyFactoryCreateDefaults(&req)
+	if err := stampFactoryEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{
@@ -66,6 +74,15 @@ func (s *Service) HandleCreateFactory(w http.ResponseWriter, r *http.Request) {
 	web.JSONResponse(w, http.StatusCreated, req)
 }
 
+func applyFactoryCreateDefaults(f *Factory) {
+	if f == nil {
+		return
+	}
+	if f.DailyOutputCapacity <= 0 {
+		f.DailyOutputCapacity = DefaultDailyOutputCapacity
+	}
+}
+
 // HandleGetFactory serves GET /v1/factories/{factoryId}
 func (s *Service) HandleGetFactory(w http.ResponseWriter, r *http.Request) {
 	factoryID := chi.URLParam(r, "factoryId")
@@ -74,9 +91,21 @@ func (s *Service) HandleGetFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	f, err := s.repo.GetFactory(r.Context(), factoryID)
 	if err != nil {
 		web.JSONError(w, "failed to get factory: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	allowed := auth.EntitySupplierAllowed(r.Context(), f.SupplierID) ||
+		auth.HomeNodeMatches(r.Context(), factoryID, auth.HomeNodeFactory)
+	if !allowed {
+		web.JSONError(w, "factory_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -113,6 +142,13 @@ func (s *Service) HandleUpdateFactory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.SupplierID = supplierID
+	if err := stampFactoryEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateFactory, req.FactoryID, events.TopicMain, events.FactoryEvent{

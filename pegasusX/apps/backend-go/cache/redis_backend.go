@@ -116,6 +116,20 @@ func (r *RedisBackend) Delete(ctx context.Context, keys ...string) error {
 	return r.client.Del(ctx, keys...).Err()
 }
 
+func (r *RedisBackend) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.IncrBy(ctx, key, amount).Result()
+}
+
+func (r *RedisBackend) DecrBy(ctx context.Context, key string, amount int64) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, nil
+	}
+	return r.client.DecrBy(ctx, key, amount).Result()
+}
+
 func (r *RedisBackend) Publish(ctx context.Context, channel string, payload []byte) error {
 	if r == nil || r.client == nil {
 		return nil

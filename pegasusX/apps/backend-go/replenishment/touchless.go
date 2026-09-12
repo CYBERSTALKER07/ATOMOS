@@ -34,20 +34,11 @@ func tryTouchlessApprove(
 	if err != nil {
 		return err
 	}
-	if approvedToday+qty > policy.MaxDailyTransferUnits {
+	confidence := touchlessConfidence(urgency, reasonCode, breakdown)
+	if !TouchlessEligible(policy, urgency, reasonCode, qty, approvedToday, confidence) {
 		return nil
 	}
-
-	allow := false
-	switch {
-	case strings.EqualFold(reasonCode, "PREDICTIVE_PUSH") && policy.AutoApprovePredictivePush:
-		allow = true
-	case strings.EqualFold(urgency, "STABLE") && policy.AutoApproveStable:
-		allow = true
-	case strings.EqualFold(reasonCode, "MEIO_NETWORK") && policy.AutoApproveStable:
-		allow = true
-	}
-	if !allow || strings.EqualFold(urgency, "CRITICAL") {
+	if skipPlanningOwnedAutoTransfer(reasonCode) {
 		return nil
 	}
 	factoryID := resolveInsightFactory(wh)
@@ -239,17 +230,58 @@ func loadInsightFulfillRow(ctx context.Context, client *spanner.Client, insightI
 }
 
 // TouchlessEligible reports whether an insight would auto-approve under policy.
-func TouchlessEligible(policy Policy, urgency, reasonCode string, qty int64, approvedToday int64) bool {
+// confidence must be >= policy.MinConfidenceScore (Gate-0: field was stored but ignored).
+func TouchlessEligible(policy Policy, urgency, reasonCode string, qty int64, approvedToday int64, confidence float64) bool {
 	if approvedToday+qty > policy.MaxDailyTransferUnits {
 		return false
 	}
 	if strings.EqualFold(urgency, "CRITICAL") {
 		return false
 	}
-	if strings.EqualFold(reasonCode, "PREDICTIVE_PUSH") {
-		return policy.AutoApprovePredictivePush
+	minConf := policy.MinConfidenceScore
+	if minConf <= 0 {
+		minConf = 0.85
 	}
-	return policy.AutoApproveStable
+	if confidence < minConf {
+		return false
+	}
+	switch {
+	case strings.EqualFold(reasonCode, "PREDICTIVE_PUSH"):
+		return policy.AutoApprovePredictivePush
+	case strings.EqualFold(reasonCode, "MEIO_NETWORK"):
+		return policy.AutoApproveStable
+	case strings.EqualFold(urgency, "STABLE"):
+		return policy.AutoApproveStable
+	default:
+		return policy.AutoApproveStable
+	}
+}
+
+// touchlessConfidence derives a 0..1 score from urgency/reason for the MinConfidenceScore gate.
+func touchlessConfidence(urgency, reasonCode, breakdown string) float64 {
+	if raw := strings.TrimSpace(breakdown); raw != "" {
+		var m map[string]any
+		if json.Unmarshal([]byte(raw), &m) == nil {
+			if v, ok := m["confidence"].(float64); ok && v > 0 {
+				return v
+			}
+			if v, ok := m["score"].(float64); ok && v > 0 {
+				return v
+			}
+		}
+	}
+	switch {
+	case strings.EqualFold(urgency, "STABLE"):
+		return 0.92
+	case strings.EqualFold(urgency, "WARNING"):
+		return 0.72
+	case strings.EqualFold(urgency, "CRITICAL"):
+		return 0.40
+	case strings.EqualFold(reasonCode, "PREDICTIVE_PUSH"):
+		return 0.80
+	default:
+		return 0.70
+	}
 }
 
 // ParseDemandBreakdown decodes insight breakdown JSON for warehouse portal display.

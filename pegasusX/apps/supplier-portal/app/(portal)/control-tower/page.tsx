@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  LiveEKGNetworkGraph,
-  HexagonalControlTowerMap,
-  GlassmorphismPanel,
-  useControlTowerWebSocket,
+import { usePortalT } from "@/lib/i18n";
+import React, { useEffect, useState } from "react";
+import { HexagonalControlTowerMap } from "@pegasusx/ui-maps";
+import { LiveEKGNetworkGraph, type NetworkNode, type NetworkLink } from "@pegasusx/ui-charts";
+import { useControlTowerTelemetry } from "./use-control-tower-telemetry";
+import { GlassmorphismPanel,
+  
 } from "@pegasusx/ui-kit/control-tower";
 import {
   LineChart,
@@ -22,20 +23,40 @@ import {
 import { ScoredExceptionsPanel } from "@/components/control-tower/ScoredExceptionsPanel";
 import { PlaybookRunsPanel } from "@/components/exceptions/PlaybookRunsPanel";
 import { sessionSupplierId } from "@/lib/supplier-scope";
+import { createSupplierApi } from "@/lib/api";
+import { buildScenarioChartRows, type ScenarioChartRow } from "@/lib/scenario-chart";
 
 const performanceData: Record<string, unknown>[] = [];
-const scenariosData: Record<string, unknown>[] = [];
+const api = createSupplierApi();
 
 export default function ControlTowerPage() {
+  const t = usePortalT();
   const [view, setView] = useState<"network" | "map">("network");
+  const [scenariosData, setScenariosData] = useState<ScenarioChartRow[]>([]);
   const supplierId = sessionSupplierId() ?? "";
-  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerWebSocket(supplierId);
+  const { networkNodes, networkLinks, h3Data: wsH3Data } = useControlTowerTelemetry(supplierId);
+
+  useEffect(() => {
+    if (!supplierId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await api.listPlanningScenarios();
+        if (!cancelled) setScenariosData(buildScenarioChartRows(list.scenarios ?? []));
+      } catch {
+        if (!cancelled) setScenariosData([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supplierId]);
 
   if (!supplierId) {
     return (
       <div className="relative w-full h-[calc(100vh-64px)] bg-[#0a0a0a] text-white overflow-hidden p-6 flex items-center justify-center">
         <div className="max-w-md text-center space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight">Control Tower</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("portal.nav.control_tower")}</h1>
           <p className="text-sm text-gray-400">
             No supplier session. Sign in again to load network telematics for your tenant.
           </p>
@@ -48,7 +69,7 @@ export default function ControlTowerPage() {
     <div className="relative w-full h-[calc(100vh-64px)] bg-[#0a0a0a] text-white overflow-hidden p-6 flex flex-col gap-6">
       <div className="flex items-center justify-between z-10">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Control Tower</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-white">{t("portal.nav.control_tower")}</h1>
           <p className="text-sm text-gray-400">
             Real-time network telematics for {supplierId}.
           </p>
@@ -92,10 +113,10 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Actual vs Plan</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">{t("supplier_portal.control_tower.text.actual_vs_plan")}</h3>
           <div className="flex-1 min-h-0">
             {performanceData.length === 0 ? (
-              <p className="text-xs text-gray-500">No plan/actual series for this session yet.</p>
+              <p className="text-xs text-gray-500">{t("supplier_portal.control_tower.text.no_plan_actual_series_for_this_session_yet")}</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={performanceData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
@@ -120,10 +141,10 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">Baseline vs Upside Scenarios</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-4 uppercase">{t("supplier_portal.control_tower.text.baseline_vs_upside_scenarios")}</h3>
           <div className="flex-1 min-h-0">
             {scenariosData.length === 0 ? (
-              <p className="text-xs text-gray-500">No scenario series for this session yet.</p>
+              <p className="text-xs text-gray-500">{t("supplier_portal.control_tower.text.no_scenario_series_for_this_session_yet")}</p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={scenariosData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
@@ -149,7 +170,7 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">Top scored exceptions</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">{t("supplier_portal.control_tower.text.top_scored_exceptions")}</h3>
           <div className="flex-1 overflow-y-auto min-h-0">
             <ScoredExceptionsPanel limit={8} />
           </div>
@@ -161,7 +182,7 @@ export default function ControlTowerPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">Playbook suggestions</h3>
+          <h3 className="text-xs font-bold text-gray-400 tracking-wider mb-3 uppercase">{t("supplier_portal.control_tower.text.playbook_suggestions")}</h3>
           <div className="flex-1 overflow-y-auto min-h-0 text-sm">
             <PlaybookRunsPanel />
           </div>

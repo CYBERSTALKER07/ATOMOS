@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 
 export type InventoryRow = {
@@ -35,16 +38,17 @@ export function InventoryTable({
   onApply,
   onPolicyChange,
 }: InventoryTableProps) {
+  const t = usePortalT();
   return (
     <div className="md-card overflow-x-auto">
       <table className="min-w-full text-left">
         <thead className="border-b border-[var(--color-md-outline-variant)]">
           <tr>
-            <th className="px-4 py-3 md-typescale-label-large">Warehouse</th>
+            <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.replenishment_traceability_panel.text.warehouse")}</th>
             <th className="px-4 py-3 md-typescale-label-large">SKU</th>
-            <th className="px-4 py-3 md-typescale-label-large text-right">Available</th>
-            <th className="px-4 py-3 md-typescale-label-large">Stock policy</th>
-            <th className="px-4 py-3 md-typescale-label-large text-right">Adjust</th>
+            <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.credit.collections.text.available")}</th>
+            <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.inventory.inventory_table.text.stock_policy")}</th>
+            <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.inventory.inventory_table.text.adjust")}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,9 +66,9 @@ export function InventoryTable({
                     disabled={policyUpdatingKey === key}
                     onChange={(e) => onPolicyChange(row, e.target.value)}
                   >
-                    <option value="INHERIT">Inherit warehouse</option>
-                    <option value="REJECT">Reject when short</option>
-                    <option value="ACCEPT_BACKORDER">Accept backorder</option>
+                    <option value="INHERIT">{t("supplier_portal.inventory.inventory_table.text.inherit_warehouse")}</option>
+                    <option value="REJECT">{t("supplier_portal.inventory.inventory_table.text.reject_when_short")}</option>
+                    <option value="ACCEPT_BACKORDER">{t("supplier_portal.inventory.inventory_table.text.accept_backorder")}</option>
                   </select>
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -72,7 +76,7 @@ export function InventoryTable({
                     <input
                       type="number"
                       className="md-input-outlined w-24 px-2 py-1 text-right"
-                      placeholder="±qty"
+                      placeholder={t("supplier_portal.inventory.inventory_table.text.qty")}
                       value={deltas[row.sku_id] ?? ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => onDeltaChange(row.sku_id, e.target.value)}
                     />

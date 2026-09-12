@@ -83,6 +83,7 @@ export const config = {
     '/dispatch/:path*',
     '/dispatch-settings/:path*',
     '/payment-config/:path*',
+    '/coverage/:path*',
     '/replenishment/:path*',
     '/transfers/:path*',
     '/profile/:path*',

@@ -106,6 +106,64 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Unit>
 
+    @GET("v1/warehouse/ops/bins")
+    suspend fun listBins(): Response<WarehouseBinListResponse>
+
+    @POST("v1/warehouse/ops/bins")
+    suspend fun createBin(
+        @Body body: WarehouseBinCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<WarehouseBinLocation>
+
+    @POST("v1/warehouse/ops/lots/putaway")
+    suspend fun putawayLot(
+        @Body body: StockLotPutawayRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<StockLotPutawayResponse>
+
+    @GET("v1/warehouse/ops/pick-waves")
+    suspend fun listPickWaves(
+        @Query("manifest_id") manifestId: String? = null,
+        @Query("status") status: String? = null,
+    ): Response<PickWaveListResponse>
+
+    @POST("v1/warehouse/ops/pick-waves")
+    suspend fun createPickWave(
+        @Body body: PickWaveCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
+    @GET("v1/warehouse/ops/pick-waves/{waveId}")
+    suspend fun getPickWave(
+        @Path("waveId") waveId: String,
+    ): Response<PickWave>
+
+    @POST("v1/warehouse/ops/pick-waves/{waveId}/tasks/{taskId}/confirm")
+    suspend fun confirmPickTask(
+        @Path("waveId") waveId: String,
+        @Path("taskId") taskId: String,
+        @Body body: PickTaskConfirmRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<PickWave>
+
+    @GET("v1/warehouse/ops/cycle-counts")
+    suspend fun listCycleCounts(
+        @Query("status") status: String? = null,
+    ): Response<CycleCountListResponse>
+
+    @POST("v1/warehouse/ops/cycle-counts")
+    suspend fun createCycleCount(
+        @Body body: CycleCountCreateRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CycleCount>
+
+    @POST("v1/warehouse/ops/cycle-counts/{countId}/submit")
+    suspend fun submitCycleCount(
+        @Path("countId") countId: String,
+        @Body body: CycleCountSubmitRequest,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<CycleCount>
+
     @GET("v1/warehouse/ops/settings")
     suspend fun getOpsSettings(): Response<WarehouseOpsSettingsResponse>
 
@@ -114,6 +172,20 @@ interface WarehouseApi {
         @Body body: WarehouseOpsSettingsPatchRequest,
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
+
+    @GET("v1/warehouse/return-policy")
+    suspend fun getReturnPolicy(
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
+
+    @PUT("v1/warehouse/return-policy")
+    suspend fun putReturnPolicy(
+        @Body body: WarehouseReturnPolicy,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Query("warehouse_id") warehouseId: String? = null,
+        @Query("supplier_id") supplierId: String? = null,
+    ): Response<WarehouseReturnPolicy>
 
     @GET("v1/warehouse/ops/location")
     suspend fun getWarehouseLocation(): Response<WarehouseLocationResponse>
@@ -236,6 +308,9 @@ interface WarehouseApi {
     @GET("v1/warehouse/supply-requests/{id}")
     suspend fun getSupplyRequest(@Path("id") id: String): Response<WarehouseSupplyRequest>
 
+    @GET("v1/warehouse/supply-requests/{id}/qc")
+    suspend fun getSupplyRequestQC(@Path("id") id: String): Response<SupplyRequestQCResponse>
+
     @GET("v1/warehouse/ops/preorders")
     suspend fun getPreorders(): Response<com.pegasusx.warehouse.data.model.WarehousePreordersResponse>
 
@@ -321,6 +396,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/payment-config")
     suspend fun getPaymentConfig(): Response<PaymentConfigResponse>
 
+    @GET("v1/warehouse/ops/coverage")
+    suspend fun getOpsCoverage(): Response<WarehouseCoverageResponse>
+
+    @GET("v1/warehouse/ops/supply-factory")
+    suspend fun getOpsSupplyFactory(): Response<WarehouseSupplyFactoryResponse>
+
     // ── P1-03 ops depth ──
     @POST("v1/warehouse/transfers/emergency")
     suspend fun emergencyTransfer(
@@ -403,6 +484,21 @@ interface WarehouseApi {
         @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<WarehouseOrderMutationResponse>
 
+    @POST("v1/warehouse/ops/orders/payment-bypass")
+    suspend fun issuePaymentBypass(
+        @Body body: Map<String, String>,
+    ): Response<Map<String, String>>
+
+    @GET("v1/warehouse/ops/orders/early-complete/{driverId}")
+    suspend fun getEarlyCompleteRequest(
+        @Path("driverId") driverId: String,
+    ): Response<Map<String, Any>>
+
+    @POST("v1/warehouse/ops/orders/early-complete/approve")
+    suspend fun approveEarlyComplete(
+        @Body body: Map<String, String>,
+    ): Response<Map<String, Any>>
+
     @GET("v1/warehouse/ops/fleet/live-map")
     suspend fun getFleetLiveMap(
         @Query("warehouse_id") warehouseId: String? = null,
@@ -410,6 +506,33 @@ interface WarehouseApi {
 
     @GET("v1/warehouse/ops/pulse")
     suspend fun getPulse(): Response<PulseResponse>
+
+    // ── Cold chain ──
+    @GET("v1/warehouse/ops/temperature-readings")
+    suspend fun listTemperatureReadings(
+        @Query("manifest_id") manifestId: String,
+    ): Response<TemperatureReadingListResponse>
+
+    @POST("v1/warehouse/ops/temperature-readings")
+    suspend fun ingestTemperatureReading(
+        @Body body: TemperatureReadingIngestRequest,
+    ): Response<TemperatureReading>
+
+    // ── Labor capacity ──
+    @GET("v1/labor-capacity/zone-capacity")
+    suspend fun listLaborZoneCapacity(
+        @Query("date") date: String,
+    ): Response<LaborZoneCapacityListResponse>
+
+    @GET("v1/labor-capacity/driver-score/{driverId}")
+    suspend fun getLaborDriverScore(
+        @Path("driverId") driverId: String,
+    ): Response<LaborDriverScore>
+
+    @POST("v1/labor-capacity/driver-availability")
+    suspend fun setLaborDriverAvailability(
+        @Body body: LaborDriverAvailabilityRequest,
+    ): Response<LaborDriverAvailabilityResponse>
 
     // ── Rescue Operations ──
     @POST("v1/warehouse/ops/dispatch/rescue/preview")
@@ -446,6 +569,9 @@ interface WarehouseApi {
 
     @POST("v1/user/device-token")
     suspend fun registerDeviceToken(
-        @Body body: Map<String, String>,
+        @Body body: DeviceTokenRequest,
     ): Response<Map<String, String>>
+
+    @GET("v1/control-tower/exceptions/scored")
+    suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
 }

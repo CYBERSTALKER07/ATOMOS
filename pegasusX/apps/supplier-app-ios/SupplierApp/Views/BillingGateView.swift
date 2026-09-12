@@ -18,17 +18,17 @@ struct BillingGateView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("Complete billing to unlock payouts and gateway routing. You can skip and finish later in the web portal.")
+                    Text("mobile_supplier.ui.complete_billing_to_unlock_payouts_and_gateway_routing_you_can_s")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
                 Section("Bank account") {
-                    TextField("Bank name", text: $bankName)
-                    TextField("Account holder", text: $accountHolder)
-                    TextField("Account number", text: $accountNumber)
-                    TextField("SWIFT / BIC", text: $swiftBic)
-                    TextField("IBAN (optional)", text: $iban)
+                    TextField("supplier_portal.residual.text.bank_name", text: $bankName)
+                    TextField("mobile_supplier.ui.account_holder", text: $accountHolder)
+                    TextField("supplier_portal.residual.text.account_number", text: $accountNumber)
+                    TextField("supplier_portal.residual.text.swift_bic", text: $swiftBic)
+                    TextField("mobile_supplier.ui.iban_optional", text: $iban)
                 }
 
                 Section("Payment gateways") {
@@ -56,19 +56,19 @@ struct BillingGateView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            if loading { ProgressView() } else { Text("Save & continue") }
+                            if loading { ProgressView() } else { Text("supplier_portal.residual.text.save_and_continue") }
                             Spacer()
                         }
                     }
                     .disabled(loading || !canSubmit)
 
-                    Button("Skip for now", role: .cancel) {
+                    Button("common.action.skip_for_now", role: .cancel) {
                         tokenStore.dismissBillingGate()
                     }
                     .disabled(loading)
                 }
             }
-            .navigationTitle("Billing setup")
+            .navigationTitle("mobile_supplier.ui.billing_setup")
             .frame(maxWidth: horizontalSizeClass == .regular ? 560 : .infinity)
             .frame(maxWidth: .infinity)
         }

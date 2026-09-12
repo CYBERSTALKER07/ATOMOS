@@ -60,7 +60,8 @@ Apply all via: `make phase0-migrate` (applies ordered `*.ddl` through latest).
 | `CASH_RECONCILIATION_REQUIRED` | `false` |
 | `CREDIT_NOTE_AUTO_FROM_BUYER_REJECT` | `false` |
 | `CREDIT_NOTE_AUTO_FROM_CLAIM` | `false` |
-| `CREDIT_SCORE_ENFORCEMENT_ENABLED` | `false` |
+
+`CREDIT_SCORE_ENFORCEMENT_ENABLED` — **removed / dead** (Phase A scoring deletion). Do not list or enable.
 
 Enable sequence: [STAGING_FLAGS.md](STAGING_FLAGS.md). Rollout helper: `scripts/gap_closure_flag_rollout.sh`.
 

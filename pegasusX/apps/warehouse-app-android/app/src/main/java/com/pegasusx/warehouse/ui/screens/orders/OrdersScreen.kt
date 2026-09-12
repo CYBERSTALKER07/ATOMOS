@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -30,6 +32,7 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 private val STATES = listOf("ALL", "PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED")
 
@@ -41,13 +44,20 @@ fun OrdersScreen(
     realtimeSignals: WarehouseRealtimeSignals,
     onOrderClick: (String) -> Unit,
     onBack: (() -> Unit)? = null,
+    initialState: String? = null,
 ) {
     var hubTab by remember { mutableIntStateOf(0) }
     var orders by remember { mutableStateOf<List<Order>>(emptyList()) }
     var preorders by remember { mutableStateOf<List<WarehousePreorderRow>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedState by remember { mutableStateOf("ALL") }
+    var selectedState by remember { mutableStateOf(initialState?.takeIf { it.isNotBlank() } ?: "ALL") }
+
+    LaunchedEffect(initialState) {
+        if (!initialState.isNullOrBlank()) {
+            selectedState = initialState
+        }
+    }
     var filterExpanded by remember { mutableStateOf(false) }
     var actingId by remember { mutableStateOf<String?>(null) }
     var proposeActiveTarget by remember { mutableStateOf<String?>(null) }
@@ -339,7 +349,7 @@ fun OrdersScreen(
         val recs = reassignRecommendations
         AlertDialog(
             onDismissRequest = { if (!reassigning) reassignTarget = null },
-            title = { Text("Reassign Order ${orderId.take(8)}") },
+            title = { Text(stringResource(R.string.mobile_warehouse_ui_reassign_order_take, orderId.take(8))) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (recs == null) {
@@ -348,7 +358,7 @@ fun OrdersScreen(
                         Text("No suitable trucks available.")
                     } else {
                         Text(
-                            "${recs.retailerName} • %.1f VU".format(recs.orderVolumeVu),
+                            stringResource(R.string.mobile_warehouse_ui_retailername_1f_vu, recs.retailerName).format(recs.orderVolumeVu),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         LazyVerticalGrid(

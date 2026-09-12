@@ -1,6 +1,6 @@
 [package]
 name = "pegasusx-supplier-portal"
-version = "0.1.0"
+version = "0.1.1"
 description = "PegasusX Supplier Portal shell"
 authors = ["PegasusX"]
 edition = "2021"

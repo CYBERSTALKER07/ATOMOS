@@ -30,35 +30,33 @@
       "style": "./styles/monochrome-desktop.css",
       "default": "./styles/monochrome-desktop.css"
     },
+    ".": "./src/index.ts",
     "./portal": "./src/portal/index.ts",
     "./auth": "./src/auth/index.ts",
+    "./pack": "./src/pack/index.ts",
     "./control-tower": "./src/control-tower/index.ts",
     "./desktop": "./src/desktop/index.ts",
     "./tailwind.config": "./tailwind.config.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
     "next": ">=14",
     "react": ">=18"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
     "@types/react": "^19.0.0",
-    "react": "19.0.0"
+    "react": "19.0.0",
+    "typescript": "^5.4.0"
   },
   "dependencies": {
-    "@deck.gl/geo-layers": "^9.3.5",
-    "@deck.gl/layers": "^9.3.5",
-    "@deck.gl/react": "^9.3.5",
-    "@types/d3": "^7.4.3",
-    "@types/mapbox-gl": "^3.4.1",
-    "d3": "^7.9.0",
-    "deck.gl": "^9.3.5",
+    "@pegasusx/api-core": "workspace:*",
+    "@pegasusx/api-react": "workspace:*",
+    "@pegasusx/types": "workspace:*",
     "framer-motion": "^12.42.2",
-    "h3-js": "^4.5.0",
     "lucide-react": "^1.23.0",
-    "mapbox-gl": "^3.20.0",
-    "maplibre-gl": "^5.19.0",
-    "react-map-gl": "^8.1.0",
-    "recharts": "^3.9.1",
     "react-virtuoso": "^4.12.5"
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -40,6 +41,7 @@ type EvalResult = {
 };
 
 export default function CapabilitiesPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [data, setData] = useState<CapabilitiesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export default function CapabilitiesPage() {
       const json = (await res.json()) as CapabilitiesResponse;
       setData(json);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load capabilities");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_capabilities"));
     } finally {
       setLoading(false);
     }
@@ -103,7 +105,7 @@ export default function CapabilitiesPage() {
       setBanner({ kind: "ok", text: `${packId} enabled` });
       await load();
     } catch (e) {
-      setBanner({ kind: "err", text: e instanceof Error ? e.message : "Enable failed" });
+      setBanner({ kind: "err", text: e instanceof Error ? e.message : t("retailer_desktop.residual.text.enable_failed") });
     } finally {
       setBusyPack(null);
     }
@@ -128,7 +130,7 @@ export default function CapabilitiesPage() {
       setBanner({ kind: "ok", text: `${packId} disabled` });
       await load();
     } catch (e) {
-      setBanner({ kind: "err", text: e instanceof Error ? e.message : "Disable failed" });
+      setBanner({ kind: "err", text: e instanceof Error ? e.message : t("retailer_desktop.residual.text.disable_failed") });
     } finally {
       setBusyPack(null);
     }
@@ -136,8 +138,8 @@ export default function CapabilitiesPage() {
 
   return (
     <PageChrome
-      title="Store capabilities"
-      description="Turn on only what your shop needs. Solo shops run on Core alone."
+      title={t("retailer_desktop.settings.capabilities.text.store_capabilities")}
+      description={t("retailer_desktop.residual.text.turn_on_only_what_your_shop_needs_solo_shops_run_on_core_alone")}
       actions={
         <button
           type="button"
@@ -258,7 +260,7 @@ export default function CapabilitiesPage() {
                   </div>
                   <div className="shrink-0">
                     {pack.always_on ? (
-                      <span className="text-xs font-medium text-muted-foreground">Always on</span>
+                      <span className="text-xs font-medium text-muted-foreground">{t("retailer_desktop.settings.capabilities.text.always_on")}</span>
                     ) : pack.enabled ? (
                       <button
                         type="button"

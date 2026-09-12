@@ -1,10 +1,11 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { supplierScopeId } from "@/lib/supplier-scope";
-import { supplierProfileUpdateKey } from "@pegasusx/api-client";
+import { supplierProfileUpdateKey } from "@pegasusx/api-core";
 import type { SupplierProfile, SupplierProfileUpdateRequest } from "@pegasusx/types";
 import { PageChrome } from "@/components/PageChrome";
 
@@ -13,6 +14,7 @@ const api = createSupplierApi();
 import { SupplierIdentityCard, ContactDetailsForm, draftFromProfile, type ProfileDraft } from "@/components/profile";
 
 export default function ProfilePage() {
+  const t = usePortalT();
   const [profile, setProfile] = useState<SupplierProfile | null>(null);
   const [draft, setDraft] = useState<ProfileDraft | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +30,7 @@ export default function ProfilePage() {
       setProfile(loaded);
       setDraft(draftFromProfile(loaded));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_profile_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_profile_failed"));
       setProfile(null);
       setDraft(null);
     } finally {
@@ -48,7 +50,9 @@ export default function ProfilePage() {
     (draft.legal_name.trim() !== (profile.legal_name ?? "") ||
       draft.contact_name.trim() !== (profile.contact_name ?? "") ||
       draft.email.trim() !== (profile.email ?? "") ||
-      draft.phone.trim() !== (profile.phone ?? ""));
+      draft.phone.trim() !== (profile.phone ?? "") ||
+      draft.gln.trim() !== (profile.gln ?? "") ||
+      draft.gs1_company_prefix.trim() !== (profile.gs1_company_prefix ?? ""));
 
   async function saveProfile() {
     if (!profile || !draft) return;
@@ -67,6 +71,8 @@ export default function ProfilePage() {
       contact_name: contactName,
       email,
       phone: phone || undefined,
+      gln: draft.gln.trim(),
+      gs1_company_prefix: draft.gs1_company_prefix.trim(),
     };
 
     setSaving(true);
@@ -79,7 +85,7 @@ export default function ProfilePage() {
       setProfile(updated);
       setDraft(draftFromProfile(updated));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "save_profile_failed");
+      setSaveError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_profile_failed"));
     } finally {
       setSaving(false);
     }
@@ -88,8 +94,8 @@ export default function ProfilePage() {
   return (
     <PageChrome
       icon="supplier"
-      title="Profile"
-      description="Supplier legal identity and registration state."
+      title={t("portal.nav.profile")}
+      description={t("supplier_portal.residual.text.supplier_legal_identity_and_registration_state")}
       loading={loading}
       error={error}
       empty={!profile || !draft}

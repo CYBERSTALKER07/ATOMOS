@@ -15,7 +15,7 @@ struct OrderModelTests {
 
     @Test func orderStateEnum_allCases() async throws {
         let count = OrderState.allCases.count
-        #expect(count == 17, "OrderState should have 17 cases, got \(count)")
+        #expect(count == 19, "OrderState should have 19 cases, got \(count)")
     }
 
     @Test func orderStateEnum_labels() async throws {
@@ -27,6 +27,8 @@ struct OrderModelTests {
     @Test func orderState_activeStates() async throws {
         #expect(OrderState.IN_TRANSIT.isActive == true)
         #expect(OrderState.ARRIVED.isActive == true)
+        #expect(OrderState.ARRIVED_SHOP_CLOSED.isActive == true)
+        #expect(OrderState.FISCAL_FAILED.isActive == true)
         #expect(OrderState.COMPLETED.isActive == false)
         #expect(OrderState.CANCELLED.isActive == false)
         #expect(OrderState.PENDING.isActive == false)
@@ -53,7 +55,9 @@ struct OrderModelTests {
             etaDurationSec: nil,
             etaDistanceM: nil,
             routeId: nil,
-            sequenceIndex: nil
+            sequenceIndex: nil,
+            isPartial: nil,
+            splitGroupId: nil
         )
         #expect(order.displayTotal.contains("150"), "displayTotal should include the amount")
     }
@@ -85,12 +89,12 @@ struct HaversineTests {
         #expect(dist > 30 && dist < 100, "~44m offset should be 30-100m, got \(dist)")
     }
 
-    @Test func geofenceThreshold_500m() async throws {
-        let threshold = 500.0
+    @Test func geofenceThreshold_150m() async throws {
+        let threshold = 150.0
         let base = CLLocationCoordinate2D(latitude: 41.2995, longitude: 69.2401)
-        let within = CLLocationCoordinate2D(latitude: 41.3035, longitude: 69.2401)
+        let within = CLLocationCoordinate2D(latitude: 41.3005, longitude: 69.2401)
         let dist = haversineDistance(from: base, to: within)
-        #expect(dist <= threshold, "Should be within 500m, got \(dist)m")
+        #expect(dist <= threshold, "Should be within 150m, got \(dist)m")
     }
 }
 
@@ -119,7 +123,9 @@ struct OrderImmutabilityTests {
             etaDurationSec: nil,
             etaDistanceM: nil,
             routeId: "ROUTE-01",
-            sequenceIndex: 2
+            sequenceIndex: 2,
+            isPartial: nil,
+            splitGroupId: nil
         )
 
         let arrived = Order(
@@ -142,7 +148,9 @@ struct OrderImmutabilityTests {
             etaDurationSec: original.etaDurationSec,
             etaDistanceM: original.etaDistanceM,
             routeId: original.routeId,
-            sequenceIndex: original.sequenceIndex
+            sequenceIndex: original.sequenceIndex,
+            isPartial: original.isPartial,
+            splitGroupId: original.splitGroupId
         )
 
         #expect(arrived.state == .ARRIVED)
@@ -151,5 +159,43 @@ struct OrderImmutabilityTests {
         #expect(arrived.routeId == original.routeId)
         #expect(arrived.sequenceIndex == original.sequenceIndex)
         #expect(original.state == .IN_TRANSIT, "Original should still be IN_TRANSIT")
+    }
+}
+
+// MARK: - Offline enqueue classifier (P0-4)
+
+struct DriverOfflineEnqueueTests {
+
+    @Test func networkError_isEnqueueable() {
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.networkError))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(URLError(.timedOut)))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(URLError(.notConnectedToInternet)))
+    }
+
+    @Test func retryableHTTP_isEnqueueable() {
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(503)))
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(429)))
+        let problem = ProblemDetail(
+            type: nil, title: nil, status: 503, detail: nil, traceId: nil,
+            instance: nil, code: nil, messageKey: nil, retryable: true, action: nil
+        )
+        #expect(DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.problemDetail(problem)))
+    }
+
+    @Test func geofenceAndBusinessReject_neverEnqueue() {
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.forbidden))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.unauthorized))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(403)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.httpError(422)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.decodingError))
+        let geofence = ProblemDetail(
+            type: nil, title: "Forbidden", status: 403, detail: "too far",
+            traceId: nil, instance: nil, code: "geofence_violation",
+            messageKey: nil, retryable: false, action: nil
+        )
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(APIError.problemDetail(geofence)))
+        #expect(!DriverOfflineActionCatalog.isNetworkEnqueueable(
+            FleetServiceError.deliveryRejected("denied")
+        ))
     }
 }

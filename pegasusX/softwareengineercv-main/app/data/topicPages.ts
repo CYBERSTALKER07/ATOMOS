@@ -4,7 +4,7 @@ import {
   type MegaNavLink,
 } from './megaNavigation';
 import { getTopicContent } from './topicContent';
-import type { TopicContent, TopicPage } from './topicTypes';
+import type { TopicContent, TopicPage, BilingualContent } from './topicTypes';
 import { topicHref } from './topicTypes';
 
 export type CategoryHub = {
@@ -33,9 +33,13 @@ function buildTopicPage(category: MegaNavCategory, link: MegaNavLink): TopicPage
 }
 
 export const ALL_TOPICS: TopicPage[] = MEGA_NAV_CATEGORIES.flatMap((category) =>
-  category.links
-    .map((link) => buildTopicPage(category, link))
-    .filter((t): t is TopicPage => t !== null)
+  // Solutions accordion owns /solutions — do not register mega-nav solution
+  // topics as explore TopicPages (their hrefs now point at live O9 hubs).
+  category.id === 'solutions'
+    ? []
+    : category.links
+        .map((link) => buildTopicPage(category, link))
+        .filter((t): t is TopicPage => t !== null)
 );
 
 export function getTopicByPath(categoryId: string, slug: string): TopicPage | undefined {
@@ -72,7 +76,7 @@ export function getSiblingTopics(categoryId: string, slug: string, limit = 4): T
   return ALL_TOPICS.filter((t) => t.categoryId === categoryId && t.slug !== slug).slice(0, limit);
 }
 
-export function getTopicContentOrThrow(categoryId: string, slug: string): TopicContent {
+export function getTopicContentOrThrow(categoryId: string, slug: string): BilingualContent {
   const topic = getTopicByPath(categoryId, slug);
   if (!topic) throw new Error(`Missing topic: ${categoryId}/${slug}`);
   return topic.content;

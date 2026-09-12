@@ -1,0 +1,36 @@
+# GS-C3 — named EU cell overlay (plan/render only). Do not kubectl apply.
+# Merges base/, not prod/, so UZ Soliq / pegasusx-ssmr-* ExternalSecrets are not copied.
+# Pack EU is planned; empty adapters OK (commercial fiscal, no Soliq, no live PSP).
+# New JWT is minted per cell (scripts/mint_cell_jwt.sh) — never copy UZ.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx
+
+resources:
+  - ../../../base
+
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - HOME_CELL=cell-eu
+      - CELL_JWT_ENFORCE=true
+      - DEFAULT_MARKET_CODE=EU
+      - FISCAL_PROVIDER=PEGASUS
+      - FISCAL_ALLOW_COMMERCIAL_RECEIPTS=true
+      - PUBLIC_BASE_URL=https://api-eu.pegasusx.app
+      - SPANNER_PROJECT=pegasusx-cell-eu
+      - SPANNER_INSTANCE=pegasusx-eu-spanner
+      - SPANNER_DATABASE=pegasusx-eu-db
+      - GLOBAL_PAY_ENV=unused
+      - FIREBASE_AUTH_ENABLED=false
+      - FCM_ALLOW_NOOP=true
+      - KAFKA_TOPIC_MAIN=cell-eu.events.orders
+      - KAFKA_TOPIC_MAIN_DLQ=cell-eu.events.orders-dlq
+      - KAFKA_TOPIC_REALTIME=cell-eu.events.realtime
+      - KAFKA_TOPIC_WEBHOOKS=cell-eu.events.webhooks
+
+labels:
+  - pairs:
+      pegasusx.io/cell: eu

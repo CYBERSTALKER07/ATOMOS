@@ -1,4 +1,4 @@
-import { ApiClient } from "@pegasusx/api-client";
+import { ApiClient } from '@pegasusx/api-core';
 import { getSupplierToken, supplierApiBaseUrl } from "@/lib/auth";
 
 export function createSupplierApi(): ApiClient {

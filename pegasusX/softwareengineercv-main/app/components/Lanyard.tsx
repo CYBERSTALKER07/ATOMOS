@@ -102,8 +102,10 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
     linearDamping: 4
   };
 
-  // Load atom.jpeg texture
-  const texture = useTexture('/atom.jpeg');
+  // Load pegasus logo texture
+  const texture = useTexture('/pegasus.jpg');
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
 
   // Card geometry
   const nodes = {
@@ -254,7 +256,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
               drag(new THREE.Vector3().copy(e.point).sub(vec.copy(card.current.translation())));
             }}
           >
-            {/* Front of card with atom.jpeg */}
+            {/* Front of card with Pegasus logo */}
             <mesh geometry={nodes.card.geometry} position={[0, 0, 0.01]}>
               <meshPhysicalMaterial
                 map={texture}
@@ -265,7 +267,7 @@ function Band({ maxSpeed = 50, minSpeed = 0 }: BandProps) {
               />
             </mesh>
             
-            {/* Back of card with "THE LAB" text */}
+            {/* Back of card with PEGASUS text */}
             <mesh geometry={nodes.card.geometry} position={[0, 0, -0.01]} rotation={[0, Math.PI, 0]}>
               <meshPhysicalMaterial
                 map={textTexture}

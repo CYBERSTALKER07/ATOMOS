@@ -71,7 +71,7 @@ struct PaymentWaitingView: View {
 
             if isFiscalFailed {
                 Button { retryFiscal() } label: {
-                    Text("Retry Fiscal")
+                    Text("mobile_driver.ui.retry_fiscal")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                         .frame(maxWidth: .infinity)
@@ -83,7 +83,7 @@ struct PaymentWaitingView: View {
                 .padding(.bottom, LabTheme.s24)
             } else if errorMessage != nil && isSettled && !isFiscalizing {
                 Button { finalizeDelivery() } label: {
-                    Text("Retry Capture")
+                    Text("mobile_driver.ui.retry_capture")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(LabTheme.buttonFg)
                         .frame(maxWidth: .infinity)

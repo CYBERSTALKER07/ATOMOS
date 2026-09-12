@@ -47,6 +47,25 @@ fun formatBaselineSourceLabel(src: String?): String = when (mapBaselineSource(sr
     else -> mapBaselineSource(src)?.replace('_', ' ') ?: ""
 }
 
+fun isForecastBlocked(confidence: ForecastConfidence?): Boolean {
+    return confidence?.label == "insufficient_history" || !confidence?.blockedReason.isNullOrBlank()
+}
+
+fun brainForecastLine(confidence: ForecastConfidence?, accuracyPoints: List<Double>): List<Double>? {
+    if (isForecastBlocked(confidence)) return null
+    if (accuracyPoints.size < 2) return null
+    return accuracyPoints
+}
+
+fun factoryPlanningDisabledCode(status: Int, body: String): String? {
+    if (status != 409 || !body.contains("factory_planning_disabled")) return null
+    return "factory_planning_disabled"
+}
+
+fun planBrainTabFromQuery(raw: String?): String {
+    return if (raw?.trim()?.lowercase() == "brain") "brain" else "planning"
+}
+
 fun forecastConfidenceFromDemand(summary: SupplierDemandSummaryResponse): ForecastConfidence {
     summary.confidence?.let { return it }
     if (summary.predictionCount == 0) {

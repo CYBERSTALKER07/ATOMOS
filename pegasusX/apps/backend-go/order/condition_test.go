@@ -66,6 +66,42 @@ func TestReportCondition_AuthorizedDriver(t *testing.T) {
 	}
 }
 
+func TestReportCondition_TemperatureBreachIncludesPartyIDs(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	repo := &testRepo{
+		found: true,
+		order: Order{
+			OrderID:    "ord-1",
+			SupplierID: "sup-1",
+			RetailerID: "ret-1",
+			DriverID:   "drv-1",
+			Status:     StatusInTransit,
+		},
+	}
+	svc := newConditionTestService(repo, now)
+
+	claims := auth.Claims{Role: auth.RoleDriver, Subject: "drv-1"}
+	_, err := svc.ReportCondition(context.Background(), claims, ConditionReportRequest{
+		OrderID:       "ord-1",
+		ConditionType: ConditionTypeTemperatureBreach,
+		Severity:      SeverityHigh,
+		Description:   "probe reading 22C",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	payload := string(repo.lastEvents[0].Payload)
+	if !bytes.Contains(repo.lastEvents[0].Payload, []byte(`"supplier_id":"sup-1"`)) {
+		t.Fatalf("expected supplier_id in payload, got %s", payload)
+	}
+	if !bytes.Contains(repo.lastEvents[0].Payload, []byte(`"retailer_id":"ret-1"`)) {
+		t.Fatalf("expected retailer_id in payload, got %s", payload)
+	}
+	if !bytes.Contains(repo.lastEvents[0].Payload, []byte(`"condition_type":"TEMPERATURE_BREACH"`)) {
+		t.Fatalf("expected TEMPERATURE_BREACH, got %s", payload)
+	}
+}
+
 func TestReportCondition_RetailerReportsOwnOrder(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	repo := &testRepo{

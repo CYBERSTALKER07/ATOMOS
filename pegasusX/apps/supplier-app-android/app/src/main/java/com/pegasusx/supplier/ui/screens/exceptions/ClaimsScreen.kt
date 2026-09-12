@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,15 +11,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.ApproveClaimRequest
 import com.pegasusx.supplier.data.model.RejectClaimRequest
 import com.pegasusx.supplier.data.model.SupplierClaim
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 private val settlementModes = listOf(
     "LEDGER_ONLY" to "Ledger only",
@@ -115,7 +118,7 @@ fun ClaimsScreen(
                 title = { Text("Claims") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -209,11 +212,11 @@ private fun ClaimCard(
             Modifier.padding(PegasusSpacing.md),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text("${claim.claimType} · ${claim.status}", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.mobile_supplier_ui_claimtype_status, claim.claimType, claim.status), style = MaterialTheme.typography.titleSmall)
             Text(claim.claimId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            Text("Order ${claim.orderId} · Retailer ${claim.retailerId}", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.mobile_supplier_ui_order_orderid_retailer_retailerid, claim.orderId, claim.retailerId), style = MaterialTheme.typography.bodySmall)
             Text(
-                "Amount ${claim.amountMinor ?: 0} ${claim.currency ?: "UZS"}",
+                "Amount ${claim.amountMinor ?: 0} ${com.pegasus.design.network.moneyCurrency(claim.currency)}",
                 style = MaterialTheme.typography.bodyMedium,
             )
             claim.description?.takeIf { it.isNotBlank() }?.let {
@@ -222,7 +225,7 @@ private fun ClaimCard(
             if (claim.status == "OPEN" || claim.status == "UNDER_REVIEW") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onApprove, enabled = !busy) {
-                        Text("Approve ($settlementLabel)")
+                        Text(stringResource(R.string.mobile_supplier_ui_approve_settlementlabel, settlementLabel))
                     }
                     OutlinedButton(onClick = onReject, enabled = !busy) {
                         Text("Reject")

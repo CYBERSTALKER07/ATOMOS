@@ -51,6 +51,8 @@ const (
 	ReservationReserved  ReservationStatus = "RESERVED"
 	ReservationConverted ReservationStatus = "CONVERTED"
 	ReservationReleased  ReservationStatus = "RELEASED"
+	// ReservationCleared marks credit balance pay-down for the order (G1-A2 idempotency).
+	ReservationCleared ReservationStatus = "CLEARED"
 )
 
 // RetailerCreditScore represents the overall credit score and risk tier.

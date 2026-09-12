@@ -1,0 +1,678 @@
+{
+  "generated_at": "2026-08-06T06:49:37.065Z",
+  "summary": {
+    "mobile_driver": {
+      "simple": 0,
+      "reuse": 0,
+      "skipped": 8
+    },
+    "mobile_factory": {
+      "simple": 0,
+      "reuse": 0,
+      "skipped": 4
+    },
+    "mobile_payload": {
+      "simple": 0,
+      "reuse": 0,
+      "skipped": 5
+    },
+    "mobile_retailer": {
+      "simple": 1,
+      "reuse": 0,
+      "skipped": 44
+    },
+    "mobile_supplier": {
+      "simple": 0,
+      "reuse": 0,
+      "skipped": 19
+    },
+    "mobile_warehouse": {
+      "simple": 0,
+      "reuse": 0,
+      "skipped": 4
+    }
+  },
+  "new_key_count": 1,
+  "reuse_count": 0,
+  "skipped_count": 84,
+  "proposals": [
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/suppliers/MySuppliersScreen.kt",
+      "line": 401,
+      "platform": "android",
+      "domain": "mobile_retailer",
+      "callee": "Text",
+      "kind": "text",
+      "original": "$${supplier.total}",
+      "template": "${total}",
+      "args": [
+        "supplier.total"
+      ],
+      "argNames": [
+        "total"
+      ],
+      "match": "Text(\"$${supplier.total}\"",
+      "key": "mobile_retailer.ui.total"
+    }
+  ],
+  "reuse": [],
+  "skipped": [
+    {
+      "file": "apps/driver-app-android/app/src/main/java/com/pegasusx/driver/ui/screens/manifest/components/LineItemCard.kt",
+      "line": 109,
+      "reason": "data_only",
+      "text": "${audit.acceptedQty}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/driver-app-android/app/src/main/java/com/pegasusx/driver/ui/screens/manifest/components/ModificationSheetContent.kt",
+      "line": 108,
+      "reason": "data_only",
+      "text": "${audit.acceptedQty}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/driver-app-android/app/src/main/java/com/pegasusx/driver/ui/screens/offline/OfflineVerifierScreen.kt",
+      "line": 104,
+      "reason": "complex_arg",
+      "text": "Valid: ${if (verification.manifest.isValid) \"Yes\" else \"Expired\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/driver-app-android/app/src/main/java/com/pegasusx/driver/ui/screens/profile/components/HistorySection.kt",
+      "line": 131,
+      "reason": "complex_arg",
+      "text": "${row.status.ifBlank { \"COMPLETED\" }} · ${row.totalMinor.formattedAmount()}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/driver-app-ios/driverappios/driverappios/Views/Components/Home/FactorySupplyCard.swift",
+      "line": 19,
+      "reason": "complex_arg",
+      "text": "\\(TokenStore.shared.factoryName ?? \"Factory depot\") → warehouse legs",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/driver-app-ios/driverappios/driverappios/Views/Components/Manifest/ManifestHeader.swift",
+      "line": 21,
+      "reason": "data_only",
+      "text": "\\(pendingMissionsCount)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/driver-app-ios/driverappios/driverappios/Views/Components/Profile/HistorySection.swift",
+      "line": 64,
+      "reason": "complex_arg",
+      "text": "\\(row.status.isEmpty ? \"COMPLETED\" : row.status) · \\(Int(row.totalMinor).formattedAmount)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/driver-app-ios/driverappios/driverappios/Views/OffloadReviewView.swift",
+      "line": 126,
+      "reason": "data_only",
+      "text": "\\(rejected)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/factory-app-android/app/src/main/java/com/pegasusx/factory/ui/components/FactoryUiComponents.kt",
+      "line": 260,
+      "reason": "data_only",
+      "text": "$count",
+      "platform": "android"
+    },
+    {
+      "file": "apps/factory-app-android/app/src/main/java/com/pegasusx/factory/ui/screens/transfer/CreateTransferScreen.kt",
+      "line": 235,
+      "reason": "complex_arg",
+      "text": "${driver.name}${if (driver.onShift) \" (on shift)\" else \"\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/factory-app-ios/FactoryApp/Views/Components/FactoryUiComponents.swift",
+      "line": 97,
+      "reason": "data_only",
+      "text": "\\(count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/factory-app-ios/FactoryApp/Views/Transfers/CreateTransferView.swift",
+      "line": 46,
+      "reason": "complex_arg",
+      "text": "\\(driver.name)\\(driver.onShift ? \" (on shift)\" : \"\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/payload-app-android/app/src/main/java/com/pegasus/payload/ui/home/HomeScreen.kt",
+      "line": 908,
+      "reason": "complex_arg",
+      "text": "${response.retailerName.ifBlank { \"Order\" }} • %.1f VU",
+      "platform": "android"
+    },
+    {
+      "file": "apps/payload-app-android/app/src/main/java/com/pegasus/payload/ui/home/ManifestDetailPane.kt",
+      "line": 82,
+      "reason": "complex_arg",
+      "text": "Inbound truck ${if (state.manifest?.liveLocationAvailable == true) \"LIVE\" else \"last known\"}: ",
+      "platform": "android"
+    },
+    {
+      "file": "apps/payload-app-ios/payload-app-ios/Views/HomeView.swift",
+      "line": 97,
+      "reason": "data_only",
+      "text": "\\(viewModel.unreadCount)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/payload-app-ios/payload-app-ios/Views/InboundReturnsList.swift",
+      "line": 30,
+      "reason": "complex_arg",
+      "text": "\\(row.driverName.isEmpty ? \"Driver\" : row.driverName) · \\(row.reason) · \\(row.receivedQty)/\\(row.expectedQty)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/payload-app-ios/payload-app-ios/Views/TruckSidebar.swift",
+      "line": 75,
+      "reason": "complex_arg",
+      "text": "\\(row.manifestId ?? \"manifest\"): \\(row.status ?? \"failed\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/CheckoutSheet.kt",
+      "line": 287,
+      "reason": "complex_arg",
+      "text": "Choose between $minDate${maxDate?.let { \" and $it\" } ?: \" or later\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/CheckoutSheet.kt",
+      "line": 305,
+      "reason": "complex_arg",
+      "text": "Delivery fee: $deliveryFeeLabel${if (deliveryDistanceKm > 0) \" · ${\"%.1f\".format(deliveryDistanceKm)} km\" else \"\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 187,
+      "reason": "data_only",
+      "text": "${event.amount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 270,
+      "reason": "data_only",
+      "text": "${event.originalAmount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 280,
+      "reason": "data_only",
+      "text": "${event.amount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 454,
+      "reason": "data_only",
+      "text": "${event.amount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 511,
+      "reason": "data_only",
+      "text": "${event.amount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/DeliveryPaymentSheet.kt",
+      "line": 555,
+      "reason": "data_only",
+      "text": "${event.amount}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/FileClaimSheet.kt",
+      "line": 240,
+      "reason": "data_only",
+      "text": "$qty",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/FileClaimSheet.kt",
+      "line": 315,
+      "reason": "complex_arg",
+      "text": "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${c.currency ?: \"UZS\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/PegasusTopBar.kt",
+      "line": 74,
+      "reason": "data_only",
+      "text": "$cartBadge",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/components/PegasusTopBar.kt",
+      "line": 89,
+      "reason": "data_only",
+      "text": "$notificationBadge",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/analytics/components/AdvancedAnalyticsCharts.kt",
+      "line": 128,
+      "reason": "data_only",
+      "text": "${item.count}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/autoorder/AutoOrderScreen.kt",
+      "line": 366,
+      "reason": "too_many_args",
+      "text": "Latest: ${run.mode} · draft ${run.draftLines}$placedBit · ${run.status}$viaBit",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/autoorder/AutoOrderScreen.kt",
+      "line": 374,
+      "reason": "complex_arg",
+      "text": "${po.orderId}${po.supplierId?.let { \" · $it\" } ?: \"\"} · ${po.lineCount} lines",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/autoorder/components/AutoOrderList.kt",
+      "line": 70,
+      "reason": "data_only",
+      "text": "${forecast.predictedQuantity}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/cart/CartScreen.kt",
+      "line": 431,
+      "reason": "data_only",
+      "text": "$quantity",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/procurement/components/QuantityStepper.kt",
+      "line": 39,
+      "reason": "data_only",
+      "text": "$quantity",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/profile/SavedCardsScreen.kt",
+      "line": 244,
+      "reason": "complex_arg",
+      "text": "Sent to ${uiState.otpPhone ?: \"phone\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/settings/LocalSkusScreen.kt",
+      "line": 151,
+      "reason": "complex_arg",
+      "text": "${row.id} · ${row.priceMinor} minor · ${if (row.active) \"active\" else \"inactive\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/settings/PosScreen.kt",
+      "line": 289,
+      "reason": "data_only",
+      "text": "${line.qty * line.unitPriceMinor / 100.0}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/suppliers/MySuppliersScreen.kt",
+      "line": 394,
+      "reason": "data_only",
+      "text": "${index + 1}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
+      "line": 9,
+      "reason": "data_only",
+      "text": "\\(value)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AnimatedNumberText.swift",
+      "line": 23,
+      "reason": "data_only",
+      "text": "\\(Int(value).formatted())",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/AutoOrder/AutoOrderPredictionsSection.swift",
+      "line": 38,
+      "reason": "data_only",
+      "text": "\\(forecast.predictedQuantity)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/Dashboard/AiPredictionSection.swift",
+      "line": 68,
+      "reason": "data_only",
+      "text": "\\(forecast.predictedQuantity)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/QuantityStepper.swift",
+      "line": 20,
+      "reason": "data_only",
+      "text": "\\(quantity)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Components/RetailerSectionHeader.swift",
+      "line": 29,
+      "reason": "data_only",
+      "text": "\\(count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
+      "line": 633,
+      "reason": "data_only",
+      "text": "\\(cart.totalItems)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/ContentView.swift",
+      "line": 653,
+      "reason": "data_only",
+      "text": "\\(notificationCount)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
+      "line": 493,
+      "reason": "too_many_args",
+      "text": "Latest: \\(lastRun.mode) · draft \\(lastRun.draftLines)\\(placed > 0 ? \" · placed \\(placed)\" : \"\") · \\(lastRun.status)\\(via)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/AutoOrderView.swift",
+      "line": 547,
+      "reason": "complex_arg",
+      "text": "\\(row.sku) · qty \\(row.suggestedQty)\\(row.currentStock.map { \" · stock \\($0)\" } ?? \"\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CartView.swift",
+      "line": 110,
+      "reason": "data_only",
+      "text": "\\(Int(item.totalPrice).formatted())",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
+      "line": 285,
+      "reason": "complex_arg",
+      "text": "Choose \\(scheduledMinDate)\\(scheduledMaxDate.map { \" to \\($0)\" } ?? \" or later\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
+      "line": 292,
+      "reason": "complex_arg",
+      "text": "Delivery fee: \\(Int(fee).formatted()) UZS\\(preview?.deliveryDistanceKm.map { \" · \\(String(format: \"%.1f\", $0)) km\" } ?? \"\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/CheckoutView.swift",
+      "line": 403,
+      "reason": "data_only",
+      "text": "\\(Int(item.totalPrice).formatted())",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FileClaimView.swift",
+      "line": 137,
+      "reason": "complex_arg",
+      "text": "\\(c.amountMinor ?? 0) \\(c.currency ?? \"UZS\") · \\(c.claimId)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/FutureDemandView.swift",
+      "line": 157,
+      "reason": "data_only",
+      "text": "\\(forecast.predictedQuantity)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/LocalSkusView.swift",
+      "line": 29,
+      "reason": "complex_arg",
+      "text": "\\(row.id) · \\(row.priceMinor) · \\(row.active ? \"active\" : \"inactive\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/OrdersView.swift",
+      "line": 130,
+      "reason": "data_only",
+      "text": "\\(count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
+      "line": 62,
+      "reason": "data_only",
+      "text": "\\(forecasts.count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProcurementView.swift",
+      "line": 72,
+      "reason": "data_only",
+      "text": "\\(selectedItems.count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/ProductDetailView.swift",
+      "line": 185,
+      "reason": "data_only",
+      "text": "\\(Int(variant.price).formatted())",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/retailer-app-ios/retailerapp/retailerapp/Screens/SupplierProductsView.swift",
+      "line": 122,
+      "reason": "data_only",
+      "text": "\\(supplier.catalogSubtitle)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/ai/AIRecommendationsScreen.kt",
+      "line": 190,
+      "reason": "complex_arg",
+      "text": "Decision: ${rec.decision} by ${rec.decidedBy ?: \"operator\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/catalog/CatalogList.kt",
+      "line": 98,
+      "reason": "complex_arg",
+      "text": "Sale: ${saleUnit.lowercase()}${if (saleUnit == \"CASE\" && unitsPerCaseValue.isNotBlank()) \" ($unitsPerCaseValue/case)\" else \"\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/exceptions/ClaimsScreen.kt",
+      "line": 217,
+      "reason": "complex_arg",
+      "text": "Amount ${claim.amountMinor ?: 0} ${claim.currency ?: \"UZS\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/fleet/FleetLiveMapScreen.kt",
+      "line": 203,
+      "reason": "complex_arg",
+      "text": "${cell.severity.uppercase()} · total ${cell.counts[\"total\"] ?: 0}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/fleet/FleetLiveMapScreen.kt",
+      "line": 204,
+      "reason": "complex_arg",
+      "text": "shop-closed ${cell.counts[\"shop_closed\"] ?: 0} · delayed ${cell.counts[\"delayed\"] ?: 0}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/orgfleet/OrgRoster.kt",
+      "line": 32,
+      "reason": "complex_arg",
+      "text": "${member.supplierRole} · ${member.phone} · ${if (member.isActive) \"Active\" else \"Inactive\"}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-android/app/src/main/java/com/pegasusx/supplier/ui/screens/treasury/ClaimChargebacksScreen.kt",
+      "line": 112,
+      "reason": "complex_arg",
+      "text": "${row.amountMinor} ${row.currency.ifBlank { \"UZS\" }}",
+      "platform": "android"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/AI/AIRecommendationsView.swift",
+      "line": 86,
+      "reason": "complex_arg",
+      "text": "Decision: \\(decision) by \\(rec.decidedBy ?? \"operator\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Exceptions/ClaimsView.swift",
+      "line": 79,
+      "reason": "complex_arg",
+      "text": "\\(claim.amountMinor ?? 0) \\(claim.currency ?? \"UZS\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Fleet/FleetLiveMapView.swift",
+      "line": 102,
+      "reason": "complex_arg",
+      "text": "Total \\(cell.counts[\"total\", default: 0]) · shop closed \\(cell.counts[\"shop_closed\", default: 0])",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Inventory/InventoryList.swift",
+      "line": 48,
+      "reason": "data_only",
+      "text": "\\(item.quantity)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Network/GeoReportLanesList.swift",
+      "line": 13,
+      "reason": "data_only",
+      "text": "\\(totalCells)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/OrgFleet/Components/OrgMemberListView.swift",
+      "line": 18,
+      "reason": "complex_arg",
+      "text": "\\(member.supplierRole) · \\(member.phone) · \\(member.isActive ? \"Active\" : \"Inactive\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/OrgFleet/MetricsOverviewView.swift",
+      "line": 31,
+      "reason": "data_only",
+      "text": "\\(count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/OrgFleet/OrgMemberListView.swift",
+      "line": 19,
+      "reason": "complex_arg",
+      "text": "\\(member.supplierRole) · \\(member.phone) · \\(member.isActive ? \"Active\" : \"Inactive\")",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Planning/ForecastConfidenceView.swift",
+      "line": 37,
+      "reason": "complex_arg",
+      "text": "\\(stale ? \"Stale · \" : \"\")Updated \\(updatedAt)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Treasury/ClaimChargebacksView.swift",
+      "line": 41,
+      "reason": "complex_arg",
+      "text": "\\(row.amountMinor) \\(row.currency.isEmpty ? \"UZS\" : row.currency)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Treasury/ComplianceAuditView.swift",
+      "line": 79,
+      "reason": "data_only",
+      "text": "\\(value)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/supplier-app-ios/SupplierApp/Views/Treasury/ReconciliationView.swift",
+      "line": 27,
+      "reason": "data_only",
+      "text": "\\(mismatchCount)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/warehouse-app-android/app/src/main/java/com/pegasusx/warehouse/ui/screens/forecast/ForecastChartPanel.kt",
+      "line": 66,
+      "reason": "data_only",
+      "text": "$count",
+      "platform": "android"
+    },
+    {
+      "file": "apps/warehouse-app-android/app/src/main/java/com/pegasusx/warehouse/ui/screens/returns/ReturnsList.kt",
+      "line": 74,
+      "reason": "complex_arg",
+      "text": "Qty: ${r.receivedQty}/${r.expectedQty} · ${r.reason} · ${\n                                r.driverName.ifBlank { if (r.isClaimTicket) \"store return\" else \"—\" }\n",
+      "platform": "android"
+    },
+    {
+      "file": "apps/warehouse-app-ios/WarehouseApp/Views/DemandForecast/ForecastChartPanel.swift",
+      "line": 53,
+      "reason": "data_only",
+      "text": "\\(count)",
+      "platform": "ios"
+    },
+    {
+      "file": "apps/warehouse-app-ios/WarehouseApp/Views/Treasury/TreasuryTransactionList.swift",
+      "line": 21,
+      "reason": "complex_arg",
+      "text": "Owner \\(ownerType)\\(ownerID.isEmpty ? \"\" : \":\\(ownerID)\") · Fee \\(inv.feeAmount.formatted()) · Net \\(inv.netPayoutAmount.formatted())",
+      "platform": "ios"
+    }
+  ],
+  "en_additions": {
+    "mobile_retailer": {
+      "ui": {
+        "total": "${total}"
+      }
+    }
+  },
+  "wire_files": [
+    {
+      "file": "apps/retailer-app-android/app/src/main/java/com/pegasusx/retailer/ui/screens/suppliers/MySuppliersScreen.kt",
+      "replacements": [
+        {
+          "key": "mobile_retailer.ui.total",
+          "original": "$${supplier.total}",
+          "template": "${total}",
+          "args": [
+            "supplier.total"
+          ],
+          "argNames": [
+            "total"
+          ],
+          "platform": "android",
+          "callee": "Text",
+          "kind": "text",
+          "match": "Text(\"$${supplier.total}\""
+        }
+      ]
+    }
+  ]
+}

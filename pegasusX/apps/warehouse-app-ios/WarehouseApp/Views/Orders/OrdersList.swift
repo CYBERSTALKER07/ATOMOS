@@ -25,14 +25,14 @@ struct OrdersList: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { onRetry() }
+                    Button("common.action.retry") { onRetry() }
                 }
             } else if hubTab == .active && orders.isEmpty {
-                ContentUnavailableView("No Orders", systemImage: "cart", description: Text("No orders found for this filter"))
+                ContentUnavailableView("No Orders", systemImage: "cart", description: Text("mobile_warehouse.ui.no_orders_found_for_this_filter"))
             } else if hubTab == .preorders && preorders.isEmpty {
                 ContentUnavailableView("No pre-orders", systemImage: "calendar")
             } else {
@@ -44,7 +44,7 @@ struct OrdersList: View {
                                     title: order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName,
                                     orderId: order.orderId,
                                     state: order.state,
-                                    amountLabel: "\(order.totalUzs.formatted()) UZS",
+                                    amountLabel: "\(order.totalUzs.formatted()) \(packCurrency(MarketPackStore.pack))",
                                     canDelay: orderActionFlags(order.state).canDelay,
                                     canReject: orderActionFlags(order.state).canReject,
                                     onDelay: { onProposeActive(order.orderId) },
@@ -135,7 +135,7 @@ private struct OrderOpsCardView: View {
                 Button(delayLabel) { onDelay() }
             }
             if let onReject, canReject {
-                Button("Reject", role: .destructive) { onReject() }
+                Button("mobile_warehouse.ui.reject", role: .destructive) { onReject() }
             }
         }
     }

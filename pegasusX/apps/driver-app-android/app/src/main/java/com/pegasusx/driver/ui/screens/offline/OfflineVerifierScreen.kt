@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offline
 
+import androidx.compose.ui.res.stringResource
+
 import android.util.Log
 import android.view.ViewGroup
 import androidx.camera.core.CameraSelector
@@ -45,6 +47,7 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import java.util.concurrent.Executors
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +63,7 @@ fun OfflineVerifierScreen(
                 title = { Text("Offline Verifier") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -78,7 +81,7 @@ fun OfflineVerifierScreen(
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.s12),
             ) {
                 Text("Hash Manifest Protocol")
-                Text("Status: ${state.statusLabel}")
+                Text(stringResource(R.string.mobile_driver_ui_status_statuslabel, state.statusLabel))
 
                 when (val verification = state.verificationState) {
                     VerificationState.Idle -> {
@@ -98,9 +101,9 @@ fun OfflineVerifierScreen(
                     }
 
                     is VerificationState.Ready -> {
-                        Text("Manifest loaded — ${verification.manifest.hashes.size} orders")
+                        Text(stringResource(R.string.mobile_driver_ui_manifest_loaded_size_orders, verification.manifest.hashes.size))
                         Text("Valid: ${if (verification.manifest.isValid) "Yes" else "Expired"}")
-                        state.syncedAt?.let { Text("Manifest date: $it") }
+                        state.syncedAt?.let { Text(stringResource(R.string.mobile_driver_ui_manifest_date_it, it)) }
                         Button(
                             onClick = { viewModel.activateScanner() },
                             modifier = Modifier.fillMaxWidth(),
@@ -118,7 +121,7 @@ fun OfflineVerifierScreen(
                     VerificationState.Scanning -> Unit
 
                     is VerificationState.Verified -> {
-                        Text("Verified order ${verification.orderId}", color = StatusGreen)
+                        Text(stringResource(R.string.mobile_driver_ui_verified_order_orderid, verification.orderId), color = StatusGreen)
                         Button(onClick = { viewModel.nextDelivery() }, modifier = Modifier.fillMaxWidth()) {
                             Text("Next Delivery")
                         }

@@ -128,6 +128,37 @@ func TestEngine_DisabledNoOp(t *testing.T) {
 	}
 }
 
+func TestApproveRun_NoIntermediateApprovedWrite(t *testing.T) {
+	// ApproveRun must not leave an APPROVED-only update; only terminal EXECUTED/FAILED.
+	actionsRaw, _ := json.Marshal([]ActionSpec{{Type: "ACKNOWLEDGE_EXCEPTION"}})
+	runID := "run-approve-1"
+	repo := &mockRepo{
+		playbooks: []Playbook{{
+			PlaybookID: "pb-1", Priority: 10, IsActive: true,
+			Actions:    []ActionSpec{{Type: "ACKNOWLEDGE_EXCEPTION"}},
+			ActionsRaw: actionsRaw,
+		}},
+		exceptions: []Exception{{
+			ExceptionID: "exc-1", Type: "BUYER_EHF_REJECTION", SupplierID: "sup-1", OrderID: "ord-1",
+			CreatedAt: time.Now(),
+		}},
+		runs: map[string]PlaybookRun{
+			runID: {
+				RunID: runID, PlaybookID: "pb-1", ExceptionID: "exc-1",
+				SupplierID: "sup-1", Status: RunStatusSuggested, Mode: RunModeSuggested,
+			},
+		},
+	}
+	engine := NewEngine(repo, NewActionExecutor(repo, ExecutorDeps{}), nil, Config{Enabled: true}, nil)
+	if err := engine.ApproveRun(context.Background(), runID, "ops-1"); err != nil {
+		t.Fatalf("ApproveRun: %v", err)
+	}
+	got := repo.runs[runID]
+	if got.Status != RunStatusExecuted {
+		t.Fatalf("status=%s want EXECUTED (no sticky APPROVED intermediate)", got.Status)
+	}
+}
+
 func TestEngine_AutoExecuteStillSuggestedWhenGlobalAutoOff(t *testing.T) {
 	matchRaw, _ := json.Marshal(MatchRules{Types: []string{"CASH_SHORT"}})
 	actionsRaw, _ := json.Marshal([]ActionSpec{{Type: "NOTIFY"}})

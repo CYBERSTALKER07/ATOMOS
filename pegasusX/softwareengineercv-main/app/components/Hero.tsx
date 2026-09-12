@@ -1,116 +1,95 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { ArrowRight } from 'lucide-react';
+import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
-import ChamferButton from './ChamferButton';
+import IsometricTerrain from './IsometricTerrain';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
-import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
-
-const HERO_VIDEO_PAUSE_AT = 5;
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
+  const { t, language } = useLanguage();
 
   const textRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const subtitleRef = useRef<HTMLHeadingElement>(null);
   const descRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
   const visualRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
-    if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
-      video.pause();
-      video.currentTime = HERO_VIDEO_PAUSE_AT;
-    }
-  }, []);
+  const typedPhrases = [
+    t('hero_type_1'),
+    t('hero_type_2'),
+    t('hero_type_3'),
+    t('hero_type_4'),
+  ];
 
-  const playIntro = useCallback(async (video: HTMLVideoElement) => {
-    video.currentTime = 0;
-    try {
-      await video.play();
-    } catch {
-      video.pause();
-      video.currentTime = 0;
-    }
-  }, []);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (prefersReducedMotion) {
-      video.pause();
-      video.currentTime = 0;
-      return;
-    }
-
-    video.muted = true;
-
-    const onTimeUpdate = () => clampAndPauseAtMark(video);
-    const startIntro = () => {
-      void playIntro(video);
-    };
-
-    video.addEventListener('timeupdate', onTimeUpdate);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      startIntro();
-    } else {
-      video.addEventListener('loadeddata', startIntro, { once: true });
-      video.addEventListener('canplay', startIntro, { once: true });
-    }
-
-    return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadeddata', startIntro);
-      video.removeEventListener('canplay', startIntro);
-    };
-  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
+  const isRu = language === 'ru';
+  const metrics = [
+    {
+      label: isRu ? 'АКТИВНЫЕ ЯЧЕЙКИ' : 'ACTIVE CELLS',
+      value: '16 Nodes',
+    },
+    {
+      label: isRu ? 'ОБЪЁМ ИНТЕНТОВ' : 'DAILY INTENTS',
+      value: '2.4M+',
+    },
+    {
+      label: isRu ? 'РОЛЕВЫЕ ПОВЕРХНОСТИ' : 'CONNECTED ROLES',
+      value: '6 Surfaces',
+    },
+    {
+      label: isRu ? 'АПТАЙМ СЕТИ' : 'GLOBAL UPTIME',
+      value: '99.99%',
+    },
+  ];
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Skip GSAP animations on mobile - just use simple fade-in
       if (isMobile || prefersReducedMotion) {
-        gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
-          opacity: 1,
-          x: 0,
-          y: 0
-        });
+        gsap.set(
+          [titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current],
+          { opacity: 1, x: 0, y: 0 }
+        );
         return;
       }
 
-      // Desktop animations only
       const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
       timeline
-        .fromTo(visualRef.current,
-          { opacity: 0, x: 100 },
-          { opacity: 1, x: 0, duration: 1.2 }
+        .fromTo(
+          visualRef.current,
+          { opacity: 0, scale: 0.96 },
+          { opacity: 1, scale: 1, duration: 1.1 }
         )
-        .fromTo(titleRef.current,
-          { opacity: 0, y: 50 },
-          { opacity: 1, y: 0, duration: 1 },
-          '-=0.8'
+        .fromTo(
+          titleRef.current,
+          { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.9 },
+          '-=0.7'
         )
-        .fromTo(subtitleRef.current,
-          { opacity: 0, y: 30 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.6'
-        )
-        .fromTo(descRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
+        .fromTo(
+          subtitleRef.current,
+          { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.7 },
           '-=0.5'
         )
-        .fromTo(ctaRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.3'
+        .fromTo(
+          descRef.current,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.7 },
+          '-=0.5'
+        )
+        .fromTo(
+          ctaRef.current,
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.7 },
+          '-=0.4'
         );
     });
 
@@ -125,11 +104,14 @@ export default function Hero() {
   };
 
   return (
-    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
-      {/* Corner Loops - Hidden on mobile */}
+    <section
+      id="hero"
+      className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16"
+    >
+      {/* Decorative Curved Loops for desktop / Mac */}
       {!isMobile && (
         <>
-          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10">
+          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0">
             <CurvedLoop
               marqueeText="PEGASUS  "
               speed={1.5}
@@ -140,7 +122,7 @@ export default function Hero() {
             />
           </div>
 
-          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 scale-x-[-1]">
+          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 scale-x-[-1]">
             <CurvedLoop
               marqueeText="PEGASUS  "
               speed={1.5}
@@ -151,7 +133,7 @@ export default function Hero() {
             />
           </div>
 
-          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 rotate-180 scale-x-[-1]">
+          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 rotate-180 scale-x-[-1]">
             <CurvedLoop
               marqueeText="PEGASUS  "
               speed={1.5}
@@ -164,81 +146,109 @@ export default function Hero() {
         </>
       )}
 
-      <div className="page-shell py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Content Side - Left */}
-          <div ref={textRef} className="space-y-8 order-2 lg:order-1">
-            <div>
-              <h1
-                ref={titleRef}
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
-              >
-                Pegasus
-              </h1>
+      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {/* Tactical Framed Container from reference layout */}
+        <div className="border border-white/15 bg-[#000000] shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/15">
+          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA — Anchored lower down matching reference */}
+          <div
+            ref={textRef}
+            className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
+          >
+            <div className="space-y-4">
+              {/* Primary Headline with Interactive ParticleText */}
+              <div className="space-y-2">
+                <div ref={titleRef} className="w-full h-20 sm:h-24 md:h-28 xl:h-32">
+                  <span className="sr-only">{t('hero_title')}</span>
+                  <ParticleText
+                    text="Pegasus"
+                    particleSize={2.4}
+                    density={4}
+                    color="#f8fafc"
+                    highlightColor="#10B981"
+                    scatter={160}
+                    gatherDuration={1500}
+                    stagger={350}
+                    pointerRepel={42}
+                    repelRadius={120}
+                    idleDrift={0.6}
+                    trigger="mount"
+                    fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
+                    fontWeight={800}
+                    textAlign="left"
+                    glow
+                  />
+                </div>
 
-              <div ref={subtitleRef} className="mb-6">
-                <TextType
-                  text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
-                  typingSpeed={isMobile ? 100 : 75}
-                  pauseDuration={1500}
-                  deletingSpeed={isMobile ? 70 : 50}
-                  showCursor={true}
-                  cursorCharacter="|"
-                  loop={true}
-                  textColors={['#FFFFFF', '#C0C0C0']}
-                  className="text-2xl md:text-3xl lg:text-4xl font-light text-white"
-                  cursorClassName="text-white font-light"
-                />
+                <h1
+                  ref={subtitleRef}
+                  className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white min-h-[1.25em] tracking-tight leading-[1.12]"
+                >
+                  <TextType
+                    key={language}
+                    text={typedPhrases}
+                    typingSpeed={isMobile ? 90 : 70}
+                    pauseDuration={1600}
+                    deletingSpeed={isMobile ? 60 : 45}
+                    showCursor={true}
+                    cursorCharacter="|"
+                    loop={true}
+                    textColors={['#FFFFFF', '#C0C0C0']}
+                    className="font-light"
+                    cursorClassName="text-white font-light"
+                  />
+                </h1>
               </div>
 
-              <div className="w-90 h-[0.5px] bg-white mb-6" />
-
+              {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
+                className="text-sm sm:text-base md:text-lg text-white/60 font-light leading-relaxed max-w-lg pt-1"
               >
-                Run supplier-led logistics from one platform — dispatch, tracking, payments,
-                and coordination across every team in your network.
+                {t('hero_desc')}
               </p>
             </div>
 
-            {/* CTA Buttons */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
-              <ChamferButton onClick={scrollToNext} variant="fill">
-                Explore Platform
-              </ChamferButton>
-              <ChamferButton href="/join" variant="ghost">
-                Request Demo
-              </ChamferButton>
+            {/* Outlined Action Buttons matching reference layout — clearly visible inside frame */}
+            <div ref={ctaRef} className="pt-6 sm:pt-8 flex flex-wrap items-center gap-4">
+              <button
+                onClick={scrollToNext}
+                className="inline-flex items-center justify-center gap-3 px-8 py-3.5 border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase text-white group"
+              >
+                <span>{t('hero_explore')}</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </button>
+
+              <a
+                href="/join"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/70 hover:text-white transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase"
+              >
+                <span>{t('hero_demo')}</span>
+              </a>
             </div>
           </div>
 
-          {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
-          <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
-              {/* Video replacing Atom image and LaserFlow */}
-              <div className="absolute inset-0">
-                <video
-                  ref={videoRef}
-                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
-                  poster={HERO_VIDEO_POSTER}
-                  className="h-full w-full object-cover"
-                />
-              </div>
+          {/* RIGHT COLUMN: 3D Isometric Wireframe Graphic & Bottom Metrics Bar — Starts high up */}
+          <div
+            ref={visualRef}
+            className="flex flex-col justify-between bg-black relative overflow-hidden min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
+          >
+            {/* Upper Area: Pure 3D Isometric Wireframe Visual positioned high */}
+            <div className="flex-1 min-h-[340px] sm:min-h-[420px] lg:min-h-[460px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+              <IsometricTerrain />
+            </div>
 
-              {/* Decorative border overlay - show on mobile only */}
-              {isMobile && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />
-                  <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-white" />
-                  <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-white" />
-                  <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-white" />
+            {/* Bottom Metric Bar: 4-stat row strictly following the reference image */}
+            <div className="border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 bg-black">
+              {metrics.map((m, idx) => (
+                <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
+                  <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-white/45 uppercase mb-1 truncate">
+                    {m.label}
+                  </span>
+                  <span className="text-base sm:text-lg lg:text-xl font-mono font-medium text-white tracking-tight">
+                    {m.value}
+                  </span>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
@@ -246,14 +256,14 @@ export default function Hero() {
 
       {/* Scroll Indicator */}
       <button
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer z-10 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
+        className="absolute bottom-3 left-1/2 transform -translate-x-1/2 cursor-pointer z-20 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
         onClick={scrollToNext}
         aria-label="Scroll to next section"
       >
-        <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-sm font-light tracking-widest">SCROLL</span>
+        <div className="flex flex-col items-center gap-1.5 text-white/60 group-hover:text-[#FBFF63] transition-colors duration-300">
+          <span className="text-[10px] font-mono tracking-widest uppercase">{t('hero_scroll')}</span>
           <svg
-            className="w-6 h-6 animate-bounce"
+            className="w-4 h-4 animate-bounce"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -270,3 +280,4 @@ export default function Hero() {
     </section>
   );
 }
+

@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
@@ -229,6 +230,27 @@ func (r *SpannerRepository) listLines(ctx context.Context, creditNoteID string) 
 	return lines, nil
 }
 
+func (r *SpannerRepository) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error) {
+	orderID = strings.TrimSpace(orderID)
+	supplierID = strings.TrimSpace(supplierID)
+	if orderID == "" || supplierID == "" {
+		return false, nil
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT 1 FROM Orders WHERE OrderId = @orderId AND SupplierId = @supplierId LIMIT 1`,
+		Params: map[string]interface{}{"orderId": orderID, "supplierId": supplierID},
+	})
+	defer iter.Stop()
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (r *SpannerRepository) GetDeliveredOrderLines(ctx context.Context, orderId string) ([]CreditNoteLine, error) {
 	iter := r.client.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT LineItemsJson FROM Orders WHERE OrderId = @orderId`,
@@ -272,7 +294,7 @@ func (r *SpannerRepository) GetDeliveredOrderLines(ctx context.Context, orderId 
 		}()
 		fiscalIter := r.client.Single().Query(ctx, spanner.Statement{
 			SQL: `
-				SELECT LineSku, TaxableMinor, VatMinor, TotalMinor, AppliedVatRateBps
+				SELECT OrderLineId, NetMinor, VatMinor, GrossMinor, VatRateBps
 				FROM OrderLineFiscalSnapshots
 				WHERE OrderId = @orderId
 			`,
@@ -561,7 +583,14 @@ func (r *SpannerRepository) ReceiveReverseLogisticsTask(ctx context.Context, tas
 			if sku == "" || qty <= 0 {
 				continue
 			}
-			if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, sku, qty); err != nil {
+			if stocklots.LotsEnabled() {
+				if _, err := stocklots.CreditViaDefaultPutawayInTxn(
+					ctx, txn, supplierID, warehouseID, sku,
+					stocklots.DefaultReturnsLocationID, "RETURNS", qty,
+				); err != nil {
+					return err
+				}
+			} else if err := inventory.CreditSupplierInventoryV2InTxn(ctx, txn, supplierID, warehouseID, sku, qty); err != nil {
 				return err
 			}
 		}

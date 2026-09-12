@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import type { OrderTimelineEntry } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
@@ -13,6 +14,7 @@ function formatWhen(iso: string): string {
 }
 
 export function OrderTimelinePanel({ orderId }: { orderId: string }) {
+  const t = usePortalT();
   const [items, setItems] = useState<OrderTimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const api = createSupplierApi();
@@ -34,8 +36,8 @@ export function OrderTimelinePanel({ orderId }: { orderId: string }) {
     void load();
   }, [load]);
 
-  if (loading) return <p className="text-sm text-[var(--desk-text-tertiary)]">Loading timeline…</p>;
-  if (items.length === 0) return <p className="text-sm text-[var(--desk-text-tertiary)]">No status history yet.</p>;
+  if (loading) return <p className="text-sm text-[var(--desk-text-tertiary)]">{t("supplier_portal.order_timeline_panel.text.loading_timeline")}</p>;
+  if (items.length === 0) return <p className="text-sm text-[var(--desk-text-tertiary)]">{t("supplier_portal.order_timeline_panel.text.no_status_history_yet")}</p>;
 
   return (
     <ol className="space-y-3 border-l border-[var(--desk-border)] pl-4">

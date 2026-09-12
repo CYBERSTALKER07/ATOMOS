@@ -109,7 +109,8 @@ func reporterAuthorizedForOrder(claims auth.Claims, o Order) bool {
 	case auth.RoleDriver:
 		return o.DriverID != "" && o.DriverID == claims.Subject
 	case auth.RoleRetailer:
-		return o.RetailerID != "" && o.RetailerID == claims.Subject
+		// B3 M-P0-4: order tenant is org id.
+		return o.RetailerID != "" && o.RetailerID == auth.ResolveRetailerOrgID(claims)
 	case auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RoleFactoryAdmin:
 		return o.WarehouseID != "" && o.WarehouseID == claims.HomeNodeID
 	}
@@ -176,6 +177,8 @@ func (s *Service) ReportCondition(ctx context.Context, claims auth.Claims, req C
 			},
 			ReportID:      report.ReportID,
 			OrderID:       report.OrderID,
+			SupplierID:    report.SupplierID,
+			RetailerID:    report.RetailerID,
 			ReporterID:    report.ReportedBy,
 			ReporterRole:  report.ReportedByRole,
 			ConditionType: string(report.ConditionType),
@@ -259,7 +262,7 @@ func (s *Service) ListConditionReports(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	current, found, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "list condition reports failed", "err", err, "order_id", orderID)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})

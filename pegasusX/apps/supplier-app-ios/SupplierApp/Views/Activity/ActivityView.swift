@@ -25,7 +25,7 @@ struct ActivityView: View {
                 }
             }
         }
-        .navigationTitle("Activity")
+        .navigationTitle("portal.nav.activity")
         .task { await load() }
     }
 

@@ -1,5 +1,16 @@
 # Ecosystem Hardening Gap Plan (Beyond Retail OS / Next-Layer / Claims)
 
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+>
+> **Implementation progress (2026-08-20):**
+> - **EH0 (Stop Lying Desks & Schema Truth):** SHIPPED — `supplier/session_scope.go` removes `sup-demo-1`; `compliance/handler.go` uses `resolveSessionSupplier()` via `auth.ResolveSupplierID`; rejects legacy query params.
+> - **EH1 (Multi-Tenant Delivery Perimeters):** SHIPPED — `warehouse/perimeter.go` implements `PublishSupplierPerimeter`/`CheckSupplierPerimeter` using Redis sets `perimeter:supplier:{id}`; `order/warehouse_resolver_spanner.go` checks `SIsMember` during checkout; route: `POST /v1/warehouses/publish-perimeter`.
+> - **Phase 6.1 (Platform Admin Feature Flags):** SHIPPED — `platformadmin/feature_flags.go` + `feature_flags_spanner.go`; routes: `GET/PUT /v1/platform-admin/tenants/{tenantType}/{tenantID}/flags`.
+> - **EH2–EH5:** NOT STARTED — code does not exist for these phases.
+
+
 **Status:** Implementation plan (code-grounded, sequential audit)  
 **Repo:** `/Users/shakhzod/Desktop/V.O.I.D/pegasusX`  
 **Date:** 2026-08-02  

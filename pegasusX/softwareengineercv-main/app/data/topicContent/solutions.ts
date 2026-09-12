@@ -49,7 +49,7 @@ export const solutionsTopics = {
       'Retailer tracking without calling the warehouse',
     ],
     howItWorks: defaultHowItWorks([
-      ['Plan at dispatch', 'OSRM geometry attached to each manifest.'],
+      ['Plan at dispatch', 'routing geometry attached to each manifest.'],
       ['Stream telemetry', 'Driver apps report location; map updates live.'],
       ['Compare plan vs actual', 'Ops sees drift; retailers see honest ETAs.'],
     ]),
@@ -83,7 +83,7 @@ export const solutionsTopics = {
       'Orders created without charging at checkout',
       'Cash and card collection geofenced on arrival',
       'Treasury reconciliation for suppliers',
-      'Webhook idempotency for gateway replay safety',
+      'Webhook safe retries for gateway replay safety',
     ],
     howItWorks: defaultHowItWorks([
       ['Checkout without charge', 'Retailer places order; payment waits for delivery.'],
@@ -117,14 +117,14 @@ export const solutionsTopics = {
     summary: 'Fragmented truth replaced by one live platform across six roles.',
     problem: 'Each team maintains their own spreadsheet version of order status.',
     outcomes: [
-      'WebSocket refresh across web and mobile',
-      'Kafka events for cross-role side effects',
+      'live refresh across web and mobile',
+      'live events for cross-role side effects',
       'Notification inbox from durable event stream',
       'Pulse timeline for ops visibility',
     ],
     howItWorks: defaultHowItWorks([
-      ['Mutate once', 'Transactional writes with outbox emission.'],
-      ['Fan out', 'Kafka consumers update cache and notification inbox.'],
+      ['Mutate once', 'Transactional writes with change log emission.'],
+      ['Fan out', 'background optimizers update cache and notification inbox.'],
       ['Live clients', 'Role-scoped WS rooms push refresh envelopes.'],
     ]),
     flow: 'realtimePipeline',

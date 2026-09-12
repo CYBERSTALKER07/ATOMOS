@@ -1,6 +1,6 @@
 {
   "name": "@pegasusx/warehouse-portal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 3002",
@@ -25,10 +25,12 @@
   "dependencies": {
     "@heroui/react": "^3.1.0",
     "@heroui/styles": "^3.1.0",
-    "@pegasusx/api-client": "workspace:*",
+    "@pegasusx/api-core": "workspace:*",
+    "@pegasusx/api-react": "workspace:*",
     "@pegasusx/desktop-bridge": "workspace:*",
     "@pegasusx/desktop-cache": "workspace:*",
     "@pegasusx/explain-ui": "workspace:*",
+    "@pegasusx/i18n": "workspace:*",
     "@pegasusx/pulse-ui": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",
@@ -50,7 +52,9 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-map-gl": "^8.1.0",
-    "recharts": "^3.8.0"
+    "recharts": "^3.8.0",
+    "@pegasusx/ui-maps": "workspace:*",
+    "@pegasusx/ui-charts": "workspace:*"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

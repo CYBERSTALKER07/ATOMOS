@@ -40,6 +40,16 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
     -o /planning-training-export \
     ./apps/backend-go/cmd/planning-training-export
 
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /planning-accuracy \
+    ./apps/backend-go/cmd/planning-accuracy
+
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s" \
+    -o /planning-forecast \
+    ./apps/backend-go/cmd/planning-forecast
+
 # Runtime must be glibc-based: h3-go forces CGO_ENABLED=1, so the binary links
 # against bookworm libc. Alpine (musl) yields "exec ...: no such file or directory".
 FROM debian:bookworm-slim
@@ -52,6 +62,8 @@ WORKDIR /runtime
 COPY --from=builder /pegasusx-backend /usr/local/bin/pegasusx-backend
 COPY --from=builder /pegasusx-setup /usr/local/bin/pegasusx-setup
 COPY --from=builder /planning-training-export /usr/local/bin/planning-training-export
+COPY --from=builder /planning-accuracy /usr/local/bin/planning-accuracy
+COPY --from=builder /planning-forecast /usr/local/bin/planning-forecast
 COPY apps/backend-go/schema ./apps/backend-go/schema
 
 EXPOSE 8080

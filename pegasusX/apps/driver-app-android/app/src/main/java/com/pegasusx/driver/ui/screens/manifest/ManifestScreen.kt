@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -65,11 +67,14 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.formattedAmount
 import com.pegasusx.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
+import com.pegasusx.driver.ui.screens.home.RemainingStops
+import com.pegasusx.driver.ui.screens.home.components.RemainingStopsStepper
 import com.pegasusx.driver.ui.screens.manifest.components.EarlyCompleteDialog
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestEmptyView
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestHeader
 import com.pegasusx.driver.ui.screens.manifest.components.ManifestLoadingView
 import com.pegasusx.driver.ui.screens.manifest.components.RideCard
+import com.pegasusx.driver.R
 
 /**
  * ManifestScreen — redesigned to match iOS RidesListView.
@@ -142,6 +147,14 @@ fun ManifestScreen(
                         }
                     }
 
+                    item {
+                        RemainingStopsStepper(
+                            stops = RemainingStops.remaining(pendingOrders),
+                            onSelect = { id -> pendingOrders.firstOrNull { it.id == id }?.let(onOrderClick) },
+                            modifier = Modifier.padding(horizontal = PegasusSpacing.s16, vertical = 8.dp),
+                        )
+                    }
+
                     // Ride cards
                     itemsIndexed(
                         items = displayOrders,
@@ -165,7 +178,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowUp,
-                                                contentDescription = "Move up",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_up),
                                                 tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -177,7 +190,7 @@ fun ManifestScreen(
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Move down",
+                                                contentDescription = stringResource(R.string.mobile_driver_ui_move_down),
                                                 tint = if (index < displayOrders.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                                 modifier = Modifier.size(24.dp)
                                             )
@@ -212,7 +225,7 @@ fun ManifestScreen(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ) {
-                Icon(Icons.Default.Warning, contentDescription = "Request Early Complete")
+                Icon(Icons.Default.Warning, contentDescription = stringResource(R.string.mobile_driver_ui_request_early_complete))
             }
         }
     } // end Box

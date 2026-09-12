@@ -23,13 +23,13 @@ struct ExceptionsView: View {
                 }
             }
         }
-        .navigationTitle("Exceptions")
+        .navigationTitle("portal.nav.exceptions")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 NavigationLink {
                     ClaimsView()
                 } label: {
-                    Text("Claims")
+                    Text("portal.nav.claims")
                 }
             }
         }

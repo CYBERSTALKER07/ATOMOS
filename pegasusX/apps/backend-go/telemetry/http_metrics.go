@@ -62,7 +62,7 @@ func HTTPMetricsMiddleware(next http.Handler) http.Handler {
 
 		route := chi.RouteContext(r.Context()).RoutePattern()
 		if route == "" {
-			route = r.URL.Path
+			route = "unmatched_route"
 		}
 		statusClass := strconv.Itoa(rec.status/100) + "xx"
 		httpRequestsTotal.WithLabelValues(route, statusClass).Inc()

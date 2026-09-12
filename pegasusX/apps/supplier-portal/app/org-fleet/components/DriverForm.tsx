@@ -1,7 +1,10 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import type { HomeNodeType, SupplierFleetDriverCreateRequest } from "@pegasusx/types";
-import { supplierFleetDriverCreateKey } from "@pegasusx/api-client";
-import type { ApiClient } from "@pegasusx/api-client";
+import { supplierFleetDriverCreateKey } from "@pegasusx/api-core";
+import type { ApiClient } from "@pegasusx/api-core";
 import {
   DriverFormState,
   defaultDriverForm,
@@ -22,6 +25,7 @@ export function DriverForm({
   api: ApiClient;
   onCreated: () => void;
 }) {
+  const t = usePortalT();
   const [driverForm, setDriverForm] = useState<DriverFormState>(defaultDriverForm);
   const [driverSubmitting, setDriverSubmitting] = useState(false);
   const [driverMessage, setDriverMessage] = useState<string | null>(null);
@@ -33,6 +37,7 @@ export function DriverForm({
   );
 
   async function submitDriver(event: React.FormEvent<HTMLFormElement>) {
+  const t = usePortalT();
     event.preventDefault();
     setDriverSubmitting(true);
     setDriverMessage(null);
@@ -61,18 +66,18 @@ export function DriverForm({
 
   return (
     <article className="md-card md-shape-md p-6">
-      <h2 className="md-typescale-title-large">Drivers</h2>
+      <h2 className="md-typescale-title-large">{t("portal.nav.drivers")}</h2>
       <form className="grid gap-3 mt-4" onSubmit={submitDriver}>
         <input
           className="md-input-outlined"
-          placeholder="Driver name"
+          placeholder={t("supplier_portal.org_fleet.components.driver_form.text.driver_name")}
           value={driverForm.name}
           onChange={(event) => setDriverForm((current) => ({ ...current, name: event.target.value }))}
           disabled={driverSubmitting}
         />
         <input
           className="md-input-outlined"
-          placeholder="Phone"
+          placeholder={t("common.field.phone")}
           value={driverForm.phone}
           onChange={(event) => setDriverForm((current) => ({ ...current, phone: event.target.value }))}
           disabled={driverSubmitting}
@@ -98,8 +103,8 @@ export function DriverForm({
           }
           disabled={driverSubmitting}
         >
-          <option value="WAREHOUSE">Warehouse-based driver</option>
-          <option value="FACTORY">Factory-based driver</option>
+          <option value="WAREHOUSE">{t("supplier_portal.org_fleet.components.driver_form.text.warehouse_based_driver")}</option>
+          <option value="FACTORY">{t("supplier_portal.org_fleet.components.driver_form.text.factory_based_driver")}</option>
         </select>
         <select
           className="md-input-outlined"
@@ -109,7 +114,7 @@ export function DriverForm({
           }
           disabled={driverSubmitting}
         >
-          <option value="">Select home node</option>
+          <option value="">{t("supplier_portal.org_fleet.components.driver_form.text.select_home_node")}</option>
           {nodeOptionsFor(driverForm.homeNodeType, state.topology).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -122,7 +127,7 @@ export function DriverForm({
           onChange={(event) => setDriverForm((current) => ({ ...current, vehicleID: event.target.value }))}
           disabled={driverSubmitting || driverForm.homeNodeID === ""}
         >
-          <option value="">Assign vehicle later</option>
+          <option value="">{t("supplier_portal.org_fleet.components.driver_form.text.assign_vehicle_later")}</option>
           {driverVehicleOptions.map((vehicle) => (
             <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
               {vehicle.label ? `${vehicle.label} · ${vehicle.license_plate}` : vehicle.license_plate}

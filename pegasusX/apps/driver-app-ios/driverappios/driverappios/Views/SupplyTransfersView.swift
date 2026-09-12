@@ -100,14 +100,14 @@ struct SupplyTransfersView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Supply transfers")
+            .navigationTitle("mobile_driver.ui.supply_transfers")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("common.action.close") { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Refresh") {
+                    Button("portal.page.orders.action.refresh") {
                         Task { await vm.refresh() }
                     }
                 }
@@ -125,7 +125,7 @@ struct SupplyTransfersView: View {
                             .foregroundStyle(LabTheme.success)
                     }
                     if !vm.transfers.isEmpty {
-                        Text("\(vm.activeCount) active · \(vm.transfers.count) total")
+                        Text(L10n.format("mobile_driver.ui.activecount_active_count_total", "\(vm.activeCount)", "\(vm.transfers.count)"))
                             .font(.system(size: 11, weight: .semibold, design: .monospaced))
                             .foregroundStyle(LabTheme.fgTertiary)
                     }
@@ -159,11 +159,11 @@ private struct SupplyTransferRowView: View {
                     .background(statusTint.opacity(0.15), in: Capsule())
                     .foregroundStyle(statusTint)
             }
-            Text("Warehouse \(transfer.warehouseId.suffix(6))")
+            Text(L10n.format("mobile_driver.ui.warehouse_suffix", "\(transfer.warehouseId.suffix(6))"))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(LabTheme.fgSecondary)
             if let supplyId = transfer.supplyRequestId, !supplyId.isEmpty {
-                Text("Supply \(supplyId.suffix(8))")
+                Text(L10n.format("mobile_driver.ui.supply_suffix", "\(supplyId.suffix(8))"))
                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
@@ -177,7 +177,7 @@ private struct SupplyTransferRowView: View {
                         if isArriving {
                             ProgressView()
                         }
-                        Text("Mark arrived at warehouse")
+                        Text("mobile_driver.ui.mark_arrived_at_warehouse")
                             .font(.system(size: 14, weight: .bold))
                     }
                     .frame(maxWidth: .infinity)

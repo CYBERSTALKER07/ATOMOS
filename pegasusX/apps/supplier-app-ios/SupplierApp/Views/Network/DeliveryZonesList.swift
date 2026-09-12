@@ -16,7 +16,7 @@ struct DeliveryZonesList: View {
                 }
             }
             Section {
-                Text("H3 perimeter and warehouse coverage are configured via topology.")
+                Text("mobile_supplier.ui.h3_perimeter_and_warehouse_coverage_are_configured_via_topology")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

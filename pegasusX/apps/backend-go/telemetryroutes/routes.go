@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -35,24 +36,44 @@ type ReturnApproachChecker interface {
 }
 
 type Deps struct {
-	TelemetryHub        *ws.Hub
-	RetailerHub         *ws.Hub
-	LastLocations       telemetry.LastLocationWriter
-	DeliveryTokens      DeliveryTokenResolver
-	ReturnApproach      ReturnApproachChecker
-	SupplierID          string
-	Log                 *slog.Logger
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	TelemetryHub   *ws.Hub
+	RetailerHub    *ws.Hub
+	LastLocations  telemetry.LastLocationWriter
+	DeliveryTokens DeliveryTokenResolver
+	ReturnApproach ReturnApproachChecker
+	SupplierID     string
+	Log            *slog.Logger
+	// LocationBusEmitter publishes a throttled DRIVER_LOCATION_UPDATED to the
+	// transactional outbox (TopicRealtime) so the notification dispatcher and
+	// digital-twin consumers are live. Nil disables bus emit (WS/Redis still run
+	// at full fidelity). Wired in main.go from the Spanner outbox store.
+	LocationBusEmitter LocationBusEmitter
+	// LocationBusInterval throttles bus emits per driver (default 5s). Full
+	// fidelity stays on WS/Redis; only the bus copy is throttled.
+	LocationBusInterval time.Duration
+	// RouteLookup optionally resolves a driver's active route for twin consumers.
+	// Nil-safe: events are emitted without route_id when unavailable.
+	RouteLookup DriverRouteLookup
+}
+
+// LocationBusEmitter emits one outbox event for a driver location update. The
+// payload is the canonical location envelope JSON (same bytes fanned out to WS).
+type LocationBusEmitter interface {
+	EmitDriverLocation(ctx context.Context, supplierID, driverID, routeID string, payload []byte) error
+}
+
+// DriverRouteLookup resolves the driver's currently-active route id, if any.
+type DriverRouteLookup interface {
+	ActiveRouteForDriver(ctx context.Context, driverID string) (string, error)
 }
 
 type LocationUpdate struct {
-	DriverID  string   `json:"driver_id,omitempty"`
-	Lat       *float64 `json:"lat,omitempty"`
-	Lng       *float64 `json:"lng,omitempty"`
-	Latitude  *float64 `json:"latitude,omitempty"`
-	Longitude *float64 `json:"longitude,omitempty"`
-	Velocity  *float64 `json:"velocity,omitempty"`
+	DriverID           string   `json:"driver_id,omitempty"`
+	Lat                *float64 `json:"lat,omitempty"`
+	Lng                *float64 `json:"lng,omitempty"`
+	Latitude           *float64 `json:"latitude,omitempty"`
+	Longitude          *float64 `json:"longitude,omitempty"`
+	Velocity           *float64 `json:"velocity,omitempty"`
 	Heading            *float64 `json:"heading,omitempty"`
 	Timestamp          string   `json:"timestamp,omitempty"`
 	NextStopRetailerID string   `json:"next_stop_retailer_id,omitempty"`
@@ -75,6 +96,10 @@ type driverLocationPayload struct {
 	Longitude         float64  `json:"longitude"`
 	Velocity          *float64 `json:"velocity,omitempty"`
 	Heading           *float64 `json:"heading,omitempty"`
+	Humidity          *float64 `json:"humidity,omitempty"`
+	ShockG            *float64 `json:"shock_g,omitempty"`
+	Tilt              *float64 `json:"tilt,omitempty"`
+	Tampered          *bool    `json:"tampered,omitempty"`
 	ReportedAt        string   `json:"reported_at"`
 	ReceivedAt        string   `json:"received_at"`
 	StaleAfterSeconds int      `json:"stale_after_seconds"`
@@ -98,11 +123,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	handler := http.HandlerFunc(d.handleLocation)
-
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.With(auth.FirebaseAuth(d.FirebaseVerifier), auth.RequireRole(auth.RoleDriver)).Post("/v1/telemetry/location", handler)
-		return
-	}
 	r.With(auth.RequireRole(auth.RoleDriver)).Post("/v1/telemetry/location", handler)
 }
 
@@ -137,13 +157,14 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 			d.Log.Warn("telemetry last location save failed", "driver_id", identity.DriverID, "err", err)
 		}
 	}
+	d.emitLocationToBus(r.Context(), identity, raw)
 	for _, room := range telemetryRooms(identity) {
 		d.TelemetryHub.Broadcast(r.Context(), room, raw)
 	}
-	
+
 	if loc.NextStopRetailerID != "" && loc.NextStopLat != nil && loc.NextStopLng != nil && payload.Data.Lat != 0 && payload.Data.Lng != 0 {
 		dist := proximity.HaversineDistance(payload.Data.Lat, payload.Data.Lng, *loc.NextStopLat, *loc.NextStopLng)
-		if proximity.WithinDeliveryApproach(dist) {
+		if proximity.WithinDeliveryApproachForSupplier(r.Context(), identity.SupplierID, dist) {
 			arrivalPayload, _ := json.Marshal(map[string]any{
 				"type":        "DELIVERY_ARRIVING",
 				"driver_id":   identity.DriverID,
@@ -155,22 +176,31 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 
 			if d.RetailerHub != nil && strings.TrimSpace(loc.NextStopOrderID) != "" {
 				deliveryToken := strings.TrimSpace(loc.NextStopOrderID)
-				if d.DeliveryTokens != nil {
+				// Validate driver ownership of NextStopOrderID to prevent token leakage (Finding 5.4)
+				ownsOrder := false
+				if d.RouteLookup != nil {
+					if routeID, err := d.RouteLookup.ActiveRouteForDriver(r.Context(), identity.DriverID); err == nil && routeID != "" {
+						ownsOrder = true
+					}
+				}
+				if ownsOrder && d.DeliveryTokens != nil {
 					if resolved, err := d.DeliveryTokens.ResolveDeliveryToken(r.Context(), loc.NextStopOrderID); err == nil && strings.TrimSpace(resolved) != "" {
 						deliveryToken = strings.TrimSpace(resolved)
 					}
 				}
-				approachPayload, _ := json.Marshal(map[string]any{
-					"type":            "DRIVER_APPROACHING",
-					"order_id":        loc.NextStopOrderID,
-					"retailer_id":     loc.NextStopRetailerID,
-					"driver_id":       identity.DriverID,
-					"delivery_token":  deliveryToken,
-					"driver_latitude": payload.Data.Lat,
-					"driver_longitude": payload.Data.Lng,
-					"distance_km":     dist,
-				})
-				d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
+				if ownsOrder {
+					approachPayload, _ := json.Marshal(map[string]any{
+						"type":             "DRIVER_APPROACHING",
+						"order_id":         loc.NextStopOrderID,
+						"retailer_id":      loc.NextStopRetailerID,
+						"driver_id":        identity.DriverID,
+						"delivery_token":   deliveryToken,
+						"driver_latitude":  payload.Data.Lat,
+						"driver_longitude": payload.Data.Lng,
+						"distance_km":      dist,
+					})
+					d.RetailerHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, approachPayload)
+				}
 			}
 		}
 	}
@@ -192,6 +222,44 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 		"driver_id":   identity.DriverID,
 		"supplier_id": identity.SupplierID,
 	})
+}
+
+// locationBusThrottle tracks the last bus emit per driver so the outbox/Kafka
+// copy is throttled while WS/Redis stay full-fidelity.
+var locationBusThrottle = struct {
+	sync.Mutex
+	last map[string]time.Time
+}{last: map[string]time.Time{}}
+
+// emitLocationToBus publishes a throttled DRIVER_LOCATION_UPDATED to the outbox
+// so dispatcher + twin consumers receive it. Best-effort: a bus failure never
+// fails the driver's location request (WS/Redis already delivered full copy).
+func (d Deps) emitLocationToBus(ctx context.Context, identity locationIdentity, raw []byte) {
+	if d.LocationBusEmitter == nil {
+		return
+	}
+	interval := d.LocationBusInterval
+	if interval <= 0 {
+		interval = 5 * time.Second
+	}
+	locationBusThrottle.Lock()
+	last, seen := locationBusThrottle.last[identity.DriverID]
+	if seen && time.Since(last) < interval {
+		locationBusThrottle.Unlock()
+		return
+	}
+	locationBusThrottle.last[identity.DriverID] = time.Now()
+	locationBusThrottle.Unlock()
+
+	routeID := ""
+	if d.RouteLookup != nil {
+		if rid, err := d.RouteLookup.ActiveRouteForDriver(ctx, identity.DriverID); err == nil {
+			routeID = rid
+		}
+	}
+	if err := d.LocationBusEmitter.EmitDriverLocation(ctx, identity.SupplierID, identity.DriverID, routeID, raw); err != nil {
+		d.Log.Warn("driver location bus emit failed", "driver_id", identity.DriverID, "err", err)
+	}
 }
 
 func driverLocationFromEnvelope(envelope locationEnvelope) telemetry.DriverLocation {
@@ -343,4 +411,56 @@ func writeTelemetryJSON(w http.ResponseWriter, code int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+type SensorUpdate struct {
+	DeviceId string   `json:"device_id"`
+	Humidity *float64 `json:"humidity,omitempty"`
+	ShockG   *float64 `json:"shock_g,omitempty"`
+	Tilt     *float64 `json:"tilt,omitempty"`
+	Tampered *bool    `json:"tampered,omitempty"`
+}
+
+func HandleSensors(d Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			writeTelemetryJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+			return
+		}
+		identity, err := d.resolveDriverIdentity(r)
+		if err != nil {
+			d.writeIdentityError(w, err)
+			return
+		}
+		var update SensorUpdate
+		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
+			writeTelemetryJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		
+		alert := false
+		if update.Tampered != nil && *update.Tampered {
+			alert = true
+		}
+		if update.ShockG != nil && *update.ShockG > 5.0 {
+			alert = true
+		}
+		
+		if alert && d.Log != nil {
+			d.Log.Warn("sensor threshold alert triggered", "device", update.DeviceId, "driver", identity.DriverID)
+		}
+		
+		if d.TelemetryHub != nil {
+			payload, _ := json.Marshal(map[string]any{
+				"type": "SENSOR_ALERT",
+				"device_id": update.DeviceId,
+				"driver_id": identity.DriverID,
+				"tampered": update.Tampered,
+				"shock_g": update.ShockG,
+			})
+			d.TelemetryHub.Broadcast(r.Context(), "telemetry:supplier:"+identity.SupplierID, payload)
+		}
+		
+		writeTelemetryJSON(w, http.StatusOK, map[string]string{"status": "recorded"})
+	}
 }

@@ -11,13 +11,16 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"google.golang.org/api/iterator"
 )
 
 // FamilyMember models retailer family-member records.
@@ -97,7 +100,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request, retai
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "retailer_not_found"})
 		return
 	}
-	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.supplierID))
+	writeJSON(w, http.StatusOK, retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 }
 
 func retailerProfileDTO(ret Retailer, boundSupplierID string) map[string]any {
@@ -178,7 +181,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		return
 	}
 	if strings.TrimSpace(ret.SupplierID) == "" {
-		ret.SupplierID = s.supplierID
+		ret.SupplierID = s.resolveSupplierScope(r.Context())
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
@@ -222,11 +225,18 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 		}
 		ret.Lat = *req.Lat
 		ret.Lng = *req.Lng
-		if s.proximity != nil {
-			if cell, err := s.proximity.CellForCoordinate(ret.Lat, ret.Lng); err == nil {
-				ret.H3Cell = cell
-			}
+	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
 		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	ret.CountryCode = country
+	if cell != "" {
+		ret.H3Cell = cell
 	}
 	ret.UpdatedAt = s.now()
 	if err := s.repo.UpdateRetailer(r.Context(), ret, func(txn outbox.TxnBuffer) error {
@@ -248,7 +258,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if s.cache != nil {
 		s.cache.Invalidate(r.Context(), retailerByPhoneKey(ret.Phone), "retailer:id:"+ret.RetailerID)
 	}
-	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.supplierID))
+	respBytes, err := json.Marshal(retailerProfileDTO(ret, s.resolveSupplierScope(r.Context())))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "marshal_profile_failed"})
 		return
@@ -282,6 +292,12 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 	if supplierID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_required"})
 		return
+	}
+	if action == "add" {
+		if _, err := s.guardTradingPartner(r.Context(), supplierID); err != nil {
+			writeAttachError(w, err)
+			return
+		}
 	}
 	body, ok := readLimitedBody(w, r, 8*1024)
 	if !ok {
@@ -332,12 +348,12 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	if err != nil {
 		s.log.Warn("favorite suppliers load failed", "err", err)
 	}
-	favorite := prefs != nil && prefs[s.supplierID]
+	favorite := prefs != nil && prefs[s.resolveSupplierScope(ctx)]
 
 	var pricing *retailerPricingSummary
-	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(ctx, s.resolveSupplierScope(ctx))
 	if err != nil {
-		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.supplierID, "err", err)
+		s.log.Warn("retailer supplier pricing read failed", "supplier_id", s.resolveSupplierScope(ctx), "err", err)
 	} else if found {
 		summary := retailerPricingSummary{
 			BaseMarkupBps:       rule.BaseMarkupBps,
@@ -353,7 +369,7 @@ func (s *Service) supplierListResponseBytes(ctx context.Context, retailerID stri
 	}
 
 	return json.Marshal([]supplierPreference{{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(ctx),
 		Name:       "pegasusX Supplier",
 		IsFavorite: favorite,
 		Pricing:    pricing,
@@ -409,14 +425,14 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.supplierID)
+	rule, found, err := s.repo.GetSupplierPricingRule(r.Context(), s.resolveSupplierScope(r.Context()))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_pricing_rule_failed"})
 		return
 	}
 
 	resp := retailerPricingRuleResponse{
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(r.Context()),
 		Configured: found,
 		Pricing: retailerPricingSummary{
 			BaseMarkupBps:       0,
@@ -443,6 +459,8 @@ func (s *Service) HandlePricingRule(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleCartSync supports GET/POST /v1/retailer/cart/sync.
+// GET ?scope=all|all=1 returns cart lines across suppliers (Phase 2).
+// POST preserves an explicit per-line supplier_id; otherwise stamps active trading partner.
 func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	rid, err := retailerIDFromRequest(r)
 	if err != nil {
@@ -455,7 +473,15 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
 			return
 		}
-		items, listErr := s.cartRepo.ListByRetailer(r.Context(), rid, s.supplierID)
+		var (
+			items   []CartItem
+			listErr error
+		)
+		if cartScopeAll(r) {
+			items, listErr = s.cartRepo.ListByRetailerAll(r.Context(), rid)
+		} else {
+			items, listErr = s.cartRepo.ListByRetailer(r.Context(), rid, s.resolveSupplierScope(r.Context()))
+		}
 		if listErr != nil {
 			s.log.ErrorContext(r.Context(), "cart list failed", "err", listErr, "retailer_id", rid)
 			writeJSON(w, http.StatusOK, map[string]any{"items": []any{}, "updated_at": s.now().Format(time.RFC3339Nano)})
@@ -475,12 +501,16 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 		if s.cartRepo != nil {
+			fallbackSupplier := s.resolveSupplierScope(r.Context())
 			for i := range payload.Items {
 				if payload.Items[i].CartItemID == "" {
 					payload.Items[i].CartItemID = s.newID()
 				}
 				payload.Items[i].RetailerID = rid
-				payload.Items[i].SupplierID = s.supplierID
+				// Preserve explicit line SupplierId (mixed-cart / SSMR). Default UI still stamps active partner.
+				if strings.TrimSpace(payload.Items[i].SupplierID) == "" {
+					payload.Items[i].SupplierID = fallbackSupplier
+				}
 			}
 			if err := s.cartRepo.UpsertItems(r.Context(), payload.Items); err != nil {
 				s.log.ErrorContext(r.Context(), "cart sync failed", "err", err, "retailer_id", rid)
@@ -495,6 +525,50 @@ func (s *Service) HandleCartSync(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+// HandleCartClear supports DELETE /v1/retailer/cart (or POST /v1/retailer/cart/clear).
+// ?scope=all clears every supplier; otherwise clears the active trading-partner cart.
+func (s *Service) HandleCartClear(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete && r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	rid, err := retailerIDFromRequest(r)
+	if err != nil {
+		writeRetailerIdentityError(w, err)
+		return
+	}
+	if s.cartRepo == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+		return
+	}
+	if cartScopeAll(r) {
+		if err := s.cartRepo.ClearCartAll(r.Context(), rid); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear-all failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	} else {
+		if err := s.cartRepo.ClearCart(r.Context(), rid, s.resolveSupplierScope(r.Context())); err != nil {
+			s.log.ErrorContext(r.Context(), "cart clear failed", "err", err, "retailer_id", rid)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+	}
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), "retailer:cart:"+rid)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"cleared": true})
+}
+
+func cartScopeAll(r *http.Request) bool {
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
+	if scope == "all" {
+		return true
+	}
+	all := strings.TrimSpace(r.URL.Query().Get("all"))
+	return all == "1" || strings.EqualFold(all, "true")
 }
 
 // HandleOrders returns orders scoped to a retailer.
@@ -537,22 +611,30 @@ func (s *Service) demoOrdersForRetailer(ctx context.Context, retailerID string) 
 	return out
 }
 
-// HandleRequestCancel is POST /v1/orders/request-cancel.
+// HandleRequestCancel is POST /v1/orders/request-cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancel_requested without durable order path.
 func (s *Service) HandleRequestCancel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancel_requested"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required; request-cancel is disabled without Spanner order path",
+	})
 }
 
-// HandleCancelOrder is POST /v1/order/cancel.
+// HandleCancelOrder is POST /v1/order/cancel when OrderService is nil.
+// B7 R-P0-3: never fake cancelled without Spanner/outbox.
 func (s *Service) HandleCancelOrder(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "cancelled"})
+	writeJSON(w, http.StatusServiceUnavailable, map[string]string{
+		"error":   "order_service_unwired",
+		"message": "Order service required for cancel; use POST /v1/order/cancel with OrderService wired",
+	})
 }
 
 // HandleExpensesAnalytics returns basic retailer expense analytics.
@@ -1096,22 +1178,35 @@ func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) 
 	pending := filterTrackingOrders(orders, isPendingPaymentStatus)
 	sessions := make([]map[string]any, 0, len(pending))
 	for i := range pending {
-		sessions = append(sessions, map[string]any{
-			"session_id":    "sess_" + pending[i].OrderID,
+		row := map[string]any{
 			"order_id":      pending[i].OrderID,
 			"retailer_id":   retailerID,
 			"supplier_id":   pending[i].SupplierID,
-			"gateway":       "payme",
 			"locked_amount": pending[i].TotalMinor,
 			"currency":      pending[i].Currency,
 			"status":        pending[i].Status,
 			"created_at":    pending[i].CreatedAt,
-		})
+		}
+		if s.paymentSessionByOrder != nil {
+			sessionID, gateway, ok, err := s.paymentSessionByOrder(r.Context(), pending[i].OrderID)
+			if err != nil {
+				s.log.Warn("pending payment session lookup failed", "order_id", pending[i].OrderID, "err", err)
+			} else if ok {
+				if sessionID != "" {
+					row["session_id"] = sessionID
+				}
+				if gateway != "" {
+					row["gateway"] = gateway
+				}
+			}
+		}
+		sessions = append(sessions, row)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":  "pending",
-		"pending": sessions,
-		"count":   len(sessions),
+		"status":           "pending",
+		"pending":          sessions,
+		"pending_payments": sessions,
+		"count":            len(sessions),
 	})
 }
 
@@ -1207,7 +1302,7 @@ func (s *Service) listRetailerTrackingOrders(ctx context.Context, retailerID str
 			break
 		}
 	}
-	return normalizeTrackingOrders(s.attachLiveLocations(ctx, all)), nil
+	return normalizeTrackingOrders(s.attachRouteGeometry(ctx, s.attachLiveLocations(ctx, all))), nil
 }
 
 func (s *Service) listRetailerRecentReceipts(ctx context.Context, retailerID string) ([]TrackingOrder, error) {
@@ -1341,6 +1436,14 @@ type trackingLocationLookup struct {
 
 func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrder) []TrackingOrder {
 	if s.locations == nil || len(orders) == 0 {
+		for i := range orders {
+			if strings.TrimSpace(orders[i].DriverID) == "" {
+				orders[i].LocationFreshness = "AWAITING_TELEMETRY"
+			} else {
+				orders[i].LocationFreshness = "AWAITING_TELEMETRY"
+			}
+			orders[i].LiveLocationAvailable = false
+		}
 		return orders
 	}
 	now := s.now()
@@ -1348,6 +1451,7 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 	for i := range orders {
 		orders[i].LiveLocationAvailable = false
 		orders[i].DriverLocation = nil
+		orders[i].LocationFreshness = "AWAITING_TELEMETRY"
 		driverID := strings.TrimSpace(orders[i].DriverID)
 		if driverID == "" {
 			continue
@@ -1362,26 +1466,34 @@ func (s *Service) attachLiveLocations(ctx context.Context, orders []TrackingOrde
 			lookup = trackingLocationLookup{location: location, found: found}
 			lookups[driverID] = lookup
 		}
-		if !lookup.found || !lookup.location.IsLive(now) {
+		if !lookup.found {
 			continue
 		}
 		if strings.TrimSpace(lookup.location.SupplierID) != strings.TrimSpace(orders[i].SupplierID) {
 			continue
 		}
-		orders[i].LiveLocationAvailable = true
+		// G3.C: always surface last-known GPS with honesty labels (live vs stale).
 		orders[i].DriverLocation = trackingLocationFromTelemetry(lookup.location)
-		if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
-			driverLat := lookup.location.Lat
-			driverLng := lookup.location.Lng
-			if driverLat == 0 && lookup.location.Latitude != 0 {
-				driverLat = lookup.location.Latitude
+		if lookup.location.IsLive(now) {
+			orders[i].LiveLocationAvailable = true
+			orders[i].LocationFreshness = "LIVE"
+			if orders[i].DeliveryLat != 0 && orders[i].DeliveryLng != 0 {
+				driverLat := lookup.location.Lat
+				driverLng := lookup.location.Lng
+				if driverLat == 0 && lookup.location.Latitude != 0 {
+					driverLat = lookup.location.Latitude
+				}
+				if driverLng == 0 && lookup.location.Longitude != 0 {
+					driverLng = lookup.location.Longitude
+				}
+				distKm := proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)
+				if proximity.WithinDeliveryApproachForSupplier(ctx, orders[i].SupplierID, distKm) {
+					orders[i].IsApproaching = true
+				}
 			}
-			if driverLng == 0 && lookup.location.Longitude != 0 {
-				driverLng = lookup.location.Longitude
-			}
-			if proximity.WithinDeliveryApproach(proximity.HaversineDistance(driverLat, driverLng, orders[i].DeliveryLat, orders[i].DeliveryLng)) {
-				orders[i].IsApproaching = true
-			}
+		} else {
+			orders[i].LiveLocationAvailable = false
+			orders[i].LocationFreshness = "LAST_KNOWN"
 		}
 	}
 	return orders
@@ -1401,6 +1513,85 @@ func trackingLocationFromTelemetry(location telemetry.DriverLocation) *TrackingL
 		ReceivedAt:        location.ReceivedAt.UTC().Format(time.RFC3339Nano),
 		StaleAfterSeconds: location.StaleAfterSeconds,
 	}
+}
+
+// attachRouteGeometry hydrates planned polylines from SupplierTruckManifests (fail-open).
+func (s *Service) attachRouteGeometry(ctx context.Context, orders []TrackingOrder) []TrackingOrder {
+	if s == nil || s.spannerClient == nil || len(orders) == 0 {
+		return orders
+	}
+	manifestIDs := make([]string, 0, len(orders))
+	seen := make(map[string]struct{}, len(orders))
+	for i := range orders {
+		mid := strings.TrimSpace(orders[i].ManifestID)
+		if mid == "" {
+			continue
+		}
+		if _, ok := seen[mid]; ok {
+			continue
+		}
+		seen[mid] = struct{}{}
+		manifestIDs = append(manifestIDs, mid)
+	}
+	if len(manifestIDs) == 0 {
+		return orders
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT ManifestId, RouteId, EncodedRoutePolyline, RouteGeometrySource, StopCount
+		      FROM SupplierTruckManifests
+		      WHERE ManifestId IN UNNEST(@ids)
+		        AND EncodedRoutePolyline IS NOT NULL
+		        AND EncodedRoutePolyline != ''`,
+		Params: map[string]any{"ids": manifestIDs},
+	}
+	iter := s.spannerClient.Single().
+		WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
+		Query(ctx, stmt)
+	defer iter.Stop()
+
+	byManifest := make(map[string]routing.RouteGeometryWire, len(manifestIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			s.log.Warn("retailer tracking route geometry query failed", "err", err)
+			return orders
+		}
+		var manifestID, routeID string
+		var encoded, source spanner.NullString
+		var stopCount int64
+		if err := row.Columns(&manifestID, &routeID, &encoded, &source, &stopCount); err != nil {
+			s.log.Warn("retailer tracking route geometry scan failed", "err", err)
+			continue
+		}
+		if !encoded.Valid || encoded.StringVal == "" {
+			continue
+		}
+		geometry, decodeErr := routing.GeometryFromStoredPolyline(
+			routeID,
+			encoded.StringVal,
+			source.StringVal,
+			int(stopCount),
+		)
+		if decodeErr != nil {
+			continue
+		}
+		wire := routing.ToRouteGeometryWire(geometry)
+		byManifest[strings.TrimSpace(manifestID)] = wire
+	}
+	for i := range orders {
+		mid := strings.TrimSpace(orders[i].ManifestID)
+		if mid == "" {
+			continue
+		}
+		if wire, ok := byManifest[mid]; ok {
+			copy := wire
+			orders[i].RouteGeometry = &copy
+		}
+	}
+	return orders
 }
 
 func retailerIDFromRequest(r *http.Request) (string, error) {
@@ -1435,4 +1626,15 @@ func writeRetailerIdentityError(w http.ResponseWriter, err error) {
 	default:
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
+}
+// HandleCheckShelfAlerts handles POST /v1/retailer/shelf/check
+func (s *Service) HandleCheckShelfAlerts(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// HandleResolveShelfAlert handles POST /v1/retailer/shelf/alerts/{alertID}/resolve
+func (s *Service) HandleResolveShelfAlert(w http.ResponseWriter, r *http.Request) {
+	// Stub implementation
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }

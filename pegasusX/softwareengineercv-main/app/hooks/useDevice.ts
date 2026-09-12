@@ -38,3 +38,86 @@ export function useReducedMotion() {
 
   return prefersReducedMotion;
 }
+
+function detectLowEnd(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+  const nav = navigator as Navigator & {
+    deviceMemory?: number;
+    connection?: { saveData?: boolean; effectiveType?: string };
+  };
+
+  const cores = navigator.hardwareConcurrency ?? 8;
+  const memory = nav.deviceMemory; // Chrome/Edge/Android
+  const saveData = !!nav.connection?.saveData;
+  const slowNet =
+    nav.connection?.effectiveType === 'slow-2g' ||
+    nav.connection?.effectiveType === '2g' ||
+    nav.connection?.effectiveType === '3g';
+
+  const isSmallScreen = window.innerWidth <= 768;
+  const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0;
+
+  // Low-end conditions: few cores, low RAM, data-saver / slow network, or budget mobile
+  if (cores <= 4) return true;
+  if (typeof memory === 'number' && memory <= 4) return true;
+  if (saveData || slowNet) return true;
+  if (isTouch && isSmallScreen && cores <= 6) return true;
+
+  return false;
+}
+
+export type PerfProfile = {
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
+  isTouch: boolean;
+  prefersReducedMotion: boolean;
+  isLowEnd: boolean;
+  /** Continuous canvas FX (desktop capable only) */
+  allowHeavyFx: boolean;
+  /** Hover canvas FX (pointer devices, not phones) */
+  allowHoverFx: boolean;
+  /** Suggested glyph cell size */
+  cellSize: number;
+  /** Maximum Device Pixel Ratio to prevent GPU fill-rate throttling */
+  maxDpr: number;
+  /** Target frame rate */
+  targetFps: number;
+};
+
+/**
+ * Central gate for heavy digital / 3D / glitch effects.
+ * Mobile, tablet, reduced-motion, and low-end desktops get the light path.
+ */
+export function usePerfProfile(): PerfProfile {
+  const { isMobile, isTablet, isDesktop } = useIsMobile();
+  const prefersReducedMotion = useReducedMotion();
+  const [isLowEnd, setIsLowEnd] = useState(false);
+  const [isTouch, setIsTouch] = useState(false);
+
+  useEffect(() => {
+    setIsLowEnd(detectLowEnd());
+    setIsTouch('ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0);
+  }, []);
+
+  const allowHeavyFx = isDesktop && !prefersReducedMotion && !isLowEnd;
+  const allowHoverFx = !isMobile && !isTouch && !prefersReducedMotion && !isLowEnd;
+  const cellSize = isMobile ? 14 : isTablet ? 12 : isLowEnd ? 13 : 9;
+  const maxDpr = isLowEnd || isMobile ? 1.0 : isTablet ? 1.5 : 2.0;
+  const targetFps = isLowEnd || isMobile ? 30 : 60;
+
+  return {
+    isMobile,
+    isTablet,
+    isDesktop,
+    isTouch,
+    prefersReducedMotion,
+    isLowEnd,
+    allowHeavyFx,
+    allowHoverFx,
+    cellSize,
+    maxDpr,
+    targetFps,
+  };
+}

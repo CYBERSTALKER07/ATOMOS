@@ -17,6 +17,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -35,13 +36,13 @@ class TelemetrySocket @Inject constructor(
     private var reconnectJob: Job? = null
     private var intentionalDisconnect = false
     private var pendingRetryAfterMs: Long? = null
+    private val connected = AtomicBoolean(false)
     private val scope = CoroutineScope(Dispatchers.IO)
 
     companion object {
         private const val TAG = "TelemetrySocket"
         private const val BASE_DELAY_MS = 5_000L
         private const val MAX_DELAY_MS = 60_000L
-        private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
     fun connect(baseUrl: String, token: String) {
@@ -53,7 +54,24 @@ class TelemetrySocket @Inject constructor(
         establishConnection(baseUrl, token)
     }
 
+    /**
+     * Network regained: zero attempt counter and reconnect immediately if we still
+     * have credentials and were not intentionally stopped (§8.8).
+     */
+    fun resetAndReconnect() {
+        if (intentionalDisconnect) return
+        val url = lastBaseUrl ?: return
+        val token = lastToken ?: return
+        reconnectAttempt = 0
+        reconnectJob?.cancel()
+        reconnectJob = null
+        _connectionState.trySend(ConnectionState.RECONNECTING)
+        Log.d(TAG, "resetAndReconnect — network regained")
+        establishConnection(url, token)
+    }
+
     private fun establishConnection(baseUrl: String, token: String) {
+        connected.set(false)
         socket?.close(1000, null)
         socket = null
 
@@ -70,17 +88,20 @@ class TelemetrySocket @Inject constructor(
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 reconnectAttempt = 0
+                connected.set(true)
                 _connectionState.trySend(ConnectionState.CONNECTED)
                 Log.d(TAG, "Connected")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Connection failed", t)
+                connected.set(false)
                 pendingRetryAfterMs = ReconnectBackoff.retryAfterMs(response)
                 scheduleReconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                connected.set(false)
                 if (!intentionalDisconnect) {
                     scheduleReconnect()
                 } else {
@@ -96,12 +117,7 @@ class TelemetrySocket @Inject constructor(
         val token = lastToken ?: return
 
         reconnectAttempt++
-        if (reconnectAttempt > MAX_RECONNECT_ATTEMPTS) {
-            Log.e(TAG, "Max reconnect attempts reached, giving up")
-            _connectionState.trySend(ConnectionState.DISCONNECTED)
-            return
-        }
-
+        // Hold at max delay forever — never give up mid-shift (§8.8).
         _connectionState.trySend(ConnectionState.RECONNECTING)
         val delayMs = ReconnectBackoff.delayMs(
             reconnectAttempt - 1,
@@ -120,6 +136,7 @@ class TelemetrySocket @Inject constructor(
     }
 
     fun send(payload: TelemetryPayload): Boolean {
+        if (!connected.get()) return false
         val data = json.encodeToString(payload)
         return socket?.send(data) ?: false
     }
@@ -128,12 +145,11 @@ class TelemetrySocket @Inject constructor(
         intentionalDisconnect = true
         reconnectJob?.cancel()
         reconnectJob = null
+        connected.set(false)
         socket?.close(1000, "Driver stopped transit")
         socket = null
         _connectionState.trySend(ConnectionState.DISCONNECTED)
     }
 
-    fun isConnected(): Boolean {
-        return socket != null
-    }
+    fun isConnected(): Boolean = connected.get()
 }

@@ -8,32 +8,92 @@ import AVFoundation
 import SwiftUI
 import VisionKit
 
+private let eanScanDebounceSeconds: TimeInterval = 0.3
+
 struct EANBarcodeScannerView: View {
     let onBarcode: (String) -> Void
     var enabled: Bool = true
     var previewHeight: CGFloat = 160
+    var showTorchToggle: Bool = true
+
+    @State private var torchOn = false
 
     private var canUseDataScanner: Bool {
         DataScannerViewController.isSupported && DataScannerViewController.isAvailable
     }
 
     var body: some View {
-        Group {
-            if !enabled {
-                Text("Scanner paused")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: previewHeight)
-            } else if canUseDataScanner {
-                DataScannerRepresentable(onBarcode: onBarcode)
-                    .frame(height: previewHeight)
-            } else {
-                EANCameraPreview(onBarcode: onBarcode)
-                    .frame(height: previewHeight)
+        VStack(spacing: 6) {
+            Group {
+                if !enabled {
+                    Text("Scanner paused")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: previewHeight)
+                } else if canUseDataScanner {
+                    DataScannerRepresentable(onBarcode: onBarcode, torchOn: torchOn)
+                        .frame(height: previewHeight)
+                } else {
+                    EANCameraPreview(onBarcode: onBarcode, torchOn: $torchOn)
+                        .frame(height: previewHeight)
+                }
             }
+            .clipShape(.rect(cornerRadius: 8))
+
+            if showTorchToggle && enabled {
+                Button(torchOn ? "Torch on" : "Torch") {
+                    torchOn.toggle()
+                }
+                .font(.caption)
+                .buttonStyle(.bordered)
+            }
+
+            KeyboardWedgeBarcodeField(onBarcode: onBarcode, enabled: enabled)
         }
-        .clipShape(.rect(cornerRadius: 8))
+    }
+}
+
+/// Hidden field for hardware keyboard / Bluetooth wedge scanners.
+struct KeyboardWedgeBarcodeField: View {
+    let onBarcode: (String) -> Void
+    var enabled: Bool = true
+
+    @State private var buffer = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField("", text: $buffer)
+            .focused($focused)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .onSubmit(emit)
+            .onChange(of: buffer) { _, next in
+                if next.contains("\n") || next.contains("\r") {
+                    emit()
+                }
+            }
+            .frame(width: 1, height: 1)
+            .opacity(0.01)
+            .accessibilityHidden(true)
+            .disabled(!enabled)
+            .onAppear {
+                if enabled { focused = true }
+            }
+            .onChange(of: enabled) { _, on in
+                if on { focused = true }
+            }
+    }
+
+    private func emit() {
+        let code = buffer
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        buffer = ""
+        guard !code.isEmpty else { return }
+        onBarcode(code)
     }
 }
 
@@ -41,6 +101,7 @@ struct EANBarcodeScannerView: View {
 
 private struct DataScannerRepresentable: UIViewControllerRepresentable {
     let onBarcode: (String) -> Void
+    var torchOn: Bool
 
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let controller = DataScannerViewController(
@@ -58,6 +119,8 @@ private struct DataScannerRepresentable: UIViewControllerRepresentable {
         if !uiViewController.isScanning {
             try? uiViewController.startScanning()
         }
+        // DataScanner torch API varies by OS; AVFoundation path handles torch when fallback used.
+        _ = torchOn
     }
 
     func makeCoordinator() -> Coordinator {
@@ -87,7 +150,7 @@ private struct DataScannerRepresentable: UIViewControllerRepresentable {
             guard case .barcode(let barcode) = item,
                   let payload = barcode.payloadStringValue else { return }
             let now = Date().timeIntervalSince1970
-            guard payload != lastCode || (now - lastEmitAt) >= 1.5 else { return }
+            guard payload != lastCode || (now - lastEmitAt) >= eanScanDebounceSeconds else { return }
             lastCode = payload
             lastEmitAt = now
             haptic()
@@ -104,6 +167,7 @@ private struct DataScannerRepresentable: UIViewControllerRepresentable {
 
 private struct EANCameraPreview: UIViewRepresentable {
     let onBarcode: (String) -> Void
+    @Binding var torchOn: Bool
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
@@ -116,6 +180,7 @@ private struct EANCameraPreview: UIViewRepresentable {
               let input = try? AVCaptureDeviceInput(device: device) else {
             return view
         }
+        context.coordinator.device = device
 
         if session.canAddInput(input) {
             session.addInput(input)
@@ -143,6 +208,7 @@ private struct EANCameraPreview: UIViewRepresentable {
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.previewLayer?.frame = uiView.bounds
+        context.coordinator.setTorch(torchOn)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -153,11 +219,23 @@ private struct EANCameraPreview: UIViewRepresentable {
         let onBarcode: (String) -> Void
         var session: AVCaptureSession?
         var previewLayer: AVCaptureVideoPreviewLayer?
+        var device: AVCaptureDevice?
         private var lastCode = ""
         private var lastEmitAt: TimeInterval = 0
 
         init(onBarcode: @escaping (String) -> Void) {
             self.onBarcode = onBarcode
+        }
+
+        func setTorch(_ on: Bool) {
+            guard let device, device.hasTorch else { return }
+            do {
+                try device.lockForConfiguration()
+                device.torchMode = on ? .on : .off
+                device.unlockForConfiguration()
+            } catch {
+                // ignore torch failures
+            }
         }
 
         func metadataOutput(
@@ -168,7 +246,7 @@ private struct EANCameraPreview: UIViewRepresentable {
             guard let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
                   let value = object.stringValue else { return }
             let now = Date().timeIntervalSince1970
-            guard value != lastCode || (now - lastEmitAt) >= 1.5 else { return }
+            guard value != lastCode || (now - lastEmitAt) >= eanScanDebounceSeconds else { return }
             lastCode = value
             lastEmitAt = now
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()

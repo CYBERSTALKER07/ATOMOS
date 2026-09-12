@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
@@ -18,6 +19,7 @@ type CreditNoteRow = {
 };
 
 export default function CreditNotesPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<CreditNoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function CreditNotesPage() {
       setRows((resp.credit_notes ?? []) as CreditNoteRow[]);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -49,7 +51,7 @@ export default function CreditNotesPage() {
       await api.issueCreditNote(id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "issue_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.issue_failed"));
     }
   };
 
@@ -71,7 +73,7 @@ export default function CreditNotesPage() {
       setSelectedLines({});
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "create_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.create_failed_2"));
     }
   };
 
@@ -87,22 +89,22 @@ export default function CreditNotesPage() {
       }
       setSelectedLines(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "lines_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.lines_failed"));
     }
   };
 
   return (
     <PageChrome
-      title="Credit notes"
-      description="Draft credit notes and issue reverse-logistics tasks."
+      title={t("portal.nav.credit_notes")}
+      description={t("supplier_portal.residual.text.draft_credit_notes_and_issue_reverse_logistics_tasks")}
       icon="treasury"
       loading={loading}
       error={error}
     >
       <section className="mb-6 p-4 md-card space-y-3">
-        <h2 className="md-typescale-title-medium">Create manual draft</h2>
-        <input className="md-input w-full" placeholder="Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
-        <button type="button" className="md-btn md-btn-outlined" onClick={() => void loadOrderLines()}>Load order lines</button>
+        <h2 className="md-typescale-title-medium">{t("supplier_portal.finance.credit_notes.text.create_manual_draft")}</h2>
+        <input className="md-input w-full" placeholder={t("supplier_portal.admin.control_center.field.order_id")} value={orderId} onChange={(e) => setOrderId(e.target.value)} />
+        <button type="button" className="md-btn md-btn-outlined" onClick={() => void loadOrderLines()}>{t("supplier_portal.finance.credit_notes.text.load_order_lines")}</button>
         {orderLines.length > 0 ? (
           <ul className="space-y-2 text-sm">
             {orderLines.map((ln) => (
@@ -126,9 +128,9 @@ export default function CreditNotesPage() {
             ))}
           </ul>
         ) : null}
-        <input className="md-input w-full" placeholder="Reason code" value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
-        <input className="md-input w-full" placeholder="Reason text" value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
-        <button type="button" className="md-btn md-btn-filled" onClick={() => void createManual()}>Create draft</button>
+        <input className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_code")} value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
+        <input className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_text")} value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
+        <button type="button" className="md-btn md-btn-filled" onClick={() => void createManual()}>{t("supplier_portal.finance.credit_notes.text.create_draft")}</button>
       </section>
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
         {rows.map((row) => (

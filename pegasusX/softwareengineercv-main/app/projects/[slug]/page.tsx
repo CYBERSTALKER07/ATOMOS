@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
-import { projects, getProjectBySlug } from '@/app/data/projects';
+import { projects } from '@/app/data/projects';
+import { getProjectBySlugLocalized } from '@/app/data/projects_ru';
 import { notFound } from 'next/navigation';
 import ProjectDetailClient from './ProjectDetailClient';
 import { pageMetadata } from '@/app/lib/seo';
+import { getServerLanguage } from '@/app/lib/i18n/server';
 
 export function generateStaticParams() {
   return projects.map((project) => ({
@@ -16,15 +18,19 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const project = getProjectBySlug(slug);
-  if (!project) return { title: 'Project' };
+  const lang = await getServerLanguage();
+  const project = getProjectBySlugLocalized(slug, lang);
+  if (!project) return { title: lang === 'ru' ? 'Модуль' : 'Project' };
 
   return pageMetadata({
     title: project.title,
     description: project.description,
     path: `/projects/${slug}`,
     image: project.image,
-    imageAlt: `${project.title} — Pegasus ${project.category} module`,
+    imageAlt:
+      lang === 'ru'
+        ? `${project.title} — модуль Pegasus · ${project.category}`
+        : `${project.title} — Pegasus ${project.category} module`,
   });
 }
 
@@ -34,7 +40,8 @@ export default async function ProjectPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const project = getProjectBySlug(slug);
+  const lang = await getServerLanguage();
+  const project = getProjectBySlugLocalized(slug, lang);
 
   if (!project) {
     notFound();

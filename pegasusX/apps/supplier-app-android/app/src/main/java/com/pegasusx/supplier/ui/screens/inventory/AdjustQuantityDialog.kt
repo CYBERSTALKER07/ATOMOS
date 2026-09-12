@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun AdjustQuantityDialog(
@@ -29,7 +32,7 @@ fun AdjustQuantityDialog(
         title = { Text("Adjust quantity") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                Text("SKU: $adjustingSku")
+                Text(stringResource(R.string.mobile_supplier_ui_sku_adjustingsku, adjustingSku))
                 OutlinedTextField(
                     value = deltaInput,
                     onValueChange = onDeltaInputChanged,

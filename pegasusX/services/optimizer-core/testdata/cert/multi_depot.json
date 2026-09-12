@@ -1,0 +1,46 @@
+{
+  "id": "multi_depot",
+  "expect": {
+    "prefer_nearest": true,
+    "min_placed": 2
+  },
+  "request": {
+    "v": "v1",
+    "trace_id": "cert-md",
+    "supplier_id": "s1",
+    "home_node_id": "wh1",
+    "stops": [
+      {
+        "order_id": "near-a",
+        "retailer_id": "ra",
+        "lat": 41.311,
+        "lng": 69.251,
+        "volume_vu": 5.0
+      },
+      {
+        "order_id": "near-b",
+        "retailer_id": "rb",
+        "lat": 41.411,
+        "lng": 69.351,
+        "volume_vu": 5.0
+      }
+    ],
+    "vehicles": [
+      {
+        "vehicle_id": "depot-a",
+        "driver_id": "da",
+        "max_volume_vu": 50.0,
+        "start_lat": 41.31,
+        "start_lng": 69.25
+      },
+      {
+        "vehicle_id": "depot-b",
+        "driver_id": "db",
+        "max_volume_vu": 50.0,
+        "start_lat": 41.41,
+        "start_lng": 69.35
+      }
+    ],
+    "tunables": { "time_limit_ms": 3000 }
+  }
+}

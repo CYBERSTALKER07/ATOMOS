@@ -50,11 +50,11 @@ struct ReturnsView: View {
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if let error {
                         ContentUnavailableView {
-                            Label("Error", systemImage: "exclamationmark.triangle")
+                            Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                         } description: {
                             Text(error)
                         } actions: {
-                            Button("Retry") { Task { await load() } }
+                            Button("common.action.retry") { Task { await load() } }
                         }
                     } else {
                         switch tab {
@@ -69,17 +69,17 @@ struct ReturnsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Inbound Returns")
+            .navigationTitle("warehouse_portal.returns.text.inbound_returns")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await load() } }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await load() } }
                 }
                 if tab == .queue, !selected.isEmpty {
                     ToolbarItem(placement: .bottomBar) {
                         HStack {
-                            Button("Restock") { Task { await confirm(disposition: "RESTOCK") } }
+                            Button("mobile_warehouse.ui.restock") { Task { await confirm(disposition: "RESTOCK") } }
                             Spacer()
-                            Button("Write off", role: .destructive) { Task { await confirm(disposition: "WRITE_OFF") } }
+                            Button("supplier_portal.returns.text.write_off", role: .destructive) { Task { await confirm(disposition: "WRITE_OFF") } }
                         }
                     }
                 }
@@ -99,7 +99,7 @@ struct ReturnsView: View {
                 enabled: scannerEnabled && !scanning
             )
             HStack {
-                TextField("EAN / return ID", text: $barcode)
+                TextField("mobile_warehouse.ui.ean_return_id", text: $barcode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Button(scanning ? "…" : "Scan") {
@@ -138,7 +138,7 @@ struct ReturnsView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(task.taskId)
                                     .font(.headline.monospaced())
-                                Text("Order \(task.orderId) · \(task.status)")
+                                Text(L10n.format("mobile_warehouse.ui.order_orderid_status", "\(task.orderId)", "\(task.status)"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -196,11 +196,8 @@ struct ReturnsView: View {
                 idempotencyKey: key
             )
             barcode = ""
-            scannerEnabled = false
             statusMessage = "Scan recorded"
             await load()
-            try? await Task.sleep(for: .milliseconds(1500))
-            scannerEnabled = true
         } catch {
             statusMessage = error.localizedDescription
         }

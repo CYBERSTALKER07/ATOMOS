@@ -17,6 +17,9 @@
     },
     "marketplace-1782266505495/hyperframes": {
       "enabled": true
+    },
+    "datadog": {
+      "enabled": true
     }
   }
 }

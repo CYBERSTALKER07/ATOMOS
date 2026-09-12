@@ -64,11 +64,9 @@ func (s *Service) sweepPreorderNotifications(ctx context.Context, now time.Time)
 		return err
 	}
 	for _, o := range orders {
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		today := proximity.TodayStart(now, loc)
 
@@ -145,11 +143,9 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 		if o.Status != StatusScheduled || o.RequestedDeliveryDate == nil {
 			continue
 		}
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		today := proximity.TodayStart(now, loc)
 		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
@@ -188,12 +184,16 @@ func (s *Service) sweepPreorderAutoAccept(ctx context.Context, now time.Time) er
 }
 
 func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error {
-	today := proximity.TashkentTodayStart(now)
+	today := proximity.PackTodayStart(now)
+	if today.IsZero() {
+		return nil
+	}
 	// Prefetch pre-orders due within the next calendar day (T-1 promotion window).
 	cutoff := today.AddDate(0, 0, 1)
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
-		      WHERE Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
+		      WHERE SupplierId IS NOT NULL
+		        AND Status IN ('SCHEDULED', 'AUTO_ACCEPTED')
 		        AND OrderSource = @src
 		        AND RequestedDeliveryDate <= @cutoff
 		      LIMIT 100`,
@@ -216,11 +216,9 @@ func (s *Service) sweepPreorderPromote(ctx context.Context, now time.Time) error
 		if o.RequestedDeliveryDate == nil {
 			continue
 		}
-		loc := proximity.TashkentLocation
-		if o.Timezone != "" {
-			if l, err := time.LoadLocation(o.Timezone); err == nil {
-				loc = l
-			}
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		lead := PreorderLeadDays(now, o.RequestedDeliveryDate, loc)
 		// Promote at T-1 (day before delivery) or on delivery day if a tick was missed.
@@ -245,6 +243,11 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 	o.Status = StatusPending
 	o.UpdatedAt = now
 
+	o.TransitionReason = "PREORDER_PROMOTED"
+	o.TransitionActorRole = "SYSTEM"
+	o.TransitionActorID = "system:midnight_guard"
+	o.TransitionEventKind = "PROMOTE"
+
 	if s.allocationRequired {
 		err := s.repo.UpdateOrderWithTxn(ctx, o, nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return s.allocateAndReserveInTxn(ctx, txn, &o)
@@ -266,7 +269,6 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 			return err
 		}
 		s.afterOrderMutation(ctx, o)
-		s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
 		return nil
 	}
 
@@ -288,7 +290,6 @@ func (s *Service) promotePreorderToPending(ctx context.Context, o Order, now tim
 		return err
 	}
 	s.afterOrderMutation(ctx, o)
-	s.recordStatusTransitionFromOrder(o, prev, "PREORDER_PROMOTED", "SYSTEM", "system:midnight_guard", "PROMOTE", nil)
 	return nil
 }
 
@@ -309,11 +310,11 @@ func (s *Service) listScheduledPreorders(ctx context.Context, limit int) ([]Orde
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT ` + orderSelectColumns + ` FROM Orders
-		      WHERE Status = 'SCHEDULED' AND OrderSource = @src
+		      WHERE SupplierId IS NOT NULL
+		        AND Status = 'SCHEDULED' AND OrderSource = @src
 		      ORDER BY RequestedDeliveryDate ASC LIMIT @lim`,
 		Params: map[string]any{"src": string(OrderSourceManualPreorder), "lim": limit},
 	}
 	repo := &SpannerRepository{client: s.spannerClient}
 	return repo.queryOrders(ctx, stmt)
 }
-

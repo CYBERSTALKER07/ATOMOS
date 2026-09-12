@@ -453,3 +453,44 @@ struct ReassignOrderRequest: Encodable {
         case isPartial = "is_partial"
     }
 }
+
+struct ScoredException: Decodable, Identifiable {
+    var id: String { exceptionId }
+    let exceptionId: String
+    let type: String
+    let severity: String
+    let orderId: String
+    let score: Int64
+    let ageMinutes: Int64
+    let topPlaybookName: String
+
+    enum CodingKeys: String, CodingKey {
+        case exceptionId = "exception_id"
+        case type, severity, score
+        case orderId = "order_id"
+        case ageMinutes = "age_minutes"
+        case topPlaybookName = "top_playbook_name"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptionId = try c.decodeIfPresent(String.self, forKey: .exceptionId) ?? ""
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? ""
+        severity = try c.decodeIfPresent(String.self, forKey: .severity) ?? ""
+        orderId = try c.decodeIfPresent(String.self, forKey: .orderId) ?? ""
+        score = try c.decodeIfPresent(Int64.self, forKey: .score) ?? 0
+        ageMinutes = try c.decodeIfPresent(Int64.self, forKey: .ageMinutes) ?? 0
+        topPlaybookName = try c.decodeIfPresent(String.self, forKey: .topPlaybookName) ?? ""
+    }
+}
+
+struct ScoredExceptionsResponse: Decodable {
+    let exceptions: [ScoredException]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exceptions = try c.decodeIfPresent([ScoredException].self, forKey: .exceptions) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case exceptions }
+}

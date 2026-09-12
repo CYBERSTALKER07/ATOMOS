@@ -13,11 +13,11 @@ struct ClaimChargebacksView: View {
     var body: some View {
         List {
             Section {
-                TextField("Filter order id", text: $orderFilter)
+                TextField("supplier_portal.chargebacks.claims.text.filter_order_id", text: $orderFilter)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Button("Refresh") { Task { await load() } }
-                Text("\(items.count) rows · total \(total) minor")
+                Button("portal.page.orders.action.refresh") { Task { await load() } }
+                Text(L10n.format("mobile_supplier.ui.count_rows_total_total_minor", "\(items.count)", "\(total)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -27,20 +27,20 @@ struct ClaimChargebacksView: View {
             } else if let error {
                 Section {
                     Text(error).foregroundStyle(.red)
-                    Button("Retry") { Task { await load() } }
+                    Button("common.action.retry") { Task { await load() } }
                 }
             } else if items.isEmpty {
                 Section {
-                    Text("No claim chargebacks yet. Approve a claim to create chargeback_clm_* ledger rows.")
+                    Text("mobile_supplier.ui.no_claim_chargebacks_yet_approve_a_claim_to_create_chargeback_cl")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                Section("Claim chargebacks") {
+                Section("portal.nav.claim_chargebacks") {
                     ForEach(items) { row in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(row.amountMinor) \(row.currency.isEmpty ? "UZS" : row.currency)")
+                            Text("\(row.amountMinor) \(displayPackCurrency(row.currency))")
                                 .font(.subheadline.weight(.semibold))
-                            Text("Order \(row.orderId ?? "—")")
+                            Text(L10n.format("mobile_supplier.ui.order_orderid_2", "\(row.orderId ?? "—")"))
                                 .font(.caption)
                             if let ref = row.referenceId {
                                 Text(ref).font(.caption2.monospaced()).foregroundStyle(.secondary)
@@ -57,7 +57,7 @@ struct ClaimChargebacksView: View {
                 }
             }
         }
-        .navigationTitle("Claim chargebacks")
+        .navigationTitle("portal.nav.claim_chargebacks")
         .refreshable { await load() }
         .task { await load() }
     }

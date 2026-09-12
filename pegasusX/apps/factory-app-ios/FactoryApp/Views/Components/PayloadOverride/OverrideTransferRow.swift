@@ -27,11 +27,11 @@ struct OverrideTransferRow: View {
             }
             
             HStack {
-                Button("Move", action: onMove)
+                Button("mobile_factory.ui.move", action: onMove)
                 .buttonStyle(.borderedProminent)
                 .disabled(isProcessing || !canMove)
                 
-                Button("Release", action: onRelease)
+                Button("mobile_factory.ui.release", action: onRelease)
                 .buttonStyle(.bordered)
                 .disabled(isProcessing)
             }

@@ -5,18 +5,18 @@ struct OrderLineItems: View {
     
     var body: some View {
         if !lineItems.isEmpty {
-            Section("Line Items (\(lineItems.count))") {
+            Section(L10n.format("mobile_warehouse.ui.line_items_count", "\(lineItems.count)")) {
                 ForEach(lineItems) { item in
                     HStack {
                         VStack(alignment: .leading) {
                             Text(item.productName.isEmpty ? "Product" : item.productName)
                                 .font(.headline)
-                            Text("Qty: \(item.quantity)")
+                            Text(L10n.format("mobile_warehouse.ui.qty_quantity", "\(item.quantity)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Text("\(item.unitPrice.formatted()) UZS")
+                        Text(L10n.format("mobile_warehouse.ui.formatted_uzs", "\(item.unitPrice.formatted())"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

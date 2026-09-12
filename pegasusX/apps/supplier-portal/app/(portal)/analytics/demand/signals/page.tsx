@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -9,6 +10,7 @@ import { PageChrome } from "@/components/PageChrome";
 const api = createSupplierApi();
 
 export default function DemandSignalsPage() {
+  const t = usePortalT();
   const [signals, setSignals] = useState<DemandSignal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -34,7 +36,7 @@ export default function DemandSignalsPage() {
       .then((res) => {
         setSignals(res.signals || []);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_signals_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_signals_failed")))
       .finally(() => setLoading(false));
   };
 
@@ -75,12 +77,12 @@ export default function DemandSignalsPage() {
   return (
     <PageChrome
       icon="campaign"
-      title="Demand Signals"
-      description="External events and promotions that adjust base AI predictions."
+      title={t("portal.nav.demand_signals")}
+      description={t("supplier_portal.residual.text.external_events_and_promotions_that_adjust_base_ai_predictions")}
       loading={loading}
       error={error}
       empty={signals.length === 0 && !showForm}
-      emptyMessage="No demand signals yet. Add events or promos to adjust predictive inventory."
+      emptyMessage={t("supplier_portal.residual.text.no_demand_signals_yet_add_events_or_promos_to_adjust_predictive_")}
       actions={
         <button type="button" className="md-btn md-btn-filled md-typescale-label-large px-4 py-2" onClick={() => setShowForm(true)}>
           Add Signal
@@ -89,68 +91,68 @@ export default function DemandSignalsPage() {
     >
       {showForm && (
         <form onSubmit={addSignal} className="desk-card p-6 mt-6 max-w-2xl">
-          <h2 className="bento-card-title mb-4">New Demand Signal</h2>
+          <h2 className="bento-card-title mb-4">{t("supplier_portal.analytics.demand.signals.text.new_demand_signal")}</h2>
           <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">Type</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.ledger.text.type")}</label>
                 <select className="desk-input" value={type} onChange={(e) => setType(e.target.value)} required>
-                  <option value="HOLIDAY">Holiday</option>
-                  <option value="WEATHER">Weather</option>
-                  <option value="EVENT">Event</option>
-                  <option value="PROMO">Promotion</option>
+                  <option value="HOLIDAY">{t("supplier_portal.analytics.demand.signals.text.holiday")}</option>
+                  <option value="WEATHER">{t("supplier_portal.analytics.demand.signals.text.weather")}</option>
+                  <option value="EVENT">{t("supplier_portal.analytics.demand.signals.text.event")}</option>
+                  <option value="PROMO">{t("supplier_portal.analytics.demand.signals.text.promotion")}</option>
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">Scope</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.scope")}</label>
                 <select className="desk-input" value={scope} onChange={(e) => setScope(e.target.value)} required>
-                  <option value="GLOBAL">Global</option>
-                  <option value="REGION">Region</option>
-                  <option value="CITY">City</option>
-                  <option value="RETAILER">Retailer</option>
-                  <option value="RETAILER_SKU">Retailer SKU</option>
+                  <option value="GLOBAL">{t("supplier_portal.admin.empathy.hierarchy.global.level")}</option>
+                  <option value="REGION">{t("supplier_portal.analytics.demand.signals.text.region")}</option>
+                  <option value="CITY">{t("supplier_portal.analytics.demand.signals.text.city")}</option>
+                  <option value="RETAILER">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</option>
+                  <option value="RETAILER_SKU">{t("supplier_portal.analytics.demand.signals.text.retailer_sku")}</option>
                 </select>
               </div>
             </div>
 
             {(scope === "RETAILER" || scope === "RETAILER_SKU") && (
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">Retailer ID</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.chargebacks.text.retailer_id")}</label>
                 <input className="desk-input" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} required />
               </div>
             )}
 
             {scope === "RETAILER_SKU" && (
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">Product ID</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.product_id")}</label>
                 <input className="desk-input" value={productId} onChange={(e) => setProductId(e.target.value)} required />
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">Start Date</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.start_date")}</label>
                 <input type="date" className="desk-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="md-typescale-label-small">End Date</label>
+                <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.end_date")}</label>
                 <input type="date" className="desk-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
               </div>
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="md-typescale-label-small">Multiplier (e.g. 1.2 for 20% increase)</label>
+              <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.multiplier_e_g_1_2_for_20_increase")}</label>
               <input type="number" step="0.01" min="0.1" className="desk-input" value={multiplier} onChange={(e) => setMultiplier(parseFloat(e.target.value))} required />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="md-typescale-label-small">Description</label>
+              <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.description")}</label>
               <input className="desk-input" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
           </div>
           <div className="flex items-center gap-4 mt-6">
-            <button type="submit" className="md-btn md-btn-filled px-6 py-2">Save</button>
-            <button type="button" className="md-btn md-btn-text" onClick={() => setShowForm(false)}>Cancel</button>
+            <button type="submit" className="md-btn md-btn-filled px-6 py-2">{t("common.action.save")}</button>
+            <button type="button" className="md-btn md-btn-text" onClick={() => setShowForm(false)}>{t("common.action.cancel")}</button>
           </div>
         </form>
       )}
@@ -160,11 +162,11 @@ export default function DemandSignalsPage() {
           <table className="desk-table w-full">
             <thead>
               <tr style={{ color: "var(--desk-text-secondary)" }}>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Type</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Scope</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Date Range</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Multiplier</th>
-                <th className="md-typescale-label-medium p-3 text-left font-medium">Description</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.ledger.text.type")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.signals.text.scope")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.signals.text.date_range")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.signals.text.multiplier")}</th>
+                <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.demand.signals.text.description")}</th>
               </tr>
             </thead>
             <tbody>

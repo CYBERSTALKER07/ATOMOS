@@ -17,6 +17,10 @@ export function payloadSealCompletedKey(manifestIds: string[]): string {
   return buildPayloadIdempotencyKey('seal-completed', sorted.join(','));
 }
 
+export function payloadSealAllKey(payloaderId: string): string {
+  return buildPayloadIdempotencyKey('seal-all', payloaderId || 'payloader');
+}
+
 export function payloadOrderSealKey(orderId: string): string {
   return buildPayloadIdempotencyKey('payload-seal', orderId);
 }

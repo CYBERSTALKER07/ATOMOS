@@ -21,6 +21,7 @@ enum class SupplierSection(
     FLEET_ORDERS(SupplierRoutes.FLEET_ORDERS, "Fleet orders", Icons.Default.LocalShipping),
     ORG_FLEET(SupplierRoutes.ORG_FLEET, "Org & fleet", Icons.Default.Groups),
     TREASURY_HUB(SupplierRoutes.TREASURY_HUB, "Treasury", Icons.Default.AccountBalance),
+    PAYOUTS(SupplierRoutes.PAYOUTS, "Payouts", Icons.Default.AccountBalanceWallet),
     LEDGER(SupplierRoutes.LEDGER, "Ledger", Icons.Default.AccountBalance),
     PAYMENTS(SupplierRoutes.PAYMENTS, "Payments", Icons.Default.Payment),
     CHARGEBACKS(SupplierRoutes.CHARGEBACKS, "Chargebacks", Icons.Default.Payments),
@@ -30,9 +31,21 @@ enum class SupplierSection(
     AI_RECOMMENDATIONS(SupplierRoutes.AI_RECOMMENDATIONS, "AI recommendations", Icons.Default.AutoAwesome),
     GEO_REPORT(SupplierRoutes.GEO_REPORT, "Geo report", Icons.Default.Map),
     DEMAND_HISTORY(SupplierRoutes.DEMAND_HISTORY, "Demand forecast", Icons.Default.Timeline),
+    PLANNING_BRAIN(SupplierRoutes.PLANNING_BRAIN, "Plan", Icons.Default.AutoAwesome),
     TOPOLOGY(SupplierRoutes.TOPOLOGY, "Topology", Icons.Default.Hub),
     FACTORIES(SupplierRoutes.FACTORIES, "Factories", Icons.Default.Business),
     WAREHOUSES(SupplierRoutes.WAREHOUSES, "Warehouses", Icons.Default.Inventory2),
+    CRM(SupplierRoutes.CRM, "CRM", Icons.Default.People),
+    LOYALTY(SupplierRoutes.LOYALTY, "Loyalty", Icons.Default.Star),
+    ENTITY_RESOLUTION(SupplierRoutes.ENTITY_RESOLUTION, "Entity resolution", Icons.Default.Hub),
+    CONTROL_TOWER(SupplierRoutes.CONTROL_TOWER, "Control tower", Icons.Default.Hub),
+    PLAYBOOKS(SupplierRoutes.PLAYBOOKS, "Playbooks", Icons.Default.Description),
+    SEGMENTATION(SupplierRoutes.SEGMENTATION, "Segmentation", Icons.Default.Category),
+    TAX_REGIMES(SupplierRoutes.TAX_REGIMES, "Tax regimes", Icons.Default.AccountBalance),
+    CREDIT_POLICY(SupplierRoutes.CREDIT_POLICY, "Credit policy", Icons.Default.Policy),
+    CREDIT_ADMIN_DISABLE(SupplierRoutes.CREDIT_ADMIN_DISABLE, "Credit disable", Icons.Default.Warning),
+    FLYWHEEL(SupplierRoutes.FLYWHEEL, "POS flywheel", Icons.Default.Sync),
+    PAYDAY_CALENDAR(SupplierRoutes.PAYDAY_CALENDAR, "Payday calendar", Icons.Default.Event),
     DELIVERY_ZONES(SupplierRoutes.DELIVERY_ZONES, "Delivery zones", Icons.Default.Place),
     SUPPLY_LANES(SupplierRoutes.SUPPLY_LANES, "Supply lanes", Icons.Default.SwapHoriz),
     CATALOG(SupplierRoutes.CATALOG, "Catalog", Icons.Default.GridView),
@@ -50,16 +63,20 @@ enum class SupplierSection(
     ;
 
     companion object {
-        val compactTabs = listOf(DASHBOARD, ORDERS, FLEET, MORE)
+        val compactTabs = listOf(DASHBOARD, ORDERS, DISPATCH_PREVIEW, PLANNING_BRAIN, MORE)
 
         /** Tablet / expanded rail — aligned with iOS sidebar + portal shell. */
         val opsSections = listOf(
+            FLEET,
             MANIFESTS,
-            DISPATCH_PREVIEW,
             ACTIVITY,
             FLEET_ORDERS,
             ORG_FLEET,
             TREASURY_HUB,
+            PAYOUTS,
+            CREDIT_POLICY,
+            CREDIT_ADMIN_DISABLE,
+            TAX_REGIMES,
             LEDGER,
             PAYMENTS,
             CHARGEBACKS,
@@ -72,10 +89,18 @@ enum class SupplierSection(
             AI_RECOMMENDATIONS,
             GEO_REPORT,
             DEMAND_HISTORY,
+            CONTROL_TOWER,
+            PLAYBOOKS,
+            FLYWHEEL,
+            PAYDAY_CALENDAR,
         )
 
         val networkSections = listOf(
             TOPOLOGY,
+            CRM,
+            LOYALTY,
+            ENTITY_RESOLUTION,
+            SEGMENTATION,
             FACTORIES,
             WAREHOUSES,
             DELIVERY_ZONES,

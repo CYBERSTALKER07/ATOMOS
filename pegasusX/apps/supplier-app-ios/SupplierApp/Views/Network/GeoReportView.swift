@@ -18,7 +18,7 @@ struct GeoReportView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Geo report")
+        .navigationTitle("supplier_portal.geo_report.text.geo_report")
         .task { await load() }
     }
 

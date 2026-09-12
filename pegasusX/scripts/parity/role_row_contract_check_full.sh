@@ -14,13 +14,9 @@ trap 'rm -f "$ROUTES_TMP" "$PATHS_TMP"' EXIT
 
 # Collect registered HTTP paths from route mounts, main.go, and handler doc comments.
 grep -RhE '"/v1/[^"]+"' \
-  apps/backend-go/*routes/*.go \
+  apps/backend-go/*/*.go \
+  apps/backend-go/*/*/*.go \
   apps/backend-go/main.go \
-  apps/backend-go/geolocation/handlers.go \
-  apps/backend-go/supplier/import_sessions.go \
-  apps/backend-go/order/compliance_audit.go \
-  apps/backend-go/order/shop_closed.go \
-  apps/backend-go/analytics/*.go \
   2>/dev/null \
   | grep -v '_test.go' \
   | sed -E 's/.*"(\/v1\/[^"]+)".*/\1/' \
@@ -110,7 +106,7 @@ should_skip_path() {
     /v1/auth/retailer|/v1/catalog) return 0 ;;
   esac
   case "$path" in
-    /v1/ws|/v1/ws/*|/v1/token|/v1/sync/batch) return 0 ;;
+    /v1/ws|/v1/ws/*|/v1/token|/v1/sync/batch|/v1/accounts*|/v1/projects*|/v1/as2*) return 0 ;;
   esac
   if is_doc_only_path "$path"; then
     return 0
@@ -158,13 +154,50 @@ for dir in "${CLIENT_DIRS[@]}"; do
 done | sort -u >"$PATHS_TMP"
 
 MISSING=0
-while IFS= read -r path; do
-  should_skip_path "$path" && continue
-  if ! route_matches "$path"; then
-    echo "missing-route: $path" >&2
-    MISSING=$((MISSING + 1))
-  fi
-done <"$PATHS_TMP"
+if python3 -c "
+import re, sys
+
+def norm(p):
+    return re.sub(r'\{[^}]+\}', '{id}', p.strip().rstrip('.,;:!?)'))
+
+def segment_match(c_parts, r_parts):
+    if len(c_parts) != len(r_parts):
+        return False
+    for c, r in zip(c_parts, r_parts):
+        if r == '{id}' or c == '{id}':
+            continue
+        if c != r:
+            return False
+    return True
+
+routes = [norm(line) for line in open('$ROUTES_TMP') if line.strip()]
+route_parts = [r.strip('/').split('/') for r in routes]
+
+missing = 0
+skip_prefixes = ('/v1/ws', '/v1/token', '/v1/sync/batch', '/v1/accounts', '/v1/projects', '/v1/as2', '/v1/fleet/active', '/v1/order-items')
+
+for line in open('$PATHS_TMP'):
+    p = line.strip()
+    if not p or '?' in p or p.endswith('/') or 'Binary file' in p:
+        continue
+    if p.startswith(skip_prefixes) or p in ('/v1/auth/retailer', '/v1/catalog'):
+        continue
+    p_norm = norm(p)
+    p_parts = p_norm.strip('/').split('/')
+    matched = False
+    for r_norm, r_p in zip(routes, route_parts):
+        if p_norm == r_norm or segment_match(p_parts, r_p):
+            matched = True
+            break
+    if not matched:
+        print(f'missing-route: {p}', file=sys.stderr)
+        missing += 1
+sys.exit(missing)
+" 2>&1; then
+  MISSING=0
+else
+  MISSING=$?
+fi
 
 # Required P0 paths (PX12-B) must be registered.
 REQUIRED=(

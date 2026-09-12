@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -8,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun PaymentBypass(
@@ -45,7 +48,7 @@ fun PaymentBypass(
             Text(if (bypassing) "Issuing…" else "Issue bypass token")
         }
         bypassToken?.let { token ->
-            Text("Driver token: $token", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.mobile_supplier_ui_driver_token_token, token), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

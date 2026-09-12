@@ -11,18 +11,20 @@ export const SITE_IMAGES = {
   portCraneScene: '/Gemini_Generated_Image_ngsos5ngsos5ngso.png',
   operationsTeam: '/Gemini_Generated_Image_xvlgisxvlgisxvlg.png',
   warehouseWireframe: '/Gemini_Generated_Image_y7jkmqy7jkmqy7jk.png',
+  fleekHeroNew: '/Gemini_Generated_Image_un3te4un3te4un3t.png',
+  /** Driver → storefront handoff (stipple). */
+  lastMileDelivery: '/Unknown-11.jpg',
 } as const;
 
 /** Rotating editorial cards — supplier, warehouse, retailer, fleet, finance, etc. */
 export const EDITORIAL_IMAGES = [
-  SITE_IMAGES.pegasusContainer,
-  SITE_IMAGES.multimodalHub,
-  SITE_IMAGES.operationsTeam,
-  SITE_IMAGES.truckTerminal,
-  SITE_IMAGES.warehouseWireframe,
-  SITE_IMAGES.warehouseAutomation,
+  SITE_IMAGES.logisticsPlatformUi,
   SITE_IMAGES.deliveryDrone,
+  SITE_IMAGES.pegasusContainer,
   SITE_IMAGES.terminalArchitecture,
+  SITE_IMAGES.fleekHeroNew,
+  SITE_IMAGES.operationsTeam,
+  SITE_IMAGES.warehouseWireframe,
 ] as const;
 
 /** Fleet showcase carousel — trucks, ships, and intermodal yards. */
@@ -72,6 +74,8 @@ export const FLEET_SHOWCASE_CAPTIONS = [
 
 export const HERO_VIDEO_POSTER = SITE_IMAGES.truckTerminal;
 export const ORDER_LIFECYCLE_POSTER = SITE_IMAGES.truckTerminal;
-export const OG_IMAGE = SITE_IMAGES.pegasusContainer;
+/** Brand mark — nav, footer, and social link previews. */
+export const BRAND_LOGO = '/pegasus.jpg';
+export const OG_IMAGE = BRAND_LOGO;
 export const SOLUTIONS_DEFAULT_IMAGE = SITE_IMAGES.warehouseWireframe;
 export const DISPATCH_ARCADE_IMAGE = SITE_IMAGES.warehouseAutomation;

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AuthLoginCard } from "@pegasusx/ui-kit/auth";
@@ -11,6 +12,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 type LoginStep = "phone" | "otp";
 
 export default function RetailerLoginPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("phone");
   const [countryCode, setCountryCode] = useState("UZ");
@@ -25,7 +27,7 @@ export default function RetailerLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6,14}$/.test(phoneLocal)) {
-      setError("Enter a valid phone number (6-14 digits)");
+      setError(t("retailer_desktop.residual.text.enter_a_valid_phone_number_6_14_digits"));
       return;
     }
     setLoading(true);
@@ -33,7 +35,7 @@ export default function RetailerLoginPage() {
       await sendPhoneOtp(`${dialCode}${phoneLocal}`);
       setStep("otp");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send verification code");
+      setError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.failed_to_send_verification_code"));
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ export default function RetailerLoginPage() {
     e.preventDefault();
     setError(null);
     if (!/^\d{6}$/.test(otpCode)) {
-      setError("Enter the 6-digit code");
+      setError(t("retailer_desktop.residual.text.enter_the_6_digit_code"));
       return;
     }
 
@@ -84,7 +86,7 @@ export default function RetailerLoginPage() {
       await applyFullAuthResponse(data, { clearScoped: false });
       router.replace(data.is_configured ? "/dashboard" : "/setup/tax");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("auth.error.login_failed"));
     } finally {
       setLoading(false);
     }
@@ -92,11 +94,11 @@ export default function RetailerLoginPage() {
 
   return (
     <AuthLoginCard
-      title="Retailer sign in"
+      title={t("retailer_desktop.auth.login.text.retailer_sign_in")}
       subtitle={
         step === "phone"
-          ? "Enter your registered phone number."
-          : `Enter the 6-digit code sent to ${dialCode}${phoneLocal}`
+          ? t("retailer_desktop.auth.login.text.enter_registered_phone")
+          : t("retailer_desktop.auth.login.text.enter_otp_sent_to", { phone: `${dialCode}${phoneLocal}` })
       }
       step={step}
       countryCode={countryCode}
@@ -105,8 +107,8 @@ export default function RetailerLoginPage() {
       error={error}
       loading={loading}
       registerHref="/auth/register"
-      registerPrompt="New retailer?"
-      registerLabel="Register"
+      registerPrompt={t("retailer_desktop.residual.text.new_retailer")}
+      registerLabel={t("retailer_desktop.residual.text.register")}
       onCountryChange={setCountryCode}
       onPhoneChange={setPhoneLocal}
       onOtpChange={setOtpCode}

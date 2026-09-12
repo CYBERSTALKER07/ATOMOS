@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { useState, useRef } from "react";
 import type { CatalogCategory, CreateProductFormState, SaleUnit } from "./types";
 import { ALLOWED_IMAGE_TYPES } from "./types";
@@ -28,6 +31,7 @@ interface CreateProductFormProps {
 }
 
 export function CreateProductForm({ categories, currency, initialCategory, onCancel, onSave }: CreateProductFormProps) {
+  const t = usePortalT();
   const [form, setForm] = useState<CreateProductFormState>({
     ...EMPTY_CREATE_FORM,
     category_id: initialCategory || categories[0]?.category_id || "",
@@ -45,15 +49,15 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
     const unitVolume = Number.parseFloat(form.unit_volume_vu);
     
     if (!name || !categoryId) {
-      setError("Name and category are required.");
+      setError(t("supplier_portal.residual.text.name_and_category_are_required"));
       return;
     }
     if (!Number.isFinite(priceMinor) || priceMinor < 0) {
-      setError("Price must be a non-negative integer (minor units).");
+      setError(t("supplier_portal.residual.text.price_must_be_a_non_negative_integer_minor_units"));
       return;
     }
     if (!Number.isFinite(unitVolume) || unitVolume <= 0) {
-      setError("Unit VU must be a positive number.");
+      setError(t("supplier_portal.residual.text.unit_vu_must_be_a_positive_number"));
       return;
     }
     
@@ -76,7 +80,7 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
     if (form.sale_unit === "CASE") {
       const parsed = Number.parseInt(form.units_per_case, 10);
       if (!Number.isFinite(parsed) || parsed <= 0) {
-        setError("Units per case must be a positive integer when selling by case.");
+        setError(t("supplier_portal.residual.text.units_per_case_must_be_a_positive_integer_when_selling_by_case"));
         return;
       }
       unitsPerCase = parsed;
@@ -87,7 +91,7 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
     try {
       await onSave(form, normalizedBarcode, unitsPerCase, imageFile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create product");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_create_product"));
     } finally {
       setCreating(false);
     }
@@ -113,7 +117,7 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
           style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
         >
           {categories.length === 0 ? (
-            <option value="">No categories — complete onboarding first</option>
+            <option value="">{t("supplier_portal.catalog.components.create_product_form.text.no_categories_complete_onboarding_first")}</option>
           ) : (
             categories.map(category => (
               <option key={category.category_id} value={category.category_id}>
@@ -155,8 +159,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
           className="px-3 py-2 rounded border"
           style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
         >
-          <option value="UNIT">Unit</option>
-          <option value="CASE">Case</option>
+          <option value="UNIT">{t("supplier_portal.catalog.components.catalog_table.text.unit")}</option>
+          <option value="CASE">{t("supplier_portal.catalog.components.catalog_table.text.case")}</option>
         </select>
       </label>
       {form.sale_unit === "CASE" && (
@@ -198,7 +202,7 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imagePreview}
-              alt="Preview"
+              alt={t("supplier_portal.residual.text.preview")}
               className="h-16 w-16 object-cover border border-[var(--color-md-outline-variant)]"
             />
           )}
@@ -209,7 +213,7 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
         <input
           value={form.barcode}
           onChange={e => setForm(prev => ({ ...prev, barcode: e.target.value }))}
-          placeholder="8–14 digit retail barcode"
+          placeholder={t("supplier_portal.catalog.components.create_product_form.text.8_14_digit_retail_barcode")}
           className="px-3 py-2 rounded border font-mono"
           style={{ background: "var(--field-background)", borderColor: "var(--field-border)" }}
         />

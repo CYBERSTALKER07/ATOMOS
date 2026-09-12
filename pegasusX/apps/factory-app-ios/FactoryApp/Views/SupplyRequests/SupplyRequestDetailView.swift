@@ -42,11 +42,11 @@ struct SupplyRequestDetailView: View {
                 }
             }
         }
-        .navigationTitle("Request Details")
+        .navigationTitle("mobile_factory.ui.request_details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") {
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                     Task { await load() }
                 }
                 .disabled(isProcessing)
@@ -65,9 +65,9 @@ struct SupplyRequestDetailView: View {
                 Spacer()
                 FactoryStatusBadge(text: request.state)
             }
-            Text("\(Int(request.totalVolumeVU)) VU")
+            Text(L10n.format("mobile_factory.ui.totalvolumevu_vu", "\(Int(request.totalVolumeVU))"))
                 .font(.largeTitle.bold())
-            Text("Priority: \(request.priority)")
+            Text(L10n.format("mobile_factory.ui.priority_priority", "\(request.priority)"))
                 .font(.headline)
                 .foregroundStyle(request.priority == "URGENT" ? .red : .primary)
         }
@@ -79,7 +79,7 @@ struct SupplyRequestDetailView: View {
         
         if !actions.isEmpty {
             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                Text("Actions")
+                Text("retailer_desktop.stock.text.actions")
                     .font(.headline)
                 
                 HStack(spacing: LabTheme.spacingMD) {
@@ -109,7 +109,7 @@ struct SupplyRequestDetailView: View {
     @ViewBuilder
     private func detailsSection(_ request: SupplyRequest) -> some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-            Text("Details")
+            Text("mobile_factory.ui.details")
                 .font(.headline)
 
             VStack(spacing: LabTheme.spacingSM) {
@@ -128,7 +128,7 @@ struct SupplyRequestDetailView: View {
             .cornerRadius(LabTheme.radiusLG)
 
             if !request.notes.isEmpty {
-                Text("Notes")
+                Text("factory_portal.transfers._id_.text.notes")
                     .font(.headline)
                     .padding(.top, LabTheme.spacingSM)
                 

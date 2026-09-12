@@ -1,4 +1,4 @@
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 
 export type DispatchRunRow = {
   run_id: string;
@@ -17,7 +17,7 @@ export function dispatchRunsCacheKey(warehouseId: string): string {
 export async function getDispatchRunsCache(
   key: string,
 ): Promise<DispatchRunRow[] | null> {
-  return cacheGet<DispatchRunRow[]>(key);
+  return cacheGet<DispatchRunRow[]>(key, { maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS });
 }
 
 export async function setDispatchRunsCache(

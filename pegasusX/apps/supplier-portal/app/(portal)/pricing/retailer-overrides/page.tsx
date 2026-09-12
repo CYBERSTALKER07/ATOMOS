@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
@@ -7,7 +8,7 @@ import { supplierScopeId } from "@/lib/supplier-scope";
 import {
   supplierRetailerPriceOverrideCreateKey,
   supplierRetailerPriceOverrideDeleteKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { supplierFetch } from "@/lib/auth";
 import type { CreateRetailerPriceOverrideRequest, RetailerOverridePreview, RetailerPriceOverride } from "@pegasusx/types";
 import { PageChrome } from '@/components/PageChrome';
@@ -39,6 +40,7 @@ function formatPrice(value: number): string {
 }
 
 export default function RetailerOverridesPage() {
+  const t = usePortalT();
   const [overrides, setOverrides] = useState<RetailerPriceOverride[]>([]);
   const [products, setProducts] = useState<CatalogProductOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ export default function RetailerOverridesPage() {
       const res = await api.listRetailerPriceOverrides(params);
       setOverrides(res.overrides ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load overrides");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_overrides"));
     } finally {
       setLoading(false);
     }
@@ -158,7 +160,7 @@ export default function RetailerOverridesPage() {
       setShowCreate(false);
       await loadOverrides();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Failed to create override");
+      setFormError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_create_override"));
     } finally {
       setSaving(false);
     }
@@ -175,7 +177,7 @@ export default function RetailerOverridesPage() {
       );
       await loadOverrides();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete override");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_delete_override"));
     } finally {
       setDeletingId(null);
     }
@@ -184,12 +186,12 @@ export default function RetailerOverridesPage() {
   return (
     <PageChrome
       icon="pricing"
-      title="Retailer overrides"
-      description="Set custom prices per retailer and product SKU."
+      title={t("supplier_portal.pricing.retailer_overrides.text.retailer_overrides")}
+      description={t("supplier_portal.residual.text.set_custom_prices_per_retailer_and_product_sku")}
       loading={loading}
       error={error}
       empty={!showCreate && overrides.length === 0}
-      emptyMessage="No retailer price overrides yet."
+      emptyMessage={t("supplier_portal.residual.text.no_retailer_price_overrides_yet")}
       emptyIcon="pricing"
       actions={
         <button
@@ -205,31 +207,31 @@ export default function RetailerOverridesPage() {
       }
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Metric label="Active overrides" value={String(overrides.length)} />
-        <Metric label="Retailers" value={String(uniqueRetailers)} />
-        <Metric label="Products" value={String(new Set(overrides.map((row) => row.product_id)).size)} />
+        <Metric label={t("supplier_portal.settings.planning.text.active_overrides")} value={String(overrides.length)} />
+        <Metric label={t("portal.nav.retailers")} value={String(uniqueRetailers)} />
+        <Metric label={t("portal.nav.products")} value={String(new Set(overrides.map((row) => row.product_id)).size)} />
         <Metric
-          label="Catalog SKUs"
+          label={t("supplier_portal.residual.text.catalog_skus")}
           value={products.length > 0 ? String(products.length) : "—"}
         />
       </div>
 
       <div className="md-card p-4 mb-6 flex flex-wrap gap-3 items-end">
-        <Field label="Filter retailer ID">
+        <Field label={t("supplier_portal.residual.text.filter_retailer_id")}>
           <input
             className="md-input-outlined w-full min-w-[12rem] px-3 py-2"
             value={filterRetailer}
             onChange={(event) => setFilterRetailer(event.target.value)}
-            placeholder="Retailer UUID"
+            placeholder={t("supplier_portal.pricing.retailer_overrides.text.retailer_uuid")}
           />
         </Field>
-        <Field label="Filter product ID">
+        <Field label={t("supplier_portal.residual.text.filter_product_id")}>
           <select
             className="md-input-outlined w-full min-w-[12rem] px-3 py-2"
             value={filterProduct}
             onChange={(event) => setFilterProduct(event.target.value)}
           >
-            <option value="">All products</option>
+            <option value="">{t("supplier_portal.pricing.retailer_overrides.text.all_products")}</option>
             {products.map((product) => (
               <option key={product.product_id} value={product.product_id}>
                 {product.name}
@@ -248,23 +250,23 @@ export default function RetailerOverridesPage() {
 
       {showCreate ? (
         <form className="md-card p-6 mb-6 space-y-4" onSubmit={handleCreate}>
-          <h2 className="md-typescale-title-medium font-semibold">New price override</h2>
+          <h2 className="md-typescale-title-medium font-semibold">{t("supplier_portal.pricing.retailer_overrides.text.new_price_override")}</h2>
           {formError ? (
             <p className="md-typescale-body-small" style={{ color: "var(--color-md-error)" }}>
               {formError}
             </p>
           ) : null}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Retailer ID">
+            <Field label={t("supplier_portal.chargebacks.text.retailer_id")}>
               <input
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.retailer_id}
                 onChange={(event) => setForm((prev) => ({ ...prev, retailer_id: event.target.value }))}
-                placeholder="Retailer UUID"
+                placeholder={t("supplier_portal.pricing.retailer_overrides.text.retailer_uuid")}
                 required
               />
             </Field>
-            <Field label="Product ID (SKU)">
+            <Field label={t("supplier_portal.residual.text.product_id_sku")}>
               {products.length > 0 ? (
                 <select
                   className="md-input-outlined w-full px-3 py-2"
@@ -272,7 +274,7 @@ export default function RetailerOverridesPage() {
                   onChange={(event) => setForm((prev) => ({ ...prev, product_id: event.target.value }))}
                   required
                 >
-                  <option value="">Select a product</option>
+                  <option value="">{t("supplier_portal.pricing.retailer_overrides.text.select_a_product")}</option>
                   {products.map((product) => (
                     <option key={product.product_id} value={product.product_id}>
                       {product.name}
@@ -284,12 +286,12 @@ export default function RetailerOverridesPage() {
                   className="md-input-outlined w-full px-3 py-2 font-mono"
                   value={form.product_id}
                   onChange={(event) => setForm((prev) => ({ ...prev, product_id: event.target.value }))}
-                  placeholder="Product UUID"
+                  placeholder={t("supplier_portal.pricing.retailer_overrides.text.product_uuid")}
                   required
                 />
               )}
             </Field>
-            <Field label="Override price (minor units)">
+            <Field label={t("supplier_portal.residual.text.override_price_minor_units")}>
               <input
                 type="number"
                 min="1"
@@ -299,20 +301,20 @@ export default function RetailerOverridesPage() {
                 required
               />
             </Field>
-            <Field label="Notes">
+            <Field label={t("supplier_portal.pricing.retailer_overrides.text.notes")}>
               <input
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.notes}
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                placeholder="Reason for override"
+                placeholder={t("supplier_portal.pricing.retailer_overrides.text.reason_for_override")}
               />
             </Field>
           </div>
           {previewLoading ? (
-            <p className="text-sm opacity-60">Calculating impact preview…</p>
+            <p className="text-sm opacity-60">{t("supplier_portal.pricing.retailer_overrides.text.calculating_impact_preview")}</p>
           ) : preview ? (
             <div className="rounded-lg border p-4 space-y-2" style={{ borderColor: "var(--color-md-outline-variant)" }}>
-              <p className="md-typescale-label-large font-semibold">Impact preview</p>
+              <p className="md-typescale-label-large font-semibold">{t("supplier_portal.pricing.retailer_overrides.text.impact_preview")}</p>
               <p className="text-sm">Retailers on SKU: {preview.retailers_on_sku_count}</p>
               <p className="text-sm">Active overrides: {preview.active_override_count}</p>
               <p className="text-sm">Catalog list price: {formatPrice(preview.catalog_list_price)}</p>
@@ -349,12 +351,12 @@ export default function RetailerOverridesPage() {
           <table className="min-w-full text-left">
             <thead className="border-b border-[var(--color-md-outline-variant)]">
               <tr>
-                <th className="px-4 py-3 md-typescale-label-large">Product</th>
-                <th className="px-4 py-3 md-typescale-label-large">Retailer</th>
-                <th className="px-4 py-3 md-typescale-label-large text-right">Price</th>
-                <th className="px-4 py-3 md-typescale-label-large">Set by</th>
-                <th className="px-4 py-3 md-typescale-label-large">Notes</th>
-                <th className="px-4 py-3 md-typescale-label-large text-right">Actions</th>
+                <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
+                <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.pricing.retailer_overrides.text.price")}</th>
+                <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.pricing.retailer_overrides.text.set_by")}</th>
+                <th className="px-4 py-3 md-typescale-label-large">{t("supplier_portal.pricing.retailer_overrides.text.notes")}</th>
+                <th className="px-4 py-3 md-typescale-label-large text-right">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
               </tr>
             </thead>
             <tbody>

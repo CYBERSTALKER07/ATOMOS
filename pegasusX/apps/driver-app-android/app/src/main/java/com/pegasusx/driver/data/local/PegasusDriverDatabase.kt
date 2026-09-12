@@ -10,7 +10,7 @@ import com.pegasusx.driver.data.model.TelemetryLocationEntity
 
 @Database(
     entities = [OrderEntity::class, RouteManifestEntity::class, PendingMutationEntity::class, TelemetryLocationEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class PegasusDriverDatabase : RoomDatabase() {
