@@ -38,7 +38,7 @@ function LitePegasus({ color }: { color: string }) {
         />
       </div>
       <div className="absolute bottom-5 left-5 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-white/40 flex items-center space-x-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
         <span>PEGASUS · LOGISTICS OS</span>
       </div>
     </div>
@@ -341,7 +341,7 @@ export default function Digit369({
 
       {/* Bottom Status Metadata Line */}
       <div className="absolute bottom-5 left-5 z-20 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-white/40 flex items-center space-x-2 pointer-events-none">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
         <span>PEGASUS · LOGISTICS OS</span>
       </div>
     </div>
