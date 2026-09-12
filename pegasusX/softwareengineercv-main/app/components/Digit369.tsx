@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 
-const FILL_CHARS = '0123456789#$%@&*+=<>/\\|[];:^~IOXZ';
-const FIGURES = ['3', '6', '9'] as const;
-const FIG_CENTERS = [0.2, 0.5, 0.8] as const;
+const FILL_CHARS = '0123456789#$%@&*+=<>/\\|[];:^~IOXZPEGASUS';
 
 type Digit369Props = {
   color?: string;
@@ -22,34 +21,30 @@ function hexToRgb(hex: string) {
   };
 }
 
-function Lite369({ color }: { color: string }) {
+function LitePegasus({ color }: { color: string }) {
   return (
-    <div className="relative flex h-full min-h-[240px] sm:min-h-[320px] w-full items-center justify-center bg-black px-6 py-10">
-      <div className="flex w-full max-w-lg items-end justify-between gap-2 sm:gap-4">
-        {FIGURES.map((n, i) => (
-          <span
-            key={n}
-            className="font-extralight leading-none text-white/80"
-            style={{
-              color,
-              fontSize: 'clamp(3.5rem, 18vw, 7rem)',
-              opacity: 0.55 + i * 0.15,
-            }}
-          >
-            {n}
-          </span>
-        ))}
+    <div className="relative flex h-full min-h-[240px] sm:min-h-[320px] w-full items-center justify-center bg-black px-6 py-10 overflow-hidden">
+      <div className="relative w-48 h-48 sm:w-64 sm:h-64 flex items-center justify-center">
+        <div className="absolute inset-0 bg-blue-600/15 rounded-full blur-3xl" />
+        <Image
+          src="/pegasus.jpg"
+          alt="Pegasus Emblem"
+          width={240}
+          height={240}
+          className="object-contain filter brightness-110 contrast-125 select-none"
+        />
       </div>
-      <div className="absolute bottom-5 left-5 font-mono text-[0.6rem] uppercase tracking-[0.28em] text-white/35">
-        3 · 6 · 9
+      <div className="absolute bottom-5 left-5 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-white/40 flex items-center space-x-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span>PEGASUS · LOGISTICS OS</span>
       </div>
     </div>
   );
 }
 
 /**
- * 3 / 6 / 9 filled with digits & symbols.
- * Continuous FX on capable desktops only; lite static type on mobile/tablet/low-end.
+ * Interactive Pegasus Emblem Matrix.
+ * Replaces the 369 figures with the official Pegasus winged shape composed of dynamic digital glyphs.
  */
 export default function Digit369({
   color = '#e8e4e3',
@@ -99,7 +94,13 @@ export default function Digit369({
 
     const mouse = { x: 0.5, y: 0.5, tx: 0.5, ty: 0.5 };
 
+    // Preload Pegasus logo image for canvas silhouette sampling
+    const pegasusImg = new window.Image();
+    pegasusImg.src = '/pegasus.jpg';
+
     const buildMask = () => {
+      if (cols <= 0 || rows <= 0) return;
+
       const off = document.createElement('canvas');
       off.width = cols;
       off.height = rows;
@@ -107,26 +108,50 @@ export default function Digit369({
       if (!octx) return;
 
       mask = new Int8Array(cols * rows).fill(-1);
-      const fontPx = Math.floor(rows * 0.62);
 
-      for (let id = 0; id < 3; id++) {
-        octx.clearRect(0, 0, cols, rows);
-        octx.fillStyle = '#000';
-        octx.fillRect(0, 0, cols, rows);
-        octx.fillStyle = '#fff';
-        octx.textAlign = 'center';
-        octx.textBaseline = 'middle';
-        octx.font = `800 ${fontPx}px ui-monospace, Menlo, monospace`;
-        octx.fillText(FIGURES[id], cols * FIG_CENTERS[id]!, rows * 0.5);
+      octx.clearRect(0, 0, cols, rows);
+      octx.fillStyle = '#000';
+      octx.fillRect(0, 0, cols, rows);
+
+      if (pegasusImg.complete && pegasusImg.naturalWidth > 0) {
+        // Fit the Pegasus logo into the grid with responsive margin
+        const padX = cols * 0.12;
+        const padY = rows * 0.12;
+        const maxW = cols - padX * 2;
+        const maxH = rows - padY * 2;
+        const imgAspect = pegasusImg.naturalWidth / pegasusImg.naturalHeight;
+
+        let drawW = maxW;
+        let drawH = drawW / imgAspect;
+        if (drawH > maxH) {
+          drawH = maxH;
+          drawW = drawH * imgAspect;
+        }
+
+        const drawX = (cols - drawW) / 2;
+        const drawY = (rows - drawH) / 2;
+
+        octx.drawImage(pegasusImg, drawX, drawY, drawW, drawH);
 
         const data = octx.getImageData(0, 0, cols, rows).data;
         for (let i = 0; i < cols * rows; i++) {
-          if (data[i * 4]! > 40) mask[i] = id as 0 | 1 | 2;
+          const r = data[i * 4];
+          const g = data[i * 4 + 1];
+          const b = data[i * 4 + 2];
+          // Sample luminance of the white Pegasus shape on black background
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          if (lum > 40) {
+            mask[i] = 0; // In Pegasus shape
+          }
         }
       }
 
       chars = Array.from({ length: cols * rows }, pick);
       bgChars = Array.from({ length: cols * rows }, pick);
+    };
+
+    pegasusImg.onload = () => {
+      buildMask();
     };
 
     const resize = () => {
@@ -175,30 +200,17 @@ export default function Digit369({
       mouse.x += (mouse.tx - mouse.x) * (hover ? 0.16 : 0.06);
       mouse.y += (mouse.ty - mouse.y) * (hover ? 0.16 : 0.06);
 
-      let activeFig = -1;
-      let best = 1;
-      if (hover) {
-        for (let f = 0; f < 3; f++) {
-          const d = Math.abs(mouse.x - FIG_CENTERS[f]!);
-          if (d < best) {
-            best = d;
-            activeFig = f;
-          }
-        }
-        if (best > 0.18) activeFig = -1;
-      }
-
-      const glyphRate = hover ? (activeFig >= 0 ? 0.16 : 0.1) : 0.03;
+      // Scramble active characters in the Pegasus shape
+      const glyphRate = hover ? 0.14 : 0.035;
       const glyphUpdates = Math.max(6, Math.floor(chars.length * glyphRate));
       for (let n = 0; n < glyphUpdates; n++) {
         const idx = Math.floor(Math.random() * chars.length);
         if (mask[idx]! < 0) continue;
-        if (activeFig >= 0 && mask[idx] !== activeFig && Math.random() < 0.55) continue;
         chars[idx] = pick();
       }
 
       if (hover) {
-        const bgUpdates = Math.max(6, Math.floor(bgChars.length * 0.045));
+        const bgUpdates = Math.max(6, Math.floor(bgChars.length * 0.05));
         for (let n = 0; n < bgUpdates; n++) {
           const idx = Math.floor(Math.random() * bgChars.length);
           if (mask[idx]! >= 0) continue;
@@ -206,11 +218,13 @@ export default function Digit369({
         }
       }
 
+      // Background clear
       ctx.fillStyle = `rgb(${bg.r},${bg.g},${bg.b})`;
       ctx.fillRect(0, 0, cssW, cssH);
 
+      // Tactical grid lines on hover
       if (hover) {
-        ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},0.035)`;
+        ctx.strokeStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},0.03)`;
         const grid = cellW * 3;
         const drift = (t * 12) % grid;
         for (let x = -grid + drift; x < cssW; x += grid) {
@@ -234,89 +248,83 @@ export default function Digit369({
           const dx = cx - mouse.x;
           const dy = cy - mouse.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const cursorGlow = hover ? Math.max(0, 1 - dist * 2.6) : 0;
+          const cursorGlow = hover ? Math.max(0, 1 - dist * 2.5) : 0;
 
+          // Outside Pegasus shape
           if (fig < 0) {
             if (!hover) continue;
-            if ((col + row) % 3 !== 0 && cursorGlow < 0.35) continue;
-            const bgAlpha = Math.min(0.25, 0.04 + cursorGlow * 0.3);
-            if (bgAlpha < 0.05) continue;
+            if ((col + row) % 3 !== 0 && cursorGlow < 0.3) continue;
+            const bgAlpha = Math.min(0.22, 0.03 + cursorGlow * 0.28);
+            if (bgAlpha < 0.04) continue;
             ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${bgAlpha})`;
             ctx.fillText(bgChars[i] ?? '0', (col + 0.5) * cellW, (row + 0.5) * cellH);
             continue;
           }
 
-          const isActive = hover && fig === activeFig;
-          const isOther = hover && activeFig >= 0 && fig !== activeFig;
-          let base = 0.4 + fig * 0.05 + (hover ? 0.1 : 0);
-          if (isActive) base += 0.28;
-          if (isOther) base *= 0.55;
+          // Inside Pegasus shape
+          let alpha = 0.72 + cursorGlow * 0.28;
+          let r = rgb.r;
+          let g = rgb.g;
+          let b = rgb.b;
 
-          let drawX = (col + 0.5) * cellW;
-          let drawY = (row + 0.5) * cellH;
-          if (isActive) {
-            drawX += (cx - FIG_CENTERS[fig]!) * cellW * cols * 0.04;
-            drawY += (cy - 0.5) * cellH * rows * 0.04;
+          // Electric blue highlight on hover near cursor
+          if (cursorGlow > 0.4) {
+            r = Math.min(255, Math.floor(r * 0.7 + 59 * 0.3));
+            g = Math.min(255, Math.floor(g * 0.7 + 130 * 0.3));
+            b = 255;
+            alpha = Math.min(1, alpha + 0.15);
           }
 
-          const alpha = Math.min(1, base + cursorGlow * (isActive ? 0.5 : 0.28));
-          ctx.fillStyle = `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
-          ctx.fillText(chars[i] ?? '0', drawX, drawY);
+          ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
+          ctx.fillText(chars[i] ?? 'P', (col + 0.5) * cellW, (row + 0.5) * cellH);
         }
       }
     };
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        const wasRunning = running;
-        running = !!entry?.isIntersecting;
-        if (running && !wasRunning && !raf) {
-          raf = requestAnimationFrame(tick);
-        }
-      },
-      { rootMargin: '60px' }
-    );
-    io.observe(wrap);
 
     raf = requestAnimationFrame(tick);
 
     return () => {
       running = false;
-      if (raf) cancelAnimationFrame(raf);
-      io.disconnect();
+      cancelAnimationFrame(raf);
       wrap.removeEventListener('mousemove', onMove);
       window.removeEventListener('resize', resize);
     };
-  }, [color, backgroundColor, resolvedCell, animate]);
+  }, [animate, color, backgroundColor, resolvedCell]);
 
   if (!animate) {
-    return <Lite369 color={color} />;
+    return <LitePegasus color={color} />;
   }
 
   return (
     <div
       ref={wrapRef}
-      className="relative w-full h-full min-h-[280px] overflow-hidden bg-black"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      className="relative flex h-full min-h-[240px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full w-full items-center justify-center bg-black overflow-hidden select-none cursor-crosshair group"
+      style={{
+        backgroundColor,
+      }}
     >
+      {/* Background ambient lighting */}
+      <div className="absolute inset-0 pointer-events-none opacity-40 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.15)_0%,_transparent_75%)]" />
+
+      {/* Dynamic Cursor Glow */}
       <div
         ref={glowRef}
-        className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${
-          hovered ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="pointer-events-none absolute -inset-20 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background:
-            'radial-gradient(circle 260px at var(--mx, 50%) var(--my, 50%), rgba(232,228,227,0.14), transparent 70%)',
+            'radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(37, 99, 235, 0.18), transparent 70%)',
         }}
       />
-      <canvas ref={canvasRef} className="absolute inset-0 block w-full h-full" aria-hidden />
-      <div
-        className={`pointer-events-none absolute bottom-5 left-5 font-mono text-[0.6rem] uppercase tracking-[0.28em] transition-opacity duration-500 ${
-          hovered ? 'text-white/70' : 'text-white/30'
-        }`}
-      >
-        3 · 6 · 9
+
+      {/* Interactive Matrix Canvas */}
+      <canvas ref={canvasRef} className="relative z-10 block" />
+
+      {/* Bottom Status Metadata Line */}
+      <div className="absolute bottom-5 left-5 z-20 font-mono text-[0.65rem] uppercase tracking-[0.28em] text-white/40 flex items-center space-x-2 pointer-events-none">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+        <span>PEGASUS · LOGISTICS OS</span>
       </div>
     </div>
   );
