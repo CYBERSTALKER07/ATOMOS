@@ -85,6 +85,18 @@ export default function EcosystemStats() {
   } as any : null;
   const localizedData = (tabDataRu?.[activeTab] ?? data);
 
+  const roleTabs = language === 'ru' ? [
+    { id: 'supplier', label: 'Поставщик' },
+    { id: 'warehouse', label: 'Склад' },
+    { id: 'retailer', label: 'Ритейлер' },
+    { id: 'fleet', label: 'Автопарк' },
+  ] : [
+    { id: 'supplier', label: 'Supplier' },
+    { id: 'warehouse', label: 'Warehouse' },
+    { id: 'retailer', label: 'Retailer' },
+    { id: 'fleet', label: 'Fleet Telemetry' },
+  ];
+
   useEffect(() => {
     // Advanced staggered entrance animation
     const ctx = gsap.context(() => {
@@ -104,7 +116,7 @@ export default function EcosystemStats() {
   }, [activeTab]);
 
   return (
-    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden !p-0" aria-labelledby="ecosystem-stats-heading">
+    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden py-16 sm:py-24" aria-labelledby="ecosystem-stats-heading">
 
       {/* Background ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-white/[0.015] blur-[120px] pointer-events-none rounded-full" />
@@ -112,27 +124,84 @@ export default function EcosystemStats() {
       <div className="w-full relative z-10">
 
         {/* Header */}
-        <div className="mb-16 px-4 md:px-8">
-          <div className="flex items-center gap-3 text-white/40 mb-6">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <div className="mb-12 max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8">
+          <div className="flex items-center gap-3 text-white/40 mb-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 15l8-8 8 8" />
             </svg>
             <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
           </div>
-          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
+          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight text-white">
             {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
-
         </div>
 
-        {/* Massive Dashboard UI */}
-        <div ref={dashboardRef} className="bg-[#050505] border-none  border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[500px] lg:min-h-[800px] w-full">
+        {/* Screen Mockup Container with Bottom Opacity Fade */}
+        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8 relative">
+          
+          {/* Outer Screen Window Bezel */}
+          <div className="relative rounded-2xl sm:rounded-3xl border border-white/10 bg-[#070709] shadow-[0_30px_100px_rgba(0,0,0,0.95)] overflow-hidden max-h-[580px] sm:max-h-[660px] md:max-h-[720px]">
+            
+            {/* Top Screen Window Chrome Bar */}
+            <div className="h-12 border-b border-white/10 bg-[#0a0a0e] px-4 sm:px-6 flex items-center justify-between z-30 relative select-none">
+              
+              {/* Traffic Light Window Dots */}
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-[#FF5F56]/80 border border-[#E0443E]/50" />
+                <span className="w-3 h-3 rounded-full bg-[#FFBD2E]/80 border border-[#DEA123]/50" />
+                <span className="w-3 h-3 rounded-full bg-[#27C93F]/80 border border-[#1AAB29]/50" />
+              </div>
 
-          {/* Sidebar */}
+              {/* Center Role Switcher Tabs */}
+              <div className="hidden sm:flex items-center gap-1 bg-[#121218] p-1 rounded-lg border border-white/5">
+                {roleTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-3 py-1 rounded-md text-[11px] font-mono tracking-wider transition-all duration-200 cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'bg-white text-black font-semibold shadow-sm'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
+              {/* Right Live Stream Status */}
+              <div className="flex items-center gap-2 font-mono text-[10px] text-emerald-400 tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="hidden sm:inline">LIVE TELEMETRY</span>
+                <span className="text-white/30 hidden md:inline">| 99.99%</span>
+              </div>
+            </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 p-4 sm:p-6 md:p-10 dashboard-content flex flex-col bg-[#000000]  relative">
+            {/* Mobile Tab Switcher Row */}
+            <div className="flex sm:hidden overflow-x-auto gap-1 p-2 bg-[#0a0a0e] border-b border-white/5 no-scrollbar">
+              {roleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-2.5 py-1 rounded text-[10px] font-mono whitespace-nowrap tracking-wider transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-white text-black font-bold'
+                      : 'text-white/50 bg-white/5'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Screen Content Viewport with Opacity Gradient Mask */}
+            <div 
+              ref={dashboardRef}
+              className="relative overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)] [-webkit-mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)]"
+            >
+              <div className="flex-1 p-4 sm:p-6 md:p-10 dashboard-content flex flex-col bg-[#000000] relative">
             {/* Grid Pattern Background */}
             <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
 
@@ -298,7 +367,13 @@ export default function EcosystemStats() {
             </div>
           </div>
         </div>
+
+        {/* Bottom Fade Gradient Overlay */}
+        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-64 bg-gradient-to-t from-[#070709] via-[#070709]/90 to-transparent pointer-events-none z-20" />
+
       </div>
-    </PageSection>
+    </div>
+  </div>
+</PageSection>
   );
 }
