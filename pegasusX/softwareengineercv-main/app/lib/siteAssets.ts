@@ -66,7 +66,7 @@ export type FleetTruckImage = (typeof FLEET_TRUCK_IMAGES)[number];
 export const FLEET_SHOWCASE_CAPTIONS = [
   'Plan the load before wheels roll',
   'Seal at the gate — every manifest verified',
-  'Live telemetry on planned vs actual routes',
+  'Route tracking on planned vs actual routes',
   'Deviation alerts before retailers call',
   'Peak dispatch — visual boards under pressure',
   'One fleet picture across six roles',

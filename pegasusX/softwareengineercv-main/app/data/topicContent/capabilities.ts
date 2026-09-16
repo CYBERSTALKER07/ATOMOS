@@ -42,9 +42,9 @@ export const capabilitiesTopics = {
   }),
   'live-fleet-tracking': seedContent({
     title: 'Live Fleet Tracking',
-    summary: 'Telemetry with planned vs actual routes on ops and retailer maps.',
+    summary: 'Tracking with planned vs actual routes on ops and retailer maps.',
     problem: 'Without planned geometry, “delayed” is meaningless.',
-    outcomes: ['routing planned routes', 'Live telemetry overlay', 'Deviation detection'],
+    outcomes: ['routing planned routes', 'Route tracking overlay', 'Deviation detection'],
     howItWorks: defaultHowItWorks([
       ['Attach plan at dispatch', 'Route geometry stored on manifest.'],
       ['Ingest driver GPS', 'Loss-tolerant HTTP posts.'],

@@ -164,7 +164,7 @@ export default function EcosystemStats() {
                 ))}
               </div>
 
-              {/* Right Window Status - Clean without live telemetry */}
+              {/* Right Window Status */}
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-white/20" />
                 <span className="font-mono text-[10px] text-white/30 tracking-widest hidden sm:inline">SYS.CONSOLE</span>
