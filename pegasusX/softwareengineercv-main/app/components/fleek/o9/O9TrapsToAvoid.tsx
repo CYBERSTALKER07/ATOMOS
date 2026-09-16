@@ -125,7 +125,7 @@ export default function O9TrapsToAvoid({
     <section className="w-full py-12 md:py-16">
       {/* Section Header */}
       <div className="mb-8 md:mb-12">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-[#8DDC96] mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400 mb-3">
           {resolvedEyebrow}
         </p>
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-zinc-900 dark:text-white">
@@ -152,7 +152,7 @@ export default function O9TrapsToAvoid({
               </div>
 
               <div className="pt-6">
-                <Icon className="w-5 h-5 text-zinc-400 group-hover:text-emerald-600 dark:text-white/40 dark:group-hover:text-[#8DDC96] transition-colors" />
+                <Icon className="w-5 h-5 text-zinc-400 group-hover:text-black dark:text-white/40 dark:group-hover:text-white transition-colors" />
               </div>
             </article>
           );

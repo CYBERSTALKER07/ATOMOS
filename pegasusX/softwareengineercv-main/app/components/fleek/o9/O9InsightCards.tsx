@@ -85,10 +85,10 @@ function ArchitectureFlowDiagram({ isRu, isLight }: { isRu: boolean; isLight: bo
         </div>
       </div>
 
-      {/* Center Glowing Icon Node */}
+      {/* Center Monochrome Node */}
       <div className="absolute left-[160px] top-[24px] -translate-x-1/2 z-10">
-        <div className="w-10 h-10 rounded-full bg-[#8DDC96]/20 border border-[#8DDC96] flex items-center justify-center shadow-[0_0_20px_rgba(141,220,150,0.4)]">
-          <Zap className="w-4 h-4 text-[#8DDC96]" fill="#8DDC96" />
+        <div className="w-10 h-10 rounded-full bg-white dark:bg-black border border-black dark:border-white flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.25)]">
+          <span className="font-mono text-sm font-bold text-black dark:text-white leading-none select-none">&gt;_</span>
         </div>
       </div>
 
@@ -116,7 +116,7 @@ function ArchitectureFlowDiagram({ isRu, isLight }: { isRu: boolean; isLight: bo
 function AgentStackVisual({ isRu, isLight }: { isRu: boolean; isLight: boolean }) {
   const cardCls = isLight
     ? 'bg-white border border-black/10 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-black/25 transition-colors group'
-    : 'bg-[#14141F] border border-white/10 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:border-[#8DDC96]/40 transition-colors group';
+    : 'bg-[#14141F] border border-white/10 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:border-white/30 transition-colors group';
 
   const iconCls2 = isLight
     ? 'w-7 h-7 rounded-lg bg-black/5 border border-black/10 flex items-center justify-center text-zinc-700 shrink-0'
@@ -130,7 +130,7 @@ function AgentStackVisual({ isRu, isLight }: { isRu: boolean; isLight: boolean }
     <div className="w-full max-w-[230px] mx-auto flex flex-col gap-2.5 select-none">
       {/* Agent 1: Planning Agent */}
       <div className={cardCls}>
-        <div className="w-7 h-7 rounded-lg bg-[#8DDC96]/15 border border-[#8DDC96]/30 flex items-center justify-center text-[#8DDC96] shrink-0">
+        <div className={iconCls2}>
           <ClipboardList className="w-3.5 h-3.5" />
         </div>
         <span className={textCls}>
@@ -169,13 +169,13 @@ function OutcomeMetricVisual({ isRu }: { isRu: boolean }) {
   return (
     <div className="w-full max-w-[260px] mx-auto select-none">
       <div className="bg-black border border-white/20 rounded-xl px-5 py-4 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.6)] relative overflow-hidden group hover:border-white/30 transition-all">
-        {/* Ambient subtle green glow */}
-        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-[#8DDC96]/15 rounded-full blur-2xl pointer-events-none" />
+        {/* Ambient subtle monochrome glow */}
+        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
         <span className="text-xs font-mono font-medium tracking-wider uppercase text-white/60">
           {isRu ? 'Валовая маржа' : 'Gross Margin'}
         </span>
-        <span className="text-2xl font-bold font-mono tracking-tight text-[#8DDC96] drop-shadow-[0_0_12px_rgba(141,220,150,0.35)]">
+        <span className="text-2xl font-bold font-mono tracking-tight text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.35)]">
           +6.2%
         </span>
       </div>
@@ -210,7 +210,7 @@ export default function O9InsightCards({
       {/* Top Header Row with Title and Action CTAs */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8 md:mb-12">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-[#8DDC96] mb-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400 mb-3">
             {resolvedEyebrow}
           </p>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-zinc-900 dark:text-white">
@@ -229,7 +229,7 @@ export default function O9InsightCards({
               }`}
             >
               <span>{isRu ? 'Метрики' : 'View Metrics'}</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 dark:text-[#8DDC96]" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
             </Link>
             <Link
               href="/solutions"
