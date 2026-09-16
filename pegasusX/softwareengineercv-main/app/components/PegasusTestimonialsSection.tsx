@@ -186,77 +186,78 @@ export function PegasusTestimonialsSection() {
         </div>
 
         {/* ========================================================================= */}
-        {/* ROLE FILTER TABS & TECHNICAL CARDS GRID */}
+        {/* ROLE FILTER TABS & TECHNICAL CARDS GRID (HIDDEN) */}
         {/* ========================================================================= */}
-
-        {/* Role Filters */}
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
-          {roleFilters.map((role) => (
-            <button
-              key={role.id}
-              onClick={() => setActiveRole(role.id)}
-              className={`px-4 py-2 text-xs font-mono tracking-wider transition-all border rounded-none ${
-                activeRole === role.id
-                  ? 'bg-emerald-500 text-black border-emerald-500 font-bold shadow-md shadow-emerald-950/40'
-                  : 'bg-[#0d0d0d] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
-              }`}
-            >
-              [ {role.label} ]
-            </button>
-          ))}
-        </div>
-
-        {/* Technical Role Testimonials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-          {filteredList.map((item: O9Testimonial, idx: number) => {
-            return (
-              <div
-                key={`${item.company}-${idx}`}
-                className="w-full bg-[#0d0d0d] border border-zinc-800 hover:border-zinc-700 transition-all duration-300 relative group flex flex-col justify-between"
+        <div className="hidden" aria-hidden="true">
+          {/* Role Filters */}
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-full">
+            {roleFilters.map((role) => (
+              <button
+                key={role.id}
+                onClick={() => setActiveRole(role.id)}
+                className={`px-4 py-2 text-xs font-mono tracking-wider transition-all border rounded-none ${
+                  activeRole === role.id
+                    ? 'bg-emerald-500 text-black border-emerald-500 font-bold shadow-md shadow-emerald-950/40'
+                    : 'bg-[#0d0d0d] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
+                }`}
               >
-                {/* Corner Node Handles (□) */}
-                <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
+                [ {role.label} ]
+              </button>
+            ))}
+          </div>
 
-                {/* Card Top Header */}
-                <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
-                  <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 inline-block" />
-                    [ {item.roleBadge || 'ROLE NODE'} ]
+          {/* Technical Role Testimonials Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
+            {filteredList.map((item: O9Testimonial, idx: number) => {
+              return (
+                <div
+                  key={`${item.company}-${idx}`}
+                  className="w-full bg-[#0d0d0d] border border-zinc-800 hover:border-zinc-700 transition-all duration-300 relative group flex flex-col justify-between"
+                >
+                  {/* Corner Node Handles (□) */}
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
+
+                  {/* Card Top Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
+                    <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 inline-block" />
+                      [ {item.roleBadge || 'ROLE NODE'} ]
+                    </div>
+                    {item.metric && (
+                      <span className="font-mono text-[10px] text-zinc-400 bg-zinc-900 px-2 py-0.5 border border-zinc-800">
+                        {item.metric}
+                      </span>
+                    )}
                   </div>
-                  {item.metric && (
-                    <span className="font-mono text-[10px] text-zinc-400 bg-zinc-900 px-2 py-0.5 border border-zinc-800">
-                      {item.metric}
-                    </span>
-                  )}
-                </div>
 
-                {/* Card Body Quote */}
-                <div className="p-6 flex-1 flex flex-col justify-between gap-4">
-                  <p className="text-zinc-300 text-sm leading-relaxed font-sans">
-                    &ldquo;{item.quote}&rdquo;
-                  </p>
-                  <p className="text-xs font-mono font-semibold text-emerald-400/90 tracking-wide">
-                    // {item.company}
-                  </p>
-                </div>
-
-                {/* Card Bottom Meta Bar */}
-                <div className="px-5 py-3 border-t border-zinc-800 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-zinc-400">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="w-5 h-5 bg-zinc-800 border border-zinc-700 text-zinc-200 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
-                      {item.initials || item.name.substring(0, 2).toUpperCase()}
-                    </span>
-                    <span className="text-zinc-200 truncate">{item.name}</span>
+                  {/* Card Body Quote */}
+                  <div className="p-6 flex-1 flex flex-col justify-between gap-4">
+                    <p className="text-zinc-300 text-sm leading-relaxed font-sans">
+                      &ldquo;{item.quote}&rdquo;
+                    </p>
+                    <p className="text-xs font-mono font-semibold text-emerald-400/90 tracking-wide">
+                      // {item.company}
+                    </p>
                   </div>
-                  <span className="text-emerald-400 font-bold ml-2 flex-shrink-0">&gt;&gt;</span>
-                </div>
 
-              </div>
-            );
-          })}
+                  {/* Card Bottom Meta Bar */}
+                  <div className="px-5 py-3 border-t border-zinc-800 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-zinc-400">
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="w-5 h-5 bg-zinc-800 border border-zinc-700 text-zinc-200 flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                        {item.initials || item.name.substring(0, 2).toUpperCase()}
+                      </span>
+                      <span className="text-zinc-200 truncate">{item.name}</span>
+                    </div>
+                    <span className="text-emerald-400 font-bold ml-2 flex-shrink-0">&gt;&gt;</span>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
         </div>
 
       </div>
