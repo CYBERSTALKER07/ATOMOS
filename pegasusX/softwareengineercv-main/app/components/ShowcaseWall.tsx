@@ -1,7 +1,7 @@
 'use client';
 
 import DriftWall, { DriftWallItem } from './DriftWall';
-import { useLanguage } from '../context/LanguageContext';
+
 import PageSection from './layout/PageSection';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
 
@@ -24,21 +24,9 @@ const DRIFT_ITEMS: DriftWallItem[] = [
 ];
 
 export default function ShowcaseWall() {
-  const { t } = useLanguage();
-
   return (
-    <PageSection className="bg-[#030303] py-20 border-t border-white/5 relative overflow-hidden">
-      <div className="text-center mb-12 relative z-10 px-4">
-
-        <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white mb-4">
-          {t('showcase_title', 'Interactive Ecosystem Wall')}
-        </h2>
-        <p className="text-white/60 text-base md:text-lg max-w-2xl mx-auto font-light">
-          {t('showcase_subtitle', 'Explore live tracking, dispatch boards, and multi-role operations in motion.')}
-        </p>
-      </div>
-
-      <div className="w-full h-[320px] sm:h-[540px] md:h-[640px] relative z-10 rounded-3xl border border-white/10 overflow-hidden bg-black/60 shadow-[0_30px_100px_rgba(0,0,0,0.9)]">
+    <PageSection bleed className="bg-[#030303] py-12 md:py-16 relative overflow-hidden border-none">
+      <div className="w-full h-[320px] sm:h-[540px] md:h-[640px] relative z-10 overflow-hidden">
         <DriftWall
           items={DRIFT_ITEMS}
           columns={5}
