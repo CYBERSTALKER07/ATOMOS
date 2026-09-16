@@ -144,6 +144,8 @@ const EN_DICT = {
     footer_apps_deploy: 'Apps & Deploy',
     footer_company: 'Company',
     footer_policies: 'Resources',
+    nav_cookie_policy: 'Cookie Policy',
+    footer_cookie_settings: 'Cookie Preferences',
 
     // Generic CTAs
     btn_request_demo: 'REQUEST DEMO',
@@ -704,6 +706,8 @@ const RU_DICT = {
     footer_apps_deploy: 'Приложения и развертывание',
     footer_company: 'О компании',
     footer_policies: 'Ресурсы',
+    nav_cookie_policy: 'Политика файлов cookie',
+    footer_cookie_settings: 'Настройки cookie',
 
     // Generic CTAs
     btn_request_demo: 'ЗАПРОСИТЬ ДЕМО',

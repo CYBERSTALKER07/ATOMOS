@@ -11,6 +11,9 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 
 import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
+import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
+import CookieBanner from '@/app/components/cookies/CookieBanner';
+import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
 
 // Prevent OpenUI devtools from auto-mounting
 if (typeof window !== 'undefined') {
@@ -71,31 +74,35 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
   return (
     <ThemeProvider>
       <LanguageProvider initialLanguage={initialLanguage}>
-        {isAssistantPage ? (
-          children
-        ) : (
-          <ReactLenis
-            root
-            options={{
-              lerp: 0.08,
-              duration: 1.2,
-              smoothWheel: !isLowEnd && !isMobile,
-              syncTouch: false,
-            }}
-          >
-            {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
-            {allowHoverFx ? (
-              <TargetCursor
-                targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
-                spinDuration={2}
-                cursorColor="#ffffff"
-                cursorColorOnTarget="#10B981"
-              />
-            ) : null}
-            {children}
-            <SiteAssistant />
-          </ReactLenis>
-        )}
+        <CookieConsentProvider>
+          {isAssistantPage ? (
+            children
+          ) : (
+            <ReactLenis
+              root
+              options={{
+                lerp: 0.08,
+                duration: 1.2,
+                smoothWheel: !isLowEnd && !isMobile,
+                syncTouch: false,
+              }}
+            >
+              {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
+              {allowHoverFx ? (
+                <TargetCursor
+                  targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
+                  spinDuration={2}
+                  cursorColor="#ffffff"
+                  cursorColorOnTarget="#10B981"
+                />
+              ) : null}
+              {children}
+              <SiteAssistant />
+            </ReactLenis>
+          )}
+          <CookieBanner />
+          <CookiePreferenceModal />
+        </CookieConsentProvider>
       </LanguageProvider>
     </ThemeProvider>
   );

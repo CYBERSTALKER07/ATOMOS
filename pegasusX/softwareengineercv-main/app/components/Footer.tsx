@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import CookieSettingsTrigger from './cookies/CookieSettingsTrigger';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -89,6 +90,7 @@ export default function Footer() {
     { name: t('nav_alternatives', 'TMS Alternatives'), href: '/alternatives' },
     { name: t('nav_compare', 'TMS Comparisons'), href: '/compare' },
     { name: t('nav_markets', 'Global Markets'), href: '/markets' },
+    { name: t('nav_cookie_policy', 'Cookie Policy'), href: '/cookie-policy' },
   ];
 
   return (
@@ -205,6 +207,9 @@ export default function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              <CookieSettingsTrigger className="text-white/70 hover:text-white text-sm" />
+            </li>
           </ul>
         </div>
       </div>
@@ -216,9 +221,15 @@ export default function Footer() {
         </p>
       </div>
 
-      {/* Copyright */}
-      <div className="py-6 text-center text-white/40 text-[11px] font-mono relative z-10">
-        ©2026 Pegasus. {t('footer_rights')}
+      {/* Copyright & Legal Row */}
+      <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/40 text-[11px] font-mono relative z-10">
+        <span>©2026 Pegasus. {t('footer_rights')}</span>
+        <span>·</span>
+        <Link href="/cookie-policy" className="hover:text-white transition-colors">
+          {t('nav_cookie_policy', 'Cookie Policy')}
+        </Link>
+        <span>·</span>
+        <CookieSettingsTrigger className="text-[11px] font-mono text-white/40 hover:text-white" />
       </div>
     </footer>
   );
