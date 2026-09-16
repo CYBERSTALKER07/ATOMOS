@@ -9,11 +9,14 @@ import TextType from './TextType';
 import IsometricTerrain from './IsometricTerrain';
 import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Hero() {
   const { isMobile } = useIsMobile();
   const prefersReducedMotion = useReducedMotion();
   const { t, language } = useLanguage();
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === 'light';
 
   const textRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -118,7 +121,7 @@ export default function Hero() {
               curveAmount={900}
               direction="right"
               interactive={false}
-              className="fill-white"
+              className={isLight ? 'fill-black' : 'fill-white'}
             />
           </div>
 
@@ -129,7 +132,7 @@ export default function Hero() {
               curveAmount={500}
               direction="left"
               interactive={false}
-              className="fill-white"
+              className={isLight ? 'fill-black' : 'fill-white'}
             />
           </div>
 
@@ -140,16 +143,20 @@ export default function Hero() {
               curveAmount={200}
               direction="right"
               interactive={false}
-              className="fill-white"
+              className={isLight ? 'fill-black' : 'fill-white'}
             />
           </div>
         </>
       )}
 
       <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {/* Tactical Framed Container from reference layout */}
-        <div className="border border-white/15 bg-[#000000] shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/15">
-          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA — Anchored lower down matching reference */}
+        {/* Tactical Framed Container */}
+        <div className={`border shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x transition-colors duration-200 ${
+          isLight
+            ? 'border-black/10 bg-white divide-black/10 shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
+            : 'border-white/15 bg-[#000000] divide-white/15 shadow-2xl'
+        }`}>
+          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
           <div
             ref={textRef}
             className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
@@ -163,7 +170,7 @@ export default function Hero() {
                     text="Pegasus"
                     particleSize={2.4}
                     density={4}
-                    color="#f8fafc"
+                    color={isLight ? '#09090b' : '#f8fafc'}
                     highlightColor="#10B981"
                     scatter={160}
                     gatherDuration={1500}
@@ -175,16 +182,18 @@ export default function Hero() {
                     fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
                     fontWeight={800}
                     textAlign="left"
-                    glow
+                    glow={!isLight}
                   />
                 </div>
 
                 <h1
                   ref={subtitleRef}
-                  className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white min-h-[1.25em] tracking-tight leading-[1.12]"
+                  className={`block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light min-h-[1.25em] tracking-tight leading-[1.12] ${
+                    isLight ? 'text-zinc-900' : 'text-white'
+                  }`}
                 >
                   <TextType
-                    key={language}
+                    key={`${language}-${isLight ? 'light' : 'dark'}`}
                     text={typedPhrases}
                     typingSpeed={isMobile ? 90 : 70}
                     pauseDuration={1600}
@@ -192,9 +201,9 @@ export default function Hero() {
                     showCursor={true}
                     cursorCharacter="|"
                     loop={true}
-                    textColors={['#FFFFFF', '#C0C0C0']}
+                    textColors={isLight ? ['#09090B', '#475569'] : ['#FFFFFF', '#C0C0C0']}
                     className="font-light"
-                    cursorClassName="text-white font-light"
+                    cursorClassName={isLight ? 'text-zinc-900 font-light' : 'text-white font-light'}
                   />
                 </h1>
               </div>
@@ -202,17 +211,23 @@ export default function Hero() {
               {/* Subtitle Description */}
               <p
                 ref={descRef}
-                className="text-sm sm:text-base md:text-lg text-white/60 font-light leading-relaxed max-w-lg pt-1"
+                className={`text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-lg pt-1 ${
+                  isLight ? 'text-zinc-600' : 'text-white/60'
+                }`}
               >
                 {t('hero_desc')}
               </p>
             </div>
 
-            {/* Outlined Action Buttons matching reference layout — clearly visible inside frame */}
+            {/* Outlined Action Buttons */}
             <div ref={ctaRef} className="pt-6 sm:pt-8 flex flex-wrap items-center gap-4">
               <button
                 onClick={scrollToNext}
-                className="inline-flex items-center justify-center gap-3 px-8 py-3.5 border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase text-white group"
+                className={`inline-flex items-center justify-center gap-3 px-8 py-3.5 border transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase group ${
+                  isLight
+                    ? 'border-black text-black hover:bg-black hover:text-white'
+                    : 'border-white/30 hover:border-white hover:bg-white hover:text-black text-white'
+                }`}
               >
                 <span>{t('hero_explore')}</span>
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -220,17 +235,23 @@ export default function Hero() {
 
               <a
                 href="/join"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/70 hover:text-white transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase"
+                className={`inline-flex items-center justify-center gap-2 px-7 py-3.5 border transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase ${
+                  isLight
+                    ? 'border-black/15 bg-black/5 hover:bg-black/10 hover:border-black/30 text-zinc-800'
+                    : 'border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/70 hover:text-white'
+                }`}
               >
                 <span>{t('hero_demo')}</span>
               </a>
             </div>
           </div>
 
-          {/* RIGHT COLUMN: 3D Isometric Wireframe Graphic & Bottom Metrics Bar — Starts high up */}
+          {/* RIGHT COLUMN: 3D Isometric Wireframe Graphic & Bottom Metrics Bar */}
           <div
             ref={visualRef}
-            className="flex flex-col justify-between bg-black relative overflow-hidden min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
+            className={`flex flex-col justify-between relative overflow-hidden min-h-[540px] lg:min-h-[640px] xl:min-h-[700px] ${
+              isLight ? 'bg-zinc-50/50' : 'bg-black'
+            }`}
           >
             {/* Upper Area: Pure 3D Isometric Wireframe Visual positioned high */}
             <div className="flex-1 min-h-[340px] sm:min-h-[420px] lg:min-h-[460px] relative flex items-center justify-center p-4 sm:p-6 overflow-hidden">
@@ -238,13 +259,19 @@ export default function Hero() {
             </div>
 
             {/* Bottom Metric Bar: 4-stat row strictly following the reference image */}
-            <div className="border-t border-white/15 grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 bg-black">
+            <div className={`border-t grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${
+              isLight ? 'border-black/10 divide-black/10 bg-zinc-50' : 'border-white/15 divide-white/15 bg-black'
+            }`}>
               {metrics.map((m, idx) => (
                 <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
-                  <span className="text-[10px] sm:text-[11px] font-mono tracking-wider text-white/45 uppercase mb-1 truncate">
+                  <span className={`text-[10px] sm:text-[11px] font-mono tracking-wider uppercase mb-1 truncate ${
+                    isLight ? 'text-zinc-500' : 'text-white/45'
+                  }`}>
                     {m.label}
                   </span>
-                  <span className="text-base sm:text-lg lg:text-xl font-mono font-medium text-white tracking-tight">
+                  <span className={`text-base sm:text-lg lg:text-xl font-mono font-medium tracking-tight ${
+                    isLight ? 'text-zinc-900' : 'text-white'
+                  }`}>
                     {m.value}
                   </span>
                 </div>

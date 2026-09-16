@@ -7,6 +7,8 @@ import { gsap } from 'gsap';
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
+import { useTheme } from '../context/ThemeContext';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 export type PillNavItem = {
@@ -48,7 +50,15 @@ const PillNav: React.FC<PillNavProps> = ({
   showMenuButton = false,
   categories,
 }) => {
-  const resolvedPillTextColor = pillTextColor ?? baseColor;
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === 'light';
+
+  const effectiveBaseColor = isLight && (baseColor === '#000000' || baseColor === '#000') ? '#ffffff' : baseColor;
+  const effectivePillColor = isLight && (pillColor === '#ffffff' || pillColor === '#fff') ? '#f4f4f5' : pillColor;
+  const effectiveHoveredPillTextColor = isLight && (hoveredPillTextColor === '#000000' || hoveredPillTextColor === '#000') ? '#ffffff' : hoveredPillTextColor;
+  const effectivePillTextColor = isLight && (!pillTextColor || pillTextColor === '#000000' || pillTextColor === '#000') ? '#09090b' : (pillTextColor ?? effectiveBaseColor);
+
+  const resolvedPillTextColor = effectivePillTextColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
@@ -297,9 +307,9 @@ const PillNav: React.FC<PillNavProps> = ({
     href.startsWith('#');
 
   const cssVars = {
-    ['--base']: baseColor,
-    ['--pill-bg']: pillColor,
-    ['--hover-text']: hoveredPillTextColor,
+    ['--base']: effectiveBaseColor,
+    ['--pill-bg']: effectivePillColor,
+    ['--hover-text']: effectiveHoveredPillTextColor,
     ['--pill-text']: resolvedPillTextColor,
     ['--nav-h']: '40px',
     ['--logo']: '36px',
@@ -308,7 +318,7 @@ const PillNav: React.FC<PillNavProps> = ({
   } as React.CSSProperties;
 
   const basePillClasses =
-    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
 
   const pillStyleBase: React.CSSProperties = {
     background: 'var(--pill-bg, #fff)',
@@ -320,7 +330,11 @@ const PillNav: React.FC<PillNavProps> = ({
   return (
     <div
       ref={wrapperRef}
-      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 bg-black border-b border-white/10`}
+      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 ${
+        isLight
+          ? 'bg-white/95 border-b border-black/10 shadow-sm backdrop-blur-md'
+          : 'bg-black border-b border-white/10'
+      }`}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setActiveCategory(null);
@@ -339,11 +353,13 @@ const PillNav: React.FC<PillNavProps> = ({
             ref={el => {
               logoRef.current = el;
             }}
-            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none rounded-none"
+            className={`shrink-0 inline-flex items-center justify-center overflow-hidden outline-none rounded-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
+            }`}
             style={{
               width: '64px',
               height: '64px',
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <img
@@ -359,7 +375,7 @@ const PillNav: React.FC<PillNavProps> = ({
             className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
             style={{
               height: 'var(--nav-h)',
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <ul
@@ -457,14 +473,19 @@ const PillNav: React.FC<PillNavProps> = ({
             </ul>
           </div>
 
-          <div className="shrink-0 ml-auto flex items-center gap-2 pointer-events-auto">
+          <div className="shrink-0 ml-auto flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+            <ThemeSwitcher className="mr-0.5 sm:mr-1" />
             <LanguageSwitcher className="mr-1 sm:mr-2" />
             <button
               ref={hamburgerRef}
               onClick={toggleMobileMenu}
               aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
               aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
-              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
+              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isLight
+                  ? 'border-black text-black hover:bg-black hover:text-white focus-visible:ring-black'
+                  : 'border-white text-white hover:bg-white hover:text-black focus-visible:ring-white'
+              }`}
             >
               <span className="text-sm font-medium tracking-wider">MENU</span>
               <div className="flex flex-col items-center justify-center gap-[4px] w-5">
@@ -484,7 +505,11 @@ const PillNav: React.FC<PillNavProps> = ({
             </button>
             <Link
               href="/contact"
-              className="hidden sm:block px-4 py-2 bg-white text-black border border-white text-sm font-medium tracking-wider hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+              className={`hidden sm:block px-4 py-2 text-sm font-medium tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isLight
+                  ? 'bg-black text-white border border-black hover:bg-zinc-800 focus-visible:ring-black'
+                  : 'bg-white text-black border border-white hover:bg-gray-200 focus-visible:ring-white'
+              }`}
             >
               REQUEST DEMO
             </Link>
@@ -510,10 +535,12 @@ const PillNav: React.FC<PillNavProps> = ({
         {(!showMenuButton && !categories) ? (
           <div
             ref={mobileMenuRef}
-            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
+            className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none border shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto ${
+              isLight ? 'border-black/10 bg-white' : 'border-white/10 bg-black'
+            }`}
             style={{
               ...cssVars,
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">

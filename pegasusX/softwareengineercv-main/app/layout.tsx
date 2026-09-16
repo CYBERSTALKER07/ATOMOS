@@ -165,6 +165,19 @@ export default async function RootLayout({
                 if (sessionStorage.getItem('hasSeenSplash')) {
                   document.documentElement.classList.add('splash-done');
                 }
+                try {
+                  const t = localStorage.getItem('pegasus-theme');
+                  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (t === 'light' || (!t && !prefersDark)) {
+                    document.documentElement.classList.add('light');
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  } else {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                  }
+                } catch (e) {}
                 const openuiDevtoolsFlag = Symbol.for('openui.devtools.autoMount');
                 window[openuiDevtoolsFlag] = true;
               } catch (e) {}
@@ -173,7 +186,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white transition-colors duration-200`}
       >
         <div
           id="app-splash-screen"
@@ -188,7 +201,7 @@ export default async function RootLayout({
         </div>
         <a
           href="#main-content"
-          className="fixed top-4 left-4 z-[10001] bg-white text-black px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-light border-2 border-black"
+          className="fixed top-4 left-4 z-[10001] bg-white text-black dark:bg-black dark:text-white px-4 py-2 rounded-md transition-transform -translate-y-20 focus:translate-y-0 font-light border-2 border-black dark:border-white"
         >
           {skipLabel}
         </a>

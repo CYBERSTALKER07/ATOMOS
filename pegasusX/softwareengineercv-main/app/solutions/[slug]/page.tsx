@@ -70,54 +70,54 @@ export default async function SolutionDetailPage({
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(breadcrumb)} />
-      <div className="min-h-screen bg-black text-white pb-24 selection:bg-white/30">
+      <div className="min-h-screen bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white pb-24 selection:bg-zinc-200 dark:selection:bg-white/30 transition-colors duration-200">
         <SiteNav activeHref="/solutions" />
         <div className="max-w-7xl mx-auto px-6 md:px-12 pt-32">
           <nav
             aria-label={lang === 'ru' ? 'Хлебные крошки' : 'Breadcrumb'}
-            className="flex items-center gap-2 text-xs font-mono tracking-widest text-white/50 mb-12 uppercase"
+            className="flex items-center gap-2 text-xs font-mono tracking-widest text-zinc-500 dark:text-white/50 mb-12 uppercase"
           >
-            <Link href="/" className="hover:text-white transition-colors">
+            <Link href="/" className="hover:text-black dark:hover:text-white transition-colors">
               {homeLabel}
             </Link>
             <span aria-hidden>/</span>
-            <Link href="/solutions" className="hover:text-white transition-colors">
+            <Link href="/solutions" className="hover:text-black dark:hover:text-white transition-colors">
               {solutionsLabel}
             </Link>
             <span aria-hidden>/</span>
-            <span aria-current="page">{useCaseData.title}</span>
+            <span aria-current="page" className="text-zinc-900 dark:text-white">{useCaseData.title}</span>
           </nav>
 
           <div className="max-w-4xl mb-16">
-            <p className="editorial-eyebrow mb-4 text-white/50">{parentSolution.title}</p>
-            <h1 className="text-4xl md:text-6xl font-normal tracking-tight mb-8">
+            <p className="editorial-eyebrow mb-4 text-zinc-500 dark:text-white/50">{parentSolution.title}</p>
+            <h1 className="text-4xl md:text-6xl font-normal tracking-tight text-zinc-900 dark:text-white mb-8">
               {useCaseData.title}
             </h1>
-            <p className="text-lg md:text-xl leading-relaxed text-white/70 max-w-3xl">
+            <p className="text-lg md:text-xl leading-relaxed text-zinc-600 dark:text-white/70 max-w-3xl">
               {parentSolution.overview}
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <div className="border border-white/10 p-8 md:p-12 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex flex-col justify-center">
-              <h2 className="text-2xl md:text-3xl font-light mb-8">
+            <div className="border border-black/10 dark:border-white/10 p-8 md:p-12 bg-white dark:bg-[#111] hover:bg-zinc-50 dark:hover:bg-[#1a1a1a] shadow-sm dark:shadow-none transition-colors rounded-none flex flex-col justify-center">
+              <h2 className="text-2xl md:text-3xl font-light text-zinc-900 dark:text-white mb-8">
                 {dict.dispatch_key_capabilities}
               </h2>
-              <ul className="space-y-6 text-white/70">
+              <ul className="space-y-6 text-zinc-600 dark:text-white/70">
                 <li className="flex items-start gap-4">
-                  <span className="text-green-500 mt-1" aria-hidden>
+                  <span className="text-green-600 dark:text-green-500 mt-1" aria-hidden>
                     ✓
                   </span>
                   <span className="text-lg">{dict.dispatch_cap_realtime}</span>
                 </li>
                 <li className="flex items-start gap-4">
-                  <span className="text-green-500 mt-1" aria-hidden>
+                  <span className="text-green-600 dark:text-green-500 mt-1" aria-hidden>
                     ✓
                   </span>
                   <span className="text-lg">{dict.dispatch_cap_predictive}</span>
                 </li>
                 <li className="flex items-start gap-4">
-                  <span className="text-green-500 mt-1" aria-hidden>
+                  <span className="text-green-600 dark:text-green-500 mt-1" aria-hidden>
                     ✓
                   </span>
                   <span className="text-lg">{dict.dispatch_cap_erp}</span>
@@ -126,14 +126,14 @@ export default async function SolutionDetailPage({
               <div className="mt-12">
                 <Link
                   href="/contact"
-                  className="inline-flex items-center justify-center border border-white/20 bg-transparent text-white px-8 py-4 text-sm font-bold tracking-wider uppercase hover:bg-white hover:text-black transition-colors w-full md:w-auto"
+                  className="inline-flex items-center justify-center border border-black dark:border-white/20 bg-black dark:bg-transparent text-white px-8 py-4 text-sm font-bold tracking-wider uppercase hover:bg-zinc-800 dark:hover:bg-white dark:hover:text-black transition-colors w-full md:w-auto"
                 >
                   {dict.nav_demo}
                 </Link>
               </div>
             </div>
 
-            <div className="border border-white/10 p-2 md:p-4 bg-[#111] hover:bg-[#1a1a1a] transition-colors rounded-none flex items-center justify-center min-h-[400px]">
+            <div className="border border-black/10 dark:border-white/10 p-2 md:p-4 bg-white dark:bg-[#111] shadow-sm dark:shadow-none transition-colors rounded-none flex items-center justify-center min-h-[400px]">
               <img
                 src={imageUrl}
                 alt={
@@ -141,16 +141,16 @@ export default async function SolutionDetailPage({
                     ? `${useCaseData.title} — иллюстрация Pegasus · ${parentSolution.title}`
                     : `${useCaseData.title} — Pegasus ${parentSolution.title} logistics illustration`
                 }
-                className="w-full h-full object-cover border border-white/10"
+                className="w-full h-full object-cover border border-black/5 dark:border-white/10"
               />
             </div>
           </div>
 
-          <div className="mt-20 pt-16 border-t border-white/10">
+          <div className="mt-20 pt-16 border-t border-black/10 dark:border-white/10">
             <O9InsightCards />
           </div>
 
-          <div className="mt-16 pt-16 border-t border-white/10">
+          <div className="mt-16 pt-16 border-t border-black/10 dark:border-white/10">
             <O9TrapsToAvoid />
           </div>
         </div>

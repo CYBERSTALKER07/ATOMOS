@@ -6880,3 +6880,321 @@ div[style*="zIndex: 2147483647"] {
   pointer-events: none !important;
   opacity: 0 !important;
 }
+
+/* =============================================================================
+   V.O.I.D. TACTICAL LIGHT MODE ADAPTIVE ENGINE
+   Activated via html.light, html:not(.dark) with prefers-color-scheme: light,
+   or [data-theme="light"]
+   ============================================================================= */
+
+html.light,
+[data-theme="light"] {
+  color-scheme: light;
+  --canvas-bg: #F8FAFC;
+  --canvas-text: #09090B;
+  --card-bg: #FFFFFF;
+  --card-border: rgba(0, 0, 0, 0.08);
+  --muted-text: #475569;
+  --lane-muted: rgba(0, 0, 0, 0.1);
+
+  /* Pegasus Docs Design Tokens in Light Mode */
+  --docs-bg: #F8FAFC;
+  --docs-surface-1: #FFFFFF;
+  --docs-surface-2: #F1F5F9;
+  --docs-surface-3: #E2E8F0;
+  --docs-surface-4: #CBD5E1;
+  --docs-surface-5: #94A3B8;
+  --docs-border: rgba(0, 0, 0, 0.08);
+  --docs-border-strong: rgba(0, 0, 0, 0.16);
+  --docs-muted: #64748B;
+  --docs-fg: #09090B;
+
+  /* Fleek Docs Design Tokens in Light Mode */
+  --fleek-bg: #F8FAFC;
+  --fleek-text: #09090B;
+  --fleek-charcoal: #F1F5F9;
+  --fleek-surface: #FFFFFF;
+  --fleek-surface-raised: #F8FAFC;
+  --fleek-purple: #09090B;
+  --fleek-grid: rgba(0, 0, 0, 0.08);
+  --fleek-muted: #64748B;
+}
+
+html.light body,
+[data-theme="light"] body {
+  background-color: #F8FAFC !important;
+  color: #09090B !important;
+}
+
+/* Lane Dividers */
+html.light .lane-divider::before,
+html.light .lane-divider::after,
+[data-theme="light"] .lane-divider::before,
+[data-theme="light"] .lane-divider::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0.12) 82%, transparent);
+}
+
+html.light .lane-divider__label,
+[data-theme="light"] .lane-divider__label {
+  color: #64748B;
+}
+
+/* MegaMenu in Light Mode */
+html.light .mega-menu,
+[data-theme="light"] .mega-menu {
+  background: #FFFFFF !important;
+  color: #09090B !important;
+}
+
+html.light .mega-menu__close,
+[data-theme="light"] .mega-menu__close {
+  color: #09090B !important;
+}
+
+html.light .mega-menu__rail-btn,
+[data-theme="light"] .mega-menu__rail-btn {
+  color: #09090B !important;
+}
+
+html.light .mega-menu__rail-btn::before,
+[data-theme="light"] .mega-menu__rail-btn::before {
+  background: #09090B !important;
+}
+
+html.light .mega-menu__rail-btn:hover,
+html.light .mega-menu__rail-btn:focus-visible,
+html.light .mega-menu__rail-btn--active,
+[data-theme="light"] .mega-menu__rail-btn:hover,
+[data-theme="light"] .mega-menu__rail-btn:focus-visible,
+[data-theme="light"] .mega-menu__rail-btn--active {
+  color: #FFFFFF !important;
+}
+
+/* O9 Layout Components in Light Mode */
+html.light .o9-section,
+[data-theme="light"] .o9-section {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .o9-section__title,
+[data-theme="light"] .o9-section__title {
+  color: #09090B;
+}
+
+html.light .o9-card,
+[data-theme="light"] .o9-card {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+html.light .o9-hero-split__visual,
+[data-theme="light"] .o9-hero-split__visual {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+}
+
+html.light .o9-diff-card,
+[data-theme="light"] .o9-diff-card {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+}
+
+html.light .o9-diff-card__title,
+[data-theme="light"] .o9-diff-card__title {
+  color: #09090B;
+}
+
+html.light .o9-diff-card__icon,
+[data-theme="light"] .o9-diff-card__icon {
+  color: #475569;
+}
+
+html.light .o9-diff-card__body,
+[data-theme="light"] .o9-diff-card__body {
+  color: #475569;
+}
+
+html.light .o9-tab,
+[data-theme="light"] .o9-tab {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #475569;
+  background: transparent;
+}
+
+html.light .o9-tab:hover,
+html.light .o9-tab.is-active,
+[data-theme="light"] .o9-tab:hover,
+[data-theme="light"] .o9-tab.is-active {
+  border-color: #09090B;
+  background: #09090B;
+  color: #FFFFFF;
+}
+
+html.light .o9-stat-grid,
+[data-theme="light"] .o9-stat-grid {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
+}
+
+html.light .o9-stat-col,
+[data-theme="light"] .o9-stat-col {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .o9-stat-col__value,
+[data-theme="light"] .o9-stat-col__value {
+  color: #09090B;
+}
+
+html.light .o9-stat-col__context,
+[data-theme="light"] .o9-stat-col__context {
+  color: #475569;
+}
+
+html.light .o9-stat-col__label,
+[data-theme="light"] .o9-stat-col__label {
+  color: #64748B;
+}
+
+html.light .o9-testimonial-card,
+[data-theme="light"] .o9-testimonial-card {
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .o9-testimonial-card__quote,
+[data-theme="light"] .o9-testimonial-card__quote {
+  color: #1E293B;
+}
+
+html.light .o9-testimonial-card__company,
+html.light .o9-testimonial-card__meta,
+[data-theme="light"] .o9-testimonial-card__company,
+[data-theme="light"] .o9-testimonial-card__meta {
+  color: #64748B;
+}
+
+html.light .o9-insight-card,
+[data-theme="light"] .o9-insight-card {
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .o9-insight-viz,
+[data-theme="light"] .o9-insight-viz {
+  background: #F8FAFC;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+html.light .o9-insight-viz__caption,
+[data-theme="light"] .o9-insight-viz__caption {
+  color: #64748B;
+}
+
+html.light .o9-insight-card__title,
+[data-theme="light"] .o9-insight-card__title {
+  color: #09090B;
+}
+
+html.light .o9-insight-card__copy,
+[data-theme="light"] .o9-insight-card__copy {
+  color: #475569;
+}
+
+html.light .o9-insight-card__link,
+[data-theme="light"] .o9-insight-card__link {
+  color: #09090B;
+}
+
+html.light .o9-split-cta__card--light,
+[data-theme="light"] .o9-split-cta__card--light {
+  background: #FFFFFF;
+  color: #09090B;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+html.light .o9-split-cta__heading,
+[data-theme="light"] .o9-split-cta__heading {
+  color: #09090B;
+}
+
+html.light .o9-split-cta__copy,
+[data-theme="light"] .o9-split-cta__copy {
+  color: #475569;
+}
+
+html.light .o9-split-cta__eyebrow,
+[data-theme="light"] .o9-split-cta__eyebrow {
+  color: #64748B;
+}
+
+html.light .o9-details .docs-section,
+[data-theme="light"] .o9-details .docs-section {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+/* General Dark Containers Adapting to Light */
+html.light .bg-black:not(#app-splash-screen):not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-black:not(#app-splash-screen):not(.keep-dark):not([data-keep-dark]) {
+  background-color: #F8FAFC;
+  color: #09090B;
+}
+
+html.light .bg-\[\#111\]:not(.keep-dark):not([data-keep-dark]),
+html.light .bg-\[\#0B0B10\]:not(.keep-dark):not([data-keep-dark]),
+html.light .bg-\[\#121218\]:not(.keep-dark):not([data-keep-dark]),
+html.light .bg-\[\#14141F\]:not(.keep-dark):not([data-keep-dark]),
+html.light .bg-\[\#18181B\]:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-\[\#111\]:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-\[\#0B0B10\]:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-\[\#121218\]:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-\[\#14141F\]:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .bg-\[\#18181B\]:not(.keep-dark):not([data-keep-dark]) {
+  background-color: #FFFFFF;
+}
+
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20,
+html.light .border-white\/8,
+html.light .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/15,
+[data-theme="light"] .border-white\/20,
+[data-theme="light"] .border-white\/8,
+[data-theme="light"] .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.light .text-white:not(.keep-white):not([data-keep-white]),
+[data-theme="light"] .text-white:not(.keep-white):not([data-keep-white]) {
+  color: #09090B;
+}
+
+html.light .text-white\/90,
+html.light .text-white\/80,
+[data-theme="light"] .text-white\/90,
+[data-theme="light"] .text-white\/80 {
+  color: #1E293B;
+}
+
+html.light .text-white\/70,
+html.light .text-white\/60,
+html.light .text-white\/55,
+html.light .text-white\/50,
+[data-theme="light"] .text-white\/70,
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/55,
+[data-theme="light"] .text-white\/50 {
+  color: #475569;
+}
+
+html.light .text-white\/45,
+html.light .text-white\/40,
+html.light .text-white\/30,
+[data-theme="light"] .text-white\/45,
+[data-theme="light"] .text-white\/40,
+[data-theme="light"] .text-white\/30 {
+  color: #64748B;
+}

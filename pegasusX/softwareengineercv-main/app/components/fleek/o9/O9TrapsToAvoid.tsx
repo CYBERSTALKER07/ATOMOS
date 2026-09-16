@@ -125,34 +125,34 @@ export default function O9TrapsToAvoid({
     <section className="w-full py-12 md:py-16">
       {/* Section Header */}
       <div className="mb-8 md:mb-12">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#8DDC96] mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-[#8DDC96] mb-3">
           {resolvedEyebrow}
         </p>
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-white">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight text-zinc-900 dark:text-white">
           {resolvedTitle}
         </h2>
       </div>
 
-      {/* 10-Card Dark Tactical Grid (5 cols x 2 rows on desktop) */}
+      {/* 10-Card Adaptive Grid (5 cols x 2 rows on desktop) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5">
         {TRAPS.map((trap) => {
           const Icon = trap.icon;
           return (
             <article
               key={trap.id}
-              className="border border-white/10 bg-[#0B0B10] p-5 rounded-xl flex flex-col justify-between min-h-[200px] hover:border-white/25 transition-all duration-300 group"
+              className="border border-black/8 bg-[#F7F7F6] dark:border-white/10 dark:bg-[#0B0B10] p-5 rounded-xl flex flex-col justify-between min-h-[200px] hover:border-black/20 dark:hover:border-white/25 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-none transition-all duration-300 group"
             >
               <div>
-                <h3 className="text-sm md:text-[15px] font-medium tracking-tight text-white leading-snug mb-2.5 group-hover:text-white">
+                <h3 className="text-sm md:text-[15px] font-medium tracking-tight text-zinc-900 dark:text-white leading-snug mb-2.5">
                   {isRu ? trap.titleRu : trap.titleEn}
                 </h3>
-                <p className="text-xs leading-relaxed text-white/55">
+                <p className="text-xs leading-relaxed text-zinc-600 dark:text-white/55">
                   {isRu ? trap.descRu : trap.descEn}
                 </p>
               </div>
 
               <div className="pt-6">
-                <Icon className="w-5 h-5 text-white/40 group-hover:text-[#8DDC96] transition-colors" />
+                <Icon className="w-5 h-5 text-zinc-400 group-hover:text-emerald-600 dark:text-white/40 dark:group-hover:text-[#8DDC96] transition-colors" />
               </div>
             </article>
           );
