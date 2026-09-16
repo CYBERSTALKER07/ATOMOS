@@ -70,7 +70,7 @@ const capabilityCards: CapabilityCard[] = [
     )
   },
   {
-    title: 'Real-time\nTelemetry',
+    title: 'Real-time\nTracking',
     description: 'Monitor fleet vitals, driver status, and delivery ETA with millisecond precision globally.',
     className: 'lg:col-span-1 lg:row-span-1',
     icon: (

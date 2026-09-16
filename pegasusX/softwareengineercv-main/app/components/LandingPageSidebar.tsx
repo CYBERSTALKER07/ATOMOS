@@ -6,7 +6,7 @@ import LineSidebar from './LineSidebar';
 export const LANDING_SECTIONS = [
   { id: 'section-overview', label: 'Overview' },
   { id: 'section-platform', label: 'Platform' },
-  { id: 'section-telemetry', label: 'Telemetry' },
+  { id: 'section-analytics', label: 'Analytics' },
   { id: 'section-workflow', label: 'Workflow' },
   { id: 'section-showcase', label: 'Showcase' },
   { id: 'section-deploy', label: 'Deploy' },

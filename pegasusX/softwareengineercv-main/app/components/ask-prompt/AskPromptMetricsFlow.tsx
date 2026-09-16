@@ -4,18 +4,6 @@ import { cn } from '@/lib/utils';
 import type { AskPromptMetric } from './types';
 import AnimatedDitherField from './AnimatedDitherField';
 
-function VerifiedBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-medium text-emerald-400">
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-        <circle cx="5" cy="5" r="4" stroke="currentColor" strokeWidth="1" />
-        <path d="M3 5l1.5 1.5L7 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-      </svg>
-      Verified
-    </span>
-  );
-}
-
 function QueryBlock({ tokens }: { tokens: AskPromptMetric['queryLines'] }) {
   const colorMap = {
     keyword: 'text-violet-400',
@@ -45,7 +33,6 @@ function MetricDefinitionCard({ metric }: { metric: AskPromptMetric }) {
         <div>
           <p className="text-lg sm:text-xl font-medium text-white tracking-tight">{metric.label}</p>
         </div>
-        {metric.verified && <VerifiedBadge />}
       </div>
       <p className="mt-2 text-sm text-white/45 leading-relaxed">{metric.description}</p>
       <QueryBlock tokens={metric.queryLines} />
@@ -60,7 +47,6 @@ function MetricChartCard({ metric, animate }: { metric: AskPromptMetric; animate
     <div className="ask-metrics-card rounded-xl border border-white/[0.12] bg-[#000000] p-5 sm:p-6 h-full flex flex-col">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm text-white/45">{metric.chartTitle}</p>
-        {metric.verified && <VerifiedBadge />}
       </div>
       <p className="mt-2 text-3xl sm:text-4xl font-light tracking-tight text-white">{metric.chartValue}</p>
       <div className="mt-5 flex flex-1 items-end gap-2 sm:gap-3 min-h-[8rem]" aria-hidden>

@@ -119,7 +119,7 @@ export default async function Home() {
           <LastMileSection />
         </section>
 
-        <section id="section-telemetry">
+        <section id="section-analytics">
           <PlatformFeatures />
           <PromptDashboardSection />
           <AskPromptSection />

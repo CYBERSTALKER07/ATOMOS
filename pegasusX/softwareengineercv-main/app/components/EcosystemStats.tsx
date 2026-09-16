@@ -13,7 +13,7 @@ const SIDEBAR_NAV = [
   { id: 'supplier', label: 'Supplier Operations', icon: 'M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M3.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h7.2a2 2 0 0 1 1.9 1.6l1.4 6.2 M2 9h10 M17 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M15.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h1.2' },
   { id: 'warehouse', label: 'Warehouse Control', icon: 'M3 21v-14l8 -4l8 4v14 M8 21v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v4 M8 10h8 M8 13h8' },
   { id: 'retailer', label: 'Retailer Network', icon: 'M3 21l18 0 M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4' },
-  { id: 'fleet', label: 'Fleet Telemetry', icon: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 14l5.5 5.5' },
+  { id: 'fleet', label: 'Fleet Operations', icon: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 14l5.5 5.5' },
 ];
 
 const TAB_DATA = {
@@ -34,13 +34,13 @@ const TAB_DATA = {
   retailer: {
     title: 'Retailer Network Hub',
     subtitle: 'Store delivery statuses and unloading turnaround metrics',
-    card1: { title: 'Delivery Status', subtitle: 'Live fleet telemetry', value: '142', unit: 'Active Routes', percent: 88, stat1: '96%', label1: 'ON-TIME', stat2: '4K', label2: 'STOPS', metric: '96.2%' },
+    card1: { title: 'Delivery Status', subtitle: 'Fleet route tracking', value: '142', unit: 'Active Routes', percent: 88, stat1: '96%', label1: 'ON-TIME', stat2: '4K', label2: 'STOPS', metric: '96.2%' },
     card2: { title: 'Unload SLA', subtitle: 'Turnaround time monitoring', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
     card3: { title: 'Received Volume', subtitle: 'Daily units received', value: '12.5K', stat1: '99%', label1: 'MATCH', stat2: '15', label2: 'DC', metric: '3.4M' },
   },
   fleet: {
-    title: 'Global Fleet Telemetry',
-    subtitle: 'Live vehicle tracking, fuel consumption, and route efficiency',
+    title: 'Global Fleet Network',
+    subtitle: 'Vehicle tracking, fuel consumption, and route efficiency',
     card1: { title: 'Active Vehicles', subtitle: 'Vehicles currently on route', value: '450', unit: 'Trucks', percent: 95, stat1: '1.2K', label1: 'DRIVERS', stat2: '99%', label2: 'UPTIME', metric: '99.9%' },
     card2: { title: 'Fuel Efficiency', subtitle: 'Average MPG performance', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
     card3: { title: 'Total Mileage', subtitle: 'Daily distance covered', value: '85K', stat1: '400', label1: 'ROUTES', stat2: '12', label2: 'ZONES', metric: '2.1M' },
@@ -71,13 +71,13 @@ export default function EcosystemStats() {
     retailer: {
       title: 'Хаб сети ритейлеров',
       subtitle: 'Статусы доставки в магазины и метрики разгрузки',
-      card1: { title: 'Статус доставки', subtitle: 'Живая телеметрия автопарка', value: '142', unit: 'Активных маршрутов', percent: 88, stat1: '96%', label1: 'ВОВРЕМЯ', stat2: '4K', label2: 'ОСТАНОВОК', metric: '96.2%' },
+      card1: { title: 'Статус доставки', subtitle: 'Маршруты автопарка', value: '142', unit: 'Активных маршрутов', percent: 88, stat1: '96%', label1: 'ВОВРЕМЯ', stat2: '4K', label2: 'ОСТАНОВОК', metric: '96.2%' },
       card2: { title: 'SLA разгрузки', subtitle: 'Мониторинг времени оборота', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
       card3: { title: 'Принятый объём', subtitle: 'Единиц принято за день', value: '12.5K', stat1: '99%', label1: 'СОВПАДЕНИЕ', stat2: '15', label2: 'DC', metric: '3.4M' },
     },
     fleet: {
-      title: 'Глобальная телеметрия автопарка',
-      subtitle: 'Живое отслеживание ТС, расход топлива и эффективность маршрутов',
+      title: 'Глобальный автопарк',
+      subtitle: 'Отслеживание ТС, расход топлива и эффективность маршрутов',
       card1: { title: 'Активный транспорт', subtitle: 'ТС сейчас на маршруте', value: '450', unit: 'Грузовиков', percent: 95, stat1: '1.2K', label1: 'ВОДИТЕЛЕЙ', stat2: '99%', label2: 'АПТАЙМ', metric: '99.9%' },
       card2: { title: 'Топливная эффективность', subtitle: 'Средний расход', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
       card3: { title: 'Общий пробег', subtitle: 'Дневная дистанция', value: '85K', stat1: '400', label1: 'МАРШРУТОВ', stat2: '12', label2: 'ЗОН', metric: '2.1M' },
@@ -125,12 +125,6 @@ export default function EcosystemStats() {
 
         {/* Header */}
         <div className="mb-12 max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8">
-          <div className="flex items-center gap-2.5 mb-4">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#8DDC96]">
-              <path d="M4 15l8-8 8 8" />
-            </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-[#A9EBF9] font-medium">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
-          </div>
           <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight bg-gradient-to-r from-[#A9EBF9] via-[#8DDC96] to-[#FBFF63] bg-clip-text text-transparent inline-block drop-shadow-[0_0_35px_rgba(141,220,150,0.2)]">
             {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
