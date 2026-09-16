@@ -7,6 +7,7 @@ import Link from 'next/link';
 import SiteNav from '@/app/components/explore/SiteNav';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
+import O9InsightCards from '@/app/components/fleek/o9/O9InsightCards';
 
 function findSolution(slug: string, lang: string) {
   for (const sol of getSolutionsAccordionData(lang)) {
@@ -142,6 +143,10 @@ export default async function SolutionDetailPage({
                 className="w-full h-full object-cover border border-white/10"
               />
             </div>
+          </div>
+
+          <div className="mt-20 pt-16 border-t border-white/10">
+            <O9InsightCards />
           </div>
         </div>
       </div>

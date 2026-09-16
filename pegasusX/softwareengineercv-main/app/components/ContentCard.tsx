@@ -72,7 +72,7 @@ export function ContentCardLink({
 }) {
   return (
     <Link href={href as Route} prefetch={false} className={`editorial-link ${className}`}>
-      {children} <span aria-hidden="true">&gt;</span>
+      {children}
     </Link>
   );
 }
@@ -286,7 +286,7 @@ function ContentCard({
         )
       ) : href ? (
         <span className="editorial-link">
-          {ctaLabel} <span aria-hidden="true">&gt;</span>
+          {ctaLabel}
         </span>
       ) : null
     ) : null;

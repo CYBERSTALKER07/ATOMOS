@@ -9,7 +9,7 @@ type FleekTickerProps = {
 
 export default function FleekTicker({ items }: FleekTickerProps) {
   const { language } = useLanguage();
-  const text = items.map((i) => i.text).join(' //////// ');
+  const text = items.map((i) => i.text).join('   •   ');
 
   return (
     <div className="fleek-ticker" aria-label={language === 'ru' ? 'Живые обновления сети' : 'Live network updates'}>

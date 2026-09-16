@@ -109,7 +109,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-pulse" />
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#CEFF00]">
-                  SYS_CORE // OK
+                  SYS_CORE · ACTIVE
                 </span>
               </div>
               <span className="text-[10px] font-mono text-[#CEFF00]/60">99.99% SLA</span>

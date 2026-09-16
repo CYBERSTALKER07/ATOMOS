@@ -48,7 +48,7 @@ export default function O9SplitTourCTA({
           </div>
         </article>
 
-        <article className="o9-split-cta__card o9-split-cta__card--light">
+        <article className="o9-split-cta__card o9-split-cta__card--dark">
           <div className="o9-split-cta__media">
             <Image
               src={EDITORIAL_IMAGES[2]}
@@ -59,12 +59,12 @@ export default function O9SplitTourCTA({
             />
           </div>
           <div className="o9-split-cta__body">
-            <p className="o9-split-cta__eyebrow o9-split-cta__eyebrow--dark">{t('licensing_tour_tag')}</p>
-            <h3 className="o9-split-cta__heading o9-split-cta__heading--dark">{t('licensing_tour_title')}</h3>
-            <p className="o9-split-cta__copy o9-split-cta__copy--dark">
+            <p className="o9-split-cta__eyebrow">{t('licensing_tour_tag')}</p>
+            <h3 className="o9-split-cta__heading">{t('licensing_tour_title')}</h3>
+            <p className="o9-split-cta__copy">
               {t('licensing_tour_desc')}
             </p>
-            <Link href={resolvedTourHref} className="o9-btn o9-btn--dark">
+            <Link href={resolvedTourHref} className="o9-btn o9-btn--fill">
               {t('nav_tour')}
             </Link>
           </div>

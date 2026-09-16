@@ -130,7 +130,7 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
             {/* Text Content */}
             <div className={`space-y-6 ${index % 2 !== 0 ? 'lg:order-2' : ''}`}>
               <div className="inline-block px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-mono text-[var(--text-secondary)]">
-                {String(index + 1).padStart(2, '0')} // {language === 'ru' ? 'ВОЗМОЖНОСТЬ' : 'CAPABILITY'}
+                {String(index + 1).padStart(2, '0')} · {language === 'ru' ? 'ВОЗМОЖНОСТЬ' : 'CAPABILITY'}
               </div>
               <h3 className="text-3xl font-bold text-[var(--text)] leading-tight">
                 {topic.title}

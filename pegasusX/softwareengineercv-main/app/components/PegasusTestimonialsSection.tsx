@@ -120,7 +120,7 @@ export function PegasusTestimonialsSection() {
                 <span>CASE STUDY</span>
               </div>
               <div className="font-mono text-xs text-zinc-500 tracking-widest hidden sm:block">
-                SYS.REF // PEGASUS_CTO_01
+                SYS.REF · PEGASUS_CTO_01
               </div>
             </div>
 
@@ -171,8 +171,7 @@ export function PegasusTestimonialsSection() {
 
                 {/* Bottom Metadata Bar */}
                 <div className="px-5 py-2 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-emerald-400 tracking-wider">
-                  <span className="truncate">— {t('cto_name').toUpperCase()} // {t('cto_role').toUpperCase()}</span>
-                  <span className="text-emerald-500 font-bold ml-2 shrink-0">&gt;&gt;</span>
+                  <span className="truncate">— {t('cto_name').toUpperCase()} · {t('cto_role').toUpperCase()}</span>
                 </div>
 
               </div>
@@ -237,7 +236,7 @@ export function PegasusTestimonialsSection() {
                       &ldquo;{item.quote}&rdquo;
                     </p>
                     <p className="text-xs font-mono font-semibold text-emerald-400/90 tracking-wide">
-                      // {item.company}
+                      {item.company}
                     </p>
                   </div>
 
@@ -249,7 +248,6 @@ export function PegasusTestimonialsSection() {
                       </span>
                       <span className="text-zinc-200 truncate">{item.name}</span>
                     </div>
-                    <span className="text-emerald-400 font-bold ml-2 flex-shrink-0">&gt;&gt;</span>
                   </div>
 
                 </div>

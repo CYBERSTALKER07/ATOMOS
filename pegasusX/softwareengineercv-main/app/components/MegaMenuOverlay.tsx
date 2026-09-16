@@ -130,7 +130,7 @@ function PromoBlock({ promo, onNavigate }: { promo: MegaNavPromo; onNavigate: ()
           onClick={onNavigate}
           prefetch={false}
         >
-          {promo.primaryLabel} &gt;
+          {promo.primaryLabel}
         </Link>
         {promo.secondaryHref && promo.secondaryLabel ? (
           <Link
@@ -139,7 +139,7 @@ function PromoBlock({ promo, onNavigate }: { promo: MegaNavPromo; onNavigate: ()
             onClick={onNavigate}
             prefetch={false}
           >
-            {promo.secondaryLabel} &gt;
+            {promo.secondaryLabel}
           </Link>
         ) : null}
       </div>
@@ -364,7 +364,7 @@ export default function MegaMenuOverlay({
                   )}
                 </div>
                 <span className="text-white font-bold tracking-widest uppercase text-sm relative z-10">
-                  {activeCategory?.viewAllLabel ?? 'VIEW ALL'} &gt;
+                  {activeCategory?.viewAllLabel ?? 'VIEW ALL'}
                 </span>
               </Link>
             </div>

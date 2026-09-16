@@ -694,7 +694,7 @@ export default function LogisticsWorkflow() {
         ) : (
           <div className="mt-4 text-center">
             <span className="text-[11px] font-mono uppercase tracking-widest text-white/30">
-              Hover nodes to inspect integration telemetry // Zero scroll interception
+              Hover nodes to inspect integration telemetry
             </span>
           </div>
         )}

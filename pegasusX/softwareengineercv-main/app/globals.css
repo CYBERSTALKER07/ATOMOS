@@ -5981,9 +5981,9 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .o9-split-cta__card--light {
-  background: #fff;
-  color: #000;
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: #09090b;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .o9-split-cta__media {
@@ -6007,7 +6007,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .o9-split-cta__eyebrow--dark {
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .o9-split-cta__heading {
@@ -6019,7 +6019,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .o9-split-cta__heading--dark {
-  color: #000;
+  color: #fff;
 }
 
 .o9-split-cta__copy {
@@ -6032,7 +6032,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .o9-split-cta__copy--dark {
-  color: rgba(0, 0, 0, 0.65);
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .o9-split-cta__body .o9-btn {
