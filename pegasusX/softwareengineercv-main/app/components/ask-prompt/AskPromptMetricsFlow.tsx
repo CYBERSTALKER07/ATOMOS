@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import type { AskPromptMetric } from './types';
+import AnimatedDitherField from './AnimatedDitherField';
 
 function VerifiedBadge() {
   return (
@@ -86,11 +87,16 @@ function MetricChartCard({ metric, animate }: { metric: AskPromptMetric; animate
 function MetricsPromptBridge({ prompt }: { prompt: string }) {
   return (
     <div className="relative flex min-h-[10rem] sm:min-h-[12rem] lg:min-h-0 lg:h-full items-center justify-center py-6 lg:py-0">
-      {/* Double chevron + dot field */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden>
-        <div className="relative h-[70%] w-[85%] max-w-[16rem]">
-          <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(rgba(167,139,250,0.35)_1px,transparent_1px)] [background-size:6px_6px]" />
-          <svg viewBox="0 0 120 80" className="h-full w-full" fill="none">
+      {/* Double chevron + animated dither matrix field */}
+      <div className="absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden>
+        <div className="relative h-[78%] w-[90%] max-w-[17rem]">
+          {/* 60fps Interactive Bayer Dither Field */}
+          <div className="absolute inset-0 z-0">
+            <AnimatedDitherField dotSpacing={6} speed={1.1} className="w-full h-full" />
+          </div>
+
+          {/* SVG Chevron Flow Vectors */}
+          <svg viewBox="0 0 120 80" className="pointer-events-none relative z-[1] h-full w-full" fill="none">
             <path
               d="M8 8 L52 40 L8 72 Z"
               fill="url(#chev1)"
@@ -116,8 +122,8 @@ function MetricsPromptBridge({ prompt }: { prompt: string }) {
       </div>
 
       {/* Prompt pill */}
-      <div className="relative z-10 w-full max-w-[15rem] sm:max-w-[17rem] mx-auto px-2">
-        <div className="rounded-full border border-violet-400/35 bg-[linear-gradient(180deg,rgba(88,28,180,0.92),rgba(49,16,98,0.95))] px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_0_36px_rgba(124,58,237,0.38)]">
+      <div className="relative z-10 w-full max-w-[15rem] sm:max-w-[17rem] mx-auto px-2 group">
+        <div className="rounded-full border border-violet-400/40 bg-[linear-gradient(180deg,rgba(88,28,180,0.94),rgba(49,16,98,0.96))] px-4 py-2.5 sm:px-5 sm:py-3 shadow-[0_0_36px_rgba(124,58,237,0.4)] backdrop-blur-md transition-all duration-300 group-hover:scale-[1.02] group-hover:shadow-[0_0_48px_rgba(167,139,250,0.55)]">
           <p className="text-center text-[0.72rem] sm:text-xs text-violet-100/95 font-light leading-snug">
             {prompt}
           </p>
