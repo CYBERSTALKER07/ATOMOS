@@ -130,7 +130,7 @@ export default async function Home() {
           <LogisticsWorkflow />
           <OurApproach />
           <Skills />
-          <CloudEcosystemSection />
+          {/* <CloudEcosystemSection /> - hidden for now */}
         </section>
 
         <section id="section-showcase">
