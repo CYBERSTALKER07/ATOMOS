@@ -10,7 +10,7 @@ export default function OurApproach() {
 
   return (
     <section className="w-full flex flex-col lg:flex-row min-h-0 lg:min-h-[640px] xl:min-h-[800px] border-t border-white/10 overflow-hidden">
-      <div className="flex-1 relative bg-black min-h-[240px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full">
+      <div className="flex-1 relative bg-black min-h-[280px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full">
         <div className="absolute inset-0">
           <Digit369 color="#e8e4e3" backgroundColor="#000000" />
         </div>
@@ -38,7 +38,7 @@ export default function OurApproach() {
             <p className="text-base sm:text-lg text-black/70 max-w-xl leading-relaxed">
               {t(
                 'approach_desc',
-                "We don't just ship code; we architect neural ecosystems. Our approach combines rigorous testing with rapid deployment cycles."
+                "We don't just ship software; we build operations infrastructure. Our approach combines field-tested logistics workflows with real-time coordination across six roles."
               )}
             </p>
           </div>
@@ -50,12 +50,12 @@ export default function OurApproach() {
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
-                  {t('approach_prime_title', 'Prime Logic')}
+                  {t('approach_prime_title', 'SLA-First Dispatch')}
                 </h3>
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
                   {t(
                     'approach_prime_desc',
-                    'We prioritize high-fidelity model alignment to ensure your agents deliver consistent results.'
+                    'We prioritize on-time delivery SLAs to ensure your dispatch engine delivers consistent, measurable results every shift.'
                   )}
                 </p>
               </div>
@@ -72,7 +72,7 @@ export default function OurApproach() {
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
                   {t(
                     'approach_clarity_desc',
-                    'Gain full observability into how your data is processed, indexed, and retrieved by your AI.'
+                    'Full visibility from warehouse dock to retailer doorstep — every order, vehicle, and payment in one live dashboard.'
                   )}
                 </p>
               </div>
@@ -84,12 +84,12 @@ export default function OurApproach() {
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
-                  {t('approach_cycles_title', 'Fast Cycles')}
+                  {t('approach_cycles_title', 'Fast Onboarding')}
                 </h3>
                 <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
                   {t(
                     'approach_cycles_desc',
-                    'Transition from prototype to production in weeks, not months, with our pre-built frameworks.'
+                    'Onboard a new warehouse or expand to a new region in weeks, not months, with pre-built role templates and proven workflows.'
                   )}
                 </p>
               </div>

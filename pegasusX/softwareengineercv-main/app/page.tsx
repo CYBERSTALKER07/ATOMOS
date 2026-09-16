@@ -27,7 +27,7 @@ const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPrompt
 const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
-const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
+
 const CloudEcosystemSection = dynamic(() => import('./components/CloudEcosystemSection'));
 const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
 const Projects = dynamic(() => import('./components/Projects'));
@@ -137,7 +137,6 @@ export default async function Home() {
           <OurApproach />
           <LocalizedLaneDivider index="04" labelKey="home_lane_operations" />
           <Skills />
-          <DevelopmentTools />
           <CloudEcosystemSection />
         </section>
 

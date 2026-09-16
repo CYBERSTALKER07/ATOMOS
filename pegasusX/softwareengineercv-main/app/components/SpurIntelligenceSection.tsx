@@ -41,12 +41,12 @@ export default function SpurIntelligenceSection({
 
   const finalEyebrow = eyebrow ?? (isRu ? 'НАЧАТЬ' : 'GET STARTED');
   const finalH1 = headlineLine1 ?? (isRu ? 'Почувствуйте разницу между' : 'See the Difference Between');
-  const finalH2 = headlineLine2 ?? (isRu ? 'Сырыми данными и интеллектом' : 'Raw Data & Real Intelligence');
+  const finalH2 = headlineLine2 ?? (isRu ? 'Таблицами и операциями в реальном времени' : 'Spreadsheets & Real-Time Operations');
   const finalDesc =
     description ??
     (isRu
-      ? 'Обогащайте сетевую телеметрию в реальном времени, выявляя аномалии, прокси и ботов, скрытых на виду.'
-      : 'Start enriching IPs with Spur to reveal the residential proxies, VPNs, and bots hiding in plain sight.');
+      ? 'Запустите свою дистрибьюторскую сеть на Pegasus — живая диспетчеризация, телеметрия автопарка и расчёт платежей в одной управляемой системе.'
+      : 'Start running your distribution network on Pegasus — live dispatch, fleet telemetry, and payment settlement in one governed state machine.');
   const finalDemo = demoLabel ?? (isRu ? 'ЗАПРОСИТЬ ДЕМО' : 'REQUEST A DEMO');
   const finalTrial = trialLabel ?? (isRu ? 'НАЧАТЬ ТЕСТ' : 'START FREE TRIAL');
 

@@ -41,7 +41,7 @@ export default function ShowcaseWall() {
         </p>
       </div>
 
-      <div className="w-full h-[540px] md:h-[640px] relative z-10 rounded-3xl border border-white/10 overflow-hidden bg-black/60 shadow-[0_30px_100px_rgba(0,0,0,0.9)]">
+      <div className="w-full h-[320px] sm:h-[540px] md:h-[640px] relative z-10 rounded-3xl border border-white/10 overflow-hidden bg-black/60 shadow-[0_30px_100px_rgba(0,0,0,0.9)]">
         <DriftWall
           items={DRIFT_ITEMS}
           columns={5}

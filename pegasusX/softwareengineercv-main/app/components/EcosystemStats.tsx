@@ -119,20 +119,20 @@ export default function EcosystemStats() {
             </svg>
             <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
           </div>
-          <h2 id="ecosystem-stats-heading" className="text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
+          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
             {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
 
         </div>
 
         {/* Massive Dashboard UI */}
-        <div ref={dashboardRef} className="bg-[#050505] border-none  border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[800px] w-full">
+        <div ref={dashboardRef} className="bg-[#050505] border-none  border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[500px] lg:min-h-[800px] w-full">
 
           {/* Sidebar */}
 
 
           {/* Main Content Area */}
-          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#000000]  relative">
+          <div className="flex-1 p-4 sm:p-6 md:p-10 dashboard-content flex flex-col bg-[#000000]  relative">
             {/* Grid Pattern Background */}
             <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
 
@@ -174,7 +174,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -187,7 +187,7 @@ export default function EcosystemStats() {
                 <div className="text-sm text-white/40 mb-8">{localizedData.card1.subtitle}</div>
 
                 <div className="flex-1 flex items-center justify-center relative">
-                  <svg viewBox="0 0 220 220" className="w-full max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
+                  <svg viewBox="0 0 220 220" className="w-full max-w-[160px] sm:max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
                     <circle cx="110" cy="110" r="85" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
                     {/* ticks */}
                     <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
@@ -220,7 +220,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
@@ -252,7 +252,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
