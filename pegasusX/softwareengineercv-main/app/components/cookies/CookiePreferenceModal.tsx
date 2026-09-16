@@ -271,8 +271,8 @@ export default function CookiePreferenceModal() {
                     {/* Switch Toggle */}
                     <div className="shrink-0 flex items-center pt-1">
                       {card.isMandatory ? (
-                        <div className="w-11 h-6 rounded-full bg-emerald-600/30 border border-emerald-600/50 flex items-center justify-end px-1 cursor-not-allowed">
-                          <div className="w-4 h-4 rounded-full bg-emerald-600 dark:bg-[#8DDC96]" />
+                        <div className="w-11 h-6 rounded-none bg-black/20 dark:bg-white/20 border border-black/30 dark:border-white/30 flex items-center justify-end px-1 cursor-not-allowed">
+                          <div className="w-4 h-4 rounded-none bg-black dark:bg-white" />
                         </div>
                       ) : (
                         <button
@@ -281,15 +281,15 @@ export default function CookiePreferenceModal() {
                           aria-checked={isChecked}
                           disabled={card.key === 'marketing' && isGPC}
                           onClick={() => handleToggle(card.key)}
-                          className={`w-11 h-6 rounded-full border transition-colors p-0.5 flex items-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                          className={`w-11 h-6 rounded-none border transition-colors p-0.5 flex items-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                             isChecked
-                              ? 'bg-emerald-600 border-emerald-500 justify-end'
+                              ? 'bg-black dark:bg-white border-black dark:border-white justify-end'
                               : isLight
                               ? 'bg-zinc-200 border-zinc-300 justify-start'
                               : 'bg-zinc-800 border-zinc-700 justify-start'
                           }`}
                         >
-                          <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                          <div className={`w-4 h-4 rounded-none shadow-sm ${isChecked ? 'bg-white dark:bg-black' : 'bg-zinc-500 dark:bg-zinc-400'}`} />
                         </button>
                       )}
                     </div>

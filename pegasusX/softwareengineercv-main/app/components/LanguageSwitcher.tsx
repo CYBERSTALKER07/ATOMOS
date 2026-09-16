@@ -37,8 +37,8 @@ export default function LanguageSwitcher({ className = '' }: { className?: strin
       <div
         className={`lang-switcher relative inline-grid grid-cols-2 items-center rounded-none border p-0.5 backdrop-blur-md ${
           isLight
-            ? 'border-black/15 bg-black/5'
-            : 'border-white/20 bg-black/60'
+            ? 'border-black bg-white text-black'
+            : 'border-white bg-black text-white'
         }`}
         role="group"
         aria-label="Language Toggle"
