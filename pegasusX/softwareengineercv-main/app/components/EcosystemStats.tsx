@@ -94,7 +94,7 @@ export default function EcosystemStats() {
     { id: 'supplier', label: 'Supplier' },
     { id: 'warehouse', label: 'Warehouse' },
     { id: 'retailer', label: 'Retailer' },
-    { id: 'fleet', label: 'Fleet Telemetry' },
+    { id: 'fleet', label: 'Fleet' },
   ];
 
   useEffect(() => {
@@ -125,13 +125,13 @@ export default function EcosystemStats() {
 
         {/* Header */}
         <div className="mb-12 max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8">
-          <div className="flex items-center gap-3 text-white/40 mb-4">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="flex items-center gap-2.5 mb-4">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[#8DDC96]">
               <path d="M4 15l8-8 8 8" />
             </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-[#A9EBF9] font-medium">{t('ecosystem_eyebrow', 'Ecosystem Statistics')}</span>
           </div>
-          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight text-white">
+          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight bg-gradient-to-r from-[#A9EBF9] via-[#8DDC96] to-[#FBFF63] bg-clip-text text-transparent inline-block drop-shadow-[0_0_35px_rgba(141,220,150,0.2)]">
             {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
         </div>
@@ -170,11 +170,10 @@ export default function EcosystemStats() {
                 ))}
               </div>
 
-              {/* Right Live Stream Status */}
-              <div className="flex items-center gap-2 font-mono text-[10px] text-emerald-400 tracking-wider">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="hidden sm:inline">LIVE TELEMETRY</span>
-                <span className="text-white/30 hidden md:inline">| 99.99%</span>
+              {/* Right Window Status - Clean without live telemetry */}
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-white/20" />
+                <span className="font-mono text-[10px] text-white/30 tracking-widest hidden sm:inline">SYS.CONSOLE</span>
               </div>
             </div>
 
