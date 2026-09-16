@@ -1,58 +1,48 @@
-# BRIEFING — 2026-08-20T17:28:30Z
+# BRIEFING — 2026-09-16T13:22:30Z
 
 ## Mission
-Investigate and produce authoritative Source of Truth (SoT) audit of the pegasusX backend Go codebase, Spanner schema, contracts, types, api-client, and test suites with exact file:line citations.
+Deep read-only survey of PostgreSQL 16 schema and migrations in `pegasus.x`, analyzing tables and drafting DDL `069_supplier_onboarding_and_globalpay.sql`.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: Backend & Contracts Codebase SoT Inspector
+- Roles: Survey Specialist 2: Database Migrations & Schemas
 - Working directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2
-- Original parent: d6d3f553-4e8b-4882-919f-9c205af911f1
-- Milestone: Preview / Investigation Phase
+- Original parent: teamwork_preview_orchestrator (conv ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee)
+- Milestone: Survey & Schema Analysis
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement
-- Honesty override: code opened this session is the only status SoT
-- Forbidden without file:line: wired, done, production-ready, cloud-ready
-- Write only to own working directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2
+- Read-only investigation — do NOT implement or modify production code
+- Adhere strictly to the two-system architectural boundary: `pegasus.x` is sovereign PostgreSQL 16 + Redis 7 (no Spanner, no Kafka)
+- Keep findings backed by concrete file paths, line numbers, and exact code quotes
 
 ## Current Parent
-- Conversation ID: d6d3f553-4e8b-4882-919f-9c205af911f1
-- Updated: 2026-08-20T17:28:30Z
+- Conversation ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee
+- Updated: 2026-09-16T13:22:30Z
 
 ## Investigation State
 - **Explored paths**:
-  - `pegasusX/apps/backend-go/schema/spanner.ddl` (3,648 lines, 220+ tables)
-  - `pegasusX/apps/backend-go/main.go` and all 29 `*routes` packages
-  - `pegasusX/apps/backend-go/outbox/`, `kafka/`, `bootstrap/`, `auth/`, `mfa/`, `payout/`, `partner/`, `ws/`
-  - `pegasusX/contracts/events.schema.json` (6,122 lines), OpenAPI specs, marker registries
-  - `pegasusX/packages/types/index.ts` (6,682 lines) & `pegasusX/packages/api-client/` (3,669 lines)
-  - Quicktype native stubs in Android Kotlin & iOS Swift
-  - `pegasusX/apps/backend-go/cmd/ssmr-smokecheck/` & `go test ./...` test suite run
+  - `pegasus.x/database/migrations/` (all 69 files, 001 to 068)
+  - `pegasus.x/backend/internal/db/migrate.go` (runner implementation & schema_migrations table)
+  - `pegasus.x/backend/internal/supplier/` (models.go, repository.go, service.go, supplier_test.go)
+  - `pegasus.x/backend/internal/inventory/service.go` (RegisterSKU, skus table usage)
+  - `pegasus.x/backend/internal/api/` (handlers_supplier.go, handlers_inventory.go, router.go, tests)
 - **Key findings**:
-  - 81 backend packages pass unit/integration tests.
-  - 3 test failure locations diagnosed: `promotion/lifecycle_test.go:7:2` (unused import build error), `orgoidc/service_test.go:97, 141` (pinned clock vs live time), `payment/currency_mismatch_test.go:59, 105` (missing live credentials / stub mode).
-  - Unwired/gated endpoints documented: `HandleInventoryAudit` (410 `audit_unwired`), `QUANTITY_NEGOTIATION_ENABLED` gate (410 `feature_disabled`), Payme/Click webhooks commented out for launch.
-- **Unexplored areas**: None. Complete investigation of backend SoT scope finished.
+  - Highest migration is `068_trade_credit_quota_system.sql`; next file is `069_supplier_onboarding_and_globalpay.sql`.
+  - `suppliers` table in PostgreSQL lacks STIR unique index, password_hash, phone, onboarding_status, currency.
+  - `products` table does not exist; catalog items currently use `skus`. Migration 069 must create `products` and sync `skus`.
+  - Payment gateway settings currently live only in-memory; migration 069 must create `supplier_payment_gateways`.
+  - `warehouses` has `DOUBLE PRECISION` coordinates but lacks `status` column.
+  - `warehouse_trucks` and `warehouse_payloaders` must be created with compatibility views.
+  - Warehouse deletion guards verified: `stock_balances.on_hand_qty > 0` and non-terminal orders (`status NOT IN ('DELIVERED', 'CANCELLED')`).
+- **Unexplored areas**: None for this survey scope.
 
 ## Key Decisions Made
-- Audit was executed using live codebase inspection and runtime test execution with exact file:line evidence.
-- Full findings report written to `backend_sot_report.md`.
+- Structured DDL `069_supplier_onboarding_and_globalpay.sql` using VARCHAR(32) + CHECK constraints to avoid pgx custom enum registration friction.
+- Included dual-table synchronization (dedicated `products` table + `skus` table column alignment) to preserve backward compatibility.
+- Designed views `trucks`, `payloaders`, and `supplier_payment_configs` for clean API alias access.
 
 ## Artifact Index
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/BRIEFING.md — Persistent working memory
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/progress.md — Liveness heartbeat and progress
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/backend_sot_report.md — Comprehensive backend SoT report
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/handoff.md — Handoff report
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+- DISPATCH.md — incoming instructions log
+- progress.md — liveness heartbeat
+- report.md — comprehensive findings and drafted DDL `069_supplier_onboarding_and_globalpay.sql`
+- handoff.md — 5-component handoff report

@@ -1,52 +1,52 @@
-## 2026-08-20T19:42:09Z
-You are the Worker for Milestone 1 (M1: DevOps and Backend Architecture).
-Working Directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1
-Workspace Root: /Users/shakhzod/Desktop/V.O.I.D
-Authoritative Request: /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md
-Explorer Handoff Report: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_r1/handoff.md (read this thoroughly!)
+## 2026-09-16T13:23:40Z
+
+You are teamwork_preview_worker (Milestone 1 Worker: PostgreSQL 16 Migration 069 & Pure pgxpool Repository).
+Your working directory is: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1
+Your parent is: teamwork_preview_orchestrator (conv ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee)
 
 MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. An auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A reviewer will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-File Ownership:
-- `.github/workflows/pegasusx-ci.yml`
-- `.github/workflows/pegasusx-native-mobile-build.yml`
-- `.github/ACT.md`
-- `pegasusX/apps/backend-go/bootstrap/*` (`config.go`, `app.go`, `infra.go`, `services.go`, `workers.go`, `queries.go`)
-- `pegasusX/apps/backend-go/factory/auth_register.go`, `pegasusX/apps/backend-go/factory/planning_service.go`
-- `pegasusX/apps/backend-go/warehouse/auth_register.go`, `pegasusX/apps/backend-go/warehouse/setup.go`, `pegasusX/apps/backend-go/warehouse/dispatch_runs.go`, `pegasusX/apps/backend-go/warehouse/ops_portal.go`
+MANDATORY FIRST STEP:
+Read /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md, /Users/shakhzod/Desktop/V.O.I.D/PROJECT.md, and the survey reports:
+- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/report.md
+- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/report.md
 
-Tasks:
-1. Fix the `reatilerapp` typo in `.github/workflows/pegasusx-native-mobile-build.yml` (scheme and project path) and in `.github/ACT.md`. Consolidate the `sandbox-infra.yml` smoke gate (`make test-sandbox-infra`) into `.github/workflows/pegasusx-ci.yml`.
-2. Modularize `pegasusX/apps/backend-go/bootstrap/bootstrap.go` into `config.go`, `app.go`, `infra.go`, `services.go`, `workers.go`, `queries.go` in `package bootstrap`. Ensure all symbols remain in `package bootstrap` and the old monolith file is replaced/split cleanly so `go test ./bootstrap/...` and `go build ./...` pass without issues.
-3. Migrate `spanner.Client.Apply` calls in:
-   - `pegasusX/apps/backend-go/factory/auth_register.go`
-   - `pegasusX/apps/backend-go/factory/planning_service.go`
-   - `pegasusX/apps/backend-go/warehouse/auth_register.go`
-   - `pegasusX/apps/backend-go/warehouse/setup.go`
-   - `pegasusX/apps/backend-go/warehouse/dispatch_runs.go`
-   - `pegasusX/apps/backend-go/warehouse/ops_portal.go`
-   to use `ReadWriteTransaction` (`s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error { ... })` and outbox buffer where appropriate).
+TASK:
+Implement Milestone 1:
+1. **Create PostgreSQL 16 Migration `069_supplier_onboarding_and_globalpay.sql`**:
+   - File: `pegasus.x/database/migrations/069_supplier_onboarding_and_globalpay.sql`
+   - DDL specifications from Survey 2 report:
+     - Alter `suppliers`: add `tax_id VARCHAR(32)`, `phone VARCHAR(32)`, `password_hash VARCHAR(255)`, `onboarding_status VARCHAR(32) NOT NULL DEFAULT 'PENDING'`, `CHECK (onboarding_status IN ('PENDING', 'PRODUCTS_CONFIGURED', 'PAYMENT_CONFIGURED', 'COMPLETED'))`.
+     - Backfill: `UPDATE suppliers SET tax_id = legal_tax_id WHERE tax_id IS NULL;`
+     - Create unique indexes: `idx_suppliers_tax_id UNIQUE` on `suppliers(tax_id)` and `idx_suppliers_legal_tax_id UNIQUE` on `suppliers(legal_tax_id)`.
+     - Create `products` table: `product_id VARCHAR(64) PRIMARY KEY`, `supplier_id VARCHAR(64) NOT NULL REFERENCES suppliers(supplier_id) ON DELETE CASCADE`, `name VARCHAR(255) NOT NULL`, `barcode VARCHAR(32) UNIQUE NOT NULL`, `mxik_code VARCHAR(32) NOT NULL`, `package_code VARCHAR(32) NOT NULL`, `units_per_case INT NOT NULL DEFAULT 1`, `unit_price_tiyin BIGINT NOT NULL`, `vat_rate NUMERIC(5,2) NOT NULL DEFAULT 12.00`, `status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE'`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`, `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`.
+     - Create `supplier_payment_gateways` table: `config_id VARCHAR(64) PRIMARY KEY`, `supplier_id VARCHAR(64) NOT NULL REFERENCES suppliers(supplier_id) ON DELETE CASCADE`, `provider VARCHAR(32) NOT NULL`, `enabled BOOLEAN NOT NULL DEFAULT TRUE`, `service_id VARCHAR(128)`, `secret_key VARCHAR(256)`, `allowed_bins TEXT[] DEFAULT '{}'`, `is_default BOOLEAN NOT NULL DEFAULT FALSE`, `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`, `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`, `CONSTRAINT uq_supplier_provider UNIQUE (supplier_id, provider)`.
+     - Create view `supplier_payment_configs AS SELECT * FROM supplier_payment_gateways;`.
+     - Alter `warehouses`: add `status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE'`, `updated_at TIMESTAMPTZ DEFAULT NOW()`. Verify `latitude` and `longitude` are `DOUBLE PRECISION NOT NULL`.
+     - Create `warehouse_trucks` and `warehouse_payloaders` tables with compatibility views `trucks` and `payloaders`.
+     - Create `supplier_kyc_documents` and `supplier_audit_events` tables to support KYC and audit event persistence.
 
-Verification:
-- Run `go test ./bootstrap/...` and `go build ./...` in `pegasusX/apps/backend-go`.
-- Run `go test ./factory/... ./warehouse/...` in `pegasusX/apps/backend-go`.
-- Verify `grep -ri "reatilerapp" .` returns no results.
-- Verify `grep -rn "\.Apply(" pegasusX/apps/backend-go/factory pegasusX/apps/backend-go/warehouse` returns no `.Apply` calls in the target files.
+2. **Purge `MemoryRepository` and Mock Seeds from `pegasus.x/backend/internal/supplier/repository.go`**:
+   - Delete `type MemoryRepository struct` and its 12 in-memory maps.
+   - Delete `NewMemoryRepository()` and all hardcoded mock seeds.
+   - Remove `memory *MemoryRepository` from `PostgresRepository`.
+   - Remove all 57 occurrences of `if err != nil { return p.memory... }` silent fallbacks. Return real errors.
+   - Implement real SQL queries using `p.pool` (`*db.Pool`) for all methods in `PostgresRepository` (including `ListCRMRetailers`, `GetCRMRetailerDetail`, `ListKycDocuments`, `SubmitKycDocument`, `ReviewKycDocument`, `AddEvent`, `ListEvents`).
+   - Add any new repository methods needed for supplier registration (e.g. `CreateSupplier`, `GetSupplierByTaxID`, `GetSupplierByID`, `UpdateOnboardingStatus`, `SavePaymentGateway`, `GetPaymentGateways`, `CreateProduct`, `ListProducts`, `DeleteProduct`).
 
-Deliverables:
-- Write `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/changes.md` detailing all edits.
-- Write `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/handoff.md` with build and test commands and outputs.
-- Send a completion message to parent when done.
+3. **Preserve Unit Test Stability**:
+   - In `pegasus.x/backend/internal/supplier/supplier_test.go`, the existing unit tests expect an in-memory repository for offline testing.
+   - Create a clean test mock `testMockRepository` in `pegasus.x/backend/internal/supplier/mock_test.go` (strictly `_test.go`) so unit tests run cleanly without any mock code in production `repository.go`.
+   - Run `go test -v -race ./internal/supplier/...` in `pegasus.x/backend` and ensure all tests pass!
 
+WRITE OWNERSHIP:
+- `pegasus.x/database/migrations/069_supplier_onboarding_and_globalpay.sql`
+- `pegasus.x/backend/internal/supplier/repository.go`
+- `pegasus.x/backend/internal/supplier/models.go`
+- `pegasus.x/backend/internal/supplier/mock_test.go`
+- `pegasus.x/backend/internal/supplier/supplier_test.go`
 
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+VERIFICATION:
+Execute `go test -v -race ./internal/supplier/...` and `go test -v ./internal/db/...` to verify migrations and repository. Document all outputs in your handoff report.
+When complete, write `handoff.md` and send a message back.

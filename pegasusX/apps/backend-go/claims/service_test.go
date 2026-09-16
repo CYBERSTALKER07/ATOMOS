@@ -211,8 +211,8 @@ func TestApproveRejectResolvesStoreStock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stock.resolves) != 1 || stock.resolves[0] != "RETURN" {
-		t.Fatalf("resolves=%v want RETURN", stock.resolves)
+	if len(stock.resolves) != 1 || stock.resolves[0] != "WASTE" {
+		t.Fatalf("resolves=%v want WASTE", stock.resolves)
 	}
 
 	// Reject path

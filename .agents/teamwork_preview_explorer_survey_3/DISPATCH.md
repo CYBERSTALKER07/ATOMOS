@@ -1,36 +1,34 @@
-# Dispatch: Client Apps & Multi-Role Parity SoT Inspector
+## 2026-09-16T13:16:07Z
 
-## Identity
-- Subagent: teamwork_preview_explorer_survey_3
-- Type: teamwork_preview_explorer
-- Role: Client Apps & Multi-Role Parity Inspector
-- Working Directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3
-- Authoritative Request: /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md
+You are teamwork_preview_explorer (Survey Specialist 3: Middleware, Global Pay, Events & Fleet Hub).
+Your working directory is: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3
+Your parent is: teamwork_preview_orchestrator (conv ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee)
 
-## Objective
-Investigate all client apps across the 6 role rows in `pegasusX/apps/`:
-1. Supplier: portal, Android, iOS
-2. Retailer: desktop, Android, iOS
-3. Driver: Android, iOS
-4. Warehouse: portal, Android, iOS
-5. Factory: portal, Android, iOS
-6. Payload: terminal, Android, iOS
+MANDATORY FIRST STEP:
+Read /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md completely before doing any other work.
 
-Determine the actual state of UI screens, API client integration, shared packages (`packages/types`, `packages/api-client`), WebSocket handling, state stores. Identify genuine implementations vs facades / stubs / theatre.
+TASK:
+Perform a deep, read-only survey of middleware, payment gateway logic, events, and fleet endpoints in `pegasus.x/backend`:
+1. Middleware & Routing:
+   - Check how HTTP routing (Chi or standard router) and middleware are implemented in `pegasus.x/backend/internal/`.
+   - How does JWT extraction work? Where are user/supplier ID and claims stored in `r.Context()`?
+   - Design `RequireSupplierOnboardingCompleted` middleware:
+     - Block operational endpoints with HTTP 428 Precondition Required (`{"error": "onboarding_incomplete", "onboarding_status": "...", "next_step": "..."}`) if `onboarding_status != 'COMPLETED'`.
+     - Whitelist `/v1/auth/*` and `/v1/supplier/onboarding/*`.
+2. Phased Onboarding Wizard Endpoints:
+   - Step 1: `POST /v1/supplier/onboarding/products` (Add, Edit, Delete). Check validation: 17-digit statutory MXIK code regex/format, EAN-13 checksum/uniqueness, 64-bit integer tiyin price, 12% VAT.
+   - Step 2: `POST /v1/supplier/onboarding/payment` (Cash default enabled; Global Pay `GLOBAL_PAY` corporate card gateway with service ID, secret key, and corporate card BIN validation - Uzbekistan B2B corporate card prefixes/BINs).
+   - Step 3: `POST /v1/supplier/onboarding/complete` (validate at least 1 product active, payment configured; update status to 'COMPLETED', emit outbox & Redis event).
+3. Warehouse & Fleet Management:
+   - `POST/GET/PUT/DELETE /v1/supplier/warehouses`
+   - Mandatory lat/lon (`DOUBLE PRECISION`).
+   - Redis proximity cache invalidation (check Redis client in `pegasus.x/backend/internal/redis/` or similar) and emit `warehouse.relocated`.
+   - Warehouse deletion guard: check stock > 0 or active orders -> HTTP 409 Conflict.
+   - Trucks: `POST/GET /v1/supplier/warehouses/{id}/trucks` (license plate, capacity kg/m³, fuel type).
+   - Payloaders: `POST/GET /v1/supplier/warehouses/{id}/payloaders` (name, phone, warehouse_id).
+4. Realtime & Outbox:
+   - Inspect `pegasus.x` transactional outbox / Redis streams / WebSocket hub mechanisms.
 
-Write your findings with exact `file:line` citations to:
-- `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/clients_parity_report.md`
-- `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/handoff.md`
-- Update your `progress.md` with liveness.
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+OUTPUT:
+Write your comprehensive findings and API contract designs to `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/report.md` and a standard `handoff.md`.
+When finished, send a message to parent with the summary and report path.

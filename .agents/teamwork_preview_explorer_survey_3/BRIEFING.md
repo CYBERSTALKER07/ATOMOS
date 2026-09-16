@@ -1,63 +1,64 @@
-# BRIEFING — 2026-08-20T17:28:10Z
+# BRIEFING — 2026-09-16T13:22:30Z
 
 ## Mission
-Investigate and verify the true codebase state of all client applications across all 6 role rows in `pegasusX/apps/` (Supplier, Retailer, Driver, Warehouse, Factory, Payload across Web/Desktop, Android, iOS), shared packages (`packages/types`, `packages/api-client`), WebSocket subscriptions, API integration, and mock vs real data wiring with exact file:line evidence.
+Deep read-only survey of middleware, payment gateway logic, events, and fleet endpoints in pegasus.x/backend to design non-bypassable onboarding gate, Global Pay gateway, warehouse/fleet hub, and realtime outbox/Redis integration.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: Client Apps & Multi-Role Parity Inspector
+- Roles: survey specialist, read-only investigator
 - Working directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3
-- Original parent: d6d3f553-4e8b-4882-919f-9c205af911f1
-- Milestone: Phase 1 Codebase vs Documentation Parity Survey
+- Original parent: 755199e9-0b8c-404a-b2f0-93e7b22240ee
+- Milestone: Survey Specialist 3: Middleware, Global Pay, Events & Fleet Hub
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement or modify app source code
-- Exact file:line citations for all findings
-- Strict Honesty override: docs / matrices claiming "wired" or "done" are hypotheses to be tested against live code
-- Verify shared packages, UI screens, API calls, WebSocket subscriptions, state management, and mock/theatre vs real backend integration
+- Read-only investigation — do NOT implement
+- Strict two-system architectural boundary: pegasus.x is lean PostgreSQL 16 + Redis 7 single-tenant; zero Spanner/Kafka in pegasus.x
+- Exact file:line citations for all observations
+- 64-bit integer tiyin price (no floats)
 
 ## Current Parent
-- Conversation ID: d6d3f553-4e8b-4882-919f-9c205af911f1
-- Updated: 2026-08-20T17:28:10Z
+- Conversation ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee
+- Updated: 2026-09-16T13:22:30Z
 
 ## Investigation State
 - **Explored paths**:
-  - `pegasusX/packages/` (types, api-client, ws-refresh-contract, desktop-bridge, desktop-cache, ui-kit, mobile-android-kit, mobile-ios-kit, mobile-android-design, mobile-ios-design, barcode scanner kits)
-  - `pegasusX/apps/supplier-portal`, `apps/supplier-app-android`, `apps/supplier-app-ios`
-  - `pegasusX/apps/retailer-app-desktop`, `apps/retailer-app-android`, `apps/retailer-app-ios`
-  - `pegasusX/apps/driver-app-android`, `apps/driver-app-ios`
-  - `pegasusX/apps/warehouse-portal`, `apps/warehouse-app-android`, `apps/warehouse-app-ios`
-  - `pegasusX/apps/factory-portal`, `apps/factory-app-android`, `apps/factory-app-ios`
-  - `pegasusX/apps/payload-terminal`, `apps/payload-app-android`, `apps/payload-app-ios`
-  - `pegasusX/apps/admin-portal`
-  - `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`, `pegasusX/docs/ROLE_FEATURES_DOCS_VS_CODE.md`, `pegasusX/docs/FEATURES_BY_APP_ROLE.md`
+  - `pegasus.x/backend/cmd/server/main.go`
+  - `pegasus.x/backend/internal/api/router.go`
+  - `pegasus.x/backend/internal/api/handlers_supplier.go`
+  - `pegasus.x/backend/internal/api/handlers_payment.go`
+  - `pegasus.x/backend/internal/api/handlers_catalog.go`
+  - `pegasus.x/backend/internal/api/handlers_warehouse_portal.go`
+  - `pegasus.x/backend/internal/api/handlers_onboarding.go`
+  - `pegasus.x/backend/internal/auth/middleware.go`
+  - `pegasus.x/backend/internal/auth/jwt.go`
+  - `pegasus.x/backend/internal/models/claims.go`
+  - `pegasus.x/backend/internal/supplier/repository.go`
+  - `pegasus.x/backend/internal/supplier/service.go`
+  - `pegasus.x/backend/internal/supplier/models.go`
+  - `pegasus.x/backend/internal/payment/globalpay.go`
+  - `pegasus.x/backend/internal/fleet/service.go`
+  - `pegasus.x/backend/internal/redis/client.go`
+  - `pegasus.x/backend/internal/outbox/emitter.go`
+  - `pegasus.x/backend/internal/outbox/relay.go`
+  - `pegasus.x/backend/internal/ws/hub.go`
+  - `pegasus.x/backend/internal/soliq/efactura.go`
+  - `pegasus.x/database/migrations/001_initial_schema.sql` through `068_trade_credit_quota_system.sql`
 - **Key findings**:
-  - All 6 role rows + Platform Admin have complete, compiled, production-structured client applications across Web/Desktop, Android, and iOS.
-  - Zero mock data or theatre facades in client apps; mock data only exists in `apps/marketing-site` for preview doc pages.
-  - Real `/v1/retailer/ai/predictions` is called across Desktop, Android, and iOS (no obsolete `/v1/ai/predictions` alias).
-  - Seal-all is implemented across Payload Terminal (`api.ts:181`), Android (`PayloadApi.kt:102`), and iOS (`APIClient.swift:247`).
-  - WebSocket refresh handlers use tokenized sessions with exponential reconnect backoff, dirty slice routing, and session reconciliation across all platforms.
-  - All unit test suites across packages and portals pass with 0 failures.
-- **Unexplored areas**: None within the client apps survey scope.
+  - Operational supplier endpoints are currently unprotected by an onboarding gate. Designed `RequireSupplierOnboardingCompleted` returning HTTP 428 Precondition Required.
+  - Designed 3-step onboarding wizard endpoints: products (17-digit MXIK, EAN-13 modulo 10 checksum, tiyin pricing, 12% VAT), payment (Cash + Global Pay with B2B corporate card BIN validation), and complete (atomic outbox emit + Redis stream + WS broadcast).
+  - Designed `/v1/supplier/warehouses` CRUD with mandatory lat/lon, Redis Geo proximity invalidation (`GeoAdd` + cache flush), and stock/order deletion guard returning HTTP 409 Conflict.
+  - Designed `payloaders` PostgreSQL 16 relational table in Migration 069 to replace in-memory map.
+  - Outbox relay (`outbox.RelayWorker`) polls `outbox_events` via `FOR UPDATE SKIP LOCKED` and fans out to Redis 7 Streams (`stream:<agg>:events`) and WebSocket Hub via Redis Pub/Sub.
+- **Unexplored areas**: None; all 4 task items fully surveyed and designed.
 
 ## Key Decisions Made
-- Documented exact file:line evidence for every role row, platform, and package in `clients_parity_report.md`.
-- Executed unit test suites for all client packages and web portals to confirm integrity.
+- Designed non-bypassable middleware with path whitelisting for `/v1/auth/*` and `/v1/supplier/onboarding/*`.
+- Specified Uzbekistan B2B corporate card BIN dictionary: `5614`, `9860`, `5440`, `4073`, `5168`.
+- Formulated complete DDL script for `database/migrations/069_supplier_onboarding_and_globalpay.sql`.
 
 ## Artifact Index
-- `.agents/teamwork_preview_explorer_survey_3/BRIEFING.md` — persistent working memory
-- `.agents/teamwork_preview_explorer_survey_3/progress.md` — liveness heartbeat
-- `.agents/teamwork_preview_explorer_survey_3/clients_parity_report.md` — comprehensive client parity inspection report
-- `.agents/teamwork_preview_explorer_survey_3/handoff.md` — 5-component handoff report
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+- DISPATCH.md — Dispatch log
+- BRIEFING.md — Persistent context & situational awareness
+- progress.md — Liveness heartbeat & step tracker
+- report.md — Comprehensive findings & architecture designs (`/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/report.md`)
+- handoff.md — 5-component handoff report (`/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/handoff.md`)

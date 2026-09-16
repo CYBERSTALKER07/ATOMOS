@@ -1,63 +1,60 @@
-# BRIEFING — 2026-08-20T19:43:00Z
+# BRIEFING — 2026-09-16T18:31:40+05:00
 
 ## Mission
-Execute Milestone 1 (DevOps and Backend Architecture) tasks: fix typos in CI/ACT, consolidate sandbox smoke test into CI, split bootstrap.go into modular components, and migrate Spanner Apply to ReadWriteTransaction.
+Implement Milestone 1: PostgreSQL 16 Migration 069 & Pure pgxpool Repository for pegasus.x.
 
 ## 🔒 My Identity
-- Archetype: worker
-- Roles: implementer, qa, specialist
+- Archetype: implementer
+- Roles: implementer, qa
 - Working directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1
-- Original parent: 5b42a930-75c6-4dc7-9f02-2111f624129e
-- Milestone: M1: DevOps and Backend Architecture
+- Original parent: 755199e9-0b8c-404a-b2f0-93e7b22240ee
+- Milestone: Milestone 1: PostgreSQL 16 Migration 069 & Pure pgxpool Repository
 
 ## 🔒 Key Constraints
-- Follow minimal change principle
-- Do not cheat, genuine implementations only
-- Modularity in bootstrap/ with package bootstrap
-- Migrate Spanner .Apply to ReadWriteTransaction
-- Fix reatilerapp typos and consolidate sandbox CI
+- Zero cross-contamination between pegasusX and pegasus.x.
+- No dummy/facade implementations, no hardcoded mock returns in production code.
+- Pure pgxpool queries in PostgresRepository, return real errors.
+- Preserve unit test stability using clean test mocks in `mock_test.go`.
+- Real SQL queries, transactions, and error handling.
 
 ## Current Parent
-- Conversation ID: 5b42a930-75c6-4dc7-9f02-2111f624129e
-- Updated: 2026-08-20T19:42:09Z
+- Conversation ID: 755199e9-0b8c-404a-b2f0-93e7b22240ee
+- Updated: 2026-09-16T18:31:40+05:00
 
 ## Task Summary
-- **What to build**: Fix mobile build & ACT typos, consolidate sandbox infra smoke gate in CI, modularize bootstrap.go into 6 files, migrate Spanner Apply to ReadWriteTransaction in 6 target files.
-- **Success criteria**: All go build/tests pass, no reatilerapp typos, no .Apply calls in target files.
-- **Interface contracts**: package bootstrap remains intact.
-- **Code layout**: pegasusX/apps/backend-go
+- **What to build**: PostgreSQL 16 Migration 069, pure pgxpool PostgresRepository in pegasus.x/backend/internal/supplier/repository.go, testMockRepository in mock_test.go, and models updates in models.go.
+- **Success criteria**: All 57 silent fallbacks removed, MemoryRepository purged from production code, real SQL implemented, migration 069 created, go test passes with -race.
+- **Interface contracts**: PROJECT.md, Survey 1 & 2 reports.
+- **Code layout**: pegasus.x/database/migrations, pegasus.x/backend/internal/supplier/
 
 ## Key Decisions Made
-- Modularize bootstrap.go into config.go, app.go, infra.go, services.go, workers.go, queries.go without breaking package bootstrap API.
+- `069_supplier_onboarding_and_globalpay.sql` created with complete idempotent DDL including table alterations, new tables (`products`, `supplier_payment_gateways`, `warehouse_trucks`, `warehouse_payloaders`, `supplier_kyc_documents`, `supplier_audit_events`), views (`supplier_payment_configs`, `trucks`, `payloaders`), and constraints.
+- Purged 100% of `MemoryRepository`, mock seeds (`sup_pepsico_uz`, etc.), and all 57 silent fallbacks from `repository.go`.
+- Implemented real SQL queries on `*db.Pool` for all methods in `PostgresRepository`.
+- Isolated test mock `testMockRepository` in `mock_test.go` (strictly `_test.go`) so test suite runs offline without touching production code.
+- Extended test coverage with 4 new unit test functions in `supplier_test.go`.
 
 ## Artifact Index
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/DISPATCH.md
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/BRIEFING.md
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/progress.md
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/changes.md
-- /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m1/handoff.md
+- DISPATCH.md — Assignment instructions
+- BRIEFING.md — Situational awareness
+- progress.md — Liveness heartbeat
+- handoff.md — Comprehensive handoff report
 
 ## Change Tracker
-- **Files modified**: None yet
-- **Build status**: TBD
+- **Files modified**:
+  - `pegasus.x/database/migrations/069_supplier_onboarding_and_globalpay.sql`: Added PostgreSQL 16 migration
+  - `pegasus.x/backend/internal/supplier/models.go`: Added SupplierRecord, Product, PaymentGatewayConfig, WarehouseTruck, WarehousePayloader
+  - `pegasus.x/backend/internal/supplier/repository.go`: Purged MemoryRepository, pure pgxpool queries, new methods
+  - `pegasus.x/backend/internal/supplier/mock_test.go`: Created test mock repository for tests
+  - `pegasus.x/backend/internal/supplier/supplier_test.go`: Updated to newTestMockRepository and added 4 new unit tests
+  - `pegasus.x/backend/internal/db/migrate_test.go`: Added migration 069 version check
+- **Build status**: Pass (`go build ./...`, `go test -v -race -count=1 ./internal/supplier/... ./internal/db/...`)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: TBD
-- **Lint status**: TBD
-- **Tests added/modified**: None yet
+- **Build/test result**: 13/13 supplier tests pass, 1/1 db tests pass with race detector enabled
+- **Lint status**: `go vet` clean (0 violations)
+- **Tests added/modified**: 4 new repository tests added, 9 existing tests updated to use `mock_test.go`
 
 ## Loaded Skills
-- None
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+None

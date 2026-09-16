@@ -1,24 +1,19 @@
-# Progress Tracker — M3 (UI Consistency)
+# Progress: Milestone 3 (Non-Bypassable Onboarding Gate & Phased Wizard)
 
-Last visited: 2026-08-21T00:42:09Z
+Last visited: 2026-09-16T19:03:30Z
 
 ## Status
-- [ ] 1. Investigate target files across UI kit, mobile apps, types, and admin-portal.
-- [ ] 2. Task 1: Control-Tower Web Map Standardization (`HexagonalControlTowerMap.tsx`).
-- [ ] 3. Task 2: Mobile UI Theatre Cleanup (Android & iOS).
-- [ ] 4. Task 3: Admin-Portal Migration (package.json, @pegasusx/types, lib/api.ts, globals.css, components).
-- [ ] 5. Verification & Testing (`typecheck`, `test`, token/coord greps).
-- [ ] 6. Documentation: write `changes.md` and `handoff.md`.
-- [ ] 7. Notification to parent.
+Completed implementation and full verification of Milestone 3. All target test suites pass with zero regressions.
 
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+## Steps
+- [x] Read DISPATCH.md and setup working context
+- [x] Inspect ORIGINAL_REQUEST.md, PROJECT.md, TEST_READY.md
+- [x] Inspect `supplier_onboarding_e2e_test.go` (Gate, Step 1, Step 2, Step 3, Tier 2 categories 3, 4, 5, 7, Scenario 3.1)
+- [x] Inspect existing `internal/api/router.go`, `handlers_supplier.go`, `internal/auth/middleware.go`, `internal/supplier/`
+- [x] Implement `RequireSupplierOnboardingCompleted` middleware (HTTP 428 precondition required, whitelisting auth & onboarding paths)
+- [x] Implement Step 1 Product Catalog API & validations (MXIK 17 digits regex, EAN-13 mod-10 / 13 digits, strict int64 tiyin unit price rejecting floats/strings/negatives, 12% VAT)
+- [x] Implement Step 2 Payment Gateway Config API & corporate card BIN validation (5614, 9860, 5440, 4073, 5168, rejecting 8600 retail)
+- [x] Implement Step 3 Complete Onboarding API & validation (requires >= 1 active product, transitions status to COMPLETED, unblocks gate, emits outbox/WS event)
+- [x] Mount routes and middleware in `router.go`
+- [x] Run test suite and fix any issues (all 9 target suites/scenarios pass cleanly)
+- [x] Verification and handoff report creation

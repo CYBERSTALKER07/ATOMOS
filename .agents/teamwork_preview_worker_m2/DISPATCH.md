@@ -1,83 +1,44 @@
-# Dispatch: Worker 2 (Parity Matrix, Features & Scorecards Synchronization)
-
-## Identity
-- Subagent: teamwork_preview_worker_m2
-- Type: teamwork_preview_worker
-- Role: Parity & Feature Matrix Docs Synchronizer
-- Working Directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m2
-- Authoritative Request: /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md
-- Project Scope: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_orchestrator_1/PROJECT.md
-
-## Exclusive Write Boundaries
-You have exclusive write access to:
-- `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`
-- `pegasusX/docs/ROLE_FEATURES_DOCS_VS_CODE.md`
-- `pegasusX/docs/session-2026-08-13/SCORECARD.md`
-- `pegasusX/docs/session-2026-08-13/RESIDUAL_REGISTER.md`
-- `pegasusX/docs/session-2026-08-13/GAP_LEDGER.md`
-- `pegasusX/docs/session-2026-08-13/MASTER_10_10_EXECUTION_PROGRAM.md`
-- `pegasusX/docs/session-2026-08-13/PROD_READINESS_SEQUENCE.md`
-
-## Inputs & Verified Evidence
-- Explorer 1 Report: `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/doc_inventory_report.md`
-- Explorer 2 Report: `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_2/backend_sot_report.md`
-- Explorer 3 Report: `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_3/clients_parity_report.md`
-
-## Mandatory Instructions
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-Update the assigned files in-place:
-1. Update `ROLE_ROW_PARITY_MATRIX.md` to ensure all 6 role rows cite verified code paths, passing tests, and accurate status definitions.
-2. Synchronize `ROLE_FEATURES_DOCS_VS_CODE.md` with live backend route endpoints and 410 boundaries (inventory audit unwired 410, quantity negotiation 410, sealed-all manifests, AI predictions).
-3. Align `SCORECARD.md`, `RESIDUAL_REGISTER.md`, `GAP_LEDGER.md`, and `PROD_READINESS_SEQUENCE.md` with the verified state (Layer A code verified, deploy-time secrets/scaling clearly identified as Layer B residuals).
-4. Update your `progress.md` with liveness and write a 5-component `handoff.md`.
-
-## 2026-08-20T19:42:09Z
-
-You are the Worker for Milestone 2 (M2: Geography, Maps, and Security).
-Working Directory: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m2
-Workspace Root: /Users/shakhzod/Desktop/V.O.I.D
-Authoritative Request: /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md
-Explorer Handoff Report: /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_r2_gen4/handoff.md (read this thoroughly!)
+## 2026-09-16T13:37:08Z
 
 MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. An auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A reviewer will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-File Ownership:
-- `pegasusX/apps/backend-go/proximity/*`
-- `pegasusX/apps/backend-go/order/*`
-- `pegasusX/apps/backend-go/platformroutes/routes.go`
-- `pegasusX/apps/backend-go/geolocation/*`
-- `pegasusX/apps/backend-go/factory/ios_compat.go`, `pegasusX/apps/backend-go/factory/service.go`
+MANDATORY FIRST STEP:
+Read /Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md, /Users/shakhzod/Desktop/V.O.I.D/PROJECT.md, and /Users/shakhzod/Desktop/V.O.I.D/TEST_READY.md.
+Also inspect /Users/shakhzod/Desktop/V.O.I.D/pegasus.x/backend/internal/api/supplier_onboarding_e2e_test.go to understand the exact E2E test assertions.
 
-Tasks:
-1. H3 Resolution:
-   - Ensure matching writers enforce Resolution 7 (`MatchingResolution = 7`, `MatchingH3Cell`).
-   - In settlement/perimeter logic, ensure Resolution 9 uses a distinct named field/helper (`SettlementH3Cell`, `H3CellRes9`) to eliminate ambiguity with Resolution 7 matching cells.
-2. Geocode API Security & Country Bias:
-   - In `pegasusX/apps/backend-go/platformroutes/routes.go` and `geolocation/handlers.go`, protect the geocode routes (`/v1/platform/geocode/*`) with authentication middleware (e.g. `RequireAnyAuthenticated` or appropriate auth middleware, or role check).
-   - In `geolocation/service.go` and handlers, add country-bias support (`components=country:<cc>` for Google Maps, `countrycodes=<cc>` for Nominatim), parsing country from request/context/pack or default market, and namespace cache keys with the country code (`geo:<endpoint>:<cc>:<query>`).
-3. Factory Fleet Spanner Data:
-   - In `pegasusX/apps/backend-go/factory/ios_compat.go` and `factory/service.go`, update `HandleFleet` and `HandleFleetVehicles` to fetch live data by querying Spanner `Vehicles` (where `HomeNodeType = 'FACTORY' AND HomeNodeId = @factoryId`) joined with active `FactoryTruckManifests` (`State IN ('LOADING', 'SEALED', 'DISPATCHED')`) and `Drivers` instead of in-memory demo data `s.fleetVehicles`.
+TASK:
+Implement Milestone 2 in `pegasus.x/backend`:
+1. `POST /v1/auth/supplier/register`:
+   - Acceptance:
+     - Accepts JSON:
+       - `company_name` (string, required)
+       - `tax_id` (string, Uzbekistan 9-digit STIR/INN, required)
+       - `phone` (string, `+998XXXXXXXXX`, required)
+       - `password` (string, required, bcrypt hashed)
+     - Validate 9-digit STIR format (`^[0-9]{9}$`). If invalid, return HTTP 400 Bad Request (`{"error": "invalid_request", "message": "tax_id must be a 9-digit number"}`).
+     - Validate phone format (`^\+998[0-9]{9}$`). If invalid, return HTTP 400 Bad Request.
+     - Enforce STIR uniqueness in PostgreSQL. Query `GetSupplierByTaxID` or catch unique constraint violation: if already registered, return HTTP 409 Conflict (`{"error": "conflict", "message": "tax_id already registered"}`).
+     - Hash password with `bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)`.
+     - Atomically persist into `suppliers` (with `tax_id`, `name = company_name`, `phone`, `password_hash`, `onboarding_status = 'PENDING'`) and `supplier_profiles` (if used).
+     - Return HTTP 201 Created:
+       `{"supplier_id": "sup_...", "company_name": "...", "tax_id": "...", "phone": "...", "onboarding_status": "PENDING", "next_step": "/onboarding/products"}`.
+2. `POST /v1/auth/supplier/login`:
+   - Acceptance:
+     - Accepts JSON:
+       - `tax_id` (string, 9-digit STIR)
+       - `password` (string)
+     - Query PostgreSQL `GetSupplierByTaxID`. If not found, return HTTP 401 Unauthorized (`{"error": "unauthorized", "message": "invalid credentials"}`).
+     - Verify password using `bcrypt.CompareHashAndPassword([]byte(supplier.PasswordHash), []byte(req.Password))`. If mismatch, return HTTP 401 Unauthorized (`{"error": "unauthorized", "message": "invalid credentials"}`).
+     - Issue JWT token containing claims: `supplier_id`, `role: "supplier"`, `tax_id`, `onboarding_status`.
+     - Return HTTP 200 OK:
+       `{"token": "<jwt>", "supplier_id": "...", "tax_id": "...", "onboarding_status": supplier.OnboardingStatus, "next_step": "/onboarding/products"}` (if COMPLETED, next_step is "/dashboard").
+3. Update `pegasus.x/backend/internal/api/handlers_supplier.go` and `internal/supplier/service.go` as necessary to wire these methods.
+4. Verify by running:
+   - `cd pegasus.x/backend && go test -v ./internal/api/ -run "TestSupplierOnboarding/Tier_1_Feature_Coverage/F1_Supplier_Registration|TestSupplierOnboarding/Tier_1_Feature_Coverage/F2_Supplier_Login|TestSupplierOnboarding/Tier_2_Boundary_And_Corner_Cases/Category_1_Duplicate_STIR|TestSupplierOnboarding/Tier_2_Boundary_And_Corner_Cases/Category_2_Invalid_STIR"`
+   - Also run `go test -v -race ./internal/supplier/...` to guarantee no regressions.
 
-Verification:
-- Run `go test ./proximity/... ./geolocation/... ./order/... ./factory/...` in `pegasusX/apps/backend-go`.
-- Run `go test ./...` in `pegasusX/apps/backend-go`.
-- Confirm geocode endpoints reject unauthenticated requests (add/run unit tests for this).
-
-Deliverables:
-- Write `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m2/changes.md`.
-- Write `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_worker_m2/handoff.md` with build and test outputs.
-- Send a completion message to parent when done.
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+WRITE OWNERSHIP:
+- `pegasus.x/backend/internal/api/handlers_supplier.go`
+- `pegasus.x/backend/internal/supplier/service.go`
+- `pegasus.x/backend/internal/supplier/` (if service methods are added)

@@ -1,159 +1,137 @@
-# Explorer 1 Handoff Report: Document Inventory & Claims Mining
+# Handoff Report: Survey Specialist 1 (Supplier Domain & Mock Purge)
 
-**Author:** Explorer 1 (`teamwork_preview_explorer_survey_1`)  
-**Role:** Doc Inventory & Claims Miner  
-**Date:** 2026-08-20T17:25:30+05:00  
-**Target Report:** `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/doc_inventory_report.md`  
+**Task**: Deep read-only architectural survey of supplier domain, mock purge requirements, and authentication in `pegasus.x/backend`.  
+**Agent**: teamwork_preview_explorer_survey_1  
+**Recipient**: teamwork_preview_orchestrator / Implementer Agent  
+**Full Report**: `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/report.md`
 
 ---
 
 ## 1. Observation
 
-Direct observations from scanning and mining all documentation files across `/Users/shakhzod/Desktop/V.O.I.D`:
+Direct code and schema observations with exact file:line citations:
 
-1. **Total Document Count & Taxonomy**:
-   - Total project documentation files identified: **803 files** across **21 categories** (excluding `node_modules`, `.venv`, `.gradle`, `dist`, `build`, `.git`, third-party libraries like `adyen-go-api-library-main`, and agent workspace execution runs).
-   - Major categories:
-     - `Pegasus Legacy / Reference`: 226 files
-     - `pegasusX / Core Docs & Specifications`: 137 files
-     - `pegasusX / Artifacts & Snapshots`: 70 files
-     - `pegasusX / Big Platform Baseline (Deep Specs)`: 57 files
-     - `pegasusX / Session 2026-08-07 (Reality Reports & Gap Registers)`: 42 files
-     - `pegasusX / Visuals & Media`: 39 files
-     - `pegasusX / Apps Documentation`: 36 files
-     - `pegasusX / Session 2026-08-13 (Scorecards, Master Program, Phases)`: 34 files
-     - `pegasusX / SDK Documentation`: 32 files
-     - `pegasusX / Root`: 28 files
-     - `GitHub Workflows & Instructions`: 23 files
-     - `pegasusX / Design System`: 19 files
-     - `pegasusX / Session 2026-08-12 (Backend Parity & Waves)`: 17 files
-     - `Other`: 13 files
-     - `Repository Root`: 8 files
-     - `Agents Framework & Memory`: 5 files
-     - `pegasusX / Context Phase Plans & Parity Ledger`: 5 files
-     - `pegasusX / Gap Closure`: 5 files
-     - `pegasusX / Packages Documentation`: 3 files
-     - `Root Docs / Archive`: 2 files
-     - `pegasusX / Infra Documentation`: 2 files
+1. **In-Memory Mock State & Seeds in `internal/supplier/repository.go`**:
+   - `repository.go:90-106`: `type MemoryRepository struct` defines 12 in-memory map/slice fields (`profiles`, `topology`, `orgMembers`, `pricing`, `overrides`, `vetLogs`, `policies`, `breaches`, `aiRecs`, `imports`, `crmRetailers`, `events`, `kycDocs`).
+   - `repository.go:108-416`: `NewMemoryRepository()` seeds fake Tashkent data for `"sup_pepsico_uz"` and `"sup_tashkent_beverage"`. Seeded data includes:
+     - Profile with fake INN `"302918274"`, MFO `"00444"`, and bank account (lines 129-157).
+     - 5 fake KYC documents with dummy URLs like `"https://storage.pegasus.internal/kyc/guvohnoma_pepsico.pdf"` (lines 159-220).
+     - Fake topology nodes `node_fac_yangiyol` and `node_wh_sergeli` (lines 223-252).
+     - Fake org members `usr_admin_01` (Temur Rustamov) and `usr_dispatcher_01` (lines 254-280).
+     - Fake pricing rule (lines 282-297) and Korzinka override `ovr_korzinka` (lines 299-321).
+     - Fake service policy (lines 323-333), AI recommendations (lines 335-370), CRM retailers `ret_oqtepa_01` and `ret_yunusobod_02` (lines 372-405), and 4 live events `e1`-`e4` (lines 407-412).
+   - `repository.go:418-1022`: 604 lines of purely in-memory CRUD methods on `*MemoryRepository`.
 
-2. **Frozen Word (.docx) Exports**:
-   - Exactly **8 `.docx` files** exist in the repository:
-     - `PegasusX_Reality_Report.docx` (58,064 bytes, 51,326 characters extracted)
-     - `pegasusX/artifacts/PegasusX_End_Product_Reality_Report_2026-08-13.docx` (62,948 bytes, 46,667 characters)
-     - `pegasusX/artifacts/PegasusX_End_Product_Reality_Report.docx` (21,018 bytes, 21,467 characters)
-     - `pegasusX/artifacts/DOCS_CODE_ALIGNMENT_STATUS_2026-08-12.docx` (8,850 bytes, 1,650 characters)
-     - `pegasusX/docs/DOCS_CODE_ALIGNMENT_STATUS_2026-08-12.docx` (8,850 bytes, 1,650 characters)
-     - `pegasusX/docs/session-2026-08-07/END_PRODUCT_REALITY_REPORT_2026-08-11.docx` (13,068 bytes, 15,195 characters)
-     - `pegasusX/docs/session-2026-08-07/END_PRODUCT_REALITY_REPORT.docx` (86,198 bytes, 83,829 characters)
-     - `pegasusX/docs/session-2026-08-07/END_PRODUCT_REALITY_REPORT_2026-08-13.docx` (62,948 bytes, 46,667 characters)
-   - Verbatim quote from `PegasusX_Reality_Report.README.md:1-5`:
-     ```
-     # PegasusX_Reality_Report.docx — FROZEN
-     Status: HISTORICAL Word export (parent V.O.I.D root).
-     Do not plan from this file.
-     ```
-   - Verbatim quote from `pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md:10-12`:
-     ```
-     Three historical .docx exports exist (End Product Reality Report); each is frozen and has a README sidecar — do not treat Word as SoT.
-     ```
+2. **Silent Fallback Anti-Pattern in `PostgresRepository`**:
+   - `repository.go:1024-1027`: `type PostgresRepository struct { pool *db.Pool; memory *MemoryRepository }`.
+   - `repository.go:1029-1038`: Factory `NewRepository(pool)` returns `mem` if `pool == nil`, and embeds `mem` into `PostgresRepository` if `pool != nil`.
+   - `repository.go:1056, 1093, 1095, 1109, 1121, 1126, 1145, 1175, 1177, 1185, 1187, 1200, 1211, 1216, 1233, 1259, 1261, 1269, 1271, 1292, 1325, 1327, 1342, 1354, 1359, 1379, 1410, 1412, 1420, 1422, 1441, 1443, 1461, 1473, 1481, 1501, 1527, 1529, 1548, 1550, 1568, 1579, 1584, 1599, 1612, 1620, 1640, 1671, 1673, 1693, 1698, 1724, 1726, 1744, 1766, 1778, 1786`: 57 occurrences of `if err != nil { return p.memory... }` or `_, _ = p.memory...` dual writes.
+   - `repository.go:1791-1818`: 7 methods have **NO SQL QUERIES** and delegate directly to `p.memory`: `ListCRMRetailers`, `GetCRMRetailerDetail`, `AddEvent`, `ListEvents`, `ListKycDocuments`, `SubmitKycDocument`, `ReviewKycDocument`.
 
-3. **Parity Matrix Claims (`pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md:15-23`)**:
-   - `SUPPLIER`: portal (Tauri desktop), Android, iOS | `supplierroutes` + finance/claims/pulse + return-policy + planning | **Wired**
-   - `RETAILER`: desktop, Android, iOS | `retailerroutes`, order, payment, credit + Retail OS packs 0–6 | **Wired**
-   - `DRIVER`: Android, iOS | `driverroutes`, delivery, telemetry | **Wired**
-   - `WAREHOUSE`: portal, Android, iOS | `warehouseroutes` + WMS + return-policy | **Wired**
-   - `FACTORY`: portal, Android, iOS | `factoryroutes` | **Wired**
-   - `PAYLOAD`: Expo terminal + Android + iOS | `payloaderoutes` + factory manifests bridge | **Wired**
-   - `PLATFORM_ADMIN`: `admin-portal` (web only) | `platformadmin` + `featureflags` + partner admin | **Wired**
-   - Cross-role spine interactions (Checkout→Reserve, Dispatch→Loaded, Seal→In-Transit, QR→Cash→Fiscal, Claims→Chargeback, Factory Loading-Bay ↔ Payload) are all marked **Wired** (`ROLE_ROW_PARITY_MATRIX.md:27-36`).
-   - Verbatim caveat in `ROLE_ROW_PARITY_MATRIX.md:49-51`:
-     ```
-     Wired = Class A path exists in code on the clients listed. Does not mean owner keys, legal OFD, or prod optimizer pods are live — see PROD_READINESS_SEQUENCE.md.
-     Wired = happy path, not every FEATURES row.
-     ```
+3. **Authentication Theatre & Registration Gaps**:
+   - `handlers_supplier.go:89-162` (`handleSupplierRegister`):
+     - `SupplierRegisterPayload` (lines 74-87) lacks top-level `company_name` and `tax_id` (STIR) fields.
+     - Ignores `req.Password`; never calls `bcrypt.GenerateFromPassword`.
+     - Never checks STIR uniqueness in PostgreSQL; never returns HTTP 409 Conflict.
+     - Saves only via `s.supplierSvc.UpdateProfile` targeting `supplier_profiles`, NEVER inserting into root `suppliers` table (`001_initial_schema.sql`).
+     - Returns `next_step: "/setup/business"` and `is_configured: false`, omitting `onboarding_status: "PENDING"`.
+   - `handlers_supplier.go:169-208` (`handleSupplierLogin`):
+     - Line 181: Hardcodes `sid := "sup_pepsico_uz"`.
+     - Ignores `req.Password`; never calls `bcrypt.CompareHashAndPassword`.
+     - Never queries PostgreSQL for supplier credentials.
+     - Returns hardcoded `is_registered: true` and `next_step: "/dashboard"` or `"/setup/business"`.
 
-4. **Living Scorecard Claims (`pegasusX/docs/session-2026-08-13/SCORECARD.md:8-18`)**:
-   - Go backend transactional core: **10** / 10
-   - Domain model depth: **10** / 10
-   - AI / forecast / optimization: **10** / 10
-   - Integration (API/EDI/export): **10** / 10
-   - Multi-tenancy (runtime): **10** / 10
-   - Retailer clients: **10** / 10
-   - Supplier / factory / WH clients: **10** / 10
-   - Driver / payload clients: **10** / 10
-   - Infra / operability: **10** / 10
-   - Fiscal / legal readiness: **9.5** / 10 (Code default MY_SOLIQ+EDS; secrets cutover residual)
-   - Phases 0, G1, G2, G3, G4, G5, G6, G7 are marked **DONE** (`SCORECARD.md:24-31` and `session-2026-08-13/GAP_LEDGER.md`).
+4. **Database Schema Realities**:
+   - `001_initial_schema.sql:8-13`: `suppliers` table has `supplier_id`, `name`, `legal_tax_id`, `created_at`.
+   - Missing on `suppliers`: `phone`, `password_hash`, `onboarding_status`, `updated_at`, and `UNIQUE(legal_tax_id)`.
+   - Missing tables: `supplier_payment_configs` (for Cash + Global Pay), `supplier_kyc_documents`, `supplier_audit_events`, and `payloaders`.
 
-5. **Documented Stubs, Residuals, and 410 Endpoints**:
-   - `session-2026-08-13/RESIDUAL_REGISTER.md:7-16` lists 8 deploy-time residuals: Soliq/EDS secrets, OR-Tools replicas, auto-order place soak flip, OIDC IdP, Drummond AS2 cert, FCM credentials, Substance Gate UI walk, Draft i18n review.
-   - `ROLE_FEATURES_DOCS_VS_CODE.md:20-25` explicitly notes: Cards, AI alias, AI-correct, and Inventory Audit endpoints return **410 Gone** (never silent OK or `[]`). Driver PATCH state returns 501. Mid-delivery updates return `not_implemented`.
-   - `.agents/memory/WORKSPACE.md` explicitly documents fail-closed fixes verified on 2026-08-18 for `listLocalSKUs`, `HandleSectionByID`, `me/sections`, and notes Payme/Click still unwired in `payment/execution.go:159-160` and `webhookroutes/routes.go:30-31`.
+5. **Existing Tests**:
+   - `internal/supplier/supplier_test.go:10, 58, 106, 154, 217, 256, 300, 349, 417`: 9 unit tests instantiate `NewMemoryRepository()` directly and expect `"sup_pepsico_uz"`.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Hierarchy of Truth**:
-   - Observation 1 & 2 establish that `.agents/memory/GOAL.md` points to `GLOBAL_SCALE_PROGRAM.md` and `GLOBAL_SCALE_LOCAL_ECOSYSTEM.md` as the destination north stars.
-   - `pegasusX/` is the active monorepo; `pegasus/` is a legacy reference.
-   - `DOCS_SOURCE_OF_TRUTH.md` explicitly designates all `.docx` files as frozen historical snapshots. Therefore, living markdown files represent the active documentation source of truth, but code opened in the current session remains the absolute status SoT under the Honesty Override.
+1. **Why does registration currently corrupt foreign keys?**
+   - Observations 1 & 3: `handleSupplierRegister` calls `s.supplierSvc.UpdateProfile`, which writes to `supplier_profiles` (`058_...sql`). It never creates a corresponding row in the primary `suppliers` table (`001_...sql`).
+   - Tables such as `warehouses`, `skus`, and `drivers` have foreign key constraints: `REFERENCES suppliers(supplier_id)`.
+   - If a new supplier registers and subsequently adds a warehouse or product, PostgreSQL rejects the insert with a foreign key violation because `suppliers` has no matching row.
+   - **Inference**: Registration must write atomically to both `suppliers` (root tenancy) and `supplier_profiles` (portal attributes) within a single `pgx.Tx` transaction (`pool.RunInTx`).
 
-2. **Claims Analysis**:
-   - Observation 3 shows that `ROLE_ROW_PARITY_MATRIX.md` claims "Wired" across all 6 roles and Platform Admin.
-   - However, Observation 3 and 5 highlight that "Wired" is explicitly scoped to the *happy-path Class A execution* and does not mean live third-party cloud credentials or zero edge-case gaps.
-   - Observation 4 shows the living scorecard asserting a near-perfect score (10/10 across 9 layers, 9.5/10 on fiscal/legal).
-   - Observation 5 cross-checks these scorecard claims against `RESIDUAL_REGISTER.md`, `ROLE_FEATURES_DOCS_VS_CODE.md`, and `.agents/memory/WORKSPACE.md`, proving that while code paths and schemas have been implemented for G1–G7, operational residuals (Soliq PKCS#12, OR-Tools replica scaling, external IdP, FCM credentials, auto-order place soak flip) remain deploy-time prerequisites before true Layer B cloud deployment.
+2. **Why can duplicate STIR tax IDs currently be registered?**
+   - Observation 4: `001_initial_schema.sql` defines `legal_tax_id VARCHAR(32) NOT NULL` without a `UNIQUE` constraint.
+   - Observation 3: `handleSupplierRegister` does not query the database for existing tax IDs.
+   - **Inference**: Migration `069_supplier_onboarding_and_globalpay.sql` must add a `UNIQUE (legal_tax_id)` constraint on `suppliers`, and `handleSupplierRegister` must perform an explicit check returning HTTP 409 Conflict (`conflict`) when a duplicate STIR is submitted.
 
-3. **Doc Inventory Completeness**:
-   - The compiled `doc_inventory_report.md` indexes every single file (803 documents) with exact line counts, file sizes, headers, categorization, and deep claims mapping, providing an exhaustive baseline for downstream survey explorers.
+3. **Why is the current repository vulnerable to data loss / phantom data?**
+   - Observation 2: In `PostgresRepository`, if any SQL query fails (e.g. timeout, missing table, syntax error), it silently falls back to `p.memory` and returns hardcoded PepsiCo data instead of failing.
+   - If a supplier saves data, it writes to Postgres and also dual-writes to the local RAM map. If the server restarts, any data that fell back to RAM is lost.
+   - **Inference**: Pure PostgreSQL persistence requires removing `MemoryRepository` entirely from `repository.go`, removing the `memory` field from `PostgresRepository`, eliminating all silent fallbacks, and returning explicit errors.
+
+4. **Why is the onboarding gate missing?**
+   - Observation 4 & `internal/auth/middleware.go`: No middleware exists checking `onboarding_status != 'COMPLETED'`.
+   - Observation 1: Onboarding status is only tracked in an in-memory `LifecycleManager` without database backing.
+   - **Inference**: Middleware `RequireSupplierOnboardingCompleted` must be added to check `onboarding_status` from the database/claims and block operational endpoints with HTTP 428 Precondition Required (`onboarding_incomplete`).
 
 ---
 
-## 3. Caveats
+## 3. Caveats & Risks
 
-- This investigation is strictly read-only doc inventory and claims mining. No source code modifications were made.
-- Code-level verification of whether backend handlers, Spanner DDLs, and mobile UI screens actually fulfill every "Wired" and "Done" claim is delegated to Specialist 2 (Backend & Infra Explorer) and Specialist 3 (Client Apps Explorer).
-- Historical `.docx` files were inspected via zip/xml text extraction; they are confirmed frozen and should not be edited.
+1. **Unit Test Isolation**:
+   - `internal/supplier/supplier_test.go` currently relies on `NewMemoryRepository()` across 9 test functions.
+   - If `MemoryRepository` is purged from `repository.go`, running `go test ./internal/supplier/...` without a database will fail unless:
+     - Tests are rewritten to use a mock interface, or
+     - An explicit test-only mock is provided in `supplier_test.go` or `internal/supplier/mock_test.go`.
+2. **Mobile Wiring Test Reliance on Mock Seeds**:
+   - `internal/api/supplier_mobile_live_wiring_test.go` executes tests querying `GET /v1/products?supplier_id=sup_pepsico_uz`.
+   - Test suites running in CI without Docker must have database seeds inserted during test setup if running against PostgreSQL.
+3. **Password Security**:
+   - Ensure `bcrypt.MinCost` is used in unit tests for speed, but `bcrypt.DefaultCost` (cost 10) is used in production code.
 
 ---
 
 ## 4. Conclusion
 
-- A complete document inventory and claims mining audit has been completed and saved to `/Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/doc_inventory_report.md`.
-- All 803 project documents across 21 categories have been mapped.
-- All explicit claims of "Wired", "Done", "Production-Ready", "Cloud-Ready", scorecards (10/10), stubs, and residuals have been systematically extracted and categorized.
-- Downstream explorers and orchestrators have a full index and exact file:line references to audit and align documentation against the live codebase.
+The supplier domain in `pegasus.x/backend` currently exhibits significant architectural theatre: authentication does not verify passwords or deduplicate STIRs, repository queries silently fall back to hardcoded in-memory mocks, and registered suppliers are not inserted into the root `suppliers` table.
+
+To achieve pure PostgreSQL 16 persistence and fulfill the user request, the following changes are strictly required:
+1. **Migration 069**: Create `069_supplier_onboarding_and_globalpay.sql` to alter `suppliers` (`phone`, `password_hash`, `onboarding_status`, `UNIQUE(legal_tax_id)`) and create `supplier_payment_configs`, `supplier_kyc_documents`, `supplier_audit_events`, and `payloaders`.
+2. **Mock Purge**: Delete `MemoryRepository` and silent fallbacks from `internal/supplier/repository.go`. Implement real SQL for `ListCRMRetailers`, `GetCRMRetailerDetail`, `ListKycDocuments`, `SubmitKycDocument`, `ReviewKycDocument`, `AddEvent`, and `ListEvents`.
+3. **Auth Overhaul**: Update `handleSupplierRegister` to enforce 9-digit STIR uniqueness (returning HTTP 409 on conflict), hash passwords with bcrypt, atomically insert into `suppliers` and `supplier_profiles`, and return `onboarding_status: "PENDING", next_step: "/onboarding/products"`. Update `handleSupplierLogin` to verify passwords with bcrypt against PostgreSQL and return `onboarding_status`.
+4. **Onboarding Gate & Wizard**: Build `RequireSupplierOnboardingCompleted` middleware (HTTP 428 Precondition Required) and wire `/v1/supplier/onboarding/{products,payment,complete}`.
+5. **Fleet & Warehouse Hub**: Wire warehouse coordinate validation, conflict checks on active stock/orders for deletion, and warehouse trucks/payloaders endpoints.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify this report:
+Independent verification of the audit and proposed implementation:
 
-1. **Verify document counts and report generation**:
+1. **Verify Existing Mock Code & Citations**:
    ```bash
-   python3 /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/generate_report.py
-   wc -l /Users/shakhzod/Desktop/V.O.I.D/.agents/teamwork_preview_explorer_survey_1/doc_inventory_report.md
+   grep -n "MemoryRepository" pegasus.x/backend/internal/supplier/repository.go
+   grep -n "sup_pepsico_uz" pegasus.x/backend/internal/supplier/repository.go
+   grep -n "p.memory" pegasus.x/backend/internal/supplier/repository.go
    ```
-2. **Inspect key claim documents**:
-   - `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md` (lines 13–52)
-   - `pegasusX/docs/session-2026-08-13/SCORECARD.md` (lines 1–32)
-   - `pegasusX/docs/session-2026-08-13/RESIDUAL_REGISTER.md` (lines 1–18)
-   - `pegasusX/docs/GLOBAL_SCALE_PROGRAM.md` (lines 1–40)
-   - `pegasusX/docs/DOCS_SOURCE_OF_TRUTH.md` (lines 1–35)
-3. **Invalidation conditions**:
-   - If any `.md` or `.docx` file in the project is unindexed or missing from `doc_inventory_report.md`.
-   - If any claim cited in Section 4 does not match verbatim text in the corresponding documentation file.
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+2. **Verify Password & STIR Absence in Auth Handlers**:
+   ```bash
+   view_file pegasus.x/backend/internal/api/handlers_supplier.go (lines 89-208)
+   ```
+3. **Verify Database Migrations**:
+   ```bash
+   view_file pegasus.x/database/migrations/001_initial_schema.sql (lines 8-13)
+   view_file pegasus.x/database/migrations/058_supplier_portal_core_and_operations.sql (lines 8-25)
+   ```
+4. **Post-Implementation Verification (to be run by Worker)**:
+   ```bash
+   cd pegasus.x/backend
+   go test -v -race ./internal/supplier/...
+   go test -v -race ./internal/api/... -run "TestSupplier"
+   go test -v -race ./...
+   ```
+5. **Invalidation Conditions**:
+   - If any `MemoryRepository` remains in `internal/supplier/repository.go`.
+   - If `handleSupplierRegister` accepts duplicate STIRs without HTTP 409.
+   - If `handleSupplierLogin` accepts invalid passwords or hardcodes `"sup_pepsico_uz"`.
+   - If calling operational supplier endpoints with `onboarding_status != 'COMPLETED'` succeeds instead of returning HTTP 428.

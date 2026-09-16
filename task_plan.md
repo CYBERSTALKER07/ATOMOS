@@ -77,7 +77,16 @@ Phase 7: Full Ecosystem Verification, CodeGraph Audit Re-Check & Gate Validation
 - [x] Wrap state mutations across `order`, `retailer`, `returns`, `warehouse`, `factory`, `twin`, `syncroutes`, `inventory`, and `billing` with atomic `outbox.NewSpannerTxnBuffer` and `outbox.EmitJSON`
 - [x] Verify 100% transactional outbox coverage (0 unprotected state mutations across 136 RW transaction files)
 - [x] Re-run and pass `make codegraph-advanced-audit`, `make gen-contracts-gate`, `make repo-hygiene-gate`, and `make kafka-ha-gate`
-- **Status:** complete
+### Phase 10: Ecosystem Deep Audit & Dual-System Parity Verification (pegasus vs pegasusX vs pegasus.x)
+- [ ] Task 10.1: Automated Static & Graph Radar (Bash Scanners for Spanner DDL vs PG16 migrations, Kafka vs Redis messaging, and Route registries)
+- [ ] Task 10.2: Targeted Raw Reading of Transaction Boundaries, Outbox Atomicity, and Concurrency Locks
+- [ ] Task 10.3: Targeted Raw Reading of Connection Pools (`pgxpool` vs Spanner SessionPool) and Redis Circuit Breakers
+- [ ] Task 10.4: Financial Precision Audit ($\sum \text{Debits} == \sum \text{Credits}$, `int64` minor tiyins, and 25M UZS B2B cash limit)
+- [ ] Task 10.5: Real-time Plane & Subterranean Reconnect Verification (Ring buffer replay vs Monotonic sequencer)
+- [ ] Task 10.6: Algorithmic Planning Audit (Google OR-Tools CVRP vs Python 3.12 S&OP Croston-SBA / MEIO)
+- [ ] Task 10.7: Fleet & Driver Management Parity Verification in `pegasus.x` (Shift pairing, DVIR, hot-swapping)
+- [ ] Task 10.8: Full Compiler-Grade Verification & Test Suites (`go test ./...`, Pytest, and Contract Gates)
+- **Status:** in_progress (Detailed specification saved in `docs/plans/2026-09-16-ecosystem-deep-audit-plan.md`)
 
 ## Decisions & Changes Log
 | Date | Phase | Decision | Rationale |
@@ -86,8 +95,10 @@ Phase 7: Full Ecosystem Verification, CodeGraph Audit Re-Check & Gate Validation
 | 2026-09-04 | Initialization | Spanner-backed Saga state on `ParentOrders` | Recovers stranded orders across server crashes without in-memory dependency |
 | 2026-09-04 | Contract Sync | Mount `/v1/payload/exceptions/damaged` route | Eliminates runtime 404s when terminal reports damaged cargo exceptions |
 | 2026-09-04 | Contract Sync | Link `packages/api-client` to `api-core` | Ensures unified tooling and zero script path divergence |
+| 2026-09-16 | Phase 10 | Strict Two-Tier Verification Gate (Bash Scanners + Raw Codebase Reading) | Enforces mathematical blast radius discovery and line-by-line runtime verification |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |---|---|---|
 | `neo4j` module missing in system python3 | 1 | Used repository virtualenv `../.venv/bin/python3` which has Memgraph/Neo4j drivers installed |
+

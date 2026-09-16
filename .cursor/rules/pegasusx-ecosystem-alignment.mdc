@@ -1,85 +1,67 @@
 ---
-description: Align all pegasusX ecosystem touchpoints when editing or adding features
+description: Align all pegasusX and pegasus.x ecosystem touchpoints when editing or adding features
 alwaysApply: true
 ---
 
-# pegasusX ecosystem alignment (required on every change)
+# Ecosystem Alignment (Required on Every Change)
 
-**Honesty override:** Code is SoT. Matrix/docs **"Wired"** is not production-ready and not permission to wire cloud. Load `honest-code-gate`. Cloud/API/infra only after the live path is REAL (durable + clients + tests), not because a plan landed.
+**Honesty Override:** Code is SoT. Matrices or docs labeled "Wired" are not production-ready and not permission to wire cloud. Load `honest-code-gate`. Cloud/API/infra wiring is permitted only after the live path is REAL (durable database persistence + clients + automated tests), not because a plan was drafted.
 
-When you edit backend code or add a feature, **trace every surface the change touches** and update them in the same batch. Do not land a partial slice that leaves role rows, contracts, or cross-role flows inconsistent.
+When editing backend code or adding a feature, **trace every surface the change touches** and update them in the same batch. Do not land a partial slice that leaves role rows, contracts, or cross-role flows inconsistent.
 
-## 1. Map the blast radius first
+# STRICT TWO-SYSTEM ARCHITECTURAL BOUNDARY (DO NOT MERGE OR CROSS-POLLUTE)
+Within `V.O.I.D`, there are TWO distinct parallel systems:
+1. **`pegasusX/`**: Global Enterprise Multi-Tenant (Google Cloud Spanner, Apache Kafka, Go, Next.js, Native Mobile).
+2. **`pegasus.x/`**: Sovereign Lean Single-Tenant (PostgreSQL 16 + Redis 7, Servercore Tashkent, Tauri v2 Desktops, Telegram Bot/MiniApp, Go Chi, Native Driver).
+
+**Rules of Engagement**:
+- **Zero Cross-Contamination**:
+  - In `pegasus.x`: Strictly PostgreSQL 16 + Redis 7. NEVER import Spanner libraries, Spanner DDL, or Apache Kafka.
+  - In `pegasusX`: Strictly Google Cloud Spanner + Apache Kafka. NEVER downgrade `pegasusX` to single-tenant PostgreSQL.
+- **Cross-Scanning & Logical Feature Sync**: Scan both codebases to identify missing domain capabilities and sync them logically into `pegasus.x`.
+- **Active Primary Gap**: Full Fleet & Driver Management lifecycle (Vehicles, Drivers, Dynamic Daily Shift Pairing, Mid-Shift Swapping, DVIR Pre-Trip Inspections) ported into `pegasus.x`.
+
+## 1. Map the Blast Radius First
 
 Before coding, identify:
 - **Blast radius via Two-Tier Verification (MANDATORY):**
-  - **Tier 1 (Bazel/Kythe CodeGraph):** run `python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json` and `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>` to trace transitive callers and affected tests. Run `make codegraph-advanced-audit`.
+  - **Tier 1 (Bazel/Kythe CodeGraph):** run `python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json` and `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>` to trace transitive callers and affected tests.
   - **Tier 2 (Targeted Raw Reading):** open and raw-read the exact files identified in Tier 1 to verify guard clauses, transaction boundaries, and business rules. Re-read every edit after writing.
 - **Role(s)** affected (supplier, retailer, driver, warehouse, factory, payload)
-- **Route owner** (`*routes/routes.go` under `apps/backend-go`)
+- **Route owner** (e.g. `router.go` or `*routes/routes.go`)
 - **Cross-role consumers** (who reads this state next in the order/dispatch/payment chain)
-- **Realtime path** (outbox event → Kafka → WS hub → client inbox)
+- **Realtime path** (outbox event → Kafka/Streams → WS hub → client inbox)
 
-Reference: `pegasusX/docs/ROLE_ROW_PARITY_MATRIX.md`, `pegasusX/docs/FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`.
-
-## 2. Backend mutation checklist
+## 2. Backend Mutation Checklist
 
 For any state-changing backend work, include in the same change set:
-- Spanner schema/migration if columns or indexes change (`schema/spanner.ddl`)
-- Repository + service in the **canonical owner package** (not a duplicate path)
-- Outbox emit in the **same RW transaction** as the row write
+- Schema/migration if columns or indexes change (`schema/spanner.ddl` for pegasusX; `migrations/*.sql` for pegasus.x)
+- Repository + service in the **canonical owner package**
+- Outbox emit in the **same transaction** as the row write
 - Post-commit **cache invalidation** keys (supplier/retailer/catalog/inventory as applicable)
 - WebSocket fanout envelopes for roles that must react live
 - Focused `*_test.go` in the touched package
-- **SSMR marker** in `cmd/ssmr-smokecheck/e2e_check.go` when behavior is user-visible or cross-role; register in `contracts/ssmr_ecosystem_markers.json` if ecosystem-gated
 
 Cancel/side-effect paths: if a new code path sets terminal state (cancel, reject, vet reject), verify **inventory release**, payment state, and notification fanout — not only the happy-path `UpdateStatus`.
 
-## 3. Role-row client parity
+## 3. Role-Row Client Parity
 
-A feature for a role must land on **all clients in that role row** unless explicitly deferred in context docs:
+A feature for a role must land on **all clients in that role row**:
 
-| Role | Clients |
-|------|---------|
-| Supplier | portal, Android, iOS |
-| Retailer | desktop, Android, iOS |
-| Driver | Android, iOS |
-| Warehouse | portal, Android, iOS |
-| Factory | portal, Android, iOS |
-| Payload | terminal, Android, iOS |
+- **In `pegasusX`**: Supplier (portal, Android, iOS), Retailer (desktop, Android, iOS), Driver (Android, iOS), Warehouse (portal, Android, iOS), Factory (portal, Android, iOS).
+- **In `pegasus.x`**: Supplier (`apps/supplier-desktop`), Retailer (`apps/telegram-miniapp`, `apps/telegram-bot`), Driver (`apps/driver-app-android`, `apps/driver-app-ios`), Warehouse (`apps/warehouse-desktop`).
 
-Shared contracts first: `packages/types`, `packages/api-client`, then each client. Match existing patterns (silent WS refresh, idempotency keys, claims-scoped API calls).
-
-## 4. Contracts & events
-
-When API shapes or events change:
-- `packages/types` + `packages/api-client`
-- `contracts/events.schema.json` via `go run ./cmd/gen-contracts` (CI: `make gen-contracts-gate`)
-- Regenerate native `Generated/` stubs where apps wire Quicktype (Android Gradle, iOS build phases)
-
-## 5. Infra & config (when env or secrets change)
-
-- `.env.ssmr.example`, `.env.example`, K8s configmap/externalsecret, Terraform GSM if new secrets
-- `docs/CLOUD_CREDENTIALS_CHECKLIST.md` when a new external service is introduced
-
-## 6. Context docs (same PR / session)
-
-- Update `context/*_PHASE.md` or `context/plan.md` anchor status when closing or opening work
-- `context/parity-ledger.md` if behavior intentionally diverges from Pegasus reference
-- `docs/ROLE_ROW_PARITY_MATRIX.md` row status when a screen/API moves from partial → wired
-
-## 7. Definition of done
+## 4. Definition of Done
 
 A feature is not done until:
 1. All touched role-row clients compile and use the same contract
-2. Cross-role downstream effects are handled (or explicitly documented as deferred)
-3. `go test` on touched backend packages passes **after** a re-read of every edited file (plan landing ≠ success)
-4. New ecosystem behavior has an SSMR assertion or a documented reason it is UI-only / manual QA
-5. The live path is **REAL** (not THEATRE). Matrix "Wired" is not a go-live certificate
+2. Cross-role downstream effects are handled
+3. `go test -v -race` on touched backend packages passes **after** a re-read of every edited file
+4. Zero mock data or fallback memory repositories remain in production packages
+5. The live path is **REAL** (not THEATRE)
 6. Cloud/API wiring is **not** implied — Layer B only when remaining work is secrets/env/IAM
 
-
-# Universal Agent & Engineering Guidelines
+## Universal Agent & Engineering Guidelines
 When developing, designing, or planning, always ensure to account for:
 - Gaps, edge cases, and comprehensive feature validation.
 - Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
@@ -89,3 +71,11 @@ When developing, designing, or planning, always ensure to account for:
 - Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
 - ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
 - Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+- Strict 64-bit integer minor unit currency arithmetic (`tiyins`/`cents`). Zero floating-point money calculations.
+
+## Strict Mandatory UI Design System
+All agents generating or updating UI (desktop, web portals, mobile apps) MUST strictly adhere to [.agents/rules/ui-design-system.md](file:///Users/shakhzod/Desktop/V.O.I.D/.agents/rules/ui-design-system.md) and [DESIGN.md](file:///Users/shakhzod/Desktop/V.O.I.D/DESIGN.md):
+- Pitch-black tactical canvas (`#09090B`) / crisp operational light canvas (`#F8FAFC`), deep obsidian surfaces (`#121216`), crisp 1px hairline borders (`#22222C`), electric cobalt blue (`#2563EB`/`#3B82F6`), safety orange (`#FF7A1A`), tactical lime (`#E2FD52`).
+- Strict 3-column control tower layout (Nav Rail → Density Feed → Inspector Drawer) & floating prompt bar from `user_requested_layout.png`.
+- Mandatory tabular monospace numbers (`font-mono tabular-nums`), 10px-11px bold uppercase micro-labels, and signature component blueprints (`MetricCard`, `VehicleTrackingCard`, `GaugeChart`, `StageStepper`, `LedProgressBar`, `ActivityTimeline`, `DenseDataTable`).
+- Zero generic gray templates, zero blurry drop shadows.

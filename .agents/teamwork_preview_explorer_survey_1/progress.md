@@ -1,24 +1,14 @@
-# Progress — Explorer 1 (Doc Inventory & Claims Miner)
+# Progress: Supplier Domain & Mock Purge Survey
 
-Last visited: 2026-08-20T17:25:30+05:00
+Last visited: 2026-09-16T13:21:55Z
 
-## Current Status
-- [x] Initialized BRIEFING.md and progress.md
-- [x] Scan and find all `.md` and `.docx` files in `/Users/shakhzod/Desktop/V.O.I.D` (803 project docs cataloged across 21 categories)
-- [x] Extract and analyze all 8 `.docx` files (historical/frozen Reality Reports & alignment docs)
-- [x] Parse key program guides (`GLOBAL_SCALE_PROGRAM.md`, `GLOBAL_SCALE_LOCAL_ECOSYSTEM.md`), parity matrices (`ROLE_ROW_PARITY_MATRIX.md`), scorecards (`SCORECARD.md`, `MASTER_10_10_EXECUTION_PROGRAM.md`), gap ledgers (`GAP_LEDGER.md`, `RESIDUAL_REGISTER.md`), and context phase docs (`pegasusX/context/*`)
-- [x] Extract full inventory of explicit status claims ("Wired", "Done", "Production-Ready", "Cloud-Ready", specific feature claims)
-- [x] Compile `doc_inventory_report.md` (1,080 lines exhaustive inventory & claims report)
-- [ ] Complete `handoff.md` (5 components) and report back to parent agent
-
-
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+- [x] Initialized DISPATCH.md and BRIEFING.md
+- [x] Read `/Users/shakhzod/Desktop/V.O.I.D/.agents/ORIGINAL_REQUEST.md` completely
+- [x] Inspect all files in `pegasus.x/backend/internal/supplier/` (`models.go`, `repository.go`, `service.go`, `supplier_test.go`)
+- [x] Locate and catalog all instances of `MemoryRepository`, mock data, hardcoded seeds, in-memory structures in `internal/supplier/` (57 fallback sites, 7 zero-SQL methods, 9 mock tests)
+- [x] Examine existing supplier models, methods, interfaces, onboarding representation (`suppliers` vs `supplier_profiles` disconnect)
+- [x] Inspect auth routes, handlers, and tokens in `pegasus.x/backend` (`internal/api/handlers_supplier.go`, `internal/auth/`)
+- [x] Specify required changes for `POST /v1/auth/supplier/register` and `POST /v1/auth/supplier/login`
+- [x] Specify migration `069_supplier_onboarding_and_globalpay.sql` DDL
+- [x] Draft comprehensive `report.md` and standard 5-component `handoff.md`
+- [ ] Send completion message to parent
