@@ -39,7 +39,7 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
     tag: 'Platform',
     href: '/projects/supplier-control-plane',
     variant: 'vertical',
-    bento: 'editorial-bento__2-1',
+    bento: 'editorial-bento__2-2',
   },
   {
     title: 'Driver Execution App',
@@ -47,7 +47,7 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
       'Native route execution with sealed manifests, stop-by-stop delivery, cash collection, and live progress reporting.',
     tag: 'Mobile',
     href: '/projects/driver-execution-app',
-    variant: 'split',
+    variant: 'vertical',
     bento: 'editorial-bento__2-2',
   },
   {
@@ -57,26 +57,7 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
     tag: 'Commerce',
     href: '/projects/retailer-commerce',
     variant: 'split',
-    bento: 'editorial-bento__4-1',
-  },
-  {
-    title: 'Fleet Telemetry',
-    description:
-      'Live fleet map with planned-vs-actual routes, deviation alerts, and retailer self-serve tracking.',
-    tag: 'Visibility',
-    href: '/projects/fleet-telemetry',
-    variant: 'vertical',
-    bento: 'editorial-bento__2-1',
-  },
-  {
-    title: 'Payment Integrity',
-    description:
-      'Checkout through driver collection to supplier treasury — duplicate protection and a clear audit trail.',
-    tag: 'Finance',
-    href: '/projects/payment-integrity',
-    variant: 'vertical',
-    tone: 'light',
-    bento: 'editorial-bento__2-1',
+    bento: 'editorial-bento__4-2',
   },
 ];
 
@@ -97,7 +78,7 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
     tag: 'Платформа',
     href: '/projects/supplier-control-plane',
     variant: 'vertical',
-    bento: 'editorial-bento__2-1',
+    bento: 'editorial-bento__2-2',
   },
   {
     title: 'Приложение водителя',
@@ -105,7 +86,7 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
       'Нативное исполнение маршрута с пломбированными манифестами, доставкой по остановкам, сбором наличных и живым отчётом о прогрессе.',
     tag: 'Мобильные',
     href: '/projects/driver-execution-app',
-    variant: 'split',
+    variant: 'vertical',
     bento: 'editorial-bento__2-2',
   },
   {
@@ -115,26 +96,7 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
     tag: 'Коммерция',
     href: '/projects/retailer-commerce',
     variant: 'split',
-    bento: 'editorial-bento__4-1',
-  },
-  {
-    title: 'Телеметрия автопарка',
-    description:
-      'Живая карта автопарка с маршрутами «план vs факт», алертами по отклонениям и самообслуживанием отслеживания для ритейлера.',
-    tag: 'Видимость',
-    href: '/projects/fleet-telemetry',
-    variant: 'vertical',
-    bento: 'editorial-bento__2-1',
-  },
-  {
-    title: 'Целостность платежей',
-    description:
-      'От оформления через сбор водителем до казначейства поставщика — защита от дублей и понятный аудит-след.',
-    tag: 'Финансы',
-    href: '/projects/payment-integrity',
-    variant: 'vertical',
-    tone: 'light',
-    bento: 'editorial-bento__2-1',
+    bento: 'editorial-bento__4-2',
   },
 ];
 
