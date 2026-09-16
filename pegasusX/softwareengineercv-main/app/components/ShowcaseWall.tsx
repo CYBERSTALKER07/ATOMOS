@@ -29,10 +29,7 @@ export default function ShowcaseWall() {
   return (
     <PageSection className="bg-[#030303] py-20 border-t border-white/5 relative overflow-hidden">
       <div className="text-center mb-12 relative z-10 px-4">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-950/30 text-emerald-400 text-xs font-mono mb-4">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          ECOSYSTEM VISUAL MATRIX
-        </div>
+
         <h2 className="text-4xl md:text-6xl font-medium tracking-tight text-white mb-4">
           {t('showcase_title', 'Interactive Ecosystem Wall')}
         </h2>

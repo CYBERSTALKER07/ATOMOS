@@ -3,7 +3,7 @@ import Hero from './components/Hero';
 import About from './components/About';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
-import LocalizedLaneDivider from './components/layout/LocalizedLaneDivider';
+
 import type { Metadata } from 'next';
 import {
   pageMetadata,
@@ -109,21 +109,15 @@ export default async function Home() {
           <Hero />
         </section>
 
-        <LocalizedLaneDivider index="01" labelKey="home_lane_network" />
-
         <section id="section-platform">
           <About />
           <OrderCycleVisualSection />
           <DispatchVisualSection />
         </section>
 
-        <LocalizedLaneDivider index="02" labelKey="home_lane_last_mile" />
-
         <section id="section-last-mile">
           <LastMileSection />
         </section>
-
-        <LocalizedLaneDivider index="03" labelKey="home_lane_signal" />
 
         <section id="section-telemetry">
           <PlatformFeatures />
@@ -135,12 +129,9 @@ export default async function Home() {
           <EcosystemStats />
           <LogisticsWorkflow />
           <OurApproach />
-          <LocalizedLaneDivider index="04" labelKey="home_lane_operations" />
           <Skills />
           <CloudEcosystemSection />
         </section>
-
-        <LocalizedLaneDivider index="05" labelKey="home_lane_proof" />
 
         <section id="section-showcase">
           <ShowcaseWall />

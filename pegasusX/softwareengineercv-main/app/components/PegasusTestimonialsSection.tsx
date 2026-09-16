@@ -84,10 +84,9 @@ export function PegasusTestimonialsSection() {
 
         {/* Section Header */}
         <div className="flex flex-col items-center text-center max-w-2xl gap-3">
-          <div className="inline-flex items-center gap-2 font-mono text-[11px] tracking-widest text-emerald-400 uppercase">
-            <span className="w-2 h-2 bg-emerald-500 inline-block animate-pulse" />
-            [ {t('testimonials_badge') || 'ECOSYSTEM PROOF'} ]
-          </div>
+          <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-zinc-500 mb-1">
+            {t('testimonials_badge') || 'ECOSYSTEM PROOF'}
+          </span>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-100">
             {t('testimonials_title') || 'Trusted by operators across the supply chain'}
           </h2>

@@ -375,12 +375,9 @@ export default function LogisticsWorkflow() {
       <div className="w-[94%] max-w-[1440px] mx-auto z-10 relative">
         {/* Header */}
         <div className="mb-10 text-center flex flex-col items-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#CEFF00] animate-pulse" />
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">
-              {t('workflow_eyebrow', 'System Architecture')}
-            </span>
-          </div>
+          <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-white/40 mb-4 block">
+            {t('workflow_eyebrow', 'System Architecture')}
+          </span>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-title font-bold tracking-tight text-white mb-4">
             {activeTab === 'stack' ? 'Works with any stack' : 'Autonomous operational logic'}
