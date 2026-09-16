@@ -8,3 +8,4 @@ export { default as O9CapabilityShowcase } from './O9CapabilityShowcase';
 export type { O9CapabilityCard } from './O9CapabilityShowcase';
 export { default as O9SplitTourCTA } from './O9SplitTourCTA';
 export { default as O9InsightCards } from './O9InsightCards';
+export { default as O9TrapsToAvoid } from './O9TrapsToAvoid';

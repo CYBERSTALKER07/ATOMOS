@@ -10,6 +10,7 @@ import O9BusinessValueSection from './O9BusinessValueSection';
 import O9TestimonialRow from './O9TestimonialRow';
 import O9CapabilityShowcase, { type O9CapabilityCard } from './O9CapabilityShowcase';
 import O9InsightCards from './O9InsightCards';
+import O9TrapsToAvoid from './O9TrapsToAvoid';
 import O9SplitTourCTA from './O9SplitTourCTA';
 import { useLanguage } from '@/app/context/LanguageContext';
 
@@ -98,6 +99,7 @@ export default function O9FleekPageLayout({
         <>
           <O9DifferentiatorGrid items={differentiators} title={differentiatorsTitle} />
           {!isSecondary ? <O9BusinessValueSection tabs={valueTabs} /> : null}
+          <O9TrapsToAvoid />
           <O9CapabilityShowcase items={capabilities} title={capabilitiesTitle} />
           {showTestimonials ? <O9TestimonialRow items={testimonials} /> : null}
           <O9HowItWorks steps={howItWorks} variant="list" />
