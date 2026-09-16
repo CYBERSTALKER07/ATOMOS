@@ -16,7 +16,7 @@ function DitheredPortrait({ src, alt }: { src: string; alt: string }) {
         alt={alt}
         width={400}
         height={400}
-        className="w-full h-full object-cover grayscale contrast-200 brightness-110 transition-transform duration-700 group-hover:scale-105"
+        className="w-full h-full object-cover object-top grayscale contrast-200 brightness-110 transition-transform duration-700 group-hover:scale-105"
       />
 
       {/* Matrix Dither Pattern Overlay */}
@@ -114,10 +114,10 @@ export function PegasusTestimonialsSection() {
             <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-zinc-400 absolute -bottom-1.25 -right-1.25 z-20" />
 
             {/* Top Bar Header Row */}
-            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-[#0a0a0a]">
-              <div className="flex items-center gap-2.5 font-mono text-xs text-emerald-400 tracking-wider">
-                <span className="w-2 h-2 bg-emerald-500 inline-block" />
-                [ {t('testimonials_badge') || 'COMING UP NEXT'} ]
+            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
+              <div className="flex items-center gap-2 font-mono text-xs text-emerald-400 tracking-wider">
+                <span className="w-1.5 h-1.5 bg-emerald-500 inline-block" />
+                <span>CASE STUDY</span>
               </div>
               <div className="font-mono text-xs text-zinc-500 tracking-widest hidden sm:block">
                 SYS.REF // PEGASUS_CTO_01
@@ -128,23 +128,23 @@ export function PegasusTestimonialsSection() {
             <div className="grid grid-cols-1 lg:grid-cols-12">
               
               {/* Left Column: Content & CTA (7 cols on lg) */}
-              <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between gap-8 border-b lg:border-b-0 lg:border-r border-zinc-800">
-                <div className="flex flex-col gap-5">
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-normal tracking-tight text-zinc-100 leading-snug">
+              <div className="lg:col-span-7 p-5 sm:p-7 flex flex-col justify-between gap-4 border-b lg:border-b-0 lg:border-r border-zinc-800">
+                <div className="flex flex-col gap-2.5">
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-normal tracking-tight text-zinc-100 leading-snug">
                     {t('cto_quote')}
                   </h3>
-                  <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
+                  <p className="text-zinc-400 text-xs sm:text-sm leading-relaxed max-w-xl">
                     {language === 'ru' 
                       ? 'Оцените, как передовые логистические команды поддерживают высокую скорость диспетчеризации и прозрачность расчетов на единой платформе Pegasus.'
                       : 'See how leading logistics operators maintain fast dispatch and rigorous settlement accuracy across all 6 supply chain roles.'}
                   </p>
                 </div>
 
-                {/* Green CTA Button - Exact styling from image reference */}
-                <div className="pt-4">
+                {/* Green CTA Button */}
+                <div className="pt-2">
                   <Link 
                     href="/contact"
-                    className="inline-flex items-center gap-3 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm transition-colors rounded-none shadow-lg shadow-emerald-950/20 group"
+                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs sm:text-sm transition-colors rounded-none shadow-md shadow-emerald-950/20 group"
                   >
                     <span>{t('read_case_study') || 'Save your seat'}</span>
                     <span className="group-hover:translate-x-1 transition-transform font-bold">→</span>
@@ -155,8 +155,8 @@ export function PegasusTestimonialsSection() {
               {/* Right Column: Dithered Halftone Image & Meta (5 cols on lg) */}
               <div className="lg:col-span-5 flex flex-col justify-between bg-black relative">
                 
-                {/* Dithered Portrait Container */}
-                <div className="w-full h-72 sm:h-80 lg:h-full min-h-[280px] relative border-b border-zinc-800">
+                {/* Dithered Portrait Container - Compact Height */}
+                <div className="w-full h-52 sm:h-60 lg:h-[280px] relative border-b border-zinc-800 overflow-hidden">
                   <DitheredPortrait 
                     src="/Gemini_Generated_Image_e86uare86uare86u.png" 
                     alt={t('cto_role')}
@@ -169,10 +169,10 @@ export function PegasusTestimonialsSection() {
                   <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute bottom-2 right-2 z-20" />
                 </div>
 
-                {/* Bottom Metadata Bar - Exact monospace style from reference image */}
-                <div className="px-6 py-3.5 bg-[#0a0a0a] flex items-center justify-between font-mono text-xs text-emerald-400 tracking-wider">
-                  <span>— {t('cto_name').toUpperCase()} // {t('cto_role').toUpperCase()}</span>
-                  <span className="text-emerald-500 font-bold">&gt;&gt;</span>
+                {/* Bottom Metadata Bar */}
+                <div className="px-5 py-2 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-emerald-400 tracking-wider">
+                  <span className="truncate">— {t('cto_name').toUpperCase()} // {t('cto_role').toUpperCase()}</span>
+                  <span className="text-emerald-500 font-bold ml-2 shrink-0">&gt;&gt;</span>
                 </div>
 
               </div>
