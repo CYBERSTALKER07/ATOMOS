@@ -136,7 +136,7 @@ export default async function Home() {
         <section id="section-showcase">
           <ShowcaseWall />
           <PegasusTestimonialsSection />
-          <UserStoriesSection />
+          {/* <UserStoriesSection /> - hidden for now */}
           <Projects />
           <Companies />
         </section>
