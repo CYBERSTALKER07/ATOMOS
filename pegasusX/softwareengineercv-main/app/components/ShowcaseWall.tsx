@@ -211,17 +211,17 @@ export default function ShowcaseWall() {
 
     rafId = requestAnimationFrame(animateIdle);
 
-    // GSAP ScrollTrigger context
+    // GSAP ScrollTrigger context (reduced scroll distance for effortless browsing)
     const ctx = gsap.context(() => {
       gsap.to(state, {
-        scrollRotation: Math.PI * 2.8, // 1.4 full rotations across scroll
+        scrollRotation: Math.PI * 1.5, // Responsive orbital rotation
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top top',
-          end: '+=220%',
+          end: '+=90%', // Significantly less scroll distance (from 220% down to 90%)
           pin: pinRef.current,
-          scrub: 1.2,
+          scrub: 0.7,
           anticipatePin: 1,
           onUpdate: () => {
             updateCards();
