@@ -48,31 +48,31 @@ function useElementWidth<T extends HTMLElement>(ref: React.RefObject<T | null>):
 
 const CompanyCard = ({ company }: { company: Company }) => (
   <div className="inline-block mx-4">
-    <div className="bg-black text-white border border-[#18A049]/40 hover:border-[#18A049] rounded-none p-4 sm:p-6 min-w-[280px] sm:min-w-[350px] transition-all duration-300 group company-card">
+    <div className="bg-black text-white border border-white/20 hover:border-white rounded-none p-4 sm:p-6 min-w-[280px] sm:min-w-[350px] transition-all duration-300 group company-card">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
-          <div className="w-12 h-12 bg-[#09090B] group-hover:bg-black rounded-none flex items-center justify-center border border-[#18A049]/60 group-hover:border-[#E2FD52] transition-all duration-300">
-            <span className={`font-black text-white group-hover:text-[#E2FD52] transition-colors duration-300 ${company.logoStyle || 'text-xl'}`}>
+          <div className="w-12 h-12 bg-black group-hover:bg-white rounded-none flex items-center justify-center border border-white/30 group-hover:border-white transition-all duration-300">
+            <span className={`font-black text-white group-hover:text-black transition-colors duration-300 ${company.logoStyle || 'text-xl'}`}>
               {company.logo}
             </span>
           </div>
           <div>
             <h3 className="text-2xl font-light text-white">{company.name}</h3>
-            <p className="text-sm text-[#18A049] font-mono tracking-wide">{company.role}</p>
+            <p className="text-sm text-white/60 font-mono tracking-wide">{company.role}</p>
           </div>
         </div>
       </div>
       
-      <p className="text-sm text-zinc-400 mb-4 leading-relaxed font-sans">
+      <p className="text-sm text-white/50 mb-4 leading-relaxed font-sans">
         {company.tags}
       </p>
       
       <div className="flex items-center justify-between gap-2">
-        <span className="px-4 py-2 bg-[#E2FD52] hover:bg-[#CEFF00] text-black text-xs font-bold uppercase rounded-none border border-[#E2FD52] transition-colors shadow-sm">
+        <span className="px-4 py-2 bg-white hover:bg-white/90 text-black text-xs font-mono font-bold uppercase rounded-none border border-white transition-colors shadow-sm">
           {company.badge}
         </span>
-        <span className="text-xs text-[#18A049]/80 font-mono tracking-wider">
+        <span className="text-xs text-white/40 font-mono tracking-wider">
           • {company.remote}
         </span>
       </div>
