@@ -1,53 +1,398 @@
 'use client';
 
-import DriftWall, { DriftWallItem } from './DriftWall';
-
-import PageSection from './layout/PageSection';
+import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
+import { useReducedMotion } from '@/app/hooks/useDevice';
 
-const DRIFT_ITEMS: DriftWallItem[] = [
-  { image: SITE_IMAGES.truckTerminal, title: 'Smart Dispatch Hub', href: '/platform' },
-  { image: SITE_IMAGES.logisticsPlatformUi, title: 'Operations Board', href: '/capabilities' },
-  { image: SITE_IMAGES.multimodalHub, title: 'Fleet Tracking', href: '/capabilities/live-fleet-tracking' },
-  { image: SITE_IMAGES.warehouseAutomation, title: 'Warehouse Controls', href: '/roles/warehouse' },
-  { image: SITE_IMAGES.pegasusContainer, title: 'Supplier Network', href: '/roles/supplier' },
-  { image: SITE_IMAGES.operationsTeam, title: 'Live Analytics', href: '/operations' },
-  { image: SITE_IMAGES.warehouseWireframe, title: 'Fulfillment Control', href: '/platform' },
-  { image: SITE_IMAGES.deliveryDrone, title: 'Payment Confidence', href: '/capabilities/payment-confidence' },
-  { image: SITE_IMAGES.containerShip, title: 'Global Operations', href: '/projects' },
-  { image: SITE_IMAGES.terminalArchitecture, title: 'Secure Platform', href: '/technology' },
-  { image: SITE_IMAGES.portCraneScene, title: 'Factory Dispatch Gate', href: '/roles/payload-gate' },
-  { image: SITE_IMAGES.lastMileDelivery, title: 'Retailer Dashboard', href: '/demo/retailer' },
-  { image: SITE_IMAGES.fleekHeroNew, title: 'Network Overview', href: '/platform' },
-  { image: SITE_IMAGES.truckTerminal, title: 'Gate-ready Fleet', href: '/capabilities/live-fleet-tracking' },
-  { image: SITE_IMAGES.warehouseAutomation, title: 'Yard Flow', href: '/roles/warehouse' },
+gsap.registerPlugin(ScrollTrigger);
+
+export interface OrbitItem {
+  id: string;
+  image: string;
+  title: string;
+  category: string;
+  href: string;
+}
+
+const ORBIT_ITEMS: OrbitItem[] = [
+  {
+    id: 'dispatch-hub',
+    image: SITE_IMAGES.truckTerminal,
+    title: 'Smart Dispatch Hub',
+    category: 'TERMINAL DISPATCH',
+    href: '/platform',
+  },
+  {
+    id: 'operations-board',
+    image: SITE_IMAGES.logisticsPlatformUi,
+    title: 'Operations Control Board',
+    category: 'CROSS-DOCK ORCHESTRATION',
+    href: '/capabilities',
+  },
+  {
+    id: 'fleet-telematics',
+    image: SITE_IMAGES.multimodalHub,
+    title: 'Multi-Tenant Fleet Telematics',
+    category: 'REALTIME GPS & CAN-BUS',
+    href: '/capabilities/live-fleet-tracking',
+  },
+  {
+    id: 'warehouse-staging',
+    image: SITE_IMAGES.warehouseAutomation,
+    title: 'Warehouse Staging & Automation',
+    category: 'WMS & INVENTORY FLOW',
+    href: '/roles/warehouse',
+  },
+  {
+    id: 'supplier-network',
+    image: SITE_IMAGES.pegasusContainer,
+    title: 'Sovereign Supplier Network',
+    category: 'B2B SOURCING MESH',
+    href: '/roles/supplier',
+  },
+  {
+    id: 'telemetry-analytics',
+    image: SITE_IMAGES.operationsTeam,
+    title: 'Real-Time Telemetry Analytics',
+    category: 'TACTICAL CONTROL TOWER',
+    href: '/operations',
+  },
+  {
+    id: 'fulfillment-wave',
+    image: SITE_IMAGES.warehouseWireframe,
+    title: 'Fulfillment Wave Control',
+    category: 'MEIO & LOAD BALANCING',
+    href: '/platform',
+  },
+  {
+    id: 'treasury-clearing',
+    image: SITE_IMAGES.deliveryDrone,
+    title: 'Payment & Treasury Clearing',
+    category: 'DOUBLE-ENTRY LEDGER',
+    href: '/capabilities/payment-confidence',
+  },
+  {
+    id: 'intermodal-lanes',
+    image: SITE_IMAGES.containerShip,
+    title: 'Intermodal Lane Capacity',
+    category: 'GLOBAL MIDDLE-MILE',
+    href: '/projects',
+  },
+  {
+    id: 'zero-trust-architecture',
+    image: SITE_IMAGES.terminalArchitecture,
+    title: 'Spanner Zero-Trust Architecture',
+    category: 'ACID DISTRIBUTED DATA',
+    href: '/technology',
+  },
+  {
+    id: 'factory-gate',
+    image: SITE_IMAGES.portCraneScene,
+    title: 'Factory Weighbridge & Gate',
+    category: 'SCALE & RFID ACCESS',
+    href: '/roles/payload-gate',
+  },
+  {
+    id: 'retailer-portal',
+    image: SITE_IMAGES.lastMileDelivery,
+    title: 'Retailer Procurement Portal',
+    category: 'ORDER-TO-CASH EPOD',
+    href: '/demo/retailer',
+  },
+  {
+    id: 'network-mesh',
+    image: SITE_IMAGES.fleekHeroNew,
+    title: 'Ecosystem Network Mesh',
+    category: 'MULTI-ROLE CONVERGENCE',
+    href: '/platform',
+  },
+  {
+    id: 'cvrp-optimization',
+    image: '/Unknown-10.jpg',
+    title: 'Google OR-Tools CVRP Dispatch',
+    category: 'ROUTE OPTIMIZATION',
+    href: '/solutions/fleet-visibility',
+  },
 ];
 
 export default function ShowcaseWall() {
+  const prefersReduced = useReducedMotion();
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const pinRef = useRef<HTMLDivElement>(null);
+  const cardElementsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const activeIndexRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    if (!sectionRef.current || !pinRef.current) return;
+
+    const N = ORBIT_ITEMS.length;
+    const alpha = (22 * Math.PI) / 180; // Tilt angle (around X axis)
+    const beta = (-6 * Math.PI) / 180; // Roll angle (around Z axis)
+    const D = 1000; // Perspective distance
+
+    // Continuous idle drift rotation angle + scroll-driven rotation angle
+    const state = {
+      scrollRotation: 0,
+      idleRotation: 0,
+    };
+
+    let rafId: number;
+
+    const updateCards = () => {
+      if (!pinRef.current) return;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Responsive radii matching viewport
+      const Rx = Math.min(viewportWidth * 0.38, 540);
+      const Ry = Math.min(viewportHeight * 0.20, 165);
+      const Rz = 240;
+
+      const totalAngle = state.scrollRotation + state.idleRotation;
+
+      let highestZ = -Infinity;
+      let frontIdx = 0;
+
+      for (let i = 0; i < N; i++) {
+        const cardEl = cardElementsRef.current[i];
+        if (!cardEl) continue;
+
+        const theta = (i / N) * 2 * Math.PI + totalAngle;
+
+        const x = Rx * Math.cos(theta);
+        const y = Ry * Math.sin(theta);
+        const z = Rz * Math.sin(theta);
+
+        // 3D rotations: tilt around X then roll around Z
+        const y_prime = y * Math.cos(alpha) - z * Math.sin(alpha);
+        const z_prime = y * Math.sin(alpha) + z * Math.cos(alpha);
+        const x_double = x * Math.cos(beta) - y_prime * Math.sin(beta);
+        const y_double = x * Math.sin(beta) + y_prime * Math.cos(beta);
+
+        // Perspective projection
+        const factor = D / (D - z_prime);
+        const sx = x_double * factor;
+        const sy = y_double * factor;
+        const scale = factor;
+        const opacity = Math.min(Math.max(0.35 + 0.65 * ((z_prime + Rz) / (2 * Rz)), 0.25), 1.0);
+        const zIndex = Math.round(z_prime + 500);
+
+        // Track front-most card for active index
+        if (z_prime > highestZ) {
+          highestZ = z_prime;
+          frontIdx = i;
+        }
+
+        // Direct DOM write for 60fps GPU acceleration
+        cardEl.style.transform = `translate3d(calc(-50% + ${sx}px), calc(-50% + ${sy}px), 0px) scale(${scale.toFixed(3)})`;
+        cardEl.style.opacity = opacity.toFixed(2);
+        cardEl.style.zIndex = `${zIndex}`;
+      }
+
+      // Update state only when active index shifts
+      if (frontIdx !== activeIndexRef.current) {
+        activeIndexRef.current = frontIdx;
+        setActiveIndex(frontIdx);
+      }
+    };
+
+    // Smooth idle drift animation
+    const animateIdle = () => {
+      state.idleRotation += prefersReduced ? 0 : 0.0015;
+      updateCards();
+      rafId = requestAnimationFrame(animateIdle);
+    };
+
+    rafId = requestAnimationFrame(animateIdle);
+
+    // GSAP ScrollTrigger context
+    const ctx = gsap.context(() => {
+      gsap.to(state, {
+        scrollRotation: Math.PI * 2.8, // 1.4 full rotations across scroll
+        ease: 'none',
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top top',
+          end: '+=220%',
+          pin: pinRef.current,
+          scrub: 1.2,
+          anticipatePin: 1,
+          onUpdate: () => {
+            updateCards();
+          },
+        },
+      });
+    }, sectionRef);
+
+    const handleResize = () => updateCards();
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', handleResize);
+      ctx.revert();
+    };
+  }, [prefersReduced]);
+
+  const activeItem = ORBIT_ITEMS[activeIndex] || ORBIT_ITEMS[0];
+
   return (
-    <PageSection bleed className="bg-[#030303] py-12 md:py-16 relative overflow-hidden border-none">
-      <div className="w-full h-[320px] sm:h-[540px] md:h-[640px] relative z-10 overflow-hidden">
-        <DriftWall
-          items={DRIFT_ITEMS}
-          columns={5}
-          tileWidth={230}
-          tileHeight={145}
-          gap={20}
-          radius={14}
-          tilt={18}
-          turn={-12}
-          perspective={1100}
-          depth={100}
-          speed={38}
-          direction="up"
-          variance={0.4}
-          parallax={0.7}
-          lift={70}
-          fade={0.65}
-          dim={0.55}
-          overlayColor="#020202"
+    <div ref={sectionRef} className="relative w-full bg-black text-white select-none overflow-visible">
+      
+      {/* Pinned 100vh Fullscreen Viewport */}
+      <div
+        ref={pinRef}
+        className="h-screen w-full sticky top-0 flex flex-col justify-between overflow-hidden bg-black relative"
+      >
+        {/* Subtle dot matrix grid terrain background matching reference */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
         />
+
+        {/* Ambient radial spotlight in the center */}
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.04)_0%,transparent_70%)]" />
+
+        {/* ── Top Bar Header (Reference match: "cīphər  WORKS  TALENTS CONTACT ABOUT") ── */}
+        <header className="px-6 sm:px-12 py-6 flex items-center justify-between z-30 font-mono text-xs text-zinc-400 tracking-wider">
+          <div className="flex items-center gap-3">
+            <span className="font-sans font-bold text-lg sm:text-xl text-white tracking-tighter">
+              PEGASUS
+            </span>
+            <span className="text-zinc-600 hidden sm:inline">/</span>
+            <span className="text-[10px] text-zinc-400 uppercase tracking-widest hidden sm:inline">
+              ECOSYSTEM WALL
+            </span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-8 text-[11px] text-zinc-400">
+            <span className="text-white font-semibold">WORKS</span>
+            <Link href="/platform" className="hover:text-white transition-colors">
+              PLATFORM
+            </Link>
+            <Link href="/roles" className="hover:text-white transition-colors">
+              ROLES
+            </Link>
+            <Link href="/contact" className="hover:text-white transition-colors">
+              CONTACT
+            </Link>
+          </div>
+        </header>
+
+        {/* ── Center 3D Orbital Arena ── */}
+        <div className="relative w-full flex-1 flex items-center justify-center overflow-visible">
+          
+          {/* Center concentric wireframe orbit rings glyph (matching reference screenshot) */}
+          <div className="relative flex items-center justify-center pointer-events-none z-10">
+            {/* Outer wireframe ring */}
+            <div className="absolute w-24 h-12 sm:w-32 sm:h-16 rounded-[50%] border border-zinc-700/60 animate-[spin_30s_linear_infinite]" />
+            {/* Middle wireframe ring */}
+            <div className="absolute w-18 h-9 sm:w-24 sm:h-12 rounded-[50%] border border-zinc-600/80 animate-[spin_20s_linear_infinite_reverse]" />
+            {/* Inner wireframe ring */}
+            <div className="absolute w-12 h-6 sm:w-16 sm:h-8 rounded-[50%] border border-zinc-500 animate-[spin_12s_linear_infinite]" />
+            {/* Central luminous core */}
+            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_12px_#ffffff]" />
+          </div>
+
+          {/* 3D Orbiting Cards Loop */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {ORBIT_ITEMS.map((item, idx) => {
+              const isFront = idx === activeIndex;
+
+              return (
+                <div
+                  key={item.id}
+                  ref={(el) => {
+                    cardElementsRef.current[idx] = el;
+                  }}
+                  className="absolute top-1/2 left-1/2 will-change-transform pointer-events-auto transition-shadow duration-300"
+                  style={{
+                    transform: 'translate3d(-50%, -50%, 0px)',
+                  }}
+                >
+                  <Link
+                    href={item.href}
+                    className={`block relative group overflow-hidden bg-[#0c0c0e] border transition-all duration-300 ${
+                      isFront
+                        ? 'border-white/80 shadow-[0_0_30px_rgba(255,255,255,0.15)] ring-1 ring-white/40'
+                        : 'border-zinc-800/80 hover:border-zinc-500'
+                    } w-32 h-22 sm:w-44 sm:h-30 md:w-52 md:h-36 lg:w-60 lg:h-40`}
+                  >
+                    {/* Corner Handle Nodes (□) */}
+                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute top-1 left-1 z-20" />
+                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute top-1 right-1 z-20" />
+                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute bottom-1 left-1 z-20" />
+                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute bottom-1 right-1 z-20" />
+
+                    {/* Stippled Image */}
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      sizes="(max-width: 640px) 130px, (max-width: 1024px) 210px, 240px"
+                      className="object-cover grayscale contrast-125 brightness-95 group-hover:scale-105 transition-transform duration-500"
+                    />
+
+                    {/* Subtle gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Card Title Label */}
+                    <div className="absolute bottom-2 left-2 right-2 z-10">
+                      <p className="font-mono text-[9px] text-zinc-400 tracking-wider truncate uppercase">
+                        {item.category}
+                      </p>
+                      <h4 className="font-sans text-xs font-semibold text-white tracking-tight truncate">
+                        {item.title}
+                      </h4>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+
+        </div>
+
+        {/* ── Bottom Telemetry Bar (Reference match: "001  EVIDENS DE BEAUTÉ  DISCOVER MORE") ── */}
+        <footer className="px-6 sm:px-12 py-6 flex items-center justify-between z-30 font-mono text-xs tracking-wider border-t border-zinc-900 bg-black/70 backdrop-blur-md">
+          {/* Left: 3-digit index */}
+          <div className="text-white font-bold text-sm">
+            {String(activeIndex + 1).padStart(3, '0')}
+          </div>
+
+          {/* Center: Active Title */}
+          <div className="text-center px-4 truncate max-w-md">
+            <span className="text-zinc-500 uppercase tracking-widest text-[11px] hidden sm:inline mr-2">
+              NODE //
+            </span>
+            <span className="text-zinc-100 font-semibold tracking-wider text-xs sm:text-sm uppercase">
+              {activeItem.title}
+            </span>
+          </div>
+
+          {/* Right: Discover More Link */}
+          <div className="text-right">
+            <Link
+              href={activeItem.href}
+              className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors group text-xs uppercase"
+            >
+              <span>DISCOVER MORE</span>
+              <span className="group-hover:translate-x-1 transition-transform font-bold">→</span>
+            </Link>
+          </div>
+        </footer>
+
       </div>
-    </PageSection>
+
+    </div>
   );
 }
