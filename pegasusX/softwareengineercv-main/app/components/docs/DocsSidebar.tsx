@@ -61,7 +61,6 @@ export default function DocsSidebar({ mobileOpen, onCloseMobile }: DocsSidebarPr
       <div className="px-3 py-2 rounded-none bg-[#111118] border border-[#22222E] flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-none bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-none h-2 w-2 bg-emerald-500"></span>
           </span>
           <span className="text-[11px] font-mono font-medium text-[#B0B0C2]">Pegasus OS v4.2</span>

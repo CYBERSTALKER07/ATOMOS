@@ -149,7 +149,7 @@ export function PegasusTestimonialsSection() {
                     — <span className="text-white">{t('cto_name').toUpperCase()}</span> · <span className="text-[#18A049] font-medium">{t('cto_role').toUpperCase()}</span>
                   </span>
                   <span className="text-[10px] text-[#18A049]/80 hidden sm:flex items-center gap-1.5 font-mono">
-                    <span className="w-1.5 h-1.5 bg-[#18A049] inline-block animate-pulse" />
+                    <span className="w-1.5 h-1.5 bg-[#18A049] inline-block" />
                     VERIFIED CORE
                   </span>
                 </div>

@@ -10,7 +10,7 @@ const EcosystemDitherStage = dynamic(
     ssr: false,
     loading: () => (
       <div className="w-full h-full flex items-center justify-center bg-[#09090B]">
-        <div className="w-2 h-2 bg-white/40 animate-ping" />
+        <div className="w-2 h-2 bg-white/40" />
       </div>
     ),
   }

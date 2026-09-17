@@ -107,7 +107,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
             {/* Top Badge & Node Indicator */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#CEFF00]" />
                 <span className="text-[11px] font-mono uppercase tracking-wider text-[#CEFF00]">
                   SYS_CORE · ACTIVE
                 </span>
@@ -191,7 +191,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
 
                 {/* Halftone Dotted Network Nodes */}
                 {[
-                  [150, 70], [180, 95], [120, 100], [210, 130], [90, 140],
+                  [100, 80], [180, 95], [120, 100], [210, 115], [90, 140],
                   [160, 150], [135, 175], [195, 180], [105, 205], [150, 225],
                   [80, 110], [225, 160], [170, 200], [115, 130], [185, 140]
                 ].map(([cx, cy], i) => (
@@ -201,8 +201,6 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
                     cy={cy}
                     r={i % 3 === 0 ? 5 : 3.5}
                     fill="currentColor"
-                    className="animate-pulse"
-                    style={{ animationDuration: `${2 + (i % 3)}s`, animationDelay: `${(i * 0.2)}s` }}
                   />
                 ))}
 

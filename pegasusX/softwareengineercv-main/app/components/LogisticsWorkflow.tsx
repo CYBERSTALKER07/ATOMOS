@@ -689,7 +689,7 @@ export default function LogisticsWorkflow() {
         {hoveredNode ? (
           <div className="mt-4 flex items-center justify-center">
             <div className="px-4 py-2 rounded-xl bg-[#121216] border border-[#18A049]/40 text-[#18A049] font-mono text-xs flex items-center gap-3 animate-fade-in shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-[#18A049] animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-[#18A049]" />
               <span>ACTIVE NODE: <strong>{hoveredNode.name}</strong></span>
               <span className="text-white/50">|</span>
               <span className="text-white/80">{hoveredNode.sub}</span>

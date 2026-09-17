@@ -33,7 +33,7 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
         <div className="relative z-10 max-w-xl">
           {article.badge && (
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-none bg-[#181826] border border-[#2F2F44] text-[11px] font-mono font-medium text-[#93C5FD] mb-4 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-none bg-blue-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-none bg-blue-400" />
               <span>{article.badge}</span>
             </div>
           )}

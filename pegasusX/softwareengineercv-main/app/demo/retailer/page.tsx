@@ -32,7 +32,7 @@ export default function RetailerDashboard() {
           <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
             <h2 className="text-sm font-medium text-white/90">{t('demo_rt_fleet_telemetry')}</h2>
             <div className="flex items-center gap-2 text-xs font-mono text-green-400">
-              <span className="w-1.5 h-1.5 rounded-none bg-green-400 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-none bg-green-400" />
               {t('demo_rt_tracking_active')}
             </div>
           </div>

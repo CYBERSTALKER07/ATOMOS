@@ -509,7 +509,7 @@ export default function SiteAssistant() {
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider">PEGASUS INTELLIGENCE</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs font-mono text-white/70 py-1">
-                    <span className="w-1.5 h-1.5 rounded-none bg-white animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-none bg-white" />
                     <span>{language === 'ru' ? 'Генерация ответа...' : 'Synthesizing telemetry...'}</span>
                   </div>
                 </div>
