@@ -375,7 +375,7 @@ export default function LogisticsWorkflow() {
       <div className="w-[94%] max-w-[1440px] mx-auto z-10 relative">
         {/* Header */}
         <div className="mb-10 text-center flex flex-col items-center">
-          <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-white/40 mb-4 block">
+          <span className="text-[10px] tracking-[0.2em] uppercase font-mono text-[#18A049] mb-4 block font-medium">
             {t('workflow_eyebrow', 'System Architecture')}
           </span>
 
@@ -388,7 +388,7 @@ export default function LogisticsWorkflow() {
           </p>
 
           {/* Segmented Role / Stack Controller */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-[#09090B] border border-white/15 shadow-2xl max-w-2xl">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-1.5 p-1.5 rounded-2xl bg-[#09090B] border border-[#18A049]/30 shadow-2xl max-w-2xl">
             {TAB_OPTIONS.map((tab) => (
               <button
                 key={tab.id}
@@ -398,7 +398,7 @@ export default function LogisticsWorkflow() {
                   px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-200 cursor-pointer
                   ${
                     activeTab === tab.id
-                      ? 'bg-white text-black font-bold shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                      ? 'bg-[#18A049] text-black font-bold shadow-[0_0_20px_rgba(24,160,73,0.35)]'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
                   }
                 `}
@@ -421,9 +421,9 @@ export default function LogisticsWorkflow() {
             >
               <defs>
                 <linearGradient id="beamGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0" />
-                  <stop offset="50%" stopColor="#3b82f6" stopOpacity="1" />
-                  <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#18A049" stopOpacity="0" />
+                  <stop offset="50%" stopColor="#18A049" stopOpacity="1" />
+                  <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
                 </linearGradient>
                 <style>{`
                   @keyframes pulseFlow {
@@ -448,7 +448,7 @@ export default function LogisticsWorkflow() {
               />
               <path
                 d="M 480 210 C 440 210, 420 95, 395 95"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="24 160"
                 className="animate-flow-beam-rev"
@@ -460,7 +460,7 @@ export default function LogisticsWorkflow() {
                 y1="95"
                 x2="60"
                 y2="95"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="20 120"
                 className="animate-flow-beam-rev"
@@ -475,7 +475,7 @@ export default function LogisticsWorkflow() {
               />
               <path
                 d="M 480 210 C 440 210, 420 325, 400 325"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="24 160"
                 className="animate-flow-beam-rev"
@@ -487,7 +487,7 @@ export default function LogisticsWorkflow() {
                 y1="325"
                 x2="60"
                 y2="325"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="20 120"
                 className="animate-flow-beam-rev"
@@ -502,7 +502,7 @@ export default function LogisticsWorkflow() {
               />
               <path
                 d="M 720 210 C 760 210, 780 95, 805 95"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="24 160"
                 className="animate-flow-beam"
@@ -514,7 +514,7 @@ export default function LogisticsWorkflow() {
                 y1="95"
                 x2="1140"
                 y2="95"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="20 120"
                 className="animate-flow-beam"
@@ -529,7 +529,7 @@ export default function LogisticsWorkflow() {
               />
               <path
                 d="M 720 210 C 760 210, 775 325, 780 325"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="24 160"
                 className="animate-flow-beam"
@@ -541,7 +541,7 @@ export default function LogisticsWorkflow() {
                 y1="325"
                 x2="1140"
                 y2="325"
-                stroke="#3b82f6"
+                stroke="#18A049"
                 strokeWidth="2.5"
                 strokeDasharray="20 120"
                 className="animate-flow-beam"
@@ -550,8 +550,8 @@ export default function LogisticsWorkflow() {
 
             {/* ── CENTER PILL (Double-Bordered Monospace Badge) ── */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-              <div className="p-1 rounded-2xl bg-[#141416] border border-[#27272a] shadow-[0_12px_40px_rgba(0,0,0,0.9)]">
-                <div className="px-6 py-3.5 rounded-xl bg-[#09090b] border border-white/10 flex items-center justify-center">
+              <div className="p-1 rounded-2xl bg-[#141416] border border-[#18A049]/40 shadow-[0_12px_40px_rgba(0,0,0,0.9),0_0_25px_rgba(24,160,73,0.15)]">
+                <div className="px-6 py-3.5 rounded-xl bg-[#09090b] border border-[#18A049]/20 flex items-center justify-center">
                   <span className="font-mono text-xs sm:text-sm font-semibold tracking-wider text-white whitespace-nowrap">
                     {currentTree.centerLabel}
                   </span>
@@ -561,8 +561,9 @@ export default function LogisticsWorkflow() {
 
             {/* ── TOP-LEFT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[75px] left-[330px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
-                {currentTree.topLeft.category}
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
+                <span>{currentTree.topLeft.category}</span>
               </div>
             </div>
             {/* Top-Left Circular Icons */}
@@ -591,8 +592,9 @@ export default function LogisticsWorkflow() {
 
             {/* ── BOTTOM-LEFT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[305px] left-[320px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
-                {currentTree.bottomLeft.category}
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
+                <span>{currentTree.bottomLeft.category}</span>
               </div>
             </div>
             {/* Bottom-Left Circular Icons */}
@@ -621,8 +623,9 @@ export default function LogisticsWorkflow() {
 
             {/* ── TOP-RIGHT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[75px] left-[800px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
-                {currentTree.topRight.category}
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
+                <span>{currentTree.topRight.category}</span>
               </div>
             </div>
             {/* Top-Right Circular Icons */}
@@ -651,8 +654,9 @@ export default function LogisticsWorkflow() {
 
             {/* ── BOTTOM-RIGHT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[305px] left-[780px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-white/10 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap">
-                {currentTree.bottomRight.category}
+              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
+                <span>{currentTree.bottomRight.category}</span>
               </div>
             </div>
             {/* Bottom-Right Circular Icons */}
@@ -684,8 +688,8 @@ export default function LogisticsWorkflow() {
         {/* Active Node Inspector Footer */}
         {hoveredNode ? (
           <div className="mt-4 flex items-center justify-center">
-            <div className="px-4 py-2 rounded-xl bg-[#121216] border border-[#CEFF00]/40 text-[#CEFF00] font-mono text-xs flex items-center gap-3 animate-fade-in shadow-lg">
-              <span className="w-2 h-2 rounded-full bg-[#CEFF00] animate-ping" />
+            <div className="px-4 py-2 rounded-xl bg-[#121216] border border-[#18A049]/40 text-[#18A049] font-mono text-xs flex items-center gap-3 animate-fade-in shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-[#18A049] animate-ping" />
               <span>ACTIVE NODE: <strong>{hoveredNode.name}</strong></span>
               <span className="text-white/50">|</span>
               <span className="text-white/80">{hoveredNode.sub}</span>
