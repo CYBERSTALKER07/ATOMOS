@@ -131,9 +131,9 @@ export default function ShowcaseWall() {
     if (!sectionRef.current || !pinRef.current) return;
 
     const N = ORBIT_ITEMS.length;
-    const alpha = (22 * Math.PI) / 180; // Tilt angle (around X axis)
-    const beta = (-6 * Math.PI) / 180; // Roll angle (around Z axis)
-    const D = 1000; // Perspective distance
+    const alpha = (33 * Math.PI) / 180; // Tilt angle (around X axis) - elevates back cards nicely above
+    const beta = (-4 * Math.PI) / 180; // Subtle roll angle (around Z axis) - matching reference slant
+    const D = 1100; // Perspective distance
 
     // Continuous idle drift rotation angle + scroll-driven rotation angle
     const state = {
@@ -149,10 +149,9 @@ export default function ShowcaseWall() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      // Responsive radii matching viewport
-      const Rx = Math.min(viewportWidth * 0.38, 540);
-      const Ry = Math.min(viewportHeight * 0.20, 165);
-      const Rz = 240;
+      // Responsive radii: balanced 3D ground plane orbit
+      const Rx = Math.min(viewportWidth * 0.36, 520);
+      const Rz = Math.min(viewportHeight * 0.33, Rx * 0.72, 340);
 
       const totalAngle = state.scrollRotation + state.idleRotation;
 
@@ -165,13 +164,17 @@ export default function ShowcaseWall() {
 
         const theta = (i / N) * 2 * Math.PI + totalAngle;
 
+        // Circular/elliptical orbit on 3D ground (XZ) plane
         const x = Rx * Math.cos(theta);
-        const y = Ry * Math.sin(theta);
-        const z = Rz * Math.sin(theta);
+        const z_local = Rz * Math.sin(theta);
 
-        // 3D rotations: tilt around X then roll around Z
-        const y_prime = y * Math.cos(alpha) - z * Math.sin(alpha);
-        const z_prime = y * Math.sin(alpha) + z * Math.cos(alpha);
+        // 3D rotations: tilt around X axis by alpha
+        // Back cards (z_local < 0) are elevated above (y_prime < 0)
+        // Front cards (z_local > 0) sit at the bottom foreground (y_prime > 0)
+        const y_prime = z_local * Math.sin(alpha);
+        const z_prime = z_local * Math.cos(alpha);
+
+        // Subtle roll around Z axis by beta
         const x_double = x * Math.cos(beta) - y_prime * Math.sin(beta);
         const y_double = x * Math.sin(beta) + y_prime * Math.cos(beta);
 
@@ -179,8 +182,10 @@ export default function ShowcaseWall() {
         const factor = D / (D - z_prime);
         const sx = x_double * factor;
         const sy = y_double * factor;
-        const scale = factor;
-        const opacity = Math.min(Math.max(0.35 + 0.65 * ((z_prime + Rz) / (2 * Rz)), 0.25), 1.0);
+        const scale = Math.max(0.55, Math.min(factor * 0.92, 1.35));
+        const Z_max = Rz * Math.cos(alpha);
+        const depthNorm = Math.max(0, Math.min(1, (z_prime + Z_max) / (2 * Z_max)));
+        const opacity = Math.min(Math.max(0.40 + 0.60 * depthNorm, 0.30), 1.0);
         const zIndex = Math.round(z_prime + 500);
 
         // Track front-most card for active index
@@ -190,7 +195,7 @@ export default function ShowcaseWall() {
         }
 
         // Direct DOM write for 60fps GPU acceleration
-        cardEl.style.transform = `translate3d(calc(-50% + ${sx}px), calc(-50% + ${sy}px), 0px) scale(${scale.toFixed(3)})`;
+        cardEl.style.transform = `translate3d(calc(-50% + ${sx.toFixed(1)}px), calc(-50% + ${sy.toFixed(1)}px), 0px) scale(${scale.toFixed(3)})`;
         cardEl.style.opacity = opacity.toFixed(2);
         cardEl.style.zIndex = `${zIndex}`;
       }
