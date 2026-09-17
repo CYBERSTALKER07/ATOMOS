@@ -10,27 +10,19 @@ import { getTestimonials, type O9Testimonial } from '../data/o9FleekDefaults';
 function DitheredPortrait({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center group">
-      {/* High-contrast grayscale dithered image */}
+      {/* High-contrast grayscale portrait - centered on face and shoulders */}
       <Image
         src={src}
         alt={alt}
-        width={400}
-        height={400}
-        className="w-full h-full object-cover object-top grayscale contrast-200 brightness-110 transition-transform duration-700 group-hover:scale-105"
-      />
-
-      {/* Matrix Dither Pattern Overlay */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-60 mix-blend-multiply bg-repeat"
-        style={{
-          backgroundImage: `radial-gradient(circle, #000 1.2px, transparent 1.2px)`,
-          backgroundSize: '3px 3px',
-        }}
+        width={800}
+        height={1200}
+        priority
+        className="w-full h-full object-cover object-[50%_32%] grayscale contrast-125 brightness-105 transition-transform duration-700 group-hover:scale-105"
       />
 
       {/* Subtle Scanlines effect */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-20 bg-repeat"
+        className="absolute inset-0 pointer-events-none opacity-15 bg-repeat"
         style={{
           backgroundImage: `linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.8) 51%)`,
           backgroundSize: '100% 4px',
@@ -115,8 +107,8 @@ export function PegasusTestimonialsSection() {
 
             {/* Top Bar Header Row */}
             <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
-              <div className="flex items-center gap-2 font-mono text-xs text-emerald-400 tracking-wider">
-                <span className="w-1.5 h-1.5 bg-emerald-500 inline-block" />
+              <div className="flex items-center gap-2 font-mono text-xs text-white tracking-wider">
+                <span className="w-1.5 h-1.5 bg-white inline-block" />
                 <span>CASE STUDY</span>
               </div>
               <div className="font-mono text-xs text-zinc-500 tracking-widest hidden sm:block">
@@ -125,7 +117,7 @@ export function PegasusTestimonialsSection() {
             </div>
 
             {/* Middle Grid Row: Left Content | Right Dithered Portrait */}
-            <div className="grid grid-cols-1 lg:grid-cols-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
               
               {/* Left Column: Content & CTA (7 cols on lg) */}
               <div className="lg:col-span-7 p-5 sm:p-7 flex flex-col justify-between gap-4 border-b lg:border-b-0 lg:border-r border-zinc-800">
@@ -140,23 +132,23 @@ export function PegasusTestimonialsSection() {
                   </p>
                 </div>
 
-                {/* Green CTA Button */}
+                {/* Monochrome CTA Button */}
                 <div className="pt-2">
                   <Link 
                     href="/contact"
-                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs sm:text-sm transition-colors rounded-none shadow-md shadow-emerald-950/20 group"
+                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-white hover:bg-zinc-200 text-black font-medium text-xs sm:text-sm transition-colors rounded-none shadow-sm group border border-white"
                   >
-                    <span>{t('read_case_study') || 'Save your seat'}</span>
+                    <span>{t('read_case_study') || 'Read case study'}</span>
                     <span className="group-hover:translate-x-1 transition-transform font-bold">→</span>
                   </Link>
                 </div>
               </div>
 
               {/* Right Column: Dithered Halftone Image & Meta (5 cols on lg) */}
-              <div className="lg:col-span-5 flex flex-col justify-between bg-black relative">
+              <div className="lg:col-span-5 flex flex-col justify-between bg-black relative h-full">
                 
-                {/* Dithered Portrait Container - Compact Height */}
-                <div className="w-full h-52 sm:h-60 lg:h-[280px] relative border-b border-zinc-800 overflow-hidden">
+                {/* Dithered Portrait Container - Properly Proportioned */}
+                <div className="w-full flex-1 min-h-[300px] sm:min-h-[340px] lg:min-h-[320px] relative border-b border-zinc-800 overflow-hidden bg-black">
                   <DitheredPortrait 
                     src="/Gemini_Generated_Image_e86uare86uare86u.png" 
                     alt={t('cto_role')}
@@ -170,7 +162,7 @@ export function PegasusTestimonialsSection() {
                 </div>
 
                 {/* Bottom Metadata Bar */}
-                <div className="px-5 py-2 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-emerald-400 tracking-wider">
+                <div className="px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-zinc-400 tracking-wider">
                   <span className="truncate">— {t('cto_name').toUpperCase()} · {t('cto_role').toUpperCase()}</span>
                 </div>
 
@@ -194,7 +186,7 @@ export function PegasusTestimonialsSection() {
                 onClick={() => setActiveRole(role.id)}
                 className={`px-4 py-2 text-xs font-mono tracking-wider transition-all border rounded-none ${
                   activeRole === role.id
-                    ? 'bg-emerald-500 text-black border-emerald-500 font-bold shadow-md shadow-emerald-950/40'
+                    ? 'bg-white text-black border-white font-bold shadow-md'
                     : 'bg-[#0d0d0d] text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
                 }`}
               >
@@ -212,15 +204,15 @@ export function PegasusTestimonialsSection() {
                   className="w-full bg-[#0d0d0d] border border-zinc-800 hover:border-zinc-700 transition-all duration-300 relative group flex flex-col justify-between"
                 >
                   {/* Corner Node Handles (□) */}
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -left-1 z-20 group-hover:border-emerald-400 transition-colors" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -right-1 z-20 group-hover:border-emerald-400 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -left-1 z-20 group-hover:border-zinc-300 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -top-1 -right-1 z-20 group-hover:border-zinc-300 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -left-1 z-20 group-hover:border-zinc-300 transition-colors" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute -bottom-1 -right-1 z-20 group-hover:border-zinc-300 transition-colors" />
 
                   {/* Card Top Header */}
                   <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
-                    <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-400">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 inline-block" />
+                    <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-300">
+                      <span className="w-1.5 h-1.5 bg-white inline-block" />
                       [ {item.roleBadge || 'ROLE NODE'} ]
                     </div>
                     {item.metric && (
@@ -235,7 +227,7 @@ export function PegasusTestimonialsSection() {
                     <p className="text-zinc-300 text-sm leading-relaxed font-sans">
                       &ldquo;{item.quote}&rdquo;
                     </p>
-                    <p className="text-xs font-mono font-semibold text-emerald-400/90 tracking-wide">
+                    <p className="text-xs font-mono font-semibold text-zinc-400 tracking-wide">
                       {item.company}
                     </p>
                   </div>
