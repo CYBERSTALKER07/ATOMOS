@@ -1442,6 +1442,38 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   .editorial-card--interactive:hover .editorial-card__media:not(.editorial-card__media--linked) .card-hover-action {
     opacity: 1;
   }
+
+  /* Hide cursor on card hover */
+  .editorial-card:hover,
+  .editorial-card:hover *,
+  .card-hover-action:hover,
+  .card-hover-action:hover *,
+  .deployment-card:hover,
+  .deployment-card:hover *,
+  .company-card:hover,
+  .company-card:hover *,
+  .stat-card:hover,
+  .stat-card:hover *,
+  .bento-card:hover,
+  .bento-card:hover *,
+  .chamfer-card:hover,
+  .chamfer-card:hover *,
+  .docs-card:hover,
+  .docs-card:hover *,
+  .platform-card:hover,
+  .platform-card:hover *,
+  .o9-card:hover,
+  .o9-card:hover *,
+  .capability-card:hover,
+  .capability-card:hover *,
+  [data-card]:hover,
+  [data-card]:hover *,
+  [class*="editorial-card"]:hover,
+  [class*="editorial-card"]:hover *,
+  [class*="card-hover"]:hover,
+  [class*="card-hover"]:hover * {
+    cursor: none !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

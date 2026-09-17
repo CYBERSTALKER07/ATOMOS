@@ -29,6 +29,9 @@ const getContainingBlockOffset = (block: HTMLElement | null): { x: number; y: nu
   return { x: rect.left + block.clientLeft, y: rect.top + block.clientTop };
 };
 
+const CARD_SELECTOR =
+  '.editorial-card, .card-hover-action, .deployment-card, .company-card, .stat-card, .bento-card, .chamfer-card, .docs-card, .platform-card, .o9-card, .capability-card, [data-card], [class*="editorial-card"], [class*="card-hover"]';
+
 export interface TargetCursorProps {
   targetSelector?: string;
   spinDuration?: number;
@@ -152,8 +155,24 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
     tickerFnRef.current = tickerFn;
 
+    let isHiddenOnCard = false;
+
     const moveHandler = (e: MouseEvent) => {
-      if (!hasMoved && cursorRef.current) {
+      const overCard = Boolean((e.target as Element | null)?.closest(CARD_SELECTOR));
+      if (overCard) {
+        if (!isHiddenOnCard && cursorRef.current) {
+          isHiddenOnCard = true;
+          gsap.to(cursorRef.current, { opacity: 0, duration: 0.15, overwrite: 'auto' });
+        }
+        return;
+      }
+
+      if (isHiddenOnCard) {
+        isHiddenOnCard = false;
+        if (cursorRef.current) {
+          gsap.to(cursorRef.current, { opacity: 1, duration: 0.15, overwrite: 'auto' });
+        }
+      } else if (!hasMoved && cursorRef.current) {
         hasMoved = true;
         gsap.to(cursorRef.current, { opacity: 1, duration: 0.2, overwrite: 'auto' });
       }
@@ -167,7 +186,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       }
     };
     const windowEnterHandler = () => {
-      if (cursorRef.current && hasMoved) {
+      if (cursorRef.current && hasMoved && !isHiddenOnCard) {
         gsap.to(cursorRef.current, { opacity: 1, duration: 0.2, overwrite: 'auto' });
       }
     };
@@ -177,11 +196,21 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     window.addEventListener('focus', windowEnterHandler);
 
     const scrollHandler = () => {
-      if (!activeTarget || !cursorRef.current) return;
+      if (!cursorRef.current) return;
       const { x: offsetX, y: offsetY } = getOffset();
       const mouseX = (gsap.getProperty(cursorRef.current, 'x') as number) + offsetX;
       const mouseY = (gsap.getProperty(cursorRef.current, 'y') as number) + offsetY;
       const elementUnderMouse = document.elementFromPoint(mouseX, mouseY);
+      if (elementUnderMouse?.closest(CARD_SELECTOR)) {
+        if (!isHiddenOnCard) {
+          isHiddenOnCard = true;
+          gsap.to(cursorRef.current, { opacity: 0, duration: 0.15, overwrite: 'auto' });
+        }
+      } else if (isHiddenOnCard) {
+        isHiddenOnCard = false;
+        gsap.to(cursorRef.current, { opacity: 1, duration: 0.15, overwrite: 'auto' });
+      }
+      if (!activeTarget) return;
       const isStillOverTarget =
         elementUnderMouse &&
         (elementUnderMouse === activeTarget || elementUnderMouse.closest(targetSelector) === activeTarget);
@@ -208,6 +237,17 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
     const enterHandler = (e: MouseEvent) => {
       const directTarget = e.target as Element;
+      if (directTarget?.closest?.(CARD_SELECTOR)) {
+        if (activeTarget) {
+          cleanupTarget(activeTarget);
+          activeTarget = null;
+        }
+        if (cursorRef.current) {
+          gsap.to(cursorRef.current, { opacity: 0, duration: 0.15, overwrite: 'auto' });
+        }
+        return;
+      }
+
       const allTargets: Element[] = [];
       let current: Element | null = directTarget;
       while (current && current !== document.body) {

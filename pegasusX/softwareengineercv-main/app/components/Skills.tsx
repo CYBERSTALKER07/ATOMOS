@@ -162,7 +162,7 @@ function CapabilityCardItem({ card }: { card: CapabilityCard }) {
 
   return (
     <div
-      className={`relative overflow-hidden bg-[#050505] p-8 sm:p-10 md:p-12 lg:p-16 cursor-pointer group flex flex-col ${card.className || ''}`}
+      className={`relative overflow-hidden bg-[#050505] p-8 sm:p-10 md:p-12 lg:p-16 cursor-pointer capability-card group flex flex-col ${card.className || ''}`}
       onMouseEnter={() => allowHoverFx && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => allowHoverFx && setHovered(true)}
