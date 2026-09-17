@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import { RoleData, getRolesData } from '@/app/data/rolesData';
 import { useLanguage } from '@/app/context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 const PLATFORM_ICONS = {
   web: (
@@ -29,6 +27,7 @@ const PLATFORM_ICONS = {
 export default function RoleDetailClient({ role: roleProp }: { role: RoleData }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
   const role =
     getRolesData(language).find((r) => r.id === roleProp.id) ?? roleProp;
 
@@ -45,6 +44,11 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
   useEffect(() => {
     if (!containerRef.current) return;
 
+    if (isLowEnd || prefersReducedMotion) {
+      gsap.set(['.platform-card', '.flow-section'], { y: 0, opacity: 1 });
+      return;
+    }
+
     const ctx = gsap.context(() => {
       // Platform cards animation
       gsap.fromTo('.platform-card', 
@@ -54,10 +58,11 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
           opacity: 1, 
           stagger: 0.1, 
           duration: 0.8, 
-          ease: 'power3.out',
+          ease: 'pegasus',
           scrollTrigger: {
             trigger: '.platform-section',
             start: 'top 80%',
+            fastScrollEnd: true,
           }
         }
       );
@@ -70,10 +75,11 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
             y: 0,
             opacity: 1,
             duration: 0.8,
-            ease: 'power3.out',
+            ease: 'pegasus',
             scrollTrigger: {
               trigger: section,
               start: 'top 85%',
+              fastScrollEnd: true,
             }
           }
         );
@@ -81,7 +87,7 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
     }, containerRef);
 
     return () => ctx.revert();
-  }, [role.id]);
+  }, [role.id, isLowEnd, prefersReducedMotion]);
 
   return (
     <div ref={containerRef} className="space-y-24">

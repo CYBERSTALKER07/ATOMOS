@@ -1,16 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import Link from 'next/link';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
-import { useIsMobile } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
 import { useLanguage } from '../context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type HomeProjectCard = {
   title: string;
@@ -101,7 +98,7 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
 ];
 
 export default function Projects() {
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t, language } = useLanguage();
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -114,29 +111,34 @@ export default function Projects() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
-    if (isMobile) {
+    if (isMobile || isLowEnd || prefersReducedMotion) {
       gsap.set([titleRef.current, gridRef.current], { opacity: 1, y: 0 });
       return;
     }
 
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-        end: 'bottom 20%',
-        toggleActions: 'play none none reverse',
-      },
-    });
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+          end: 'bottom 20%',
+          toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
+        },
+      });
 
-    timeline
-      .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 })
-      .fromTo(
-        gridRef.current?.children ? Array.from(gridRef.current.children) : [],
-        { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 0.55, stagger: 0.08 },
-        '-=0.35'
-      );
-  }, [isMobile]);
+      timeline
+        .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' })
+        .fromTo(
+          gridRef.current?.children ? Array.from(gridRef.current.children) : [],
+          { opacity: 0, y: 40 },
+          { opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: 'pegasus' },
+          '-=0.35'
+        );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
     <PageSection ref={sectionRef} id="projects">

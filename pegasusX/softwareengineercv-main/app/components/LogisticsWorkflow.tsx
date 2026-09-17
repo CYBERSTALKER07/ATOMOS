@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { Flip } from '@/app/lib/gsap';
+import { usePerfProfile } from '../hooks/useDevice';
 
 type WorkflowTab = 'stack' | 'supplier' | 'warehouse' | 'retailer' | 'fleet';
 
@@ -364,8 +366,33 @@ const TAB_OPTIONS: { id: WorkflowTab; label: string }[] = [
 
 export default function LogisticsWorkflow() {
   const { t } = useLanguage();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
   const [activeTab, setActiveTab] = useState<WorkflowTab>('supplier');
   const [hoveredNode, setHoveredNode] = useState<ToolNode | null>(null);
+
+  const handleTabChange = (newTab: WorkflowTab) => {
+    if (newTab === activeTab) return;
+    if (isLowEnd || prefersReducedMotion) {
+      setActiveTab(newTab);
+      return;
+    }
+
+    try {
+      const state = Flip.getState('.workflow-badge-pill, .workflow-node-icon');
+      setActiveTab(newTab);
+      requestAnimationFrame(() => {
+        Flip.from(state, {
+          duration: 0.4,
+          ease: 'power2.out',
+          simple: true,
+          fade: true,
+          overwrite: 'auto',
+        });
+      });
+    } catch {
+      setActiveTab(newTab);
+    }
+  };
 
   const currentTree = ALL_TREES[activeTab];
 
@@ -392,7 +419,7 @@ export default function LogisticsWorkflow() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`
                   px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-200 cursor-pointer
                   ${
@@ -560,7 +587,7 @@ export default function LogisticsWorkflow() {
 
             {/* ── TOP-LEFT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[75px] left-[330px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+              <div className="workflow-badge-pill px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
                 <span>{currentTree.topLeft.category}</span>
               </div>
@@ -576,7 +603,7 @@ export default function LogisticsWorkflow() {
                 >
                   <div
                     style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                    className="workflow-node-icon w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
                   >
                     {node.icon}
                   </div>
@@ -591,7 +618,7 @@ export default function LogisticsWorkflow() {
 
             {/* ── BOTTOM-LEFT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[305px] left-[320px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+              <div className="workflow-badge-pill px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
                 <span>{currentTree.bottomLeft.category}</span>
               </div>
@@ -607,7 +634,7 @@ export default function LogisticsWorkflow() {
                 >
                   <div
                     style={{ backgroundColor: node.bgColor || '#18181B', color: node.textColor || '#FFFFFF' }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                    className="workflow-node-icon w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
                   >
                     {node.icon}
                   </div>
@@ -622,7 +649,7 @@ export default function LogisticsWorkflow() {
 
             {/* ── TOP-RIGHT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[75px] left-[800px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+              <div className="workflow-badge-pill px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
                 <span>{currentTree.topRight.category}</span>
               </div>
@@ -638,7 +665,7 @@ export default function LogisticsWorkflow() {
                 >
                   <div
                     style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                    className="workflow-node-icon w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
                   >
                     {node.icon}
                   </div>
@@ -653,7 +680,7 @@ export default function LogisticsWorkflow() {
 
             {/* ── BOTTOM-RIGHT BRANCH (Category + Circular Nodes) ── */}
             <div className="absolute top-[305px] left-[780px] z-20">
-              <div className="px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
+              <div className="workflow-badge-pill px-4 py-1.5 rounded-full bg-[#121216] border border-[#18A049]/30 text-white font-mono text-xs font-semibold shadow-md whitespace-nowrap flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#18A049] inline-block" />
                 <span>{currentTree.bottomRight.category}</span>
               </div>
@@ -669,7 +696,7 @@ export default function LogisticsWorkflow() {
                 >
                   <div
                     style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+                    className="workflow-node-icon w-10 h-10 rounded-full flex items-center justify-center shadow-lg border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
                   >
                     {node.icon}
                   </div>

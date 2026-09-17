@@ -1,37 +1,45 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import ChamferButton from './ChamferButton';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { DISPATCH_ARCADE_IMAGE } from '@/app/lib/siteAssets';
 import { useLanguage } from '@/app/context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export default function SmartDispatchArcade() {
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const { t } = useLanguage();
 
   useEffect(() => {
-    if (!sectionRef.current || !containerRef.current || reduced) return;
-    gsap.fromTo(
-      containerRef.current.children,
-      { opacity: 0, y: 36 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.9,
-        stagger: 0.1,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 75%' },
-      }
-    );
+    if (!sectionRef.current || !containerRef.current) return;
+
+    if (reduced) {
+      gsap.set(containerRef.current.children, { opacity: 1, y: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        containerRef.current?.children ? Array.from(containerRef.current.children) : [],
+        { opacity: 0, y: 36 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.9,
+          stagger: 0.1,
+          ease: 'pegasus',
+          scrollTrigger: { trigger: sectionRef.current, start: 'top 75%', fastScrollEnd: true },
+        }
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   return (

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import PageSection from '../layout/PageSection';
 import { usePerfProfile } from '../../hooks/useDevice';
 import { useInView } from '../../hooks/useInView';
@@ -12,8 +11,6 @@ import AskPromptTitle from './AskPromptTitle';
 import AskPromptMetricsFlow from './AskPromptMetricsFlow';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/app/context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export type AskPromptSectionProps = {
   content?: AskPromptSectionContent;
@@ -54,7 +51,7 @@ export default function AskPromptSection({
         opacity: 0,
         y: 22,
         duration: 0.6,
-        ease: 'power3.out',
+        ease: 'pegasus',
         scrollTrigger: { trigger: section, start: 'top 85%', once: true },
       });
       gsap.from(panels, {
@@ -62,7 +59,7 @@ export default function AskPromptSection({
         y: 28,
         duration: 0.55,
         stagger: 0.12,
-        ease: 'power2.out',
+        ease: 'pegasus',
         scrollTrigger: { trigger: section, start: 'top 80%', once: true },
         delay: 0.15,
       });

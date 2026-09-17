@@ -2,19 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type FleetVisualPanelProps = {
   mode: 'fleet' | 'dispatch';
 };
 
 export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
-  const prefersReducedMotion = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
   const panelRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -25,7 +22,14 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
       : [FLEET_TRUCK_IMAGES[0], FLEET_TRUCK_IMAGES[1], FLEET_TRUCK_IMAGES[3]];
 
   useEffect(() => {
-    if (!panelRef.current || prefersReducedMotion) return;
+    if (!panelRef.current || prefersReducedMotion || isLowEnd) {
+      const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
+      if (imageEls?.length) {
+        gsap.set(imageEls, { opacity: 0 });
+        gsap.set(imageEls[0], { opacity: 1 });
+      }
+      return;
+    }
 
     const ctx = gsap.context(() => {
       const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
@@ -40,6 +44,7 @@ export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
           start: 'top 85%',
           end: 'bottom 60%',
           scrub: 1,
+          fastScrollEnd: true,
         },
       });
 

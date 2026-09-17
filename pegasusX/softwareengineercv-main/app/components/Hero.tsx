@@ -1,19 +1,18 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
+import { gsap, smoothScrollTo } from '@/app/lib/gsap';
 import { ArrowRight } from '@/components/icons';
 import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import IsometricTerrain from './IsometricTerrain';
-import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Hero() {
-  const { isMobile } = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t, language } = useLanguage();
   const { resolvedTheme } = useTheme();
   const isLight = resolvedTheme === 'light';
@@ -54,7 +53,7 @@ export default function Hero() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      if (isMobile || prefersReducedMotion) {
+      if (isMobile || isLowEnd || prefersReducedMotion) {
         gsap.set(
           [titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current],
           { opacity: 1, x: 0, y: 0 }
@@ -62,7 +61,7 @@ export default function Hero() {
         return;
       }
 
-      const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      const timeline = gsap.timeline({ defaults: { ease: 'pegasus' } });
 
       timeline
         .fromTo(
@@ -97,13 +96,10 @@ export default function Hero() {
     });
 
     return () => ctx.revert();
-  }, [isMobile, prefersReducedMotion]);
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   const scrollToNext = () => {
-    const nextSection = document.querySelector('#about');
-    if (nextSection) {
-      nextSection.scrollIntoView({ behavior: 'smooth' });
-    }
+    smoothScrollTo('#about', { offsetY: 64, duration: 1.1, ease: 'pegasus' });
   };
 
   return (

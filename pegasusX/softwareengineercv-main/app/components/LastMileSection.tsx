@@ -3,17 +3,14 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useIsMobile } from '../hooks/useDevice';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
 import PageSection from './layout/PageSection';
 
-gsap.registerPlugin(ScrollTrigger);
-
 export default function LastMileSection() {
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t } = useLanguage();
   const sectionRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
@@ -23,7 +20,7 @@ export default function LastMileSection() {
     if (!sectionRef.current) return;
 
     const ctx = gsap.context(() => {
-      if (isMobile) {
+      if (isMobile || isLowEnd || prefersReducedMotion) {
         gsap.set([imageRef.current, contentRef.current], { opacity: 1, y: 0 });
         return;
       }
@@ -34,19 +31,20 @@ export default function LastMileSection() {
             trigger: sectionRef.current,
             start: 'top 78%',
             toggleActions: 'play none none reverse',
+            fastScrollEnd: true,
           },
         })
-        .fromTo(imageRef.current, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out' })
+        .fromTo(imageRef.current, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.9, ease: 'pegasus' })
         .fromTo(
           contentRef.current,
           { opacity: 0, y: 28 },
-          { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out' },
+          { opacity: 1, y: 0, duration: 0.9, ease: 'pegasus' },
           '-=0.55',
         );
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [isMobile]);
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
     <PageSection id="last-mile" ref={sectionRef} className="border-t border-white/10">

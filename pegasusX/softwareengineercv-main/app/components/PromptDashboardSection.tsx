@@ -2,14 +2,11 @@
 
 import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import PageSection from './layout/PageSection';
 import { usePerfProfile } from '../hooks/useDevice';
 import { useInView } from '../hooks/useInView';
 import { cn } from '@/lib/utils';
-
-gsap.registerPlugin(ScrollTrigger);
 
 /* ── Basedash reference data (Screenshot 5.14.49 AM) ── */
 const REVENUE_LINE = [210, 248, 225, 290, 318, 302, 355, 372, 348, 395, 382, 410];
@@ -295,7 +292,7 @@ export default function PromptDashboardSection() {
         opacity: 0,
         y: 18,
         duration: 0.55,
-        ease: 'power3.out',
+        ease: 'pegasus',
         scrollTrigger: { trigger: section, start: 'top 85%', once: true },
       });
       if (promptRef.current) {
@@ -303,7 +300,7 @@ export default function PromptDashboardSection() {
           opacity: 0,
           scale: 0.98,
           duration: 0.4,
-          ease: 'back.out(1.4)',
+          ease: 'pegasus',
           scrollTrigger: { trigger: section, start: 'top 80%', once: true },
           delay: 0.2,
         });

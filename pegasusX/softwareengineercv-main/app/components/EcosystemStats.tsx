@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import PageSection from './layout/PageSection';
 import SystemLoadWidget from './SystemLoadWidget';
 import { useLanguage } from '../context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '../hooks/useDevice';
 
 const SIDEBAR_NAV = [
   { id: 'supplier', label: 'Supplier Operations', icon: 'M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M3.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h7.2a2 2 0 0 1 1.9 1.6l1.4 6.2 M2 9h10 M17 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M15.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h1.2' },
@@ -51,6 +49,7 @@ export default function EcosystemStats() {
   const [activeTab, setActiveTab] = useState<keyof typeof TAB_DATA>('supplier');
   const dashboardRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
 
   const data = TAB_DATA[activeTab];
   const tabDataRu: typeof TAB_DATA | null = language === 'ru' ? {
@@ -98,6 +97,13 @@ export default function EcosystemStats() {
   ];
 
   useEffect(() => {
+    if (!dashboardRef.current) return;
+
+    if (isLowEnd || prefersReducedMotion) {
+      gsap.set('.stat-card', { opacity: 1, y: 0, scale: 1 });
+      return;
+    }
+
     // Advanced staggered entrance animation
     const ctx = gsap.context(() => {
       gsap.timeline({
@@ -105,15 +111,16 @@ export default function EcosystemStats() {
           trigger: dashboardRef.current,
           start: 'top 80%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         }
       })
       .fromTo('.stat-card',
         { opacity: 0, y: 40, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'back.out(1.2)', clearProps: 'all' }
+        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'pegasus', clearProps: 'all' }
       );
     }, dashboardRef);
     return () => ctx.revert();
-  }, [activeTab]);
+  }, [activeTab, isLowEnd, prefersReducedMotion]);
 
   return (
     <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden py-16 sm:py-24" aria-labelledby="ecosystem-stats-heading">

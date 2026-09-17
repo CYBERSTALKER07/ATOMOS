@@ -2,8 +2,7 @@
 
 import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import {
   motion,
   useScroll,
@@ -16,8 +15,7 @@ import {
 import { useLayoutEffect, useState } from 'react';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '../hooks/useDevice';
 
 interface Company {
   name: string;
@@ -165,28 +163,39 @@ function VelocityScroll({ companies, velocity, numCopies = 2 }: VelocityScrollPr
 
 export default function Companies() {
   const { t, language } = useLanguage();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sectionRef.current && titleRef.current) {
+    if (!sectionRef.current || !titleRef.current) return;
+
+    if (isMobile || isLowEnd || prefersReducedMotion) {
+      gsap.set(titleRef.current, { opacity: 1, y: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
           end: 'bottom 20%',
-          toggleActions: 'play none none reverse'
+          toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         }
       });
 
       timeline.fromTo(
         titleRef.current,
         { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1 }
+        { opacity: 1, y: 0, duration: 1, ease: 'pegasus' }
       );
-    }
-  }, []);
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   const rowOneCompanies: Company[] = [
     {

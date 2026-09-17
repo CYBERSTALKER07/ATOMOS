@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const ROLES = ['Supplier', 'Warehouse', 'Factory', 'Driver', 'Retailer', 'Payload'];
 
@@ -15,22 +12,34 @@ type Props = { config?: FlowConfig };
 
 export default function ControlPlaneFlow({ config }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const roles = config?.roles ?? ROLES;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
+    if (!ref.current) return;
     const nodes = ref.current.querySelectorAll('.role-node');
-    gsap.fromTo(
-      nodes,
-      { opacity: 0.3, scale: 0.9 },
-      {
-        opacity: 1,
-        scale: 1,
-        stagger: 0.15,
-        scrollTrigger: { trigger: ref.current, start: 'top 80%' },
-      }
-    );
+
+    if (reduced) {
+      gsap.set(nodes, { opacity: 1, scale: 1 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        nodes,
+        { opacity: 0.3, scale: 0.9 },
+        {
+          opacity: 1,
+          scale: 1,
+          stagger: 0.15,
+          ease: 'pegasus',
+          scrollTrigger: { trigger: ref.current, start: 'top 80%', fastScrollEnd: true },
+        }
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   const cx = 400;

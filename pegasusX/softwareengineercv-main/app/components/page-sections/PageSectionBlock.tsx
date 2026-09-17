@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import { ContentCardEyebrow } from '@/app/components/ContentCard';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 import { cn } from '@/lib/utils';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type PageSectionBlockProps = {
   eyebrow: string;
@@ -25,10 +22,10 @@ export default function PageSectionBlock({
   animate = true,
 }: PageSectionBlockProps) {
   const ref = useRef<HTMLElement>(null);
-  const { prefersReducedMotion } = usePerfProfile();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
 
   useEffect(() => {
-    if (!ref.current || !animate || prefersReducedMotion) return;
+    if (!ref.current || !animate || prefersReducedMotion || isLowEnd) return;
 
     const ctx = gsap.context(() => {
       gsap.fromTo(
@@ -38,14 +35,14 @@ export default function PageSectionBlock({
           opacity: 1,
           y: 0,
           duration: 0.7,
-          ease: 'power3.out',
+          ease: 'pegasus',
           scrollTrigger: { trigger: ref.current, start: 'top 88%', once: true },
         }
       );
     }, ref);
 
     return () => ctx.revert();
-  }, [animate, prefersReducedMotion]);
+  }, [animate, prefersReducedMotion, isLowEnd]);
 
   return (
     <section ref={ref} className={cn('border-t border-white/10 py-12 md:py-16', className)}>

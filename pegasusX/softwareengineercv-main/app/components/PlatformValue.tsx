@@ -4,19 +4,16 @@ import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
-import { useIsMobile } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
-
-gsap.registerPlugin(ScrollTrigger);
 
 export default function PlatformValue() {
   const { t } = useLanguage();
 
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -24,28 +21,33 @@ export default function PlatformValue() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
-    if (isMobile) {
+    if (isMobile || isLowEnd || prefersReducedMotion) {
       gsap.set([titleRef.current, gridRef.current], { opacity: 1, y: 0 });
       return;
     }
 
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-        toggleActions: 'play none none reverse',
-      },
-    });
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+          toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
+        },
+      });
 
-    timeline
-      .fromTo(titleRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8 })
-      .fromTo(
-        gridRef.current?.children ? Array.from(gridRef.current.children) : [],
-        { opacity: 0, y: 32 },
-        { opacity: 1, y: 0, duration: 0.7, stagger: 0.12 },
-        '-=0.35'
-      );
-  }, [isMobile]);
+      timeline
+        .fromTo(titleRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' })
+        .fromTo(
+          gridRef.current?.children ? Array.from(gridRef.current.children) : [],
+          { opacity: 0, y: 32 },
+          { opacity: 1, y: 0, duration: 0.7, stagger: 0.12, ease: 'pegasus' },
+          '-=0.35'
+        );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
     <PageSection ref={sectionRef} id="platform-value">

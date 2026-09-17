@@ -1,19 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import CurvedLoop from './CurvedLoop';
 import ContentCard from './ContentCard';
-import { useIsMobile } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type InquiryType = 'general' | 'client' | 'sponsor';
 
 export default function Contact() {
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t, language } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -38,8 +35,8 @@ export default function Contact() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
-    // Mobile: Simple fade-in
-    if (isMobile) {
+    // Mobile / Low-End: Simple immediate display
+    if (isMobile || isLowEnd || prefersReducedMotion) {
       gsap.set([titleRef.current, tabsRef.current, formRef.current, infoRef.current], {
         opacity: 1,
         y: 0,
@@ -48,29 +45,33 @@ export default function Contact() {
       return;
     }
 
-    // Desktop: Scroll-triggered animations
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        trigger: sectionRef.current,
-        start: 'top 80%',
-        end: 'bottom 20%',
-        toggleActions: 'play none none reverse',
-      },
-      onComplete: () => {
-        gsap.set([formRef.current, infoRef.current], { clearProps: 'transform' });
-      },
-    });
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+          end: 'bottom 20%',
+          toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
+        },
+        onComplete: () => {
+          gsap.set([formRef.current, infoRef.current], { clearProps: 'transform' });
+        },
+      });
 
-    timeline
-      .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, clearProps: 'transform' })
-      .fromTo(tabsRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, clearProps: 'transform' }, '-=0.4')
-      .fromTo(
-        [formRef.current, infoRef.current],
-        { opacity: 0 },
-        { opacity: 1, duration: 0.8, stagger: 0.2 },
-        '-=0.4'
-      );
-  }, [isMobile]);
+      timeline
+        .fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus', clearProps: 'transform' })
+        .fromTo(tabsRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'pegasus', clearProps: 'transform' }, '-=0.4')
+        .fromTo(
+          [formRef.current, infoRef.current],
+          { opacity: 0 },
+          { opacity: 1, duration: 0.8, stagger: 0.2, ease: 'pegasus' },
+          '-=0.4'
+        );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

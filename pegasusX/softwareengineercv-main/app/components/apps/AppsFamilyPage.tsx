@@ -2,15 +2,13 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import ContentCard, { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import FleekSecondaryLayout from '@/app/components/fleek/FleekSecondaryLayout';
 import ImpactMetricCard from '@/app/components/fleek/cards/ImpactMetricCard';
 import type { AppsFamilyConfig } from './AppsFamilyPage.types';
 import { useLanguage } from '@/app/context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 type AppsFamilyPageProps = {
   config: AppsFamilyConfig;
@@ -20,27 +18,33 @@ type AppsFamilyPageProps = {
 export default function AppsFamilyPage({ config, configRu }: AppsFamilyPageProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const { t, language } = useLanguage();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
   const active = language === 'ru' && configRu ? configRu : config;
 
   useEffect(() => {
+    if (!gridRef.current) return;
+
+    if (isLowEnd || prefersReducedMotion) {
+      gsap.set(gridRef.current.children, { opacity: 1, y: 0 });
+      return;
+    }
+
     const ctx = gsap.context(() => {
-      if (gridRef.current) {
-        gsap.fromTo(
-          gridRef.current.children,
-          { opacity: 0, y: 24 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.6,
-            stagger: 0.08,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: gridRef.current, start: 'top 85%', once: true },
-          }
-        );
-      }
-    });
+      gsap.fromTo(
+        gridRef.current?.children ? Array.from(gridRef.current.children) : [],
+        { opacity: 0, y: 24 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.6,
+          stagger: 0.08,
+          ease: 'pegasus',
+          scrollTrigger: { trigger: gridRef.current, start: 'top 85%', once: true, fastScrollEnd: true },
+        }
+      );
+    }, gridRef);
     return () => ctx.revert();
-  }, []);
+  }, [isLowEnd, prefersReducedMotion]);
 
   const navHref =
     active.surface === 'web'

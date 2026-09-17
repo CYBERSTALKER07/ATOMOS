@@ -4,14 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion as useFramerReducedMotion } from 'framer-motion';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
 import { cn } from '@/lib/utils';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type Solution = {
   id: string;
@@ -133,10 +130,9 @@ function SolutionImagePanel({
 }
 
 export default function LogisticsSolutions() {
-  const { isMobile } = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const framerReduced = useFramerReducedMotion();
-  const reduceMotion = prefersReducedMotion || !!framerReduced;
+  const reduceMotion = prefersReducedMotion || !!framerReduced || isLowEnd;
 
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -166,6 +162,7 @@ export default function LogisticsSolutions() {
           trigger: sectionRef.current,
           start: 'top 78%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         },
       });
 
@@ -173,12 +170,12 @@ export default function LogisticsSolutions() {
         .fromTo(
           titleRef.current,
           { opacity: 0, y: 28 },
-          { opacity: 1, y: 0, duration: 0.75, ease: 'power3.out' }
+          { opacity: 1, y: 0, duration: 0.75, ease: 'pegasus' }
         )
         .fromTo(
           panelRef.current,
           { opacity: 0, y: 36 },
-          { opacity: 1, y: 0, duration: 0.85, ease: 'power3.out' },
+          { opacity: 1, y: 0, duration: 0.85, ease: 'pegasus' },
           '-=0.45'
         )
         .fromTo(
@@ -189,7 +186,7 @@ export default function LogisticsSolutions() {
             x: 0,
             duration: 0.45,
             stagger: 0.06,
-            ease: 'power2.out',
+            ease: 'pegasus',
           },
           '-=0.55'
         );

@@ -74,10 +74,18 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
   const constants = useMemo(() => ({ borderWidth: 3, cornerSize: 12 }), []);
 
+  const quickXRef = useRef<((value: number) => void) | null>(null);
+  const quickYRef = useRef<((value: number) => void) | null>(null);
+
   const moveCursor = useCallback((x: number, y: number) => {
     if (!cursorRef.current) return;
     const { x: offsetX, y: offsetY } = getContainingBlockOffset(containingBlockRef.current);
-    gsap.to(cursorRef.current, { x: x - offsetX, y: y - offsetY, duration: 0.1, ease: 'power3.out' });
+    if (quickXRef.current && quickYRef.current) {
+      quickXRef.current(x - offsetX);
+      quickYRef.current(y - offsetY);
+    } else {
+      gsap.to(cursorRef.current, { x: x - offsetX, y: y - offsetY, duration: 0.1, ease: 'power3.out', overwrite: 'auto' });
+    }
   }, []);
 
   useEffect(() => {
@@ -93,6 +101,10 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
     containingBlockRef.current = getContainingBlock(cursor);
     const getOffset = () => getContainingBlockOffset(containingBlockRef.current);
+
+    // Initialize high-performance quickTo setters (zero allocation on mousemove)
+    quickXRef.current = gsap.quickTo(cursor, 'x', { duration: 0.12, ease: 'power2.out' });
+    quickYRef.current = gsap.quickTo(cursor, 'y', { duration: 0.12, ease: 'power2.out' });
 
     let activeTarget: Element | null = null;
     let currentLeaveHandler: (() => void) | null = null;
@@ -403,6 +415,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
         cleanupTarget(activeTarget);
       }
       spinTl.current?.kill();
+      quickXRef.current = null;
+      quickYRef.current = null;
       document.body.style.cursor = originalCursor;
       isActiveRef.current = false;
       targetCornerPositionsRef.current = null;

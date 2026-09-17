@@ -1,17 +1,14 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import GlitchText from './GlitchText';
 import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
-import { useIsMobile } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 
-gsap.registerPlugin(ScrollTrigger);
-
 export default function Licensing() {
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t } = useLanguage();
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -40,36 +37,41 @@ export default function Licensing() {
   ];
 
   useEffect(() => {
-    if (sectionRef.current && titleRef.current && contentRef.current && cardsRef.current) {
-      if (isMobile) {
-        gsap.set([titleRef.current, contentRef.current, cardsRef.current], {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-        });
-        return;
-      }
+    if (!sectionRef.current || !titleRef.current || !contentRef.current || !cardsRef.current) return;
 
+    if (isMobile || isLowEnd || prefersReducedMotion) {
+      gsap.set([titleRef.current, contentRef.current, cardsRef.current], {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+      });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
           end: 'bottom 20%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         },
       });
 
       timeline
-        .fromTo(titleRef.current, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.2 })
-        .fromTo(contentRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 }, '-=0.4')
+        .fromTo(titleRef.current, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'pegasus' })
+        .fromTo(contentRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' }, '-=0.4')
         .fromTo(
-          cardsRef.current.children,
+          cardsRef.current?.children ? Array.from(cardsRef.current.children) : [],
           { opacity: 0, y: 30 },
-          { opacity: 1, y: 0, duration: 0.6, stagger: 0.15 },
+          { opacity: 1, y: 0, duration: 0.6, stagger: 0.15, ease: 'pegasus' },
           '-=0.3'
         );
-    }
-  }, [isMobile]);
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
     <section

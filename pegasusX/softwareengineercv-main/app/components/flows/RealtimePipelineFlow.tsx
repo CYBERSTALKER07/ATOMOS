@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell, StepNode } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const STEPS = ['Confirm', 'Change event', 'Notify', 'Refresh', 'Live update'];
 
@@ -15,18 +12,30 @@ type Props = { config?: FlowConfig };
 
 export default function RealtimePipelineFlow({ config }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const highlight = config?.highlightStep ?? 4;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
+    if (!ref.current) return;
     const pulses = ref.current.querySelectorAll('.flow-pulse');
-    gsap.to(pulses, {
-      opacity: 1,
-      x: 0,
-      stagger: 0.2,
-      scrollTrigger: { trigger: ref.current, start: 'top 75%' },
-    });
+
+    if (reduced) {
+      gsap.set(pulses, { opacity: 1, x: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.to(pulses, {
+        opacity: 1,
+        x: 0,
+        stagger: 0.2,
+        ease: 'pegasus',
+        scrollTrigger: { trigger: ref.current, start: 'top 75%', fastScrollEnd: true },
+      });
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   return (

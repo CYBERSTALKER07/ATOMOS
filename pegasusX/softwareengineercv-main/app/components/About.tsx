@@ -2,20 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import TextType from './TextType';
 import DigitalizedImage from './DigitalizedImage';
-import { useIsMobile } from '../hooks/useDevice';
+import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import { useLanguage } from '../context/LanguageContext';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const PEGASUS_LOGO = '/pegasus.jpg';
 
 export default function About() {
-  const { isMobile } = useIsMobile();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { t, language } = useLanguage();
   const aboutRef = useRef<HTMLElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
@@ -25,7 +22,7 @@ export default function About() {
     if (!aboutRef.current) return;
 
     const ctx = gsap.context(() => {
-      if (isMobile) {
+      if (isMobile || isLowEnd || prefersReducedMotion) {
         gsap.set([imageRef.current, contentRef.current], {
           opacity: 1,
           x: 0,
@@ -35,11 +32,13 @@ export default function About() {
       }
 
       gsap.timeline({
+        defaults: { ease: 'pegasus' },
         scrollTrigger: {
           trigger: aboutRef.current,
           start: 'top 80%',
           end: 'bottom 20%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         },
       })
         .fromTo(imageRef.current, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 1 })
@@ -47,7 +46,7 @@ export default function About() {
     }, aboutRef);
 
     return () => ctx.revert();
-  }, [isMobile]);
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
     <PageSection id="about" ref={aboutRef}>

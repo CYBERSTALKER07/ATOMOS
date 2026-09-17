@@ -3,17 +3,14 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useIsMobile, useReducedMotion } from '@/app/hooks/useDevice';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { useInView } from '@/app/hooks/useInView';
 import { useLanguage } from '@/app/context/LanguageContext';
 import {
   FLEET_SHOWCASE_CAPTIONS,
   FLEET_TRUCK_IMAGES,
 } from '@/app/lib/fleetAssets';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type FleetScrollShowcaseProps = {
   eyebrow?: string;
@@ -29,8 +26,8 @@ export default function FleetScrollShowcase({
   learnMoreHref = '/solutions/fleet-visibility',
 }: FleetScrollShowcaseProps) {
   const { t } = useLanguage();
-  const { isMobile } = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const showStatic = isMobile || prefersReducedMotion || isLowEnd;
   const { ref: inViewRef, isInView } = useInView<HTMLElement>({ rootMargin: '400px', exit: true });
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
@@ -40,7 +37,7 @@ export default function FleetScrollShowcase({
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!sectionRef.current || !pinRef.current || isMobile || prefersReducedMotion || !isInView) return;
+    if (!sectionRef.current || !pinRef.current || showStatic || !isInView) return;
 
     const ctx = gsap.context(() => {
       const filmstrip = filmstripRef.current;
@@ -85,9 +82,8 @@ export default function FleetScrollShowcase({
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [isMobile, prefersReducedMotion, isInView]);
+  }, [showStatic, isInView]);
 
-  const showStatic = isMobile || prefersReducedMotion;
   const hero = FLEET_TRUCK_IMAGES[0];
 
   return (

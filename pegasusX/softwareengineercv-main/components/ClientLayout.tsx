@@ -14,6 +14,7 @@ import SplashCursor from '@/app/components/SplashCursor';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
 import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
+import { initGSAP } from '@/app/lib/gsap';
 
 // Prevent OpenUI devtools from auto-mounting
 if (typeof window !== 'undefined') {
@@ -32,6 +33,10 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
   const pathname = usePathname();
   const isAssistantPage = pathname?.startsWith('/assistant');
   const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
+
+  useEffect(() => {
+    initGSAP(isLowEnd, prefersReducedMotion);
+  }, [isLowEnd, prefersReducedMotion]);
 
   useEffect(() => {
     // Clean up any OpenUI devtools widgets if previously mounted

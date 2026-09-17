@@ -3,12 +3,9 @@
 import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
-import { useReducedMotion } from '@/app/hooks/useDevice';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 export interface OrbitItem {
   id: string;
@@ -120,7 +117,8 @@ const ORBIT_ITEMS: OrbitItem[] = [
 ];
 
 export default function ShowcaseWall() {
-  const prefersReduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const prefersReduced = prefersReducedMotion || isLowEnd;
   const sectionRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const cardElementsRef = useRef<(HTMLDivElement | null)[]>([]);
@@ -140,7 +138,7 @@ export default function ShowcaseWall() {
       idleRotation: 0,
     };
 
-    let rafId: number;
+    let rafId: number | null = null;
 
     const updateCards = () => {
       if (!pinRef.current) return;
@@ -158,58 +156,57 @@ export default function ShowcaseWall() {
       let frontIdx = 0;
 
       for (let i = 0; i < N; i++) {
-        const cardEl = cardElementsRef.current[i];
-        if (!cardEl) continue;
+        const el = cardElementsRef.current[i];
+        if (!el) continue;
 
+        // Position on elliptic perimeter
         const theta = (i / N) * 2 * Math.PI + totalAngle;
+        const x = Rx * Math.sin(theta);
+        const z = Rz * Math.cos(theta);
 
-        // Circular/elliptical orbit on 3D ground (XZ) plane
-        const x = Rx * Math.cos(theta);
-        const z_local = Rz * Math.sin(theta);
+        // Ground-plane 3D projection
+        const yRot = x * Math.sin(beta);
+        const zRot = x * Math.cos(beta);
+        const yProj = yRot * Math.cos(alpha) - z * Math.sin(alpha);
+        const zProj = yRot * Math.sin(alpha) + z * Math.cos(alpha);
 
-        // 3D rotations: tilt around X axis by alpha
-        // Back cards (z_local < 0) are elevated above (y_prime < 0)
-        // Front cards (z_local > 0) sit at the bottom foreground (y_prime > 0)
-        const y_prime = z_local * Math.sin(alpha);
-        const z_prime = z_local * Math.cos(alpha);
-
-        // Subtle roll around Z axis by beta
-        const x_double = x * Math.cos(beta) - y_prime * Math.sin(beta);
-        const y_double = x * Math.sin(beta) + y_prime * Math.cos(beta);
-
-        // Perspective projection
-        const factor = D / (D - z_prime);
-        const sx = x_double * factor;
-        const sy = y_double * factor;
-        const scale = Math.max(0.55, Math.min(factor * 0.92, 1.35));
-        const Z_max = Rz * Math.cos(alpha);
-        const depthNorm = Math.max(0, Math.min(1, (z_prime + Z_max) / (2 * Z_max)));
-        const opacity = Math.min(Math.max(0.40 + 0.60 * depthNorm, 0.30), 1.0);
-        const zIndex = Math.round(z_prime + 500);
-
-        // Track front-most card for reference
-        if (z_prime > highestZ) {
-          highestZ = z_prime;
+        // Track closest card to viewer
+        if (zProj > highestZ) {
+          highestZ = zProj;
           frontIdx = i;
         }
 
-        // Direct DOM write for 60fps GPU acceleration
-        cardEl.style.transform = `translate3d(calc(-50% + ${sx.toFixed(1)}px), calc(-50% + ${sy.toFixed(1)}px), 0px) scale(${scale.toFixed(3)})`;
-        cardEl.style.opacity = opacity.toFixed(2);
-        cardEl.style.zIndex = `${zIndex}`;
+        // Perspective scale & depth
+        const scale = D / (D + zProj * 0.85);
+        const depthNorm = (zProj + Rz) / (2 * Rz); // 0 (back) to 1 (front)
+
+        // Visual depth cues
+        const opacity = 0.28 + depthNorm * 0.72;
+        const blurAmount = Math.max(0, (1 - depthNorm) * 3);
+        const zIndex = Math.round(depthNorm * 100);
+
+        // Smooth GPU transform
+        el.style.transform = `translate3d(calc(-50% + ${x}px), calc(-50% + ${yProj}px), 0px) scale(${scale})`;
+        el.style.opacity = `${opacity}`;
+        el.style.filter = blurAmount > 0.5 ? `blur(${blurAmount}px)` : 'none';
+        el.style.zIndex = `${zIndex}`;
       }
 
       activeIndexRef.current = frontIdx;
     };
 
-    // Smooth idle drift animation
-    const animateIdle = () => {
-      state.idleRotation += prefersReduced ? 0 : 0.0015;
-      updateCards();
-      rafId = requestAnimationFrame(animateIdle);
-    };
+    // Initial positioning
+    updateCards();
 
-    rafId = requestAnimationFrame(animateIdle);
+    // Smooth idle drift animation (skipped on reduced motion & low-end devices to conserve CPU)
+    if (!prefersReduced) {
+      const animateIdle = () => {
+        state.idleRotation += 0.0015;
+        updateCards();
+        rafId = requestAnimationFrame(animateIdle);
+      };
+      rafId = requestAnimationFrame(animateIdle);
+    }
 
     // GSAP ScrollTrigger context (reduced scroll distance for effortless browsing)
     const ctx = gsap.context(() => {
@@ -223,6 +220,7 @@ export default function ShowcaseWall() {
           pin: pinRef.current,
           scrub: 0.7,
           anticipatePin: 1,
+          fastScrollEnd: true,
           onUpdate: () => {
             updateCards();
           },
@@ -234,7 +232,7 @@ export default function ShowcaseWall() {
     window.addEventListener('resize', handleResize);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      if (rafId !== null) cancelAnimationFrame(rafId);
       window.removeEventListener('resize', handleResize);
       ctx.revert();
     };
