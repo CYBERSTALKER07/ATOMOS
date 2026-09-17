@@ -54,11 +54,15 @@ export function ContentCardButton({
   if (href) {
     return (
       <Link href={href as Route} prefetch={false} className={classes}>
-        {children}
+        <span className="relative z-10 text-black font-bold">{children}</span>
       </Link>
     );
   }
-  return <span className={classes}>{children}</span>;
+  return (
+    <span className={classes}>
+      <span className="relative z-10 text-black font-bold">{children}</span>
+    </span>
+  );
 }
 
 export function ContentCardLink({

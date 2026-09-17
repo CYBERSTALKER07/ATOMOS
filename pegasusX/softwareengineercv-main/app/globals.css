@@ -314,10 +314,15 @@ h3,
   letter-spacing: 0.12em;
   text-transform: uppercase;
   border: 1px solid #ffffff;
-  background: #ffffff;
-  color: #000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
   min-height: 2.5rem;
   padding: 0.75rem 1.25rem;
+}
+
+.editorial-card__cta .editorial-btn::before,
+.editorial-card__cta .editorial-btn::after {
+  display: none !important;
 }
 
 .editorial-card__cta .editorial-btn:hover,
@@ -325,7 +330,7 @@ h3,
 .editorial-card--interactive:hover .editorial-card__cta .editorial-btn {
   background: #e4e4e7 !important;
   border-color: #e4e4e7 !important;
-  color: #000 !important;
+  color: #000000 !important;
 }
 
 /* Hero-style CTA — sharp corners, white fill sweeps left → right on hover */
