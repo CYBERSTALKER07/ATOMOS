@@ -321,19 +321,13 @@ export default function ShowcaseWall() {
                 >
                   <Link
                     href={item.href}
-                    className={`block relative group overflow-hidden bg-[#0c0c0e] border transition-all duration-300 ${
+                    className={`block relative group overflow-hidden bg-[#0c0c0e] transition-all duration-300 ${
                       isFront
-                        ? 'border-white/80 shadow-[0_0_30px_rgba(255,255,255,0.15)] ring-1 ring-white/40'
-                        : 'border-zinc-800/80 hover:border-zinc-500'
+                        ? 'shadow-[0_0_35px_rgba(255,255,255,0.2)]'
+                        : ''
                     } w-32 h-22 sm:w-44 sm:h-30 md:w-52 md:h-36 lg:w-60 lg:h-40`}
                   >
-                    {/* Corner Handle Nodes (□) */}
-                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute top-1 left-1 z-20" />
-                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute top-1 right-1 z-20" />
-                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute bottom-1 left-1 z-20" />
-                    <div className="w-1.5 h-1.5 bg-black border border-zinc-500 absolute bottom-1 right-1 z-20" />
-
-                    {/* Stippled Image */}
+                    {/* Image */}
                     <Image
                       src={item.image}
                       alt={item.title}
@@ -341,19 +335,6 @@ export default function ShowcaseWall() {
                       sizes="(max-width: 640px) 130px, (max-width: 1024px) 210px, 240px"
                       className="object-cover grayscale contrast-125 brightness-95 group-hover:scale-105 transition-transform duration-500"
                     />
-
-                    {/* Subtle gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
-
-                    {/* Card Title Label */}
-                    <div className="absolute bottom-2 left-2 right-2 z-10">
-                      <p className="font-mono text-[9px] text-zinc-400 tracking-wider truncate uppercase">
-                        {item.category}
-                      </p>
-                      <h4 className="font-sans text-xs font-semibold text-white tracking-tight truncate">
-                        {item.title}
-                      </h4>
-                    </div>
                   </Link>
                 </div>
               );
