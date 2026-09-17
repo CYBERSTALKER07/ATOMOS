@@ -103,8 +103,8 @@ export default function Footer() {
 
       {/* Top section with input */}
       <div className="border-b border-white/5 flex flex-col items-center justify-center py-16 px-4 relative z-10">
-        <form onSubmit={handleSubmit} className="w-full max-w-[420px] flex flex-col gap-3">
-          <div className="flex bg-[#1a1a1a] border border-white/10 focus-within:border-white/30 rounded-sm overflow-hidden w-full transition-colors">
+        <form onSubmit={handleSubmit} className="w-full max-w-[440px] flex flex-col gap-3">
+          <div className="flex bg-black border border-white/15 focus-within:border-white/40 overflow-hidden w-full transition-colors">
             <input
               type="email"
               value={email}
@@ -119,21 +119,21 @@ export default function Footer() {
               disabled={status === 'loading'}
               required
               aria-label={t('footer_subscribe')}
-              className="bg-transparent text-white/90 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono disabled:opacity-50"
+              className="bg-transparent text-white placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-xs sm:text-sm font-mono disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center justify-center gap-2 text-sm font-medium border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
+              className="bg-[#E2FD52] hover:bg-[#CEFF00] text-black px-6 py-3 transition-colors flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
             >
               {status === 'loading' ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white/80" />
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
                   <span>{t('subscribe_submitting')}</span>
                 </>
               ) : (
                 <>
-                  <ArrowRight size={16} className="opacity-80" />
+                  <ArrowRight size={14} className="text-black" />
                   <span>{t('footer_subscribe_btn')}</span>
                 </>
               )}
@@ -166,16 +166,16 @@ export default function Footer() {
         {/* Logo col */}
         <div className="p-16 flex flex-col items-center justify-center max-md:border-b border-white/5">
           <img src="/pegasus.jpg" width={100} height={100} alt="Pegasus Logistics Platform Logo" loading="lazy" />
-          <span className="mt-6 text-xl font-black tracking-widest text-white uppercase">Pegasus</span>
+          <span className="mt-6 text-xl font-title font-light tracking-[0.2em] text-white uppercase">Pegasus</span>
         </div>
 
         {/* Platform Links col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
+          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
           <ul className="space-y-4">
             {platformLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
                   {link.name}
                 </Link>
               </li>
@@ -185,11 +185,11 @@ export default function Footer() {
 
         {/* Company col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_company')}</h4>
+          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_company')}</h4>
           <ul className="space-y-4">
             {companyLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
                   {link.name}
                 </Link>
               </li>
@@ -199,38 +199,38 @@ export default function Footer() {
 
         {/* Resources col */}
         <div className="p-12">
-          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
+          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
           <ul className="space-y-4 mb-10">
             {policiesLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
                   {link.name}
                 </Link>
               </li>
             ))}
             <li>
-              <CookieSettingsTrigger className="text-white/70 hover:text-white text-sm" />
+              <CookieSettingsTrigger className="text-white/60 hover:text-white text-sm font-light" />
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Huge text */}
-      <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <p aria-hidden="true" className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
-          pegasus
+      {/* Huge text styled like hero section */}
+      <div className="pt-20 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <p aria-hidden="true" className="text-[18vw] sm:text-[20vw] font-title font-light tracking-tight leading-[0.85] text-white select-none">
+          Pegasus
         </p>
       </div>
 
       {/* Copyright & Legal Row */}
-      <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/40 text-[11px] font-mono relative z-10">
+      <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/45 text-[10px] sm:text-[11px] font-mono tracking-wider relative z-10">
         <span>©2026 Pegasus. {t('footer_rights')}</span>
         <span>·</span>
         <Link href="/cookie-policy" className="hover:text-white transition-colors">
           {t('nav_cookie_policy', 'Cookie Policy')}
         </Link>
         <span>·</span>
-        <CookieSettingsTrigger className="text-[11px] font-mono text-white/40 hover:text-white" />
+        <CookieSettingsTrigger className="text-[10px] sm:text-[11px] font-mono text-white/45 hover:text-white" />
       </div>
     </footer>
   );
