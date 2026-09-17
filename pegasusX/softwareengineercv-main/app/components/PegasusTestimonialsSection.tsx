@@ -62,18 +62,7 @@ export function PegasusTestimonialsSection() {
         }}
       />
 
-      <div className="max-w-6xl w-full mx-auto flex flex-col items-center gap-16 relative z-10">
-
-        {/* Section Header */}
-        <div className="flex flex-col items-center text-center max-w-2xl gap-3">
-
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-zinc-100">
-            {t('testimonials_title') || 'Trusted by operators across the supply chain'}
-          </h2>
-          <p className="text-zinc-400 text-sm sm:text-base leading-relaxed">
-            {t('testimonials_subtitle') || 'Single dispatch board, real-time telemetry, and zero-friction settlement for every role.'}
-          </p>
-        </div>
+      <div className="max-w-6xl w-full mx-auto flex flex-col items-center relative z-10">
 
         {/* ========================================================================= */}
         {/* HERO FEATURED CARD - EXACT CYBERPUNK / TECHNICAL GRID STYLE FROM REFERENCE */}
