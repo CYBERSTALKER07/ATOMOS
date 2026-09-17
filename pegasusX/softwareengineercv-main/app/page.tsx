@@ -25,6 +25,7 @@ const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
 const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPromptSection'));
 const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
+const EcosystemDitherSection = dynamic(() => import('./components/EcosystemDitherSection'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
 
@@ -126,7 +127,8 @@ export default async function Home() {
         </section>
 
         <section id="section-workflow">
-          <EcosystemStats />
+          {/* <EcosystemStats /> - hidden: Optimized for the entire chain replaced with dither animation */}
+          <EcosystemDitherSection />
           <LogisticsWorkflow />
           <OurApproach />
           <Skills />
