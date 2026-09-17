@@ -114,11 +114,11 @@ export function PegasusTestimonialsSection() {
                   </p>
                 </div>
 
-                {/* Tactical Lime CTA Button */}
+                {/* Emerald CTA Button */}
                 <div className="pt-2">
                   <Link 
                     href="/contact"
-                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-[#E2FD52] hover:bg-[#CEFF00] text-black font-bold text-xs sm:text-sm transition-colors rounded-none shadow-sm group border border-[#E2FD52]"
+                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-[#18A049] hover:bg-[#14873d] text-black font-bold text-xs sm:text-sm transition-colors rounded-none shadow-sm group border border-[#18A049]"
                   >
                     <span>{t('read_case_study') || 'Read case study'}</span>
                     <span className="group-hover:translate-x-1 transition-transform font-bold">→</span>
@@ -174,7 +174,7 @@ export function PegasusTestimonialsSection() {
                 onClick={() => setActiveRole(role.id)}
                 className={`px-4 py-2 text-xs font-mono tracking-wider transition-all border rounded-none ${
                   activeRole === role.id
-                    ? 'bg-[#E2FD52] text-black border-[#E2FD52] font-bold shadow-md'
+                    ? 'bg-[#18A049] text-black border-[#18A049] font-bold shadow-md'
                     : 'bg-black text-zinc-400 border-zinc-800 hover:border-[#18A049] hover:text-zinc-200'
                 }`}
               >
@@ -204,7 +204,7 @@ export function PegasusTestimonialsSection() {
                       [ {item.roleBadge || 'ROLE NODE'} ]
                     </div>
                     {item.metric && (
-                      <span className="font-mono text-[10px] text-black bg-[#E2FD52] font-bold px-2 py-0.5 border border-[#E2FD52]">
+                      <span className="font-mono text-[10px] text-black bg-[#18A049] font-bold px-2 py-0.5 border border-[#18A049]">
                         {item.metric}
                       </span>
                     )}
