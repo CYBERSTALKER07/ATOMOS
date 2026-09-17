@@ -15,7 +15,7 @@ export interface ParticleTextProps {
   pointerRepel?: number;
   repelRadius?: number;
   idleDrift?: number;
-  trigger?: 'mount' | 'hover' | 'click' | 'view';
+  trigger?: 'mount' | 'hover' | 'click' | 'view' | 'none';
   fontSize?: number | string;
   fontWeight?: number | string;
   fontFamily?: string;
@@ -373,28 +373,30 @@ const ParticleText = ({
       const highlightRgb = hexToRgb(highlightColor);
       const selected = targets.filter((_, index) => index % stride === 0);
 
+      const noStartAnimation = reducedMotion || trigger === 'none' || scatter === 0 || gatherDuration === 0;
+
       particles = selected.map((target, index) => {
         const seed = ((index * 9301 + 49297) % 233280) / 233280;
         const depth = 0.45 + (((index * 233 + 97) % 1000) / 1000) * 0.9;
         const blend = baseRgb && highlightRgb ? clamp(target.x / Math.max(1, width) + (seed - 0.5) * 0.35, 0, 1) : 0;
         const particleColor = baseRgb && highlightRgb ? rgbToCss(mixRgb(baseRgb, highlightRgb, blend)) : color;
         const angle = seed * Math.PI * 2;
-        const distance = (reducedMotion ? 0 : scatter) * (0.35 + depth * 0.75);
-        const startX = target.x + Math.cos(angle) * distance + (seed - 0.5) * scatter * 0.45;
-        const startY = target.y + Math.sin(angle) * distance + (depth - 0.9) * scatter * 0.45;
+        const distance = (noStartAnimation ? 0 : scatter) * (0.35 + depth * 0.75);
+        const startX = target.x + Math.cos(angle) * distance + (seed - 0.5) * (noStartAnimation ? 0 : scatter) * 0.45;
+        const startY = target.y + Math.sin(angle) * distance + (depth - 0.9) * (noStartAnimation ? 0 : scatter) * 0.45;
 
         return {
-          x: reducedMotion ? target.x : startX,
-          y: reducedMotion ? target.y : startY,
-          startX,
-          startY,
+          x: noStartAnimation ? target.x : startX,
+          y: noStartAnimation ? target.y : startY,
+          startX: noStartAnimation ? target.x : startX,
+          startY: noStartAnimation ? target.y : startY,
           targetX: target.x,
           targetY: target.y,
           size: Math.max(0.6, particleSize * (0.75 + target.alpha * 0.45)),
           color: particleColor,
           seed,
           depth,
-          delay: seed * stagger
+          delay: noStartAnimation ? 0 : seed * stagger
         };
       });
 
@@ -403,7 +405,7 @@ const ParticleText = ({
       pointer.smoothX = pointer.x;
       pointer.smoothY = pointer.y;
 
-      if (reducedMotion) {
+      if (noStartAnimation) {
         particles.forEach(particle => {
           particle.x = particle.targetX;
           particle.y = particle.targetY;

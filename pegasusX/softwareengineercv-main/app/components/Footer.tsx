@@ -229,13 +229,13 @@ export default function Footer() {
             highlightColor="#ffffff"
             particleSize={2.4}
             density={4}
-            scatter={160}
-            gatherDuration={1500}
-            stagger={350}
+            scatter={0}
+            gatherDuration={0}
+            stagger={0}
             pointerRepel={42}
             repelRadius={120}
             idleDrift={0.6}
-            trigger="view"
+            trigger="none"
             textAlign="center"
             glow={true}
           />
