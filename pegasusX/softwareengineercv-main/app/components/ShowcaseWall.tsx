@@ -262,46 +262,8 @@ export default function ShowcaseWall() {
         {/* Ambient radial spotlight in the center */}
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.04)_0%,transparent_70%)]" />
 
-        {/* ── Top Bar Header (Reference match: "cīphər  WORKS  TALENTS CONTACT ABOUT") ── */}
-        <header className="px-6 sm:px-12 py-6 flex items-center justify-between z-30 font-mono text-xs text-zinc-400 tracking-wider">
-          <div className="flex items-center gap-3">
-            <span className="font-sans font-bold text-lg sm:text-xl text-white tracking-tighter">
-              PEGASUS
-            </span>
-            <span className="text-zinc-600 hidden sm:inline">/</span>
-            <span className="text-[10px] text-zinc-400 uppercase tracking-widest hidden sm:inline">
-              ECOSYSTEM WALL
-            </span>
-          </div>
-
-          <div className="hidden md:flex items-center gap-8 text-[11px] text-zinc-400">
-            <span className="text-white font-semibold">WORKS</span>
-            <Link href="/platform" className="hover:text-white transition-colors">
-              PLATFORM
-            </Link>
-            <Link href="/roles" className="hover:text-white transition-colors">
-              ROLES
-            </Link>
-            <Link href="/contact" className="hover:text-white transition-colors">
-              CONTACT
-            </Link>
-          </div>
-        </header>
-
         {/* ── Center 3D Orbital Arena ── */}
         <div className="relative w-full flex-1 flex items-center justify-center overflow-visible">
-          
-          {/* Center concentric wireframe orbit rings glyph (matching reference screenshot) */}
-          <div className="relative flex items-center justify-center pointer-events-none z-10">
-            {/* Outer wireframe ring */}
-            <div className="absolute w-24 h-12 sm:w-32 sm:h-16 rounded-[50%] border border-zinc-700/60 animate-[spin_30s_linear_infinite]" />
-            {/* Middle wireframe ring */}
-            <div className="absolute w-18 h-9 sm:w-24 sm:h-12 rounded-[50%] border border-zinc-600/80 animate-[spin_20s_linear_infinite_reverse]" />
-            {/* Inner wireframe ring */}
-            <div className="absolute w-12 h-6 sm:w-16 sm:h-8 rounded-[50%] border border-zinc-500 animate-[spin_12s_linear_infinite]" />
-            {/* Central luminous core */}
-            <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_12px_#ffffff]" />
-          </div>
 
           {/* 3D Orbiting Cards Loop */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
