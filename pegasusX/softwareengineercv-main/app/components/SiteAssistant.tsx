@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Maximize2, Copy, Check, RotateCcw } from 'lucide-react';
+import { Maximize2, Copy, Check, RotateCcw, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 type ChatRole = 'user' | 'assistant';
@@ -271,12 +271,12 @@ export default function SiteAssistant() {
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
     };
   }, [open]);
 
@@ -400,11 +400,11 @@ export default function SiteAssistant() {
         <aside
           id={panelId}
           ref={containerRef}
-          className="site-assistant__panel site-assistant__panel--chat fixed bottom-6 right-6 z-[10004] outline-none"
+          className="site-assistant__panel site-assistant__panel--chat fixed bottom-[76px] right-4 sm:bottom-[88px] sm:right-6 z-[10004] outline-none"
           role="dialog"
           aria-label="Pegasus assistant"
         >
-          <div className="site-assistant__chat-card rounded-none border border-white/20 bg-[#09090B] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[85vh]">
+          <div className="site-assistant__chat-card rounded-none border border-white/20 bg-[#09090B] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
             {/* Header Bar */}
             <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-[#121216] border-b border-white/10 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -591,17 +591,19 @@ export default function SiteAssistant() {
         </aside>
       ) : null}
 
-      {/* Floating Action Launcher in Corner */}
-      {!open ? (
-        <aside aria-label="Pegasus AI Assistant" className="fixed bottom-6 right-6 z-[10004]">
-          <button
-            ref={launcherRef}
-            type="button"
-            className="glowing-squircle-launcher group focus:outline-none"
-            title="Open Pegasus AI Assistant (⌘K)"
-            aria-label="Open Pegasus AI Assistant"
-            onClick={() => setOpen(true)}
-          >
+      {/* Floating Action Launcher in Corner - Always Visible */}
+      <aside aria-label="Pegasus AI Assistant" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[10005]">
+        <button
+          ref={launcherRef}
+          type="button"
+          className={`glowing-squircle-launcher group focus:outline-none ${open ? 'border-white/90 bg-[#121216]' : ''}`}
+          title={open ? (language === 'ru' ? 'Закрыть Pegasus AI (Esc)' : 'Close Pegasus AI Assistant (Esc)') : (language === 'ru' ? 'Открыть Pegasus AI (⌘K)' : 'Open Pegasus AI Assistant (⌘K)')}
+          aria-label={open ? 'Close Pegasus AI Assistant' : 'Open Pegasus AI Assistant'}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {open ? (
+            <X className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:scale-110" />
+          ) : (
             <img
               src="/pegasus.jpg"
               alt="Pegasus AI Assistant"
@@ -609,12 +611,12 @@ export default function SiteAssistant() {
               height={34}
               className="w-8 h-8 sm:w-9 sm:h-9 object-contain select-none transition-transform duration-200 group-hover:scale-105"
             />
-            <span className="site-assistant__badge" aria-hidden="true">
-              ⌘K
-            </span>
-          </button>
-        </aside>
-      ) : null}
+          )}
+          <span className="site-assistant__badge" aria-hidden="true">
+            {open ? 'ESC' : '⌘K'}
+          </span>
+        </button>
+      </aside>
     </div>
   );
 }
