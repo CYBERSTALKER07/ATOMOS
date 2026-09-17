@@ -6,27 +6,17 @@ import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import { getTestimonials, type O9Testimonial } from '../data/o9FleekDefaults';
 
-// Custom dither overlay component to give portrait images the dithered matrix halftone aesthetic from the design reference
+// Custom portrait component displaying high-contrast halftone dither artwork
 function DitheredPortrait({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center group">
-      {/* High-contrast grayscale portrait - centered on face and shoulders */}
       <Image
         src={src}
         alt={alt}
-        width={800}
-        height={1200}
+        width={1024}
+        height={1008}
         priority
-        className="w-full h-full object-cover object-[50%_32%] grayscale contrast-125 brightness-105 transition-transform duration-700 group-hover:scale-105"
-      />
-
-      {/* Subtle Scanlines effect */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-15 bg-repeat"
-        style={{
-          backgroundImage: `linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.8) 51%)`,
-          backgroundSize: '100% 4px',
-        }}
+        className="w-full h-full object-cover object-[50%_20%] transition-transform duration-700 group-hover:scale-105"
       />
     </div>
   );
@@ -150,7 +140,7 @@ export function PegasusTestimonialsSection() {
                 {/* Dithered Portrait Container - Properly Proportioned */}
                 <div className="w-full flex-1 min-h-[300px] sm:min-h-[340px] lg:min-h-[320px] relative border-b border-zinc-800 overflow-hidden bg-black">
                   <DitheredPortrait 
-                    src="/Gemini_Generated_Image_e86uare86uare86u.png" 
+                    src="/cto_portrait.jpg" 
                     alt={t('cto_role')}
                   />
                   
