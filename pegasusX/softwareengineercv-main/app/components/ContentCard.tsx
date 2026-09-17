@@ -25,7 +25,7 @@ export function ContentCardTag({
   className?: string;
 }) {
   return (
-    <p className={`editorial-tag ${className}`}>{formatTag(children)}</p>
+    <p className={`editorial-tag text-[#18A049] font-mono ${className}`}>{formatTag(children)}</p>
   );
 }
 
@@ -36,7 +36,7 @@ export function ContentCardEyebrow({
   children: string;
   className?: string;
 }) {
-  return <p className={`editorial-eyebrow ${className}`}>{children}</p>;
+  return <p className={`editorial-eyebrow text-[#18A049]/90 font-mono ${className}`}>{children}</p>;
 }
 
 export function ContentCardButton({
@@ -50,7 +50,7 @@ export function ContentCardButton({
   className?: string;
   inverted?: boolean;
 }) {
-  const classes = `editorial-btn ${className}`;
+  const classes = `editorial-btn bg-[#E2FD52] hover:bg-[#CEFF00] text-black font-bold border border-[#E2FD52] ${className}`;
   if (href) {
     return (
       <Link href={href as Route} prefetch={false} className={classes}>
@@ -254,7 +254,7 @@ function ContentCard({
   mediaVisual,
   children,
 }: ContentCardProps) {
-  const isLight = tone === 'light' || variant === 'featured';
+  const isLight = false;
   const actionLabel = resolveHoverLabel(ctaLabel, hoverLabel);
   const useSplitCta = splitCta && Boolean(href) && ctaStyle === 'button';
   const shellClass = [

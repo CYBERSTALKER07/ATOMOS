@@ -29,7 +29,7 @@ export default function Licensing() {
       ctaLabel: t('nav_tour').toUpperCase(),
     },
     {
-      tone: 'light' as const,
+      tone: 'dark' as const,
       tag: t('licensing_demo_tag'),
       title: t('licensing_demo_title'),
       description: t('licensing_demo_desc'),
