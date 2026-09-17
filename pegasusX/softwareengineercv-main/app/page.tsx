@@ -28,6 +28,7 @@ const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
 const EcosystemDitherSection = dynamic(() => import('./components/EcosystemDitherSection'));
 const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
+const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 
 const CloudEcosystemSection = dynamic(() => import('./components/CloudEcosystemSection'));
 const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
@@ -132,6 +133,7 @@ export default async function Home() {
           <LogisticsWorkflow />
           <OurApproach />
           <Skills />
+          <DevelopmentTools />
           {/* <CloudEcosystemSection /> - hidden for now */}
         </section>
 
