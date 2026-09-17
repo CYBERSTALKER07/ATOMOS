@@ -346,14 +346,14 @@ h3,
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Pill nav uses GSAP for hover — disable global link transitions */
-.pill-nav a,
-.pill-nav button:not(.lang-switcher__btn) {
+/* Pill nav uses GSAP for hover — disable global link transitions for menu items only */
+.pill-nav [role="menubar"] a,
+.pill-nav [role="menubar"] button {
   transition: none !important;
 }
 
-.pill-nav a:hover,
-.pill-nav button:not(.lang-switcher__btn):hover {
+.pill-nav [role="menubar"] a:hover,
+.pill-nav [role="menubar"] button:hover {
   color: inherit;
 }
 
@@ -6593,7 +6593,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
   background: #27272a;
   color: #f4f4f5;
   border: 1px solid #3f3f46;
-  border-radius: 0.5rem;
+  border-radius: 0;
   padding: 0.4rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 600;
@@ -6604,6 +6604,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 .site-assistant__toggle-fullscreen:hover {
   background: #3f3f46;
   color: #ffffff;
+  border-color: #71717a;
 }
 
 .site-assistant__close-btn {

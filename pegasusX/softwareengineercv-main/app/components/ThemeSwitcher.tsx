@@ -17,7 +17,7 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
       <button
         type="button"
         aria-label="Toggle theme"
-        className={`w-8 h-8 rounded-none flex items-center justify-center border border-white/20 bg-black text-white/40 ${className}`}
+        className={`w-8 h-8 rounded-none flex items-center justify-center border border-black/20 dark:border-white/20 bg-white dark:bg-black text-black/40 dark:text-white/40 ${className}`}
         disabled
       >
         <Moon className="w-3.5 h-3.5" />
@@ -33,16 +33,16 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
       onClick={toggleTheme}
       aria-label={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
       title={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
-      className={`relative w-8 h-8 rounded-none flex items-center justify-center transition-all duration-200 outline-none focus-visible:ring-2 cursor-pointer ${
+      className={`theme-switcher__btn group relative w-8 h-8 rounded-none flex items-center justify-center transition-colors duration-200 outline-none focus-visible:ring-2 cursor-pointer ${
         isLight
           ? 'bg-white hover:bg-black hover:text-white text-black border border-black focus-visible:ring-black'
           : 'bg-black hover:bg-white hover:text-black text-white border border-white focus-visible:ring-white'
       } ${className}`}
     >
       {isLight ? (
-        <Sun className="w-3.5 h-3.5 text-current transition-transform hover:rotate-45 duration-300" />
+        <Sun className="w-3.5 h-3.5 text-current transition-transform duration-300 group-hover:rotate-45" />
       ) : (
-        <Moon className="w-3.5 h-3.5 text-current transition-transform hover:-rotate-12 duration-300" />
+        <Moon className="w-3.5 h-3.5 text-current transition-transform duration-300 group-hover:-rotate-12" />
       )}
     </button>
   );

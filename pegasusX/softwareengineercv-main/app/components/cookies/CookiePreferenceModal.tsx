@@ -281,12 +281,12 @@ export default function CookiePreferenceModal() {
                           aria-checked={isChecked}
                           disabled={card.key === 'marketing' && isGPC}
                           onClick={() => handleToggle(card.key)}
-                          className={`w-11 h-6 rounded-none border transition-colors p-0.5 flex items-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                          className={`w-11 h-6 rounded-none border transition-colors duration-200 p-0.5 flex items-center outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer ${
                             isChecked
-                              ? 'bg-black dark:bg-white border-black dark:border-white justify-end'
+                              ? 'bg-black dark:bg-white border-black dark:border-white justify-end hover:bg-zinc-800 dark:hover:bg-zinc-200'
                               : isLight
-                              ? 'bg-zinc-200 border-zinc-300 justify-start'
-                              : 'bg-zinc-800 border-zinc-700 justify-start'
+                              ? 'bg-zinc-200 border-zinc-300 justify-start hover:border-black'
+                              : 'bg-zinc-800 border-zinc-700 justify-start hover:border-white'
                           }`}
                         >
                           <div className={`w-4 h-4 rounded-none shadow-sm ${isChecked ? 'bg-white dark:bg-black' : 'bg-zinc-500 dark:bg-zinc-400'}`} />
