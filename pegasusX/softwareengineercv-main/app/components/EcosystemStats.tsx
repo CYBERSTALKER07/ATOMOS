@@ -1,372 +1,344 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import PageSection from './layout/PageSection';
-import SystemLoadWidget from './SystemLoadWidget';
 import { useLanguage } from '../context/LanguageContext';
 
-gsap.registerPlugin(ScrollTrigger);
+// Dynamic import with SSR disabled for WebGL canvas
+const EcosystemDitherStage = dynamic(
+  () => import('./visuals/EcosystemDitherStage'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-[#070709] border border-white/5">
+        <span className="font-mono text-xs text-white/30 tracking-widest animate-pulse">
+          INITIALIZING_DITHER_PIPELINE...
+        </span>
+      </div>
+    ),
+  }
+);
 
-const SIDEBAR_NAV = [
-  { id: 'supplier', label: 'Supplier Operations', icon: 'M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M3.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h7.2a2 2 0 0 1 1.9 1.6l1.4 6.2 M2 9h10 M17 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M15.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h1.2' },
-  { id: 'warehouse', label: 'Warehouse Control', icon: 'M3 21v-14l8 -4l8 4v14 M8 21v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v4 M8 10h8 M8 13h8' },
-  { id: 'retailer', label: 'Retailer Network', icon: 'M3 21l18 0 M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4' },
-  { id: 'fleet', label: 'Fleet Operations', icon: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 14l5.5 5.5' },
+interface StepMetadata {
+  id: 'supplier' | 'warehouse' | 'retailer' | 'fleet';
+  index: number;
+  tag: string;
+  title: string;
+  titleRu: string;
+  subtitle: string;
+  subtitleRu: string;
+  zoneCode: string;
+  kpis: {
+    label: string;
+    labelRu: string;
+    val: string;
+    sub: string;
+  }[];
+}
+
+const ECOSYSTEM_STEPS: StepMetadata[] = [
+  {
+    id: 'supplier',
+    index: 0,
+    tag: 'PHASE 01 // ORIGIN',
+    title: 'Supplier Operations Center',
+    titleRu: 'Центр операций поставщика',
+    subtitle: 'Factory weighbridge, bulk pallet intake, and automated SKU classification.',
+    subtitleRu: 'Заводские весы, паллетная приёмка и автоматическая классификация SKU.',
+    zoneCode: 'ZONE_SUPPLIER_WEIGHBRIDGE // LAT: 41.3111 LON: 69.2797',
+    kpis: [
+      { label: 'Outbound Fill Rate', labelRu: 'Уровень заполнения', val: '99.2%', sub: 'SLA TARGET' },
+      { label: 'Daily Dispatch Units', labelRu: 'Отгрузка в день', val: '8,240', sub: '+14% VS PLAN' },
+      { label: 'Weighbridge SLA', labelRu: 'SLA весовой рампы', val: '4.2m', sub: 'AVG TURNAROUND' },
+    ],
+  },
+  {
+    id: 'warehouse',
+    index: 1,
+    tag: 'PHASE 02 // NODE',
+    title: 'Cross-Dock & Warehouse Control',
+    titleRu: 'Диспетчерская склада и кросс-дока',
+    subtitle: 'High-bay racking, SSCC-18 pallet tracking, and fulfillment wave orchestration.',
+    subtitleRu: 'Высотные стеллажи, трекинг SSCC-18 и волновая сборка заказов.',
+    zoneCode: 'ZONE_CENTRAL_DC_BAY_04 // WMS_STATUS: ACTIVE',
+    kpis: [
+      { label: 'Dock Bay Utilization', labelRu: 'Загрузка рамп', val: '92.4%', sub: '14 ACTIVE GATES' },
+      { label: 'Cross-Dock SLA', labelRu: 'Время кросс-дока', val: '38m', sub: '-12m OPTIMIZED' },
+      { label: 'Hourly Throughput', labelRu: 'Пропускная способность', val: '840', sub: 'PALLETS/HR' },
+    ],
+  },
+  {
+    id: 'retailer',
+    index: 2,
+    tag: 'PHASE 03 // INTAKE',
+    title: 'Retailer Network Hub',
+    titleRu: 'Хаб сети ритейлеров',
+    subtitle: 'Doorstep reception, Soliq OFD fiscalization, and real-time ePoD signing.',
+    subtitleRu: 'Приёмка в торговой точке, фискализация ОФД и цифровые акты ePoD.',
+    zoneCode: 'ZONE_RETAIL_STORE_INTAKE // FISCAL: COMPLIANT',
+    kpis: [
+      { label: 'On-Time Reception', labelRu: 'Приёмка вовремя', val: '98.7%', sub: 'DOORSTEP GEOFENCE' },
+      { label: 'Turnaround Time', labelRu: 'Время приёмки', val: '14m', sub: 'PER DELIVERY' },
+      { label: 'Match Accuracy', labelRu: 'Точность сверки', val: '99.9%', sub: 'BARCODE VERIFIED' },
+    ],
+  },
+  {
+    id: 'fleet',
+    index: 3,
+    tag: 'PHASE 04 // TRANSIT',
+    title: 'Global Fleet Telematics Mesh',
+    titleRu: 'Телематическая сеть автопарка',
+    subtitle: 'Dynamic shift pairing, CAN-bus telemetry, and mid-shift breakdown hot-swapping.',
+    subtitleRu: 'Динамические смены, CAN-телематика и горячая замена ТС на маршруте.',
+    zoneCode: 'ZONE_URBAN_CORRIDOR_MESH // DISPATCH: LIVE',
+    kpis: [
+      { label: 'Active Transit Units', labelRu: 'Активные ТС', val: '450', sub: 'CONNECTED FLEET' },
+      { label: 'Route Mileage', labelRu: 'Суточный пробег', val: '85.4K', sub: 'KM DISPATCHED' },
+      { label: 'Hot-Swap Readiness', labelRu: 'Готовность резерва', val: '100%', sub: 'ZERO DELAY' },
+    ],
+  },
 ];
 
-const TAB_DATA = {
-  supplier: {
-    title: 'Supplier Operations Center',
-    subtitle: 'Real-time visibility into outbound fulfillment and dispatch',
-    card1: { title: 'Order Volume', subtitle: 'Active outbound processing', value: '8.2K', unit: 'Daily Orders', percent: 92, stat1: '99%', label1: 'FILL RATE', stat2: '2M', label2: 'UNITS', metric: '98.7%' },
-    card2: { title: 'Dispatch SLA', subtitle: 'On-time departure monitoring', metric: '99.99%', bars: [45, 75, 35, 90, 55, 100, 40, 65] },
-    card3: { title: 'Inventory Health', subtitle: 'Global stock availability', value: '94%', stat1: '12K', label1: 'SKUS', stat2: '45', label2: 'SITES', metric: '8.4M' },
-  },
-  warehouse: {
-    title: 'Warehouse Control Tower',
-    subtitle: 'Live gate, dock, and throughput monitoring across DCs',
-    card1: { title: 'Dock Utilization', subtitle: 'Live gate processing', value: '14', unit: 'Active Gates', percent: 75, stat1: '85%', label1: 'UTIL', stat2: '1.2K', label2: 'PALLETS', metric: '92.4%' },
-    card2: { title: 'Cross-dock Time', subtitle: 'Internal transit SLAs', metric: '42m', bars: [60, 50, 80, 40, 70, 90, 50, 85] },
-    card3: { title: 'Throughput', subtitle: 'Hourly volume processed', value: '840', stat1: '150', label1: 'TRUCKS', stat2: '3', label2: 'SHIFTS', metric: '1.2M' },
-  },
-  retailer: {
-    title: 'Retailer Network Hub',
-    subtitle: 'Store delivery statuses and unloading turnaround metrics',
-    card1: { title: 'Delivery Status', subtitle: 'Fleet route tracking', value: '142', unit: 'Active Routes', percent: 88, stat1: '96%', label1: 'ON-TIME', stat2: '4K', label2: 'STOPS', metric: '96.2%' },
-    card2: { title: 'Unload SLA', subtitle: 'Turnaround time monitoring', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
-    card3: { title: 'Received Volume', subtitle: 'Daily units received', value: '12.5K', stat1: '99%', label1: 'MATCH', stat2: '15', label2: 'DC', metric: '3.4M' },
-  },
-  fleet: {
-    title: 'Global Fleet Network',
-    subtitle: 'Vehicle tracking, fuel consumption, and route efficiency',
-    card1: { title: 'Active Vehicles', subtitle: 'Vehicles currently on route', value: '450', unit: 'Trucks', percent: 95, stat1: '1.2K', label1: 'DRIVERS', stat2: '99%', label2: 'UPTIME', metric: '99.9%' },
-    card2: { title: 'Fuel Efficiency', subtitle: 'Average MPG performance', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
-    card3: { title: 'Total Mileage', subtitle: 'Daily distance covered', value: '85K', stat1: '400', label1: 'ROUTES', stat2: '12', label2: 'ZONES', metric: '2.1M' },
-  }
-} as const;
-
 export default function EcosystemStats() {
-  const [activeTab, setActiveTab] = useState<keyof typeof TAB_DATA>('supplier');
-  const dashboardRef = useRef<HTMLDivElement>(null);
-  const { t, language } = useLanguage();
+  const [activeStep, setActiveStep] = useState<number>(0);
+  const [progress, setProgress] = useState<number>(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const { language } = useLanguage();
+  const isRu = language === 'ru';
 
-  const data = TAB_DATA[activeTab];
-  const tabDataRu: typeof TAB_DATA | null = language === 'ru' ? {
-    supplier: {
-      title: 'Центр операций поставщика',
-      subtitle: 'Видимость исходящего исполнения и диспетчеризации в реальном времени',
-      card1: { title: 'Объём заказов', subtitle: 'Активная исходящая обработка', value: '8.2K', unit: 'Заказов в день', percent: 92, stat1: '99%', label1: 'ЗАПОЛНЕНИЕ', stat2: '2M', label2: 'ЕДИНИЦ', metric: '98.7%' },
-      card2: { title: 'SLA диспетчеризации', subtitle: 'Мониторинг выезда вовремя', metric: '99.99%', bars: [45, 75, 35, 90, 55, 100, 40, 65] },
-      card3: { title: 'Здоровье запасов', subtitle: 'Глобальная доступность стока', value: '94%', stat1: '12K', label1: 'SKU', stat2: '45', label2: 'ПЛОЩАДОК', metric: '8.4M' },
-    },
-    warehouse: {
-      title: 'Диспетчерская склада',
-      subtitle: 'Живой мониторинг ворот, рамп и пропускной способности DC',
-      card1: { title: 'Загрузка рамп', subtitle: 'Живая обработка на воротах', value: '14', unit: 'Активных ворот', percent: 75, stat1: '85%', label1: 'ЗАГРУЗКА', stat2: '1.2K', label2: 'ПАЛЛЕТ', metric: '92.4%' },
-      card2: { title: 'Время кросс-дока', subtitle: 'Внутренние SLA транзита', metric: '42m', bars: [60, 50, 80, 40, 70, 90, 50, 85] },
-      card3: { title: 'Пропускная способность', subtitle: 'Часовой обработанный объём', value: '840', stat1: '150', label1: 'ГРУЗОВИКОВ', stat2: '3', label2: 'СМЕНЫ', metric: '1.2M' },
-    },
-    retailer: {
-      title: 'Хаб сети ритейлеров',
-      subtitle: 'Статусы доставки в магазины и метрики разгрузки',
-      card1: { title: 'Статус доставки', subtitle: 'Маршруты автопарка', value: '142', unit: 'Активных маршрутов', percent: 88, stat1: '96%', label1: 'ВОВРЕМЯ', stat2: '4K', label2: 'ОСТАНОВОК', metric: '96.2%' },
-      card2: { title: 'SLA разгрузки', subtitle: 'Мониторинг времени оборота', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
-      card3: { title: 'Принятый объём', subtitle: 'Единиц принято за день', value: '12.5K', stat1: '99%', label1: 'СОВПАДЕНИЕ', stat2: '15', label2: 'DC', metric: '3.4M' },
-    },
-    fleet: {
-      title: 'Глобальный автопарк',
-      subtitle: 'Отслеживание ТС, расход топлива и эффективность маршрутов',
-      card1: { title: 'Активный транспорт', subtitle: 'ТС сейчас на маршруте', value: '450', unit: 'Грузовиков', percent: 95, stat1: '1.2K', label1: 'ВОДИТЕЛЕЙ', stat2: '99%', label2: 'АПТАЙМ', metric: '99.9%' },
-      card2: { title: 'Топливная эффективность', subtitle: 'Средний расход', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
-      card3: { title: 'Общий пробег', subtitle: 'Дневная дистанция', value: '85K', stat1: '400', label1: 'МАРШРУТОВ', stat2: '12', label2: 'ЗОН', metric: '2.1M' },
-    },
-  } as any : null;
-  const localizedData = (tabDataRu?.[activeTab] ?? data);
-
-  const roleTabs = language === 'ru' ? [
-    { id: 'supplier', label: 'Поставщик' },
-    { id: 'warehouse', label: 'Склад' },
-    { id: 'retailer', label: 'Ритейлер' },
-    { id: 'fleet', label: 'Автопарк' },
-  ] : [
-    { id: 'supplier', label: 'Supplier' },
-    { id: 'warehouse', label: 'Warehouse' },
-    { id: 'retailer', label: 'Retailer' },
-    { id: 'fleet', label: 'Fleet' },
-  ];
-
+  // Synchronize active step with sticky scroll track
   useEffect(() => {
-    // Advanced staggered entrance animation
-    const ctx = gsap.context(() => {
-      gsap.timeline({
-        scrollTrigger: {
-          trigger: dashboardRef.current,
-          start: 'top 80%',
-          toggleActions: 'play none none reverse',
-        }
-      })
-      .fromTo('.stat-card',
-        { opacity: 0, y: 40, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'back.out(1.2)', clearProps: 'all' }
-      );
-    }, dashboardRef);
-    return () => ctx.revert();
-  }, [activeTab]);
+    const track = trackRef.current;
+    if (!track) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (!track) return;
+          const rect = track.getBoundingClientRect();
+          const totalScroll = rect.height - window.innerHeight;
+
+          if (totalScroll > 0) {
+            // Normalized progress from 0.0 to 1.0
+            const currentProgress = Math.min(1, Math.max(0, -rect.top / totalScroll));
+            setProgress(currentProgress);
+
+            // 4 steps distributed evenly across track
+            const stepIdx = Math.min(3, Math.floor(currentProgress * 4));
+            setActiveStep(stepIdx);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Jump to step on button click
+  const scrollToStep = (stepIndex: number) => {
+    setActiveStep(stepIndex);
+    const track = trackRef.current;
+    if (!track) return;
+
+    const rect = track.getBoundingClientRect();
+    const totalScroll = rect.height - window.innerHeight;
+    if (totalScroll > 0) {
+      const targetScroll = rect.top + window.scrollY + (totalScroll * (stepIndex + 0.15)) / 4;
+      window.scrollTo({
+        top: targetScroll,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const currentMeta = useMemo(() => ECOSYSTEM_STEPS[activeStep] || ECOSYSTEM_STEPS[0], [activeStep]);
 
   return (
-    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden py-16 sm:py-24" aria-labelledby="ecosystem-stats-heading">
-
-      {/* Background ambient light */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-white/[0.015] blur-[120px] pointer-events-none rounded-full" />
-
-      <div className="w-full relative z-10">
-
-        {/* Header */}
-        <div className="mb-12 max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8">
-          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight bg-gradient-to-r from-[#A9EBF9] via-[#8DDC96] to-[#FBFF63] bg-clip-text text-transparent inline-block drop-shadow-[0_0_35px_rgba(141,220,150,0.2)]">
-            {t('ecosystem_title', 'Optimized for the entire chain')}
-          </h2>
-        </div>
-
-        {/* Screen Mockup Container with Bottom Opacity Fade */}
-        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8 relative">
+    <PageSection
+      bleed={true}
+      className="bg-[#09090B] text-white w-full border-t border-white/10 relative p-0 overflow-visible"
+      aria-labelledby="ecosystem-stats-heading"
+    >
+      {/* 360vh Sticky Scroll Container */}
+      <div ref={trackRef} className="relative w-full h-[320vh] sm:h-[360vh]">
+        
+        {/* Sticky Viewport Shell */}
+        <div className="sticky top-0 w-full h-screen flex flex-col justify-between overflow-hidden bg-[#09090B] p-4 sm:p-6 md:p-8 select-none">
           
-          {/* Outer Screen Window Bezel */}
-          <div className="relative rounded-2xl sm:rounded-3xl border border-white/10 bg-[#070709] shadow-[0_30px_100px_rgba(0,0,0,0.95)] overflow-hidden max-h-[580px] sm:max-h-[660px] md:max-h-[720px]">
-            
-            {/* Top Screen Window Chrome Bar */}
-            <div className="h-12 border-b border-white/10 bg-[#0a0a0e] px-4 sm:px-6 flex items-center justify-between z-30 relative select-none">
-              
-              {/* Traffic Light Window Dots */}
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-[#FF5F56]/80 border border-[#E0443E]/50" />
-                <span className="w-3 h-3 rounded-full bg-[#FFBD2E]/80 border border-[#DEA123]/50" />
-                <span className="w-3 h-3 rounded-full bg-[#27C93F]/80 border border-[#1AAB29]/50" />
+          {/* Top Tactical Command Bar */}
+          <div className="w-full max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 z-20">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-mono tracking-widest text-white/50 uppercase">
+                  {isRu ? 'ТЕЛЕМЕТРИЯ ЭКОСИСТЕМЫ // V.O.I.D. CORE' : 'SOVEREIGN ECOSYSTEM TELEMETRY // V.O.I.D.'}
+                </span>
               </div>
+              <h2 id="ecosystem-stats-heading" className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-white uppercase font-mono">
+                {isRu ? 'Сквозная оптимизация цепочки' : 'Optimized for the entire logistics chain'}
+              </h2>
+            </div>
 
-              {/* Center Role Switcher Tabs */}
-              <div className="hidden sm:flex items-center gap-1 bg-[#121218] p-1 rounded-lg border border-white/5">
-                {roleTabs.map((tab) => (
+            {/* Step Switcher Navigation */}
+            <div className="flex items-center gap-1 border border-white/15 bg-[#121216] p-1">
+              {ECOSYSTEM_STEPS.map((step) => {
+                const isActive = activeStep === step.index;
+                return (
                   <button
-                    key={tab.id}
+                    key={step.id}
                     type="button"
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 py-1 rounded-md text-[11px] font-mono tracking-wider transition-all duration-200 cursor-pointer ${
-                      activeTab === tab.id
-                        ? 'bg-white text-black font-semibold shadow-sm'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    onClick={() => scrollToStep(step.index)}
+                    className={`px-3 py-1.5 text-[11px] font-mono tracking-wider transition-colors cursor-pointer uppercase ${
+                      isActive
+                        ? 'bg-white text-black font-bold'
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    {tab.label}
+                    {`0${step.index + 1} ${step.id}`}
                   </button>
-                ))}
-              </div>
-
-              {/* Right Window Status */}
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-white/20" />
-                <span className="font-mono text-[10px] text-white/30 tracking-widest hidden sm:inline">SYS.CONSOLE</span>
-              </div>
-            </div>
-
-            {/* Mobile Tab Switcher Row */}
-            <div className="flex sm:hidden overflow-x-auto gap-1 p-2 bg-[#0a0a0e] border-b border-white/5 no-scrollbar">
-              {roleTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-2.5 py-1 rounded text-[10px] font-mono whitespace-nowrap tracking-wider transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-white text-black font-bold'
-                      : 'text-white/50 bg-white/5'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Screen Content Viewport with Opacity Gradient Mask */}
-            <div 
-              ref={dashboardRef}
-              className="relative overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)] [-webkit-mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)]"
-            >
-              <div className="flex-1 p-4 sm:p-6 md:p-10 dashboard-content flex flex-col bg-[#000000] relative">
-            {/* Grid Pattern Background */}
-            <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
-
-            {/* Content Header */}
-
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 flex-1 relative z-10">
-
-              {/* Feature/Load Widget (takes up 2 columns on wide screens) */}
-              <div className="xl:col-span-2 rounded-xl overflow-hidden shadow-2xl stat-card group transition-all duration-500  hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)]">
-                {/* Embedded complex stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
-                  <div className="h-[380px] md:h-full">
-                    <SystemLoadWidget />
-                  </div>
-
-                  {/* Secondary large widget */}
-                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 hover:border-white/15">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </div>
-                        <span className="text-base font-medium text-white/90">{t('ecosystem_revenue', 'Revenue Impact')}</span>
-                      </div>
-                      <span className="text-xs font-mono text-green-400">+12.4%</span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-end pb-4">
-                      <div className="text-5xl font-light text-white mb-8">$2.4M</div>
-                      <div className="flex items-end gap-2 h-32">
-                        {[30, 45, 20, 60, 40, 80, 55, 90, 70, 100, 85, 110].map((h, i) => (
-                          <div key={i} className="flex-1 bg-white/10 hover:bg-white/30 transition-colors rounded-t-sm" style={{ height: `${h}%` }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 1: Circle Gauge */}
-              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
-                    </div>
-                    <span className="text-base font-medium text-white/90">{localizedData.card1.title}</span>
-                  </div>
-                  <span className="text-xs font-mono text-white/40">{localizedData.card1.metric}</span>
-                </div>
-                <div className="text-sm text-white/40 mb-8">{localizedData.card1.subtitle}</div>
-
-                <div className="flex-1 flex items-center justify-center relative">
-                  <svg viewBox="0 0 220 220" className="w-full max-w-[160px] sm:max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
-                    <circle cx="110" cy="110" r="85" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
-                    {/* ticks */}
-                    <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
-                      {[...Array(30)].map((_, i) => (
-                        <line key={i} x1="110" y1="15" x2="110" y2="25" transform={`rotate(${i * 12} 110 110)`} />
-                      ))}
-                    </g>
-                    <circle cx="110" cy="110" r="85" fill="none" stroke="white" strokeWidth="20"
-                      strokeDasharray={2 * Math.PI * 85}
-                      strokeDashoffset={(2 * Math.PI * 85) * (1 - localizedData.card1.percent / 100)}
-                      className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-4xl font-light tracking-tight text-white">{localizedData.card1.value}</span>
-                    <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">{localizedData.card1.unit}</span>
-                  </div>
-
-                  <div className="absolute left-0 bottom-0 flex flex-col gap-4">
-                    <div>
-                      <div className="text-xs text-white/90">{localizedData.card1.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label1}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-white/90">{localizedData.card1.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label2}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Bar Chart */}
-              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
-                    </div>
-                    <span className="text-base font-medium text-white/90">{localizedData.card2.title}</span>
-                  </div>
-                  <span className="text-xs font-mono text-white/40">{localizedData.card2.metric}</span>
-                </div>
-                <div className="text-sm text-white/40 mb-10">{localizedData.card2.subtitle}</div>
-
-                <div className="flex-1 flex items-end justify-between relative px-2 pb-6">
-                  <div className="absolute top-[35%] left-0 right-0 border-t border-dashed border-white/10" />
-                  <div className="absolute top-[35%] left-4 -translate-y-1/2 bg-white text-black text-xs font-mono px-3 py-1 rounded-sm z-10">
-                    SLA TARGET
-                  </div>
-
-                  {localizedData.card2.bars.map((h, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1.5 relative z-0 h-[180px] justify-end">
-                      {i === 4 ? (
-                        <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FF3366] to-[#33CCFF] absolute -top-5 shadow-[0_0_12px_rgba(255,51,102,0.8)] z-10" />
-                      ) : (
-                        <div className="w-2 h-2 rounded-full bg-white/80 absolute -top-4" />
-                      )}
-                      <div className="w-1 bg-white/10 transition-all duration-700 ease-out" style={{ height: `${h * 1.5}px` }} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Card 3: Speedometer */}
-              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
-                    </div>
-                    <span className="text-base font-medium text-white/90">{localizedData.card3.title}</span>
-                  </div>
-                  <span className="text-xs font-mono text-white/40">{localizedData.card3.metric}</span>
-                </div>
-                <div className="text-sm text-white/40 mb-8">{localizedData.card3.subtitle}</div>
-
-                <div className="flex-1 flex flex-col items-center justify-end relative pt-4 pb-4">
-                  <svg viewBox="0 0 320 170" className="w-full max-w-[320px] h-auto overflow-visible drop-shadow-xl absolute top-4">
-                    <g className="text-white/15" strokeWidth="1.5">
-                      {[...Array(35)].map((_, i) => (
-                        <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
-                      ))}
-                    </g>
-                    <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="36" />
-                    <path d="M 20 160 A 140 140 0 0 1 300 160" fill="none" stroke="white" strokeWidth="36"
-                      strokeDasharray={Math.PI * 140} strokeDashoffset={(Math.PI * 140) * 0.3}
-                      className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
-                    />
-                  </svg>
-
-                  <div className="absolute top-[80px] flex flex-col items-center pointer-events-none">
-                    <span className="text-6xl font-light tracking-tight text-white">{localizedData.card3.value}</span>
-                  </div>
-
-                  <div className="w-full flex justify-between px-12 mt-32 z-10">
-                    <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{localizedData.card3.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label1}</div>
-                    </div>
-                    <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{localizedData.card3.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label2}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+                );
+              })}
             </div>
           </div>
+
+          {/* Central 3-Column Control Tower Stage */}
+          <div className="w-full max-w-[1440px] mx-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 py-4 min-h-0 z-10">
+            
+            {/* Left Column: Interactive Step Cards (4 Cols) */}
+            <div className="hidden lg:flex lg:col-span-4 flex-col justify-between gap-2 h-full">
+              {ECOSYSTEM_STEPS.map((step) => {
+                const isActive = activeStep === step.index;
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => scrollToStep(step.index)}
+                    className={`flex-1 text-left p-4 border transition-all duration-300 flex flex-col justify-between cursor-pointer ${
+                      isActive
+                        ? 'border-white bg-[#121216] text-white shadow-[inset_0_0_20px_rgba(255,255,255,0.03)]'
+                        : 'border-white/10 bg-[#09090B]/60 text-white/40 hover:border-white/25 hover:text-white/70'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-[10px] font-mono tracking-wider mb-1">
+                        <span className={isActive ? 'text-emerald-400' : 'text-white/30'}>
+                          {step.tag}
+                        </span>
+                        <span className="font-mono">{`[0${step.index + 1}/04]`}</span>
+                      </div>
+                      <h3 className="text-base font-bold tracking-tight text-white mb-1 font-mono uppercase">
+                        {isRu ? step.titleRu : step.title}
+                      </h3>
+                      <p className="text-xs text-white/60 leading-relaxed font-sans line-clamp-2">
+                        {isRu ? step.subtitleRu : step.subtitle}
+                      </p>
+                    </div>
+
+                    {isActive && (
+                      <div className="pt-2 mt-2 border-t border-white/10 flex items-center gap-2 text-[10px] font-mono text-emerald-400">
+                        <span className="w-1.5 h-1.5 bg-emerald-400" />
+                        <span>CAMERA_TARGET_LOCKED</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Center Stage: The 3D Dither Stage (5 Cols on LG, Full on Mobile) */}
+            <div className="lg:col-span-5 h-[340px] sm:h-[400px] lg:h-full relative border border-white/20 bg-[#060608] overflow-hidden flex flex-col">
+              {/* Corner crosshairs */}
+              <span className="absolute top-2 left-2 text-[10px] font-mono text-white/30 z-20 pointer-events-none">+</span>
+              <span className="absolute top-2 right-2 text-[10px] font-mono text-white/30 z-20 pointer-events-none">+</span>
+              <span className="absolute bottom-2 left-2 text-[10px] font-mono text-white/30 z-20 pointer-events-none">+</span>
+              <span className="absolute bottom-2 right-2 text-[10px] font-mono text-white/30 z-20 pointer-events-none">+</span>
+
+              {/* Stage Top Telemetry Overlay */}
+              <div className="absolute top-3 left-4 right-4 flex items-center justify-between z-20 pointer-events-none text-[10px] font-mono tracking-widest text-white/60 bg-[#09090B]/80 px-2.5 py-1 border border-white/10 backdrop-blur-sm">
+                <span className="truncate">{currentMeta.zoneCode}</span>
+                <span className="hidden sm:inline text-white/40">DITHER_AA_SDF // 60FPS</span>
+              </div>
+
+              {/* Live WebGL Dither Stage */}
+              <div className="w-full h-full flex-1 relative">
+                <EcosystemDitherStage activeStep={activeStep} theme="dark" />
+              </div>
+
+              {/* Stage Bottom Status */}
+              <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between z-20 pointer-events-none text-[10px] font-mono tracking-widest text-white/50 bg-[#09090B]/80 px-2.5 py-1 border border-white/10 backdrop-blur-sm">
+                <span>{`RENDER_TARGET: PASS_2_INK_DEPTH`}</span>
+                <span className="text-emerald-400 font-bold">{`STEP 0${activeStep + 1} ACTIVE`}</span>
+              </div>
+            </div>
+
+            {/* Right Column: Dynamic Telemetry Inspector (3 Cols) */}
+            <div className="lg:col-span-3 flex flex-col justify-between gap-2 h-full">
+              <div className="border border-white/15 bg-[#121216] p-4 flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="text-[10px] font-mono tracking-wider text-white/40 mb-2 uppercase border-b border-white/10 pb-1">
+                    {isRu ? 'ИНСПЕКТОР ПОКАЗАТЕЛЕЙ' : 'REALTIME TELEMETRY'}
+                  </div>
+                  <div className="text-lg font-bold font-mono text-white mb-4 uppercase">
+                    {isRu ? currentMeta.titleRu : currentMeta.title}
+                  </div>
+
+                  {/* KPI Cards */}
+                  <div className="space-y-4">
+                    {currentMeta.kpis.map((kpi, kIdx) => (
+                      <div key={kIdx} className="border border-white/10 bg-[#09090B] p-3">
+                        <div className="text-[10px] font-mono text-white/50 uppercase mb-1">
+                          {isRu ? kpi.labelRu : kpi.label}
+                        </div>
+                        <div className="text-2xl sm:text-3xl font-mono font-bold text-white tabular-nums">
+                          {kpi.val}
+                        </div>
+                        <div className="text-[9px] font-mono text-emerald-400/80 mt-1 uppercase">
+                          {kpi.sub}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10 text-[10px] font-mono text-white/40 flex items-center justify-between">
+                  <span>REFRESH_CYCLE: 1.0s</span>
+                  <span className="text-white">STATUS: OK</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Bottom Hairline Scroll Progress Track */}
+          <div className="w-full max-w-[1440px] mx-auto pt-3 border-t border-white/10 flex items-center justify-between gap-4 z-20">
+            <div className="text-[10px] font-mono text-white/40 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-white" />
+              <span>{isRu ? 'ПРОКРУТИТЕ ДЛЯ СМЕНЫ ФАЗЫ' : 'SCROLL TO SCRUB PHASES'}</span>
+            </div>
+
+            <div className="flex-1 max-w-md h-1.5 bg-white/10 relative overflow-hidden border border-white/10">
+              <div
+                className="h-full bg-white transition-all duration-75"
+                style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+              />
+            </div>
+
+            <div className="text-[10px] font-mono text-white font-bold tabular-nums">
+              {`${Math.round(progress * 100)}% // [0${activeStep + 1}/04]`}
+            </div>
+          </div>
+
         </div>
-
-        {/* Bottom Fade Gradient Overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-64 bg-gradient-to-t from-[#070709] via-[#070709]/90 to-transparent pointer-events-none z-20" />
-
       </div>
-    </div>
-  </div>
-</PageSection>
+    </PageSection>
   );
 }

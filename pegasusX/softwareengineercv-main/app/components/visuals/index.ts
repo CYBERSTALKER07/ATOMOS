@@ -7,3 +7,4 @@ export { default as TransactionFlowCard } from './TransactionFlowCard';
 export { default as AgentNetworkHero } from './AgentNetworkHero';
 export { default as IntegrationsHubVisual } from './IntegrationsHubVisual';
 export { default as BridgeSwapVisual } from './BridgeSwapVisual';
+export { default as EcosystemDitherStage } from './EcosystemDitherStage';
