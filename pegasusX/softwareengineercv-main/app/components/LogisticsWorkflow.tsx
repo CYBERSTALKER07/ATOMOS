@@ -356,7 +356,6 @@ const ALL_TREES: Record<WorkflowTab, TreeData> = {
 };
 
 const TAB_OPTIONS: { id: WorkflowTab; label: string }[] = [
-  { id: 'stack', label: 'WORKS WITH ANY STACK' },
   { id: 'supplier', label: 'SUPPLIER' },
   { id: 'warehouse', label: 'WAREHOUSE' },
   { id: 'retailer', label: 'RETAILER' },
@@ -365,7 +364,7 @@ const TAB_OPTIONS: { id: WorkflowTab; label: string }[] = [
 
 export default function LogisticsWorkflow() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<WorkflowTab>('stack');
+  const [activeTab, setActiveTab] = useState<WorkflowTab>('supplier');
   const [hoveredNode, setHoveredNode] = useState<ToolNode | null>(null);
 
   const currentTree = ALL_TREES[activeTab];
@@ -380,7 +379,7 @@ export default function LogisticsWorkflow() {
           </span>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-title font-bold tracking-tight text-white mb-4">
-            {activeTab === 'stack' ? 'Works with any stack' : 'Autonomous operational logic'}
+            Autonomous operational logic
           </h2>
 
           <p className="text-white/50 max-w-2xl text-sm sm:text-base md:text-lg leading-relaxed">
