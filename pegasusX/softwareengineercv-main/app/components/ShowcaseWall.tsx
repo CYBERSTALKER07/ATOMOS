@@ -131,9 +131,9 @@ export default function ShowcaseWall() {
     if (!sectionRef.current || !pinRef.current) return;
 
     const N = ORBIT_ITEMS.length;
-    const alpha = (32 * Math.PI) / 180; // Tilt angle (around X axis) - elevates the back cards nicely above
-    const beta = (-4 * Math.PI) / 180; // Subtle roll angle (around Z axis)
-    const D = 1100; // Perspective distance
+    const alpha = (22 * Math.PI) / 180; // Tilt angle (around X axis)
+    const beta = (-6 * Math.PI) / 180; // Roll angle (around Z axis)
+    const D = 1000; // Perspective distance
 
     // Continuous idle drift rotation angle + scroll-driven rotation angle
     const state = {
@@ -149,9 +149,10 @@ export default function ShowcaseWall() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      // Responsive radii: rounder circular orbit so back cards sit distinct and above
-      const Rx = Math.min(viewportWidth * 0.36, 500);
-      const Rz = Math.min(viewportHeight * 0.32, 330);
+      // Responsive radii matching viewport
+      const Rx = Math.min(viewportWidth * 0.38, 540);
+      const Ry = Math.min(viewportHeight * 0.20, 165);
+      const Rz = 240;
 
       const totalAngle = state.scrollRotation + state.idleRotation;
 
@@ -164,15 +165,13 @@ export default function ShowcaseWall() {
 
         const theta = (i / N) * 2 * Math.PI + totalAngle;
 
-        // Circular orbit in XZ plane
         const x = Rx * Math.cos(theta);
-        const z_local = Rz * Math.sin(theta);
+        const y = Ry * Math.sin(theta);
+        const z = Rz * Math.sin(theta);
 
-        // 3D rotations: tilt around X so back cards (z_local < 0) are positioned above (y < 0)
-        const y_prime = z_local * Math.sin(alpha);
-        const z_prime = z_local * Math.cos(alpha);
-
-        // Subtle roll around Z
+        // 3D rotations: tilt around X then roll around Z
+        const y_prime = y * Math.cos(alpha) - z * Math.sin(alpha);
+        const z_prime = y * Math.sin(alpha) + z * Math.cos(alpha);
         const x_double = x * Math.cos(beta) - y_prime * Math.sin(beta);
         const y_double = x * Math.sin(beta) + y_prime * Math.cos(beta);
 
@@ -180,8 +179,8 @@ export default function ShowcaseWall() {
         const factor = D / (D - z_prime);
         const sx = x_double * factor;
         const sy = y_double * factor;
-        const scale = Math.max(0.55, Math.min(factor * 0.90, 1.35));
-        const opacity = Math.min(Math.max(0.45 + 0.55 * ((z_prime + Rz) / (2 * Rz)), 0.35), 1.0);
+        const scale = factor;
+        const opacity = Math.min(Math.max(0.35 + 0.65 * ((z_prime + Rz) / (2 * Rz)), 0.25), 1.0);
         const zIndex = Math.round(z_prime + 500);
 
         // Track front-most card for active index
@@ -191,7 +190,7 @@ export default function ShowcaseWall() {
         }
 
         // Direct DOM write for 60fps GPU acceleration
-        cardEl.style.transform = `translate3d(calc(-50% + ${sx.toFixed(1)}px), calc(-50% + ${sy.toFixed(1)}px), 0px) scale(${scale.toFixed(3)})`;
+        cardEl.style.transform = `translate3d(calc(-50% + ${sx}px), calc(-50% + ${sy}px), 0px) scale(${scale.toFixed(3)})`;
         cardEl.style.opacity = opacity.toFixed(2);
         cardEl.style.zIndex = `${zIndex}`;
       }
@@ -212,17 +211,17 @@ export default function ShowcaseWall() {
 
     rafId = requestAnimationFrame(animateIdle);
 
-    // GSAP ScrollTrigger context (scroll distance halved from +=220% to +=110%)
+    // GSAP ScrollTrigger context
     const ctx = gsap.context(() => {
       gsap.to(state, {
-        scrollRotation: Math.PI * 2.0, // 1 full smooth orbital revolution
+        scrollRotation: Math.PI * 2.8, // 1.4 full rotations across scroll
         ease: 'none',
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top top',
-          end: '+=110%', // Two times less scroll
+          end: '+=220%',
           pin: pinRef.current,
-          scrub: 0.8,
+          scrub: 1.2,
           anticipatePin: 1,
           onUpdate: () => {
             updateCards();
@@ -295,11 +294,11 @@ export default function ShowcaseWall() {
           {/* Center concentric wireframe orbit rings glyph (matching reference screenshot) */}
           <div className="relative flex items-center justify-center pointer-events-none z-10">
             {/* Outer wireframe ring */}
-            <div className="absolute w-24 h-16 sm:w-32 sm:h-22 rounded-[50%] border border-zinc-700/60 animate-[spin_30s_linear_infinite]" />
+            <div className="absolute w-24 h-12 sm:w-32 sm:h-16 rounded-[50%] border border-zinc-700/60 animate-[spin_30s_linear_infinite]" />
             {/* Middle wireframe ring */}
-            <div className="absolute w-18 h-12 sm:w-24 sm:h-16 rounded-[50%] border border-zinc-600/80 animate-[spin_20s_linear_infinite_reverse]" />
+            <div className="absolute w-18 h-9 sm:w-24 sm:h-12 rounded-[50%] border border-zinc-600/80 animate-[spin_20s_linear_infinite_reverse]" />
             {/* Inner wireframe ring */}
-            <div className="absolute w-12 h-8 sm:w-16 sm:h-11 rounded-[50%] border border-zinc-500 animate-[spin_12s_linear_infinite]" />
+            <div className="absolute w-12 h-6 sm:w-16 sm:h-8 rounded-[50%] border border-zinc-500 animate-[spin_12s_linear_infinite]" />
             {/* Central luminous core */}
             <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_12px_#ffffff]" />
           </div>
