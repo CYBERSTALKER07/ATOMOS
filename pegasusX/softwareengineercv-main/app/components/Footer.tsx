@@ -6,8 +6,6 @@ import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2 } from
 import { ArrowRight } from '@/components/icons';
 import { useLanguage } from '../context/LanguageContext';
 import CookieSettingsTrigger from './cookies/CookieSettingsTrigger';
-import ParticleText from './ParticleText';
-import TextType from './TextType';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -96,13 +94,6 @@ export default function Footer() {
     { name: t('nav_cookie_policy', 'Cookie Policy'), href: '/cookie-policy' },
   ];
 
-  const typedPhrases = [
-    t('hero_subtitle', 'Global Enterprise Logistics Architecture'),
-    t('hero_phrases_hyperlocal', 'Autonomous Logistics Cloud'),
-    t('hero_phrases_b2b', 'Spanner Distributed Core'),
-    t('hero_phrases_execution', 'Real-time Telemetry & Dispatch'),
-  ];
-
   return (
     <footer className="bg-[#000000] text-white border-t border-white/5 overflow-hidden font-sans relative">
 
@@ -112,8 +103,8 @@ export default function Footer() {
 
       {/* Top section with input */}
       <div className="border-b border-white/5 flex flex-col items-center justify-center py-16 px-4 relative z-10">
-        <form onSubmit={handleSubmit} className="w-full max-w-[440px] flex flex-col gap-3">
-          <div className="flex bg-black border border-white/15 focus-within:border-white/40 overflow-hidden w-full transition-colors">
+        <form onSubmit={handleSubmit} className="w-full max-w-[420px] flex flex-col gap-3">
+          <div className="flex bg-[#1a1a1a] border border-white/10 focus-within:border-white/30 rounded-sm overflow-hidden w-full transition-colors">
             <input
               type="email"
               value={email}
@@ -128,21 +119,21 @@ export default function Footer() {
               disabled={status === 'loading'}
               required
               aria-label={t('footer_subscribe')}
-              className="bg-transparent text-white placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-xs sm:text-sm font-mono disabled:opacity-50"
+              className="bg-transparent text-white/90 placeholder:text-white/40 px-4 py-3 outline-none flex-1 text-sm font-mono disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={status === 'loading'}
-              className="bg-[#E2FD52] hover:bg-[#CEFF00] text-black px-6 py-3 transition-colors flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
+              className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center justify-center gap-2 text-sm font-medium border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
             >
               {status === 'loading' ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <Loader2 className="w-4 h-4 animate-spin text-white/80" />
                   <span>{t('subscribe_submitting')}</span>
                 </>
               ) : (
                 <>
-                  <ArrowRight size={14} className="text-black" />
+                  <ArrowRight size={16} className="opacity-80" />
                   <span>{t('footer_subscribe_btn')}</span>
                 </>
               )}
@@ -175,16 +166,16 @@ export default function Footer() {
         {/* Logo col */}
         <div className="p-16 flex flex-col items-center justify-center max-md:border-b border-white/5">
           <img src="/pegasus.jpg" width={100} height={100} alt="Pegasus Logistics Platform Logo" loading="lazy" />
-          <span className="mt-6 text-xl font-title font-light tracking-[0.2em] text-white uppercase">Pegasus</span>
+          <span className="mt-6 text-xl font-black tracking-widest text-white uppercase">Pegasus</span>
         </div>
 
         {/* Platform Links col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
           <ul className="space-y-4">
             {platformLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
                 </Link>
               </li>
@@ -194,11 +185,11 @@ export default function Footer() {
 
         {/* Company col */}
         <div className="p-12 max-md:border-b border-white/5">
-          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_company')}</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_company')}</h4>
           <ul className="space-y-4">
             {companyLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
                 </Link>
               </li>
@@ -208,74 +199,38 @@ export default function Footer() {
 
         {/* Resources col */}
         <div className="p-12">
-          <h4 className="text-[10px] sm:text-[11px] tracking-[0.2em] text-white/45 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
+          <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
           <ul className="space-y-4 mb-10">
             {policiesLinks.map(link => (
               <li key={link.name}>
-                <Link href={link.href} className="text-white/60 hover:text-white text-sm font-light leading-relaxed transition-colors">
+                <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
                   {link.name}
                 </Link>
               </li>
             ))}
             <li>
-              <CookieSettingsTrigger className="text-white/60 hover:text-white text-sm font-light" />
+              <CookieSettingsTrigger className="text-white/70 hover:text-white text-sm" />
             </li>
           </ul>
         </div>
       </div>
 
-      {/* Animated text styled like hero section */}
-      <div className="pt-16 pb-12 px-4 flex flex-col justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <div className="w-full max-w-[1600px] h-44 sm:h-56 md:h-72 lg:h-80 xl:h-96 relative flex items-center justify-center">
-          <ParticleText
-            text="Pegasus"
-            particleSize={2.4}
-            density={4}
-            color="#f8fafc"
-            highlightColor="#10B981"
-            scatter={160}
-            gatherDuration={1500}
-            stagger={350}
-            pointerRepel={42}
-            repelRadius={120}
-            idleDrift={0.6}
-            trigger="view"
-            fontSize="clamp(3.5rem, 15vw, 12rem)"
-            fontWeight={800}
-            textAlign="center"
-            glow={true}
-          />
-        </div>
-
-        {/* Hero animated typewriter phrase */}
-        <div className="mt-3 sm:mt-5 text-center">
-          <div className="text-sm sm:text-base md:text-xl font-light tracking-tight text-white/80 min-h-[1.75em] flex items-center justify-center">
-            <TextType
-              text={typedPhrases}
-              typingSpeed={70}
-              pauseDuration={1800}
-              deletingSpeed={45}
-              showCursor={true}
-              cursorCharacter="|"
-              loop={true}
-              startOnVisible={true}
-              textColors={['#FFFFFF', '#10B981', '#C0C0C0']}
-              className="font-light"
-              cursorClassName="text-white font-light"
-            />
-          </div>
-        </div>
+      {/* Huge text */}
+      <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <p aria-hidden="true" className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
+          pegasus
+        </p>
       </div>
 
       {/* Copyright & Legal Row */}
-      <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/45 text-[10px] sm:text-[11px] font-mono tracking-wider relative z-10">
+      <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/40 text-[11px] font-mono relative z-10">
         <span>©2026 Pegasus. {t('footer_rights')}</span>
         <span>·</span>
         <Link href="/cookie-policy" className="hover:text-white transition-colors">
           {t('nav_cookie_policy', 'Cookie Policy')}
         </Link>
         <span>·</span>
-        <CookieSettingsTrigger className="text-[10px] sm:text-[11px] font-mono text-white/45 hover:text-white" />
+        <CookieSettingsTrigger className="text-[11px] font-mono text-white/40 hover:text-white" />
       </div>
     </footer>
   );
