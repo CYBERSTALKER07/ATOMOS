@@ -130,7 +130,7 @@ export default async function Home() {
         <section id="section-workflow">
           {/* <EcosystemStats /> - hidden: Optimized for the entire chain */}
           {/* <EcosystemDitherSection /> - hidden for now */}
-          <LogisticsWorkflow />
+          {/* <LogisticsWorkflow /> - hidden for now */}
           <OurApproach />
           <Skills />
           <DevelopmentTools />
