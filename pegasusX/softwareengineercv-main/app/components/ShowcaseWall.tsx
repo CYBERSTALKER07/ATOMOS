@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { gsap } from 'gsap';
@@ -124,8 +124,7 @@ export default function ShowcaseWall() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const cardElementsRef = useRef<(HTMLDivElement | null)[]>([]);
-  const activeIndexRef = useRef(0);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const activeIndexRef = useRef(9); // Default to featured card 010 (Spanner Zero-Trust Architecture)
 
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current) return;
@@ -188,7 +187,7 @@ export default function ShowcaseWall() {
         const opacity = Math.min(Math.max(0.40 + 0.60 * depthNorm, 0.30), 1.0);
         const zIndex = Math.round(z_prime + 500);
 
-        // Track front-most card for active index
+        // Track front-most card for reference
         if (z_prime > highestZ) {
           highestZ = z_prime;
           frontIdx = i;
@@ -200,11 +199,7 @@ export default function ShowcaseWall() {
         cardEl.style.zIndex = `${zIndex}`;
       }
 
-      // Update state only when active index shifts
-      if (frontIdx !== activeIndexRef.current) {
-        activeIndexRef.current = frontIdx;
-        setActiveIndex(frontIdx);
-      }
+      activeIndexRef.current = frontIdx;
     };
 
     // Smooth idle drift animation
@@ -245,8 +240,6 @@ export default function ShowcaseWall() {
     };
   }, [prefersReduced]);
 
-  const activeItem = ORBIT_ITEMS[activeIndex] || ORBIT_ITEMS[0];
-
   return (
     <div ref={sectionRef} className="relative w-full bg-black text-white select-none overflow-visible">
       
@@ -257,80 +250,69 @@ export default function ShowcaseWall() {
       >
         {/* Subtle dot matrix grid terrain background matching reference */}
         <div
-          className="absolute inset-0 pointer-events-none opacity-20"
+          className="absolute inset-0 pointer-events-none opacity-[0.06]"
           style={{
             backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.4) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
+            backgroundSize: '32px 32px',
           }}
         />
 
-        {/* Ambient radial spotlight in the center */}
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.04)_0%,transparent_70%)]" />
-
         {/* ── Center 3D Orbital Arena ── */}
-        <div className="relative w-full flex-1 flex items-center justify-center overflow-visible">
+        <div className="relative w-full flex-1 flex items-center justify-center overflow-visible bg-black">
 
           {/* 3D Orbiting Cards Loop */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            {ORBIT_ITEMS.map((item, idx) => {
-              const isFront = idx === activeIndex;
-
-              return (
-                <div
-                  key={item.id}
-                  ref={(el) => {
-                    cardElementsRef.current[idx] = el;
-                  }}
-                  className="absolute top-1/2 left-1/2 will-change-transform pointer-events-auto transition-shadow duration-300"
-                  style={{
-                    transform: 'translate3d(-50%, -50%, 0px)',
-                  }}
+            {ORBIT_ITEMS.map((item, idx) => (
+              <div
+                key={item.id}
+                ref={(el) => {
+                  cardElementsRef.current[idx] = el;
+                }}
+                className="absolute top-1/2 left-1/2 will-change-transform pointer-events-auto"
+                style={{
+                  transform: 'translate3d(-50%, -50%, 0px)',
+                }}
+              >
+                <Link
+                  href={item.href}
+                  className="block relative group overflow-hidden bg-black w-32 h-22 sm:w-44 sm:h-30 md:w-52 md:h-36 lg:w-60 lg:h-40"
                 >
-                  <Link
-                    href={item.href}
-                    className={`block relative group overflow-hidden bg-[#0c0c0e] transition-all duration-300 ${
-                      isFront
-                        ? 'shadow-[0_0_35px_rgba(255,255,255,0.2)]'
-                        : ''
-                    } w-32 h-22 sm:w-44 sm:h-30 md:w-52 md:h-36 lg:w-60 lg:h-40`}
-                  >
-                    {/* Image */}
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      fill
-                      sizes="(max-width: 640px) 130px, (max-width: 1024px) 210px, 240px"
-                      className="object-cover grayscale contrast-125 brightness-95 group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </Link>
-                </div>
-              );
-            })}
+                  {/* Image */}
+                  <Image
+                    src={item.image}
+                    alt={item.title}
+                    fill
+                    sizes="(max-width: 640px) 130px, (max-width: 1024px) 210px, 240px"
+                    className="object-cover grayscale contrast-125 brightness-95 group-hover:scale-105 transition-transform duration-500"
+                  />
+                </Link>
+              </div>
+            ))}
           </div>
 
         </div>
 
-        {/* ── Bottom Telemetry Bar (Reference match: "001  EVIDENS DE BEAUTÉ  DISCOVER MORE") ── */}
-        <footer className="px-6 sm:px-12 py-6 flex items-center justify-between z-30 font-mono text-xs tracking-wider border-t border-zinc-900 bg-black/70 backdrop-blur-md">
+        {/* ── Bottom Telemetry Bar (Reference match: "010  NODE // SPANNER ZERO-TRUST ARCHITECTURE  DISCOVER MORE") ── */}
+        <footer className="px-6 sm:px-12 py-6 flex items-center justify-between z-30 font-mono text-xs tracking-wider bg-black border-t-0">
           {/* Left: 3-digit index */}
           <div className="text-white font-bold text-sm">
-            {String(activeIndex + 1).padStart(3, '0')}
+            010
           </div>
 
-          {/* Center: Active Title */}
+          {/* Center: Node Title */}
           <div className="text-center px-4 truncate max-w-md">
             <span className="text-zinc-500 uppercase tracking-widest text-[11px] hidden sm:inline mr-2">
               NODE //
             </span>
             <span className="text-zinc-100 font-semibold tracking-wider text-xs sm:text-sm uppercase">
-              {activeItem.title}
+              SPANNER ZERO-TRUST ARCHITECTURE
             </span>
           </div>
 
           {/* Right: Discover More Link */}
           <div className="text-right">
             <Link
-              href={activeItem.href}
+              href="/technology"
               className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors group text-xs uppercase"
             >
               <span>DISCOVER MORE</span>
