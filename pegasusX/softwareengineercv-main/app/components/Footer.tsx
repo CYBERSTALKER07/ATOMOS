@@ -6,6 +6,7 @@ import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2 } from
 import { ArrowRight } from '@/components/icons';
 import { useLanguage } from '../context/LanguageContext';
 import CookieSettingsTrigger from './cookies/CookieSettingsTrigger';
+import ParticleText from './ParticleText';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -216,10 +217,27 @@ export default function Footer() {
       </div>
 
       {/* Huge text */}
-      <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <p aria-hidden="true" className="text-[25vw] font-black tracking-tighter leading-[0.75] text-[#e5e5e5] select-none lowercase">
-          pegasus
-        </p>
+      <div className="pt-20 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <div className="w-full h-[22vw] min-h-[160px] max-h-[460px] relative flex items-center justify-center">
+          <ParticleText
+            text="pegasus"
+            fontSize="25vw"
+            fontWeight={900}
+            color="#e5e5e5"
+            highlightColor="#10B981"
+            particleSize={2.4}
+            density={4}
+            scatter={160}
+            gatherDuration={1500}
+            stagger={350}
+            pointerRepel={42}
+            repelRadius={120}
+            idleDrift={0.6}
+            trigger="view"
+            textAlign="center"
+            glow={true}
+          />
+        </div>
       </div>
 
       {/* Copyright & Legal Row */}

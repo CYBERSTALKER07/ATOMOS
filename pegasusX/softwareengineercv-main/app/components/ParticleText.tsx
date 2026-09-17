@@ -15,7 +15,7 @@ export interface ParticleTextProps {
   pointerRepel?: number;
   repelRadius?: number;
   idleDrift?: number;
-  trigger?: 'mount' | 'hover' | 'click';
+  trigger?: 'mount' | 'hover' | 'click' | 'view';
   fontSize?: number | string;
   fontWeight?: number | string;
   fontFamily?: string;
@@ -293,11 +293,15 @@ const ParticleText = ({
 
       const content = String(text || ' ');
       const maxTextWidth = width * 0.92;
+      const maxTextHeight = height * 0.90;
       offCtx.font = font;
       let metrics = offCtx.measureText(content);
       const measuredWidth = Math.max(1, metrics.width);
-      if (measuredWidth > maxTextWidth) {
-        resolvedSize = Math.max(18, resolvedSize * (maxTextWidth / measuredWidth));
+      const approxHeight = Math.max(1, (metrics.actualBoundingBoxAscent || resolvedSize * 0.78) + (metrics.actualBoundingBoxDescent || resolvedSize * 0.22));
+
+      if (measuredWidth > maxTextWidth || approxHeight > maxTextHeight) {
+        const scale = Math.min(maxTextWidth / measuredWidth, maxTextHeight / approxHeight);
+        resolvedSize = Math.max(18, resolvedSize * scale);
         font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
         await waitForFonts(font);
         if (currentBuild !== buildId) return;
@@ -390,8 +394,20 @@ const ParticleText = ({
           particle.delay = 0;
         });
         gathering = false;
-      } else {
+      } else if (trigger !== 'view' || hasTriggeredInView) {
         startGather(false);
+      } else {
+        const spread = scatter;
+        particles.forEach(particle => {
+          const angle = particle.seed * Math.PI * 2;
+          const distance = spread * (0.35 + particle.depth * 0.75);
+          particle.x = particle.targetX + Math.cos(angle) * distance + (particle.depth - 0.5) * spread * 0.55;
+          particle.y = particle.targetY + Math.sin(angle) * distance + (particle.seed - 0.5) * spread * 0.55;
+          particle.startX = particle.x;
+          particle.startY = particle.y;
+          particle.delay = particle.seed * stagger;
+        });
+        gathering = false;
       }
 
       ensureRenderLoop();
@@ -415,7 +431,7 @@ const ParticleText = ({
 
     const handlePointerEnter = (event: PointerEvent): void => {
       handlePointerMove(event);
-      if (trigger === 'hover') startGather(true);
+      if (trigger === 'hover' || trigger === 'view') startGather(true);
     };
 
     const handleClick = (): void => {
@@ -437,12 +453,20 @@ const ParticleText = ({
     const resizeObserver = new ResizeObserver(queueSample);
     resizeObserver.observe(container);
 
+    let hasTriggeredInView = false;
+
     const io = new IntersectionObserver(
       ([entry]) => {
         const wasVisible = isVisible;
         isVisible = !!entry?.isIntersecting;
-        if (isVisible && !wasVisible) {
-          ensureRenderLoop();
+        if (isVisible) {
+          if (trigger === 'view' && !hasTriggeredInView) {
+            hasTriggeredInView = true;
+            startGather(true);
+          }
+          if (!wasVisible) {
+            ensureRenderLoop();
+          }
         }
       },
       { rootMargin: '80px' }
@@ -486,8 +510,15 @@ const ParticleText = ({
   ]);
 
   if (isLowEnd) {
+    const justifyClass =
+      textAlign === 'center'
+        ? 'justify-center text-center'
+        : textAlign === 'right'
+          ? 'justify-end text-right'
+          : 'justify-start text-left';
+
     return (
-      <div className={`relative flex items-center h-full w-full ${className}`} style={style}>
+      <div className={`relative flex items-center ${justifyClass} h-full w-full ${className}`} style={style}>
         <Tag
           className="font-extrabold tracking-tight text-white drop-shadow-[0_0_24px_rgba(16,185,129,0.3)]"
           style={{ fontSize: typeof fontSize === 'string' ? fontSize : `${fontSize}px`, fontWeight }}
