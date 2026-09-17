@@ -17,6 +17,9 @@
   --font-geist-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-title: "Avenir Next", "Avenir Next LT Pro", Avenir, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-heading: "Avenir Next", "Avenir Next LT Pro", Avenir, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --page-max: 80rem;
   --page-gutter: clamp(1rem, 4vw, 2rem);
   --section-y: clamp(4.5rem, 9vw, 7rem);
@@ -1931,6 +1934,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   --font-heading: var(--font-heading);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
@@ -2580,9 +2584,6 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 
   body {
     @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
   }
 }
 

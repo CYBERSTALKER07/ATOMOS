@@ -6,13 +6,6 @@ import { absoluteUrl, languageAlternates, SITE_NAME, SITE_URL } from "@/app/lib/
 import { getServerLanguage } from "@/app/lib/i18n/server";
 import { translations } from "@/app/lib/i18n/translations";
 
-const geistSans = {
-  variable: "font-sans",
-};
-
-const geistMono = {
-  variable: "font-mono",
-};
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLanguage();
@@ -186,7 +179,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased relative bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white transition-colors duration-200`}
+        className="font-sans antialiased relative bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white transition-colors duration-200"
       >
         <div
           id="app-splash-screen"
