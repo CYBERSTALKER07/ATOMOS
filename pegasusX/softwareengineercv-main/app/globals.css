@@ -583,13 +583,13 @@ h3,
 
 /* Full-card links still sweep nested link-style CTAs on card hover */
 a.editorial-card--interactive.editorial-card--dark:hover .editorial-link,
-a.editorial-card--interactive:not(.editorial-card--light):not(.editorial-card--featured):hover .editorial-link {
+a.editorial-card--interactive.editorial-card--featured:hover .editorial-link,
+a.editorial-card--interactive:not(.editorial-card--light):hover .editorial-link {
   color: #fbff63;
   opacity: 1;
 }
 
-a.editorial-card--interactive.editorial-card--light:hover .editorial-link,
-a.editorial-card--interactive.editorial-card--featured:hover .editorial-link {
+a.editorial-card--interactive.editorial-card--light:hover .editorial-link {
   color: #000000;
   opacity: 1;
 }
@@ -1264,14 +1264,14 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 }
 
 .editorial-card--dark .editorial-link:hover,
-.editorial-card--dark .editorial-link:focus-visible {
+.editorial-card--dark .editorial-link:focus-visible,
+.editorial-card--featured .editorial-link:hover,
+.editorial-card--featured .editorial-link:focus-visible {
   color: #fbff63;
 }
 
 .editorial-card--light .editorial-link:hover,
-.editorial-card--light .editorial-link:focus-visible,
-.editorial-card--featured .editorial-link:hover,
-.editorial-card--featured .editorial-link:focus-visible {
+.editorial-card--light .editorial-link:focus-visible {
   color: #000;
   opacity: 1;
 }
@@ -1414,17 +1414,16 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
     opacity: 1;
   }
 
-  .editorial-card--dark.editorial-card--interactive:hover .editorial-card__description {
+  .editorial-card--dark.editorial-card--interactive:hover .editorial-card__description,
+  .editorial-card--featured.editorial-card--interactive:hover .editorial-card__description {
     color: #e5e7eb;
   }
 
-  .editorial-card--light.editorial-card--interactive:hover,
-  .editorial-card--featured.editorial-card--interactive:hover {
+  .editorial-card--light.editorial-card--interactive:hover {
     border-color: rgba(0, 0, 0, 0.35);
   }
 
-  .editorial-card--light.editorial-card--interactive:hover .editorial-card__description,
-  .editorial-card--featured.editorial-card--interactive:hover .editorial-card__description {
+  .editorial-card--light.editorial-card--interactive:hover .editorial-card__description {
     color: #374151;
   }
 
