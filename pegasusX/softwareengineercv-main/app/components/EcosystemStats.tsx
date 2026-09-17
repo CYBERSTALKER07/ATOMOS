@@ -111,6 +111,7 @@ export default function EcosystemStats() {
           trigger: dashboardRef.current,
           start: 'top 80%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         }
       })
       .fromTo('.stat-card',
@@ -119,11 +120,6 @@ export default function EcosystemStats() {
       );
     }, dashboardRef);
     return () => ctx.revert();
-  }, [isLowEnd, prefersReducedMotion]);
-
-  useEffect(() => {
-    if (isLowEnd || prefersReducedMotion || !dashboardRef.current) return;
-    gsap.fromTo('.stat-card', { opacity: 0.7 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
   }, [activeTab, isLowEnd, prefersReducedMotion]);
 
   return (
