@@ -6,6 +6,8 @@ import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2 } from
 import { ArrowRight } from '@/components/icons';
 import { useLanguage } from '../context/LanguageContext';
 import CookieSettingsTrigger from './cookies/CookieSettingsTrigger';
+import ParticleText from './ParticleText';
+import TextType from './TextType';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -92,6 +94,13 @@ export default function Footer() {
     { name: t('nav_compare', 'TMS Comparisons'), href: '/compare' },
     { name: t('nav_markets', 'Global Markets'), href: '/markets' },
     { name: t('nav_cookie_policy', 'Cookie Policy'), href: '/cookie-policy' },
+  ];
+
+  const typedPhrases = [
+    t('hero_subtitle', 'Global Enterprise Logistics Architecture'),
+    t('hero_phrases_hyperlocal', 'Autonomous Logistics Cloud'),
+    t('hero_phrases_b2b', 'Spanner Distributed Core'),
+    t('hero_phrases_execution', 'Real-time Telemetry & Dispatch'),
   ];
 
   return (
@@ -215,11 +224,47 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Huge text styled like hero section */}
-      <div className="pt-20 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <p aria-hidden="true" className="text-[18vw] sm:text-[20vw] font-title font-light tracking-tight leading-[0.85] text-white select-none">
-          Pegasus
-        </p>
+      {/* Animated text styled like hero section */}
+      <div className="pt-16 pb-12 px-4 flex flex-col justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <div className="w-full max-w-[1600px] h-44 sm:h-56 md:h-72 lg:h-80 xl:h-96 relative flex items-center justify-center">
+          <ParticleText
+            text="Pegasus"
+            particleSize={2.4}
+            density={4}
+            color="#f8fafc"
+            highlightColor="#10B981"
+            scatter={160}
+            gatherDuration={1500}
+            stagger={350}
+            pointerRepel={42}
+            repelRadius={120}
+            idleDrift={0.6}
+            trigger="view"
+            fontSize="clamp(3.5rem, 15vw, 12rem)"
+            fontWeight={800}
+            textAlign="center"
+            glow={true}
+          />
+        </div>
+
+        {/* Hero animated typewriter phrase */}
+        <div className="mt-3 sm:mt-5 text-center">
+          <div className="text-sm sm:text-base md:text-xl font-light tracking-tight text-white/80 min-h-[1.75em] flex items-center justify-center">
+            <TextType
+              text={typedPhrases}
+              typingSpeed={70}
+              pauseDuration={1800}
+              deletingSpeed={45}
+              showCursor={true}
+              cursorCharacter="|"
+              loop={true}
+              startOnVisible={true}
+              textColors={['#FFFFFF', '#10B981', '#C0C0C0']}
+              className="font-light"
+              cursorClassName="text-white font-light"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Copyright & Legal Row */}
