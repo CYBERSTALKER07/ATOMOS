@@ -2,7 +2,8 @@
 
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
-import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Linkedin, Youtube, Instagram, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowRight } from '@/components/animate-ui/icons';
 import { useLanguage } from '../context/LanguageContext';
 import CookieSettingsTrigger from './cookies/CookieSettingsTrigger';
 
@@ -132,7 +133,7 @@ export default function Footer() {
                 </>
               ) : (
                 <>
-                  <ArrowRight className="w-4 h-4 opacity-80" />
+                  <ArrowRight size={16} animateOnHover className="opacity-80" />
                   <span>{t('footer_subscribe_btn')}</span>
                 </>
               )}

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowRight, ChevronRight, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { ArrowRight, ChevronRight, Layers, Settings, Activity, AnimatedIcon } from '@/components/animate-ui/icons';
 import { cn } from '@/lib/utils';
 import LetterGlitch from './LetterGlitch';
 import { gsap } from 'gsap';
@@ -18,10 +19,7 @@ import {
 } from '../data/megaNavigation';
 import {
   Box,
-  Layers,
   Zap,
-  Settings,
-  Activity,
   Network,
   Truck,
   Navigation,

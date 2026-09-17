@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from '@/components/animate-ui/icons';
 import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
@@ -230,7 +230,7 @@ export default function Hero() {
                 }`}
               >
                 <span>{t('hero_explore')}</span>
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={16} animateOnHover />
               </button>
 
               <a
