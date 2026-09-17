@@ -237,8 +237,8 @@ export default function Hero() {
                 href="/join"
                 className={`inline-flex items-center justify-center gap-2 px-7 py-3.5 border transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase ${
                   isLight
-                    ? 'border-black/15 bg-black/5 hover:bg-black/10 hover:border-black/30 text-zinc-800'
-                    : 'border-white/15 bg-white/5 hover:bg-white/10 hover:border-white/35 text-white/70 hover:text-white'
+                    ? 'border-black/20 bg-transparent hover:bg-black/5 hover:border-black/40 text-zinc-800 hover:text-zinc-950'
+                    : 'border-white/20 bg-transparent hover:bg-white/10 hover:border-white/40 text-white/80 hover:text-white'
                 }`}
               >
                 <span>{t('hero_demo')}</span>
