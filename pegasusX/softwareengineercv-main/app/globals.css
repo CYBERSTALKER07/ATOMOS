@@ -313,8 +313,8 @@ h3,
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  border: 1px solid #E2FD52;
-  background: #E2FD52;
+  border: 1px solid #ffffff;
+  background: #ffffff;
   color: #000 !important;
   min-height: 2.5rem;
   padding: 0.75rem 1.25rem;
@@ -323,8 +323,8 @@ h3,
 .editorial-card__cta .editorial-btn:hover,
 .editorial-card__cta .editorial-btn:focus-visible,
 .editorial-card--interactive:hover .editorial-card__cta .editorial-btn {
-  background: #CEFF00 !important;
-  border-color: #CEFF00 !important;
+  background: #e4e4e7 !important;
+  border-color: #e4e4e7 !important;
   color: #000 !important;
 }
 

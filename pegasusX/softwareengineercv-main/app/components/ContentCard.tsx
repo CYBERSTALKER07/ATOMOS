@@ -50,7 +50,7 @@ export function ContentCardButton({
   className?: string;
   inverted?: boolean;
 }) {
-  const classes = `editorial-btn bg-[#E2FD52] hover:bg-[#CEFF00] text-black font-bold border border-[#E2FD52] ${className}`;
+  const classes = `editorial-btn bg-white hover:bg-zinc-200 text-black font-bold border border-white ${className}`;
   if (href) {
     return (
       <Link href={href as Route} prefetch={false} className={classes}>
