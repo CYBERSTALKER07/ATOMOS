@@ -269,12 +269,12 @@ h3,
 }
 
 .editorial-tag {
-  color: #18A049;
+  color: #9ca3af;
   margin: 0 0 1rem;
 }
 
 .editorial-eyebrow {
-  color: #18A049;
+  color: #9ca3af;
   opacity: 0.85;
   margin: 0 0 1.25rem;
 }
@@ -283,7 +283,7 @@ h3,
 .editorial-card--light .editorial-eyebrow,
 .editorial-card--featured .editorial-tag,
 .editorial-card--featured .editorial-eyebrow {
-  color: #18A049;
+  color: #9ca3af;
 }
 
 .editorial-card__title {
@@ -1466,7 +1466,7 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
 .editorial-card--featured {
   background: #000;
   color: #fff;
-  border-color: rgba(24, 160, 73, 0.4);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .editorial-card--light .editorial-card__description,

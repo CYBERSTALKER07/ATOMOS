@@ -25,7 +25,7 @@ export function ContentCardTag({
   className?: string;
 }) {
   return (
-    <p className={`editorial-tag text-[#18A049] font-mono ${className}`}>{formatTag(children)}</p>
+    <p className={`editorial-tag font-mono ${className}`}>{formatTag(children)}</p>
   );
 }
 
@@ -36,7 +36,7 @@ export function ContentCardEyebrow({
   children: string;
   className?: string;
 }) {
-  return <p className={`editorial-eyebrow text-[#18A049]/90 font-mono ${className}`}>{children}</p>;
+  return <p className={`editorial-eyebrow font-mono ${className}`}>{children}</p>;
 }
 
 export function ContentCardButton({
