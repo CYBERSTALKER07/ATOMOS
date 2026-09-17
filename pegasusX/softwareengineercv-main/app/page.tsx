@@ -127,8 +127,8 @@ export default async function Home() {
         </section>
 
         <section id="section-workflow">
-          {/* <EcosystemStats /> - hidden: Optimized for the entire chain replaced with dither animation */}
-          <EcosystemDitherSection />
+          {/* <EcosystemStats /> - hidden: Optimized for the entire chain */}
+          {/* <EcosystemDitherSection /> - hidden for now */}
           <LogisticsWorkflow />
           <OurApproach />
           <Skills />
