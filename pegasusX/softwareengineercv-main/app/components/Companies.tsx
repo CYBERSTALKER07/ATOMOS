@@ -48,11 +48,11 @@ function useElementWidth<T extends HTMLElement>(ref: React.RefObject<T | null>):
 
 const CompanyCard = ({ company }: { company: Company }) => (
   <div className="inline-block mx-4">
-    <div className="bg-white text-black border-2 border-black rounded-2xl p-4 sm:p-6 min-w-[280px] sm:min-w-[350px] transition-all duration-300 group company-card hover-green">
+    <div className="bg-white text-black border-2 border-black rounded-none p-4 sm:p-6 min-w-[280px] sm:min-w-[350px] transition-all duration-300 group company-card hover-green">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
-          <div className="w-12 h-12 bg-black group-hover:bg-white rounded-xl flex items-center justify-center border-2 border-black transition-all duration-300">
+          <div className="w-12 h-12 bg-black group-hover:bg-white rounded-none flex items-center justify-center border-2 border-black transition-all duration-300">
             <span className={`font-black text-white group-hover:text-black transition-colors duration-300 ${company.logoStyle || 'text-xl'}`}>
               {company.logo}
             </span>
@@ -69,7 +69,7 @@ const CompanyCard = ({ company }: { company: Company }) => (
       </p>
       
       <div className="flex items-center justify-between gap-2">
-        <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-light rounded-xl border-2 border-black transition-all duration-300">
+        <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-light rounded-none border-2 border-black transition-all duration-300">
           {company.badge}
         </span>
         <span className="text-xs text-gray-500 group-hover:text-black/70 transition-colors duration-300">
