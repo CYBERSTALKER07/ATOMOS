@@ -21,7 +21,7 @@ export default function CookieSettingsTrigger({
       <button
         type="button"
         onClick={openModal}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono uppercase tracking-wider transition-colors border-black/10 hover:border-black/30 dark:border-white/10 dark:hover:border-white/30 text-zinc-700 dark:text-white/70 hover:text-black dark:hover:text-white ${className}`}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-none border text-xs font-mono uppercase tracking-wider transition-colors border-black/10 hover:border-black/30 dark:border-white/10 dark:hover:border-white/30 text-zinc-700 dark:text-white/70 hover:text-black dark:hover:text-white ${className}`}
       >
         <Cookie className="w-3.5 h-3.5" />
         <span>{isRu ? 'Настройки cookie' : 'Cookie Preferences'}</span>

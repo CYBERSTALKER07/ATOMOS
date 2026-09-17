@@ -6,9 +6,9 @@ function DeviceVisual({ labels }: { labels: string[] }) {
   return (
     <div className="w-full max-w-md border border-white/20 bg-black p-4">
       <div className="mb-3 flex gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-white/30" />
-        <span className="h-2 w-2 rounded-full bg-white/30" />
-        <span className="h-2 w-2 rounded-full bg-white/30" />
+        <span className="h-2 w-2 rounded-none bg-white/30" />
+        <span className="h-2 w-2 rounded-none bg-white/30" />
+        <span className="h-2 w-2 rounded-none bg-white/30" />
       </div>
       <div className="grid grid-cols-3 gap-2">
         {labels.map((l) => (

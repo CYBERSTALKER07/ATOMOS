@@ -27,14 +27,14 @@ export default function DocsHeader({
         <div className="flex items-center space-x-3 sm:space-x-4">
           <button
             onClick={onToggleMobileSidebar}
-            className="lg:hidden p-2 -ml-2 rounded-lg text-[#8E8EA0] hover:text-white hover:bg-[#161622] transition-colors"
+            className="lg:hidden p-2 -ml-2 rounded-none text-[#8E8EA0] hover:text-white hover:bg-[#161622] transition-colors"
             aria-label="Toggle Navigation Sidebar"
           >
             <Menu className="w-5 h-5" />
           </button>
 
           <Link href="/docs" className="flex items-center space-x-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-[#3B82F6]/40 group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-none bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-[#3B82F6]/40 group-hover:scale-105 transition-transform">
               <Terminal className="w-4 h-4 text-white" />
             </div>
             <div className="flex items-center space-x-1.5">
@@ -79,22 +79,22 @@ export default function DocsHeader({
           {/* Search Trigger Bar (styled like Primer search) */}
           <button
             onClick={onOpenSearch}
-            className="flex items-center justify-between w-40 sm:w-64 h-9 px-3 rounded-lg bg-[#12121A] border border-[#262638] text-xs text-[#8E8EA0] hover:border-[#3B82F6]/60 hover:text-white transition-all shadow-inner group"
+            className="flex items-center justify-between w-40 sm:w-64 h-9 px-3 rounded-none bg-[#12121A] border border-[#262638] text-xs text-[#8E8EA0] hover:border-[#3B82F6]/60 hover:text-white transition-all shadow-inner group"
           >
             <div className="flex items-center space-x-2 truncate">
               <Search className="w-3.5 h-3.5 text-[#6E6E82] group-hover:text-[#3B82F6] transition-colors" />
               <span className="truncate">Search Docs...</span>
             </div>
-            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-[#7E7E94] bg-[#1A1A26] border border-[#2B2B3D] rounded">
+            <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-[#7E7E94] bg-[#1A1A26] border border-[#2B2B3D] rounded-none">
               ⌘K
             </kbd>
           </button>
 
           {/* Language Switcher */}
-          <div className="flex items-center rounded-lg bg-[#12121A] border border-[#262638] p-0.5 text-xs font-mono">
+          <div className="flex items-center rounded-none bg-[#12121A] border border-[#262638] p-0.5 text-xs font-mono">
             <button
               onClick={() => setLanguage('en')}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded-none transition-colors ${
                 language === 'en' ? 'bg-[#2563EB] text-white font-semibold' : 'text-[#8E8EA0] hover:text-white'
               }`}
             >
@@ -102,7 +102,7 @@ export default function DocsHeader({
             </button>
             <button
               onClick={() => setLanguage('ru')}
-              className={`px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded-none transition-colors ${
                 language === 'ru' ? 'bg-[#2563EB] text-white font-semibold' : 'text-[#8E8EA0] hover:text-white'
               }`}
             >

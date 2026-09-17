@@ -61,7 +61,7 @@ export default function DocsRelatedTopics({
             <Link
               key={idx}
               href={`/docs/${topic.categoryId}/${topic.slug}`}
-              className="group relative p-5 rounded-2xl bg-[#0E0E15] border border-[#222234] hover:border-[#3B82F6]/60 hover:bg-[#11111C] transition-all duration-200 flex flex-col justify-between shadow-sm hover:shadow-[0_4px_20px_rgba(37,99,235,0.15)]"
+              className="group relative p-5 rounded-none bg-[#0E0E15] border border-[#222234] hover:border-[#3B82F6]/60 hover:bg-[#11111C] transition-all duration-200 flex flex-col justify-between shadow-sm hover:shadow-[0_4px_20px_rgba(37,99,235,0.15)]"
             >
               <div>
                 {/* Category & Badge */}
@@ -69,7 +69,7 @@ export default function DocsRelatedTopics({
                   <span className="text-[10px] font-mono uppercase tracking-wider text-[#717185]">
                     {topic.category}
                   </span>
-                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-semibold ${badgeCls}`}>
+                  <span className={`text-[9px] font-mono px-2 py-0.5 rounded-none border font-semibold ${badgeCls}`}>
                     {topic.badge}
                   </span>
                 </div>
@@ -100,7 +100,7 @@ export default function DocsRelatedTopics({
         {prevArticle ? (
           <Link
             href={`/docs/${prevItem!.category}/${prevItem!.slug}`}
-            className="flex items-center space-x-3 p-4 rounded-xl border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
+            className="flex items-center space-x-3 p-4 rounded-none border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
           >
             <ArrowLeft className="w-4 h-4 text-[#7E7E94] group-hover:text-white group-hover:-translate-x-1 transition-all shrink-0" />
             <div className="min-w-0">
@@ -119,7 +119,7 @@ export default function DocsRelatedTopics({
         {nextArticle && (
           <Link
             href={`/docs/${nextItem!.category}/${nextItem!.slug}`}
-            className="flex items-center justify-end text-right space-x-3 p-4 rounded-xl border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
+            className="flex items-center justify-end text-right space-x-3 p-4 rounded-none border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
           >
             <div className="min-w-0">
               <span className="text-[10px] font-mono uppercase tracking-wider text-[#68687A] block">

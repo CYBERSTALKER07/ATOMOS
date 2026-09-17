@@ -146,7 +146,7 @@ export default function CookiePreferenceModal() {
       className="fixed inset-0 z-[10006] flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        className={`w-full max-w-3xl my-auto rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200 ${
+        className={`w-full max-w-3xl my-auto rounded-none border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200 ${
           isLight
             ? 'bg-white border-black/10 text-zinc-900 shadow-[0_24px_64px_rgba(0,0,0,0.18)]'
             : 'bg-[#0E0E14] border-white/15 text-white shadow-[0_24px_64px_rgba(0,0,0,0.9)]'
@@ -160,7 +160,7 @@ export default function CookiePreferenceModal() {
         >
           <div className="flex items-center gap-3">
             <div
-              className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
+              className={`w-9 h-9 rounded-none flex items-center justify-center border ${
                 isLight ? 'bg-white border-black/10 text-zinc-800' : 'bg-white/5 border-white/15 text-white'
               }`}
             >
@@ -185,7 +185,7 @@ export default function CookiePreferenceModal() {
             type="button"
             onClick={closeModal}
             aria-label={isRu ? 'Закрыть' : 'Close'}
-            className={`p-2 rounded-lg border transition-colors ${
+            className={`p-2 rounded-none border transition-colors ${
               isLight
                 ? 'border-black/10 hover:bg-black/5 text-zinc-700'
                 : 'border-white/10 hover:bg-white/10 text-white/70 hover:text-white'
@@ -199,7 +199,7 @@ export default function CookiePreferenceModal() {
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {/* GPC Alert if active */}
           {isGPC && (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+            <div className="p-3.5 rounded-none bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
               <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                 <strong>{isRu ? 'Обнаружен сигнал GPC' : 'Global Privacy Control (GPC) Active'}:</strong>{' '}
@@ -228,7 +228,7 @@ export default function CookiePreferenceModal() {
               return (
                 <div
                   key={card.key}
-                  className={`border rounded-xl p-4 transition-all duration-200 ${
+                  className={`border rounded-none p-4 transition-all duration-200 ${
                     isLight
                       ? 'border-black/10 bg-zinc-50/70 hover:border-black/20'
                       : 'border-white/10 bg-[#12121A]/80 hover:border-white/20'
@@ -237,7 +237,7 @@ export default function CookiePreferenceModal() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                        className={`w-7 h-7 rounded-none flex items-center justify-center shrink-0 mt-0.5 ${
                           isLight ? 'bg-black/5 text-zinc-700' : 'bg-white/5 text-white/80'
                         }`}
                       >
@@ -249,12 +249,12 @@ export default function CookiePreferenceModal() {
                             {isRu ? card.titleRu : card.titleEn}
                           </span>
                           {card.isMandatory && (
-                            <span className="px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-[#8DDC96]">
+                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-[#8DDC96]">
                               {isRu ? 'ОБЯЗАТЕЛЬНО' : 'ALWAYS ACTIVE'}
                             </span>
                           )}
                           {card.key === 'marketing' && isGPC && (
-                            <span className="px-2 py-0.5 rounded text-[9px] font-mono uppercase tracking-wider font-bold bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
                               LOCKED BY GPC
                             </span>
                           )}
@@ -317,7 +317,7 @@ export default function CookiePreferenceModal() {
                       {matchingCookies.map((c) => (
                         <div
                           key={c.name}
-                          className={`p-2.5 rounded-lg text-xs font-mono border ${
+                          className={`p-2.5 rounded-none text-xs font-mono border ${
                             isLight
                               ? 'bg-white border-black/5 text-zinc-800'
                               : 'bg-black/40 border-white/5 text-white/80'
@@ -365,7 +365,7 @@ export default function CookiePreferenceModal() {
             <button
               type="button"
               onClick={rejectNonEssential}
-              className={`px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider border transition-all ${
+              className={`px-4 py-2 rounded-none text-xs font-mono uppercase tracking-wider border transition-all ${
                 isLight
                   ? 'border-black/20 bg-white hover:bg-zinc-100 text-zinc-800'
                   : 'border-white/20 bg-transparent hover:bg-white/10 text-white/80 hover:text-white'
@@ -377,7 +377,7 @@ export default function CookiePreferenceModal() {
             <button
               type="button"
               onClick={handleSave}
-              className={`px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider font-semibold border transition-all ${
+              className={`px-4 py-2 rounded-none text-xs font-mono uppercase tracking-wider font-semibold border transition-all ${
                 isLight
                   ? 'bg-zinc-900 text-white hover:bg-black border-zinc-900'
                   : 'bg-white/15 hover:bg-white/25 text-white border-white/20'
@@ -389,7 +389,7 @@ export default function CookiePreferenceModal() {
             <button
               type="button"
               onClick={acceptAll}
-              className={`px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider font-semibold transition-all shadow-md ${
+              className={`px-4 py-2 rounded-none text-xs font-mono uppercase tracking-wider font-semibold transition-all shadow-md ${
                 isLight
                   ? 'bg-black text-white hover:bg-zinc-800 border border-black'
                   : 'bg-white text-black hover:bg-zinc-200 border border-white'

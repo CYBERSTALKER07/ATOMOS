@@ -41,7 +41,7 @@ export default async function AlternativesPage() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
         {/* Header */}
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <Cpu className="w-3.5 h-3.5 text-white" />
             {isRu ? 'Руководство покупателя TMS 2026' : '2026 TMS Evaluation Guide'}
           </div>
@@ -57,8 +57,8 @@ export default async function AlternativesPage() {
 
         {/* Evaluation Pillars */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
+          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
@@ -71,8 +71,8 @@ export default async function AlternativesPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
+          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
               <RefreshCw className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
@@ -85,8 +85,8 @@ export default async function AlternativesPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-xl bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center mb-4">
+          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
@@ -123,7 +123,7 @@ export default async function AlternativesPage() {
             {COMPETITORS_DATA.map((competitor) => (
               <article
                 key={competitor.slug}
-                className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
+                className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-4 mb-4">
@@ -135,7 +135,7 @@ export default async function AlternativesPage() {
                         {competitor.name}
                       </h3>
                     </div>
-                    <span className="text-xs font-mono px-2.5 py-1 rounded bg-white/5 border border-white/10 text-white/80">
+                    <span className="text-xs font-mono px-2.5 py-1 rounded-none bg-white/5 border border-white/10 text-white/80">
                       {competitor.hardwareRequired ? (isRu ? 'Требует датчики' : 'Hardware required') : (isRu ? 'Только софт' : 'Software-first')}
                     </span>
                   </div>
@@ -176,7 +176,7 @@ export default async function AlternativesPage() {
                     </Link>
                     <Link
                       href={`/alternatives/${competitor.slug}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-none bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
                     >
                       <span>{isRu ? 'Полный анализ' : 'Alternative guide'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -199,7 +199,7 @@ export default async function AlternativesPage() {
             </p>
           </div>
 
-          <div className="overflow-x-auto border border-white/10 rounded-xl bg-white/[0.01]">
+          <div className="overflow-x-auto border border-white/10 rounded-none bg-white/[0.01]">
             <table className="w-full text-left text-xs font-mono">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-white/60">
@@ -214,7 +214,7 @@ export default async function AlternativesPage() {
               <tbody className="divide-y divide-white/5 text-white/80">
                 <tr className="bg-white/10 font-bold text-white">
                   <td className="p-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-none bg-emerald-400" />
                     Pegasus TMS
                   </td>
                   <td className="p-4 text-emerald-400">Full (6 roles)</td>
@@ -277,7 +277,7 @@ export default async function AlternativesPage() {
         </section>
 
         {/* CTA */}
-        <div className="mt-24 p-10 rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
+        <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
           <h2 className="text-3xl font-black uppercase tracking-tight text-white">
             {isRu ? 'Готовы оптимизировать диспетчеризацию?' : 'Ready to upgrade your logistics operations?'}
           </h2>
@@ -289,13 +289,13 @@ export default async function AlternativesPage() {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               {isRu ? 'Запросить демо' : 'Request Live Demo'}
             </Link>
             <Link
               href="/platform"
-              className="px-6 py-3 rounded-lg bg-white/10 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/15 transition-colors border border-white/20"
+              className="px-6 py-3 rounded-none bg-white/10 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/15 transition-colors border border-white/20"
             >
               {isRu ? 'Обзор платформы' : 'Explore Platform'}
             </Link>

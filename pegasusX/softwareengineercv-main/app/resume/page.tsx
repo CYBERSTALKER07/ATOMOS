@@ -115,7 +115,7 @@ export default function ResumePage() {
       <div className="min-h-screen bg-white text-black py-12 px-4">
         <div
           ref={resumeRef}
-          className="resume-container max-w-4xl mx-auto bg-white p-8 md:p-16 shadow-2xl rounded-2xl"
+          className="resume-container max-w-4xl mx-auto bg-white p-8 md:p-16 shadow-2xl rounded-none"
         >
           {/* Header Section */}
           <div className="text-center mb-12 print-section border-b-2 border-black pb-8">
@@ -244,7 +244,7 @@ export default function ResumePage() {
                 { lang: 'Professional', level: 'Multi-site + payments' },
                 { lang: 'Enterprise', level: 'Full network + SLA' },
               ].map((item, idx) => (
-                <div key={idx} className="text-center p-4 border-2 border-black rounded-xl hover:bg-black hover:text-white transition-all duration-300">
+                <div key={idx} className="text-center p-4 border-2 border-black rounded-none hover:bg-black hover:text-white transition-all duration-300">
                   <p className="font-light text-lg">{item.lang}</p>
                   <p className="text-sm opacity-80">{item.level}</p>
                 </div>

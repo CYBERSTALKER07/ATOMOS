@@ -71,7 +71,7 @@ export default async function MarketsHubPage() {
 
         {/* Hero */}
         <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <Globe2 className="w-3.5 h-3.5 text-blue-400" />
             <span>Worldwide Coverage · 16 Strategic Corridors</span>
           </div>
@@ -87,14 +87,14 @@ export default async function MarketsHubPage() {
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
+              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
             >
               <span>Request Regional Deployment Demo</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/global-logistics"
-              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Global Architecture Overview
             </Link>
@@ -103,28 +103,28 @@ export default async function MarketsHubPage() {
 
         {/* Regional Cell Clusters Summary */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
             <span className="text-[10px] font-mono uppercase tracking-widest text-blue-400 block mb-1">
               Americas
             </span>
             <span className="text-lg font-bold text-white block">cell-us & cell-latam</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 15ms continental</span>
           </div>
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
             <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 block mb-1">
               Europe
             </span>
             <span className="text-lg font-bold text-white block">cell-eu (Frankfurt/Paris/London)</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 8ms DACH / EU</span>
           </div>
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
             <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 block mb-1">
               Middle East & Eurasia
             </span>
             <span className="text-lg font-bold text-white block">cell-me & cell-tr</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 12ms GCC & Eurasia</span>
           </div>
-          <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
             <span className="text-[10px] font-mono uppercase tracking-widest text-purple-400 block mb-1">
               Asia & Silk Road
             </span>
@@ -152,7 +152,7 @@ export default async function MarketsHubPage() {
               <Link
                 key={market.slug}
                 href={`/markets/${market.slug}`}
-                className="p-6 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/25 hover:bg-white/[0.04] transition-all flex flex-col justify-between group"
+                className="p-6 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/25 hover:bg-white/[0.04] transition-all flex flex-col justify-between group"
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -177,7 +177,7 @@ export default async function MarketsHubPage() {
                     {market.complianceFrameworks.slice(0, 2).map((comp, idx) => (
                       <span
                         key={idx}
-                        className="px-2 py-0.5 rounded bg-white/5 text-[10px] font-mono text-white/60"
+                        className="px-2 py-0.5 rounded-none bg-white/5 text-[10px] font-mono text-white/60"
                       >
                         {comp}
                       </span>
@@ -197,7 +197,7 @@ export default async function MarketsHubPage() {
         </section>
 
         {/* Bottom CTA */}
-        <section className="mt-24 p-10 sm:p-14 rounded-3xl bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
+        <section className="mt-24 p-10 sm:p-14 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
           <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white">
             Need a Sovereign Cluster in Your Region?
           </h2>
@@ -207,13 +207,13 @@ export default async function MarketsHubPage() {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/join"
-              className="px-8 py-4 rounded-xl bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
+              className="px-8 py-4 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
             >
               Request Sovereign Deployment
             </Link>
             <Link
               href="/contact"
-              className="px-8 py-4 rounded-xl bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-8 py-4 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Contact Global Infrastructure Team
             </Link>

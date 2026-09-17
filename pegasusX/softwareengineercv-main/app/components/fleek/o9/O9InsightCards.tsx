@@ -78,30 +78,30 @@ function ArchitectureFlowDiagram({ isRu, isLight }: { isRu: boolean; isLight: bo
         />
       </svg>
 
-      {/* Node 1: Supply Chain (stays high-contrast black badge in both modes matching reference) */}
+      {/* Node 1: Supply Chain */}
       <div className="absolute left-[24px] top-[88px] z-10">
-        <div className="px-3 py-1.5 rounded-md bg-black/90 border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
+        <div className="px-3 py-1.5 rounded-none bg-black border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
           {isRu ? 'Цепь поставок' : 'Supply Chain'}
         </div>
       </div>
 
       {/* Center Monochrome Node */}
       <div className="absolute left-[160px] top-[24px] -translate-x-1/2 z-10">
-        <div className="w-10 h-10 rounded-full bg-white dark:bg-black border border-black dark:border-white flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.25)]">
+        <div className="w-10 h-10 rounded-none bg-white dark:bg-black border border-black dark:border-white flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_20px_rgba(255,255,255,0.25)]">
           <span className="font-mono text-sm font-bold text-black dark:text-white leading-none select-none">&gt;_</span>
         </div>
       </div>
 
       {/* Node 2: Finance */}
       <div className="absolute right-[44px] top-[74px] z-10">
-        <div className="px-3 py-1.5 rounded-md bg-black/90 border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
+        <div className="px-3 py-1.5 rounded-none bg-black border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
           {isRu ? 'Финансы' : 'Finance'}
         </div>
       </div>
 
       {/* Node 3: Customer Ops */}
       <div className="absolute right-[20px] top-[138px] z-10">
-        <div className="px-3 py-1.5 rounded-md bg-black/90 border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
+        <div className="px-3 py-1.5 rounded-none bg-black border border-white/20 text-white text-[11px] font-semibold tracking-tight shadow-lg whitespace-nowrap">
           {isRu ? 'Операции с клиентами' : 'Customer Ops'}
         </div>
       </div>
@@ -115,12 +115,12 @@ function ArchitectureFlowDiagram({ isRu, isLight }: { isRu: boolean; isLight: bo
    ========================================================================= */
 function AgentStackVisual({ isRu, isLight }: { isRu: boolean; isLight: boolean }) {
   const cardCls = isLight
-    ? 'bg-white border border-black/10 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-black/25 transition-colors group'
-    : 'bg-[#14141F] border border-white/10 rounded-xl px-3.5 py-2.5 flex items-center gap-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:border-white/30 transition-colors group';
+    ? 'bg-white border border-black/15 rounded-none px-3.5 py-2.5 flex items-center gap-3 shadow-sm hover:border-black/40 transition-colors group'
+    : 'bg-black border border-white/15 rounded-none px-3.5 py-2.5 flex items-center gap-3 shadow-md hover:border-white/40 transition-colors group';
 
   const iconCls2 = isLight
-    ? 'w-7 h-7 rounded-lg bg-black/5 border border-black/10 flex items-center justify-center text-zinc-700 shrink-0'
-    : 'w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/80 shrink-0';
+    ? 'w-7 h-7 rounded-none bg-black/5 border border-black/10 flex items-center justify-center text-zinc-900 shrink-0'
+    : 'w-7 h-7 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0';
 
   const textCls = isLight
     ? 'text-xs font-medium text-zinc-800 group-hover:text-black'
@@ -168,9 +168,9 @@ function AgentStackVisual({ isRu, isLight }: { isRu: boolean; isLight: boolean }
 function OutcomeMetricVisual({ isRu }: { isRu: boolean }) {
   return (
     <div className="w-full max-w-[260px] mx-auto select-none">
-      <div className="bg-black border border-white/20 rounded-xl px-5 py-4 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.6)] relative overflow-hidden group hover:border-white/30 transition-all">
+      <div className="bg-black border border-white/20 rounded-none px-5 py-4 flex items-center justify-between shadow-[0_8px_32px_rgba(0,0,0,0.6)] relative overflow-hidden group hover:border-white/30 transition-all">
         {/* Ambient subtle monochrome glow */}
-        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-none blur-2xl pointer-events-none" />
 
         <span className="text-xs font-mono font-medium tracking-wider uppercase text-white/60">
           {isRu ? 'Валовая маржа' : 'Gross Margin'}
@@ -222,7 +222,7 @@ export default function O9InsightCards({
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/capabilities/payment-confidence"
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-lg transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-none transition-all ${
                 isLight
                   ? 'text-zinc-800 bg-white border border-black/10 hover:border-black/25 hover:bg-zinc-50 shadow-sm'
                   : 'text-white/80 bg-[#121218] border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
@@ -233,7 +233,7 @@ export default function O9InsightCards({
             </Link>
             <Link
               href="/solutions"
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-lg transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-none transition-all ${
                 isLight
                   ? 'text-zinc-800 bg-white border border-black/10 hover:border-black/25 hover:bg-zinc-50 shadow-sm'
                   : 'text-white/80 bg-[#121218] border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
@@ -249,12 +249,12 @@ export default function O9InsightCards({
       {/* 3-Column Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {/* Column 1: Connected Flow Diagram */}
-        <article className={`border rounded-2xl p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
+        <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
             : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
         }`}>
-          <div className={`rounded-xl p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
+          <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
             isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
           }`}>
             <ArchitectureFlowDiagram isRu={isRu} isLight={isLight} />
@@ -274,12 +274,12 @@ export default function O9InsightCards({
         </article>
 
         {/* Column 2: Stacked AI Agents */}
-        <article className={`border rounded-2xl p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
+        <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
             : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
         }`}>
-          <div className={`rounded-xl p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
+          <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
             isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
           }`}>
             <AgentStackVisual isRu={isRu} isLight={isLight} />
@@ -299,12 +299,12 @@ export default function O9InsightCards({
         </article>
 
         {/* Column 3: Outcomes KPI Metric */}
-        <article className={`border rounded-2xl p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
+        <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
             : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
         }`}>
-          <div className={`rounded-xl p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
+          <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
             isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
           }`}>
             <OutcomeMetricVisual isRu={isRu} />

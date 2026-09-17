@@ -108,7 +108,7 @@ export default async function LogisticsAutomationPage() {
 
         {/* Hero Section */}
         <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <Zap className="w-3.5 h-3.5 text-amber-400" />
             <span>Algorithmic Fleet & Yard Orchestration</span>
           </div>
@@ -124,14 +124,14 @@ export default async function LogisticsAutomationPage() {
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
+              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
             >
               <span>See Automation in Action</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/capabilities/smarter-dispatch"
-              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Dispatch Optimization Guide
             </Link>
@@ -140,7 +140,7 @@ export default async function LogisticsAutomationPage() {
 
         {/* Benchmarks / ROI Bar */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 text-center">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
             <span className="text-4xl sm:text-5xl font-black text-amber-400 font-mono block">
               42%
             </span>
@@ -148,7 +148,7 @@ export default async function LogisticsAutomationPage() {
               Reduction in Dispatch Prep Time
             </span>
           </div>
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 text-center">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
             <span className="text-4xl sm:text-5xl font-black text-emerald-400 font-mono block">
               19%
             </span>
@@ -156,7 +156,7 @@ export default async function LogisticsAutomationPage() {
               Fuel Savings via CVRP Routing
             </span>
           </div>
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 text-center">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
             <span className="text-4xl sm:text-5xl font-black text-blue-400 font-mono block">
               &lt; 100ms
             </span>
@@ -181,8 +181,8 @@ export default async function LogisticsAutomationPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
                 <Route className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -193,8 +193,8 @@ export default async function LogisticsAutomationPage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
                 <ScanLine className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -205,8 +205,8 @@ export default async function LogisticsAutomationPage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -217,8 +217,8 @@ export default async function LogisticsAutomationPage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -229,8 +229,8 @@ export default async function LogisticsAutomationPage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
                 <Receipt className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -241,8 +241,8 @@ export default async function LogisticsAutomationPage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
                 <RefreshCw className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -270,7 +270,7 @@ export default async function LogisticsAutomationPage() {
             {LOGISTICS_AUTOMATION_FAQS.map((faq, idx) => (
               <div
                 key={idx}
-                className="p-6 sm:p-8 rounded-2xl bg-white/[0.02] border border-white/10"
+                className="p-6 sm:p-8 rounded-none bg-white/[0.02] border border-white/10"
               >
                 <h3 className="text-lg font-bold text-white mb-3">
                   {faq.question}
@@ -284,7 +284,7 @@ export default async function LogisticsAutomationPage() {
         </section>
 
         {/* Bottom CTA */}
-        <section className="mt-24 p-10 sm:p-14 rounded-3xl bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
+        <section className="mt-24 p-10 sm:p-14 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
           <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white">
             Automate Your Logistics Operations Today
           </h2>
@@ -294,13 +294,13 @@ export default async function LogisticsAutomationPage() {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/join"
-              className="px-8 py-4 rounded-xl bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
+              className="px-8 py-4 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
             >
               Request Live Automation Demo
             </Link>
             <Link
               href="/contact"
-              className="px-8 py-4 rounded-xl bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-8 py-4 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Talk with an Automation Engineer
             </Link>

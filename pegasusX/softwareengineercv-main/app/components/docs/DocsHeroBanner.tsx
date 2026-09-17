@@ -14,11 +14,11 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
   return (
     <div className="space-y-6">
       {/* Signature 3D Hero Card Banner (Replicating Primer Brand layout in Tactical Dark Aesthetic) */}
-      <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-br from-[#0D0D14] via-[#11111B] to-[#141828] border border-[#222234] shadow-[0_8px_32px_rgba(0,0,0,0.6)] min-h-[260px] sm:min-h-[320px] flex items-center justify-between p-8 sm:p-12 lg:p-14">
+      <div className="relative w-full rounded-none overflow-hidden bg-gradient-to-br from-[#0D0D14] via-[#11111B] to-[#141828] border border-[#222234] shadow-[0_8px_32px_rgba(0,0,0,0.6)] min-h-[260px] sm:min-h-[320px] flex items-center justify-between p-8 sm:p-12 lg:p-14">
         {/* Ambient Glows */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 right-1/4 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-600/15 rounded-none blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 right-1/4 w-80 h-80 bg-cyan-500/10 rounded-none blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-none blur-3xl pointer-events-none" />
 
         {/* Tactical Grid Coordinates Overlay */}
         <div
@@ -32,8 +32,8 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
         {/* Left: Giant Bold Typography Wordmark */}
         <div className="relative z-10 max-w-xl">
           {article.badge && (
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-[#181826] border border-[#2F2F44] text-[11px] font-mono font-medium text-[#93C5FD] mb-4 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-none bg-[#181826] border border-[#2F2F44] text-[11px] font-mono font-medium text-[#93C5FD] mb-4 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-none bg-blue-400 animate-pulse" />
               <span>{article.badge}</span>
             </div>
           )}
@@ -53,11 +53,11 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
         {/* Right: Abstract 3D Luminous Sphere with Orbitals */}
         <div className="hidden md:flex relative z-10 w-64 h-64 lg:w-80 lg:h-80 shrink-0 items-center justify-center">
           {/* Outer Ring */}
-          <div className="absolute w-60 h-60 lg:w-72 lg:h-72 rounded-full border border-cyan-500/20 animate-[spin_60s_linear_infinite]" />
-          <div className="absolute w-48 h-48 lg:w-56 lg:h-56 rounded-full border border-dashed border-blue-400/25 animate-[spin_40s_linear_infinite_reverse]" />
+          <div className="absolute w-60 h-60 lg:w-72 lg:h-72 rounded-none border border-cyan-500/20 animate-[spin_60s_linear_infinite]" />
+          <div className="absolute w-48 h-48 lg:w-56 lg:h-56 rounded-none border border-dashed border-blue-400/25 animate-[spin_40s_linear_infinite_reverse]" />
 
           {/* Glowing 3D Orb */}
-          <div className="relative w-40 h-40 lg:w-48 lg:h-48 rounded-full bg-gradient-to-tr from-[#1E3A8A] via-[#0284C7] to-[#34D399] shadow-[0_0_60px_rgba(2,132,199,0.45)] border border-white/20 flex items-center justify-center overflow-hidden">
+          <div className="relative w-40 h-40 lg:w-48 lg:h-48 rounded-none bg-gradient-to-tr from-[#1E3A8A] via-[#0284C7] to-[#34D399] shadow-[0_0_60px_rgba(2,132,199,0.45)] border border-white/20 flex items-center justify-center overflow-hidden">
             {/* Curving 3D highlight contour lines */}
             <div className="absolute -inset-10 opacity-40 mix-blend-overlay bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white via-transparent to-black" />
             <svg
@@ -72,7 +72,7 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
               <ellipse cx="50" cy="50" rx="45" ry="42" transform="rotate(-25 50 50)" />
               <line x1="10" y1="10" x2="90" y2="90" strokeDasharray="2,2" />
             </svg>
-            <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/30 shadow-inner flex items-center justify-center">
+            <div className="w-16 h-16 rounded-none bg-white/10 backdrop-blur-md border border-white/30 shadow-inner flex items-center justify-center">
               <Sparkles className="w-7 h-7 text-white drop-shadow" />
             </div>
           </div>

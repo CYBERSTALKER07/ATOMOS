@@ -87,7 +87,7 @@ export default async function HeadToHeadComparePage({
 
         {/* Hero */}
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <ArrowLeftRight className="w-3.5 h-3.5 text-white" />
             {isRu ? 'Сравнение лицом к лицу' : 'Direct Comparison'}
           </div>
@@ -104,7 +104,7 @@ export default async function HeadToHeadComparePage({
         </div>
 
         {/* TL;DR */}
-        <section className="mt-14 p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+        <section className="mt-14 p-8 rounded-none bg-white/[0.02] border border-white/10">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-white/50 mb-3">
             <Layers className="w-4 h-4 text-white" />
             <span>At-a-Glance Verdict</span>
@@ -118,7 +118,7 @@ export default async function HeadToHeadComparePage({
 
         {/* Side by side overview */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-8 rounded-2xl bg-white/[0.04] border border-white/20">
+          <div className="p-8 rounded-none bg-white/[0.04] border border-white/20">
             <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest block mb-2">
               The Sovereign Solution
             </span>
@@ -143,7 +143,7 @@ export default async function HeadToHeadComparePage({
             </ul>
           </div>
 
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
             <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest block mb-2">
               Industry Incumbent
             </span>
@@ -173,7 +173,7 @@ export default async function HeadToHeadComparePage({
             </h2>
 
             {/* Category 1: Hardware & Infrastructure */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 mb-6">
               <h3 className="text-lg font-bold uppercase text-white mb-3">1. Hardware & Infrastructure</h3>
               <p className="text-sm text-white/70 font-light leading-relaxed mb-4">
                 <strong>{competitor.name}:</strong> {competitor.hardwareRequired ? 'Relies on proprietary vehicle hardware installations and multi-year lease agreements, making fleet updates capital-intensive.' : 'Cloud-based platform with third-party telematics ingestion.'}
@@ -184,7 +184,7 @@ export default async function HeadToHeadComparePage({
             </div>
 
             {/* Category 2: Operational Breadth */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 mb-6">
               <h3 className="text-lg font-bold uppercase text-white mb-3">2. Multi-Role Ecosystem & Staging</h3>
               <p className="text-sm text-white/70 font-light leading-relaxed mb-4">
                 <strong>{competitor.name}:</strong> Primarily built for {competitor.marketPosition.toLowerCase()}. Lacks synchronized surfaces for warehouse dock staging, factory loading lanes, or security gate terminals.
@@ -195,7 +195,7 @@ export default async function HeadToHeadComparePage({
             </div>
 
             {/* Category 3: Financial Reconciliation */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
               <h3 className="text-lg font-bold uppercase text-white mb-3">3. Payments & Treasury Integrity</h3>
               <p className="text-sm text-white/70 font-light leading-relaxed mb-4">
                 <strong>{competitor.name}:</strong> Financial handling is outside core product scope, requiring separate ERP or accounting reconciliations.
@@ -218,7 +218,7 @@ export default async function HeadToHeadComparePage({
           </h2>
           <div className="space-y-4">
             {competitor.faqs.map((faq, idx) => (
-              <div key={idx} className="p-6 rounded-xl bg-white/[0.02] border border-white/10">
+              <div key={idx} className="p-6 rounded-none bg-white/[0.02] border border-white/10">
                 <h3 className="text-base font-bold text-white mb-2">{faq.question}</h3>
                 <p className="text-sm text-white/70 font-light leading-relaxed">{faq.answer}</p>
               </div>
@@ -227,7 +227,7 @@ export default async function HeadToHeadComparePage({
         </section>
 
         {/* CTA */}
-        <div className="mt-24 p-10 rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
+        <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
           <h2 className="text-3xl font-black uppercase tracking-tight text-white">
             See the Difference in Action
           </h2>
@@ -237,7 +237,7 @@ export default async function HeadToHeadComparePage({
           <div className="mt-8 flex justify-center gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               Request Live Demo
             </Link>

@@ -24,7 +24,7 @@ export default function CookieBanner() {
     >
       <div className="max-w-5xl mx-auto pointer-events-auto">
         <div
-          className={`border p-4 sm:p-6 shadow-2xl rounded-xl sm:rounded-2xl transition-colors duration-200 ${
+          className={`border p-4 sm:p-6 shadow-2xl rounded-none transition-colors duration-200 ${
             isLight
               ? 'bg-white/98 border-black/10 text-zinc-900 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl'
               : 'bg-[#0B0B10]/98 border-white/15 text-white shadow-[0_16px_48px_rgba(0,0,0,0.8)] backdrop-blur-xl'
@@ -34,7 +34,7 @@ export default function CookieBanner() {
             {/* Left Content Area */}
             <div className="flex items-start gap-3.5 flex-1 min-w-0">
               <div
-                className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                className={`w-9 h-9 rounded-none flex items-center justify-center shrink-0 mt-0.5 ${
                   isLight ? 'bg-black/5 text-zinc-900 border border-black/10' : 'bg-white/5 text-white border border-white/15'
                 }`}
               >
@@ -50,7 +50,7 @@ export default function CookieBanner() {
                     [GDPR / ePrivacy / CCPA]
                   </span>
                   {isGPC && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-mono text-[9px] uppercase tracking-wider">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-mono text-[9px] uppercase tracking-wider">
                       <ShieldAlert className="w-2.5 h-2.5" />
                       GPC ACTIVE
                     </span>
@@ -90,7 +90,7 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={openModal}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono uppercase tracking-wider border transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-none text-xs font-mono uppercase tracking-wider border transition-all ${
                   isLight
                     ? 'border-black/15 bg-black/5 hover:bg-black/10 text-zinc-800'
                     : 'border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-white'
@@ -103,7 +103,7 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={rejectNonEssential}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono uppercase tracking-wider border transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-none text-xs font-mono uppercase tracking-wider border transition-all ${
                   isLight
                     ? 'border-black/20 bg-white hover:bg-zinc-100 text-zinc-800'
                     : 'border-white/20 bg-transparent hover:bg-white/10 text-white/90 hover:text-white'
@@ -116,7 +116,7 @@ export default function CookieBanner() {
               <button
                 type="button"
                 onClick={acceptAll}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider font-semibold transition-all shadow-md ${
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-none text-xs font-mono uppercase tracking-wider font-semibold transition-all shadow-md ${
                   isLight
                     ? 'bg-black text-white hover:bg-zinc-800 border border-black'
                     : 'bg-white text-black hover:bg-zinc-200 border border-white'

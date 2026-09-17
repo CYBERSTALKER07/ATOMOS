@@ -153,7 +153,7 @@ export default function StaggeredMenu({
       <div ref={panelRef} className="staggered-menu-panel bg-white">
         <button
           onClick={onClose}
-          className="absolute top-8 right-8 w-10 h-10 rounded-full bg-black flex items-center justify-center text-white hover:scale-110 transition-transform"
+          className="absolute top-8 right-8 w-10 h-10 rounded-none bg-black flex items-center justify-center text-white hover:scale-110 transition-transform"
           aria-label="Close menu"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">

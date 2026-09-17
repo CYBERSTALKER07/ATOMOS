@@ -7,7 +7,7 @@ const deviceVisual = (
     {[1, 2].map((i) => (
       <div
         key={i}
-        className="h-48 w-24 rounded-2xl border-2 border-white/25 bg-black p-2"
+        className="h-48 w-24 rounded-none border-2 border-white/25 bg-black p-2"
       >
         <div className="h-full w-full border border-white/10 bg-[#111]" />
       </div>

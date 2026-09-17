@@ -140,10 +140,10 @@ export default function MessagesPage() {
       {notification && (
         <div 
           ref={notificationRef}
-          className="fixed top-8 right-8 z-50 bg-[#0D0D0D] border-2 border-[#A9EBF9] rounded-2xl p-6 shadow-2xl w-96"
+          className="fixed top-8 right-8 z-50 bg-[#0D0D0D] border-2 border-[#A9EBF9] rounded-none p-6 shadow-2xl w-96"
         >
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-[#A9EBF9] rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-[#A9EBF9] rounded-none flex items-center justify-center flex-shrink-0">
               <span className="text-2xl">💬</span>
             </div>
             <div className="flex-1">
@@ -219,7 +219,7 @@ export default function MessagesPage() {
       {/* Modal */}
       {selectedMsg && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-          <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-none p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-3xl font-light">Message Details</h2>
               <button
@@ -253,7 +253,7 @@ export default function MessagesPage() {
 
               <div>
                 <label className="text-sm text-gray-400 uppercase tracking-wider">Message</label>
-                <p className="text-lg mt-2 leading-relaxed bg-black p-4 rounded-xl border-2 border-white whitespace-pre-wrap">
+                <p className="text-lg mt-2 leading-relaxed bg-black p-4 rounded-none border-2 border-white whitespace-pre-wrap">
                   {selectedMsg.message}
                 </p>
               </div>

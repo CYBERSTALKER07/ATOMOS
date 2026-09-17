@@ -51,22 +51,22 @@ export default function DocsSidebar({ mobileOpen, onCloseMobile }: DocsSidebarPr
         </div>
         <button
           onClick={onCloseMobile}
-          className="p-1 rounded-lg text-[#8E8EA0] hover:text-white hover:bg-[#161622]"
+          className="p-1 rounded-none text-[#8E8EA0] hover:text-white hover:bg-[#161622]"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* System Status Pill */}
-      <div className="px-3 py-2 rounded-xl bg-[#111118] border border-[#22222E] flex items-center justify-between">
+      <div className="px-3 py-2 rounded-none bg-[#111118] border border-[#22222E] flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-none bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-none h-2 w-2 bg-emerald-500"></span>
           </span>
           <span className="text-[11px] font-mono font-medium text-[#B0B0C2]">Pegasus OS v4.2</span>
         </div>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1D1D28] text-emerald-400 border border-emerald-500/20">
+        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-none bg-[#1D1D28] text-emerald-400 border border-emerald-500/20">
           OPERATIONAL
         </span>
       </div>
@@ -90,7 +90,7 @@ export default function DocsSidebar({ mobileOpen, onCloseMobile }: DocsSidebarPr
                 </div>
                 <div className="flex items-center space-x-1.5">
                   {category.badge && (
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#161622] text-[#8E8EA0] border border-[#252535]">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-none bg-[#161622] text-[#8E8EA0] border border-[#252535]">
                       {category.badge}
                     </span>
                   )}
@@ -114,7 +114,7 @@ export default function DocsSidebar({ mobileOpen, onCloseMobile }: DocsSidebarPr
                         key={article.slug}
                         href={href}
                         onClick={onCloseMobile}
-                        className={`group flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-all ${
+                        className={`group flex items-center justify-between px-3 py-2 text-xs rounded-none transition-all ${
                           isActive
                             ? 'bg-[#182038] text-[#60A5FA] font-medium border border-[#2563EB]/40 shadow-sm'
                             : 'text-[#9A9AA8] hover:text-white hover:bg-[#12121A]'
@@ -123,7 +123,7 @@ export default function DocsSidebar({ mobileOpen, onCloseMobile }: DocsSidebarPr
                         <span className="truncate">{article.title}</span>
                         {article.badge && (
                           <span
-                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded shrink-0 ml-2 transition-colors ${
+                            className={`text-[9px] font-mono px-1.5 py-0.2 rounded-none shrink-0 ml-2 transition-colors ${
                               isActive
                                 ? 'bg-[#2563EB]/30 text-[#93C5FD] border border-[#3B82F6]/50'
                                 : 'bg-[#151520] text-[#717182] border border-[#242434] group-hover:text-[#9A9AA8]'

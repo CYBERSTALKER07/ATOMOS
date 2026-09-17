@@ -82,7 +82,7 @@ export default async function CompetitorAlternativePage({
 
         {/* Hero Section */}
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <ArrowLeftRight className="w-3.5 h-3.5 text-white" />
             {isRu ? `Сравнение: ${competitor.name} против Pegasus` : `${competitor.name} vs. Pegasus`}
           </div>
@@ -100,13 +100,13 @@ export default async function CompetitorAlternativePage({
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               {isRu ? 'Запросить демо' : 'Request Migration Demo'}
             </Link>
             <Link
               href={`/compare/pegasus-vs-${competitor.slug}`}
-              className="px-6 py-3 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-6 py-3 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               {isRu ? 'Таблица сравнения' : 'View Head-to-Head'}
             </Link>
@@ -114,7 +114,7 @@ export default async function CompetitorAlternativePage({
         </div>
 
         {/* TL;DR Summary Box */}
-        <section className="mt-16 p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+        <section className="mt-16 p-8 rounded-none bg-white/[0.02] border border-white/10">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-white/50 mb-3">
             <Layers className="w-4 h-4 text-white" />
             <span>TL;DR Executive Summary</span>
@@ -135,9 +135,9 @@ export default async function CompetitorAlternativePage({
             {competitor.whySwitchToPegasus.map((reason, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-xl bg-white/[0.02] border border-white/10 flex items-start gap-3"
+                className="p-6 rounded-none bg-white/[0.02] border border-white/10 flex items-start gap-3"
               >
-                <div className="w-6 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="w-6 h-6 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
                 </div>
                 <p className="text-sm text-white/80 font-light leading-relaxed">{reason}</p>
@@ -157,7 +157,7 @@ export default async function CompetitorAlternativePage({
             </p>
           </div>
 
-          <div className="overflow-x-auto border border-white/10 rounded-xl bg-white/[0.01]">
+          <div className="overflow-x-auto border border-white/10 rounded-none bg-white/[0.01]">
             <table className="w-full text-left text-xs font-mono">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-white/60">
@@ -204,7 +204,7 @@ export default async function CompetitorAlternativePage({
 
         {/* Who Should Choose Whom */}
         <section className="mt-20 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
             <h3 className="text-lg font-bold uppercase tracking-wide text-white mb-4">
               {isRu ? `Кому подходит ${competitor.name}:` : `Who Should Choose ${competitor.name}:`}
             </h3>
@@ -218,7 +218,7 @@ export default async function CompetitorAlternativePage({
             </ul>
           </div>
 
-          <div className="p-8 rounded-2xl bg-white/[0.04] border border-white/20">
+          <div className="p-8 rounded-none bg-white/[0.04] border border-white/20">
             <h3 className="text-lg font-bold uppercase tracking-wide text-white mb-4">
               {isRu ? 'Кому подходит Pegasus:' : 'Who Should Choose Pegasus:'}
             </h3>
@@ -244,7 +244,7 @@ export default async function CompetitorAlternativePage({
         </section>
 
         {/* Migration Path */}
-        <section className="mt-20 p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+        <section className="mt-20 p-8 rounded-none bg-white/[0.02] border border-white/10">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-white/50 mb-4">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>{isRu ? 'План миграции' : 'Migration & Onboarding Roadmap'}</span>
@@ -256,7 +256,7 @@ export default async function CompetitorAlternativePage({
             {competitor.migrationNotes.migrationSupport}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-white/5 border border-white/5">
+            <div className="p-4 rounded-none bg-white/5 border border-white/5">
               <span className="text-[10px] font-mono text-white/40 block uppercase">
                 {isRu ? 'Переносимые данные' : 'Transferred Data'}
               </span>
@@ -264,7 +264,7 @@ export default async function CompetitorAlternativePage({
                 {competitor.migrationNotes.transferredData.join(', ')}
               </span>
             </div>
-            <div className="p-4 rounded-lg bg-white/5 border border-white/5">
+            <div className="p-4 rounded-none bg-white/5 border border-white/5">
               <span className="text-[10px] font-mono text-white/40 block uppercase">
                 {isRu ? 'Сложность перехода' : 'Migration Complexity'}
               </span>
@@ -286,7 +286,7 @@ export default async function CompetitorAlternativePage({
           </h2>
           <div className="space-y-4">
             {competitor.faqs.map((faq, idx) => (
-              <div key={idx} className="p-6 rounded-xl bg-white/[0.02] border border-white/10">
+              <div key={idx} className="p-6 rounded-none bg-white/[0.02] border border-white/10">
                 <h3 className="text-base font-bold text-white mb-2">{faq.question}</h3>
                 <p className="text-sm text-white/70 font-light leading-relaxed">{faq.answer}</p>
               </div>
@@ -295,7 +295,7 @@ export default async function CompetitorAlternativePage({
         </section>
 
         {/* CTA */}
-        <div className="mt-24 p-10 rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
+        <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
           <h2 className="text-3xl font-black uppercase tracking-tight text-white">
             {isRu ? `Готовы перейти с ${competitor.name}?` : `Ready to switch from ${competitor.name}?`}
           </h2>
@@ -307,7 +307,7 @@ export default async function CompetitorAlternativePage({
           <div className="mt-8 flex justify-center gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               {isRu ? 'Запросить консультацию' : 'Schedule Migration Call'}
             </Link>

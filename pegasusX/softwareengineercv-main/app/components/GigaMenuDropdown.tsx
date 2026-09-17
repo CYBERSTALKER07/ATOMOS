@@ -123,7 +123,7 @@ export default function GigaMenuDropdown({
                     <div className="flex justify-between items-start">
                       {getIconForFlow(link.flow)}
                       {link.badge && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-sm tracking-wider">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-none tracking-wider">
                           {link.badge}
                         </span>
                       )}
@@ -149,7 +149,7 @@ export default function GigaMenuDropdown({
                   </div>
                   <Link
                     href={renderedCategory.viewAllHref}
-                    className="inline-flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-[#222] text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-lg"
+                    className="inline-flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-[#222] text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-none"
                   >
                     {renderedCategory.viewAllLabel || 'Learn More'}
                     <span className="ml-4">▼</span>
@@ -166,7 +166,7 @@ export default function GigaMenuDropdown({
                 </h2>
                 <Link
                   href={renderedCategory.promo.primaryHref}
-                  className="relative h-[400px] bg-gradient-to-br from-[#222] to-[#0a0a0a] rounded-lg border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
+                  className="relative h-[400px] bg-gradient-to-br from-[#222] to-[#0a0a0a] rounded-none border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
                 >
                   {/* Subtle background abstract pattern/gradient */}
                   <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent mix-blend-overlay"></div>

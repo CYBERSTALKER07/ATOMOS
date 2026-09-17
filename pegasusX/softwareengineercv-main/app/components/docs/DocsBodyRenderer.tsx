@@ -41,7 +41,7 @@ function CodeBlock({
   };
 
   return (
-    <div className="my-4 rounded-xl overflow-hidden border border-[#262638] bg-[#0A0A10]">
+    <div className="my-4 rounded-none overflow-hidden border border-[#262638] bg-[#0A0A10]">
       {/* Code Header Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-[#12121B] border-b border-[#202030] text-xs font-mono text-[#8E8EA0]">
         <div className="flex items-center space-x-2">
@@ -52,7 +52,7 @@ function CodeBlock({
           <span className="text-[10px] uppercase tracking-wider text-[#636375]">{lang}</span>
           <button
             onClick={handleCopy}
-            className="flex items-center space-x-1 p-1 rounded hover:bg-[#1E1E2C] text-[#8E8EA0] hover:text-white transition-colors"
+            className="flex items-center space-x-1 p-1 rounded-none hover:bg-[#1E1E2C] text-[#8E8EA0] hover:text-white transition-colors"
             title="Copy snippet"
           >
             {copied ? (
@@ -115,7 +115,7 @@ function CalloutBox({
   }[type];
 
   return (
-    <div className={`my-5 p-4 rounded-xl border ${styles.border} ${styles.bg} flex items-start space-x-3.5`}>
+    <div className={`my-5 p-4 rounded-none border ${styles.border} ${styles.bg} flex items-start space-x-3.5`}>
       {styles.icon}
       <div className="space-y-1 text-xs sm:text-sm">
         <h5 className={`font-bold ${styles.titleColor}`}>{title}</h5>
@@ -145,11 +145,11 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
             {article.highlights.map((item, idx) => (
               <div
                 key={idx}
-                className="p-4 rounded-2xl bg-[#0E0E15] border border-[#222232] hover:border-[#3B82F6]/50 transition-all flex flex-col justify-between"
+                className="p-4 rounded-none bg-[#0E0E15] border border-[#222232] hover:border-[#3B82F6]/50 transition-all flex flex-col justify-between"
               >
                 <div>
                   {item.metric && (
-                    <span className="inline-block text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-[#161B30] text-[#60A5FA] border border-[#2563EB]/30 mb-2">
+                    <span className="inline-block text-[11px] font-mono font-bold px-2 py-0.5 rounded-none bg-[#161B30] text-[#60A5FA] border border-[#2563EB]/30 mb-2">
                       {item.metric}
                     </span>
                   )}
@@ -164,10 +164,10 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
 
       {/* 2. Architecture Execution Flow (if applicable) */}
       {article.architectureFlow && (
-        <section className="p-6 rounded-2xl bg-[#0C0C12] border border-[#222230] space-y-4">
+        <section className="p-6 rounded-none bg-[#0C0C12] border border-[#222230] space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+              <span className="w-2 h-2 rounded-none bg-[#3B82F6]" />
               <span>{article.architectureFlow.title}</span>
             </h3>
             <span className="text-[10px] font-mono text-[#6E6E80] uppercase tracking-wider">
@@ -179,9 +179,9 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
             {article.architectureFlow.steps.map((step, idx) => (
               <div
                 key={idx}
-                className="flex items-start space-x-3 p-3 rounded-xl bg-[#12121C] border border-[#1E1E2C] text-xs"
+                className="flex items-start space-x-3 p-3 rounded-none bg-[#12121C] border border-[#1E1E2C] text-xs"
               >
-                <div className="w-5 h-5 rounded-full bg-[#1C2442] text-[#60A5FA] font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5 border border-[#2563EB]/40">
+                <div className="w-5 h-5 rounded-none bg-[#1C2442] text-[#60A5FA] font-mono text-[10px] flex items-center justify-center shrink-0 mt-0.5 border border-[#2563EB]/40">
                   {idx + 1}
                 </div>
                 <p className="text-[#C5C5D6] leading-relaxed">{step}</p>
@@ -208,7 +208,7 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
             {article.steps.map((step) => (
               <div key={step.stepNumber} className="relative pl-8 pb-4 border-l border-[#20202E]">
                 {/* Step Circle Indicator */}
-                <div className="absolute -left-3.5 top-0 w-7 h-7 rounded-full bg-[#101018] border border-[#3B82F6] text-[#93C5FD] font-mono text-xs font-bold flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                <div className="absolute -left-3.5 top-0 w-7 h-7 rounded-none bg-[#101018] border border-[#3B82F6] text-[#93C5FD] font-mono text-xs font-bold flex items-center justify-center shadow-[0_0_10px_rgba(59,130,246,0.3)]">
                   {step.stepNumber}
                 </div>
 
@@ -272,7 +272,7 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
 
       {/* 6. Operator Readiness Checklist */}
       {article.operatorChecklist && article.operatorChecklist.length > 0 && (
-        <section className="p-5 rounded-2xl bg-[#0E0E15] border border-[#222232] space-y-3">
+        <section className="p-5 rounded-none bg-[#0E0E15] border border-[#222232] space-y-3">
           <div className="flex items-center justify-between border-b border-[#1F1F2A] pb-2.5">
             <h4 className="text-xs font-mono uppercase tracking-widest text-[#7E7E94] flex items-center space-x-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -290,14 +290,14 @@ export default function DocsBodyRenderer({ article }: DocsBodyRendererProps) {
                 <div
                   key={idx}
                   onClick={() => toggleCheck(idx)}
-                  className={`flex items-start space-x-3 p-2.5 rounded-xl cursor-pointer transition-colors border ${
+                  className={`flex items-start space-x-3 p-2.5 rounded-none cursor-pointer transition-colors border ${
                     isChecked
                       ? 'bg-[#101D1A] border-emerald-500/30'
                       : 'bg-[#13131D] border-[#222230] hover:border-[#353545]'
                   }`}
                 >
                   <div
-                    className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center border transition-colors ${
+                    className={`w-4 h-4 rounded-none mt-0.5 flex items-center justify-center border transition-colors ${
                       isChecked
                         ? 'bg-emerald-500 border-emerald-400 text-black'
                         : 'border-[#4A4A5E] bg-[#1A1A24]'

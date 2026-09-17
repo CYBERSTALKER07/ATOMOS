@@ -91,14 +91,14 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
         <h2 className="text-3xl font-semibold mb-8 text-[var(--text)]">{t('role_available_platforms')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {role.platforms.map((platform) => (
-            <div key={platform} className="platform-card bg-[var(--surface)] border border-[var(--border)] rounded-[24px] overflow-hidden">
+            <div key={platform} className="platform-card bg-[var(--surface)] border border-[var(--border)] rounded-none overflow-hidden">
               <div className="p-6 border-b border-[var(--border)] flex items-center text-[var(--text)] font-medium capitalize">
                 {PLATFORM_ICONS[platform]}
                 {platformLabel(platform)}
               </div>
               <div className="aspect-[4/3] bg-[var(--bg)] flex items-center justify-center p-8">
                 {/* PLACEHOLDER FOR IMAGES */}
-                <div className="w-full h-full border-2 border-dashed border-[var(--border)] rounded-xl flex items-center justify-center text-[var(--text-secondary)] text-sm font-mono text-center px-4">
+                <div className="w-full h-full border-2 border-dashed border-[var(--border)] rounded-none flex items-center justify-center text-[var(--text-secondary)] text-sm font-mono text-center px-4">
                   {language === 'ru' ? (
                     <>
                       [ ИЗОБРАЖЕНИЕ {platform.toUpperCase()} ]<br />
@@ -129,7 +129,7 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
           >
             {/* Text Content */}
             <div className={`space-y-6 ${index % 2 !== 0 ? 'lg:order-2' : ''}`}>
-              <div className="inline-block px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-mono text-[var(--text-secondary)]">
+              <div className="inline-block px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-none text-xs font-mono text-[var(--text-secondary)]">
                 {String(index + 1).padStart(2, '0')} · {language === 'ru' ? 'ВОЗМОЖНОСТЬ' : 'CAPABILITY'}
               </div>
               <h3 className="text-3xl font-bold text-[var(--text)] leading-tight">
@@ -140,12 +140,12 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
               </p>
               
               <div className="space-y-4 pt-4">
-                <div className="bg-[var(--surface)] p-6 rounded-[20px] border border-[var(--border)]">
+                <div className="bg-[var(--surface)] p-6 rounded-none border border-[var(--border)]">
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">{t('role_business_logic')}</h4>
                   <p className="text-[var(--text-secondary)] leading-relaxed">{topic.businessLogic}</p>
                 </div>
                 
-                <div className="bg-[var(--surface)] p-6 rounded-[20px] border border-[var(--border)]">
+                <div className="bg-[var(--surface)] p-6 rounded-none border border-[var(--border)]">
                   <h4 className="text-sm font-semibold uppercase tracking-wider text-[var(--text)] mb-2">{t('role_edge_cases')}</h4>
                   <p className="text-[var(--text-secondary)] leading-relaxed">{topic.edgeCases}</p>
                 </div>
@@ -153,9 +153,9 @@ export default function RoleDetailClient({ role: roleProp }: { role: RoleData })
             </div>
 
             {/* Visualization */}
-            <div className={`aspect-square sm:aspect-[4/3] lg:aspect-square bg-[var(--surface)] rounded-[32px] border border-[var(--border)] flex items-center justify-center overflow-hidden relative ${index % 2 !== 0 ? 'lg:order-1' : ''}`}>
+            <div className={`aspect-square sm:aspect-[4/3] lg:aspect-square bg-[var(--surface)] rounded-none border border-[var(--border)] flex items-center justify-center overflow-hidden relative ${index % 2 !== 0 ? 'lg:order-1' : ''}`}>
               {/* PLACEHOLDER FOR FEATURE IMAGE */}
-              <div className="absolute inset-8 border-2 border-dashed border-[var(--border)] rounded-[20px] flex flex-col items-center justify-center text-[var(--text-secondary)] text-sm font-mono text-center p-6 bg-[var(--bg)]/50 backdrop-blur-sm">
+              <div className="absolute inset-8 border-2 border-dashed border-[var(--border)] rounded-none flex flex-col items-center justify-center text-[var(--text-secondary)] text-sm font-mono text-center p-6 bg-[var(--bg)]/50 backdrop-blur-sm">
                 <svg className="w-12 h-12 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>

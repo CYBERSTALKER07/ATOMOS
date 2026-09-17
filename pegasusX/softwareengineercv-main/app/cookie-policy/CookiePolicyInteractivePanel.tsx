@@ -29,7 +29,7 @@ export default function CookiePolicyInteractivePanel() {
 
   return (
     <div
-      className={`border rounded-xl p-5 sm:p-6 transition-colors duration-200 ${
+      className={`border rounded-none p-5 sm:p-6 transition-colors duration-200 ${
         isLight
           ? 'bg-zinc-50/80 border-black/10 text-zinc-900 shadow-sm'
           : 'bg-[#111116] border-white/10 text-white shadow-xl'
@@ -39,7 +39,7 @@ export default function CookiePolicyInteractivePanel() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-black/10 dark:border-white/10">
         <div className="flex items-center gap-3">
           <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+            className={`w-9 h-9 rounded-none flex items-center justify-center shrink-0 ${
               isLight ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-emerald-500/10 text-[#8DDC96] border border-emerald-500/20'
             }`}
           >
@@ -51,7 +51,7 @@ export default function CookiePolicyInteractivePanel() {
                 {isRu ? 'Интерактивная панель управления согласием' : 'Live Consent Management Panel'}
               </h3>
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-medium ${
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-mono uppercase tracking-wider font-medium ${
                   consent
                     ? isLight
                       ? 'bg-emerald-100 text-emerald-800'
@@ -82,7 +82,7 @@ export default function CookiePolicyInteractivePanel() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={openModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-medium bg-black dark:bg-white text-white dark:text-black hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>{isRu ? 'Изменить настройки' : 'Change Preferences'}</span>
@@ -90,7 +90,7 @@ export default function CookiePolicyInteractivePanel() {
           {consent && (
             <button
               onClick={resetConsent}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-medium border transition-colors cursor-pointer ${
                 isLight
                   ? 'border-red-200 text-red-700 bg-red-50 hover:bg-red-100'
                   : 'border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20'
@@ -171,7 +171,7 @@ export default function CookiePolicyInteractivePanel() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Strictly Necessary */}
           <div
-            className={`p-3 rounded-lg border text-xs ${
+            className={`p-3 rounded-none border text-xs ${
               isLight ? 'bg-white border-black/10' : 'bg-black/30 border-white/10'
             }`}
           >
@@ -193,7 +193,7 @@ export default function CookiePolicyInteractivePanel() {
 
           {/* Functional */}
           <div
-            className={`p-3 rounded-lg border text-xs ${
+            className={`p-3 rounded-none border text-xs ${
               isLight ? 'bg-white border-black/10' : 'bg-black/30 border-white/10'
             }`}
           >
@@ -222,7 +222,7 @@ export default function CookiePolicyInteractivePanel() {
 
           {/* Analytics */}
           <div
-            className={`p-3 rounded-lg border text-xs ${
+            className={`p-3 rounded-none border text-xs ${
               isLight ? 'bg-white border-black/10' : 'bg-black/30 border-white/10'
             }`}
           >
@@ -251,7 +251,7 @@ export default function CookiePolicyInteractivePanel() {
 
           {/* Marketing */}
           <div
-            className={`p-3 rounded-lg border text-xs ${
+            className={`p-3 rounded-none border text-xs ${
               isLight ? 'bg-white border-black/10' : 'bg-black/30 border-white/10'
             }`}
           >

@@ -144,7 +144,7 @@ export default async function CookiePolicyPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'A. Строго обязательные' : 'Tier A: Strictly Necessary'}
                   </h3>
@@ -158,7 +158,7 @@ export default async function CookiePolicyPage() {
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'B. Функциональные настройки' : 'Tier B: Functional Preferences'}
                   </h3>
@@ -172,7 +172,7 @@ export default async function CookiePolicyPage() {
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'C. Аналитика и производительность' : 'Tier C: Analytics & Telemetry'}
                   </h3>
@@ -186,7 +186,7 @@ export default async function CookiePolicyPage() {
                   </span>
                 </div>
 
-                <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'D. Маркетинг и партнерская сеть' : 'Tier D: Marketing & Partner Attribution'}
                   </h3>
@@ -213,7 +213,7 @@ export default async function CookiePolicyPage() {
                   : 'The table below provides an audited, line-item disclosure of each identifier deployed within the Pegasus production runtime:'}
               </p>
 
-              <div className="overflow-x-auto border border-black/10 dark:border-white/10 rounded-xl bg-white dark:bg-[#12121A] mt-4">
+              <div className="overflow-x-auto border border-black/10 dark:border-white/10 rounded-none bg-white dark:bg-[#12121A] mt-4">
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
                     <tr className="border-b border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-black/40 text-zinc-500 dark:text-white/50 uppercase tracking-wider text-[10px]">
@@ -307,7 +307,7 @@ export default async function CookiePolicyPage() {
                   ? 'По всем вопросам, касающимся настоящей Политики, аудита согласий или реализации прав субъекта данных, вы можете обратиться к нашему сотруднику по защите данных:'
                   : 'For technical inquiries, consent audit verifications, or data subject access requests concerning browser telemetry, contact our Data Protection Office:'}
               </p>
-              <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-[#12121A] font-mono text-xs space-y-1">
+              <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-[#12121A] font-mono text-xs space-y-1">
                 <div><strong>Pegasus Legal & Compliance Office</strong></div>
                 <div>Email: <a href="mailto:dpo@pegasus.logistics" className="underline text-emerald-600 dark:text-[#8DDC96]">dpo@pegasus.logistics</a></div>
                 <div>Jurisdiction: Tashkent, Uzbekistan / Global Transit Corridor Operations</div>
@@ -315,7 +315,7 @@ export default async function CookiePolicyPage() {
             </section>
 
             {/* Legal Disclaimer Box */}
-            <div className="p-4 rounded-xl border border-black/10 dark:border-white/10 bg-zinc-100 dark:bg-black/60 text-xs text-zinc-500 dark:text-white/50 italic">
+            <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-zinc-100 dark:bg-black/60 text-xs text-zinc-500 dark:text-white/50 italic">
               {isRu
                 ? 'Примечание: Данный документ является техническим описанием и стандартом комплаенса платформы Pegasus. По конкретным юридическим вопросам регулирования в вашей юрисдикции рекомендуется проконсультироваться с квалифицированным юристом.'
                 : 'Disclaimer: This document serves as the operational technical disclosure for the Pegasus platform. Consult with qualified legal counsel regarding jurisdiction-specific organizational implementation.'}

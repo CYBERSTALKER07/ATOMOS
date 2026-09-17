@@ -108,7 +108,7 @@ export default async function SupplyChainSoftwarePage() {
 
         {/* Hero Section */}
         <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <Boxes className="w-3.5 h-3.5 text-emerald-400" />
             <span>Next-Generation Multi-Enterprise Execution</span>
           </div>
@@ -124,14 +124,14 @@ export default async function SupplyChainSoftwarePage() {
           <div className="mt-10 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-7 py-3.5 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
+              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
             >
               <span>Request Supply Chain Demo</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               href="/projects"
-              className="px-7 py-3.5 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Browse All 6 Role Apps
             </Link>
@@ -153,8 +153,8 @@ export default async function SupplyChainSoftwarePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
                 <Workflow className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -165,8 +165,8 @@ export default async function SupplyChainSoftwarePage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
                 <Database className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -177,8 +177,8 @@ export default async function SupplyChainSoftwarePage() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
+              <div className="w-12 h-12 rounded-none bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
                 <FileCheck2 className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -192,7 +192,7 @@ export default async function SupplyChainSoftwarePage() {
         </section>
 
         {/* 6 Roles Section */}
-        <section className="mt-24 p-8 sm:p-12 rounded-2xl bg-white/[0.02] border border-white/10">
+        <section className="mt-24 p-8 sm:p-12 rounded-none bg-white/[0.02] border border-white/10">
           <div className="mb-10 text-center max-w-2xl mx-auto">
             <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-emerald-400">
               Unified Ecosystem
@@ -238,7 +238,7 @@ export default async function SupplyChainSoftwarePage() {
                 href: '/roles/payload-gate',
               },
             ].map((item, idx) => (
-              <div key={idx} className="p-6 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col justify-between">
+              <div key={idx} className="p-6 rounded-none bg-white/[0.02] border border-white/5 flex flex-col justify-between">
                 <div>
                   <h3 className="text-base font-bold uppercase text-white mb-2">{item.role}</h3>
                   <p className="text-xs text-white/70 leading-relaxed font-light">{item.desc}</p>
@@ -270,7 +270,7 @@ export default async function SupplyChainSoftwarePage() {
             {SUPPLY_CHAIN_FAQS.map((faq, idx) => (
               <div
                 key={idx}
-                className="p-6 sm:p-8 rounded-2xl bg-white/[0.02] border border-white/10"
+                className="p-6 sm:p-8 rounded-none bg-white/[0.02] border border-white/10"
               >
                 <h3 className="text-lg font-bold text-white mb-3">
                   {faq.question}
@@ -284,7 +284,7 @@ export default async function SupplyChainSoftwarePage() {
         </section>
 
         {/* Bottom CTA */}
-        <section className="mt-24 p-10 sm:p-14 rounded-3xl bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
+        <section className="mt-24 p-10 sm:p-14 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
           <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white">
             Upgrade to Unified Supply Chain Execution
           </h2>
@@ -294,13 +294,13 @@ export default async function SupplyChainSoftwarePage() {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/join"
-              className="px-8 py-4 rounded-xl bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
+              className="px-8 py-4 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
             >
               Request Live Enterprise Demo
             </Link>
             <Link
               href="/contact"
-              className="px-8 py-4 rounded-xl bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-8 py-4 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Talk with an Integration Specialist
             </Link>

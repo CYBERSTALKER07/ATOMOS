@@ -104,7 +104,7 @@ export default async function MarketCountryPage({ params }: Props) {
 
         {/* Hero */}
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <span className="text-base">{market.flag}</span>
             <span>{market.region} Corridor · {market.currency}</span>
           </div>
@@ -120,13 +120,13 @@ export default async function MarketCountryPage({ params }: Props) {
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               Request {market.name} Demo
             </Link>
             <Link
               href="/global-logistics"
-              className="px-6 py-3 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-6 py-3 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Global Architecture
             </Link>
@@ -134,7 +134,7 @@ export default async function MarketCountryPage({ params }: Props) {
         </div>
 
         {/* Infrastructure Specs */}
-        <section className="mt-14 p-6 rounded-2xl bg-white/[0.02] border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 font-mono text-xs">
+        <section className="mt-14 p-6 rounded-none bg-white/[0.02] border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 font-mono text-xs">
           <div>
             <span className="text-white/40 uppercase tracking-wider block mb-1">Local Cell Cluster</span>
             <span className="text-white font-bold">{market.cellCluster}</span>
@@ -154,7 +154,7 @@ export default async function MarketCountryPage({ params }: Props) {
           {market.stats.map((stat, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-center"
+              className="p-6 rounded-none bg-white/[0.03] border border-white/10 text-center"
             >
               <span className="text-3xl sm:text-4xl font-black text-white font-mono block">
                 {stat.value}
@@ -177,7 +177,7 @@ export default async function MarketCountryPage({ params }: Props) {
             </p>
           </div>
 
-          <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+          <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
             <p className="text-base text-white/80 leading-relaxed font-light mb-6">
               {market.marketOverview}
             </p>
@@ -189,7 +189,7 @@ export default async function MarketCountryPage({ params }: Props) {
               {market.complianceFrameworks.map((comp, idx) => (
                 <span
                   key={idx}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white/80 flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-none bg-white/5 border border-white/10 text-xs font-mono text-white/80 flex items-center gap-1.5"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
                   <span>{comp}</span>
@@ -212,7 +212,7 @@ export default async function MarketCountryPage({ params }: Props) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Bottlenecks */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
               <h3 className="text-lg font-bold uppercase text-rose-300 mb-6 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-rose-400" />
                 <span>Regional Bottlenecks</span>
@@ -228,7 +228,7 @@ export default async function MarketCountryPage({ params }: Props) {
             </div>
 
             {/* Pegasus Solution */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
               <h3 className="text-lg font-bold uppercase text-emerald-300 mb-6 flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                 <span>Pegasus Deployment Solution</span>
@@ -260,7 +260,7 @@ export default async function MarketCountryPage({ params }: Props) {
             {market.faqs.map((faq, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-2xl bg-white/[0.02] border border-white/10"
+                className="p-6 rounded-none bg-white/[0.02] border border-white/10"
               >
                 <h3 className="text-base font-bold text-white mb-2">
                   {faq.question}
@@ -274,7 +274,7 @@ export default async function MarketCountryPage({ params }: Props) {
         </section>
 
         {/* Bottom CTA */}
-        <section className="mt-20 p-8 sm:p-12 rounded-3xl bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
+        <section className="mt-20 p-8 sm:p-12 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
           <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white">
             Deploy Pegasus in {market.name}
           </h2>
@@ -284,13 +284,13 @@ export default async function MarketCountryPage({ params }: Props) {
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <Link
               href="/join"
-              className="px-8 py-3.5 rounded-xl bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
+              className="px-8 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors shadow-xl"
             >
               Schedule {market.name} Demo
             </Link>
             <Link
               href="/markets"
-              className="px-8 py-3.5 rounded-xl bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-8 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               View All Global Markets
             </Link>

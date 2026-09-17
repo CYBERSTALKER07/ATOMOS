@@ -59,7 +59,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md transition-all">
       <div
-        className="w-full max-w-2xl bg-[#0F0F14] border border-[#262633] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-2xl bg-[#0F0F14] border border-[#262633] rounded-none shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
@@ -84,7 +84,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 ml-2 text-[10px] font-mono text-[#8E8EA0] bg-[#1F1F2B] border border-[#2D2D3D] rounded">
+          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 ml-2 text-[10px] font-mono text-[#8E8EA0] bg-[#1F1F2B] border border-[#2D2D3D] rounded-none">
             ESC
           </kbd>
         </div>
@@ -93,7 +93,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
         <div className="flex-1 overflow-y-auto p-2 divide-y divide-[#1D1D28]/60">
           {query.trim() === '' ? (
             <div className="py-12 px-6 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#181822] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6]">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-none bg-[#181822] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6]">
                 <Sparkles className="w-5 h-5" />
               </div>
               <h4 className="text-white font-medium text-sm">Instant Documentation Search</h4>
@@ -105,7 +105,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                   <button
                     key={tag}
                     onClick={() => setQuery(tag)}
-                    className="text-xs px-2.5 py-1 rounded-full bg-[#191924] border border-[#282838] text-[#B5B5C5] hover:text-white hover:border-[#3B82F6] transition-colors"
+                    className="text-xs px-2.5 py-1 rounded-none bg-[#191924] border border-[#282838] text-[#B5B5C5] hover:text-white hover:border-[#3B82F6] transition-colors"
                   >
                     {tag}
                   </button>
@@ -126,12 +126,12 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                   href={`/docs/${res.category.id}/${res.article.slug}`}
                   onClick={onClose}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`flex items-start justify-between p-3 rounded-xl transition-colors ${
+                  className={`flex items-start justify-between p-3 rounded-none transition-colors ${
                     isSelected ? 'bg-[#1D1D2C] border border-[#3A3A52]' : 'hover:bg-[#161622] border border-transparent'
                   }`}
                 >
                   <div className="flex items-start space-x-3 min-w-0 pr-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#14141E] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6] shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-none bg-[#14141E] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6] shrink-0 mt-0.5">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
@@ -142,7 +142,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                         <span className="text-[#4E4E60] text-xs">/</span>
                         <span className="text-xs text-[#8E8EA0] font-mono">{res.article.version}</span>
                         {res.article.badge && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#202030] text-[#9E9EB0] border border-[#303044]">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-none bg-[#202030] text-[#9E9EB0] border border-[#303044]">
                             {res.article.badge}
                           </span>
                         )}
@@ -168,8 +168,8 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
         {/* Footer info */}
         <div className="px-4 py-2.5 bg-[#12121A] border-t border-[#20202C] flex items-center justify-between text-[11px] text-[#6E6E80] font-mono">
           <div className="flex items-center space-x-3">
-            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded border border-[#2D2D3E]">↑</kbd> <kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded border border-[#2D2D3E]">↓</kbd> Navigate</span>
-            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded border border-[#2D2D3E]">↵</kbd> Select</span>
+            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↑</kbd> <kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↓</kbd> Navigate</span>
+            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↵</kbd> Select</span>
           </div>
           <span>Pegasus OS Documentation v4.2</span>
         </div>

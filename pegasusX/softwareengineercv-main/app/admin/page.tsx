@@ -145,10 +145,10 @@ export default function AdminPage() {
       {notification && (
         <div 
           ref={notificationRef}
-          className="fixed top-4 right-4 md:top-8 md:right-8 z-50 bg-[#0D0D0D] border-2 border-[#8DDC96] rounded-2xl p-4 md:p-6 shadow-2xl w-80 md:w-96 max-w-[calc(100vw-2rem)]"
+          className="fixed top-4 right-4 md:top-8 md:right-8 z-50 bg-[#0D0D0D] border-2 border-[#8DDC96] rounded-none p-4 md:p-6 shadow-2xl w-80 md:w-96 max-w-[calc(100vw-2rem)]"
         >
           <div className="flex items-start gap-3 md:gap-4">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#8DDC96] rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-[#8DDC96] rounded-none flex items-center justify-center flex-shrink-0">
               <span className="text-xl md:text-2xl">🎉</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -226,7 +226,7 @@ export default function AdminPage() {
       {/* Modal */}
       {selectedApp && (
         <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-          <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-2xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-none p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <h2 className="text-2xl md:text-3xl font-light">{t('admin_modal_title')}</h2>
               <button
@@ -275,7 +275,7 @@ export default function AdminPage() {
               {selectedApp.message && (
                 <div>
                   <label className="text-xs md:text-sm text-gray-400 uppercase tracking-wider">{t('admin_label_message')}</label>
-                  <p className="text-sm md:text-lg mt-2 leading-relaxed bg-black p-4 rounded-xl border-2 border-white break-words">
+                  <p className="text-sm md:text-lg mt-2 leading-relaxed bg-black p-4 rounded-none border-2 border-white break-words">
                     {selectedApp.message}
                   </p>
                 </div>

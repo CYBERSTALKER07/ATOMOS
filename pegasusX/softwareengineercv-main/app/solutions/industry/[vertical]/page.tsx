@@ -73,7 +73,7 @@ export default async function IndustrySolutionDetailPage({
 
         {/* Hero */}
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <Building2 className="w-3.5 h-3.5 text-white" />
             <span>Industry Playbook · {industry.name}</span>
           </div>
@@ -89,13 +89,13 @@ export default async function IndustrySolutionDetailPage({
           <div className="mt-8 flex flex-wrap gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               Request Industry Demo
             </Link>
             <Link
               href="/platform"
-              className="px-6 py-3 rounded-lg bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
+              className="px-6 py-3 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
             >
               Platform Overview
             </Link>
@@ -107,7 +107,7 @@ export default async function IndustrySolutionDetailPage({
           {industry.metrics.map((metric, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 text-center"
+              className="p-6 rounded-none bg-white/[0.03] border border-white/10 text-center"
             >
               <span className="text-3xl sm:text-4xl font-black text-white font-mono block">
                 {metric.value}
@@ -132,14 +132,14 @@ export default async function IndustrySolutionDetailPage({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Challenges */}
-            <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+            <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
               <h3 className="text-lg font-bold uppercase text-rose-300 mb-6 flex items-center gap-2">
                 <span>Core Operating Bottlenecks</span>
               </h3>
               <ul className="space-y-4">
                 {industry.keyChallenges.map((challenge, idx) => (
                   <li key={idx} className="flex items-start gap-3 text-xs text-white/70 font-light leading-relaxed">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0 mt-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-none bg-rose-400 shrink-0 mt-1.5" />
                     <span>{challenge}</span>
                   </li>
                 ))}
@@ -147,7 +147,7 @@ export default async function IndustrySolutionDetailPage({
             </div>
 
             {/* How Pegasus Solves */}
-            <div className="p-8 rounded-2xl bg-white/[0.04] border border-white/20">
+            <div className="p-8 rounded-none bg-white/[0.04] border border-white/20">
               <h3 className="text-lg font-bold uppercase text-emerald-300 mb-6 flex items-center gap-2">
                 <span>The Pegasus Solution</span>
               </h3>
@@ -178,7 +178,7 @@ export default async function IndustrySolutionDetailPage({
             {industry.workflowSteps.map((ws, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-xl bg-white/[0.02] border border-white/10 flex flex-col justify-between"
+                className="p-6 rounded-none bg-white/[0.02] border border-white/10 flex flex-col justify-between"
               >
                 <div>
                   <span className="text-xs font-mono text-emerald-400 font-bold block mb-2">
@@ -202,7 +202,7 @@ export default async function IndustrySolutionDetailPage({
           </h2>
           <div className="space-y-4">
             {industry.faqs.map((faq, idx) => (
-              <div key={idx} className="p-6 rounded-xl bg-white/[0.02] border border-white/10">
+              <div key={idx} className="p-6 rounded-none bg-white/[0.02] border border-white/10">
                 <h3 className="text-base font-bold text-white mb-2">{faq.question}</h3>
                 <p className="text-sm text-white/70 font-light leading-relaxed">{faq.answer}</p>
               </div>
@@ -211,7 +211,7 @@ export default async function IndustrySolutionDetailPage({
         </section>
 
         {/* CTA */}
-        <div className="mt-24 p-10 rounded-2xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
+        <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
           <h2 className="text-3xl font-black uppercase tracking-tight text-white">
             Schedule an Industry Walkthrough
           </h2>
@@ -221,7 +221,7 @@ export default async function IndustrySolutionDetailPage({
           <div className="mt-8 flex justify-center gap-4">
             <Link
               href="/join"
-              className="px-6 py-3 rounded-lg bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
             >
               Request Live Demo
             </Link>

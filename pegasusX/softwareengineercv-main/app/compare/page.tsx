@@ -41,7 +41,7 @@ export default async function CompareHubPage() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
         {/* Header */}
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
             <GitCompare className="w-3.5 h-3.5 text-white" />
             {isRu ? 'Аналитика и сравнение логистического ПО' : 'Objective Software Analysis'}
           </div>
@@ -60,7 +60,7 @@ export default async function CompareHubPage() {
           {COMPETITORS_DATA.map((competitor) => (
             <div
               key={competitor.slug}
-              className="p-8 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/25 transition-all flex flex-col justify-between"
+              className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/25 transition-all flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -86,7 +86,7 @@ export default async function CompareHubPage() {
                 </span>
                 <Link
                   href={`/compare/pegasus-vs-${competitor.slug}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-none bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
                 >
                   <span>{isRu ? 'Читать сравнение' : 'Read Guide'}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -97,7 +97,7 @@ export default async function CompareHubPage() {
         </div>
 
         {/* Methodology Note */}
-        <section className="mt-20 p-8 rounded-2xl bg-white/[0.02] border border-white/10">
+        <section className="mt-20 p-8 rounded-none bg-white/[0.02] border border-white/10">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-white/50 mb-3">
             <ShieldCheck className="w-4 h-4 text-white" />
             <span>{isRu ? 'Наша методология' : 'Our Comparison Methodology'}</span>
