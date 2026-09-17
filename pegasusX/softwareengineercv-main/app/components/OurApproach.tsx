@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, Zap } from 'lucide-react';
-import { Star, AnimatedIcon } from '@/components/animate-ui/icons';
+import { Star, Eye, Zap } from '@/components/icons';
 import Digit369 from './Digit369';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -47,7 +46,7 @@ export default function OurApproach() {
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
             <div className="p-6 sm:p-8 md:p-10 border-b md:border-r border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
               <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
-                <Star size={36} animateOnHover className="text-black" />
+                <Star size={36} className="text-black" />
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
@@ -64,7 +63,7 @@ export default function OurApproach() {
 
             <div className="p-6 sm:p-8 md:p-10 border-b border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
               <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
-                <AnimatedIcon icon={Eye} size={36} animateOnHover className="text-black" />
+                <Eye size={36} className="text-black" />
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
@@ -81,7 +80,7 @@ export default function OurApproach() {
 
             <div className="p-6 sm:p-8 md:p-10 md:border-r border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
               <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
-                <AnimatedIcon icon={Zap} size={36} animateOnHover className="text-black" />
+                <Zap size={36} className="text-black" />
               </div>
               <div>
                 <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">

@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Globe } from 'lucide-react';
-import { Search, ChevronRight, Terminal, ArrowLeft, Menu } from '@/components/animate-ui/icons';
+import { Search, ChevronRight, Terminal, ArrowLeft, Menu } from '@/components/icons';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 type DocsHeaderProps = {
@@ -31,12 +31,12 @@ export default function DocsHeader({
             className="lg:hidden p-2 -ml-2 rounded-none text-[#8E8EA0] hover:text-white hover:bg-[#161622] transition-colors"
             aria-label="Toggle Navigation Sidebar"
           >
-            <Menu size={20} animateOnHover />
+            <Menu size={20} />
           </button>
 
           <Link href="/docs" className="flex items-center space-x-2.5 group">
             <div className="w-8 h-8 rounded-none bg-gradient-to-br from-[#1E3A8A] to-[#2563EB] flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.4)] border border-[#3B82F6]/40 group-hover:scale-105 transition-transform">
-              <Terminal size={16} animateOnHover className="text-white" />
+              <Terminal size={16} className="text-white" />
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="font-bold text-white text-base tracking-tight group-hover:text-[#60A5FA] transition-colors">
@@ -50,7 +50,7 @@ export default function DocsHeader({
           {activeCategory && activeTitle && (
             <div className="hidden md:flex items-center space-x-1.5 pl-3 border-l border-[#242434] text-xs font-mono text-[#8E8EA0]">
               <span className="capitalize">{activeCategory}</span>
-              <ChevronRight size={14} animateOnHover className="text-[#525266]" />
+              <ChevronRight size={14} className="text-[#525266]" />
               <span className="text-white truncate max-w-[200px]">{activeTitle}</span>
             </div>
           )}
@@ -83,7 +83,7 @@ export default function DocsHeader({
             className="flex items-center justify-between w-40 sm:w-64 h-9 px-3 rounded-none bg-[#12121A] border border-[#262638] text-xs text-[#8E8EA0] hover:border-[#3B82F6]/60 hover:text-white transition-all shadow-inner group cursor-pointer"
           >
             <div className="flex items-center space-x-2 truncate">
-              <Search size={14} animateOnHover className="text-[#6E6E82] group-hover:text-[#3B82F6]" />
+              <Search size={14} className="text-[#6E6E82] group-hover:text-[#3B82F6]" />
               <span className="truncate">Search Docs...</span>
             </div>
             <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-[#7E7E94] bg-[#1A1A26] border border-[#2B2B3D] rounded-none">
@@ -116,7 +116,7 @@ export default function DocsHeader({
             href="/platform"
             className="hidden sm:inline-flex items-center space-x-1.5 text-xs font-medium text-[#8E8EA0] hover:text-white transition-colors pl-2 group"
           >
-            <ArrowLeft size={14} animateOnHover />
+            <ArrowLeft size={14} />
             <span>Platform</span>
           </Link>
         </div>

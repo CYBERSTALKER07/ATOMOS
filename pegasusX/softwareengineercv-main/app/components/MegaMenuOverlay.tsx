@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { ArrowRight, ChevronRight, Layers, Settings, Activity, AnimatedIcon } from '@/components/animate-ui/icons';
+import { Layers, Activity, Settings } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import LetterGlitch from './LetterGlitch';
 import { gsap } from 'gsap';

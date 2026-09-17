@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon } from '@/components/animate-ui/icons';
+import { Sun, Moon } from '@/components/icons';
 import { useTheme } from '@/app/context/ThemeContext';
 
 export default function ThemeSwitcher({ className = '' }: { className?: string }) {
@@ -40,9 +40,9 @@ export default function ThemeSwitcher({ className = '' }: { className?: string }
       } ${className}`}
     >
       {isLight ? (
-        <Sun size={14} animateOnHover className="text-current" />
+        <Sun size={14} className="text-current" />
       ) : (
-        <Moon size={14} animateOnHover className="text-current" />
+        <Moon size={14} className="text-current" />
       )}
     </button>
   );
