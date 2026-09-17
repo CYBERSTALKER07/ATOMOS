@@ -58,8 +58,8 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
       </div>
 
       {/* Tactical Badge */}
-      <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 border border-[#CEFF00]/30 bg-[#CEFF00]/10 text-[#CEFF00] font-mono text-[11px] uppercase tracking-wider">
-        <span className="w-1.5 h-1.5 rounded-none bg-[#CEFF00] animate-pulse" />
+      <div className="inline-flex items-center gap-2 px-3 py-1 mb-4 border border-white/20 bg-white/5 text-white font-mono text-[11px] uppercase tracking-wider">
+        <span className="w-1.5 h-1.5 rounded-none bg-white animate-pulse" />
         Pegasus Autonomous Operations AI
       </div>
 
@@ -79,14 +79,14 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
             type="button"
             disabled={isRunning}
             onClick={() => processMessage({ role: 'user', content: starter.prompt })}
-            className="group relative flex flex-col justify-between p-4 bg-[#121216] hover:bg-[#181820] border border-white/10 hover:border-[#CEFF00]/50 transition-all duration-200 text-left cursor-pointer focus:outline-none focus:border-[#CEFF00]"
+            className="group relative flex flex-col justify-between p-4 bg-[#121216] hover:bg-[#181820] border border-white/10 hover:border-white/40 transition-all duration-200 text-left cursor-pointer focus:outline-none focus:border-white"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[10px] font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
+                <span className="text-[10px] font-mono font-bold tracking-wider text-white/80 uppercase">
                   {starter.tag}
                 </span>
-                <span className="text-white/30 group-hover:text-[#CEFF00] group-hover:translate-x-0.5 transition-all text-xs font-mono">
+                <span className="text-white/30 group-hover:text-white group-hover:translate-x-0.5 transition-all text-xs font-mono">
                   →
                 </span>
               </div>
@@ -122,13 +122,13 @@ export default function AssistantPage() {
           <span className="text-white/20">|</span>
           <div className="flex items-center gap-2">
             <img src="/pegasus.jpg" alt="Pegasus" className="w-5 h-5 object-contain" />
-            <span className="text-xs font-mono font-bold tracking-wider text-[#CEFF00] uppercase">
+            <span className="text-xs font-mono font-bold tracking-wider text-white uppercase">
               PEGASUS AI ASSISTANT
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-none bg-[#CEFF00] animate-pulse" />
+          <span className="w-2 h-2 rounded-none bg-white animate-pulse" />
           <span className="text-[11px] font-mono text-white/50">GENUI ACTIVE</span>
         </div>
       </header>

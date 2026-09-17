@@ -1,626 +1,620 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import { FormEvent, useEffect, useId, useRef, useState } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  ArrowUp,
-  Maximize2,
-  Minimize2,
-  X,
-  RotateCcw,
-  Search,
-  Sparkles,
-  Square,
-  Copy,
-  Check,
-} from 'lucide-react';
+import { Maximize2, Copy, Check, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+type ChatRole = 'user' | 'assistant';
 
-const STARTERS = [
+type ChatMessage = {
+  id: string;
+  role: ChatRole;
+  content: string;
+};
+
+type QuickAction = {
+  id: string;
+  badge: string;
+  label: string;
+  category: 'versus' | 'tech' | 'roles' | 'business' | 'action';
+  prompt?: string;
+  href?: string;
+  dismiss?: boolean;
+};
+
+const QUICK_ACTIONS_RU: QuickAction[] = [
   {
-    tag: 'FLEET TELEMETRY',
-    title: 'Audit Multi-Tenant Fleet Allocation',
-    prompt: 'Audit current fleet allocation across Tashkent and regional hubs, checking vehicle status and active driver pairings.',
+    id: 'versus-giants',
+    badge: 'VS',
+    label: 'Почему Pegasus превосходит Amazon, o9 и Oracle?',
+    category: 'versus',
+    prompt: 'Сравните Pegasus с гигантами отрасли и legacy ERP (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). В чем наши ключевые преимущества?',
   },
   {
-    tag: 'SPANNER LEDGER',
-    title: 'Verify Double-Entry Ledger Invariants',
-    prompt: 'Explain the Cloud Spanner transactional double-entry ledger invariants for supplier-to-retailer balance settlement.',
+    id: 'tech-stack',
+    badge: 'TECH',
+    label: 'Backend на Go, Spanner и Transactional Outbox',
+    category: 'tech',
+    prompt: 'Расскажите о технической архитектуре Pegasus: микросервисы на Go, транзакции в Cloud Spanner, паттерн Transactional Outbox, Kafka, WebSockets и оффлайн-синхронизация.',
   },
   {
-    tag: 'OR-TOOLS CVRP',
-    title: 'Simulate Regional Route Dispatch',
-    prompt: 'Simulate an automated dispatch wave using Google OR-Tools CVRP optimizer with capacity and time-window constraints.',
+    id: 'role-parity',
+    badge: 'ROLES',
+    label: '6 ключевых ролей в единой экосистеме',
+    category: 'roles',
+    prompt: 'Какие 6 ролей объединены в Pegasus (Поставщик, Завод, Склад, Водитель, Розничный продавец, Служба доставки) и как устроена их единая сеть данных?',
   },
   {
-    tag: 'DVIR INSPECTION',
-    title: 'Inspect Driver DVIR Pre-Trip Workflow',
-    prompt: 'Walk through the DVIR vehicle pre-trip inspection workflow and how critical defects block dispatch ignition.',
+    id: 'business-roi',
+    badge: 'ROI',
+    label: 'Операционная эффективность и бизнес-метрики',
+    category: 'business',
+    prompt: 'Какие измеримые экономические показатели и оптимизацию цепочки поставок обеспечивает Pegasus для директоров по логистике?',
+  },
+  {
+    id: 'contact-team',
+    badge: 'JOIN',
+    label: 'Запросить демо / Написать в Telegram',
+    category: 'action',
+    href: 'https://t.me/DominusMunerum',
   },
 ];
 
-function CodeBlock({ code, language }: { code: string; language?: string }) {
-  const [copied, setCopied] = useState(false);
+const WELCOME_RU =
+  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте о нашей Go-архитектуре, Cloud Spanner outbox или почему клиенты выбирают нас вместо Amazon AWS Supply Chain и o9.';
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    id: 'versus-giants',
+    badge: 'VS',
+    label: 'Why Pegasus vs Amazon, o9 & Oracle?',
+    category: 'versus',
+    prompt: 'Compare Pegasus with tech giants & legacy ERPs (Amazon AWS Supply Chain, o9 Solutions, Oracle OTM, Google Cloud Twin, Blue Yonder). Why choose Pegasus?',
+  },
+  {
+    id: 'tech-stack',
+    badge: 'TECH',
+    label: 'Go Backend, Spanner & Outbox System',
+    category: 'tech',
+    prompt: 'Explain the technical architecture of Pegasus: Go microservices, Cloud Spanner transactions, Transactional Outbox pattern, Kafka, WebSockets, and offline mobile sync.',
+  },
+  {
+    id: 'six-roles',
+    badge: 'ROLES',
+    label: '6 Ecosystem Roles & Capabilities',
+    category: 'roles',
+    prompt: 'What are the 6 ecosystem roles in Pegasus (Supplier, Warehouse, Retailer, Driver, Factory, Payload/Gate) and their key capabilities?',
+  },
+  {
+    id: 'business-roi',
+    badge: 'ROI',
+    label: 'Business Benefits & Operational ROI',
+    category: 'business',
+    prompt: 'What are the core business outcomes, ROI, and workflow improvements Pegasus delivers for supply chain leadership?',
+  },
+  {
+    id: 'demo-tour',
+    badge: 'DEMO',
+    label: 'Watch Platform Walkthrough',
+    category: 'action',
+    href: '/demo',
+  },
+  {
+    id: 'contact-expert',
+    badge: 'TALK',
+    label: 'Talk to a Logistics Expert',
+    category: 'action',
+    href: '/contact',
+  },
+  {
+    id: 'join-careers',
+    badge: 'JOIN',
+    label: 'Careers & Schedule Demo',
+    category: 'action',
+    href: '/join',
+  },
+  {
+    id: 'dismiss',
+    badge: 'HIDE',
+    label: 'Dismiss prompt assistant',
+    category: 'action',
+    dismiss: true,
+  },
+];
 
-  return (
-    <div className="relative my-3 rounded-lg overflow-hidden border border-zinc-800 bg-black/90 font-mono text-xs">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900/90 border-b border-zinc-800 text-[11px] text-zinc-400">
-        <span>{language || 'code'}</span>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
-          title="Copy code"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          <span>{copied ? 'Copied' : 'Copy'}</span>
-        </button>
-      </div>
-      <pre className="p-3.5 overflow-x-auto text-zinc-200 leading-relaxed">
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
+const HIDDEN_PREFIXES = ['/admin', '/resume', '/assistant'];
+const WELCOME =
+  'Welcome to Pegasus. Ask anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
+
+function newId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function FormattedMessage({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
-  // Simple, high-speed custom parser for headers, code blocks, bold, lists, and inline code
-  const parts = content.split(/(```[\s\S]*?```)/g);
+function FormattedContent({ text }: { text: string }) {
+  const parts = text.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="text-sm leading-relaxed space-y-2 text-zinc-200">
-      {parts.map((part, i) => {
+    <div className="space-y-2 leading-relaxed">
+      {parts.map((part, idx) => {
         if (part.startsWith('```') && part.endsWith('```')) {
           const lines = part.slice(3, -3).trim().split('\n');
           const lang = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : '';
           const code = lang ? lines.slice(1).join('\n') : lines.join('\n');
-          return <CodeBlock key={i} code={code} language={lang} />;
+          return (
+            <div key={idx} className="my-2 border border-white/20 bg-black p-3 font-mono text-xs overflow-x-auto text-zinc-200">
+              {lang && <div className="text-[10px] text-zinc-500 uppercase mb-1">{lang}</div>}
+              <code>{code}</code>
+            </div>
+          );
         }
 
-        // Regular text formatting
         const paragraphs = part.split('\n\n');
         return (
-          <div key={i} className="space-y-2">
+          <div key={idx} className="space-y-1.5">
             {paragraphs.map((para, pIdx) => {
               if (!para.trim()) return null;
 
-              // H3 Header
               if (para.startsWith('### ')) {
                 return (
-                  <h4 key={pIdx} className="text-sm font-semibold text-white mt-3 mb-1 tracking-tight">
-                    {para.slice(4)}
+                  <h4 key={pIdx} className="font-mono font-bold text-white text-xs mt-2 mb-1 tracking-wider uppercase">
+                    {para.replace('### ', '')}
                   </h4>
                 );
               }
 
-              // Bullet list
-              if (para.startsWith('- ') || para.startsWith('* ') || para.includes('\n- ')) {
-                const items = para.split(/\n[-*]\s+/).filter(Boolean);
+              if (para.startsWith('## ')) {
                 return (
-                  <ul key={pIdx} className="space-y-1 my-1 pl-4 list-disc text-zinc-300">
-                    {items.map((item, itemIdx) => (
-                      <li key={itemIdx} className="leading-snug">
-                        {renderInlineFormatting(item)}
-                      </li>
-                    ))}
-                  </ul>
+                  <h3 key={pIdx} className="font-mono font-bold text-white text-sm mt-2 mb-1 tracking-wide uppercase">
+                    {para.replace('## ', '')}
+                  </h3>
                 );
               }
 
-              // Numbered list
-              if (/^\d+\.\s/.test(para)) {
-                const items = para.split(/\n(?=\d+\.\s)/).filter(Boolean);
-                return (
-                  <ol key={pIdx} className="space-y-1.5 my-1 pl-5 list-decimal text-zinc-300">
-                    {items.map((item, itemIdx) => {
-                      const text = item.replace(/^\d+\.\s+/, '');
-                      return (
-                        <li key={itemIdx} className="leading-snug">
-                          {renderInlineFormatting(text)}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                );
-              }
+              const formattedLine = para.split('\n').map((line, lIdx) => {
+                const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+                const cleanLine = isBullet ? line.trim().slice(2) : line;
 
-              return (
-                <p key={pIdx} className="text-zinc-300 leading-relaxed">
-                  {renderInlineFormatting(para)}
-                </p>
-              );
+                return (
+                  <div key={lIdx} className={isBullet ? 'flex items-start gap-1.5 pl-2' : ''}>
+                    {isBullet && <span className="text-white/60 font-mono select-none">•</span>}
+                    <span>{cleanLine}</span>
+                  </div>
+                );
+              });
+
+              return <div key={pIdx}>{formattedLine}</div>;
             })}
           </div>
         );
       })}
-
-      {isStreaming && (
-        <span className="inline-block w-2 h-4 ml-0.5 bg-white align-middle animate-pulse" />
-      )}
     </div>
   );
 }
 
-function renderInlineFormatting(text: string) {
-  // Parse inline code and bold text
-  const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-
-  return tokens.map((token, idx) => {
-    if (token.startsWith('`') && token.endsWith('`')) {
-      return (
-        <code
-          key={idx}
-          className="px-1.5 py-0.5 mx-0.5 rounded bg-zinc-800 text-zinc-100 font-mono text-xs border border-zinc-700/60"
-        >
-          {token.slice(1, -1)}
-        </code>
-      );
-    }
-    if (token.startsWith('**') && token.endsWith('**')) {
-      return (
-        <strong key={idx} className="font-semibold text-white">
-          {token.slice(2, -2)}
-        </strong>
-      );
-    }
-    return token;
-  });
-}
-
 export default function SiteAssistant() {
   const pathname = usePathname();
-  const { language } = useLanguage();
+  const panelId = useId();
+  const { t, language } = useLanguage();
+  const listRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [dismissed, setDismissed] = useState(false);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [deepSearch, setDeepSearch] = useState(false);
-  const [think, setThink] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentWelcome = language === 'ru' ? WELCOME_RU : WELCOME;
+  const currentQuickActions = language === 'ru' ? QUICK_ACTIONS_RU : QUICK_ACTIONS;
 
-  // Auto-scroll on new messages or stream chunks
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: 'welcome', role: 'assistant', content: currentWelcome },
+  ]);
+
+  useEffect(() => {
+    setMessages((prev) => {
+      if (prev.length === 1 && prev[0].id === 'welcome') {
+        return [{ id: 'welcome', role: 'assistant', content: currentWelcome }];
+      }
+      return prev;
+    });
+  }, [language, currentWelcome]);
+
+  // Close assistant on route changes
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Auto-scroll message list when new messages arrive
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, open, loading]);
+
+  // Auto-focus input when chat opens
   useEffect(() => {
     if (open) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, open]);
-
-  // Focus textarea when opened
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => {
-        textareaRef.current?.focus();
-      }, 100);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
 
-  // Global keyboard shortcuts (Cmd+K / Ctrl+K and Esc)
+  // Keyboard shortcut: Cmd+K / Ctrl+K to toggle assistant
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    function handleGlobalKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setOpen((prev) => !prev);
-      } else if (e.key === 'Escape' && open) {
-        if (isFullscreen) {
-          setIsFullscreen(false);
-        } else {
-          setOpen(false);
-        }
       }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
+  // Click outside to close assistant
+  useEffect(() => {
+    if (!open) return;
+
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      const targetNode = e.target as Node | null;
+      if (!targetNode) return;
+
+      const isOutsideContainer = containerRef.current && !containerRef.current.contains(targetNode);
+      const isOutsideLauncher = launcherRef.current && !launcherRef.current.contains(targetNode);
+
+      if (isOutsideContainer && isOutsideLauncher) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
+  }, [open]);
+
+  // Escape key to close
+  useEffect(() => {
+    if (!open) return;
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpen(false);
+      }
+    }
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, isFullscreen]);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
 
-  // Hide assistant on admin route
-  if (pathname?.startsWith('/admin')) {
+  if (HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) {
     return null;
   }
 
-  const handleSend = async (customPrompt?: string) => {
-    const promptText = (customPrompt ?? input).trim();
-    if (!promptText || isLoading) return;
+  if (dismissed) return null;
 
-    // Reset input height
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-    }
+  async function sendPrompt(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || loading) return;
 
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: promptText,
-      timestamp: new Date(),
-    };
-
-    const assistantMsgId = crypto.randomUUID();
-    const assistantMsgPlaceholder: Message = {
-      id: assistantMsgId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMsg, assistantMsgPlaceholder]);
+    const userMsg: ChatMessage = { id: newId(), role: 'user', content: trimmed };
+    const nextHistory = [...messages, userMsg].filter((m) => m.id !== 'welcome');
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
-    setIsLoading(true);
+    setLoading(true);
+    setError(null);
 
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+    const assistantMsgId = newId();
 
     try {
-      const historyForApi = [...messages, userMsg].map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
       const res = await fetch('/api/assistant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/plain',
+        },
         body: JSON.stringify({
-          messages: historyForApi,
-          stream: true,
+          messages: nextHistory.map(({ role, content }) => ({ role, content })),
           language,
-          deepSearch,
-          think,
         }),
-        signal: controller.signal,
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error('Failed to reach assistant');
+      if (!res.ok) {
+        throw new Error('Assistant unavailable');
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let accumulated = '';
+      if (res.body && res.headers.get('content-type')?.includes('text/plain')) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let accumulated = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
+        setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: '' }]);
 
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantMsgId ? { ...m, content: accumulated } : m))
-        );
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          accumulated += chunk;
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === assistantMsgId ? { ...msg, content: accumulated } : msg))
+          );
+        }
+      } else {
+        const data = (await res.json()) as { reply?: string; error?: string };
+        if (data.error || !data.reply) {
+          throw new Error(data.error || 'Assistant unavailable');
+        }
+        setMessages((prev) => [...prev, { id: assistantMsgId, role: 'assistant', content: data.reply! }]);
       }
-    } catch (err: unknown) {
-      if ((err as Error)?.name !== 'AbortError') {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId
-              ? {
-                  ...m,
-                  content:
-                    language === 'ru'
-                      ? 'Не удалось установить соединение. Попробуйте повторить запрос.'
-                      : 'Connection interrupted. Please try asking again.',
-                }
-              : m
-          )
-        );
-      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      setError(message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: newId(),
+          role: 'assistant',
+          content:
+            language === 'ru'
+              ? `Не удалось получить ответ (${message}). Попробуйте еще раз или свяжитесь с нами.`
+              : `I couldn’t answer that just now (${message}). Try again, or reach out to our team.`,
+        },
+      ]);
     } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
+      setLoading(false);
     }
-  };
-
-  const handleStop = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      setIsLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    handleStop();
-    setMessages([]);
-    setInput('');
-  };
-
-  const handleTextareaInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Floating Launcher (Closed State)
-  // ──────────────────────────────────────────────────────────────────────────
-  if (!open) {
-    return (
-      <aside aria-label="Pegasus AI Assistant" className="fixed bottom-6 right-6 z-[10004]">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-[#09090b] border border-zinc-700 hover:border-white text-white shadow-2xl shadow-black/80 hover:scale-105 transition-all duration-200 cursor-pointer group focus:outline-none"
-          title="Ask Grok (⌘K)"
-          aria-label="Open Pegasus AI Assistant"
-        >
-          {/* Subtle perimeter glow */}
-          <div className="absolute inset-0 rounded-full bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-          {/* Center Pegasus Logo */}
-          <img
-            src="/pegasus.jpg"
-            alt="Pegasus AI"
-            className="w-8 h-8 object-contain rounded-full select-none"
-          />
-
-          {/* Shortcut Command Badge */}
-          <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-white text-black font-mono text-[9px] font-bold tracking-tight rounded border border-white shadow-md">
-            ⌘K
-          </span>
-        </button>
-      </aside>
-    );
   }
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // Chat Interface (Corner Dock or Fullscreen Workspace)
-  // ──────────────────────────────────────────────────────────────────────────
-  const containerClasses = isFullscreen
-    ? 'fixed inset-0 z-[10005] bg-black/85 backdrop-blur-xl flex flex-col items-center justify-center p-2 sm:p-6 lg:p-8 animate-in fade-in duration-200'
-    : 'fixed bottom-6 right-6 z-[10004] w-[420px] sm:w-[440px] h-[600px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100dvh-4.5rem)] bg-[#09090b] border border-zinc-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl shadow-black/90 animate-in fade-in zoom-in-95 duration-200';
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    void sendPrompt(input);
+  }
 
-  const innerCardClasses = isFullscreen
-    ? 'w-full max-w-4xl h-full max-h-[92vh] bg-[#09090b] border border-zinc-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl'
-    : 'flex flex-col w-full h-full';
+  function clearHistory() {
+    setMessages([{ id: newId(), role: 'assistant', content: currentWelcome }]);
+    setError(null);
+  }
+
+  function copyToClipboard(msgId: string, text: string) {
+    void navigator.clipboard.writeText(text);
+    setCopiedId(msgId);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  const handleExpandToSeparateWindow = () => {
+    window.open('/assistant', '_blank');
+  };
 
   return (
-    <div className={containerClasses}>
-      <div className={innerCardClasses}>
-        
-        {/* ── Grok Top Navigation Bar ── */}
-        <header className="h-14 px-4 border-b border-zinc-800 bg-[#0c0c0e] flex items-center justify-between shrink-0 select-none">
-          {/* Left Brand info */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded border border-white/20 overflow-hidden bg-black flex items-center justify-center">
-              <img src="/pegasus.jpg" alt="Pegasus" className="w-full h-full object-contain" />
-            </div>
-            <div className="flex items-center gap-2 font-mono">
-              <span className="text-sm font-semibold text-white tracking-tight">Grok</span>
-              <span className="px-2 py-0.5 text-[10px] rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300">
-                grok-3-mini
-              </span>
-            </div>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-1" title="Online" />
-          </div>
-
-          {/* Right Action buttons */}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={handleReset}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-md transition-colors cursor-pointer"
-              title="New Chat"
-              aria-label="New Chat"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsFullscreen((prev) => !prev)}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-md transition-colors cursor-pointer"
-              title={isFullscreen ? 'Collapse to corner' : 'Expand to full screen'}
-              aria-label="Toggle Fullscreen"
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800/60 rounded-md transition-colors cursor-pointer"
-              title="Close (Esc)"
-              aria-label="Close Assistant"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </header>
-
-        {/* ── Scrollable Chat Messages Feed ── */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-zinc-800">
-          {messages.length === 0 ? (
-            /* Grok Welcome Empty State */
-            <div className={`flex flex-col items-center justify-center text-center my-auto ${isFullscreen ? 'py-12 max-w-2xl mx-auto' : 'py-8'}`}>
-              <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center p-2 mb-3 shadow-lg">
-                <img src="/pegasus.jpg" alt="Pegasus Grok" className="w-full h-full object-contain rounded-lg" />
+    <div className="site-assistant" data-open={open ? 'true' : 'false'}>
+      {open ? (
+        <aside
+          id={panelId}
+          ref={containerRef}
+          className="site-assistant__panel site-assistant__panel--chat fixed bottom-6 right-6 z-[10004] outline-none"
+          role="dialog"
+          aria-label="Pegasus assistant"
+        >
+          <div className="site-assistant__chat-card rounded-none border border-white/20 bg-[#09090B] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[85vh]">
+            {/* Header Bar */}
+            <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-[#121216] border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 border border-white/20 bg-black flex items-center justify-center shrink-0 p-1">
+                  <img src="/pegasus.jpg" alt="" className="w-full h-full object-contain" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold tracking-wider text-white uppercase truncate">
+                      PEGASUS OS
+                    </span>
+                    <span className="text-[9px] font-mono font-semibold px-1 py-0.2 border border-white/20 text-white/70 uppercase">
+                      CORNER
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-mono text-white/50 truncate">
+                    Autonomous Operations & Architecture AI
+                  </p>
+                </div>
               </div>
-              
-              <h3 className="text-base sm:text-lg font-semibold text-white tracking-tight mb-1">
-                {language === 'ru' ? 'Что вы хотите исследовать в Pegasus?' : 'What would you like to explore in Pegasus?'}
-              </h3>
-              <p className="text-xs text-zinc-400 max-w-sm mb-6">
-                {language === 'ru'
-                  ? 'Автономная логистическая разведка: телеметрия флота, Spanner ledger и оптимизация CVRP.'
-                  : 'Autonomous logistics intelligence: fleet telematics, Spanner ledger invariants, and CVRP dispatch.'}
-              </p>
 
-              {/* 2x2 Starter Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left">
-                {STARTERS.map((starter, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleSend(starter.prompt)}
-                    className="p-3 rounded-xl bg-[#131317] hover:bg-[#191920] border border-zinc-800 hover:border-zinc-700 transition-all text-left group cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-[10px] font-mono font-bold text-zinc-400 group-hover:text-white uppercase">
-                        {starter.tag}
-                      </span>
-                      <span className="text-zinc-500 group-hover:text-white text-xs transition-transform group-hover:translate-x-0.5">
-                        →
-                      </span>
-                    </div>
-                    <div className="text-xs font-medium text-zinc-200 group-hover:text-white line-clamp-1">
-                      {starter.title}
-                    </div>
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Clear History */}
+                <button
+                  type="button"
+                  onClick={clearHistory}
+                  title={language === 'ru' ? 'Очистить историю' : 'Clear History'}
+                  className="p-1.5 text-white/50 hover:text-white border border-transparent hover:border-white/20 transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Open in Separate Window Fullscreen */}
+                <button
+                  type="button"
+                  className="site-assistant__toggle-fullscreen inline-flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold text-white bg-black border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all cursor-pointer uppercase tracking-wider rounded-none"
+                  title={language === 'ru' ? 'Открыть в отдельном окне на весь экран' : 'Open in separate window fullscreen'}
+                  onClick={handleExpandToSeparateWindow}
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>{language === 'ru' ? 'ОКНО' : 'EXPAND'} ↗</span>
+                </button>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  className="site-assistant__close-btn text-white/60 hover:text-white text-lg leading-none p-1 cursor-pointer transition-colors"
+                  title={language === 'ru' ? 'Закрыть (Esc)' : 'Close (Esc)'}
+                  onClick={() => setOpen(false)}
+                >
+                  ×
+                </button>
               </div>
-            </div>
-          ) : (
-            /* Message Thread */
-            <div className={isFullscreen ? 'max-w-3xl w-full mx-auto space-y-4' : 'space-y-4'}>
-              {messages.map((msg) => {
-                const isUser = msg.role === 'user';
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} gap-1`}
-                  >
-                    {!isUser && (
-                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 mb-0.5 pl-1">
-                        <img src="/pegasus.jpg" alt="" className="w-3.5 h-3.5 rounded-full object-contain" />
-                        <span className="font-semibold text-zinc-300">Grok</span>
-                      </div>
-                    )}
+            </header>
 
-                    {isUser ? (
-                      <div className="bg-[#1e1e24] border border-zinc-700/80 text-zinc-100 rounded-2xl px-4 py-2.5 text-sm max-w-[85%] break-words whitespace-pre-wrap leading-relaxed shadow-sm">
-                        {msg.content}
-                      </div>
-                    ) : (
-                      <div className="bg-transparent text-zinc-200 px-1 py-1 text-sm w-full leading-relaxed">
-                        {msg.content ? (
-                          <FormattedMessage
-                            content={msg.content}
-                            isStreaming={isLoading && messages[messages.length - 1]?.id === msg.id}
-                          />
+            {/* Messages Stream */}
+            <div ref={listRef} className="site-assistant__messages flex-1 overflow-y-auto p-3.5 space-y-3 bg-[#09090B]" aria-live="polite">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`site-assistant__msg ${
+                    msg.role === 'assistant'
+                      ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-[#121216] border border-white/10 text-[#EDEDED] p-3 text-xs leading-relaxed rounded-none'
+                      : 'site-assistant__msg--user self-end max-w-[85%] bg-white text-black p-3 text-xs font-medium rounded-none shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider opacity-60">
+                      {msg.role === 'assistant' ? 'PEGASUS INTELLIGENCE' : t('asst_you', 'YOU')}
+                    </span>
+
+                    {msg.role === 'assistant' && msg.content && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-[10px] font-mono text-white/50 hover:text-white transition-colors cursor-pointer"
+                        onClick={() => copyToClipboard(msg.id, msg.content)}
+                      >
+                        {copiedId === msg.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-white" />
+                            <span>COPIED</span>
+                          </>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-zinc-500 text-xs py-1">
-                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-400 animate-pulse" />
-                            <span>Thinking...</span>
-                          </div>
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>COPY</span>
+                          </>
                         )}
-                      </div>
+                      </button>
                     )}
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
 
-        {/* ── Grok Floating Input Composer ── */}
-        <div className={`p-3 shrink-0 ${isFullscreen ? 'max-w-3xl w-full mx-auto' : ''}`}>
-          <div className="bg-[#121216] border border-zinc-800 focus-within:border-zinc-600 rounded-2xl p-2.5 shadow-lg transition-colors">
-            
-            {/* Auto-growing Textarea */}
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={input}
-              onChange={handleTextareaInput}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                language === 'ru'
-                  ? 'Спросите Grok о логистике Pegasus...'
-                  : 'Ask Grok anything about Pegasus...'
-              }
-              className="w-full bg-transparent text-white placeholder-zinc-500 text-sm resize-none focus:outline-none max-h-36 px-1.5 py-1 leading-relaxed"
-            />
+                  <div className="site-assistant__msg-body">
+                    <FormattedContent text={msg.content} />
+                  </div>
+                </div>
+              ))}
 
-            {/* Bottom Toolbar Row */}
-            <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 mt-1">
-              {/* Left Action Toggles */}
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setDeepSearch((prev) => !prev)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono transition-colors cursor-pointer border ${
-                    deepSearch
-                      ? 'bg-white text-black border-white font-medium'
-                      : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
-                  }`}
-                  title="DeepSearch Mode"
-                >
-                  <Search className="w-3 h-3" />
-                  <span>DeepSearch</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setThink((prev) => !prev)}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono transition-colors cursor-pointer border ${
-                    think
-                      ? 'bg-white text-black border-white font-medium'
-                      : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-zinc-200'
-                  }`}
-                  title="Think Reasoning Mode"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Think</span>
-                </button>
-              </div>
-
-              {/* Right Send / Stop Button */}
-              <div>
-                {isLoading ? (
-                  <button
-                    type="button"
-                    onClick={handleStop}
-                    className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition-colors cursor-pointer"
-                    title="Stop generation"
-                    aria-label="Stop generation"
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleSend()}
-                    disabled={!input.trim()}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      input.trim()
-                        ? 'bg-white text-black hover:bg-zinc-200 cursor-pointer shadow-md'
-                        : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-                    }`}
-                    title="Send message (Enter)"
-                    aria-label="Send message"
-                  >
-                    <ArrowUp className="w-4 h-4 font-bold" />
-                  </button>
-                )}
-              </div>
+              {loading && (
+                <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-[#121216] border border-white/10 text-white p-3 text-xs rounded-none">
+                  <div className="flex items-center gap-1.5 mb-1 opacity-60">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider">PEGASUS INTELLIGENCE</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs font-mono text-white/70 py-1">
+                    <span className="w-1.5 h-1.5 rounded-none bg-white animate-pulse" />
+                    <span>{language === 'ru' ? 'Генерация ответа...' : 'Synthesizing telemetry...'}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {error && <p className="text-[11px] font-mono text-zinc-400 px-3.5 py-1 bg-black">{error}</p>}
+
+            {/* Action Pills */}
+            <ul className="site-assistant__actions site-assistant__actions--inline flex flex-col gap-1.5 p-2.5 bg-[#0C0C0E] border-t border-white/10 max-h-[140px] overflow-y-auto">
+              {currentQuickActions.map((action) => (
+                <li key={action.id} className="w-full">
+                  {action.dismiss ? (
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      onClick={() => {
+                        setOpen(false);
+                        setDismissed(true);
+                      }}
+                    >
+                      <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase">
+                        {action.badge}
+                      </span>
+                      <span className="text-white/70 truncate flex-1 ml-2">{action.label}</span>
+                    </button>
+                  ) : action.prompt ? (
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      disabled={loading}
+                      onClick={() => void sendPrompt(action.prompt!)}
+                    >
+                      <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase shrink-0">
+                        {action.badge}
+                      </span>
+                      <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
+                      <span className="text-white/40 text-[10px] ml-1">↵</span>
+                    </button>
+                  ) : (
+                    <Link
+                      href={action.href!}
+                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      onClick={() => setOpen(false)}
+                    >
+                      <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase shrink-0">
+                        {action.badge}
+                      </span>
+                      <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
+                      <span className="text-white/40 text-[10px] ml-1">↗</span>
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {/* Message Composer */}
+            <form className="site-assistant__composer flex items-center gap-2 p-2.5 bg-[#121216] border-t border-white/10 shrink-0" onSubmit={onSubmit}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={language === 'ru' ? 'Спросить о Go, Spanner, ролях...' : 'Ask about Go, Spanner, roles...'}
+                maxLength={2000}
+                disabled={loading}
+                className="flex-1 bg-black text-white placeholder-white/40 border border-white/20 focus:border-white px-3 py-2 text-xs font-mono rounded-none outline-none"
+                aria-label={language === 'ru' ? 'Сообщение' : 'Message'}
+              />
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="px-3.5 py-2 bg-white text-black hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer rounded-none shrink-0"
+              >
+                {language === 'ru' ? 'Ввод' : 'Send'}
+              </button>
+            </form>
           </div>
-        </div>
+        </aside>
+      ) : null}
 
-      </div>
+      {/* Floating Action Launcher in Corner */}
+      {!open ? (
+        <aside aria-label="Pegasus AI Assistant" className="fixed bottom-6 right-6 z-[10004]">
+          <button
+            ref={launcherRef}
+            type="button"
+            className="glowing-squircle-launcher group focus:outline-none"
+            title="Open Pegasus AI Assistant (⌘K)"
+            aria-label="Open Pegasus AI Assistant"
+            onClick={() => setOpen(true)}
+          >
+            <img
+              src="/pegasus.jpg"
+              alt="Pegasus AI Assistant"
+              width={34}
+              height={34}
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain select-none transition-transform duration-200 group-hover:scale-105"
+            />
+            <span className="site-assistant__badge" aria-hidden="true">
+              ⌘K
+            </span>
+          </button>
+        </aside>
+      ) : null}
     </div>
   );
 }
