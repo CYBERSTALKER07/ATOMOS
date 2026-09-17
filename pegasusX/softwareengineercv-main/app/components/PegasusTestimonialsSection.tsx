@@ -70,27 +70,27 @@ export function PegasusTestimonialsSection() {
         <div className="w-full relative my-4">
           
           {/* Extended Outer Grid Alignment Lines */}
-          <div className="absolute left-[-30px] right-[-30px] top-0 h-[1px] bg-zinc-800/80 pointer-events-none hidden sm:block" />
-          <div className="absolute left-[-30px] right-[-30px] bottom-0 h-[1px] bg-zinc-800/80 pointer-events-none hidden sm:block" />
-          <div className="absolute top-[-30px] bottom-[-30px] left-0 w-[1px] bg-zinc-800/80 pointer-events-none hidden sm:block" />
-          <div className="absolute top-[-30px] bottom-[-30px] right-0 w-[1px] bg-zinc-800/80 pointer-events-none hidden sm:block" />
+          <div className="absolute left-[-30px] right-[-30px] top-0 h-[1px] bg-[#18A049]/30 pointer-events-none hidden sm:block" />
+          <div className="absolute left-[-30px] right-[-30px] bottom-0 h-[1px] bg-[#18A049]/30 pointer-events-none hidden sm:block" />
+          <div className="absolute top-[-30px] bottom-[-30px] left-0 w-[1px] bg-[#18A049]/30 pointer-events-none hidden sm:block" />
+          <div className="absolute top-[-30px] bottom-[-30px] right-0 w-[1px] bg-[#18A049]/30 pointer-events-none hidden sm:block" />
 
           {/* Main Card Frame with Outer Border */}
-          <div className="w-full bg-[#0d0d0d] border border-zinc-800 relative">
+          <div className="w-full bg-[#0d0d0d] border border-[#18A049]/40 relative">
 
             {/* Corner Node Handle Squares (□) at frame intersections */}
-            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-zinc-400 absolute -top-1.25 -left-1.25 z-20" />
-            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-zinc-400 absolute -top-1.25 -right-1.25 z-20" />
-            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-zinc-400 absolute -bottom-1.25 -left-1.25 z-20" />
-            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-zinc-400 absolute -bottom-1.25 -right-1.25 z-20" />
+            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-[#18A049] absolute -top-1.25 -left-1.25 z-20" />
+            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-[#18A049] absolute -top-1.25 -right-1.25 z-20" />
+            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-[#18A049] absolute -bottom-1.25 -left-1.25 z-20" />
+            <div className="w-2.5 h-2.5 bg-[#0d0d0d] border border-[#18A049] absolute -bottom-1.25 -right-1.25 z-20" />
 
             {/* Top Bar Header Row */}
-            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-2.5 bg-[#0a0a0a]">
-              <div className="flex items-center gap-2 font-mono text-xs text-white tracking-wider">
-                <span className="w-1.5 h-1.5 bg-white inline-block" />
+            <div className="flex items-center justify-between border-b border-[#18A049]/30 px-5 py-2.5 bg-[#0a0a0a]">
+              <div className="flex items-center gap-2 font-mono text-xs text-[#18A049] tracking-wider font-medium">
+                <span className="w-1.5 h-1.5 bg-[#18A049] inline-block" />
                 <span>CASE STUDY</span>
               </div>
-              <div className="font-mono text-xs text-zinc-500 tracking-widest hidden sm:block">
+              <div className="font-mono text-xs text-[#18A049]/80 tracking-widest hidden sm:block">
                 SYS.REF · PEGASUS_CTO_01
               </div>
             </div>
@@ -99,8 +99,11 @@ export function PegasusTestimonialsSection() {
             <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
               
               {/* Left Column: Content & CTA (7 cols on lg) */}
-              <div className="lg:col-span-7 p-5 sm:p-7 flex flex-col justify-between gap-4 border-b lg:border-b-0 lg:border-r border-zinc-800">
+              <div className="lg:col-span-7 p-5 sm:p-7 flex flex-col justify-between gap-4 border-b lg:border-b-0 lg:border-r border-[#18A049]/30">
                 <div className="flex flex-col gap-2.5">
+                  <span className="text-[10px] font-mono tracking-widest uppercase text-[#18A049] font-medium">
+                    OPERATIONAL ARCHITECTURE
+                  </span>
                   <h3 className="text-lg sm:text-xl md:text-2xl font-normal tracking-tight text-zinc-100 leading-snug">
                     {t('cto_quote')}
                   </h3>
@@ -111,11 +114,11 @@ export function PegasusTestimonialsSection() {
                   </p>
                 </div>
 
-                {/* Monochrome CTA Button */}
+                {/* Emerald CTA Button */}
                 <div className="pt-2">
                   <Link 
                     href="/contact"
-                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-white hover:bg-zinc-200 text-black font-medium text-xs sm:text-sm transition-colors rounded-none shadow-sm group border border-white"
+                    className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-[#18A049] hover:bg-[#14873d] text-black font-semibold text-xs sm:text-sm transition-colors rounded-none shadow-sm group border border-[#18A049]"
                   >
                     <span>{t('read_case_study') || 'Read case study'}</span>
                     <span className="group-hover:translate-x-1 transition-transform font-bold">→</span>
@@ -127,22 +130,28 @@ export function PegasusTestimonialsSection() {
               <div className="lg:col-span-5 flex flex-col justify-between bg-black relative h-full">
                 
                 {/* Dithered Portrait Container - Properly Proportioned */}
-                <div className="w-full flex-1 min-h-[300px] sm:min-h-[340px] lg:min-h-[320px] relative border-b border-zinc-800 overflow-hidden bg-black">
+                <div className="w-full flex-1 min-h-[300px] sm:min-h-[340px] lg:min-h-[320px] relative border-b border-[#18A049]/30 overflow-hidden bg-black">
                   <DitheredPortrait 
                     src="/cto_portrait.jpg" 
                     alt={t('cto_role')}
                   />
                   
                   {/* Grid handle nodes inside portrait container frame */}
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute top-2 left-2 z-20" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute top-2 right-2 z-20" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute bottom-2 left-2 z-20" />
-                  <div className="w-2 h-2 bg-[#0d0d0d] border border-zinc-500 absolute bottom-2 right-2 z-20" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-[#18A049] absolute top-2 left-2 z-20" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-[#18A049] absolute top-2 right-2 z-20" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-[#18A049] absolute bottom-2 left-2 z-20" />
+                  <div className="w-2 h-2 bg-[#0d0d0d] border border-[#18A049] absolute bottom-2 right-2 z-20" />
                 </div>
 
                 {/* Bottom Metadata Bar */}
-                <div className="px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] text-zinc-400 tracking-wider">
-                  <span className="truncate">— {t('cto_name').toUpperCase()} · {t('cto_role').toUpperCase()}</span>
+                <div className="px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between font-mono text-[11px] tracking-wider">
+                  <span className="truncate">
+                    — <span className="text-zinc-200">{t('cto_name').toUpperCase()}</span> · <span className="text-[#18A049] font-medium">{t('cto_role').toUpperCase()}</span>
+                  </span>
+                  <span className="text-[10px] text-[#18A049]/80 hidden sm:flex items-center gap-1.5 font-mono">
+                    <span className="w-1.5 h-1.5 bg-[#18A049] inline-block animate-pulse" />
+                    VERIFIED CORE
+                  </span>
                 </div>
 
               </div>
