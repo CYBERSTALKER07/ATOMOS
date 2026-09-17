@@ -1443,13 +1443,17 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
     opacity: 1;
   }
 
-  /* Hide cursor on card hover */
+  /* Hide native cursor on card hover */
   .editorial-card:hover,
   .editorial-card:hover *,
   .card-hover-action:hover,
   .card-hover-action:hover *,
   .deployment-card:hover,
   .deployment-card:hover *,
+  #deployment article:hover,
+  #deployment article:hover *,
+  #deployment .grid > *:hover,
+  #deployment .grid > *:hover *,
   .company-card:hover,
   .company-card:hover *,
   .stat-card:hover,
@@ -1473,6 +1477,31 @@ a.editorial-card--interactive:not(.editorial-card--split-cta):hover .chamfer-btn
   [class*="card-hover"]:hover,
   [class*="card-hover"]:hover * {
     cursor: none !important;
+  }
+
+  /* Instantly hide custom TargetCursor when mouse hovers over any card */
+  body:has(.editorial-card:hover) #target-cursor,
+  body:has(.deployment-card:hover) #target-cursor,
+  body:has(#deployment article:hover) #target-cursor,
+  body:has(#deployment .grid > *:hover) #target-cursor,
+  body:has(.card-hover-action:hover) #target-cursor,
+  body:has(.company-card:hover) #target-cursor,
+  body:has(.stat-card:hover) #target-cursor,
+  body:has(.bento-card:hover) #target-cursor,
+  body:has(.chamfer-card:hover) #target-cursor,
+  body:has(.docs-card:hover) #target-cursor,
+  body:has(.platform-card:hover) #target-cursor,
+  body:has(.o9-card:hover) #target-cursor,
+  body:has(.capability-card:hover) #target-cursor,
+  body:has([data-card]:hover) #target-cursor,
+  body:has([class*="editorial-card"]:hover) #target-cursor,
+  body:has([class*="card-hover"]:hover) #target-cursor,
+  body:has(.editorial-card:hover) .target-cursor,
+  body:has(.deployment-card:hover) .target-cursor,
+  body:has([data-card]:hover) .target-cursor {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 }
 

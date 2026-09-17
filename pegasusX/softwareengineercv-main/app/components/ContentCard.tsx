@@ -354,13 +354,13 @@ function ContentCard({
 
   if (href && !useSplitCta) {
     return (
-      <Link href={href as Route} prefetch={false} className={shellClass}>
+      <Link href={href as Route} prefetch={false} className={shellClass} data-card="editorial">
         {inner}
       </Link>
     );
   }
 
-  return <article className={shellClass}>{inner}</article>;
+  return <article className={shellClass} data-card="editorial">{inner}</article>;
 }
 
 export default memo(ContentCard);
