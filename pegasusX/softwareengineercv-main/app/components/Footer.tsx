@@ -217,14 +217,16 @@ export default function Footer() {
       </div>
 
       {/* Huge text */}
-      <div className="pt-20 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
-        <div className="w-full h-[22vw] min-h-[160px] max-h-[460px] relative flex items-center justify-center">
+      <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+        <div className="w-full h-[20vw] min-h-[140px] relative flex items-center justify-center">
           <ParticleText
             text="pegasus"
             fontSize="25vw"
             fontWeight={900}
-            color="#e5e5e5"
-            highlightColor="#10B981"
+            letterSpacing="-0.05em"
+            fitContainer={false}
+            color="#ffffff"
+            highlightColor="#ffffff"
             particleSize={2.4}
             density={4}
             scatter={160}

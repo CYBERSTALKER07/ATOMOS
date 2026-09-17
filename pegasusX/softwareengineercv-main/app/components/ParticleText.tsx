@@ -19,6 +19,8 @@ export interface ParticleTextProps {
   fontSize?: number | string;
   fontWeight?: number | string;
   fontFamily?: string;
+  letterSpacing?: string;
+  fitContainer?: boolean;
   glow?: boolean;
   textAlign?: 'left' | 'center' | 'right';
   as?: 'div' | 'h1' | 'span';
@@ -111,6 +113,8 @@ const ParticleText = ({
   fontSize = 'clamp(3rem, 12vw, 8rem)',
   fontWeight = 800,
   fontFamily = 'inherit',
+  letterSpacing,
+  fitContainer = true,
   glow = true,
   textAlign = 'left',
   as: Tag = 'div',
@@ -122,6 +126,8 @@ const ParticleText = ({
 
   const containerRef = useRef<HTMLHeadingElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const hasTriggeredInViewRef = useRef(false);
+  const hasGatheredOnceRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || isLowEnd) return undefined;
@@ -267,10 +273,13 @@ const ParticleText = ({
     const sampleText = async (): Promise<void> => {
       const currentBuild = ++buildId;
       const rect = container.getBoundingClientRect();
-      width = Math.floor(rect.width);
-      height = Math.floor(rect.height);
+      const newWidth = Math.floor(rect.width);
+      const newHeight = Math.floor(rect.height);
 
-      if (width <= 0 || height <= 0) return;
+      if (newWidth <= 0 || newHeight <= 0) return;
+      if (newWidth === width && newHeight === height && particles.length > 0) return;
+      width = newWidth;
+      height = newHeight;
 
       dpr = Math.min(window.devicePixelRatio || 1, perf.maxDpr);
       canvas.width = Math.max(1, Math.floor(width * dpr));
@@ -292,20 +301,26 @@ const ParticleText = ({
       if (!offCtx) return;
 
       const content = String(text || ' ');
-      const maxTextWidth = width * 0.92;
-      const maxTextHeight = height * 0.90;
+      const maxTextWidth = width * 0.98;
+      const maxTextHeight = height * 0.96;
       offCtx.font = font;
+      if (letterSpacing && 'letterSpacing' in offCtx) {
+        (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+      }
       let metrics = offCtx.measureText(content);
       const measuredWidth = Math.max(1, metrics.width);
       const approxHeight = Math.max(1, (metrics.actualBoundingBoxAscent || resolvedSize * 0.78) + (metrics.actualBoundingBoxDescent || resolvedSize * 0.22));
 
-      if (measuredWidth > maxTextWidth || approxHeight > maxTextHeight) {
+      if (fitContainer && (measuredWidth > maxTextWidth || approxHeight > maxTextHeight)) {
         const scale = Math.min(maxTextWidth / measuredWidth, maxTextHeight / approxHeight);
         resolvedSize = Math.max(18, resolvedSize * scale);
         font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
         await waitForFonts(font);
         if (currentBuild !== buildId) return;
         offCtx.font = font;
+        if (letterSpacing && 'letterSpacing' in offCtx) {
+          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+        }
         metrics = offCtx.measureText(content);
       }
 
@@ -321,6 +336,9 @@ const ParticleText = ({
       offscreen.height = textHeight + padding * 2;
       offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
       offCtx.font = font;
+      if (letterSpacing && 'letterSpacing' in offCtx) {
+        (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+      }
       offCtx.textAlign = 'left';
       offCtx.textBaseline = 'alphabetic';
       offCtx.fillStyle = '#ffffff';
@@ -394,9 +412,7 @@ const ParticleText = ({
           particle.delay = 0;
         });
         gathering = false;
-      } else if (trigger !== 'view' || hasTriggeredInView) {
-        startGather(false);
-      } else {
+      } else if (trigger === 'view' && !hasTriggeredInViewRef.current) {
         const spread = scatter;
         particles.forEach(particle => {
           const angle = particle.seed * Math.PI * 2;
@@ -406,6 +422,18 @@ const ParticleText = ({
           particle.startX = particle.x;
           particle.startY = particle.y;
           particle.delay = particle.seed * stagger;
+        });
+        gathering = false;
+      } else if (!hasGatheredOnceRef.current) {
+        hasGatheredOnceRef.current = true;
+        startGather(trigger === 'mount');
+      } else {
+        particles.forEach(particle => {
+          particle.x = particle.targetX;
+          particle.y = particle.targetY;
+          particle.startX = particle.targetX;
+          particle.startY = particle.targetY;
+          particle.delay = 0;
         });
         gathering = false;
       }
@@ -431,7 +459,7 @@ const ParticleText = ({
 
     const handlePointerEnter = (event: PointerEvent): void => {
       handlePointerMove(event);
-      if (trigger === 'hover' || trigger === 'view') startGather(true);
+      if (trigger === 'hover') startGather(true);
     };
 
     const handleClick = (): void => {
@@ -453,15 +481,14 @@ const ParticleText = ({
     const resizeObserver = new ResizeObserver(queueSample);
     resizeObserver.observe(container);
 
-    let hasTriggeredInView = false;
-
     const io = new IntersectionObserver(
       ([entry]) => {
         const wasVisible = isVisible;
         isVisible = !!entry?.isIntersecting;
         if (isVisible) {
-          if (trigger === 'view' && !hasTriggeredInView) {
-            hasTriggeredInView = true;
+          if (trigger === 'view' && !hasTriggeredInViewRef.current) {
+            hasTriggeredInViewRef.current = true;
+            hasGatheredOnceRef.current = true;
             startGather(true);
           }
           if (!wasVisible) {
@@ -504,6 +531,8 @@ const ParticleText = ({
     fontSize,
     fontWeight,
     fontFamily,
+    letterSpacing,
+    fitContainer,
     glow,
     isLowEnd,
     perf.maxDpr
@@ -517,11 +546,18 @@ const ParticleText = ({
           ? 'justify-end text-right'
           : 'justify-start text-left';
 
+    const glowColor = highlightColor || '#ffffff';
+
     return (
       <div className={`relative flex items-center ${justifyClass} h-full w-full ${className}`} style={style}>
         <Tag
-          className="font-extrabold tracking-tight text-white drop-shadow-[0_0_24px_rgba(16,185,129,0.3)]"
-          style={{ fontSize: typeof fontSize === 'string' ? fontSize : `${fontSize}px`, fontWeight }}
+          className="font-black text-white select-none leading-[0.75]"
+          style={{
+            fontSize: typeof fontSize === 'string' ? fontSize : `${fontSize}px`,
+            fontWeight,
+            letterSpacing: letterSpacing || 'normal',
+            filter: glow ? `drop-shadow(0 0 20px ${glowColor})` : undefined
+          }}
         >
           {text}
         </Tag>
