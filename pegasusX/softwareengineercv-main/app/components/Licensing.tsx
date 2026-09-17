@@ -118,8 +118,6 @@ export default function Licensing() {
         </div>
       </div>
 
-      <div className="absolute top-10 left-10 w-32 h-32 border-2 border-white opacity-10 rounded-2xl" />
-      <div className="absolute bottom-10 right-10 w-40 h-40 border-2 border-white opacity-10 rounded-2xl" />
     </section>
   );
 }
