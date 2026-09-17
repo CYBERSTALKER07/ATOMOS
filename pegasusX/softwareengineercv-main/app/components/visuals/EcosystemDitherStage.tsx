@@ -20,12 +20,12 @@ interface StepCameraTarget {
 const STEP_CAMERA_TARGETS: StepCameraTarget[] = [
   // 0: Supplier Operations (Factory Weighbridge & Pallet Staging)
   { azimuth: 0.785, elevation: 0.58, focus: [-1.8, 0.35, -1.2], zoom: 1.15, label: 'SUPPLIER_OUTBOUND' },
-  // 1: Warehouse Control (Dock Bays & High-Bay Storage)
-  { azimuth: 0.92, elevation: 0.64, focus: [-0.2, 0.45, 0.1], zoom: 1.25, label: 'CROSS_DOCK_WMS' },
-  // 2: Retailer Network (Storefront Intake & Register Queue)
-  { azimuth: 0.65, elevation: 0.54, focus: [1.7, 0.35, 1.1], zoom: 1.2, label: 'RETAILER_RECEPTION' },
+  // 1: Warehouse Control (Dock Bay, Conveyor, Packs Loading to Truck, Forklift)
+  { azimuth: 0.88, elevation: 0.58, focus: [-0.6, 0.42, 0.85], zoom: 1.45, label: 'CROSS_DOCK_WMS' },
+  // 2: Retailer Network (Door Delivery, Parked Truck, Courier & Store Manager Handover)
+  { azimuth: 0.62, elevation: 0.48, focus: [1.75, 0.32, 0.75], zoom: 1.55, label: 'RETAILER_RECEPTION' },
   // 3: Global Fleet (City Transit Grid, Multi-Lane Trucks)
-  { azimuth: 0.785, elevation: 0.32, focus: [0.0, 0.2, 0.0], zoom: 0.58, label: 'GLOBAL_FLEET_MESH' },
+  { azimuth: 0.785, elevation: 0.35, focus: [0.0, 0.2, 0.0], zoom: 0.62, label: 'GLOBAL_FLEET_MESH' },
 ];
 
 const DITHER_VERTEX_SHADER = `
@@ -273,7 +273,9 @@ export default function EcosystemDitherStage({
       litMat: THREE.Material | THREE.Material[],
       inkMat: THREE.Material | THREE.Material[]
     ) {
-      scene.add(mesh);
+      if (!mesh.parent) {
+        scene.add(mesh);
+      }
       managedMeshes.push({ mesh, litMat, inkMat });
       return mesh;
     }
@@ -345,11 +347,97 @@ export default function EcosystemDitherStage({
     pallets.instanceMatrix.needsUpdate = true;
     registerMesh(pallets, defaultLitMat, inkMatWhite);
 
-    // 4. Zone 1: Warehouse Cross-Dock & Racking (Center-Left, x: -0.5, z: 1.8)
+    // Supplier Weighbridge Gate Barrier
+    const barrierGateGroup = new THREE.Group();
+    const barrierPost = new THREE.Mesh(boxGeo, darkLitMat);
+    barrierPost.scale.set(0.12, 0.45, 0.12);
+    barrierPost.position.set(-2.2, 0.225, -1.0);
+    barrierGateGroup.add(barrierPost);
+    registerMesh(barrierPost, darkLitMat, inkMatDark);
+
+    const barrierArmPivot = new THREE.Group();
+    barrierArmPivot.position.set(-2.2, 0.42, -1.0);
+    const barrierArm = new THREE.Mesh(boxGeo, accentLitMat);
+    barrierArm.scale.set(1.1, 0.04, 0.04);
+    barrierArm.position.set(0.55, 0, 0);
+    barrierArmPivot.add(barrierArm);
+    registerMesh(barrierArm, accentLitMat, inkMatWhite);
+    barrierGateGroup.add(barrierArmPivot);
+    scene.add(barrierGateGroup);
+
+    // 4. Zone 1: Warehouse Cross-Dock, Loading Bay & Racking (Center-Left, x: -0.6, z: 1.8)
     const whBuilding = new THREE.Mesh(boxGeo, darkLitMat);
-    whBuilding.scale.set(2.8, 0.85, 2.4);
-    whBuilding.position.set(-0.6, 0.425, 2.0);
+    whBuilding.scale.set(2.8, 0.85, 2.2);
+    whBuilding.position.set(-0.6, 0.425, 1.9);
     registerMesh(whBuilding, darkLitMat, inkMatMid);
+
+    // Warehouse Loading Dock Aperture
+    const dockBay = new THREE.Mesh(boxGeo, accentLitMat);
+    dockBay.scale.set(0.95, 0.72, 0.12);
+    dockBay.position.set(-0.6, 0.36, 0.8);
+    registerMesh(dockBay, accentLitMat, inkMatWhite);
+
+    const dockOpening = new THREE.Mesh(boxGeo, darkLitMat);
+    dockOpening.scale.set(0.75, 0.58, 0.14);
+    dockOpening.position.set(-0.6, 0.29, 0.8);
+    registerMesh(dockOpening, darkLitMat, inkMatDark);
+
+    // Docked Cargo Truck backed into the loading bay
+    const dockedTruckGroup = new THREE.Group();
+    const dtCab = new THREE.Mesh(boxGeo, accentLitMat);
+    dtCab.scale.set(0.32, 0.28, 0.3);
+    dtCab.position.set(0, 0.17, -0.28);
+    dockedTruckGroup.add(dtCab);
+    registerMesh(dtCab, accentLitMat, inkMatWhite);
+
+    const dtCargo = new THREE.Mesh(boxGeo, defaultLitMat);
+    dtCargo.scale.set(0.38, 0.42, 0.62);
+    dtCargo.position.set(0, 0.24, 0.2);
+    dockedTruckGroup.add(dtCargo);
+    registerMesh(dtCargo, defaultLitMat, inkMatMid);
+
+    // Open rear doors of docked truck
+    const dtDoorL = new THREE.Mesh(boxGeo, defaultLitMat);
+    dtDoorL.scale.set(0.03, 0.36, 0.16);
+    dtDoorL.position.set(-0.21, 0.24, 0.52);
+    dtDoorL.rotation.y = -Math.PI * 0.4;
+    dockedTruckGroup.add(dtDoorL);
+    registerMesh(dtDoorL, defaultLitMat, inkMatWhite);
+
+    const dtDoorR = new THREE.Mesh(boxGeo, defaultLitMat);
+    dtDoorR.scale.set(0.03, 0.36, 0.16);
+    dtDoorR.position.set(0.21, 0.24, 0.52);
+    dtDoorR.rotation.y = Math.PI * 0.4;
+    dockedTruckGroup.add(dtDoorR);
+    registerMesh(dtDoorR, defaultLitMat, inkMatWhite);
+
+    dockedTruckGroup.position.set(-0.6, 0, 0.15);
+    scene.add(dockedTruckGroup);
+
+    // Conveyor Bed connecting warehouse interior into truck hold
+    const conveyorBed = new THREE.Mesh(boxGeo, darkLitMat);
+    conveyorBed.scale.set(0.2, 0.04, 0.85);
+    conveyorBed.position.set(-0.6, 0.21, 0.65);
+    conveyorBed.rotation.x = 0.08;
+    registerMesh(conveyorBed, darkLitMat, inkMatDark);
+
+    // Conveyor Support Legs
+    [0.35, 0.65, 0.95].forEach((pz) => {
+      const cLeg = new THREE.Mesh(boxGeo, defaultLitMat);
+      cLeg.scale.set(0.03, 0.18, 0.03);
+      cLeg.position.set(-0.6, 0.09, pz);
+      registerMesh(cLeg, defaultLitMat, inkMatWhite);
+    });
+
+    // 4 Animated Pack Boxes moving along Conveyor into Truck
+    const CONVEYOR_PACKS_COUNT = 4;
+    const conveyorPacks: THREE.Mesh[] = [];
+    for (let i = 0; i < CONVEYOR_PACKS_COUNT; i++) {
+      const pack = new THREE.Mesh(boxGeo, defaultLitMat);
+      pack.scale.set(0.13, 0.1, 0.13);
+      registerMesh(pack, defaultLitMat, inkMatWhite);
+      conveyorPacks.push(pack);
+    }
 
     // High-bay Racks (InstancedMesh)
     const rackCount = 16;
@@ -367,19 +455,218 @@ export default function EcosystemDitherStage({
     racks.instanceMatrix.needsUpdate = true;
     registerMesh(racks, defaultLitMat, inkMatWhite);
 
-    // 5. Zone 2: Retailer Network Hub & Storefront (Bottom-Right, x: 2.2, z: 1.8)
+    // Automated Warehouse Forklift / Pallet Stacker
+    const forkliftGroup = new THREE.Group();
+    const flChassis = new THREE.Mesh(boxGeo, darkLitMat);
+    flChassis.scale.set(0.32, 0.18, 0.38);
+    flChassis.position.set(0, 0.11, 0);
+    forkliftGroup.add(flChassis);
+    registerMesh(flChassis, darkLitMat, inkMatDark);
+
+    const flMast = new THREE.Mesh(boxGeo, defaultLitMat);
+    flMast.scale.set(0.28, 0.35, 0.06);
+    flMast.position.set(0, 0.3, 0.2);
+    forkliftGroup.add(flMast);
+    registerMesh(flMast, defaultLitMat, inkMatWhite);
+
+    const flForksGroup = new THREE.Group();
+    const flPalletMesh = new THREE.Mesh(boxGeo, accentLitMat);
+    flPalletMesh.scale.set(0.26, 0.12, 0.26);
+    flPalletMesh.position.set(0, 0, 0.22);
+    flForksGroup.add(flPalletMesh);
+    registerMesh(flPalletMesh, accentLitMat, inkMatWhite);
+    forkliftGroup.add(flForksGroup);
+
+    forkliftGroup.position.set(-1.1, 0, 1.8);
+    scene.add(forkliftGroup);
+
+    // 5. Zone 2: Retailer Network Hub, Storefront, Door Delivery & Two People (Bottom-Right)
     const storeBuilding = new THREE.Mesh(boxGeo, defaultLitMat);
     storeBuilding.scale.set(2.4, 0.65, 2.2);
     storeBuilding.position.set(2.2, 0.325, 1.8);
     registerMesh(storeBuilding, defaultLitMat, inkMatWhite);
 
-    // Retail Storefront Glass Entrance
-    const storeEntrance = new THREE.Mesh(boxGeo, accentLitMat);
-    storeEntrance.scale.set(0.9, 0.45, 0.1);
-    storeEntrance.position.set(2.2, 0.225, 0.7);
-    registerMesh(storeEntrance, accentLitMat, inkMatWhite);
+    // Storefront Awning Canopy
+    const storeAwning = new THREE.Mesh(boxGeo, accentLitMat);
+    storeAwning.scale.set(1.4, 0.06, 0.45);
+    storeAwning.position.set(2.0, 0.62, 0.85);
+    storeAwning.rotation.x = 0.2;
+    registerMesh(storeAwning, accentLitMat, inkMatWhite);
 
-    // Checkout counters
+    // Open Retailer Store Doorway
+    const doorFrame = new THREE.Mesh(boxGeo, darkLitMat);
+    doorFrame.scale.set(0.7, 0.55, 0.12);
+    doorFrame.position.set(2.0, 0.275, 0.7);
+    registerMesh(doorFrame, darkLitMat, inkMatDark);
+
+    const doorAperture = new THREE.Mesh(boxGeo, accentLitMat);
+    doorAperture.scale.set(0.55, 0.48, 0.08);
+    doorAperture.position.set(2.0, 0.24, 0.7);
+    registerMesh(doorAperture, accentLitMat, inkMatWhite);
+
+    // Parked Retailer Delivery Truck
+    const retTruckGroup = new THREE.Group();
+    const rtCab = new THREE.Mesh(boxGeo, accentLitMat);
+    rtCab.scale.set(0.34, 0.32, 0.34);
+    rtCab.position.set(0.32, 0.18, 0);
+    retTruckGroup.add(rtCab);
+    registerMesh(rtCab, accentLitMat, inkMatWhite);
+
+    const rtCargo = new THREE.Mesh(boxGeo, darkLitMat);
+    rtCargo.scale.set(0.68, 0.44, 0.38);
+    rtCargo.position.set(-0.2, 0.24, 0);
+    retTruckGroup.add(rtCargo);
+    registerMesh(rtCargo, darkLitMat, inkMatMid);
+
+    // Open rear doors of parked delivery van
+    const rtDoorL = new THREE.Mesh(boxGeo, defaultLitMat);
+    rtDoorL.scale.set(0.03, 0.38, 0.17);
+    rtDoorL.position.set(-0.55, 0.24, -0.2);
+    rtDoorL.rotation.y = -Math.PI * 0.35;
+    retTruckGroup.add(rtDoorL);
+    registerMesh(rtDoorL, defaultLitMat, inkMatWhite);
+
+    const rtDoorR = new THREE.Mesh(boxGeo, defaultLitMat);
+    rtDoorR.scale.set(0.03, 0.38, 0.17);
+    rtDoorR.position.set(-0.55, 0.24, 0.2);
+    rtDoorR.rotation.y = Math.PI * 0.35;
+    retTruckGroup.add(rtDoorR);
+    registerMesh(rtDoorR, defaultLitMat, inkMatWhite);
+
+    retTruckGroup.position.set(1.15, 0, 0.72);
+    scene.add(retTruckGroup);
+
+    // PERSON 1: Delivery Driver / Courier
+    const courierGroup = new THREE.Group();
+
+    const cTorso = new THREE.Mesh(boxGeo, accentLitMat);
+    cTorso.scale.set(0.12, 0.18, 0.08);
+    cTorso.position.set(0, 0.27, 0);
+    courierGroup.add(cTorso);
+    registerMesh(cTorso, accentLitMat, inkMatWhite);
+
+    const cHead = new THREE.Mesh(boxGeo, defaultLitMat);
+    cHead.scale.set(0.09, 0.09, 0.09);
+    cHead.position.set(0, 0.41, 0);
+    courierGroup.add(cHead);
+    registerMesh(cHead, defaultLitMat, inkMatWhite);
+
+    const cVisor = new THREE.Mesh(boxGeo, darkLitMat);
+    cVisor.scale.set(0.08, 0.02, 0.06);
+    cVisor.position.set(0.04, 0.44, 0);
+    courierGroup.add(cVisor);
+    registerMesh(cVisor, darkLitMat, inkMatDark);
+
+    // Courier Legs
+    const cLegLPivot = new THREE.Group();
+    cLegLPivot.position.set(0, 0.18, -0.04);
+    const cLegL = new THREE.Mesh(boxGeo, darkLitMat);
+    cLegL.scale.set(0.045, 0.18, 0.045);
+    cLegL.position.set(0, -0.09, 0);
+    cLegLPivot.add(cLegL);
+    courierGroup.add(cLegLPivot);
+    registerMesh(cLegL, darkLitMat, inkMatMid);
+
+    const cLegRPivot = new THREE.Group();
+    cLegRPivot.position.set(0, 0.18, 0.04);
+    const cLegR = new THREE.Mesh(boxGeo, darkLitMat);
+    cLegR.scale.set(0.045, 0.18, 0.045);
+    cLegR.position.set(0, -0.09, 0);
+    cLegRPivot.add(cLegR);
+    courierGroup.add(cLegRPivot);
+    registerMesh(cLegR, darkLitMat, inkMatMid);
+
+    // Courier Arms
+    const cArmLPivot = new THREE.Group();
+    cArmLPivot.position.set(0, 0.33, -0.08);
+    const cArmL = new THREE.Mesh(boxGeo, accentLitMat);
+    cArmL.scale.set(0.04, 0.16, 0.04);
+    cArmL.position.set(0, -0.08, 0);
+    cArmLPivot.add(cArmL);
+    courierGroup.add(cArmLPivot);
+    registerMesh(cArmL, accentLitMat, inkMatWhite);
+
+    const cArmRPivot = new THREE.Group();
+    cArmRPivot.position.set(0, 0.33, 0.08);
+    const cArmR = new THREE.Mesh(boxGeo, accentLitMat);
+    cArmR.scale.set(0.04, 0.16, 0.04);
+    cArmR.position.set(0, -0.08, 0);
+    cArmRPivot.add(cArmR);
+    courierGroup.add(cArmRPivot);
+    registerMesh(cArmR, accentLitMat, inkMatWhite);
+
+    // Delivery Parcel Box
+    const cParcel = new THREE.Mesh(boxGeo, defaultLitMat);
+    cParcel.scale.set(0.12, 0.10, 0.12);
+    cParcel.position.set(0.10, 0.26, 0);
+    courierGroup.add(cParcel);
+    registerMesh(cParcel, defaultLitMat, inkMatWhite);
+
+    courierGroup.position.set(1.25, 0, 0.72);
+    scene.add(courierGroup);
+
+    // PERSON 2: Retailer Store Manager / Receiver
+    const receiverGroup = new THREE.Group();
+
+    const rTorso = new THREE.Mesh(boxGeo, darkLitMat);
+    rTorso.scale.set(0.12, 0.18, 0.08);
+    rTorso.position.set(0, 0.27, 0);
+    receiverGroup.add(rTorso);
+    registerMesh(rTorso, darkLitMat, inkMatMid);
+
+    const rHead = new THREE.Mesh(boxGeo, defaultLitMat);
+    rHead.scale.set(0.09, 0.09, 0.09);
+    rHead.position.set(0, 0.41, 0);
+    receiverGroup.add(rHead);
+    registerMesh(rHead, defaultLitMat, inkMatWhite);
+
+    [-0.04, 0.04].forEach((zOff) => {
+      const rLeg = new THREE.Mesh(boxGeo, darkLitMat);
+      rLeg.scale.set(0.045, 0.18, 0.045);
+      rLeg.position.set(0, 0.09, zOff);
+      receiverGroup.add(rLeg);
+      registerMesh(rLeg, darkLitMat, inkMatDark);
+    });
+
+    // Left Arm holding ePOD Tablet
+    const rArmLPivot = new THREE.Group();
+    rArmLPivot.position.set(0, 0.33, -0.07);
+    const rArmL = new THREE.Mesh(boxGeo, darkLitMat);
+    rArmL.scale.set(0.04, 0.15, 0.04);
+    rArmL.position.set(0.04, -0.05, 0);
+    rArmLPivot.add(rArmL);
+    receiverGroup.add(rArmLPivot);
+    registerMesh(rArmL, darkLitMat, inkMatMid);
+
+    const epodTablet = new THREE.Mesh(boxGeo, accentLitMat);
+    epodTablet.scale.set(0.08, 0.015, 0.11);
+    epodTablet.position.set(0.10, 0.28, -0.02);
+    epodTablet.rotation.set(0.3, 0, 0.2);
+    receiverGroup.add(epodTablet);
+    registerMesh(epodTablet, accentLitMat, inkMatWhite);
+
+    // Right Arm (Stylus / Signing gesture)
+    const rArmRPivot = new THREE.Group();
+    rArmRPivot.position.set(0, 0.33, 0.07);
+    const rArmR = new THREE.Mesh(boxGeo, darkLitMat);
+    rArmR.scale.set(0.04, 0.15, 0.04);
+    rArmR.position.set(0.04, -0.05, -0.02);
+    rArmRPivot.add(rArmR);
+    receiverGroup.add(rArmRPivot);
+    registerMesh(rArmR, darkLitMat, inkMatMid);
+
+    // Received Parcel on storefront intake counter
+    const receivedPackage = new THREE.Mesh(boxGeo, defaultLitMat);
+    receivedPackage.scale.set(0.13, 0.11, 0.13);
+    receivedPackage.position.set(0.12, 0.24, 0.12);
+    receiverGroup.add(receivedPackage);
+    registerMesh(receivedPackage, defaultLitMat, inkMatWhite);
+
+    receiverGroup.position.set(1.95, 0, 0.72);
+    receiverGroup.rotation.y = -Math.PI / 2;
+    scene.add(receiverGroup);
+
+    // Checkout counters inside store
     [-0.4, 0.4].forEach((ox) => {
       const reg = new THREE.Mesh(boxGeo, darkLitMat);
       reg.scale.set(0.35, 0.3, 0.6);
@@ -554,6 +841,94 @@ export default function EcosystemDitherStage({
           t.mesh.rotation.y = t.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
         }
       });
+
+      const sec = time / 1000;
+
+      // 1. Supplier Weighbridge Gate Barrier Animation
+      const barrierCycle = (sec * 0.35) % (Math.PI * 2);
+      barrierArmPivot.rotation.z = Math.max(0, Math.sin(barrierCycle)) * 1.25;
+
+      // 2. Conveyor Packs Loading into Truck Animation
+      conveyorPacks.forEach((pack, i) => {
+        const packProgress = (sec * 0.45 + i * 0.25) % 1.0;
+        // Slide along conveyor from warehouse interior (z = 1.15) down into truck bed (z = 0.28)
+        const pz = 1.15 - packProgress * 0.87;
+        const py = 0.26 - packProgress * 0.05;
+        pack.position.set(-0.6, py, pz);
+      });
+
+      // 3. Automated Warehouse Forklift
+      const flCycle = (sec * 0.5) % (Math.PI * 2);
+      const flX = -1.15 + Math.sin(flCycle) * 0.45;
+      forkliftGroup.position.set(flX, 0, 1.8);
+      forkliftGroup.rotation.y = Math.cos(flCycle) >= 0 ? Math.PI / 2 : -Math.PI / 2;
+      flForksGroup.position.y = 0.12 + Math.max(0, Math.sin(flCycle)) * 0.16;
+
+      // 4. Retailer Door Delivery Handover Animation (Delivery Truck + Courier + Store Receiver)
+      const DELIVERY_CYCLE = 6.5; // 6.5s complete handover loop
+      const dPhase = (sec % DELIVERY_CYCLE) / DELIVERY_CYCLE;
+
+      if (dPhase < 0.40) {
+        // Phase A: Courier steps out from rear of delivery van towards door carrying parcel
+        const walkT = dPhase / 0.40;
+        const cx = 1.25 + walkT * 0.52; // 1.25 to 1.77
+        courierGroup.position.set(cx, 0, 0.72);
+        courierGroup.rotation.y = Math.PI / 2; // Facing storefront door
+
+        // Leg walking stride
+        cLegLPivot.rotation.z = Math.sin(walkT * Math.PI * 8) * 0.45;
+        cLegRPivot.rotation.z = -Math.sin(walkT * Math.PI * 8) * 0.45;
+
+        // Arms holding parcel box
+        cArmLPivot.rotation.z = -0.7;
+        cArmRPivot.rotation.z = -0.7;
+        cParcel.visible = true;
+        receivedPackage.visible = false;
+        rArmRPivot.rotation.z = -0.2;
+        rHead.rotation.y = 0.0;
+      } else if (dPhase < 0.70) {
+        // Phase B: Handover & digital signature on tablet at doorway
+        const handT = (dPhase - 0.40) / 0.30;
+        courierGroup.position.set(1.77, 0, 0.72);
+        courierGroup.rotation.y = Math.PI / 2;
+
+        cLegLPivot.rotation.z = 0;
+        cLegRPivot.rotation.z = 0;
+
+        // Courier extends arms forward presenting parcel
+        cArmLPivot.rotation.z = -0.9 + Math.sin(handT * Math.PI) * 0.12;
+        cArmRPivot.rotation.z = -0.9 + Math.sin(handT * Math.PI) * 0.12;
+        cParcel.visible = handT < 0.5;
+        receivedPackage.visible = handT >= 0.5;
+
+        // Store manager signs on tablet with stylus and nods head in confirmation
+        rArmRPivot.rotation.z = -0.55 + Math.sin(handT * Math.PI * 8) * 0.15;
+        rHead.rotation.x = Math.sin(handT * Math.PI * 4) * 0.12;
+      } else if (dPhase < 0.95) {
+        // Phase C: Parcel received, courier turns around and walks back to truck
+        const retT = (dPhase - 0.70) / 0.25;
+        const cx = 1.77 - retT * 0.52; // 1.77 back to 1.25
+        courierGroup.position.set(cx, 0, 0.72);
+        courierGroup.rotation.y = -Math.PI / 2; // Facing delivery van
+
+        // Leg walking stride
+        cLegLPivot.rotation.z = Math.sin(retT * Math.PI * 6) * 0.4;
+        cLegRPivot.rotation.z = -Math.sin(retT * Math.PI * 6) * 0.4;
+
+        // Arms swinging freely
+        cArmLPivot.rotation.z = Math.sin(retT * Math.PI * 6) * 0.25;
+        cArmRPivot.rotation.z = -Math.sin(retT * Math.PI * 6) * 0.25;
+        cParcel.visible = false;
+        receivedPackage.visible = true;
+      } else {
+        // Phase D: Cycle reset at truck
+        courierGroup.position.set(1.25, 0, 0.72);
+        courierGroup.rotation.y = Math.PI / 2;
+        cLegLPivot.rotation.z = 0;
+        cLegRPivot.rotation.z = 0;
+        cParcel.visible = true;
+        receivedPackage.visible = false;
+      }
 
       // --- PASS 1: Lit Scene Render ---
       renderer.setRenderTarget(sceneTarget);
