@@ -7,6 +7,7 @@ import type { TopicPage } from '@/app/data/topicTypes';
 import { topicHref } from '@/app/data/topicTypes';
 import TopicPageClient from '@/app/components/explore/TopicPageClient';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import RoleDetailClient from './RoleDetailClient';
 import { pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
@@ -76,14 +77,38 @@ export default async function RolePage({ params }: { params: Promise<{ role: str
     notFound();
   }
 
+  const isRu = lang === 'ru';
+
   return (
-    <div className="bg-[var(--bg)] min-h-screen pb-24 text-[var(--text)]">
+    <div className="bg-black min-h-screen pb-24 text-white">
       <SiteNav activeHref="/roles" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-[calc(4.5rem+2rem)] md:pt-[calc(5rem+2rem)]">
-        <div className="mb-16">
-          <h1 className="text-5xl font-bold mb-6 tracking-tight text-[var(--text)]">{role.name}</h1>
-          <p className="text-xl text-[var(--text-secondary)] max-w-3xl">{role.description}</p>
-        </div>
+      <SubpageHero
+        categoryLabel={isRu ? 'Роли' : 'Roles'}
+        categoryHref="/roles"
+        badge={isRu ? `РОЛЕВОЙ ПРОФИЛЬ // ${role.name.toUpperCase()}` : `ROLE PROFILE // ${role.name.toUpperCase()}`}
+        title={role.name}
+        summary={role.description}
+        primaryCta={{
+          label: isRu ? 'Запросить доступ' : 'Request Access',
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Все роли' : 'All Roles',
+          href: '/roles',
+        }}
+        widget={{
+          title: role.name.toUpperCase(),
+          description: role.description.slice(0, 70) + '...',
+          href: '/roles',
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          categoryLabel: isRu ? 'Роли' : 'Roles',
+          categoryHref: '/roles',
+          currentPage: role.name,
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
         <RoleDetailClient role={role} />
       </div>
     </div>

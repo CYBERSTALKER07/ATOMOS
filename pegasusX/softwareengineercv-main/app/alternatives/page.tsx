@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { COMPETITORS_DATA } from '@/app/data/competitorsData';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
@@ -36,25 +37,33 @@ export default async function AlternativesPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
       />
-      <SiteNav />
+      <SiteNav activeHref="/alternatives" />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Header */}
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Cpu className="w-3.5 h-3.5 text-white" />
-            {isRu ? 'Руководство покупателя TMS 2026' : '2026 TMS Evaluation Guide'}
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase">
-            {isRu ? 'Альтернативы системам управления транспортом' : 'Transportation Management Software Alternatives'}
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
-            {isRu
-              ? 'Ищете замену устаревшим монолитам или дорогим телематическим контрактам? Ознакомьтесь с независимым сравнением ведущих платформ для B2B-логистики.'
-              : 'Looking to replace legacy monoliths or restrictive telematics contracts? Review our objective breakdown of the leading platforms for B2B fleet dispatch and physical goods distribution.'}
-          </p>
-        </div>
+      <SubpageHero
+        badge={isRu ? 'РУКОВОДСТВО ПОКУПАТЕЛЯ TMS 2026' : '2026 TMS EVALUATION GUIDE'}
+        title={isRu ? 'Альтернативы системам управления транспортом' : 'Transportation Management Software Alternatives'}
+        summary={isRu
+          ? 'Ищете замену устаревшим монолитам или дорогим телематическим контрактам? Ознакомьтесь с независимым сравнением ведущих платформ для B2B-логистики.'
+          : 'Looking to replace legacy monoliths or restrictive telematics contracts? Review our objective breakdown of the leading platforms for B2B fleet dispatch and physical goods distribution.'}
+        primaryCta={{
+          label: isRu ? 'Сравнить платформы' : 'Compare Platforms',
+          href: '#platforms',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Таблицы сравнения' : 'Head-to-head guides',
+          href: '/compare',
+        }}
+        widget={{
+          title: 'HARDWARE-INDEPENDENT',
+          description: 'Zero proprietary ELD leases. BYOD mobile & open telematics.',
+          href: '/compare',
+        }}
+        breadcrumb={{
+          currentPage: isRu ? 'Альтернативы TMS' : 'TMS Alternatives',
+        }}
+      />
 
+      <main id="platforms" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
         {/* Evaluation Pillars */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">

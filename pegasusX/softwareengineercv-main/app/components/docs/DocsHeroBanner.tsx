@@ -20,14 +20,18 @@ export default function DocsHeroBanner({ article }: DocsHeroBannerProps) {
         <div className="absolute -bottom-24 right-1/4 w-80 h-80 bg-cyan-500/10 rounded-none blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 left-1/3 w-64 h-64 bg-emerald-500/10 rounded-none blur-3xl pointer-events-none" />
 
-        {/* Tactical Grid Coordinates Overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
-            backgroundSize: '24px 24px',
-          }}
-        />
+        {/* Tactical Squircle Matrix Grid Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none">
+          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2.5 p-3 w-full h-full">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-square rounded-2xl bg-[#0c0d12]/60 border border-white/[0.06]"
+              />
+            ))}
+          </div>
+        </div>
+        <div className="absolute top-4 right-1/3 w-16 h-16 rounded-2xl border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.08)] pointer-events-none" />
 
         {/* Left: Giant Bold Typography Wordmark */}
         <div className="relative z-10 max-w-xl">

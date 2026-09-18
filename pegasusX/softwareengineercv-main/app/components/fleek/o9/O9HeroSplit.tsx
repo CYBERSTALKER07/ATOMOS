@@ -1,8 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { O9Hero, O9ProofStrip } from '@/app/components/page-sections/o9/O9Hero';
+import SubpageHero from '@/app/components/SubpageHero';
+import { O9ProofStrip } from '@/app/components/page-sections/o9/O9Hero';
 import type { ProofItem } from '@/app/data/topicTypes';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 
@@ -29,45 +29,41 @@ export default function O9HeroSplit({
   title,
   summary,
   badge,
-  imageSrc,
-  imageAlt = '',
-  visual,
+  primaryHref = '/join',
+  primaryLabel = 'REQUEST DEMO',
+  secondaryHref,
+  secondaryLabel = 'EXPLORE STACK',
   proofItems = DEFAULT_PROOF,
   showProofStrip = true,
 }: O9HeroSplitProps) {
-  const hasVisual = Boolean(visual || imageSrc);
-
   return (
-    <section className="o9-hero-split">
-      <div className={`o9-hero-split__grid ${!hasVisual ? 'o9-hero-split__grid--single' : ''}`}>
-        <O9Hero
-          categoryLabel={categoryLabel}
-          categoryHref={categoryHref}
-          title={title}
-          summary={summary}
-          badge={badge}
-        />
-        {hasVisual ? (
-          <div className="o9-hero-split__visual">
-            {visual ?? (
-              <Image
-                src={imageSrc!}
-                alt={imageAlt || title}
-                width={1200}
-                height={800}
-                className="o9-hero-split__image"
-                priority
-                sizes="(max-width: 900px) 100vw, 50vw"
-              />
-            )}
-          </div>
-        ) : null}
-      </div>
+    <div className="w-full">
+      <SubpageHero
+        categoryLabel={categoryLabel}
+        categoryHref={categoryHref}
+        title={title}
+        summary={summary}
+        badge={badge}
+        primaryCta={{
+          label: primaryLabel,
+          href: primaryHref,
+        }}
+        secondaryCta={{
+          label: secondaryLabel,
+          href: secondaryHref || categoryHref || '/platform',
+        }}
+        breadcrumb={{
+          categoryLabel,
+          categoryHref,
+          currentPage: title,
+        }}
+      />
       {showProofStrip ? (
-        <div className="o9-hero-split__proof">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
           <O9ProofStrip items={proofItems} />
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
+

@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { MARKETS_DATA } from '@/app/data/marketsData';
@@ -59,47 +60,33 @@ export default async function MarketsHubPage() {
       />
       <SiteNav activeHref="/markets" />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
-          <Link href="/" className="hover:text-white transition-colors">
-            {isRu ? 'Главная' : 'Home'}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-white/30" />
-          <span className="text-white/80">Markets</span>
-        </div>
+      <SubpageHero
+        badge={isRu ? 'РЕГИОНАЛЬНЫЕ КОРИДОРЫ · 16 РЫНКОВ' : 'WORLDWIDE COVERAGE · 16 STRATEGIC CORRIDORS'}
+        badgeIcon={<Globe2 className="w-3.5 h-3.5 text-blue-400" />}
+        title={isRu ? 'Глобальные рынки логистики и цепей поставок' : 'Global Logistics & Supply Chain Markets'}
+        summary={isRu
+          ? 'Суверенная архитектура клонированных ячеек и облачные кластеры со сверхнизкой задержкой для автоматизации логистики в любой стране мира.'
+          : 'Sovereign, cloned cell architectures and low-latency cloud clusters delivering real-time logistics automation in any country and language.'}
+        primaryCta={{
+          label: isRu ? 'Запросить региональное демо' : 'Request Regional Demo',
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Глобальная архитектура' : 'Global Architecture',
+          href: '/global-logistics',
+        }}
+        widget={{
+          title: 'SOVEREIGN CELL MESH',
+          description: 'Autonomous multi-country cell clusters with under 15ms latency.',
+          href: '/global-logistics',
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          currentPage: isRu ? 'Рынки' : 'Markets',
+        }}
+      />
 
-        {/* Hero */}
-        <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Globe2 className="w-3.5 h-3.5 text-blue-400" />
-            <span>Worldwide Coverage · 16 Strategic Corridors</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
-            Global Logistics & Supply Chain Markets
-          </h1>
-
-          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
-            Sovereign, cloned cell architectures and low-latency cloud clusters delivering real-time logistics automation in any country and language.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              <span>Request Regional Deployment Demo</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/global-logistics"
-              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Global Architecture Overview
-            </Link>
-          </div>
-        </div>
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
 
         {/* Regional Cell Clusters Summary */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-4 gap-4">

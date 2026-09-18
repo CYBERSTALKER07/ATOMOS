@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { COMPETITORS_DATA } from '@/app/data/competitorsData';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
@@ -38,22 +39,33 @@ export default async function CompareHubPage() {
       />
       <SiteNav />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Header */}
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <GitCompare className="w-3.5 h-3.5 text-white" />
-            {isRu ? 'Аналитика и сравнение логистического ПО' : 'Objective Software Analysis'}
-          </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase">
-            {isRu ? 'Сравнение систем управления логистикой' : 'Head-to-Head TMS Comparisons'}
-          </h1>
-          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
-            {isRu
-              ? 'Честное и прямое сравнение Pegasus с ведущими телематическими, брокерскими и экспедиторскими платформами на рынке.'
-              : 'Direct, architectural comparisons of Pegasus against leading telematics, brokerage, and dispatch platforms. Learn which platform aligns with your operational profile.'}
-          </p>
-        </div>
+      <SubpageHero
+        badge={isRu ? 'АНАЛИТИКА И СРАВНЕНИЕ ЛОГИСТИЧЕСКОГО ПО' : 'OBJECTIVE SOFTWARE ANALYSIS'}
+        badgeIcon={<GitCompare className="w-3.5 h-3.5 text-white" />}
+        title={isRu ? 'Сравнение систем управления логистикой' : 'Head-to-Head TMS Comparisons'}
+        summary={isRu
+          ? 'Честное и прямое сравнение Pegasus с ведущими телематическими, брокерскими и экспедиторскими платформами на рынке.'
+          : 'Direct, architectural comparisons of Pegasus against leading telematics, brokerage, and dispatch platforms. Learn which platform aligns with your operational profile.'}
+        primaryCta={{
+          label: isRu ? 'Все альтернативы' : 'All Alternatives',
+          href: '/alternatives',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Запросить демо' : 'Request Demo',
+          href: '/join',
+        }}
+        widget={{
+          title: 'BENCHMARK MATRIX',
+          description: 'Multi-role dispatch, telematics lock-in, and TCO compared.',
+          href: '/alternatives',
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          currentPage: isRu ? 'Сравнения' : 'Comparisons',
+        }}
+      />
+
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
 
         {/* Comparison Cards */}
         <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-6">

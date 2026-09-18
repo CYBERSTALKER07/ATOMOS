@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import {
@@ -96,48 +97,29 @@ export default async function LogisticsAutomationPage() {
       />
       <SiteNav activeHref="/logistics-automation" />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
-          <Link href="/" className="hover:text-white transition-colors">
-            {isRu ? 'Главная' : 'Home'}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-white/30" />
-          <span className="text-white/80">Logistics Automation</span>
-        </div>
+      <SubpageHero
+        badge={isRu ? 'АЛГОРИТМИЧЕСКАЯ ОРКЕСТРАЦИЯ АВТОПАРКА' : 'ALGORITHMIC FLEET & YARD ORCHESTRATION'}
+        title={isRu ? 'Интеллектуальная автоматизация логистики' : 'Intelligent Logistics Automation'}
+        summary={isRu ? 'Автоматизируйте маршрутизацию транспорта, балансировку диспетчеризации, досмотр на КПП складов и закрытие казначейства без ручных задержек.' : 'Automate vehicle routing, visual dispatch load balancing, warehouse gate inspections, and treasury reconciliation with zero manual latency.'}
+        primaryCta={{
+          label: isRu ? 'Смотреть автоматизацию' : 'See Automation in Action',
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Гайд по оптимизации' : 'Dispatch Optimization Guide',
+          href: '/capabilities/smarter-dispatch',
+        }}
+        widget={{
+          title: 'ALGORITHMIC CVRP ENGINE',
+          description: 'Sub-second multi-depot vehicle route balancing.',
+          href: '/capabilities/smarter-dispatch',
+        }}
+        breadcrumb={{
+          currentPage: isRu ? 'Автоматизация логистики' : 'Logistics Automation',
+        }}
+      />
 
-        {/* Hero Section */}
-        <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Algorithmic Fleet & Yard Orchestration</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
-            Intelligent Logistics Automation
-          </h1>
-
-          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
-            Automate vehicle routing, visual dispatch load balancing, warehouse gate inspections, and treasury reconciliation with zero manual latency.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              <span>See Automation in Action</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/capabilities/smarter-dispatch"
-              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Dispatch Optimization Guide
-            </Link>
-          </div>
-        </div>
-
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
         {/* Benchmarks / ROI Bar */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">

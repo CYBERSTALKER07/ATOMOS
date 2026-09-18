@@ -15,6 +15,7 @@ import {
   Lock,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { MARKETS_DATA, getMarketBySlug } from '@/app/data/marketsData';
@@ -92,46 +93,33 @@ export default async function MarketCountryPage({ params }: Props) {
       />
       <SiteNav activeHref="/markets" />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
-          <Link href="/markets" className="hover:text-white transition-colors">
-            {isRu ? '← Все рынки' : '← All Markets'}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-white/30" />
-          <span className="text-white/80">{market.name}</span>
-        </div>
+      <SubpageHero
+        badge={`${market.region.toUpperCase()} CORRIDOR · ${market.currency}`}
+        badgeIcon={<span className="text-sm">{market.flag}</span>}
+        title={market.headline}
+        summary={market.summary}
+        primaryCta={{
+          label: isRu ? `Демо для ${market.name}` : `Request ${market.name} Demo`,
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Глобальная архитектура' : 'Global Architecture',
+          href: '/global-logistics',
+        }}
+        widget={{
+          title: market.name.toUpperCase(),
+          description: `${market.cellCluster} · ${market.latency} latency`,
+          href: '/global-logistics',
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          categoryLabel: isRu ? 'Рынки' : 'Markets',
+          categoryHref: '/markets',
+          currentPage: market.name,
+        }}
+      />
 
-        {/* Hero */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <span className="text-base">{market.flag}</span>
-            <span>{market.region} Corridor · {market.currency}</span>
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase leading-tight">
-            {market.headline}
-          </h1>
-
-          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
-            {market.summary}
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
-            >
-              Request {market.name} Demo
-            </Link>
-            <Link
-              href="/global-logistics"
-              className="px-6 py-3 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Global Architecture
-            </Link>
-          </div>
-        </div>
+      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
 
         {/* Infrastructure Specs */}
         <section className="mt-14 p-6 rounded-none bg-white/[0.02] border border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-6 font-mono text-xs">

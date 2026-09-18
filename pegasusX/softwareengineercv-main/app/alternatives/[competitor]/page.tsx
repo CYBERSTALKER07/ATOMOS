@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { COMPETITORS_DATA, getCompetitorBySlug } from '@/app/data/competitorsData';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, faqPageJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
-import { Check, X, ArrowRight, ShieldCheck, HelpCircle, Layers, ArrowLeftRight } from 'lucide-react';
+import { Check, X, ArrowRight, ShieldCheck, HelpCircle, Layers } from 'lucide-react';
 
 export function generateStaticParams() {
   return COMPETITORS_DATA.map((c) => ({ competitor: c.slug }));
@@ -70,48 +71,34 @@ export default async function CompetitorAlternativePage({
       />
       <SiteNav />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Navigation Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
-          <Link href="/alternatives" className="hover:text-white transition-colors">
-            {isRu ? '← Все альтернативы' : '← All Alternatives'}
-          </Link>
-          <span>/</span>
-          <span className="text-white/80">{competitor.name}</span>
-        </div>
+      <SubpageHero
+        badge={isRu ? `СРАВНЕНИЕ: ${competitor.name.toUpperCase()} ПРОТИВ PEGASUS` : `${competitor.name.toUpperCase()} VS PEGASUS`}
+        title={isRu ? `Лучшая альтернатива ${competitor.name}` : `The Leading ${competitor.name} Alternative`}
+        summary={isRu
+          ? `Устали от ограничений ${competitor.name}? Узнайте, почему операторы и поставщики переходят на Pegasus для сквозного управления автопарком, складом и расчетами.`
+          : `Evaluating options beyond ${competitor.name}? Discover why private fleets, manufacturers, and regional distributors choose Pegasus for modern, hardware-independent logistics orchestration.`}
+        primaryCta={{
+          label: isRu ? 'Запросить демо' : 'Request Migration Demo',
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Таблица сравнения' : 'View Head-to-Head',
+          href: `/compare/pegasus-vs-${competitor.slug}`,
+        }}
+        widget={{
+          title: competitor.name.toUpperCase(),
+          description: competitor.marketPosition,
+          href: `/compare/pegasus-vs-${competitor.slug}`,
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          categoryLabel: isRu ? 'Альтернативы' : 'Alternatives',
+          categoryHref: '/alternatives',
+          currentPage: competitor.name,
+        }}
+      />
 
-        {/* Hero Section */}
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <ArrowLeftRight className="w-3.5 h-3.5 text-white" />
-            {isRu ? `Сравнение: ${competitor.name} против Pegasus` : `${competitor.name} vs. Pegasus`}
-          </div>
-
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase">
-            {isRu ? `Лучшая альтернатива ${competitor.name}` : `The Leading ${competitor.name} Alternative`}
-          </h1>
-
-          <p className="mt-6 text-lg sm:text-xl text-white/70 leading-relaxed font-light">
-            {isRu
-              ? `Устали от ограничений ${competitor.name}? Узнайте, почему операторы и поставщики переходят на Pegasus для сквозного управления автопарком, складом и расчетами.`
-              : `Evaluating options beyond ${competitor.name}? Discover why private fleets, manufacturers, and regional distributors choose Pegasus for modern, hardware-independent logistics orchestration.`}
-          </p>
-
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
-            >
-              {isRu ? 'Запросить демо' : 'Request Migration Demo'}
-            </Link>
-            <Link
-              href={`/compare/pegasus-vs-${competitor.slug}`}
-              className="px-6 py-3 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              {isRu ? 'Таблица сравнения' : 'View Head-to-Head'}
-            </Link>
-          </div>
-        </div>
+      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
 
         {/* TL;DR Summary Box */}
         <section className="mt-16 p-8 rounded-none bg-white/[0.02] border border-white/10">

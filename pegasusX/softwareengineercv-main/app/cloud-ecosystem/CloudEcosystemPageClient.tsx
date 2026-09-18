@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import PageSection from '@/app/components/layout/PageSection';
-import SectionHeader from '@/app/components/layout/SectionHeader';
 import CloudEcosystemBento from '@/app/components/CloudEcosystemBento';
 import { useLanguage } from '@/app/context/LanguageContext';
 import {
@@ -28,18 +28,33 @@ export default function CloudEcosystemPageClient() {
     <div className="relative bg-black min-h-screen">
       <SiteNav activeHref="/cloud-ecosystem" />
 
-      <PageSection className="pt-28 md:pt-32 border-b border-white/10">
-        <SectionHeader
-          align="left"
-          eyebrow={t('cloud_eco_eyebrow', 'Cloud ecosystem')}
-          title={t('cloud_eco_page_title', 'Every layer of the cloud, mapped')}
-          description={t(
-            'cloud_eco_page_desc',
-            'Pegasus runs on Google Cloud with Spanner as the system of record, Kafka for live events, Redis for hot cache, GKE for servers, and the delivery stack that ships every role app.',
-          )}
-          className="mb-8 max-w-3xl"
-        />
+      <SubpageHero
+        badge={t('cloud_eco_eyebrow', 'Cloud ecosystem').toUpperCase()}
+        title={t('cloud_eco_page_title', 'Every layer of the cloud, mapped')}
+        summary={t(
+          'cloud_eco_page_desc',
+          'Pegasus runs on Google Cloud with Spanner as the system of record, Kafka for live events, Redis for hot cache, GKE for servers, and the delivery stack that ships every role app.',
+        )}
+        primaryCta={{
+          label: isRu ? 'Архитектура платформы' : 'Platform Architecture',
+          href: '/platform',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Глобальная сеть' : 'Global Logistics',
+          href: '/global-logistics',
+        }}
+        widget={{
+          title: 'GCP SPANNER + KAFKA',
+          description: 'Global ACID multi-region ledger with 99.999% SLA.',
+          href: '/technology',
+        }}
+        breadcrumb={{
+          homeLabel: isRu ? 'Главная' : 'Home',
+          currentPage: isRu ? 'Облачная экосистема' : 'Cloud Ecosystem',
+        }}
+      />
 
+      <PageSection className="pt-12 pb-24 border-b border-white/10">
         <div className="flex flex-wrap gap-2 mb-10">
           <button
             type="button"

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { breadcrumbJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
@@ -39,39 +40,32 @@ export default async function CookiePolicyPage() {
       <div className="min-h-screen bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white selection:bg-zinc-200 dark:selection:bg-white/30 transition-colors duration-200">
         <SiteNav activeHref="/cookie-policy" />
 
-        <main className="max-w-5xl mx-auto px-6 sm:px-8 pt-32 pb-24">
-          {/* Breadcrumbs */}
-          <nav
-            aria-label="Breadcrumb"
-            className="flex items-center gap-2 text-xs font-mono tracking-widest text-zinc-500 dark:text-white/50 mb-10 uppercase"
-          >
-            <Link href="/" className="hover:text-black dark:hover:text-white transition-colors">
-              {homeLabel}
-            </Link>
-            <span aria-hidden>/</span>
-            <span aria-current="page" className="text-zinc-900 dark:text-white">
-              {cookiePolicyLabel}
-            </span>
-          </nav>
+        <SubpageHero
+          badge={isRu ? 'ПРАВОВОЕ РАСКРЫТИЕ & КОМПЛАЕНС' : 'LEGAL DISCLOSURE & COMPLIANCE'}
+          title={isRu ? 'Политика использования файлов cookie' : 'Enterprise Cookie & Telemetry Policy'}
+          summary={isRu
+            ? 'Политика использования файлов cookie и техническое раскрытие телеметрии платформы Pegasus в соответствии с GDPR, ePrivacy, CCPA и Законом РУз ЗРУ-547.'
+            : 'Comprehensive Enterprise Cookie Policy and Technical Telemetry Disclosure for Pegasus Logistics Operating System compliant with GDPR, ePrivacy, CCPA, and Law No. ZRU-547.'}
+          primaryCta={{
+            label: isRu ? 'Панель согласия' : 'Consent Preferences',
+            href: '#consent',
+          }}
+          secondaryCta={{
+            label: isRu ? 'Главная' : 'Return Home',
+            href: '/',
+          }}
+          widget={{
+            title: 'GDPR · CCPA · ZRU-547',
+            description: 'Zero unauthorized trackers. Cryptographically signed audit trail.',
+            href: '#consent',
+          }}
+          breadcrumb={{
+            homeLabel: homeLabel,
+            currentPage: cookiePolicyLabel,
+          }}
+        />
 
-          {/* Page Header */}
-          <header className="mb-12">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-[#8DDC96] mb-3">
-              {isRu ? 'ПРАВОВОЕ РАСКРЫТИЕ & КОМПЛАЕНС' : 'LEGAL DISCLOSURE & COMPLIANCE'}
-            </p>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-zinc-900 dark:text-white mb-4">
-              {isRu ? 'Политика использования файлов cookie' : 'Enterprise Cookie & Telemetry Policy'}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-zinc-500 dark:text-white/50">
-              <span>{isRu ? 'Версия: 2026.1' : 'Version: 2026.1'}</span>
-              <span>·</span>
-              <span>{isRu ? 'Дата обновления: 17 сентября 2026 г.' : 'Effective Date: September 17, 2026'}</span>
-              <span>·</span>
-              <span className="text-emerald-600 dark:text-[#8DDC96]">
-                [GDPR · ePrivacy · CCPA/CPRA · ZRU-547]
-              </span>
-            </div>
-          </header>
+        <main id="consent" className="max-w-5xl mx-auto px-6 sm:px-8 pt-10 pb-24">
 
           {/* Interactive Live Consent Control Box */}
           <section className="mb-14" aria-label="Consent Management">

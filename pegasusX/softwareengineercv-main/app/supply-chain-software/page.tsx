@@ -17,6 +17,7 @@ import {
   FileCheck2,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
+import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import {
@@ -96,48 +97,29 @@ export default async function SupplyChainSoftwarePage() {
       />
       <SiteNav activeHref="/supply-chain-software" />
 
-      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-24 w-full">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-white/50 mb-8">
-          <Link href="/" className="hover:text-white transition-colors">
-            {isRu ? 'Главная' : 'Home'}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-white/30" />
-          <span className="text-white/80">Supply Chain Software</span>
-        </div>
+      <SubpageHero
+        badge={isRu ? 'МУЛЬТИ-ПРЕДПРИЯТИЕ // СЛЕДУЮЩЕЕ ПОКОЛЕНИЕ' : 'NEXT-GENERATION MULTI-ENTERPRISE EXECUTION'}
+        title={isRu ? 'Корпоративное ПО для цепочек поставок' : 'Enterprise Supply Chain Software'}
+        summary={isRu ? 'Объедините прием заказов, резервирование запасов на нескольких складах, маршрутизацию перевозчиков и расчеты казначейства в единой платформе.' : 'Unify order intake, multi-depot inventory reservation, carrier routing, and treasury settlement in one synchronized execution platform.'}
+        primaryCta={{
+          label: isRu ? 'Запросить демо цепочки поставок' : 'Request Supply Chain Demo',
+          href: '/join',
+        }}
+        secondaryCta={{
+          label: isRu ? 'Все 6 ролевых приложений' : 'Browse All 6 Role Apps',
+          href: '/projects',
+        }}
+        widget={{
+          title: 'MULTI-ENTERPRISE SYNC',
+          description: 'Single operational truth across all 6 supply chain roles.',
+          href: '/roles',
+        }}
+        breadcrumb={{
+          currentPage: isRu ? 'ПО для цепочек поставок' : 'Supply Chain Software',
+        }}
+      />
 
-        {/* Hero Section */}
-        <div className="border-b border-white/10 pb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-white/5 border border-white/10 text-[11px] font-mono tracking-wider uppercase text-white/70 mb-6">
-            <Boxes className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Next-Generation Multi-Enterprise Execution</span>
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase leading-[1.05]">
-            Enterprise Supply Chain Software
-          </h1>
-
-          <p className="mt-6 text-xl sm:text-2xl text-white/70 leading-relaxed font-light max-w-3xl">
-            Unify order intake, multi-depot inventory reservation, carrier routing, and treasury settlement in one synchronized execution platform.
-          </p>
-
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link
-              href="/join"
-              className="px-7 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors flex items-center gap-2"
-            >
-              <span>Request Supply Chain Demo</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/projects"
-              className="px-7 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
-            >
-              Browse All 6 Role Apps
-            </Link>
-          </div>
-        </div>
-
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
         {/* Core Capabilities Grid */}
         <section className="mt-20">
           <div className="mb-10">
