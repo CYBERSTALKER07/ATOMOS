@@ -3,11 +3,12 @@
 import dynamic from 'next/dynamic';
 import React from 'react';
 
-// Lazy-load the Decamodels (Phase 1)
+// Lazy-load the Decamodels (Phase 1 & 2)
 const FleetRadarCanvas = dynamic(() => import('./canvases/algorithms/FleetRadarCanvas'), { ssr: false });
 const NodeNetworkCanvas = dynamic(() => import('./canvases/algorithms/NodeNetworkCanvas'), { ssr: false });
 const GridSorterCanvas = dynamic(() => import('./canvases/algorithms/GridSorterCanvas'), { ssr: false });
 const DataMeshCanvas = dynamic(() => import('./canvases/algorithms/DataMeshCanvas'), { ssr: false });
+const WaveOscillatorCanvas = dynamic(() => import('./canvases/algorithms/WaveOscillatorCanvas'), { ssr: false });
 
 export default function TopicCanvasRouter({ slug }: { slug: string }) {
   let CanvasEngine;
@@ -19,8 +20,10 @@ export default function TopicCanvasRouter({ slug }: { slug: string }) {
     CanvasEngine = NodeNetworkCanvas;
   } else if (slug.includes('warehouse') || slug.includes('fulfillment') || slug.includes('inventory')) {
     CanvasEngine = GridSorterCanvas;
+  } else if (slug.includes('demand') || slug.includes('planning') || slug.includes('forecast')) {
+    CanvasEngine = WaveOscillatorCanvas;
   } else {
-    // Default fallback to Data Mesh (for analytics, ai-copilot, etc. until their custom engines are built)
+    // Default fallback to Data Mesh
     CanvasEngine = DataMeshCanvas;
   }
 

@@ -175,8 +175,8 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
 
         {/* The Eyes (No Filter, Crisp Edges) */}
         <g className="eyes-container origin-center" fill="#000000">
-          <circle cx="82" cy="92" r="7" className="eye origin-center" />
-          <circle cx="118" cy="92" r="7" className="eye origin-center" />
+          <rect x="74" y="88" width="16" height="28" rx="8" className="eye origin-center" />
+          <rect x="110" y="88" width="16" height="28" rx="8" className="eye origin-center" />
         </g>
       </svg>
     </div>
