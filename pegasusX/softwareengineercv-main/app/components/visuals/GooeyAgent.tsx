@@ -27,9 +27,9 @@ export default function GooeyAgent({
     const ctx = gsap.context(() => {
       // Idle floating animation for the gooey blobs
       gsap.to(blob1Ref.current, {
-        x: 'random(-15, 15)',
-        y: 'random(-15, 15)',
-        scale: 'random(0.9, 1.1)',
+        x: 'random(-10, 10)',
+        y: 'random(-10, 10)',
+        scale: 'random(0.95, 1.05)',
         duration: 'random(2, 4)',
         repeat: -1,
         yoyo: true,
@@ -37,9 +37,9 @@ export default function GooeyAgent({
       });
 
       gsap.to(blob2Ref.current, {
-        x: 'random(-20, 20)',
-        y: 'random(-20, 20)',
-        scale: 'random(0.8, 1.2)',
+        x: 'random(-15, 15)',
+        y: 'random(-15, 15)',
+        scale: 'random(0.85, 1.15)',
         duration: 'random(2, 4)',
         repeat: -1,
         yoyo: true,
@@ -49,8 +49,8 @@ export default function GooeyAgent({
 
       gsap.to(blob3Ref.current, {
         x: 'random(-10, 10)',
-        y: 'random(-25, 25)',
-        scale: 'random(0.8, 1.2)',
+        y: 'random(-20, 20)',
+        scale: 'random(0.85, 1.15)',
         duration: 'random(2, 4)',
         repeat: -1,
         yoyo: true,
@@ -58,30 +58,27 @@ export default function GooeyAgent({
         delay: 1,
       });
 
-      // Blinking animation for the eyes
-      gsap.to([eyeLeftRef.current, eyeRightRef.current], {
-        scaleY: 0.1,
-        duration: 0.1,
-        repeat: -1,
-        repeatDelay: 3,
-        yoyo: true,
-      });
+      // Blinking animation for the eyes (blink by scaling Y of the entire eye container? 
+      // Actually grok-like big eyes blinking is cute)
+      const blinkTl = gsap.timeline({ repeat: -1, repeatDelay: 3.5 });
+      blinkTl.to('.grok-eye', { scaleY: 0.1, duration: 0.1, ease: 'power2.in' })
+             .to('.grok-eye', { scaleY: 1, duration: 0.1, ease: 'power2.out' });
 
-      // Hover reaction (eyes follow pointer slightly)
+      // Hover reaction (pupils follow pointer slightly)
       const handleMouseMove = (e: MouseEvent) => {
         if (!containerRef.current) return;
         const bounds = containerRef.current.getBoundingClientRect();
         const mouseX = e.clientX - bounds.left - bounds.width / 2;
         const mouseY = e.clientY - bounds.top - bounds.height / 2;
         
-        // Normalize
-        const moveX = (mouseX / bounds.width) * 10;
-        const moveY = (mouseY / bounds.height) * 10;
+        // Normalize for pupils
+        const moveX = (mouseX / bounds.width) * 20; // 20px max movement
+        const moveY = (mouseY / bounds.height) * 20;
 
         gsap.to([eyeLeftRef.current, eyeRightRef.current], {
           x: moveX,
           y: moveY,
-          duration: 0.5,
+          duration: 0.3,
           ease: 'power2.out'
         });
       };
@@ -107,6 +104,11 @@ export default function GooeyAgent({
     return () => ctx.revert();
   }, []);
 
+  // Calculate proportional sizes based on the 'size' prop
+  const eyeWidth = size * 0.28;
+  const eyeHeight = size * 0.4;
+  const pupilSize = size * 0.12;
+
   return (
     <div
       ref={containerRef}
@@ -117,11 +119,11 @@ export default function GooeyAgent({
       <svg className="absolute w-0 h-0">
         <defs>
           <filter id="gooey-agent-filter">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation={size * 0.05} result="blur" />
             <feColorMatrix
               in="blur"
               mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
               result="goo"
             />
             <feBlend in="SourceGraphic" in2="goo" />
@@ -139,8 +141,8 @@ export default function GooeyAgent({
           ref={blob1Ref}
           className="absolute rounded-full"
           style={{
-            width: size * 0.6,
-            height: size * 0.6,
+            width: size * 0.65,
+            height: size * 0.65,
             backgroundColor: color,
           }}
         />
@@ -149,8 +151,8 @@ export default function GooeyAgent({
           ref={blob2Ref}
           className="absolute rounded-full"
           style={{
-            width: size * 0.45,
-            height: size * 0.45,
+            width: size * 0.5,
+            height: size * 0.5,
             backgroundColor: color,
             marginLeft: -size * 0.2,
           }}
@@ -160,26 +162,53 @@ export default function GooeyAgent({
           ref={blob3Ref}
           className="absolute rounded-full"
           style={{
-            width: size * 0.35,
-            height: size * 0.35,
+            width: size * 0.4,
+            height: size * 0.4,
             backgroundColor: color,
             marginTop: size * 0.3,
           }}
         />
       </div>
 
-      {/* Eyes overlay (not gooey, remains sharp) */}
-      <div className="absolute z-10 flex gap-2 pointer-events-none mb-1">
-        <div
-          ref={eyeLeftRef}
-          className="w-1.5 h-1.5 rounded-full bg-black"
-          style={{ transformOrigin: 'center' }}
-        />
-        <div
-          ref={eyeRightRef}
-          className="w-1.5 h-1.5 rounded-full bg-black"
-          style={{ transformOrigin: 'center' }}
-        />
+      {/* Big Eyes overlay (Grok-like) */}
+      <div className="absolute z-10 flex gap-[10%] pointer-events-none mb-[5%] w-full justify-center">
+        {/* Left Eye */}
+        <div 
+          className="grok-eye relative rounded-full bg-[#111111] overflow-hidden flex shadow-lg"
+          style={{ width: eyeWidth, height: eyeHeight }}
+        >
+          {/* Pupil */}
+          <div 
+            ref={eyeLeftRef} 
+            className="absolute rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
+            style={{ 
+              width: pupilSize, 
+              height: pupilSize, 
+              top: '20%', 
+              left: '45%',
+              transform: 'translateX(-50%)'
+            }} 
+          />
+        </div>
+
+        {/* Right Eye */}
+        <div 
+          className="grok-eye relative rounded-full bg-[#111111] overflow-hidden flex shadow-lg"
+          style={{ width: eyeWidth, height: eyeHeight }}
+        >
+          {/* Pupil */}
+          <div 
+            ref={eyeRightRef} 
+            className="absolute rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
+            style={{ 
+              width: pupilSize, 
+              height: pupilSize, 
+              top: '20%', 
+              left: '45%',
+              transform: 'translateX(-50%)'
+            }} 
+          />
+        </div>
       </div>
     </div>
   );
