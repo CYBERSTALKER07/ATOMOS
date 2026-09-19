@@ -90,7 +90,7 @@ export default function ContactPage() {
       title={t('contact_title', "Let's Connect")}
       subtitle={t(
         'contact_subtitle',
-        'Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum.'
+        'Questions about Pegasus, partnerships, or your logistics network — send us a message and our team will be in touch.'
       )}
     >
       <form onSubmit={handleSubmit} className="docs-surface docs-grain space-y-5 p-6 md:p-8" noValidate>
@@ -141,7 +141,7 @@ export default function ContactPage() {
 
         {submitStatus === 'success' && (
           <p className="border border-white/40 bg-white/10 p-3 text-center text-sm font-mono text-white" role="status">
-            {t('contact_success', "Message sent via Resend API — we'll be in touch soon.")}
+            {t('contact_success', "Message received — we'll be in touch soon.")}
           </p>
         )}
         {submitStatus === 'error' && (
@@ -151,7 +151,7 @@ export default function ContactPage() {
         )}
 
         <ChamferButton type="submit" variant="fill" className="w-full justify-center" disabled={isSubmitting}>
-          {isSubmitting ? t('contact_submitting', 'Sending via Resend...') : t('contact_submit', 'Send Message')}
+          {isSubmitting ? t('contact_submitting', 'Sending...') : t('contact_submit', 'Send Message')}
         </ChamferButton>
       </form>
     </FormLanyardPage>

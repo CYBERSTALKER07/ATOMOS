@@ -56,14 +56,14 @@ const QUICK_ACTIONS_RU: QuickAction[] = [
   {
     id: 'contact-team',
     badge: 'JOIN',
-    label: 'Запросить демо / Написать в Telegram',
+    label: 'Запросить демо / Связаться с командой',
     category: 'action',
-    href: 'https://t.me/DominusMunerum',
+    href: '/join',
   },
 ];
 
 const WELCOME_RU =
-  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте о нашей Go-архитектуре, Cloud Spanner outbox или почему клиенты выбирают нас вместо Amazon AWS Supply Chain и o9.';
+  'Привет! Я ИИ-Ассистент Pegasus. Чем могу помочь? Узнайте о наших возможностях, ролях в сети поставок, диспетчеризации, отслеживании автопарка или сравните нас с альтернативами.';
 
 const QUICK_ACTIONS: QuickAction[] = [
   {
@@ -126,7 +126,7 @@ const QUICK_ACTIONS: QuickAction[] = [
 
 const HIDDEN_PREFIXES = ['/admin', '/resume', '/assistant'];
 const WELCOME =
-  'Welcome to Pegasus. Ask anything about our logistics OS — compare us to tech giants (Amazon, o9, Oracle), explore our Go & Spanner architecture, or dive into our 6 role capabilities.';
+  'Welcome to Pegasus. Ask anything about our logistics OS — compare us to alternatives, explore our 6 role capabilities, or learn how Pegasus handles dispatch, fleet tracking, and payments.';
 
 function newId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -573,7 +573,7 @@ export default function SiteAssistant() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={language === 'ru' ? 'Спросить о Go, Spanner, ролях...' : 'Ask about Go, Spanner, roles...'}
+                placeholder={language === 'ru' ? 'Спросите о платформе, ролях, решениях...' : 'Ask about the platform, roles, solutions...'}
                 maxLength={2000}
                 disabled={loading}
                 className="flex-1 bg-black text-white placeholder-white/40 border border-white/20 focus:border-white px-3 py-2 text-xs font-mono rounded-none outline-none"

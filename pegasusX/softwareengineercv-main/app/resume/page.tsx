@@ -119,7 +119,7 @@ export default function ResumePage() {
         >
           {/* Header Section */}
           <div className="text-center mb-12 print-section border-b-2 border-black pb-8">
-            <h1 className="text-5xl md:text-7xl font-light mb-3 tracking-tight">SHAKZHOD SOLIYEV</h1>
+            <h1 className="text-5xl md:text-7xl font-light mb-3 tracking-tight">PEGASUS</h1>
             <p className="text-xl md:text-2xl text-gray-700 mb-6 font-semibold">LOGISTICS OPERATING SYSTEM</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm max-w-3xl mx-auto">
               <div className="flex items-center justify-center gap-2">
@@ -223,7 +223,7 @@ export default function ResumePage() {
               <div>
                 <h3 className="text-lg font-light mb-3 text-gray-800">Realtime</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['Live Sync', 'live updates', 'Event Contracts', 'Cache Invalidation'].map((skill, idx) => (
+                  {['Live Sync', 'Live Updates', 'Event Contracts', 'Cache Invalidation'].map((skill, idx) => (
                     <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light cursor-default">
                       {skill}
                     </span>

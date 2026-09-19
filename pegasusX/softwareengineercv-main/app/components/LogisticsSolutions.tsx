@@ -117,11 +117,7 @@ function SolutionImagePanel({
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] p-8 text-center">
           <div className="absolute inset-0 opacity-40 bg-[linear-gradient(to_right,#333_1px,transparent_1px),linear-gradient(to_bottom,#333_1px,transparent_1px)] bg-[size:32px_32px]" />
           <p className="relative z-10 font-mono text-[0.65rem] uppercase tracking-[0.2em] text-white/40">
-            Image placeholder
-          </p>
-          <p className="relative z-10 max-w-[14rem] text-sm text-white/55">{title}</p>
-          <p className="relative z-10 font-mono text-[0.6rem] text-white/30">
-            Add file → set image path in SOLUTIONS
+            {title}
           </p>
         </div>
       )}

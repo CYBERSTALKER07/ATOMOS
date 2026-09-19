@@ -119,8 +119,8 @@ export default function Contact() {
   };
 
   const contactInfo = [
-    { title: 'Telegram', detail: '@DominusMunerum', link: 'https://t.me/DominusMunerum' },
-    { title: 'Email', detail: 'cyberstalkerx7@gmail.com', link: 'mailto:cyberstalkerx7@gmail.com' },
+    { title: 'Telegram', detail: '@pegasus_ops', link: 'https://t.me/pegasus_ops' },
+    { title: 'Email', detail: 'hello@pegasus.io', link: 'mailto:hello@pegasus.io' },
     { title: t('nav_platform'), detail: t('btn_explore'), link: '/platform' },
     { title: t('contact_sales_demo'), detail: 'Enterprise inquiries', link: '/join' }
   ];
@@ -288,7 +288,7 @@ export default function Contact() {
                       value={formData.name}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-black transition-colors rounded-lg"
-                      placeholder="John Doe"
+                      placeholder="e.g. Alex Petrov"
                       required
                       disabled={isSubmitting}
                     />
@@ -306,7 +306,7 @@ export default function Contact() {
                       value={formData.email}
                       onChange={handleChange}
                       className="w-full px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-black transition-colors rounded-lg"
-                      placeholder="john@example.com"
+                      placeholder="you@company.com"
                       required
                       disabled={isSubmitting}
                     />
@@ -326,7 +326,7 @@ export default function Contact() {
                           value={formData.company}
                           onChange={handleChange}
                           className="w-full px-4 py-3 border-2 border-black bg-white text-black focus:outline-none focus:border-black transition-colors rounded-lg"
-                          placeholder="Your Company"
+                          placeholder="e.g. Alfa Logistics Group"
                           disabled={isSubmitting}
                         />
                       </div>
@@ -441,7 +441,7 @@ export default function Contact() {
                   {submitStatus === 'error' && (
                     <div className="p-4 border-2 border-black bg-[#FE5934] text-white rounded-lg" role="status">
                       <p className="font-light">✗ Failed to submit inquiry</p>
-                      <p className="text-sm mt-1">Please try again or email demo@pegasus.io directly.</p>
+                      <p className="text-sm mt-1">Please try again or use our <a href="/contact" className="underline">contact page</a>.</p>
                     </div>
                   )}
                 </div>
@@ -453,12 +453,10 @@ export default function Contact() {
         {/* Bottom CTA */}
         <div className="relative z-10 text-center mt-16 pt-10 border-t-2 border-black">
           <p className="text-lg md:text-xl text-black mb-6">
-            Prefer a live walkthrough? Book a demo call
+            Prefer a live walkthrough? Request a demo with our team.
           </p>
           <a
-            href="https://calendly.com"
-            target="_blank"
-            rel="noreferrer noopener"
+            href="/join"
             className="editorial-btn editorial-btn--on-light"
           >
             BOOK A DEMO

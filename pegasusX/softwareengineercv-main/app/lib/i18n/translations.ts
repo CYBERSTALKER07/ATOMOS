@@ -46,15 +46,15 @@ const EN_DICT = {
 
     // Contact Page & Section
     contact_title: "Let's Connect",
-    contact_subtitle: 'Questions about Pegasus, partnerships, or your logistics network — message us via email or Telegram @DominusMunerum.',
+    contact_subtitle: 'Questions about Pegasus, partnerships, or your logistics network — send us a message and our team will be in touch.',
     contact_send_msg: 'Send a message',
     contact_your_name: 'Your name',
     contact_email: 'Email',
     contact_subject: 'Subject',
     contact_message: 'Message',
     contact_submit: 'Send Message',
-    contact_submitting: 'Sending via Resend...',
-    contact_success: "Message sent via Resend API — we'll be in touch soon.",
+    contact_submitting: 'Sending...',
+    contact_success: "Message received — we'll be in touch soon.",
     contact_telegram_label: 'Telegram',
     contact_email_label: 'Email',
     contact_response_time: 'Response time',
@@ -149,7 +149,7 @@ const EN_DICT = {
 
     // Generic CTAs
     btn_request_demo: 'REQUEST DEMO',
-    btn_chat_telegram: 'TELEGRAM @DominusMunerum',
+    btn_chat_telegram: 'CHAT ON TELEGRAM',
     btn_explore: 'EXPLORE PLATFORM',
     
     // Admin Dashboard
@@ -607,15 +607,15 @@ const RU_DICT = {
 
     // Contact Page & Section
     contact_title: 'Связаться с нами',
-    contact_subtitle: 'Вопросы по Pegasus, партнерству или масштабированию логистики — напишите нам на Email или в Telegram @DominusMunerum.',
+    contact_subtitle: 'Вопросы по Pegasus, партнерству или масштабированию логистики — напишите нам, и наша команда свяжется с вами.',
     contact_send_msg: 'Отправить сообщение',
     contact_your_name: 'Ваше имя',
     contact_email: 'Электронная почта',
     contact_subject: 'Тема обращения',
     contact_message: 'Сообщение',
     contact_submit: 'Отправить сообщение',
-    contact_submitting: 'Отправка через Resend...',
-    contact_success: 'Сообщение успешно отправлено через Resend API — мы свяжемся с вами в ближайшее время.',
+    contact_submitting: 'Отправка...',
+    contact_success: 'Сообщение получено — мы свяжемся с вами в ближайшее время.',
     contact_telegram_label: 'Telegram',
     contact_email_label: 'Электронная почта',
     contact_response_time: 'Время ответа',
@@ -710,7 +710,7 @@ const RU_DICT = {
 
     // Generic CTAs
     btn_request_demo: 'ЗАПРОСИТЬ ДЕМО',
-    btn_chat_telegram: 'TELEGRAM @DominusMunerum',
+    btn_chat_telegram: 'НАПИСАТЬ В TELEGRAM',
     btn_explore: 'ИЗУЧИТЬ ПЛАТФОРМУ',
     
     // Admin Dashboard

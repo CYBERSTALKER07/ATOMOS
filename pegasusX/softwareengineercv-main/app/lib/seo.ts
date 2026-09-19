@@ -151,7 +151,6 @@ export function organizationJsonLd(language: Language = 'en') {
     },
     image: absoluteAsset(BRAND_LOGO),
     sameAs: [
-      'https://t.me/DominusMunerum',
       'https://en.wikipedia.org/wiki/Supply_chain_management',
       'https://en.wikipedia.org/wiki/Logistics_automation',
       'https://en.wikipedia.org/wiki/Transportation_management_system',
@@ -161,7 +160,7 @@ export function organizationJsonLd(language: Language = 'en') {
       {
         '@type': 'ContactPoint',
         contactType: 'sales',
-        email: 'cyberstalkerx7@gmail.com',
+        email: 'hello@pegasus.io',
         url: absoluteUrl('/contact'),
         availableLanguage: [
           'English',
