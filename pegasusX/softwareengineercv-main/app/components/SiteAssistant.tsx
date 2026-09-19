@@ -410,7 +410,7 @@ export default function SiteAssistant() {
  <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-black border-b border-white/10 shrink-0">
  <div className="flex items-center gap-2.5 min-w-0">
  <div className="w-7 h-7 border border-white/20 bg-black flex items-center justify-center shrink-0 p-1">
- <GooeyAgent color="#ffffff" size={34} className="transition-transform duration-200 group-hover:scale-110" />
+ <GooeyAgent size={34} className="transition-transform duration-200 group-hover:scale-110" />
  </div>
  <div className="min-w-0">
  <div className="flex items-center gap-1.5">
@@ -605,7 +605,7 @@ export default function SiteAssistant() {
  {open ? (
  <X className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:scale-110" />
  ) : (
- <GooeyAgent color="#ffffff" size={34} className="transition-transform duration-200 group-hover:scale-110" />
+ <GooeyAgent size={34} className="transition-transform duration-200 group-hover:scale-110" />
  )}
  <span className="site-assistant__badge" aria-hidden="true">
  {open ? 'ESC' : '⌘K'}
