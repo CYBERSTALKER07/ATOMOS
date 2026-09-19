@@ -1,215 +1,88 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useId, useEffect, useRef } from 'react';
 import { gsap } from '@/app/lib/gsap';
 
 interface GooeyAgentProps {
   className?: string;
-  color?: string;
+  color?: string; // Default to dark grey/black
   size?: number;
 }
 
 export default function GooeyAgent({
   className = '',
-  color = '#ffffff',
+  color = '#0a0a0c', 
   size = 120,
 }: GooeyAgentProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const blob1Ref = useRef<HTMLDivElement>(null);
-  const blob2Ref = useRef<HTMLDivElement>(null);
-  const blob3Ref = useRef<HTMLDivElement>(null);
-  const eyeLeftRef = useRef<HTMLDivElement>(null);
-  const eyeRightRef = useRef<HTMLDivElement>(null);
-
+  const maskId = useId();
+  const svgRef = useRef<SVGSVGElement>(null);
+  
   useEffect(() => {
-    if (!containerRef.current) return;
-
+    if (!svgRef.current) return;
     const ctx = gsap.context(() => {
-      // Idle floating animation for the gooey blobs
-      gsap.to(blob1Ref.current, {
-        x: 'random(-10, 10)',
-        y: 'random(-10, 10)',
-        scale: 'random(0.95, 1.05)',
+      // Gentle floating animation
+      gsap.to(svgRef.current, {
+        y: 'random(-4, 4)',
+        x: 'random(-2, 2)',
         duration: 'random(2, 4)',
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut',
       });
-
-      gsap.to(blob2Ref.current, {
-        x: 'random(-15, 15)',
-        y: 'random(-15, 15)',
-        scale: 'random(0.85, 1.15)',
-        duration: 'random(2, 4)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        delay: 0.5,
-      });
-
-      gsap.to(blob3Ref.current, {
-        x: 'random(-10, 10)',
-        y: 'random(-20, 20)',
-        scale: 'random(0.85, 1.15)',
-        duration: 'random(2, 4)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut',
-        delay: 1,
-      });
-
-      // Blinking animation for the eyes (blink by scaling Y of the entire eye container? 
-      // Actually grok-like big eyes blinking is cute)
-      const blinkTl = gsap.timeline({ repeat: -1, repeatDelay: 3.5 });
-      blinkTl.to('.grok-eye', { scaleY: 0.1, duration: 0.1, ease: 'power2.in' })
-             .to('.grok-eye', { scaleY: 1, duration: 0.1, ease: 'power2.out' });
-
-      // Hover reaction (pupils follow pointer slightly)
-      const handleMouseMove = (e: MouseEvent) => {
-        if (!containerRef.current) return;
-        const bounds = containerRef.current.getBoundingClientRect();
-        const mouseX = e.clientX - bounds.left - bounds.width / 2;
-        const mouseY = e.clientY - bounds.top - bounds.height / 2;
-        
-        // Normalize for pupils
-        const moveX = (mouseX / bounds.width) * 20; // 20px max movement
-        const moveY = (mouseY / bounds.height) * 20;
-
-        gsap.to([eyeLeftRef.current, eyeRightRef.current], {
-          x: moveX,
-          y: moveY,
-          duration: 0.3,
-          ease: 'power2.out'
-        });
-      };
-
-      const handleMouseLeave = () => {
-        gsap.to([eyeLeftRef.current, eyeRightRef.current], {
-          x: 0,
-          y: 0,
-          duration: 0.5,
-          ease: 'power2.out'
-        });
-      };
-
-      containerRef.current?.addEventListener('mousemove', handleMouseMove);
-      containerRef.current?.addEventListener('mouseleave', handleMouseLeave);
-
-      return () => {
-        containerRef.current?.removeEventListener('mousemove', handleMouseMove);
-        containerRef.current?.removeEventListener('mouseleave', handleMouseLeave);
-      };
-    }, containerRef);
-
+    }, svgRef);
     return () => ctx.revert();
   }, []);
 
-  // Calculate proportional sizes based on the 'size' prop
-  const eyeWidth = size * 0.28;
-  const eyeHeight = size * 0.4;
-  const pupilSize = size * 0.12;
+  // The provided SVG path representing the grok bot blob
+  const bodyPath = "M99.52 0.21C99.52 3.47 99.36 6.75 99.04 9.99C98.72 13.24 98.24 16.49 97.6 19.69C96.96 22.88 96.17 26.07 95.22 29.19C94.27 32.31 93.16 35.4 91.91 38.41C90.66 41.43 89.26 44.39 87.72 47.27C86.18 50.15 84.49 52.96 82.67 55.67C80.86 58.39 78.9 61.02 76.82 63.54C74.75 66.07 72.54 68.5 70.23 70.8C67.92 73.11 65.49 75.31 62.96 77.38C60.44 79.45 57.8 81.41 55.08 83.22C52.36 85.03 49.54 86.72 46.66 88.26C43.78 89.79 40.81 91.2 37.79 92.45C34.77 93.69 31.68 94.8 28.55 95.75C25.43 96.69 22.24 97.49 19.03 98.13C15.83 98.76 12.58 99.24 9.33 99.56C6.07 99.88 2.79 100.04 -0.48 100.04C-3.74 100.04 -7.03 99.88 -10.28 99.56C-13.53 99.24 -16.78 98.76 -19.99 98.13C-23.19 97.49 -26.38 96.69 -29.5 95.75C-32.63 94.8 -35.73 93.69 -38.74 92.45C-41.76 91.2 -44.73 89.79 -47.62 88.26C-50.5 86.72 -53.32 85.03 -56.03 83.22C-58.75 81.41 -61.39 79.45 -63.92 77.38C-66.44 75.31 -68.88 73.11 -71.19 70.8C-73.5 68.5 -75.7 66.07 -77.78 63.54C-79.85 61.02 -81.81 58.39 -83.62 55.67C-85.44 52.96 -87.13 50.15 -88.67 47.27C-90.21 44.39 -91.61 41.43 -92.86 38.41C-94.11 35.4 -95.22 32.31 -96.17 29.19C-97.12 26.07 -97.92 22.88 -98.55 19.69C-99.19 16.49 -99.67 13.24 -99.99 9.99C-100.32 6.75 -100.48 3.47 -100.48 0.21C-100.48 -3.05 -100.32 -6.33 -99.99 -9.58C-99.67 -12.82 -99.19 -16.07 -98.55 -19.27C-97.92 -22.47 -97.12 -25.65 -96.17 -28.77C-95.22 -31.89 -94.11 -34.98 -92.86 -38C-91.61 -41.01 -90.21 -43.98 -88.67 -46.85C-87.13 -49.73 -85.44 -52.55 -83.62 -55.26C-81.81 -57.97 -79.85 -60.61 -77.78 -63.13C-75.7 -65.65 -73.5 -68.08 -71.19 -70.39C-68.88 -72.69 -66.44 -74.9 -63.92 -76.97C-61.39 -79.04 -58.75 -80.99 -56.03 -82.8C-53.32 -84.62 -50.5 -86.3 -47.62 -87.84C-44.73 -89.38 -41.76 -90.78 -38.74 -92.03C-35.73 -93.28 -32.63 -94.38 -29.5 -95.33C-26.38 -96.28 -23.19 -97.07 -19.99 -97.71C-16.78 -98.35 -13.53 -98.83 -10.28 -99.15C-7.03 -99.47 -3.74 -99.63 -0.48 -99.63C2.79 -99.63 6.07 -99.47 9.33 -99.15C12.58 -98.83 15.83 -98.35 19.03 -97.71C22.24 -97.07 25.43 -96.28 28.55 -95.33C31.68 -94.38 34.77 -93.28 37.79 -92.03C40.81 -90.78 43.78 -89.38 46.66 -87.84C49.54 -86.3 52.36 -84.62 55.08 -82.8C57.8 -80.99 60.44 -79.04 62.96 -76.97C65.49 -74.9 67.92 -72.69 70.23 -70.39C72.54 -68.08 74.75 -65.65 76.82 -63.13C78.9 -60.61 80.86 -57.97 82.67 -55.26C84.49 -52.55 86.18 -49.73 87.72 -46.85C89.26 -43.98 90.66 -41.01 91.91 -38C93.16 -34.98 94.27 -31.89 95.22 -28.77C96.17 -25.65 96.96 -22.47 97.6 -19.27C98.24 -16.07 98.72 -12.82 99.04 -9.58C99.36 -6.33 99.52 -3.05 99.52 0.21Z";
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative flex items-center justify-center cursor-pointer ${className}`}
-      style={{ width: size, height: size }}
-    >
-      {/* SVG Filter for the gooey effect */}
-      <svg className="absolute w-0 h-0">
-        <defs>
-          <filter id="gooey-agent-filter">
-            <feGaussianBlur in="SourceGraphic" stdDeviation={size * 0.05} result="blur" />
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
-              result="goo"
-            />
-            <feBlend in="SourceGraphic" in2="goo" />
-          </filter>
-        </defs>
-      </svg>
-
-      {/* Container applying the gooey filter */}
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ filter: 'url(#gooey-agent-filter)' }}
+    <div className={`relative flex items-center justify-center cursor-pointer ${className}`} style={{ width: size, height: size }}>
+      <svg
+        ref={svgRef}
+        width="100%"
+        height="100%"
+        viewBox="-125 -125 250 250"
+        role="img"
+        aria-label="Animated bloub avatar"
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-full"
       >
-        {/* Blob 1 (Main body) */}
-        <div
-          ref={blob1Ref}
-          className="absolute rounded-full"
-          style={{
-            width: size * 0.65,
-            height: size * 0.65,
-            backgroundColor: color,
-          }}
-        />
-        {/* Blob 2 (Orbiting blob) */}
-        <div
-          ref={blob2Ref}
-          className="absolute rounded-full"
-          style={{
-            width: size * 0.5,
-            height: size * 0.5,
-            backgroundColor: color,
-            marginLeft: -size * 0.2,
-          }}
-        />
-        {/* Blob 3 (Orbiting blob) */}
-        <div
-          ref={blob3Ref}
-          className="absolute rounded-full"
-          style={{
-            width: size * 0.4,
-            height: size * 0.4,
-            backgroundColor: color,
-            marginTop: size * 0.3,
-          }}
-        />
-      </div>
-
-      {/* Big Eyes overlay (Grok-like) */}
-      <div className="absolute z-10 flex gap-[10%] pointer-events-none mb-[5%] w-full justify-center">
-        {/* Left Eye */}
-        <div 
-          className="grok-eye relative rounded-full bg-[#111111] overflow-hidden flex shadow-lg"
-          style={{ width: eyeWidth, height: eyeHeight }}
-        >
-          {/* Pupil */}
-          <div 
-            ref={eyeLeftRef} 
-            className="absolute rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
-            style={{ 
-              width: pupilSize, 
-              height: pupilSize, 
-              top: '20%', 
-              left: '45%',
-              transform: 'translateX(-50%)'
-            }} 
-          />
-        </div>
-
-        {/* Right Eye */}
-        <div 
-          className="grok-eye relative rounded-full bg-[#111111] overflow-hidden flex shadow-lg"
-          style={{ width: eyeWidth, height: eyeHeight }}
-        >
-          {/* Pupil */}
-          <div 
-            ref={eyeRightRef} 
-            className="absolute rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]" 
-            style={{ 
-              width: pupilSize, 
-              height: pupilSize, 
-              top: '20%', 
-              left: '45%',
-              transform: 'translateX(-50%)'
-            }} 
-          />
-        </div>
-      </div>
+        <defs>
+          <mask
+            id={maskId}
+            maskUnits="userSpaceOnUse"
+            x="-158"
+            y="-158"
+            width="316"
+            height="316"
+          >
+            <path d={bodyPath} fill="#fff" />
+            <path
+              d="M-20 -10A20 20 0 0 1 0 -30L0 -30A20 20 0 0 1 20 -10L20 10A20 20 0 0 1 0 30L0 30A20 20 0 0 1 -20 10Z"
+              transform="matrix(0.95,0.09,0,0.95,-30.23,28.49)"
+              opacity="1"
+              fill="#000"
+            />
+            <path
+              d="M-20 -10A20 20 0 0 1 0 -30L0 -30A20 20 0 0 1 20 -10L20 10A20 20 0 0 1 0 30L0 30A20 20 0 0 1 -20 10Z"
+              transform="matrix(0.92,-0.12,0,0.95,39.71,27.62)"
+              opacity="1"
+              fill="#000"
+            />
+          </mask>
+        </defs>
+        
+        <g fill="none" strokeLinecap="round"></g>
+        <g opacity="1">
+          <path d={bodyPath} fill="#f9f9f9" />
+          <g mask={`url(#${maskId})`}>
+            <rect x="-158" y="-158" width="316" height="316" fill={color} />
+          </g>
+        </g>
+        <g></g>
+        <g fill="none" strokeLinecap="round"></g>
+      </svg>
     </div>
   );
 }
