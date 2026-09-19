@@ -89,12 +89,8 @@ export default function GlobalSectionTracker() {
         color="#ffffff"
         accentColor="#ffffff"
         lineColor="#ffffff"
-        activeLineColor="#ffffff"
-        width={340}
-        indicatorColor="#ffffff"
-        indicatorSize={5}
-        iconSize={16}
-      />
+                width={340}
+                              />
     </div>
   );
 }
