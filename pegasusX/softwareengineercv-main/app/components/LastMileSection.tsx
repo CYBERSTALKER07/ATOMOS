@@ -48,9 +48,7 @@ export default function LastMileSection() {
 
   return (
     <PageSection id="last-mile" ref={sectionRef} className="border-t border-white/10 relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50 opacity-10 hover:opacity-100 transition-opacity duration-500 mix-blend-difference hidden lg:block">
-        <BranchedMenu />
-      </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         <div ref={imageRef} className="relative order-1 pl-12 lg:pl-24">
           <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
