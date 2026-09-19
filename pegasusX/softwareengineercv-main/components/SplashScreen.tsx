@@ -56,7 +56,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete, duration = 3000
         <img 
           src="/pegasus.jpg" 
           alt="Pegasus Logo" 
-          className="max-w-[80vw] max-h-[80vh] object-contain rounded-2xl" 
+          className="w-[80vw] md:w-[60vw] lg:w-[40vw] h-auto object-contain" 
         />
       </div>
     </div>
