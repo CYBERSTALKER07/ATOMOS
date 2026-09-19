@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Maximize2, Copy, Check, RotateCcw, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import GooeyAgent from './visuals/GooeyAgent';
 
 type ChatRole = 'user' | 'assistant';
 
