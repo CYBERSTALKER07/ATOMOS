@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { gsap, smoothScrollTo } from '@/app/lib/gsap';
-import { ArrowRight } from '@/components/icons';
 import ParticleText from './ParticleText';
 import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
@@ -129,10 +128,10 @@ export default function Hero() {
 
       <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Tactical Framed Container */}
-        <div className={`border shadow-2xl relative grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x transition-colors duration-200 ${
+        <div className={`relative grid grid-cols-1 lg:grid-cols-2 transition-colors duration-200 ${
           isLight
-            ? 'border-black/10 bg-white divide-black/10 shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
-            : 'border-white/15 bg-[#000000] divide-white/15 shadow-2xl'
+            ? 'bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)]'
+            : 'bg-[#000000] shadow-2xl'
         }`}>
           {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
           <div
@@ -197,29 +196,30 @@ export default function Hero() {
               </p>
             </div>
 
-            {/* Outlined Action Buttons */}
+            {/* Action Buttons */}
             <div ref={ctaRef} className="pt-6 sm:pt-8 flex flex-wrap items-center gap-4">
               <button
                 onClick={scrollToNext}
-                className={`inline-flex items-center justify-center gap-3 px-8 py-3.5 border transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase group ${
+                className={`inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium ${
                   isLight
-                    ? 'border-black text-black hover:bg-black hover:text-white'
-                    : 'border-white/30 hover:border-white hover:bg-white hover:text-black text-white'
+                    ? 'bg-black text-white hover:bg-black/90'
+                    : 'bg-white text-black hover:bg-white/90'
                 }`}
               >
                 <span>{t('hero_explore')}</span>
-                <ArrowRight size={16} />
+                <span className="text-lg leading-none mt-[-2px]">›</span>
               </button>
 
               <a
                 href="/join"
-                className={`inline-flex items-center justify-center gap-2 px-7 py-3.5 border transition-all text-xs sm:text-sm font-semibold tracking-widest uppercase ${
+                className={`inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium ${
                   isLight
-                    ? 'border-black/20 bg-transparent hover:bg-black/5 hover:border-black/40 text-zinc-800 hover:text-zinc-950'
-                    : 'border-white/20 bg-transparent hover:bg-white/10 hover:border-white/40 text-white/80 hover:text-white'
+                    ? 'bg-black/5 text-black hover:bg-black/10'
+                    : 'bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 <span>{t('hero_demo')}</span>
+                <span className="text-lg leading-none mt-[-2px]">›</span>
               </a>
             </div>
           </div>
