@@ -3,6 +3,7 @@ import Hero from './components/Hero';
 import About from './components/About';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
+import GlobalSectionTracker from './components/GlobalSectionTracker';
 
 import type { Metadata } from 'next';
 import {
