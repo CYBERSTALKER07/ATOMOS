@@ -13,6 +13,8 @@
   "dependencies": {
     "@ai-sdk/openai": "^4.0.65",
     "@animateicons/react": "^0.5.0",
+    "@hugeicons/core-free-icons": "^4.3.4",
+    "@hugeicons/react": "^1.1.10",
     "@openuidev/lang-core": "^0.2.17",
     "@openuidev/react-headless": "^0.9.13",
     "@openuidev/react-lang": "^0.2.15",
