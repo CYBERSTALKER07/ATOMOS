@@ -99,6 +99,9 @@ const BranchedMenu: React.FC<BranchedMenuProps> = ({
   });
   const navRef = useRef<HTMLElement>(null);
   const heads = useRef<(HTMLButtonElement | null)[]>([]);
+  React.useEffect(() => {
+    if (defaultActive) setActive(defaultActive);
+  }, [defaultActive]);
   const markerRef = useRef<HTMLSpanElement>(null);
   const latest = useRef<{ onSelect?: BranchedMenuProps['onSelect']; onToggle?: BranchedMenuProps['onToggle'] }>({});
   latest.current = { onSelect, onToggle };

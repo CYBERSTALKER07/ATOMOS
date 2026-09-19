@@ -8,7 +8,6 @@ import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
 import PageSection from './layout/PageSection';
-import BranchedMenu from './visuals/BranchedMenu';
 
 export default function LastMileSection() {
   const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();

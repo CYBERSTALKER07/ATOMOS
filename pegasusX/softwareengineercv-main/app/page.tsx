@@ -106,6 +106,7 @@ export default async function Home() {
 
  <div className="relative">
  <SiteNav activeHref="/" />
+        <GlobalSectionTracker />
 
  <section id="section-overview">
  <Hero />
