@@ -123,7 +123,7 @@ export default async function LogisticsAutomationPage() {
         {/* Benchmarks / ROI Bar */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
-            <span className="text-4xl sm:text-5xl font-black text-amber-400 font-mono block">
+            <span className="text-4xl sm:text-5xl font-black text-white font-mono block">
               42%
             </span>
             <span className="text-xs font-mono text-white/60 mt-2 block uppercase tracking-wider">
@@ -131,7 +131,7 @@ export default async function LogisticsAutomationPage() {
             </span>
           </div>
           <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
-            <span className="text-4xl sm:text-5xl font-black text-emerald-400 font-mono block">
+            <span className="text-4xl sm:text-5xl font-black text-white font-mono block">
               19%
             </span>
             <span className="text-xs font-mono text-white/60 mt-2 block uppercase tracking-wider">
@@ -139,7 +139,7 @@ export default async function LogisticsAutomationPage() {
             </span>
           </div>
           <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 text-center">
-            <span className="text-4xl sm:text-5xl font-black text-blue-400 font-mono block">
+            <span className="text-4xl sm:text-5xl font-black text-white font-mono block">
               &lt; 100ms
             </span>
             <span className="text-xs font-mono text-white/60 mt-2 block uppercase tracking-wider">
@@ -151,7 +151,7 @@ export default async function LogisticsAutomationPage() {
         {/* 5 Automation Pillars */}
         <section className="mt-24">
           <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/60">
               Automation Modules
             </span>
             <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
@@ -164,7 +164,7 @@ export default async function LogisticsAutomationPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <Route className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -176,7 +176,7 @@ export default async function LogisticsAutomationPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <ScanLine className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -188,7 +188,7 @@ export default async function LogisticsAutomationPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -200,7 +200,7 @@ export default async function LogisticsAutomationPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -212,7 +212,7 @@ export default async function LogisticsAutomationPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <Receipt className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -224,7 +224,7 @@ export default async function LogisticsAutomationPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <RefreshCw className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold uppercase text-white mb-2">
@@ -240,7 +240,7 @@ export default async function LogisticsAutomationPage() {
         {/* Logistics Automation FAQ */}
         <section className="mt-24">
           <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/60">
               Automation FAQ
             </span>
             <h2 className="text-3xl font-black uppercase tracking-tight text-white mt-2">

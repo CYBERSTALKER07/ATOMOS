@@ -29,25 +29,25 @@ export default function DocsRelatedTopics({
   const nextArticle = nextItem ? getDocArticle(nextItem.category, nextItem.slug) : null;
 
   const badgeStyles = {
-    'PREREQUISITE': 'bg-[#1F1633] text-[#C084FC] border-[#7C3AED]/40',
-    'NEXT STEP': 'bg-[#13203E] text-[#60A5FA] border-[#2563EB]/40',
-    'RELATED ENGINE': 'bg-[#0E2838] text-[#38BDF8] border-[#0284C7]/40',
-    'EDGE CASE': 'bg-[#2E1810] text-[#FB923C] border-[#EA580C]/40',
-    'PLAYBOOK': 'bg-[#2B121A] text-[#FB7185] border-[#E11D48]/40',
+    'PREREQUISITE': 'bg-white/10 text-white border-white/20',
+    'NEXT STEP': 'bg-white/10 text-white border-white/20',
+    'RELATED ENGINE': 'bg-white/10 text-white border-white/20',
+    'EDGE CASE': 'bg-white/10 text-white border-white/20',
+    'PLAYBOOK': 'bg-white/10 text-white border-white/20',
   };
 
   return (
-    <div className="mt-16 pt-10 border-t border-[#1F1F2C] space-y-8">
+    <div className="mt-16 pt-10 border-t border-white/10 space-y-8">
       {/* Header */}
       <div className="space-y-1.5">
-        <div className="flex items-center space-x-2 text-xs font-mono uppercase tracking-wider text-[#7E7E94]">
-          <Compass className="w-4 h-4 text-[#3B82F6]" />
+        <div className="flex items-center space-x-2 text-xs font-mono uppercase tracking-wider text-zinc-400">
+          <Compass className="w-4 h-4 text-white" />
           <span>Recommended Next Steps & Contextual Topics</span>
         </div>
         <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
           Keep Exploring Pegasus Architecture & Operations
         </h3>
-        <p className="text-xs sm:text-sm text-[#8E8EA0] max-w-2xl">
+        <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl">
           Based on the invariants, physical actors, and data flows of this module, explore these recommended companion guides and operational playbooks.
         </p>
       </div>
@@ -61,12 +61,12 @@ export default function DocsRelatedTopics({
             <Link
               key={idx}
               href={`/docs/${topic.categoryId}/${topic.slug}`}
-              className="group relative p-5 rounded-none bg-[#0E0E15] border border-[#222234] hover:border-[#3B82F6]/60 hover:bg-[#11111C] transition-all duration-200 flex flex-col justify-between shadow-sm hover:shadow-[0_4px_20px_rgba(37,99,235,0.15)]"
+              className="group relative p-5 rounded-none bg-black border border-white/15 hover:border-white/40 hover:bg-zinc-950 transition-all duration-200 flex flex-col justify-between shadow-sm hover:shadow-[0_4px_20px_rgba(255,255,255,0.05)]"
             >
               <div>
                 {/* Category & Badge */}
                 <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#717185]">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
                     {topic.category}
                   </span>
                   <span className={`text-[9px] font-mono px-2 py-0.5 rounded-none border font-semibold ${badgeCls}`}>
@@ -75,20 +75,20 @@ export default function DocsRelatedTopics({
                 </div>
 
                 {/* Title */}
-                <h4 className="text-sm font-bold text-white group-hover:text-[#60A5FA] transition-colors leading-snug">
+                <h4 className="text-sm font-bold text-white group-hover:text-white transition-colors leading-snug">
                   {topic.title}
                 </h4>
 
                 {/* Rationale / Reason */}
-                <p className="mt-2 text-xs text-[#8E8EA0] leading-relaxed line-clamp-3">
+                <p className="mt-2 text-xs text-zinc-400 leading-relaxed line-clamp-3">
                   {topic.reason}
                 </p>
               </div>
 
               {/* Action Bottom */}
-              <div className="mt-5 pt-3 border-t border-[#1C1C2A] flex items-center justify-between text-xs font-medium text-[#7E7E94] group-hover:text-white transition-colors">
+              <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-medium text-zinc-400 group-hover:text-white transition-colors">
                 <span className="font-mono text-[11px]">View specification</span>
-                <ArrowRight className="w-4 h-4 text-[#4E4E64] group-hover:text-[#3B82F6] group-hover:translate-x-1 transition-all" />
+                <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
               </div>
             </Link>
           );
@@ -100,11 +100,11 @@ export default function DocsRelatedTopics({
         {prevArticle ? (
           <Link
             href={`/docs/${prevItem!.category}/${prevItem!.slug}`}
-            className="flex items-center space-x-3 p-4 rounded-none border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
+            className="flex items-center space-x-3 p-4 rounded-none border border-white/15 bg-black hover:bg-zinc-950 hover:border-white/40 transition-all group"
           >
-            <ArrowLeft className="w-4 h-4 text-[#7E7E94] group-hover:text-white group-hover:-translate-x-1 transition-all shrink-0" />
+            <ArrowLeft className="w-4 h-4 text-zinc-400 group-hover:text-white group-hover:-translate-x-1 transition-all shrink-0" />
             <div className="min-w-0">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#68687A] block">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block">
                 Previous Article
               </span>
               <span className="text-xs font-semibold text-white truncate block mt-0.5">
@@ -119,17 +119,17 @@ export default function DocsRelatedTopics({
         {nextArticle && (
           <Link
             href={`/docs/${nextItem!.category}/${nextItem!.slug}`}
-            className="flex items-center justify-end text-right space-x-3 p-4 rounded-none border border-[#20202E] bg-[#0C0C12] hover:bg-[#12121C] hover:border-[#3A3A4E] transition-all group"
+            className="flex items-center justify-end text-right space-x-3 p-4 rounded-none border border-white/15 bg-black hover:bg-zinc-950 hover:border-white/40 transition-all group"
           >
             <div className="min-w-0">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#68687A] block">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 block">
                 Next Article
               </span>
               <span className="text-xs font-semibold text-white truncate block mt-0.5">
                 {nextArticle.title}
               </span>
             </div>
-            <ArrowRight className="w-4 h-4 text-[#7E7E94] group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
+            <ArrowRight className="w-4 h-4 text-zinc-400 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
           </Link>
         )}
       </div>

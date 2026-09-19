@@ -18,15 +18,15 @@ import type { MegaNavCategory, MegaNavPromo } from '../data/megaNavigation';
 
 function getIconForFlow(flow?: string) {
   switch (flow) {
-    case 'controlPlane': return <Layers className="w-6 h-6 text-blue-500" />;
-    case 'orderLifecycle': return <Activity className="w-6 h-6 text-blue-500" />;
-    case 'mutatingHandler': return <Settings className="w-6 h-6 text-blue-500" />;
-    case 'realtimePipeline': return <Zap className="w-6 h-6 text-blue-500" />;
-    case 'topologyMap': return <Network className="w-6 h-6 text-blue-500" />;
-    case 'dispatchBoard': return <Truck className="w-6 h-6 text-blue-500" />;
-    case 'fleetMap': return <Navigation className="w-6 h-6 text-blue-500" />;
-    case 'paymentFlow': return <Shield className="w-6 h-6 text-blue-500" />;
-    default: return <Box className="w-6 h-6 text-blue-500" />;
+    case 'controlPlane': return <Layers className="w-6 h-6 text-white" />;
+    case 'orderLifecycle': return <Activity className="w-6 h-6 text-white" />;
+    case 'mutatingHandler': return <Settings className="w-6 h-6 text-white" />;
+    case 'realtimePipeline': return <Zap className="w-6 h-6 text-white" />;
+    case 'topologyMap': return <Network className="w-6 h-6 text-white" />;
+    case 'dispatchBoard': return <Truck className="w-6 h-6 text-white" />;
+    case 'fleetMap': return <Navigation className="w-6 h-6 text-white" />;
+    case 'paymentFlow': return <Shield className="w-6 h-6 text-white" />;
+    default: return <Box className="w-6 h-6 text-white" />;
   }
 }
 
@@ -129,7 +129,7 @@ export default function GigaMenuDropdown({
                       )}
                     </div>
                     <div className="mt-6">
-                      <div className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors">
+                      <div className="text-white font-medium text-sm group-hover:text-white transition-colors">
                         {link.label}
                       </div>
                       {link.description && (

@@ -32,7 +32,7 @@ export default function CookiePolicyInteractivePanel() {
       className={`border rounded-none p-5 sm:p-6 transition-colors duration-200 ${
         isLight
           ? 'bg-zinc-50/80 border-black/10 text-zinc-900 shadow-sm'
-          : 'bg-[#111116] border-white/10 text-white shadow-xl'
+          : 'bg-black border-white/10 text-white shadow-xl'
       }`}
     >
       {/* Header Bar */}
@@ -40,7 +40,7 @@ export default function CookiePolicyInteractivePanel() {
         <div className="flex items-center gap-3">
           <div
             className={`w-9 h-9 rounded-none flex items-center justify-center shrink-0 ${
-              isLight ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-emerald-500/10 text-[#8DDC96] border border-emerald-500/20'
+              isLight ? 'bg-zinc-100 text-zinc-900 border border-black/10' : 'bg-white/10 text-white border border-white/20'
             }`}
           >
             <ShieldCheck className="w-5 h-5" />
@@ -54,11 +54,11 @@ export default function CookiePolicyInteractivePanel() {
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-none text-[10px] font-mono uppercase tracking-wider font-medium ${
                   consent
                     ? isLight
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-emerald-500/15 text-[#8DDC96]'
+                      ? 'bg-zinc-200 text-zinc-900'
+                      : 'bg-white/10 text-white border border-white/20'
                     : isLight
-                    ? 'bg-amber-100 text-amber-800'
-                    : 'bg-amber-500/15 text-amber-400'
+                    ? 'bg-zinc-100 text-zinc-700'
+                    : 'bg-white/5 text-zinc-400 border border-white/10'
                 }`}
               >
                 {consent
@@ -155,7 +155,7 @@ export default function CookiePolicyInteractivePanel() {
           </span>
           <span
             className={`inline-flex items-center gap-1 font-semibold ${
-              isGPC ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 dark:text-white/50'
+              isGPC ? 'text-zinc-800 dark:text-white' : 'text-zinc-500 dark:text-white/50'
             }`}
           >
             {isGPC ? (isRu ? 'Активен (Переопределяет маркетинг)' : 'Active (Opt-out enforced)') : (isRu ? 'Не обнаружен' : 'Not detected')}
@@ -179,7 +179,7 @@ export default function CookiePolicyInteractivePanel() {
               <span className="font-semibold text-zinc-900 dark:text-white">
                 {isRu ? 'Обязательные' : 'Strictly Necessary'}
               </span>
-              <span className="text-emerald-600 dark:text-[#8DDC96] flex items-center gap-1 text-[11px] font-mono font-medium">
+              <span className="text-zinc-900 dark:text-white flex items-center gap-1 text-[11px] font-mono font-medium">
                 <CheckCircle2 className="w-3 h-3" />
                 {isRu ? 'Активны' : 'Active'}
               </span>
@@ -202,7 +202,7 @@ export default function CookiePolicyInteractivePanel() {
                 {isRu ? 'Функциональные' : 'Functional'}
               </span>
               {consent?.categories.functional ? (
-                <span className="text-emerald-600 dark:text-[#8DDC96] flex items-center gap-1 text-[11px] font-mono font-medium">
+                <span className="text-zinc-900 dark:text-white flex items-center gap-1 text-[11px] font-mono font-medium">
                   <CheckCircle2 className="w-3 h-3" />
                   {isRu ? 'Разрешены' : 'Enabled'}
                 </span>
@@ -231,7 +231,7 @@ export default function CookiePolicyInteractivePanel() {
                 {isRu ? 'Аналитические' : 'Analytics & Telemetry'}
               </span>
               {consent?.categories.analytics ? (
-                <span className="text-emerald-600 dark:text-[#8DDC96] flex items-center gap-1 text-[11px] font-mono font-medium">
+                <span className="text-zinc-900 dark:text-white flex items-center gap-1 text-[11px] font-mono font-medium">
                   <CheckCircle2 className="w-3 h-3" />
                   {isRu ? 'Разрешены' : 'Enabled'}
                 </span>
@@ -260,12 +260,12 @@ export default function CookiePolicyInteractivePanel() {
                 {isRu ? 'Маркетинг' : 'Marketing & Tracking'}
               </span>
               {isGPC ? (
-                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1 text-[11px] font-mono font-medium">
+                <span className="text-zinc-900 dark:text-white flex items-center gap-1 text-[11px] font-mono font-medium">
                   <AlertCircle className="w-3 h-3" />
                   GPC Opt-Out
                 </span>
               ) : consent?.categories.marketing ? (
-                <span className="text-emerald-600 dark:text-[#8DDC96] flex items-center gap-1 text-[11px] font-mono font-medium">
+                <span className="text-zinc-900 dark:text-white flex items-center gap-1 text-[11px] font-mono font-medium">
                   <CheckCircle2 className="w-3 h-3" />
                   {isRu ? 'Разрешены' : 'Enabled'}
                 </span>

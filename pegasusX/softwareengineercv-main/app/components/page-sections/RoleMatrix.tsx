@@ -63,7 +63,7 @@ export default function RoleMatrix({ crossRole, variant = 'tabs' }: RoleMatrixPr
         ))}
       </div>
       {current ? (
-        <div className="mt-6 border border-white/15 bg-[#0a0a0a] p-6 md:p-8">
+        <div className="mt-6 border border-white/15 bg-black p-6 md:p-8">
           <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">
             {current.role}
           </p>

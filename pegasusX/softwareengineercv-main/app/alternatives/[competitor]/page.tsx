@@ -60,7 +60,7 @@ export default async function CompetitorAlternativePage({
   ];
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-white/20">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
@@ -124,8 +124,8 @@ export default async function CompetitorAlternativePage({
                 key={idx}
                 className="p-6 rounded-none bg-white/[0.02] border border-white/10 flex items-start gap-3"
               >
-                <div className="w-6 h-6 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="w-6 h-6 rounded-none bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check className="w-3.5 h-3.5 text-white" />
                 </div>
                 <p className="text-sm text-white/80 font-light leading-relaxed">{reason}</p>
               </div>
@@ -144,7 +144,7 @@ export default async function CompetitorAlternativePage({
             </p>
           </div>
 
-          <div className="overflow-x-auto border border-white/10 rounded-none bg-white/[0.01]">
+          <div className="overflow-x-auto border border-white/10 rounded-none bg-black">
             <table className="w-full text-left text-xs font-mono">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-white/60">
@@ -156,32 +156,32 @@ export default async function CompetitorAlternativePage({
               <tbody className="divide-y divide-white/5 text-white/80">
                 <tr>
                   <td className="p-4 font-semibold text-white">6-Role Ecosystem (Supplier, Warehouse, Driver, Retailer, Gate)</td>
-                  <td className="p-4 text-emerald-400">Full native support across all 6 roles</td>
+                  <td className="p-4 text-white font-bold">Full native support across all 6 roles</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.multiRoleDispatch.note}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-white">Hardware Requirements</td>
-                  <td className="p-4 text-emerald-400">Hardware-agnostic (iOS, Android, open GPS)</td>
+                  <td className="p-4 text-white font-bold">Hardware-agnostic (iOS, Android, open GPS)</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.hardwareIndependence.note}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-white">B2B Trade Credit & Driver Cash Reconciliation</td>
-                  <td className="p-4 text-emerald-400">Integrated double-entry treasury ledger</td>
+                  <td className="p-4 text-white font-bold">Integrated double-entry treasury ledger</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.integratedB2BPayments.note}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-white">Warehouse Gate Terminal & Seal Verification</td>
-                  <td className="p-4 text-emerald-400">Native yard & gate security terminal</td>
+                  <td className="p-4 text-white font-bold">Native yard & gate security terminal</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.warehouseGateTerminal.note}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-white">Route Optimization & Sequencing</td>
-                  <td className="p-4 text-emerald-400">Google OR-Tools multi-capacity CVRP engine</td>
+                  <td className="p-4 text-white font-bold">Google OR-Tools multi-capacity CVRP engine</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.routeOptimization.note}</td>
                 </tr>
                 <tr>
                   <td className="p-4 font-semibold text-white">Real-Time State Synchronization</td>
-                  <td className="p-4 text-emerald-400">Google Cloud Spanner + WebSockets (&lt;100ms)</td>
+                  <td className="p-4 text-white font-bold">Google Cloud Spanner + WebSockets (&lt;100ms)</td>
                   <td className="p-4 text-white/60">{competitor.featureRatings.realtimeEventSync.note}</td>
                 </tr>
               </tbody>
@@ -211,19 +211,19 @@ export default async function CompetitorAlternativePage({
             </h3>
             <ul className="space-y-3">
               <li className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Suppliers and manufacturers operating their own private truck fleets and warehouses</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Companies needing seamless B2B retailer ordering and live order vetting</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Operations seeking zero hardware lock-in and rapid cloud deployment</span>
               </li>
               <li className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Logistics teams requiring driver cash-on-delivery reconciliation with warehouse treasury</span>
               </li>
             </ul>
@@ -233,7 +233,7 @@ export default async function CompetitorAlternativePage({
         {/* Migration Path */}
         <section className="mt-20 p-8 rounded-none bg-white/[0.02] border border-white/10">
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-white/50 mb-4">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <ShieldCheck className="w-4 h-4 text-white" />
             <span>{isRu ? 'План миграции' : 'Migration & Onboarding Roadmap'}</span>
           </div>
           <h3 className="text-xl font-bold uppercase tracking-tight text-white mb-3">
@@ -255,7 +255,7 @@ export default async function CompetitorAlternativePage({
               <span className="text-[10px] font-mono text-white/40 block uppercase">
                 {isRu ? 'Сложность перехода' : 'Migration Complexity'}
               </span>
-              <span className="text-xs font-mono text-emerald-400 mt-1 block font-bold">
+              <span className="text-xs font-mono text-white mt-1 block font-bold">
                 {competitor.migrationNotes.difficulty} Complexity ({competitor.migrationNotes.timeframe})
               </span>
             </div>

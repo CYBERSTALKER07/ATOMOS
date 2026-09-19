@@ -140,7 +140,7 @@ export default function O9TrapsToAvoid({
           return (
             <article
               key={trap.id}
-              className="border border-black/8 bg-[#F7F7F6] dark:border-white/10 dark:bg-[#0B0B10] p-5 rounded-none flex flex-col justify-between min-h-[200px] hover:border-black/20 dark:hover:border-white/25 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-none transition-all duration-300 group"
+              className="border border-black/8 bg-[#F7F7F6] dark:border-white/10 dark:bg-black p-5 rounded-none flex flex-col justify-between min-h-[200px] hover:border-black/20 dark:hover:border-white/25 shadow-[0_1px_3px_rgba(0,0,0,0.03)] dark:shadow-none transition-all duration-300 group"
             >
               <div>
                 <h3 className="text-sm md:text-[15px] font-medium tracking-tight text-zinc-900 dark:text-white leading-snug mb-2.5">

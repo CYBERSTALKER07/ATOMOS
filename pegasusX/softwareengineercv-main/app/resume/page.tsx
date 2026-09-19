@@ -124,19 +124,19 @@ export default function ResumePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm max-w-3xl mx-auto">
               <div className="flex items-center justify-center gap-2">
                 <span className="font-light">📧 Email:</span>
-                <a href="mailto:demo@pegasus.io" className="hover:text-[#FFA500] transition-colors">
+                <a href="mailto:demo@pegasus.io" className="hover:text-black transition-colors">
                   demo@pegasus.io
                 </a>
               </div>
               <div className="flex items-center justify-center gap-2">
                 <span className="font-light">📱 Sales:</span>
-                <a href="mailto:sales@pegasus.io" className="hover:text-[#FFA500] transition-colors">
+                <a href="mailto:sales@pegasus.io" className="hover:text-black transition-colors">
                   sales@pegasus.io
                 </a>
               </div>
               <div className="flex items-center justify-center gap-2">
                 <span className="font-light">🌐 Platform:</span>
-                <a href="https://pegasus.io" target="_blank" rel="noopener noreferrer" className="hover:text-[#FFA500] transition-colors truncate max-w-[250px]">
+                <a href="https://pegasus.io" target="_blank" rel="noopener noreferrer" className="hover:text-black transition-colors truncate max-w-[250px]">
                   pegasus.io
                 </a>
               </div>
@@ -294,7 +294,7 @@ export default function ResumePage() {
             </h2>
             <div className="space-y-6">
               {resumeProjects.map((project) => (
-                <div key={project.id} className="border-l-4 border-black pl-6 hover:border-[#FFA500] transition-colors">
+                <div key={project.id} className="border-l-4 border-black pl-6 hover:border-black transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-light">{project.title}</h3>
                     <span className="text-sm text-gray-600 whitespace-nowrap ml-4">{project.date}</span>
@@ -302,7 +302,7 @@ export default function ResumePage() {
                   <p className="text-sm text-gray-700 mb-3 leading-relaxed">{project.description}</p>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {project.technologies.slice(0, 5).map((tech, idx) => (
-                      <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light editorial-btn--inverted">
+                       <span key={idx} className="editorial-btn editorial-btn--sm editorial-btn--on-light editorial-btn--inverted">
                         {tech}
                       </span>
                     ))}
@@ -324,10 +324,10 @@ export default function ResumePage() {
           <div className="mt-12 pt-8 border-t-2 border-black text-center print-section">
             <h3 className="text-2xl font-light mb-4">REQUEST A DEMO</h3>
             <div className="flex flex-wrap justify-center gap-6 text-sm">
-              <a href="mailto:demo@pegasus.io" className="hover:text-[#FFA500] transition-colors font-semibold">
+              <a href="mailto:demo@pegasus.io" className="hover:text-black transition-colors font-semibold">
                 📧 demo@pegasus.io
               </a>
-              <a href="mailto:sales@pegasus.io" className="hover:text-[#FFA500] transition-colors font-semibold">
+              <a href="mailto:sales@pegasus.io" className="hover:text-black transition-colors font-semibold">
                 📧 sales@pegasus.io
               </a>
             </div>

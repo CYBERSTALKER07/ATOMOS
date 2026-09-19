@@ -404,9 +404,9 @@ export default function SiteAssistant() {
           role="dialog"
           aria-label="Pegasus assistant"
         >
-          <div className="site-assistant__chat-card rounded-none border border-white/20 bg-[#09090B] text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
+          <div className="site-assistant__chat-card rounded-none border border-white/20 bg-black text-white shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
             {/* Header Bar */}
-            <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-[#121216] border-b border-white/10 shrink-0">
+            <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-zinc-950 border-b border-white/10 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-7 h-7 border border-white/20 bg-black flex items-center justify-center shrink-0 p-1">
                   <img src="/pegasus.jpg" alt="" className="w-full h-full object-contain" />
@@ -461,13 +461,13 @@ export default function SiteAssistant() {
             </header>
 
             {/* Messages Stream */}
-            <div ref={listRef} className="site-assistant__messages flex-1 overflow-y-auto p-3.5 space-y-3 bg-[#09090B]" aria-live="polite">
+            <div ref={listRef} className="site-assistant__messages flex-1 overflow-y-auto p-3.5 space-y-3 bg-black" aria-live="polite">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   className={`site-assistant__msg ${
                     msg.role === 'assistant'
-                      ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-[#121216] border border-white/10 text-[#EDEDED] p-3 text-xs leading-relaxed rounded-none'
+                      ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-zinc-950 border border-white/10 text-[#EDEDED] p-3 text-xs leading-relaxed rounded-none'
                       : 'site-assistant__msg--user self-end max-w-[85%] bg-white text-black p-3 text-xs font-medium rounded-none shadow-sm'
                   }`}
                 >
@@ -504,7 +504,7 @@ export default function SiteAssistant() {
               ))}
 
               {loading && (
-                <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-[#121216] border border-white/10 text-white p-3 text-xs rounded-none">
+                <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-zinc-950 border border-white/10 text-white p-3 text-xs rounded-none">
                   <div className="flex items-center gap-1.5 mb-1 opacity-60">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-wider">PEGASUS INTELLIGENCE</span>
                   </div>
@@ -519,13 +519,13 @@ export default function SiteAssistant() {
             {error && <p className="text-[11px] font-mono text-zinc-400 px-3.5 py-1 bg-black">{error}</p>}
 
             {/* Action Pills */}
-            <ul className="site-assistant__actions site-assistant__actions--inline flex flex-col gap-1.5 p-2.5 bg-[#0C0C0E] border-t border-white/10 max-h-[140px] overflow-y-auto">
+            <ul className="site-assistant__actions site-assistant__actions--inline flex flex-col gap-1.5 p-2.5 bg-black border-t border-white/10 max-h-[140px] overflow-y-auto">
               {currentQuickActions.map((action) => (
                 <li key={action.id} className="w-full">
                   {action.dismiss ? (
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      className="w-full flex items-center justify-between p-1.5 bg-zinc-950 hover:bg-zinc-900 border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
                       onClick={() => {
                         setOpen(false);
                         setDismissed(true);
@@ -539,7 +539,7 @@ export default function SiteAssistant() {
                   ) : action.prompt ? (
                     <button
                       type="button"
-                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      className="w-full flex items-center justify-between p-1.5 bg-zinc-950 hover:bg-zinc-900 border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
                       disabled={loading}
                       onClick={() => void sendPrompt(action.prompt!)}
                     >
@@ -552,7 +552,7 @@ export default function SiteAssistant() {
                   ) : (
                     <Link
                       href={action.href!}
-                      className="w-full flex items-center justify-between p-1.5 bg-[#121216] hover:bg-[#18181B] border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+                      className="w-full flex items-center justify-between p-1.5 bg-zinc-950 hover:bg-zinc-900 border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
                       onClick={() => setOpen(false)}
                     >
                       <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase shrink-0">
@@ -567,7 +567,7 @@ export default function SiteAssistant() {
             </ul>
 
             {/* Message Composer */}
-            <form className="site-assistant__composer flex items-center gap-2 p-2.5 bg-[#121216] border-t border-white/10 shrink-0" onSubmit={onSubmit}>
+            <form className="site-assistant__composer flex items-center gap-2 p-2.5 bg-zinc-950 border-t border-white/10 shrink-0" onSubmit={onSubmit}>
               <input
                 ref={inputRef}
                 type="text"
@@ -596,7 +596,7 @@ export default function SiteAssistant() {
         <button
           ref={launcherRef}
           type="button"
-          className={`glowing-squircle-launcher group focus:outline-none ${open ? 'border-white/90 bg-[#121216]' : ''}`}
+          className={`glowing-squircle-launcher group focus:outline-none ${open ? 'border-white/90 bg-black' : ''}`}
           title={open ? (language === 'ru' ? 'Закрыть Pegasus AI (Esc)' : 'Close Pegasus AI Assistant (Esc)') : (language === 'ru' ? 'Открыть Pegasus AI (⌘K)' : 'Open Pegasus AI Assistant (⌘K)')}
           aria-label={open ? 'Close Pegasus AI Assistant' : 'Open Pegasus AI Assistant'}
           onClick={() => setOpen((prev) => !prev)}

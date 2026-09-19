@@ -141,10 +141,10 @@ export default function EcosystemStats() {
         <div className="max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8 relative">
           
           {/* Outer Screen Window Bezel */}
-          <div className="relative rounded-2xl sm:rounded-3xl border border-white/10 bg-[#070709] shadow-[0_30px_100px_rgba(0,0,0,0.95)] overflow-hidden max-h-[580px] sm:max-h-[660px] md:max-h-[720px]">
+          <div className="relative rounded-2xl sm:rounded-3xl border border-white/10 bg-black shadow-[0_30px_100px_rgba(0,0,0,0.95)] overflow-hidden max-h-[580px] sm:max-h-[660px] md:max-h-[720px]">
             
             {/* Top Screen Window Chrome Bar */}
-            <div className="h-12 border-b border-white/10 bg-[#0a0a0e] px-4 sm:px-6 flex items-center justify-between z-30 relative select-none">
+            <div className="h-12 border-b border-white/10 bg-black px-4 sm:px-6 flex items-center justify-between z-30 relative select-none">
               
               {/* Traffic Light Window Dots */}
               <div className="flex items-center gap-2">
@@ -154,7 +154,7 @@ export default function EcosystemStats() {
               </div>
 
               {/* Center Role Switcher Tabs */}
-              <div className="hidden sm:flex items-center gap-1 bg-[#121218] p-1 rounded-lg border border-white/5">
+              <div className="hidden sm:flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-white/10">
                 {roleTabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -228,7 +228,7 @@ export default function EcosystemStats() {
                         </div>
                         <span className="text-base font-medium text-white/90">{t('ecosystem_revenue', 'Revenue Impact')}</span>
                       </div>
-                      <span className="text-xs font-mono text-green-400">+12.4%</span>
+                      <span className="text-xs font-mono text-white">+12.4%</span>
                     </div>
                     <div className="flex-1 flex flex-col justify-end pb-4">
                       <div className="text-5xl font-light text-white mb-8">$2.4M</div>
@@ -369,7 +369,7 @@ export default function EcosystemStats() {
         </div>
 
         {/* Bottom Fade Gradient Overlay */}
-        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-64 bg-gradient-to-t from-[#070709] via-[#070709]/90 to-transparent pointer-events-none z-20" />
+        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-64 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none z-20" />
 
       </div>
     </div>

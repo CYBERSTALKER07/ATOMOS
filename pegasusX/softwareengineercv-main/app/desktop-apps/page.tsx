@@ -6,7 +6,7 @@ import TenityOrbitBentoSection from '@/app/components/TenityOrbitBentoSection';
 
 function DeviceVisual({ labels }: { labels: string[] }) {
   return (
-    <div className="w-full max-w-lg border border-white/20 bg-[#111] p-3">
+    <div className="w-full max-w-lg border border-white/20 bg-black p-3">
       <div className="mb-2 h-2 w-full bg-white/10" />
       <div className="grid grid-cols-4 gap-2">
         {labels.map((l) => (

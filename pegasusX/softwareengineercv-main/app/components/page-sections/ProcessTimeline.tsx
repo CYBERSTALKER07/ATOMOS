@@ -44,7 +44,7 @@ export default function ProcessTimeline({ steps, variant = 'timeline' }: Process
               >
                 {String(i + 1).padStart(2, '0')}
               </div>
-              <div className="flex-1 border border-white/10 bg-[#0a0a0a] p-5 md:p-6">
+              <div className="flex-1 border border-white/10 bg-black p-5 md:p-6">
                 <h3 className="font-semibold">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/60">{step.description}</p>
               </div>

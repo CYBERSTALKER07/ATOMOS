@@ -7,13 +7,13 @@ type KpiCardProps = {
 
 export function KpiCard({ label, value, delta, deltaPositive }: KpiCardProps) {
   return (
-    <div className="flex flex-col gap-3 border border-white/10 bg-[#0a0a0a] p-5">
+    <div className="flex flex-col gap-3 border border-white/10 bg-black p-5">
       <p className="font-mono text-[10px] uppercase tracking-widest text-white/40">{label}</p>
       <p className="text-3xl font-light">{value}</p>
       {delta ? (
         <p
           className={`font-mono text-xs ${
-            deltaPositive === false ? 'text-[#FE5934]' : 'text-[#8DDC96]'
+            deltaPositive === false ? 'text-zinc-400' : 'text-white'
           }`}
         >
           {delta}

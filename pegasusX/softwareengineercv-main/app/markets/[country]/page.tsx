@@ -129,7 +129,7 @@ export default async function MarketCountryPage({ params }: Props) {
           </div>
           <div>
             <span className="text-white/40 uppercase tracking-wider block mb-1">Regional Latency</span>
-            <span className="text-emerald-400 font-bold">{market.latency}</span>
+            <span className="text-white font-mono font-bold">{market.latency}</span>
           </div>
           <div>
             <span className="text-white/40 uppercase tracking-wider block mb-1">Primary Settlement Currency</span>
@@ -179,7 +179,7 @@ export default async function MarketCountryPage({ params }: Props) {
                   key={idx}
                   className="px-3 py-1.5 rounded-none bg-white/5 border border-white/10 text-xs font-mono text-white/80 flex items-center gap-1.5"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-white/80" />
                   <span>{comp}</span>
                 </span>
               ))}
@@ -201,14 +201,14 @@ export default async function MarketCountryPage({ params }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Bottlenecks */}
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
-              <h3 className="text-lg font-bold uppercase text-rose-300 mb-6 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-rose-400" />
+              <h3 className="text-lg font-bold uppercase text-white mb-6 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-zinc-400" />
                 <span>Regional Bottlenecks</span>
               </h3>
               <ul className="space-y-4">
                 {market.logisticsBottlenecks.map((b, idx) => (
                   <li key={idx} className="flex items-start gap-3 text-sm text-white/70 leading-relaxed font-light">
-                    <span className="text-rose-400 font-mono text-xs mt-0.5">•</span>
+                    <span className="text-zinc-500 font-mono text-xs mt-0.5">•</span>
                     <span>{b}</span>
                   </li>
                 ))}
@@ -217,14 +217,14 @@ export default async function MarketCountryPage({ params }: Props) {
 
             {/* Pegasus Solution */}
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10">
-              <h3 className="text-lg font-bold uppercase text-emerald-300 mb-6 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-bold uppercase text-white mb-6 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-white" />
                 <span>Pegasus Deployment Solution</span>
               </h3>
               <ul className="space-y-4">
                 {market.pegasusSolution.map((s, idx) => (
                   <li key={idx} className="flex items-start gap-3 text-sm text-white/80 leading-relaxed font-light">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-4 h-4 text-white shrink-0 mt-0.5" />
                     <span>{s}</span>
                   </li>
                 ))}

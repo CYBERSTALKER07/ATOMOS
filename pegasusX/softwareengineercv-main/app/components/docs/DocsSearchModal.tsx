@@ -59,12 +59,12 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md transition-all">
       <div
-        className="w-full max-w-2xl bg-[#0F0F14] border border-[#262633] rounded-none shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-2xl bg-black border border-white/20 rounded-none shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-[#22222C] bg-[#14141C]">
-          <Search className="w-5 h-5 text-[#8E8EA0] mr-3 shrink-0" />
+        <div className="flex items-center px-4 py-3.5 border-b border-white/10 bg-zinc-950">
+          <Search className="w-5 h-5 text-zinc-400 mr-3 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -74,30 +74,30 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
               setSelectedIndex(0);
             }}
             placeholder="Search documentation, operators, protocols, APIs... (Type to filter)"
-            className="w-full bg-transparent text-white placeholder-[#6E6E80] text-sm focus:outline-none"
+            className="w-full bg-transparent text-white placeholder-zinc-500 text-sm focus:outline-none"
           />
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="p-1 text-[#8E8EA0] hover:text-white transition-colors"
+              className="p-1 text-zinc-400 hover:text-white transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 ml-2 text-[10px] font-mono text-[#8E8EA0] bg-[#1F1F2B] border border-[#2D2D3D] rounded-none">
+          <kbd className="hidden sm:inline-flex items-center px-2 py-0.5 ml-2 text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-white/10 rounded-none">
             ESC
           </kbd>
         </div>
 
         {/* Search Results List */}
-        <div className="flex-1 overflow-y-auto p-2 divide-y divide-[#1D1D28]/60">
+        <div className="flex-1 overflow-y-auto p-2 divide-y divide-white/5">
           {query.trim() === '' ? (
             <div className="py-12 px-6 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-none bg-[#181822] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6]">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-none bg-zinc-950 border border-white/10 flex items-center justify-center text-white">
                 <Sparkles className="w-5 h-5" />
               </div>
               <h4 className="text-white font-medium text-sm">Instant Documentation Search</h4>
-              <p className="text-xs text-[#8E8EA0] mt-1 max-w-md mx-auto">
+              <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto">
                 Quickly locate architecture guides, operator manuals, mathematical CVRP solver docs, or operational edge-case playbooks.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -105,7 +105,7 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                   <button
                     key={tag}
                     onClick={() => setQuery(tag)}
-                    className="text-xs px-2.5 py-1 rounded-none bg-[#191924] border border-[#282838] text-[#B5B5C5] hover:text-white hover:border-[#3B82F6] transition-colors"
+                    className="text-xs px-2.5 py-1 rounded-none bg-zinc-950 border border-white/10 text-zinc-300 hover:text-white hover:border-white transition-colors"
                   >
                     {tag}
                   </button>
@@ -114,8 +114,8 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
             </div>
           ) : results.length === 0 ? (
             <div className="py-12 px-6 text-center">
-              <p className="text-sm text-[#8E8EA0]">No documentation articles found matching &quot;{query}&quot;.</p>
-              <p className="text-xs text-[#5E5E70] mt-1">Try searching for &quot;dispatch&quot;, &quot;ledger&quot;, &quot;driver&quot;, or &quot;outbox&quot;.</p>
+              <p className="text-sm text-zinc-400">No documentation articles found matching &quot;{query}&quot;.</p>
+              <p className="text-xs text-zinc-500 mt-1">Try searching for &quot;dispatch&quot;, &quot;ledger&quot;, &quot;driver&quot;, or &quot;outbox&quot;.</p>
             </div>
           ) : (
             results.map((res, idx) => {
@@ -127,22 +127,22 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                   onClick={onClose}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-start justify-between p-3 rounded-none transition-colors ${
-                    isSelected ? 'bg-[#1D1D2C] border border-[#3A3A52]' : 'hover:bg-[#161622] border border-transparent'
+                    isSelected ? 'bg-zinc-900 border border-white/30' : 'hover:bg-zinc-950 border border-transparent'
                   }`}
                 >
                   <div className="flex items-start space-x-3 min-w-0 pr-3">
-                    <div className="w-8 h-8 rounded-none bg-[#14141E] border border-[#2A2A3A] flex items-center justify-center text-[#3B82F6] shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-none bg-zinc-950 border border-white/10 flex items-center justify-center text-white shrink-0 mt-0.5">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="text-xs font-mono text-[#3B82F6] uppercase tracking-wider">
+                        <span className="text-xs font-mono text-white font-semibold uppercase tracking-wider">
                           {res.category.title}
                         </span>
-                        <span className="text-[#4E4E60] text-xs">/</span>
-                        <span className="text-xs text-[#8E8EA0] font-mono">{res.article.version}</span>
+                        <span className="text-zinc-600 text-xs">/</span>
+                        <span className="text-xs text-zinc-400 font-mono">{res.article.version}</span>
                         {res.article.badge && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-none bg-[#202030] text-[#9E9EB0] border border-[#303044]">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-none bg-white/5 text-zinc-400 border border-white/10">
                             {res.article.badge}
                           </span>
                         )}
@@ -150,14 +150,14 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
                       <h4 className="text-sm font-semibold text-white truncate mt-0.5">
                         {res.article.title}
                       </h4>
-                      <p className="text-xs text-[#8E8EA0] line-clamp-1 mt-0.5">
+                      <p className="text-xs text-zinc-400 line-clamp-1 mt-0.5">
                         {res.article.leadSentence}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-1 shrink-0 pt-2 text-[#5E5E70]">
-                    <span className="text-[10px] font-mono text-[#6E6E80] mr-1 hidden sm:inline">Jump to</span>
-                    <ArrowRight className={`w-4 h-4 ${isSelected ? 'text-[#3B82F6]' : 'text-[#4E4E60]'}`} />
+                  <div className="flex items-center space-x-1 shrink-0 pt-2 text-zinc-500">
+                    <span className="text-[10px] font-mono text-zinc-500 mr-1 hidden sm:inline">Jump to</span>
+                    <ArrowRight className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-zinc-600'}`} />
                   </div>
                 </Link>
               );
@@ -166,10 +166,10 @@ export default function DocsSearchModal({ isOpen, onClose }: DocsSearchModalProp
         </div>
 
         {/* Footer info */}
-        <div className="px-4 py-2.5 bg-[#12121A] border-t border-[#20202C] flex items-center justify-between text-[11px] text-[#6E6E80] font-mono">
+        <div className="px-4 py-2.5 bg-zinc-950 border-t border-white/10 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
           <div className="flex items-center space-x-3">
-            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↑</kbd> <kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↓</kbd> Navigate</span>
-            <span><kbd className="px-1.5 py-0.5 bg-[#1C1C26] rounded-none border border-[#2D2D3E]">↵</kbd> Select</span>
+            <span><kbd className="px-1.5 py-0.5 bg-zinc-900 rounded-none border border-white/10">↑</kbd> <kbd className="px-1.5 py-0.5 bg-zinc-900 rounded-none border border-white/10">↓</kbd> Navigate</span>
+            <span><kbd className="px-1.5 py-0.5 bg-zinc-900 rounded-none border border-white/10">↵</kbd> Select</span>
           </div>
           <span>Pegasus OS Documentation v4.2</span>
         </div>

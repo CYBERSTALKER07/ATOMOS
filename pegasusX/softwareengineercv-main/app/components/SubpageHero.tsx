@@ -114,7 +114,7 @@ export default function SubpageHero({
             {Array.from({ length: 40 }).map((_, i) => (
               <div
                 key={i}
-                className="aspect-square rounded-2xl sm:rounded-[20px] bg-[#0c0d12]/45 border border-white/[0.04] transition-colors"
+                className="aspect-square rounded-2xl sm:rounded-[20px] bg-black border border-white/[0.05] transition-colors"
               />
             ))}
           </div>
@@ -172,16 +172,16 @@ export default function SubpageHero({
         <div className="relative h-44 sm:h-52 md:h-64 w-full">
           
           {/* Card 1: Left Node (e.g. Swapping / Ingestion) */}
-          <div className="absolute top-2 left-[4%] sm:left-[8%] md:left-[12%] w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-[#0c0d12]/90 border border-white/[0.12] p-3.5 flex flex-col justify-between items-center shadow-2xl backdrop-blur-md hover:border-white/25 transition-all group">
+          <div className="absolute top-2 left-[4%] sm:left-[8%] md:left-[12%] w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-black border border-white/[0.14] p-3.5 flex flex-col justify-between items-center shadow-2xl backdrop-blur-md hover:border-white/30 transition-all group">
             {/* Top-right rotating indicator badge */}
             <div className="w-full flex justify-end">
               <div className="w-5 h-5 rounded-full bg-white/[0.06] border border-white/15 flex items-center justify-center">
-                <div className="w-2.5 h-2.5 rounded-full border-t border-r border-zinc-200 animate-spin" />
+                <div className="w-2.5 h-2.5 rounded-full border-t border-r border-white animate-spin" />
               </div>
             </div>
 
             {/* Glyph Icon */}
-            <div className="w-9 h-9 flex items-center justify-center text-zinc-100 font-serif text-2xl font-bold tracking-tighter opacity-90 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 flex items-center justify-center text-white font-serif text-2xl font-bold tracking-tighter opacity-90 group-hover:scale-105 transition-transform">
               {leftNode.symbol === 'T' ? (
                 <svg viewBox="0 0 24 24" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
                   <path d="M4 6h16M12 6v14M8 6l1-2h6l1 2" strokeLinecap="round" />
@@ -196,7 +196,7 @@ export default function SubpageHero({
               <span className="text-[9px] font-mono tracking-widest uppercase text-zinc-500 block">
                 {leftNode.tag}
               </span>
-              <span className="text-[10px] sm:text-[11px] font-mono font-medium text-zinc-200 block truncate">
+              <span className="text-[10px] sm:text-[11px] font-mono font-medium text-white block truncate">
                 {leftNode.value}
               </span>
               <span className="text-[9px] font-mono text-zinc-600 block mt-0.5">//</span>
@@ -204,12 +204,12 @@ export default function SubpageHero({
           </div>
 
           {/* Card 2: Center Node (Processing Isometric 3D Cube) */}
-          <div className="absolute top-16 sm:top-14 md:top-16 left-[44%] sm:left-[46%] -translate-x-1/2 w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-[#0c0d12]/90 border border-white/[0.14] p-3.5 flex flex-col justify-between items-center shadow-[0_0_40px_rgba(0,0,0,0.9)] backdrop-blur-md hover:border-white/30 transition-all group z-10">
+          <div className="absolute top-16 sm:top-14 md:top-16 left-[44%] sm:left-[46%] -translate-x-1/2 w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-black border border-white/[0.18] p-3.5 flex flex-col justify-between items-center shadow-[0_0_40px_rgba(0,0,0,1)] backdrop-blur-md hover:border-white/40 transition-all group z-10">
             <div className="w-full h-4" />
 
             {/* 3D Wireframe Isometric Cube Glyph */}
             <div className="w-10 h-10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg viewBox="0 0 24 24" className="w-9 h-9 text-zinc-200 stroke-current fill-none stroke-[1.4]">
+              <svg viewBox="0 0 24 24" className="w-9 h-9 text-white stroke-current fill-none stroke-[1.4]">
                 <path d="M12 2L3 7v10l9 5 9-5V7l-9-5z" strokeLinejoin="round" />
                 <path d="M12 12L3 7" strokeLinejoin="round" />
                 <path d="M12 12l9-5" strokeLinejoin="round" />
@@ -221,9 +221,9 @@ export default function SubpageHero({
             <div className="w-full text-center">
               <span className="text-[9px] font-mono tracking-widest uppercase text-zinc-500 flex items-center justify-center gap-1.5">
                 <span>{centerNode.tag}</span>
-                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping inline-block" />
               </span>
-              <span className="text-[10px] sm:text-[11px] font-mono font-medium text-zinc-200 block truncate">
+              <span className="text-[10px] sm:text-[11px] font-mono font-medium text-white block truncate">
                 {centerNode.value}
               </span>
               <span className="text-[9px] font-mono text-zinc-600 block mt-0.5">//</span>
@@ -231,16 +231,16 @@ export default function SubpageHero({
           </div>
 
           {/* Card 3: Right Node (e.g. Swapped / Settled Crystal) */}
-          <div className="absolute top-2 right-[4%] sm:right-[8%] md:right-[12%] w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-[#0c0d12]/90 border border-white/[0.12] p-3.5 flex flex-col justify-between items-center shadow-2xl backdrop-blur-md hover:border-white/25 transition-all group">
+          <div className="absolute top-2 right-[4%] sm:right-[8%] md:right-[12%] w-28 sm:w-32 md:w-36 h-32 sm:h-36 md:h-40 rounded-2xl sm:rounded-[22px] bg-black border border-white/[0.14] p-3.5 flex flex-col justify-between items-center shadow-2xl backdrop-blur-md hover:border-white/30 transition-all group">
             {/* Top-right checkmark circle badge */}
             <div className="w-full flex justify-end">
-              <div className="w-5 h-5 rounded-full bg-white/[0.08] border border-white/20 flex items-center justify-center text-[10px] text-zinc-200 font-bold">
+              <div className="w-5 h-5 rounded-full bg-white/[0.08] border border-white/20 flex items-center justify-center text-[10px] text-white font-bold">
                 ✓
               </div>
             </div>
 
             {/* Geometric Crystal / Ethereum Diamond Glyph */}
-            <div className="w-9 h-9 flex items-center justify-center text-zinc-200 group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 flex items-center justify-center text-white group-hover:scale-105 transition-transform">
               <svg viewBox="0 0 24 24" className="w-7 h-7 stroke-current fill-none stroke-[1.5]">
                 <path d="M12 2L5 12l7 4 7-4-7-10z" strokeLinejoin="round" />
                 <path d="M5 12l7 10 7-10-7 4-7-4z" strokeLinejoin="round" />
@@ -339,7 +339,7 @@ export default function SubpageHero({
           <div className="lg:col-span-4 flex justify-start lg:justify-end w-full">
             <Link
               href={widgetData.href || '/platform'}
-              className="w-full max-w-sm rounded-2xl bg-[#0c0d12]/85 border border-white/10 p-3.5 sm:p-4 flex items-center gap-3.5 backdrop-blur-md shadow-2xl hover:border-white/25 hover:bg-[#12141a]/90 transition-all group"
+              className="w-full max-w-sm rounded-2xl bg-black border border-white/15 p-3.5 sm:p-4 flex items-center gap-3.5 backdrop-blur-md shadow-2xl hover:border-white/35 hover:bg-zinc-950 transition-all group"
             >
               {/* Dotted Matrix Icon Thumbnail */}
               <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center flex-shrink-0 text-zinc-400 group-hover:text-white transition-colors">

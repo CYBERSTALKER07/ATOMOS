@@ -121,7 +121,7 @@ export default async function GlobalLogisticsPage() {
         {/* Key Operational Pillars */}
         <section className="mt-20">
           <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/60">
               Distributed Infrastructure
             </span>
             <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
@@ -134,7 +134,7 @@ export default async function GlobalLogisticsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <Server className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -146,7 +146,7 @@ export default async function GlobalLogisticsPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <Radio className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -158,7 +158,7 @@ export default async function GlobalLogisticsPage() {
             </div>
 
             <div className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-colors">
-              <div className="w-12 h-12 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+              <div className="w-12 h-12 rounded-none bg-white/10 border border-white/20 flex items-center justify-center text-white mb-6">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold uppercase text-white mb-3">
@@ -174,7 +174,7 @@ export default async function GlobalLogisticsPage() {
         {/* Global Logistics Architecture Comparison */}
         <section className="mt-24 p-8 sm:p-12 rounded-none bg-white/[0.02] border border-white/10">
           <div className="mb-8">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/60">
               Technical Comparison
             </span>
             <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white mt-1">
@@ -195,31 +195,31 @@ export default async function GlobalLogisticsPage() {
               <tbody className="divide-y divide-white/5 text-white/80">
                 <tr>
                   <td className="py-4 pr-6 font-bold text-white">Database Foundation</td>
-                  <td className="py-4 px-6 bg-white/[0.04] text-emerald-400 font-bold">Google Cloud Spanner (ACID, 99.999%)</td>
+                  <td className="py-4 px-6 bg-white/[0.04] text-white font-bold">Google Cloud Spanner (ACID, 99.999%)</td>
                   <td className="py-4 px-6 text-white/50">Legacy Relational / On-Prem</td>
                   <td className="py-4 pl-6 text-white/50">Fragmented 3rd-Party APIs</td>
                 </tr>
                 <tr>
                   <td className="py-4 pr-6 font-bold text-white">Cross-Border Routing</td>
-                  <td className="py-4 px-6 bg-white/[0.04] text-emerald-400 font-bold">Google OR-Tools CVRP + Customs Windows</td>
+                  <td className="py-4 px-6 bg-white/[0.04] text-white font-bold">Google OR-Tools CVRP + Customs Windows</td>
                   <td className="py-4 px-6 text-white/50">Static Distance Tables</td>
                   <td className="py-4 pl-6 text-white/50">Manual Broker Estimates</td>
                 </tr>
                 <tr>
                   <td className="py-4 pr-6 font-bold text-white">Realtime Latency</td>
-                  <td className="py-4 px-6 bg-white/[0.04] text-emerald-400 font-bold">&lt; 100ms WebSocket & Redis Streams</td>
+                  <td className="py-4 px-6 bg-white/[0.04] text-white font-bold">&lt; 100ms WebSocket & Redis Streams</td>
                   <td className="py-4 px-6 text-white/50">15–60 min Batch Polling</td>
                   <td className="py-4 pl-6 text-white/50">Daily EDI Status Updates</td>
                 </tr>
                 <tr>
                   <td className="py-4 pr-6 font-bold text-white">Multi-Role Native Apps</td>
-                  <td className="py-4 px-6 bg-white/[0.04] text-emerald-400 font-bold">6 Dedicated Roles (Mobile & Desktop)</td>
+                  <td className="py-4 px-6 bg-white/[0.04] text-white font-bold">6 Dedicated Roles (Mobile & Desktop)</td>
                   <td className="py-4 px-6 text-white/50">Single Complex Web Portal</td>
                   <td className="py-4 pl-6 text-white/50">Email & PDF Invoices</td>
                 </tr>
                 <tr>
                   <td className="py-4 pr-6 font-bold text-white">Payment & Treasury</td>
-                  <td className="py-4 px-6 bg-white/[0.04] text-emerald-400 font-bold">Automated Point-of-Delivery COD & Invoicing</td>
+                  <td className="py-4 px-6 bg-white/[0.04] text-white font-bold">Automated Point-of-Delivery COD & Invoicing</td>
                   <td className="py-4 px-6 text-white/50">Manual 60-day Net Billing</td>
                   <td className="py-4 pl-6 text-white/50">Manual Factor Invoicing</td>
                 </tr>
@@ -231,7 +231,7 @@ export default async function GlobalLogisticsPage() {
         {/* Global Logistics FAQ */}
         <section className="mt-24">
           <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/60">
               Common Questions
             </span>
             <h2 className="text-3xl font-black uppercase tracking-tight text-white mt-2">

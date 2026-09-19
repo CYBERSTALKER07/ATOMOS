@@ -53,7 +53,7 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
   return (
     <div className="flex flex-col items-center justify-center max-w-3xl w-full px-4 text-center my-auto py-6">
       {/* Pegasus Logo Icon */}
-      <div className="w-12 h-12 mb-4 border border-white/10 bg-[#121216] flex items-center justify-center p-2 select-none shadow-[0_0_20px_rgba(255,255,255,0.06)]">
+      <div className="w-12 h-12 mb-4 border border-white/10 bg-black flex items-center justify-center p-2 select-none shadow-[0_0_20px_rgba(255,255,255,0.06)]">
         <img src="/pegasus.jpg" alt="Pegasus Logo" className="w-full h-full object-contain" />
       </div>
 
@@ -79,7 +79,7 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
             type="button"
             disabled={isRunning}
             onClick={() => processMessage({ role: 'user', content: starter.prompt })}
-            className="group relative flex flex-col justify-between p-4 bg-[#121216] hover:bg-[#181820] border border-white/10 hover:border-white/40 transition-all duration-200 text-left cursor-pointer focus:outline-none focus:border-white"
+            className="group relative flex flex-col justify-between p-4 bg-black hover:bg-zinc-900 border border-white/10 hover:border-white/40 transition-all duration-200 text-left cursor-pointer focus:outline-none focus:border-white"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
@@ -108,7 +108,7 @@ export default function AssistantPage() {
   const mode = useSystemThemeMode();
 
   return (
-    <div className="fixed inset-0 h-[100dvh] w-screen bg-[#09090B] flex flex-col overflow-hidden text-white z-10">
+    <div className="fixed inset-0 h-[100dvh] w-screen bg-black flex flex-col overflow-hidden text-white z-10">
       {/* Top Header Bar */}
       <header className="h-14 border-b border-white/10 px-6 flex items-center justify-between bg-black/80 backdrop-blur-md z-20 shrink-0">
         <div className="flex items-center gap-3">
@@ -134,7 +134,7 @@ export default function AssistantPage() {
       </header>
 
       {/* Main Agent Interface */}
-      <main className="flex-1 w-full h-[calc(100dvh-3.5rem)] relative overflow-hidden bg-[#09090B]">
+      <main className="flex-1 w-full h-[calc(100dvh-3.5rem)] relative overflow-hidden bg-black">
         <AgentInterface
           llm={llm}
           componentLibrary={openuiLibrary}

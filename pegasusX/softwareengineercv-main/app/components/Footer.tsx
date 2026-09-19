@@ -143,15 +143,15 @@ export default function Footer() {
 
           {/* Feedback Badges */}
           {status === 'success' && (
-            <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <div className="flex items-center gap-2 text-xs font-mono text-white bg-white/10 border border-white/20 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-white" />
               <span>{responseMsg || t('subscribe_success')}</span>
             </div>
           )}
 
           {status === 'error' && (
-            <div className="flex items-center gap-2 text-xs font-mono text-rose-400 bg-rose-950/50 border border-rose-500/30 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="flex items-center gap-2 text-xs font-mono text-zinc-300 bg-white/10 border border-white/20 px-3.5 py-2.5 rounded-sm animate-in fade-in slide-in-from-top-1">
+              <AlertCircle className="w-4 h-4 shrink-0 text-zinc-300" />
               <span>{responseMsg || t('subscribe_invalid')}</span>
             </div>
           )}

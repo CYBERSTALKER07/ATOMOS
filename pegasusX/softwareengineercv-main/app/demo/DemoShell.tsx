@@ -61,7 +61,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
     <div className="fleek-docs min-h-screen bg-black text-white">
       <FleekNav activeHref="/demo" />
       <div className="flex min-h-[calc(100vh-5rem)] flex-col md:flex-row pt-[4.5rem] md:pt-20">
-        <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-[#0a0a0a] md:w-56 md:border-b-0 md:border-r md:border-white/10">
+        <aside className="flex w-full shrink-0 flex-col border-b border-white/10 bg-black md:w-56 md:border-b-0 md:border-r md:border-white/10">
           <div className="border-b border-white/10 p-5">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">
               {t('demo_portal', 'Demo portal')}
@@ -80,7 +80,7 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
                 href={link.href}
                 className={`mb-1 block min-h-11 border-l-2 px-3 py-2.5 text-sm transition-colors duration-200 ${
                   link.active
-                    ? 'border-[var(--fleek-accent)] bg-white/10 font-medium text-white'
+                    ? 'border-white bg-white/10 font-medium text-white'
                     : 'border-transparent text-white/50 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -99,9 +99,9 @@ export default function DemoShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#0a0a0a] px-6">
+          <header className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-black px-6">
             <div className="flex items-center gap-2 text-sm">
-              <span className="h-2 w-2 rounded-none bg-[var(--fleek-accent)]" />
+              <span className="h-2 w-2 rounded-none bg-white" />
               <span className="font-medium">
                 {persona} {t('demo_dashboard_suffix', 'dashboard')}
               </span>

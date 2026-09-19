@@ -61,7 +61,7 @@ export default function CloudEcosystemPageClient() {
             onClick={() => setActive('all')}
             className={`px-3.5 py-2 text-[10px] font-mono uppercase tracking-[0.16em] border transition-colors ${
               active === 'all'
-                ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+                ? 'border-white bg-white text-black font-bold'
                 : 'border-white/15 text-white/55 hover:border-white/35 hover:text-white'
             }`}
           >
@@ -74,7 +74,7 @@ export default function CloudEcosystemPageClient() {
               onClick={() => setActive(cat.id)}
               className={`px-3.5 py-2 text-[10px] font-mono uppercase tracking-[0.16em] border transition-colors ${
                 active === cat.id
-                  ? 'border-emerald-400/60 bg-emerald-500/10 text-emerald-200'
+                  ? 'border-white bg-white text-black font-bold'
                   : 'border-white/15 text-white/55 hover:border-white/35 hover:text-white'
               }`}
             >
@@ -88,13 +88,13 @@ export default function CloudEcosystemPageClient() {
         <div className="mt-12 flex flex-col sm:flex-row gap-3">
           <Link
             href="/technology"
-            className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] bg-white text-black hover:bg-emerald-300 transition-colors"
+            className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] bg-white text-black hover:bg-zinc-200 transition-colors"
           >
             {t('cloud_eco_cta_tech', 'Technology hub')}
           </Link>
           <Link
             href="/join"
-            className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] border border-white/30 text-white hover:border-emerald-400/60 transition-colors"
+            className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] border border-white/30 text-white hover:border-white transition-colors"
           >
             {t('nav_demo', 'Request demo')}
           </Link>

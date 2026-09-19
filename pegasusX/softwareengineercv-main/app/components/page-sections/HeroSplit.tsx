@@ -45,7 +45,7 @@ export default function HeroSplit({ eyebrow = 'Explore', label, body, promo, vis
         ) : null}
       </div>
       {visual ? (
-        <div className="relative min-h-[240px] border border-white/15 bg-[#0c0c0c] p-6 md:min-h-[320px]">
+        <div className="relative min-h-[240px] border border-white/15 bg-black p-6 md:min-h-[320px]">
           {visual}
         </div>
       ) : null}

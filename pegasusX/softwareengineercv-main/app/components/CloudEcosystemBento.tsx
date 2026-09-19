@@ -86,20 +86,19 @@ function TechTile({ item, compact }: { item: CloudTechItem; compact?: boolean })
     <>
       <div className="flex items-start justify-between gap-3">
         <span
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[1.55rem] transition-transform duration-300 group-hover:scale-110"
-          style={{ color: item.brand }}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[1.55rem] text-white transition-transform duration-300 group-hover:scale-110"
           aria-hidden
         >
           {icon}
         </span>
         {item.featured ? (
-          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-emerald-400/80">
+          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/80">
             Core
           </span>
         ) : null}
       </div>
       <div className="mt-auto space-y-2 pt-5">
-        <h3 className="text-base md:text-lg font-medium tracking-tight text-white group-hover:text-emerald-100 transition-colors">
+        <h3 className="text-base md:text-lg font-medium tracking-tight text-white group-hover:text-white transition-colors">
           {name}
         </h3>
         {!compact || item.featured ? (
@@ -111,16 +110,16 @@ function TechTile({ item, compact }: { item: CloudTechItem; compact?: boolean })
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
-          background: `radial-gradient(420px circle at 20% 0%, ${item.brand}22, transparent 55%)`,
+          background: `radial-gradient(420px circle at 20% 0%, rgba(255,255,255,0.08), transparent 55%)`,
         }}
       />
     </>
   );
 
   const className = cn(
-    'group relative flex h-full min-h-[8.5rem] flex-col overflow-hidden border border-white/10 bg-[#070707] p-5 md:p-6',
-    'transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/45',
-    'hover:shadow-[0_0_36px_rgba(141,220,150,0.18)]',
+    'group relative flex h-full min-h-[8.5rem] flex-col overflow-hidden border border-white/10 bg-black p-5 md:p-6',
+    'transition-all duration-300 hover:-translate-y-0.5 hover:border-white/40',
+    'hover:shadow-[0_0_36px_rgba(255,255,255,0.06)]',
     SPAN_CLASS[item.span],
     item.featured && 'min-h-[12rem]',
   );

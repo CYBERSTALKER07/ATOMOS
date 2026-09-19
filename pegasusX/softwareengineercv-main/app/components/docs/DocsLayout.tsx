@@ -28,7 +28,7 @@ export default function DocsLayout({ children, activeArticle }: DocsLayoutProps)
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#07070A] text-white flex flex-col font-sans selection:bg-[#2563EB] selection:text-white">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       {/* Search Modal */}
       <DocsSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 

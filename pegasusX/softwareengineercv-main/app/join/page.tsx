@@ -111,7 +111,7 @@ export default function JoinPage() {
               className="docs-input disabled:opacity-50"
             />
             {fieldErrors[f.name] ? (
-              <p id={`join-${f.name}-error`} className="text-sm text-[#FE5934]" role="alert">
+              <p id={`join-${f.name}-error`} className="text-sm text-zinc-400 font-mono" role="alert">
                 {fieldErrors[f.name]}
               </p>
             ) : null}
@@ -138,7 +138,7 @@ export default function JoinPage() {
             <option value="Executive / Founder">{t('join_role_executive', 'Executive / Founder')}</option>
           </select>
           {fieldErrors.position ? (
-            <p className="text-sm text-[#FE5934]" role="alert">
+            <p className="text-sm text-zinc-400 font-mono" role="alert">
               {fieldErrors.position}
             </p>
           ) : null}
@@ -161,12 +161,12 @@ export default function JoinPage() {
         </div>
 
         {submitStatus === 'success' && (
-          <p className="border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm font-medium text-[#8DDC96]" role="status">
+          <p className="border border-white/40 bg-white/10 p-3 text-center text-sm font-mono text-white" role="status">
             {t('join_success_msg')}
           </p>
         )}
         {submitStatus === 'error' && (
-          <p className="border border-[#FE5934]/40 bg-[#FE5934]/15 p-3 text-center text-sm text-[#FE5934]" role="alert">
+          <p className="border border-white/40 bg-white/10 p-3 text-center text-sm font-mono text-white" role="alert">
             {errorMessage}
           </p>
         )}

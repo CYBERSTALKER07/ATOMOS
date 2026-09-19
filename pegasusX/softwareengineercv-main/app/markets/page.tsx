@@ -62,7 +62,7 @@ export default async function MarketsHubPage() {
 
       <SubpageHero
         badge={isRu ? 'РЕГИОНАЛЬНЫЕ КОРИДОРЫ · 16 РЫНКОВ' : 'WORLDWIDE COVERAGE · 16 STRATEGIC CORRIDORS'}
-        badgeIcon={<Globe2 className="w-3.5 h-3.5 text-blue-400" />}
+        badgeIcon={<Globe2 className="w-3.5 h-3.5 text-white" />}
         title={isRu ? 'Глобальные рынки логистики и цепей поставок' : 'Global Logistics & Supply Chain Markets'}
         summary={isRu
           ? 'Суверенная архитектура клонированных ячеек и облачные кластеры со сверхнизкой задержкой для автоматизации логистики в любой стране мира.'
@@ -91,28 +91,28 @@ export default async function MarketsHubPage() {
         {/* Regional Cell Clusters Summary */}
         <section className="mt-16 grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-blue-400 block mb-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/70 font-semibold block mb-1">
               Americas
             </span>
             <span className="text-lg font-bold text-white block">cell-us & cell-latam</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 15ms continental</span>
           </div>
           <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 block mb-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/70 font-semibold block mb-1">
               Europe
             </span>
             <span className="text-lg font-bold text-white block">cell-eu (Frankfurt/Paris/London)</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 8ms DACH / EU</span>
           </div>
           <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 block mb-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/70 font-semibold block mb-1">
               Middle East & Eurasia
             </span>
             <span className="text-lg font-bold text-white block">cell-me & cell-tr</span>
             <span className="text-xs text-white/50 font-mono mt-1 block">&lt; 12ms GCC & Eurasia</span>
           </div>
           <div className="p-6 rounded-none bg-white/[0.02] border border-white/10">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-purple-400 block mb-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/70 font-semibold block mb-1">
               Asia & Silk Road
             </span>
             <span className="text-lg font-bold text-white block">cell-uz & cell-apac</span>
@@ -123,7 +123,7 @@ export default async function MarketsHubPage() {
         {/* Markets Directory Grid */}
         <section className="mt-20">
           <div className="mb-10">
-            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-blue-400">
+            <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-white/50">
               Country Solutions
             </span>
             <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-white mt-2">
@@ -146,7 +146,7 @@ export default async function MarketsHubPage() {
                     <div className="flex items-center gap-2.5">
                       <span className="text-2xl">{market.flag}</span>
                       <div>
-                        <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">
+                        <h3 className="text-lg font-bold text-white group-hover:text-white/90 transition-colors">
                           {market.name}
                         </h3>
                         <span className="text-[11px] font-mono text-white/50">
@@ -174,7 +174,7 @@ export default async function MarketsHubPage() {
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs font-mono text-white/60">
                   <span>{market.currency}</span>
-                  <span className="text-blue-400 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                  <span className="text-white group-hover:translate-x-1 transition-transform flex items-center gap-1 font-bold">
                     Explore Corridor <ChevronRight className="w-3.5 h-3.5" />
                   </span>
                 </div>

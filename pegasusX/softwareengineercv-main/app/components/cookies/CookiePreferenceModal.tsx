@@ -149,13 +149,13 @@ export default function CookiePreferenceModal() {
         className={`w-full max-w-3xl my-auto rounded-none border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-colors duration-200 ${
           isLight
             ? 'bg-white border-black/10 text-zinc-900 shadow-[0_24px_64px_rgba(0,0,0,0.18)]'
-            : 'bg-[#0E0E14] border-white/15 text-white shadow-[0_24px_64px_rgba(0,0,0,0.9)]'
+            : 'bg-black border-white/15 text-white shadow-[0_24px_64px_rgba(0,0,0,0.9)]'
         }`}
       >
         {/* Modal Header */}
         <div
           className={`px-6 py-5 border-b flex items-center justify-between shrink-0 ${
-            isLight ? 'border-black/10 bg-zinc-50' : 'border-white/10 bg-[#12121A]'
+            isLight ? 'border-black/10 bg-zinc-50' : 'border-white/10 bg-zinc-950'
           }`}
         >
           <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ export default function CookiePreferenceModal() {
                 isLight ? 'bg-white border-black/10 text-zinc-800' : 'bg-white/5 border-white/15 text-white'
               }`}
             >
-              <Shield className="w-4 h-4 text-emerald-600 dark:text-[#8DDC96]" />
+              <Shield className="w-4 h-4 text-zinc-900 dark:text-white" />
             </div>
             <div>
               <h2 id="cookie-modal-title" className="text-base sm:text-lg font-semibold tracking-tight">
@@ -174,7 +174,7 @@ export default function CookiePreferenceModal() {
                 <span className="font-mono text-[10px] uppercase text-zinc-500 dark:text-white/50">
                   PEGASUS COMPLIANCE ENGINE
                 </span>
-                <span className="font-mono text-[10px] text-emerald-600 dark:text-[#8DDC96]">
+                <span className="font-mono text-[10px] text-zinc-600 dark:text-white/70">
                   [v2026.1]
                 </span>
               </div>
@@ -199,9 +199,9 @@ export default function CookiePreferenceModal() {
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
           {/* GPC Alert if active */}
           {isGPC && (
-            <div className="p-3.5 rounded-none bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-              <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
+            <div className="p-3.5 rounded-none bg-zinc-900/50 border border-white/20 flex items-start gap-3">
+              <ShieldAlert className="w-4 h-4 text-zinc-900 dark:text-white shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
                 <strong>{isRu ? 'Обнаружен сигнал GPC' : 'Global Privacy Control (GPC) Active'}:</strong>{' '}
                 {isRu
                   ? 'Ваш браузер передаёт сигнал отказа от продажи и передачи данных. Маркетинговые cookie принудительно отключены согласно закону CCPA/CPRA.'
@@ -231,7 +231,7 @@ export default function CookiePreferenceModal() {
                   className={`border rounded-none p-4 transition-all duration-200 ${
                     isLight
                       ? 'border-black/10 bg-zinc-50/70 hover:border-black/20'
-                      : 'border-white/10 bg-[#12121A]/80 hover:border-white/20'
+                      : 'border-white/10 bg-zinc-950 hover:border-white/20'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -249,12 +249,12 @@ export default function CookiePreferenceModal() {
                             {isRu ? card.titleRu : card.titleEn}
                           </span>
                           {card.isMandatory && (
-                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-[#8DDC96]">
+                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-white/10 border border-white/20 text-zinc-800 dark:text-white">
                               {isRu ? 'ОБЯЗАТЕЛЬНО' : 'ALWAYS ACTIVE'}
                             </span>
                           )}
                           {card.key === 'marketing' && isGPC && (
-                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+                            <span className="px-2 py-0.5 rounded-none text-[9px] font-mono uppercase tracking-wider font-bold bg-white/10 border border-white/20 text-zinc-800 dark:text-white">
                               LOCKED BY GPC
                             </span>
                           )}
@@ -348,7 +348,7 @@ export default function CookiePreferenceModal() {
         {/* Modal Footer: Action Buttons */}
         <div
           className={`p-5 sm:p-6 border-t flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 ${
-            isLight ? 'border-black/10 bg-zinc-50' : 'border-white/10 bg-[#12121A]'
+            isLight ? 'border-black/10 bg-zinc-50' : 'border-white/10 bg-zinc-950'
           }`}
         >
           <div className="text-[11px] text-zinc-500 dark:text-white/50">

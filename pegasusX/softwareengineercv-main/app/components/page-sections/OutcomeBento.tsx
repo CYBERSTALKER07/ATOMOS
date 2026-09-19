@@ -3,7 +3,7 @@
 import PageSectionBlock from './PageSectionBlock';
 import { cn } from '@/lib/utils';
 
-const ACCENTS = ['hover:border-[#FBFF63]/50', 'hover:border-[#A9EBF9]/50', 'hover:border-[#8DDC96]/50', 'hover:border-[#DABDFF]/50'];
+const ACCENTS = ['hover:border-white/50', 'hover:border-white/50', 'hover:border-white/50', 'hover:border-white/50'];
 
 type OutcomeBentoProps = {
   outcomes: string[];
@@ -32,7 +32,7 @@ export default function OutcomeBento({ outcomes, variant = 'bento' }: OutcomeBen
           <div
             key={item}
             className={cn(
-              'group border border-white/15 bg-[#0a0a0a] p-5 transition-colors duration-300 md:p-6',
+              'group border border-white/15 bg-black p-5 transition-colors duration-300 md:p-6',
               ACCENTS[i % ACCENTS.length],
               i === 0 && outcomes.length >= 3 && 'sm:col-span-2 sm:max-w-[calc(50%-0.375rem)]'
             )}

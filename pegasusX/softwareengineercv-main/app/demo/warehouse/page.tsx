@@ -37,17 +37,17 @@ export default function WarehouseDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gate Status */}
-        <div className="bg-[#0a0a0a] border border-white/5 rounded-none overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+        <div className="bg-black border border-white/10 rounded-none overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 bg-white/[0.02]">
             <h2 className="text-sm font-medium text-white/90">{t('demo_wh_dock_board')}</h2>
           </div>
           <div className="p-5 space-y-4">
             {MOCK_GATES.map((gate) => (
-              <div key={gate.gateId} className="flex items-center justify-between p-3 border border-white/5 bg-white/[0.01] rounded-none">
+              <div key={gate.gateId} className="flex items-center justify-between p-3 border border-white/10 bg-white/[0.01] rounded-none">
                 <div className="flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-none flex items-center justify-center font-mono text-xs ${
-                    gate.status === 'Available' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                    gate.status === 'Occupied' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+                    gate.status === 'Available' ? 'bg-white/10 text-white border border-white/30' :
+                    gate.status === 'Occupied' ? 'bg-white/5 text-white/80 border border-white/20' :
                     'bg-white/5 text-white/40 border border-white/10'
                   }`}>
                     {gate.gateId}
@@ -70,8 +70,8 @@ export default function WarehouseDashboard() {
         </div>
 
         {/* Inventory Heatmap / Status */}
-        <div className="bg-[#0a0a0a] border border-white/5 rounded-none overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02]">
+        <div className="bg-black border border-white/10 rounded-none overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 bg-white/[0.02]">
             <h2 className="text-sm font-medium text-white/90">{t('demo_wh_critical_inv')}</h2>
           </div>
           <div className="overflow-x-auto">
@@ -95,9 +95,9 @@ export default function WarehouseDashboard() {
                     <td className="px-5 py-3 text-right font-mono text-white/60">{inv.reserved}</td>
                     <td className="px-5 py-3">
                       <span className={`px-2 py-0.5 text-[9px] uppercase tracking-wider font-mono rounded-none border ${
-                        inv.status === 'Critical' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
-                        inv.status === 'Low Stock' ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10' :
-                        'border-green-500/30 text-green-400 bg-green-500/10'
+                        inv.status === 'Critical' ? 'border-white/40 text-white bg-white/10' :
+                        inv.status === 'Low Stock' ? 'border-white/25 text-white/80 bg-white/5' :
+                        'border-white/15 text-white/60 bg-transparent'
                       }`}>
                         {t(STATUS_KEY[inv.status] || inv.status as any)}
                       </span>

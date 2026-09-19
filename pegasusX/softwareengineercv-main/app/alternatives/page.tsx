@@ -32,7 +32,7 @@ export default async function AlternativesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-white/20">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
@@ -159,10 +159,10 @@ export default async function AlternativesPage() {
                     </p>
                     <ul className="space-y-2">
                       {competitor.whySwitchToPegasus.slice(0, 3).map((reason, idx) => (
-                        <li key={idx} className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                          <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                          <span>{reason}</span>
-                        </li>
+                         <li key={idx} className="flex items-start gap-2.5 text-xs text-white/80 font-light">
+                           <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
+                           <span>{reason}</span>
+                         </li>
                       ))}
                     </ul>
                   </div>
@@ -208,7 +208,7 @@ export default async function AlternativesPage() {
             </p>
           </div>
 
-          <div className="overflow-x-auto border border-white/10 rounded-none bg-white/[0.01]">
+          <div className="overflow-x-auto border border-white/10 rounded-none bg-black">
             <table className="w-full text-left text-xs font-mono">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-white/60">
@@ -223,59 +223,59 @@ export default async function AlternativesPage() {
               <tbody className="divide-y divide-white/5 text-white/80">
                 <tr className="bg-white/10 font-bold text-white">
                   <td className="p-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-none bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-none bg-white" />
                     Pegasus TMS
                   </td>
-                  <td className="p-4 text-emerald-400">Full (6 roles)</td>
-                  <td className="p-4 text-emerald-400">Yes (Mobile apps)</td>
-                  <td className="p-4 text-emerald-400">Full (COD + Audit)</td>
-                  <td className="p-4 text-emerald-400">Yes (Native app)</td>
-                  <td className="p-4 text-emerald-400">Google OR-Tools</td>
+                  <td className="p-4 text-white font-bold">Full (6 roles)</td>
+                  <td className="p-4 text-white font-bold">Yes (Mobile apps)</td>
+                  <td className="p-4 text-white font-bold">Full (COD + Audit)</td>
+                  <td className="p-4 text-white font-bold">Yes (Native app)</td>
+                  <td className="p-4 text-white font-bold">Google OR-Tools</td>
                 </tr>
                 {COMPETITORS_DATA.map((c) => (
                   <tr key={c.slug} className="hover:bg-white/[0.02]">
                     <td className="p-4 font-semibold text-white/90">{c.name}</td>
                     <td className="p-4">
                       {c.featureRatings.multiRoleDispatch.rating === 'full' ? (
-                        <span className="text-emerald-400">Full</span>
+                        <span className="text-white font-semibold">Full</span>
                       ) : c.featureRatings.multiRoleDispatch.rating === 'partial' ? (
-                        <span className="text-amber-400">Partial</span>
+                        <span className="text-zinc-400">Partial</span>
                       ) : (
-                        <span className="text-rose-400">None</span>
+                        <span className="text-zinc-600">None</span>
                       )}
                     </td>
                     <td className="p-4">
                       {c.featureRatings.hardwareIndependence.rating === 'full' ? (
-                        <span className="text-emerald-400">Yes</span>
+                        <span className="text-white font-semibold">Yes</span>
                       ) : (
-                        <span className="text-rose-400">Hardware locked</span>
+                        <span className="text-zinc-600">Hardware locked</span>
                       )}
                     </td>
                     <td className="p-4">
                       {c.featureRatings.integratedB2BPayments.rating === 'full' ? (
-                        <span className="text-emerald-400">Full</span>
+                        <span className="text-white font-semibold">Full</span>
                       ) : c.featureRatings.integratedB2BPayments.rating === 'partial' ? (
-                        <span className="text-amber-400">Partial</span>
+                        <span className="text-zinc-400">Partial</span>
                       ) : (
-                        <span className="text-rose-400">None</span>
+                        <span className="text-zinc-600">None</span>
                       )}
                     </td>
                     <td className="p-4">
                       {c.featureRatings.warehouseGateTerminal.rating === 'full' ? (
-                        <span className="text-emerald-400">Yes</span>
+                        <span className="text-white font-semibold">Yes</span>
                       ) : c.featureRatings.warehouseGateTerminal.rating === 'partial' ? (
-                        <span className="text-amber-400">Partial</span>
+                        <span className="text-zinc-400">Partial</span>
                       ) : (
-                        <span className="text-rose-400">None</span>
+                        <span className="text-zinc-600">None</span>
                       )}
                     </td>
                     <td className="p-4">
                       {c.featureRatings.routeOptimization.rating === 'full' ? (
-                        <span className="text-emerald-400">Advanced</span>
+                        <span className="text-white font-semibold">Advanced</span>
                       ) : c.featureRatings.routeOptimization.rating === 'partial' ? (
-                        <span className="text-amber-400">Basic</span>
+                        <span className="text-zinc-400">Basic</span>
                       ) : (
-                        <span className="text-rose-400">None</span>
+                        <span className="text-zinc-600">None</span>
                       )}
                     </td>
                   </tr>

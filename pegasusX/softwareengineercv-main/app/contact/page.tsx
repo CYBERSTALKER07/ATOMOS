@@ -115,7 +115,7 @@ export default function ContactPage() {
               className="docs-input disabled:opacity-50"
             />
             {fieldErrors[field] ? (
-              <p className="text-sm text-[#FE5934]" role="alert">{fieldErrors[field]}</p>
+              <p className="text-sm text-zinc-400 font-mono" role="alert">{fieldErrors[field]}</p>
             ) : null}
           </div>
         ))}
@@ -135,17 +135,17 @@ export default function ContactPage() {
             className="docs-textarea disabled:opacity-50"
           />
           {fieldErrors.message ? (
-            <p className="text-sm text-[#FE5934]" role="alert">{fieldErrors.message}</p>
+            <p className="text-sm text-zinc-400 font-mono" role="alert">{fieldErrors.message}</p>
           ) : null}
         </div>
 
         {submitStatus === 'success' && (
-          <p className="border border-[#8DDC96]/40 bg-[#8DDC96]/15 p-3 text-center text-sm text-[#8DDC96]" role="status">
+          <p className="border border-white/40 bg-white/10 p-3 text-center text-sm font-mono text-white" role="status">
             {t('contact_success', "Message sent via Resend API — we'll be in touch soon.")}
           </p>
         )}
         {submitStatus === 'error' && (
-          <p className="border border-[#FE5934]/40 bg-[#FE5934]/15 p-3 text-center text-sm text-[#FE5934]" role="alert">
+          <p className="border border-white/40 bg-white/10 p-3 text-center text-sm font-mono text-white" role="alert">
             {errorMessage}
           </p>
         )}

@@ -65,7 +65,7 @@ export default async function HeadToHeadComparePage({
   ];
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-white/20">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
@@ -121,25 +121,25 @@ export default async function HeadToHeadComparePage({
         {/* Side by side overview */}
         <section className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="p-8 rounded-none bg-white/[0.04] border border-white/20">
-            <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-widest block mb-2">
+            <span className="text-[10px] font-mono text-white uppercase tracking-widest block mb-2 font-semibold">
               The Sovereign Solution
             </span>
             <h3 className="text-2xl font-bold uppercase text-white mb-4">Pegasus TMS</h3>
             <ul className="space-y-3 text-xs text-white/80 font-light">
               <li className="flex items-start gap-2.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Zero proprietary hardware lock-in (BYOD mobile apps & open GPS)</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>6 dedicated roles: Supplier, Warehouse, Factory, Driver, Retailer, Gate</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Integrated B2B trade terms, driver cash collection & treasury reconciliation</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
                 <span>Google OR-Tools CVRP capacity-balanced route optimization</span>
               </li>
             </ul>
@@ -158,8 +158,8 @@ export default async function HeadToHeadComparePage({
                 </li>
               ))}
               {competitor.limitations.slice(0, 2).map((lim, idx) => (
-                <li key={idx} className="flex items-start gap-2.5 text-rose-300/80">
-                  <X className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
+                <li key={idx} className="flex items-start gap-2.5 text-zinc-400">
+                  <X className="w-3.5 h-3.5 text-zinc-500 shrink-0 mt-0.5" />
                   <span>{lim}</span>
                 </li>
               ))}

@@ -4201,18 +4201,18 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 .fleek-docs {
   --fleek-bg: #000000;
   --fleek-text: #ffffff;
-  --fleek-charcoal: #111111;
-  --fleek-accent: #8fa882;
-  --fleek-accent-dark: #6b7a5f;
-  --fleek-teal: #8fa882;
-  --fleek-teal-dark: #6b7a5f;
+  --fleek-charcoal: #0a0a0a;
+  --fleek-accent: #ffffff;
+  --fleek-accent-dark: #a1a1aa;
+  --fleek-teal: #ffffff;
+  --fleek-teal-dark: #a1a1aa;
   --fleek-purple: #ffffff;
-  --fleek-coral: #ff5e62;
-  --fleek-blue: #2d8cff;
-  --fleek-surface: #0a0a0a;
-  --fleek-surface-raised: #111111;
-  --fleek-orange: var(--fleek-coral);
-  --fleek-lavender: #4a5568;
+  --fleek-coral: #ffffff;
+  --fleek-blue: #ffffff;
+  --fleek-surface: #000000;
+  --fleek-surface-raised: #09090b;
+  --fleek-orange: #ffffff;
+  --fleek-lavender: #71717a;
   --fleek-grid: rgba(255, 255, 255, 0.1);
   --fleek-muted: rgba(255, 255, 255, 0.55);
   --fleek-max: 72rem;
@@ -4228,9 +4228,9 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 
 .fleek-docs .fleek-hero__visual {
   background:
-    radial-gradient(ellipse 55% 45% at 72% 38%, rgba(146, 84, 255, 0.35), transparent 70%),
-    radial-gradient(ellipse 40% 35% at 28% 72%, rgba(45, 140, 255, 0.22), transparent 70%),
-    radial-gradient(ellipse 35% 30% at 88% 78%, rgba(255, 94, 98, 0.18), transparent 70%);
+    radial-gradient(ellipse 55% 45% at 72% 38%, rgba(255, 255, 255, 0.08), transparent 70%),
+    radial-gradient(ellipse 40% 35% at 28% 72%, rgba(255, 255, 255, 0.05), transparent 70%),
+    radial-gradient(ellipse 35% 30% at 88% 78%, rgba(255, 255, 255, 0.03), transparent 70%);
 }
 
 .fleek-docs .warehouse-app-hero__loc.is-active,
@@ -4520,7 +4520,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .fleek-btn--ghost:hover {
-  border-color: rgba(146, 84, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.45);
   background: var(--fleek-surface);
 }
 
@@ -4981,7 +4981,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .fleek-docs .docs-card:hover {
-  border-color: rgba(146, 84, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.35);
   background: var(--fleek-surface-raised);
 }
 

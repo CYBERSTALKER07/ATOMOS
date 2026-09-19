@@ -37,7 +37,7 @@ export default async function CookiePolicyPage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdScript(breadcrumbs)} />
-      <div className="min-h-screen bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white selection:bg-zinc-200 dark:selection:bg-white/30 transition-colors duration-200">
+      <div className="min-h-screen bg-black text-white selection:bg-white selection:text-black">
         <SiteNav activeHref="/cookie-policy" />
 
         <SubpageHero
@@ -138,7 +138,7 @@ export default async function CookiePolicyPage() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-black">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'A. Строго обязательные' : 'Tier A: Strictly Necessary'}
                   </h3>
@@ -147,12 +147,12 @@ export default async function CookiePolicyPage() {
                       ? 'Обеспечивают аутентификацию, предотвращение мошенничества, защиту от CSRF и маршрутизацию сессий.'
                       : 'Essential for cryptographic authentication, CSRF mutation gating, and distributed session routing.'}
                   </p>
-                  <span className="text-[10px] font-mono text-emerald-600 dark:text-[#8DDC96]">
+                  <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
                     Legal Basis: GDPR Art. 6(1)(f) (Legitimate Interest) / ePrivacy Art. 5(3) Exemption
                   </span>
                 </div>
 
-                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-black">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'B. Функциональные настройки' : 'Tier B: Functional Preferences'}
                   </h3>
@@ -161,12 +161,12 @@ export default async function CookiePolicyPage() {
                       ? 'Запоминают рабочие фильтры автопарка, выбранные транспортные коридоры и масштабирование карт.'
                       : 'Preserves freight corridor filters, map perspective, and density settings across sessions.'}
                   </p>
-                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400">
+                  <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
                     Legal Basis: GDPR Art. 6(1)(a) (Explicit Prior Consent)
                   </span>
                 </div>
 
-                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-black">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'C. Аналитика и производительность' : 'Tier C: Analytics & Telemetry'}
                   </h3>
@@ -175,12 +175,12 @@ export default async function CookiePolicyPage() {
                       ? 'Обезличенный мониторинг latency API, трассировка исключений и аудит пропускной способности.'
                       : 'Self-hosted pseudonymized latency monitoring and crash diagnostics without profiling.'}
                   </p>
-                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400">
+                  <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
                     Legal Basis: GDPR Art. 6(1)(a) (Explicit Prior Consent)
                   </span>
                 </div>
 
-                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-[#12121A]">
+                <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-white dark:bg-black">
                   <h3 className="font-semibold text-zinc-900 dark:text-white text-sm mb-1">
                     {isRu ? 'D. Маркетинг и партнерская сеть' : 'Tier D: Marketing & Partner Attribution'}
                   </h3>
@@ -189,7 +189,7 @@ export default async function CookiePolicyPage() {
                       ? 'Атрибуция заявок на подключение корпоративных перевозчиков и оптовых поставщиков.'
                       : 'Attribution tracking for enterprise supply chain partner recruitment and wholesale inquiries.'}
                   </p>
-                  <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400">
+                  <span className="text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
                     Legal Basis: GDPR Art. 6(1)(a) Consent / CCPA Opt-Out Gated
                   </span>
                 </div>
@@ -207,10 +207,10 @@ export default async function CookiePolicyPage() {
                   : 'The table below provides an audited, line-item disclosure of each identifier deployed within the Pegasus production runtime:'}
               </p>
 
-              <div className="overflow-x-auto border border-black/10 dark:border-white/10 rounded-none bg-white dark:bg-[#12121A] mt-4">
+              <div className="overflow-x-auto border border-black/10 dark:border-white/10 rounded-none bg-white dark:bg-black mt-4">
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-black/40 text-zinc-500 dark:text-white/50 uppercase tracking-wider text-[10px]">
+                    <tr className="border-b border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-zinc-950 text-zinc-500 dark:text-white/50 uppercase tracking-wider text-[10px]">
                       <th className="p-3">Identifier</th>
                       <th className="p-3">Category</th>
                       <th className="p-3">Provider / Host</th>
@@ -225,17 +225,7 @@ export default async function CookiePolicyPage() {
                           {c.name}
                         </td>
                         <td className="p-3 whitespace-nowrap">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-semibold ${
-                              c.category === 'necessary'
-                                ? 'bg-emerald-500/15 text-emerald-700 dark:text-[#8DDC96]'
-                                : c.category === 'functional'
-                                ? 'bg-blue-500/15 text-blue-700 dark:text-blue-400'
-                                : c.category === 'analytics'
-                                ? 'bg-purple-500/15 text-purple-700 dark:text-purple-400'
-                                : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                            }`}
-                          >
+                          <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider font-semibold bg-white/10 text-white border border-white/20">
                             {c.category}
                           </span>
                         </td>
@@ -301,9 +291,9 @@ export default async function CookiePolicyPage() {
                   ? 'По всем вопросам, касающимся настоящей Политики, аудита согласий или реализации прав субъекта данных, вы можете обратиться к нашему сотруднику по защите данных:'
                   : 'For technical inquiries, consent audit verifications, or data subject access requests concerning browser telemetry, contact our Data Protection Office:'}
               </p>
-              <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-[#12121A] font-mono text-xs space-y-1">
+              <div className="p-4 rounded-none border border-black/10 dark:border-white/10 bg-zinc-50 dark:bg-black font-mono text-xs space-y-1">
                 <div><strong>Pegasus Legal & Compliance Office</strong></div>
-                <div>Email: <a href="mailto:dpo@pegasus.logistics" className="underline text-emerald-600 dark:text-[#8DDC96]">dpo@pegasus.logistics</a></div>
+                <div>Email: <a href="mailto:dpo@pegasus.logistics" className="underline text-zinc-900 dark:text-white">dpo@pegasus.logistics</a></div>
                 <div>Jurisdiction: Tashkent, Uzbekistan / Global Transit Corridor Operations</div>
               </div>
             </section>

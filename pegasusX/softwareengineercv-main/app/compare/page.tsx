@@ -32,7 +32,7 @@ export default async function CompareHubPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans selection:bg-white/20">
+    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
@@ -79,7 +79,7 @@ export default async function CompareHubPage() {
                   <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
                     {competitor.category}
                   </span>
-                  <span className="text-xs font-mono text-emerald-400">
+                  <span className="text-xs font-mono text-white font-semibold">
                     Pegasus vs. {competitor.name}
                   </span>
                 </div>

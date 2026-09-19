@@ -225,18 +225,18 @@ export default function O9InsightCards({
               className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-none transition-all ${
                 isLight
                   ? 'text-zinc-800 bg-white border border-black/10 hover:border-black/25 hover:bg-zinc-50 shadow-sm'
-                  : 'text-white/80 bg-[#121218] border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
+                  : 'text-white/80 bg-zinc-950 border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
               }`}
             >
-              <span>{isRu ? 'Метрики' : 'View Metrics'}</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-900 dark:text-white" />
+              <span>{isRu ? 'Оценить окупаемость' : 'Assess ROI'}</span>
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-400 dark:text-white/50" />
             </Link>
             <Link
               href="/solutions"
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-none transition-all ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium tracking-tight rounded-none transition-all duration-200 ${
                 isLight
-                  ? 'text-zinc-800 bg-white border border-black/10 hover:border-black/25 hover:bg-zinc-50 shadow-sm'
-                  : 'text-white/80 bg-[#121218] border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
+                  ? 'text-zinc-700 bg-black/5 hover:bg-black/10'
+                  : 'text-white/80 bg-zinc-950 border border-white/15 hover:border-white/30 hover:text-white hover:bg-white/5'
               }`}
             >
               <span>{isRu ? 'Подробнее' : 'Learn More'}</span>
@@ -252,10 +252,10 @@ export default function O9InsightCards({
         <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
-            : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
+            : 'border-white/10 bg-black hover:border-white/20'
         }`}>
           <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
-            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
+            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-zinc-950 border-white/10'
           }`}>
             <ArchitectureFlowDiagram isRu={isRu} isLight={isLight} />
           </div>
@@ -277,10 +277,10 @@ export default function O9InsightCards({
         <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
-            : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
+            : 'border-white/10 bg-black hover:border-white/20'
         }`}>
           <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
-            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
+            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-zinc-950 border-white/10'
           }`}>
             <AgentStackVisual isRu={isRu} isLight={isLight} />
           </div>
@@ -302,10 +302,10 @@ export default function O9InsightCards({
         <article className={`border rounded-none p-6 lg:p-7 flex flex-col justify-between transition-all duration-300 ${
           isLight
             ? 'border-black/8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:border-black/20'
-            : 'border-white/10 bg-[#0B0B10] hover:border-white/20'
+            : 'border-white/10 bg-black hover:border-white/20'
         }`}>
           <div className={`rounded-none p-4 min-h-[220px] flex items-center justify-center relative overflow-hidden border ${
-            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-[#07070B] border-white/8'
+            isLight ? 'bg-[#F4F4F6] border-black/5' : 'bg-zinc-950 border-white/10'
           }`}>
             <OutcomeMetricVisual isRu={isRu} />
           </div>

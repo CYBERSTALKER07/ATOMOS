@@ -28,21 +28,21 @@ export default function RetailerDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Live Routes Map (Mock visual) */}
-        <div className="lg:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-none overflow-hidden flex flex-col h-[500px]">
-          <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+        <div className="lg:col-span-2 bg-black border border-white/10 rounded-none overflow-hidden flex flex-col h-[500px]">
+          <div className="px-6 py-4 border-b border-white/10 bg-white/[0.02] flex items-center justify-between">
             <h2 className="text-sm font-medium text-white/90">{t('demo_rt_fleet_telemetry')}</h2>
-            <div className="flex items-center gap-2 text-xs font-mono text-green-400">
-              <span className="w-1.5 h-1.5 rounded-none bg-green-400" />
+            <div className="flex items-center gap-2 text-xs font-mono text-white">
+              <span className="w-1.5 h-1.5 rounded-none bg-white" />
               {t('demo_rt_tracking_active')}
             </div>
           </div>
           
-          <div className="flex-1 relative bg-[#050505] overflow-hidden p-6 flex flex-col gap-4">
+          <div className="flex-1 relative bg-black overflow-hidden p-6 flex flex-col gap-4">
              {/* Map Grid Pattern */}
              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
              
              {MOCK_DELIVERIES.map((route) => (
-               <div key={route.routeId} className="relative z-10 bg-[#0a0a0a] border border-white/10 p-4 rounded-none shadow-2xl flex flex-col gap-3">
+               <div key={route.routeId} className="relative z-10 bg-black border border-white/10 p-4 rounded-none shadow-2xl flex flex-col gap-3">
                  <div className="flex items-center justify-between">
                    <div className="flex items-center gap-3">
                      <div className="w-8 h-8 rounded-none bg-white/5 flex items-center justify-center">
@@ -54,8 +54,8 @@ export default function RetailerDashboard() {
                      </div>
                    </div>
                    <span className={`px-2 py-1 text-[10px] uppercase font-mono rounded-none border ${
-                      route.status === 'Delayed' ? 'border-red-500/30 text-red-400 bg-red-500/10' :
-                      'border-green-500/30 text-green-400 bg-green-500/10'
+                      route.status === 'Delayed' ? 'border-white/40 text-white bg-white/10' :
+                      'border-white/20 text-white/80 bg-white/5'
                     }`}>
                       {t(STATUS_KEY[route.status] || route.status as any)}
                     </span>
@@ -68,7 +68,7 @@ export default function RetailerDashboard() {
                    </div>
                    <div className="w-full h-1.5 bg-white/5 rounded-none overflow-hidden">
                      <div 
-                       className={`h-full rounded-none transition-all duration-1000 ${route.status === 'Delayed' ? 'bg-red-500' : 'bg-green-500'}`}
+                       className={`h-full rounded-none transition-all duration-1000 ${route.status === 'Delayed' ? 'bg-zinc-500' : 'bg-white'}`}
                        style={{ width: `${route.progress}%` }} 
                      />
                    </div>
@@ -79,7 +79,7 @@ export default function RetailerDashboard() {
         </div>
 
         {/* Incoming Shipments */}
-        <div className="bg-[#0a0a0a] border border-white/5 rounded-none overflow-hidden flex flex-col h-[500px]">
+        <div className="bg-black border border-white/10 rounded-none overflow-hidden flex flex-col h-[500px]">
           <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02]">
             <h2 className="text-sm font-medium text-white/90">{t('demo_rt_incoming_pos')}</h2>
           </div>
