@@ -235,3 +235,51 @@ export function O9AiDataPanel({ items }: { items?: TopicCard[] }) {
     </motion.section>
   );
 }
+
+export function O9WhyItMatters({
+  why,
+  problemFallback
+}: {
+  why?: string[];
+  problemFallback?: string;
+}) {
+  const { t } = useLanguage();
+  if (!why?.length && !problemFallback) return null;
+  
+  return (
+    <motion.section 
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-10%" }}
+      className="py-24 lg:py-40 px-4 sm:px-6 lg:px-8 w-full max-w-[1560px] mx-auto border-t border-white/10"
+    >
+      <O9SectionLabel>{t('sec_why_it_matters_label', 'Why it matters')}</O9SectionLabel>
+      <motion.h2 variants={FADE_UP} className="text-4xl sm:text-5xl lg:text-7xl font-medium tracking-tight text-white max-w-4xl leading-[1.05] mb-24">
+        {t('sec_why_it_matters_title', 'The impact of optimization')}
+      </motion.h2>
+
+      <motion.div variants={STAGGER_CONTAINER} className="flex flex-col">
+        {why && why.length > 0 ? why.map((item, i) => (
+          <motion.div key={i} variants={FADE_UP} className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 py-12 border-t border-white/10">
+            <div className="md:col-span-1">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">
+                {String(i + 1).padStart(2, '0')} //
+              </span>
+            </div>
+            <div className="md:col-span-11">
+              <p className="text-2xl lg:text-3xl font-light text-white/80 leading-relaxed max-w-4xl">
+                {item}
+              </p>
+            </div>
+          </motion.div>
+        )) : (
+          <motion.div variants={FADE_UP} className="py-12 border-t border-white/10">
+             <p className="text-2xl lg:text-3xl font-light text-white/80 leading-relaxed max-w-4xl">
+                {problemFallback}
+             </p>
+          </motion.div>
+        )}
+      </motion.div>
+    </motion.section>
+  );
+}
