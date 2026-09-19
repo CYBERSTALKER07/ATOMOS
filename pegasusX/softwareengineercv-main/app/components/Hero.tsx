@@ -277,29 +277,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Scroll Indicator */}
-      <button
-        className="absolute bottom-3 left-1/2 transform -translate-x-1/2 cursor-pointer z-20 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
-        onClick={scrollToNext}
-        aria-label="Scroll to next section"
-      >
-        <div className="flex flex-col items-center gap-1.5 text-white/60 group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-[10px] font-mono tracking-widest uppercase">{t('hero_scroll')}</span>
-          <svg
-            className="w-4 h-4 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </div>
-      </button>
     </section>
   );
 }
