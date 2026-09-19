@@ -9,6 +9,7 @@ import FleekPageShell from '@/app/components/fleek/FleekPageShell';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 import { useLanguage } from '@/app/context/LanguageContext';
+import GooeyAgent from '@/app/components/visuals/GooeyAgent';
 
 const FleetScrollShowcase = dynamic(() => import('@/app/components/fleet/FleetScrollShowcase'), {
  ssr: false,
@@ -71,7 +72,14 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
  details={
  <>
  {config.intro ? (
- <section className="docs-section">
+ 
+ <section className="docs-section relative overflow-hidden">
+ {hub.id === "capabilities" && (
+   <div className="absolute right-0 top-0 opacity-80 mix-blend-screen scale-[2] origin-right pointer-events-none hidden md:block z-0">
+     <GooeyAgent color="#ffffff" size={240} />
+   </div>
+ )}
+ <div className="relative z-10">
  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
  {config.intro.eyebrow}
  </p>
@@ -81,7 +89,9 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
  <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">
  {t(`hub_${hub.id}_body`, config.intro.body)}
  </p>
+ </div>
  </section>
+
  ) : null}
  <HubTopicGrid
  hubId={hub.id}

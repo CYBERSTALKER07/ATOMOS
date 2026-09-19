@@ -118,7 +118,7 @@ export default function Skills() {
           </h2>
         </div>
         <div className="relative z-10 mt-10 md:mt-0 opacity-80 mix-blend-screen scale-150 transform origin-right">
-          <GooeyAgent color="#ffffff" size={120} />
+          <GooeyAgent color="#ffffff" size={300} />
         </div>
       </div>
       
