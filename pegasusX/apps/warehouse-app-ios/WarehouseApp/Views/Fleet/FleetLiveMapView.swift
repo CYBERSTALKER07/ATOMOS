@@ -14,7 +14,7 @@ struct FleetLiveMapView: View {
             .padding()
         }
         .background(LabTheme.background)
-        .navigationTitle("Live fleet")
+        .navigationTitle("portal.nav.live_fleet")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

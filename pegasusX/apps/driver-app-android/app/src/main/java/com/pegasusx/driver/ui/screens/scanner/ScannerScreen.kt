@@ -125,7 +125,7 @@ fun ScannerScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Validating QR...",
+                        text = stringResource(R.string.mobile_driver_ui_validating_qr),
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -153,7 +153,7 @@ fun ScannerScreen(
                         modifier = Modifier.size(72.dp)
                     )
                     Text(
-                        text = "QR Verified",
+                        text = stringResource(R.string.mobile_driver_ui_qr_verified),
                         color = Color.White,
                         style = MaterialTheme.typography.headlineMedium
                     )
@@ -168,7 +168,7 @@ fun ScannerScreen(
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "${validated.items.size} items",
+                        text = stringResource(R.string.mobile_driver_ui_size_items, validated.items.size),
                         color = Color.White.copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -230,7 +230,7 @@ fun ScannerScreen(
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
-                contentDescription = "Close scanner",
+                contentDescription = stringResource(R.string.mobile_driver_ui_close_scanner),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp)
             )

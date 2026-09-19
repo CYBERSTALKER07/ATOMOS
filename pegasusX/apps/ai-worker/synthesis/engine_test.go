@@ -90,3 +90,42 @@ func TestParseOrderSignal_SkipsAIPreorderLoopInEnginePath(t *testing.T) {
 		t.Fatalf("source=%q", sig.OrderSource)
 	}
 }
+
+func TestExtractSKUDemandHistory(t *testing.T) {
+	now := time.Date(2026, 7, 15, 12, 0, 0, 0, time.UTC)
+	history := []OrderSignal{
+		{
+			OrderID:   "o1",
+			CreatedAt: now.AddDate(0, 0, -14),
+			LineItems: []Line{
+				{ProductID: "prod-A", Quantity: 20},
+				{ProductID: "prod-B", Quantity: 5},
+			},
+		},
+		{
+			OrderID:   "o2",
+			CreatedAt: now.AddDate(0, 0, -7),
+			LineItems: []Line{
+				{ProductID: "prod-A", Quantity: 25},
+			},
+		},
+	}
+
+	ptsA := extractSKUDemandHistory(history, "prod-A", now)
+	if len(ptsA) != 2 {
+		t.Fatalf("expected 2 points for prod-A, got %d", len(ptsA))
+	}
+	if ptsA[0].Qty != 20 || ptsA[1].Qty != 25 {
+		t.Fatalf("unexpected qtys: %+v", ptsA)
+	}
+
+	ptsB := extractSKUDemandHistory(history, "prod-B", now)
+	if len(ptsB) != 1 || ptsB[0].Qty != 5 {
+		t.Fatalf("expected 1 point for prod-B with qty 5, got %+v", ptsB)
+	}
+
+	ptsC := extractSKUDemandHistory(history, "prod-C", now)
+	if len(ptsC) != 0 {
+		t.Fatalf("expected 0 points for prod-C, got %d", len(ptsC))
+	}
+}

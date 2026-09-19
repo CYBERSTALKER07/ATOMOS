@@ -1,0 +1,44 @@
+docker compose -f infra/docker-compose.ssmr.yml up -d
+ Container pegasusx-ssmr-backend-setup-1 Recreate 
+ Container pegasusx-ssmr-kafka-init-1 Recreate 
+ Container pegasusx-ssmr-kafka-init-1 Recreated 
+ Container pegasusx-ssmr-backend-setup-1 Recreated 
+ Container pegasusx-ssmr-ai-worker-1 Recreate 
+ Container pegasusx-ssmr-backend-go-1 Recreate 
+ Container pegasusx-ssmr-ai-worker-1 Recreated 
+ Container pegasusx-ssmr-backend-go-1 Recreated 
+ Container pegasusx-ssmr-spanner-emulator-1 Starting 
+ Container pegasusx-ssmr-optimizer-core-1 Starting 
+ Container pegasusx-ssmr-zookeeper-1 Starting 
+ Container pegasusx-ssmr-redis-1 Starting 
+ Container pegasusx-ssmr-spanner-emulator-1 Started 
+ Container pegasusx-ssmr-backend-setup-1 Starting 
+ Container pegasusx-ssmr-optimizer-core-1 Started 
+ Container pegasusx-ssmr-redis-1 Started 
+ Container pegasusx-ssmr-zookeeper-1 Started 
+ Container pegasusx-ssmr-zookeeper-1 Waiting 
+ Container pegasusx-ssmr-backend-setup-1 Started 
+ Container pegasusx-ssmr-zookeeper-1 Healthy 
+ Container pegasusx-ssmr-kafka-1 Starting 
+ Container pegasusx-ssmr-kafka-1 Started 
+ Container pegasusx-ssmr-kafka-1 Waiting 
+ Container pegasusx-ssmr-kafka-1 Waiting 
+ Container pegasusx-ssmr-kafka-1 Healthy 
+ Container pegasusx-ssmr-kafka-1 Healthy 
+ Container pegasusx-ssmr-kafka-init-1 Starting 
+ Container pegasusx-ssmr-kafka-ui-1 Starting 
+ Container pegasusx-ssmr-kafka-init-1 Started 
+ Container pegasusx-ssmr-redis-1 Waiting 
+ Container pegasusx-ssmr-kafka-init-1 Waiting 
+ Container pegasusx-ssmr-backend-setup-1 Waiting 
+ Container pegasusx-ssmr-backend-setup-1 Waiting 
+ Container pegasusx-ssmr-kafka-init-1 Waiting 
+ Container pegasusx-ssmr-kafka-ui-1 Started 
+ Container pegasusx-ssmr-redis-1 Healthy 
+ Container pegasusx-ssmr-kafka-init-1 Exited 
+ Container pegasusx-ssmr-kafka-init-1 Exited 
+ Container pegasusx-ssmr-backend-setup-1 Error service "backend-setup" didn't complete successfully: exit 1
+ Container pegasusx-ssmr-backend-setup-1 Error service "backend-setup" didn't complete successfully: exit 1
+service "backend-setup" didn't complete successfully: exit 1
+make: *** [ssmr-infra-up] Error 1
+EXIT:2

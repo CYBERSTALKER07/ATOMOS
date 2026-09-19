@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
+
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import Image from 'next/image';
@@ -16,6 +18,8 @@ interface MasonryGridProps {
 }
 
 export default function MasonryGrid({ images }: MasonryGridProps) {
+  const { t } = useLanguage();
+
   const gridRef = useRef<HTMLDivElement>(null);
   const [imagesLoaded, setImagesLoaded] = useState(false);
 
@@ -113,7 +117,7 @@ export default function MasonryGrid({ images }: MasonryGridProps) {
                     {image.title}
                   </h3>
                   <div className="flex items-center gap-2 text-white">
-                    <span className="text-sm">View Project</span>
+                    <span className="text-sm">{t('btn_view_project', 'View Project')}</span>
                     <span className="text-lg">→</span>
                   </div>
                 </div>

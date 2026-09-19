@@ -13,7 +13,9 @@ var (
 	TopicDispatch = topicFromEnv("KAFKA_TOPIC_DISPATCH", "pegasusx-dispatch")
 	// TopicRealtime carries driver location and live telemetry fan-out.
 	TopicRealtime = topicFromEnv("KAFKA_TOPIC_REALTIME", "pegasusx-realtime")
-	// TopicWebhooks carries payment gateway settlement events.
+	// TopicWebhooks is RETIRED (W1 2026-08-12). Payment settlement and partner
+	// webhook delivery consume TopicMain / TopicOrders. The Kafka topic may still
+	// exist in infra for compatibility; producers must not emit to it.
 	TopicWebhooks = topicFromEnv("KAFKA_TOPIC_WEBHOOKS", "pegasusx-webhooks")
 	// TopicExceptions carries logistics claims / OS&D / reverse-logistics.
 	TopicExceptions = topicFromEnv("KAFKA_TOPIC_EXCEPTIONS", "logistics.exceptions.v1")
@@ -47,9 +49,13 @@ func DispatcherConsumerTopics() []string {
 	if !ConsumeDomainTopics() {
 		return []string{TopicMain}
 	}
-	seen := make(map[string]struct{}, 4)
-	out := make([]string, 0, 4)
-	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime} {
+	seen := make(map[string]struct{}, 10)
+	out := make([]string, 0, 10)
+	for _, t := range []string{
+		TopicMain, TopicOrders, TopicDispatch, TopicRealtime,
+		TopicExceptions, TopicTelemetryLogistics, TopicDemand,
+		"driver.score.updated", "capacity.zone.updated", "demand.adjustment.updated",
+	} {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
@@ -71,6 +77,29 @@ func DispatchConsumerTopic() string {
 	return TopicMain
 }
 
+// TwinConsumerTopics returns Kafka topics for the digital-twin projector.
+// Always includes TopicMain; when domain consume is on, also fans in orders,
+// dispatch (route created), realtime (driver location), and route ETA updates.
+func TwinConsumerTopics() []string {
+	if !ConsumeDomainTopics() {
+		return []string{TopicMain}
+	}
+	seen := make(map[string]struct{}, 5)
+	out := make([]string, 0, 5)
+	for _, t := range []string{TopicMain, TopicOrders, TopicDispatch, TopicRealtime, "route.eta.updated"} {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
 // DomainTopicForEventType maps an event type to its domain topic, or "" when
 // the event should remain on TopicMain only.
 func DomainTopicForEventType(eventType string) string {
@@ -89,6 +118,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventSettlementRequired, EventDeliverySessionUpdated, EventDeliveryDisputed,
 		EventMissingItemsReported, EventSplitPaymentCreated,
 		EventFiscalReceiptRequested, EventFiscalReceiptSucceeded, EventFiscalReceiptFailed,
+		EventRefundRequested, EventRefundSucceeded, EventRefundFailed, EventFiscalCorrectiveRequested,
 		EventOrderForceCompleted, EventCashShortfall, EventCashOverage:
 		return TopicOrders
 	case EventWarehouseDispatchLockChanged, EventManifestDraftCreated,
@@ -102,7 +132,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventSupplyTransferApproaching, EventCommandDispatched, EventCommandReceived,
 		EventCommandSettled:
 		return TopicRealtime
-	case EventClaimFiled, EventClaimResolved, EventLogisticsExceptionReported,
+	case EventClaimFiled, EventClaimUnderReview, EventClaimResolved, EventLogisticsExceptionReported,
 		EventReverseLogisticsRequired:
 		// MISSING_ITEMS_REPORTED stays on TopicOrders (above); dual-emit to exceptions
 		// is done explicitly in order handlers when needed.

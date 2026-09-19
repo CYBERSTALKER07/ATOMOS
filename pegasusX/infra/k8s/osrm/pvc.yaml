@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: osrm-data
+  labels:
+    app: osrm
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  # Populate /data/region.osrm via init job or CSI snapshot before routing traffic.

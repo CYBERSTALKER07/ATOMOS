@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, RotateCcw, Search, X } from "lucide-react";
 import { apiFetch } from "@/lib/auth";
@@ -119,6 +120,7 @@ export function StockRequestReturnModal({
   onClose,
   preferredSku,
 }: Props) {
+  const t = usePortalT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -143,7 +145,7 @@ export function StockRequestReturnModal({
         .filter((o) => CLAIMABLE_STATES.has(o.state));
       setOrders(claimable);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load orders");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_orders"));
       setOrders([]);
     } finally {
       setLoading(false);
@@ -185,7 +187,7 @@ export function StockRequestReturnModal({
       }
       setSelected(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load order");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_order"));
     } finally {
       setResolving(false);
     }
@@ -198,7 +200,7 @@ export function StockRequestReturnModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Request return or chargeback"
+        aria-label={t("retailer_desktop.stock_request_return_modal.text.request_return_or_chargeback")}
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl"
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -214,7 +216,7 @@ export function StockRequestReturnModal({
             type="button"
             className="rounded-lg p-1 hover:bg-muted"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("common.action.close")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -243,7 +245,7 @@ export function StockRequestReturnModal({
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm"
-                  placeholder="Search by order id"
+                  placeholder={t("retailer_desktop.stock_request_return_modal.text.search_by_order_id")}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />

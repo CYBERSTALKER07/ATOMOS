@@ -22,7 +22,6 @@ This document outlines the comprehensive SEO setup for your Next.js portfolio ap
 - ✅ **Sitemap** (`app/sitemap.ts`) - Automatically generated at `/sitemap.xml`
 - ✅ **Robots.txt** (`app/robots.ts`) - Automatically generated at `/robots.txt`
 - ✅ **Structured Data (JSON-LD)** - Person and Website schemas on homepage
-- ✅ **Web Manifest** (`public/site.webmanifest`) - PWA support
 
 ### 3. **Performance Optimizations**
 - ✅ Next.js Image component (already in use via Next.js)

@@ -158,7 +158,7 @@ data class Variant(
     @SerialName("pack") val pack: String,
     @SerialName("pack_count") val packCount: Int,
     @SerialName("weight_per_unit") val weightPerUnit: String,
-    @SerialName("price") val price: Double,
+    @SerialName("price") val price: Long = 0L,
 )
 
 // ── Product (iOS: Product) ──
@@ -226,7 +226,7 @@ data class Product(
     val displayPrice: String
         get() {
             offer?.salePriceMinor?.takeIf { it > 0 }?.let { return "%,d".format(it) }
-            defaultVariant?.let { return "%,.0f".format(it.price) }
+            defaultVariant?.let { return "%,d".format(it.price.toLong()) }
             price?.let { return "%,d".format(it) }
             priceMinor?.let { return "%,d".format(it) }
             return "—"
@@ -394,8 +394,8 @@ data class OrderLineItem(
     @SerialName("variant_id") val variantId: String = "",
     @SerialName("variant_size") val variantSize: String = "",
     @SerialName("quantity") val quantity: Int,
-    @SerialName("unit_price") val unitPrice: Double = 0.0,
-    @SerialName("total_price") val totalPrice: Double = 0.0,
+    @SerialName("unit_price") val unitPrice: Long = 0L,
+    @SerialName("total_price") val totalPrice: Long = 0L,
 )
 
 // ── Order ──
@@ -409,7 +409,7 @@ data class Order(
     @SerialName("state") val status: OrderStatus = OrderStatus.PENDING,
     @SerialName("items") val items: List<OrderLineItem> = emptyList(),
     @SerialName("amount") val totalAmount: Long = 0,
-    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("currency") val currency: String = "",
     @SerialName("payment_gateway") val paymentGateway: String = "",
     @SerialName("payment_status") val paymentStatus: String? = null,
     @SerialName("route_id") val routeId: String? = null,
@@ -441,7 +441,7 @@ data class Order(
 fun formatRetailerAmount(amount: Long, currency: String): String {
     val formatter = NumberFormat.getIntegerInstance(Locale.US)
     val formatted = formatter.format(amount).replace(',', ' ')
-    val normalizedCurrency = currency.ifBlank { "UZS" }
+    val normalizedCurrency = currency.ifBlank { com.pegasus.design.packCurrency(com.pegasus.design.MarketPackStore.pack) }
     return "$formatted $normalizedCurrency"
 }
 
@@ -471,7 +471,7 @@ data class ProcurementOrderItem(
     @SerialName("quantity") val quantity: Int,
 )
 
-// ── AI Demand Forecast (iOS: DemandForecast) ──
+// ── AI Demand Forecast (legacy SKU-forecast shape; NOT returned by GET /v1/retailer/ai/predictions) ──
 
 @Serializable
 data class DemandForecast(
@@ -490,6 +490,56 @@ data class DemandForecast(
     val isBlocked: Boolean
         get() = blocked || label == "insufficient_history" || !blockedReason.isNullOrBlank()
 }
+
+/** Live GET /v1/retailer/ai/predictions item — pending AI preorder, not a SKU forecast. */
+@Serializable
+data class RetailerAILineItem(
+    @SerialName("sku") val sku: String = "",
+    @SerialName("name") val name: String = "",
+    @SerialName("quantity") val quantity: Long = 0,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long = 0,
+)
+
+@Serializable
+data class RetailerAIPrediction(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("order_source") val orderSource: String = "",
+    @SerialName("confirmation_status") val confirmationStatus: String = "",
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String = "",
+    @SerialName("auto_confirm_at") val autoConfirmAt: String = "",
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    @SerialName("currency") val currency: String = "",
+    @SerialName("derived_from_order_id") val derivedFromOrderId: String = "",
+    @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("line_items") val lineItems: List<RetailerAILineItem> = emptyList(),
+) {
+    val title: String
+        get() {
+            val first = lineItems.firstOrNull()
+            val label = first?.name?.takeIf { it.isNotBlank() } ?: first?.sku?.takeIf { it.isNotBlank() }
+            return label ?: orderId
+        }
+    val quantity: Long get() = lineItems.sumOf { it.quantity }
+    val statusLabel: String
+        get() = confirmationStatus.ifBlank { "PENDING" }.replace('_', ' ')
+    val deliveryLabel: String
+        get() = requestedDeliveryDate.take(10).ifBlank { orderId }
+    val formattedTotal: String
+        get() {
+            val units = totalMinor / 100.0
+            return if (currency.isNotBlank()) {
+                "${units.toLong()} $currency"
+            } else {
+                units.toLong().toString()
+            }
+        }
+}
+
+@Serializable
+data class RetailerAIPredictionsResponse(
+    @SerialName("items") val items: List<RetailerAIPrediction> = emptyList(),
+)
 
 // ── Retailer Expense Analytics ──
 
@@ -581,7 +631,7 @@ data class CartItem(
     val variant: Variant,
     var quantity: Int,
 ) {
-    val totalPrice: Double get() = quantity * variant.price
+    val totalPrice: Long get() = quantity * variant.price
 }
 
 // ── User ──
@@ -683,8 +733,64 @@ data class UpdateSettingsRequest(
 
 @Serializable
 data class UpdateGlobalSettingsRequest(
-    @SerialName("global_auto_order_enabled") val globalAutoOrderEnabled: Boolean,
-    @SerialName("use_history") val useHistory: Boolean = true,
+    @SerialName("global_auto_order_enabled") val globalAutoOrderEnabled: Boolean? = null,
+    @SerialName("global_enabled") val globalEnabled: Boolean? = null,
+    @SerialName("execution_mode") val executionMode: String? = null,
+    @SerialName("use_history") val useHistory: Boolean? = null,
+)
+
+@Serializable
+data class AutoOrderShadowStats(
+    @SerialName("proposal_count") val proposalCount: Long = 0,
+    @SerialName("matched_orders") val matchedOrders: Long = 0,
+    @SerialName("wape") val wape: Double = 0.0,
+    @SerialName("unmodified_accept_rate") val unmodifiedAcceptRate: Double = 0.0,
+    @SerialName("window_days") val windowDays: Int = 30,
+)
+
+@Serializable
+data class AutoOrderSoakDecision(
+    @SerialName("allowed") val allowed: Boolean = false,
+    @SerialName("reasons") val reasons: List<String> = emptyList(),
+    @SerialName("stats") val stats: AutoOrderShadowStats? = null,
+    @SerialName("bypass_source") val bypassSource: String? = null,
+)
+
+@Serializable
+data class AutoOrderSoakThresholds(
+    @SerialName("min_proposals") val minProposals: Long = 20,
+    @SerialName("max_wape") val maxWape: Double = 0.30,
+    @SerialName("min_unmodified") val minUnmodified: Double = 0.80,
+    @SerialName("gate_disabled") val gateDisabled: Boolean = false,
+    @SerialName("bypass_source") val bypassSource: String? = null,
+)
+
+@Serializable
+data class AutoOrderSoakGate(
+    @SerialName("decision") val decision: AutoOrderSoakDecision? = null,
+    @SerialName("thresholds") val thresholds: AutoOrderSoakThresholds? = null,
+    @SerialName("place_flag_enabled") val placeFlagEnabled: Boolean? = null,
+)
+
+@Serializable
+data class AutoOrderShadowProposal(
+    @SerialName("proposal_id") val proposalId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("sku") val sku: String = "",
+    @SerialName("supplier_id") val supplierId: String? = null,
+    @SerialName("proposed_qty") val proposedQty: Long = 0,
+    @SerialName("ip") val ip: Double = 0.0,
+    @SerialName("reorder_point") val reorderPoint: Double = 0.0,
+    @SerialName("order_up_to") val orderUpTo: Double = 0.0,
+    @SerialName("confidence") val confidence: Double? = null,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("bucket_date") val bucketDate: String = "",
+    @SerialName("status") val status: String = "",
+)
+
+@Serializable
+data class AutoOrderShadowProposalsResponse(
+    @SerialName("items") val items: List<AutoOrderShadowProposal> = emptyList(),
 )
 
 // ── Auto-Order Full Settings Response ──
@@ -692,7 +798,7 @@ data class UpdateGlobalSettingsRequest(
 @Serializable
 data class AutoOrderSettings(
     @SerialName("global_enabled") val globalEnabled: Boolean = false,
-    /** draft | place — place creates real supplier orders when server flag is on */
+    /** off | shadow | draft | place — place creates real supplier orders when server flag is on */
     @SerialName("execution_mode") val executionMode: String? = null,
     @SerialName("analytics_start_date") val analyticsStartDate: String? = null,
     @SerialName("has_any_history") val hasAnyHistory: Boolean = false,
@@ -700,6 +806,7 @@ data class AutoOrderSettings(
     @SerialName("category_overrides") val categoryOverrides: List<CategoryOverride> = emptyList(),
     @SerialName("product_overrides") val productOverrides: List<ProductOverride> = emptyList(),
     @SerialName("variant_overrides") val variantOverrides: List<VariantOverride> = emptyList(),
+    @SerialName("shadow_stats") val shadowStats: AutoOrderShadowStats? = null,
 )
 
 @Serializable
@@ -748,6 +855,7 @@ data class RetailerReorderSuggestion(
     @SerialName("adjusted_demand_per_day") val adjustedDemandPerDay: Double = 0.0,
     @SerialName("current_stock") val currentStock: Long = 0,
     @SerialName("in_flight_qty") val inFlightQty: Long = 0,
+    @SerialName("safety_stock") val safetyStock: Double = 0.0,
     @SerialName("status") val status: String? = null,
     @SerialName("sources") val sources: List<String> = emptyList(),
     @SerialName("sell_through_velocity") val sellThroughVelocity: Double = 0.0,
@@ -842,7 +950,7 @@ data class CheckoutQuoteLine(
     @SerialName("product_id") val productId: String,
     @SerialName("quantity") val quantity: Long,
     @SerialName("unit_price_minor") val unitPriceMinor: Long,
-    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("currency") val currency: String = "",
 )
 
 @Serializable
@@ -980,6 +1088,29 @@ data class UnifiedCheckoutRequest(
     @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
     @SerialName("delivery_priority") val deliveryPriority: String? = null,
     @SerialName("checkout_policy_token") val checkoutPolicyToken: String? = null,
+    @SerialName("currency") val currency: String? = null,
+)
+
+@Serializable
+data class OrderCurrencyOptions(
+    @SerialName("enabled") val enabled: Boolean = false,
+    @SerialName("operating_currency") val operatingCurrency: String = "UZS",
+    @SerialName("allowlist") val allowlist: List<String> = emptyList(),
+)
+
+@Serializable
+data class PSPListing(
+    val code: String = "",
+    val status: String = "",
+    val selectable: Boolean = true,
+    @SerialName("national_cards") val nationalCards: Boolean = false,
+)
+
+@Serializable
+data class RetailerPaymentCatalogResponse(
+    @SerialName("currency_code") val currencyCode: String = "",
+    @SerialName("market_code") val marketCode: String = "",
+    val catalog: List<PSPListing> = emptyList(),
 )
 
 // ── Delivery Tracking (real-time driver positions) ──
@@ -991,6 +1122,21 @@ data class TrackingOrderItem(
     val quantity: Long,
     @SerialName("unit_price") val unitPrice: Long,
     @SerialName("line_total") val lineTotal: Long,
+)
+
+@Serializable
+data class RouteGeometryWire(
+    @SerialName("route_id") val routeId: String = "",
+    @SerialName("encoded_polyline") val encodedPolyline: String = "",
+    val coordinates: List<RouteLatLng> = emptyList(),
+    val source: String = "",
+    @SerialName("stop_count") val stopCount: Int = 0,
+)
+
+@Serializable
+data class RouteLatLng(
+    val lat: Double,
+    val lng: Double,
 )
 
 @Serializable
@@ -1014,6 +1160,7 @@ data class TrackingOrder(
     @SerialName("fiscal_qr") val fiscalQr: String = "",
     @SerialName("latest_fiscal_receipt_id") val latestFiscalReceiptId: String = "",
     val items: List<TrackingOrderItem> = emptyList(),
+    @SerialName("route_geometry") val routeGeometry: RouteGeometryWire? = null,
 ) {
     /** Retailer receipt label for tracking / recent receipts. */
     val fiscalReceiptLabel: String
@@ -1058,11 +1205,11 @@ data class ActiveFulfillmentsResponse(
 
 @Serializable
 data class PendingPaymentSession(
-    @SerialName("session_id") val sessionId: String,
+    @SerialName("session_id") val sessionId: String? = null,
     @SerialName("order_id") val orderId: String,
     @SerialName("retailer_id") val retailerId: String,
     @SerialName("supplier_id") val supplierId: String,
-    @SerialName("gateway") val gateway: String,
+    @SerialName("gateway") val gateway: String? = null,
     @SerialName("locked_amount") val lockedAmount: Long,
     @SerialName("currency") val currency: String,
     @SerialName("status") val status: String,
@@ -1111,4 +1258,60 @@ data class CreditProfile(
     @SerialName("delinquency_count") val delinquencyCount: Long = 0,
     val status: String = "",
     val version: Long = 0,
+)
+
+@Serializable
+data class RetailerSupplierOrderFacet(
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+)
+
+@Serializable
+data class RetailerPulseLoyalty(
+    val enrolled: Boolean = false,
+)
+
+@Serializable
+data class ControlTowerPulse(
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("generated_at") val generatedAt: String = "",
+    @SerialName("open_orders") val openOrders: Int = 0,
+    @SerialName("active_fulfillments") val activeFulfillments: Int = 0,
+    @SerialName("dock_pending") val dockPending: Int = 0,
+    @SerialName("pos_open_sessions") val posOpenSessions: Int = 0,
+    @SerialName("open_shifts") val openShifts: Int = 0,
+    @SerialName("open_assist_tickets") val openAssistTickets: Int = 0,
+    @SerialName("low_stock_sku_bins") val lowStockSkuBins: Int = 0,
+    @SerialName("shift_variances_7d") val shiftVariances7d: Int = 0,
+    @SerialName("sales_minor_7d") val salesMinor7d: Long = 0,
+    val capabilities: List<String> = emptyList(),
+    val empty: Boolean = true,
+    val source: String = "empty",
+    @SerialName("orders_by_status") val ordersByStatus: Map<String, Int> = emptyMap(),
+    @SerialName("orders_by_supplier") val ordersBySupplier: List<RetailerSupplierOrderFacet> = emptyList(),
+    val loyalty: RetailerPulseLoyalty = RetailerPulseLoyalty(),
+)
+
+@Serializable
+data class LoyaltyTierView(
+    val enrolled: Boolean = false,
+    val tier: String = "",
+    @SerialName("lifetime_points") val lifetimePoints: Long = 0,
+    @SerialName("available_points") val availablePoints: Long = 0,
+    @SerialName("next_tier") val nextTier: String = "",
+    @SerialName("points_to_next") val pointsToNext: Long = 0,
+    @SerialName("earn_bps") val earnBps: Long = 0,
+)
+
+@Serializable
+data class LoyaltyLedgerEntry(
+    @SerialName("ledger_id") val ledgerId: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    val points: Long = 0,
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class LoyaltyLedgerResponse(
+    val entries: List<LoyaltyLedgerEntry> = emptyList(),
 )

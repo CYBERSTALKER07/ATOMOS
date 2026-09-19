@@ -1,12 +1,13 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
 import {
   adminForceCompleteKey,
   adminOrderAssignKey,
   adminOrderStatusPatchKey,
   ApiError,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import type { SupplierOrder } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import StatusChip from '@/components/StatusChip';
@@ -50,6 +51,7 @@ export function AdminOrderOpsPanel({
   onSuccess,
   onError,
 }: AdminOrderOpsPanelProps) {
+  const t = usePortalT();
   const [open, setOpen] = useState(false);
   const [driverId, setDriverId] = useState(order.driver_id ?? '');
   const [routeId, setRouteId] = useState(order.route_id ?? '');
@@ -161,7 +163,7 @@ export function AdminOrderOpsPanel({
         <div className="mt-3 space-y-4 rounded-2xl border border-[var(--color-md-outline-variant)] bg-[var(--color-md-surface-container-low)] p-4">
           {canForceComplete ? (
             <div>
-              <p className="md-typescale-label-medium mb-2">Force-complete (fiscal exception)</p>
+              <p className="md-typescale-label-medium mb-2">{t("supplier_portal.admin_order_ops_panel.text.force_complete_fiscal_exception")}</p>
               <p className="md-typescale-body-small mb-2 text-[var(--color-md-on-surface-variant)]">
                 Audited skip of OFD when fiscal is stuck. Requires reason code. Not for drivers.
               </p>
@@ -191,25 +193,25 @@ export function AdminOrderOpsPanel({
           ) : null}
           {canAssign ? (
           <div>
-            <p className="md-typescale-label-medium mb-2">Assign driver</p>
+            <p className="md-typescale-label-medium mb-2">{t("supplier_portal.admin_order_ops_panel.text.assign_driver")}</p>
             <div className="grid gap-2 sm:grid-cols-3">
               <input
                 className="md-input-outlined w-full px-3 py-2"
-                placeholder="Driver ID"
+                placeholder={t("supplier_portal.exceptions.early_complete.text.driver_id")}
                 value={driverId}
                 onChange={(e) => setDriverId(e.target.value)}
                 disabled={busy}
               />
               <input
                 className="md-input-outlined w-full px-3 py-2"
-                placeholder="Route ID"
+                placeholder={t("supplier_portal.admin_order_ops_panel.text.route_id")}
                 value={routeId}
                 onChange={(e) => setRouteId(e.target.value)}
                 disabled={busy}
               />
               <input
                 className="md-input-outlined w-full px-3 py-2"
-                placeholder="Vehicle ID (optional)"
+                placeholder={t("supplier_portal.admin_order_ops_panel.text.vehicle_id_optional")}
                 value={vehicleId}
                 onChange={(e) => setVehicleId(e.target.value)}
                 disabled={busy}
@@ -228,7 +230,7 @@ export function AdminOrderOpsPanel({
 
           {canPatchStatus ? (
           <div>
-            <p className="md-typescale-label-medium mb-2">Patch status</p>
+            <p className="md-typescale-label-medium mb-2">{t("supplier_portal.admin_order_ops_panel.text.patch_status")}</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <select
                 className="md-input-outlined w-full px-3 py-2"
@@ -244,7 +246,7 @@ export function AdminOrderOpsPanel({
               </select>
               <input
                 className="md-input-outlined w-full px-3 py-2"
-                placeholder="Reason (optional)"
+                placeholder={t("supplier_portal.admin_order_ops_panel.text.reason_optional")}
                 value={statusReason}
                 onChange={(e) => setStatusReason(e.target.value)}
                 disabled={busy}

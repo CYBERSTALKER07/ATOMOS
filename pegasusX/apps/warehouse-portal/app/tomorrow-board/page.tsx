@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
@@ -23,6 +24,7 @@ type BoardResponse = {
 };
 
 export default function TomorrowBoardPage() {
+  const t = usePortalT();
   const [board, setBoard] = useState<BoardResponse | null>(null);
   const [date, setDate] = useState(() => {
     const tomorrow = new Date();
@@ -51,7 +53,7 @@ export default function TomorrowBoardPage() {
   }, [board]);
 
   return (
-    <PageChrome title="Tomorrow board" description="Orders and manifests grouped by delivery date." loading={loading}>
+    <PageChrome title={t("portal.nav.tomorrow_board")} description={t("warehouse_portal.residual.text.orders_and_manifests_grouped_by_delivery_date")} loading={loading}>
       <div className="flex flex-col gap-4">
         <label className="text-sm">
           Date{' '}
@@ -59,7 +61,7 @@ export default function TomorrowBoardPage() {
         </label>
         <div className="grid gap-3">
           {rows.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No orders scheduled for this date.</p>
+            <p className="text-sm text-[var(--muted)]">{t("warehouse_portal.tomorrow_board.text.no_orders_scheduled_for_this_date")}</p>
           ) : (
             rows.map((row) => (
               <div key={row.order_id} className="border border-[var(--border)] rounded-xl p-4">

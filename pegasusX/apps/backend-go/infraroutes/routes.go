@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/redis/go-redis/v9"
 )
@@ -32,13 +33,15 @@ type Deps struct {
 }
 
 // RegisterRoutes mounts /healthz, /ready, /metrics, and legacy /v1/health.
+// /metrics stays scrape-open on the pod/cluster network (GMP PodMonitoring).
+// Public Ingress must not expose /metrics or /debug (see infra/k8s/ingress).
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/healthz", handleHealthz)
 	r.Get("/ready", handleReady(d))
 	r.Handle("/metrics", promhttp.Handler())
 	r.Get("/v1/health", handleHealthz)
 	if d.RedisPoolStats != nil {
-		r.Get("/debug/infra/redis", handleRedisStats(d.RedisPoolStats))
+		r.With(auth.RequireRole(auth.RolePlatformAdmin)).Get("/debug/infra/redis", handleRedisStats(d.RedisPoolStats))
 	}
 }
 

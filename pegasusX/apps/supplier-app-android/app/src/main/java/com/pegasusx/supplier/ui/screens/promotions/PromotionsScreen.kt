@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.promotions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,19 +32,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.RealtimeRefreshEffect
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.data.model.PromoSimulateInput
 import com.pegasusx.supplier.data.model.PromoSimulateResult
 import com.pegasusx.supplier.data.model.SupplierPromotion
 import com.pegasusx.supplier.data.model.SupplierPromotionUpsertRequest
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,7 +96,7 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
         topBar = { TopAppBar(title = { Text("Promotions") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Create promotion")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_supplier_ui_create_promotion))
             }
         },
     ) { padding ->
@@ -120,13 +123,12 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                             supportingContent = {
                                 val sim = simResults[promo.promotionId]
                                 Column {
-                                    Text(
-                                        "${promo.discountBps / 100.0}% · ${promo.scopeType} · ${promo.retailerScope}" +
+                                    Text(stringResource(R.string.mobile_supplier_ui_n_0_scopetype_retailerscope, promo.discountBps / 100.0, promo.scopeType, promo.retailerScope) +
                                             if (promo.isActive) "" else " · inactive",
                                     )
                                     sim?.let {
                                         Text(
-                                            "P&L sandbox: ${it.projectedVolume} units · margin ${it.projectedMarginMinor / 100.0} (${it.marginDeltaPct}%)",
+                                            stringResource(R.string.mobile_supplier_ui_p_l_sandbox_projectedvolume_units_margin_n_0_margindeltapct, it.projectedVolume, it.projectedMarginMinor / 100.0, it.marginDeltaPct),
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }

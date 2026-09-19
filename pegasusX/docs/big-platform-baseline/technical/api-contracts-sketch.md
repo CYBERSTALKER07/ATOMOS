@@ -1,5 +1,8 @@
 # API Contracts Sketch
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 Extend `packages/types` + `packages/api-client` + `*routes` in the same PR as handlers.
 
 ## New / extended surfaces (indicative)

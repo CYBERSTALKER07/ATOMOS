@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useRef } from 'react';
 
 type OrderProposeDateDialogProps = {
@@ -25,6 +26,7 @@ export function OrderProposeDateDialog({
   onClose,
   title = 'Propose new delivery date',
 }: OrderProposeDateDialogProps) {
+  const t = usePortalT();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export function OrderProposeDateDialog({
           </p>
         </div>
         <label className="portal-field">
-          <span className="portal-label">Proposed delivery date</span>
+          <span className="portal-label">{t("warehouse_portal.orders._id_.text.proposed_delivery_date")}</span>
           <input
             type="date"
             value={proposedDate}
@@ -69,11 +71,11 @@ export function OrderProposeDateDialog({
           />
         </label>
         <label className="portal-field">
-          <span className="portal-label">Reason</span>
+          <span className="portal-label">{t("supplier_portal.admin.control_center.field.reason")}</span>
           <textarea
             value={reason}
             onChange={(e) => onReasonChange(e.target.value)}
-            placeholder="Required — explain why the date is changing"
+            placeholder={t("warehouse_portal.orders.order_propose_date_dialog.text.required_explain_why_the_date_is_changing")}
             rows={3}
             className="portal-input min-h-[88px] py-2"
             required

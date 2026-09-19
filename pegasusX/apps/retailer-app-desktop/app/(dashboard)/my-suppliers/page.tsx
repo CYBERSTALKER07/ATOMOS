@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useState } from "react";
 import {
   Store,
@@ -18,6 +19,7 @@ import { apiFetch } from "@/lib/auth";
 import type { Supplier } from "@/lib/types";
 
 export default function MySuppliersPage() {
+  const t = usePortalT();
   const {
     data: suppliers,
     loading: suppliersLoading,
@@ -95,8 +97,8 @@ export default function MySuppliersPage() {
     >
       <PageChrome
         icon="store"
-        title="My Suppliers"
-        description="Manage your approved wholesale suppliers and discover new partners."
+        title={t("portal.nav.my_suppliers")}
+        description={t("retailer_desktop.residual.text.manage_your_approved_wholesale_suppliers_and_discover_new_partne")}
         loading={isLoading}
         skeletonVariant="table"
         actions={
@@ -126,13 +128,13 @@ export default function MySuppliersPage() {
         <div className="flex gap-8 flex-col lg:flex-row">
           {/* Active Suppliers List */}
           <div className="flex-1">
-            <PageSection title="Connected Suppliers" description={`You are connected to ${supplierList.length} suppliers.`}>
+            <PageSection title={t("retailer_desktop.my_suppliers.text.connected_suppliers")} description={`You are connected to ${supplierList.length} suppliers.`}>
               <div className="space-y-4">
                 {supplierList.length === 0 ? (
                   <div className="p-8 text-center text-[var(--desk-text-tertiary)] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl">
                     <Store size={48} className="mx-auto mb-4 opacity-20" />
-                    <p className="md-typescale-body-large">No connected suppliers.</p>
-                    <p className="md-typescale-body-small mt-2">Search and add suppliers to see their catalogs and start ordering.</p>
+                    <p className="md-typescale-body-large">{t("retailer_desktop.my_suppliers.text.no_connected_suppliers")}</p>
+                    <p className="md-typescale-body-small mt-2">{t("retailer_desktop.my_suppliers.text.search_and_add_suppliers_to_see_their_catalogs_and_start_orderin")}</p>
                   </div>
                 ) : (
                   supplierList.map((supplier) => (
@@ -155,12 +157,12 @@ export default function MySuppliersPage() {
                       <div className="flex items-center gap-4">
                         <div className="text-right hidden sm:block">
                           <div className="md-typescale-body-medium text-[var(--desk-text-primary)]">{supplier.order_count}</div>
-                          <div className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase">Orders</div>
+                          <div className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase">{t("portal.nav.orders")}</div>
                         </div>
                         <button
                           onClick={() => removeSupplier(supplier.id)}
                           className="w-10 h-10 flex items-center justify-center rounded-full text-[var(--desk-danger)] hover:bg-[var(--desk-danger)]/10 transition-colors"
-                          title="Remove Supplier"
+                          title={t("retailer_desktop.my_suppliers.text.remove_supplier")}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -174,7 +176,7 @@ export default function MySuppliersPage() {
 
           {/* Supplier Directory / Search */}
           <div className="w-full lg:w-[360px] shrink-0">
-            <PageSection title="Supplier Directory" description="Find and connect with new suppliers.">
+            <PageSection title={t("retailer_desktop.my_suppliers.text.supplier_directory")} description={t("retailer_desktop.residual.text.find_and_connect_with_new_suppliers")}>
               <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
                 <div className="relative mb-6">
                   <Search
@@ -183,7 +185,7 @@ export default function MySuppliersPage() {
                   />
                   <input
                     type="text"
-                    placeholder="Search by name or category..."
+                    placeholder={t("retailer_desktop.my_suppliers.text.search_by_name_or_category")}
                     className="w-full h-11 pl-11 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium text-[var(--desk-text-primary)]"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}

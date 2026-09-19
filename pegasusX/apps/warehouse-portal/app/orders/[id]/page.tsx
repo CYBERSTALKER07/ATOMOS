@@ -1,10 +1,11 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import type { WarehouseOrderDetail } from '@pegasusx/types';
-import { adminForceCompleteKey, ApiError } from '@pegasusx/api-client';
+import { adminForceCompleteKey, ApiError } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import PageTransition from '@/components/PageTransition';
@@ -23,6 +24,7 @@ function isoDeliveryDate(dateInput: string): string {
 }
 
 export default function OrderDetailPage() {
+  const t = usePortalT();
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -116,7 +118,7 @@ export default function OrderDetailPage() {
       <PageChrome
         icon="orders"
         title={order?.retailer_name || `Order ${orderId.slice(0, 8)}…`}
-        description="Full order detail and warehouse exception actions."
+        description={t("warehouse_portal.residual.text.full_order_detail_and_warehouse_exception_actions")}
         loading={loading}
         actions={
           <Link href={backHref} className="portal-btn portal-btn--outline text-sm inline-flex items-center gap-1.5">
@@ -129,22 +131,22 @@ export default function OrderDetailPage() {
             <section className="wh-bay-panel wh-bay--ops wh-order-bento-summary">
               <div className="wh-section-head">
                 <div>
-                  <h2 className="wh-section-title">Order summary</h2>
-                  <p className="wh-section-desc">Retailer, state, and total for this fulfillment.</p>
+                  <h2 className="wh-section-title">{t("warehouse_portal.orders._id_.text.order_summary")}</h2>
+                  <p className="wh-section-desc">{t("warehouse_portal.orders._id_.text.retailer_state_and_total_for_this_fulfillment")}</p>
                 </div>
                 <OrderStateChip state={state} />
               </div>
               <div className="p-5 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Retailer</p>
+                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">{t("warehouse_portal.orders._id_.text.retailer")}</p>
                   <p className="font-medium mt-1">{order.retailer_name || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Total (UZS)</p>
+                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">{t("warehouse_portal.orders._id_.text.total_uzs")}</p>
                   <p className="wh-kpi-value text-xl mt-1">{fmt(total)}</p>
                 </div>
                 <div className="sm:col-span-2">
-                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">Order ID</p>
+                  <p className="text-xs uppercase tracking-wider text-[var(--muted)]">{t("supplier_portal.admin.control_center.field.order_id")}</p>
                   <p className="wh-ops-card-id mt-1">{order.order_id}</p>
                 </div>
                 {(state === 'COMPLETED' || canForceFiscal) && (
@@ -186,7 +188,7 @@ export default function OrderDetailPage() {
               <aside className="wh-bay-panel wh-bay--ops wh-order-bento-ops">
                 <div className="wh-section-head">
                   <div>
-                    <h2 className="wh-section-title">Quick actions</h2>
+                    <h2 className="wh-section-title">{t("warehouse_portal.orders._id_.text.quick_actions")}</h2>
                     <p className="wh-section-desc">
                       {canForceFiscal
                         ? 'Fiscal hard-gate exception or logistics actions.'
@@ -235,9 +237,34 @@ export default function OrderDetailPage() {
                       </button>
                     </div>
                   ) : null}
+                  {state === 'AWAITING_PAYMENT' ? (
+                    <div className="space-y-2 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 p-3">
+                      <p className="text-xs font-medium uppercase tracking-wider text-[var(--danger)]">
+                        Emergency Payment Bypass
+                      </p>
+                      <p className="text-xs text-[var(--muted)]">
+                        Generate bypass code for driver if POS terminal failed.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={acting}
+                        className="portal-btn portal-btn--outline w-full"
+                        style={{ color: 'var(--danger)' }}
+                        onClick={() =>
+                          runMutation('Payment bypass token generated', async () => {
+                            const res = await warehouseOps.issuePaymentBypass(orderId);
+                            toast(`Token: ${res.bypass_token}`, 'success');
+                            return res;
+                          })
+                        }
+                      >
+                        Issue Bypass Token
+                      </button>
+                    </div>
+                  ) : null}
                   {flags.canDelay ? (
                     <label className="portal-field">
-                      <span className="portal-label">Proposed delivery date</span>
+                      <span className="portal-label">{t("warehouse_portal.orders._id_.text.proposed_delivery_date")}</span>
                       <input
                         type="date"
                         value={proposedDate}
@@ -247,11 +274,11 @@ export default function OrderDetailPage() {
                     </label>
                   ) : null}
                   <label className="portal-field">
-                    <span className="portal-label">Reason</span>
+                    <span className="portal-label">{t("supplier_portal.admin.control_center.field.reason")}</span>
                     <textarea
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="Required for propose date and cancel"
+                      placeholder={t("warehouse_portal.orders._id_.text.required_for_propose_date_and_cancel")}
                       rows={3}
                       className="portal-input min-h-[88px] py-2"
                     />
@@ -317,8 +344,8 @@ export default function OrderDetailPage() {
             <section className="wh-bay-panel wh-bay--inventory">
               <div className="wh-section-head">
                 <div>
-                  <h2 className="wh-section-title">Status history</h2>
-                  <p className="wh-section-desc">Delays, promotions, and lifecycle changes.</p>
+                  <h2 className="wh-section-title">{t("warehouse_portal.orders._id_.text.status_history")}</h2>
+                  <p className="wh-section-desc">{t("warehouse_portal.orders._id_.text.delays_promotions_and_lifecycle_changes")}</p>
                 </div>
               </div>
               <OrderTimelinePanel orderId={orderId} />

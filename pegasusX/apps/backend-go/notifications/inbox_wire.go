@@ -2,8 +2,12 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// errInboxUnavailable is returned when mark-read has no inbox store.
+var errInboxUnavailable = errors.New("inbox_unavailable")
 
 // InboxItemWire is the canonical inbox JSON shape for mobile and web clients.
 // Mobile decodes `id`; desktop may use `notification_id` — both are populated.
@@ -70,7 +74,10 @@ type InboxMarkReader interface {
 
 // ApplyMarkRead applies mark-by-id or mark-all for a recipient inbox.
 func ApplyMarkRead(ctx context.Context, svc InboxMarkReader, recipientID string, req MarkReadRequest) error {
-	if svc == nil || recipientID == "" {
+	if svc == nil {
+		return errInboxUnavailable
+	}
+	if recipientID == "" {
 		return nil
 	}
 	if req.MarkAll != nil && *req.MarkAll {

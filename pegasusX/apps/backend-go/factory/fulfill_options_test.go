@@ -10,9 +10,11 @@ import (
 )
 
 func TestBuildSupplyFulfillOptionsMemory(t *testing.T) {
+	t.Setenv("FACTORY_PORTAL_SEED", "false")
+	t.Setenv("USE_DEMO_SEED", "false")
 	svc := &Service{
-		supplierID:    "sup-1",
-		factoryNodeID: "fac-1",
+		seedSupplierID: "sup-1",
+		factoryNodeID:  "fac-1",
 	}
 	svc.supplyRequests = []SupplyRequest{
 		{
@@ -35,7 +37,9 @@ func TestBuildSupplyFulfillOptionsMemory(t *testing.T) {
 }
 
 func TestHandleSupplyRequestFulfillOptions_NotFound(t *testing.T) {
-	svc := &Service{supplierID: "sup-1", factoryNodeID: "fac-1"}
+	t.Setenv("FACTORY_PORTAL_SEED", "false")
+	t.Setenv("USE_DEMO_SEED", "false")
+	svc := &Service{seedSupplierID: "sup-1", factoryNodeID: "fac-1"}
 	req := httptest.NewRequest(http.MethodGet, "/v1/factory/supply-requests/missing/fulfill-options", nil)
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "missing")

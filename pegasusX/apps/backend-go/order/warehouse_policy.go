@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 var (
@@ -140,7 +142,9 @@ func parseDeliveryFeeRulesJSON(raw json.RawMessage) (*DeliveryFeeRules, error) {
 		return nil, fmt.Errorf("invalid delivery_fee_rules: %w", err)
 	}
 	if rules.Currency == "" {
-		rules.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), ""); err == nil {
+			rules.Currency = cur
+		}
 	}
 	return &rules, nil
 }
@@ -291,6 +295,6 @@ func ComputeOrderDeliveryFee(policy WarehouseOpsPolicy, deliveryLat, deliveryLng
 	if policy.Lat == 0 && policy.Lng == 0 {
 		return policy.DeliveryFeeRules.BaseFeeMinor, 0
 	}
-	distanceKm = haversineKm(policy.Lat, policy.Lng, deliveryLat, deliveryLng)
+	distanceKm = proximity.HaversineDistance(policy.Lat, policy.Lng, deliveryLat, deliveryLng)
 	return computeDeliveryFeeMinor(policy.DeliveryFeeRules, distanceKm), distanceKm
 }

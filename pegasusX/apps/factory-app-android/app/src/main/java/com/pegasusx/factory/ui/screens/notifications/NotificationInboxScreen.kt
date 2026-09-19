@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.notifications
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -48,6 +50,7 @@ import com.pegasusx.factory.data.model.NotificationItem
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,13 +102,13 @@ fun NotificationInboxScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                     if (unreadCount > 0) {
                         TextButton(
@@ -130,7 +133,7 @@ fun NotificationInboxScreen(
             when {
                 loading && items.isEmpty() -> item(span = { GridItemSpan(maxLineSpan) }) {
                     PegasusLoadingState(
-                        title = "Loading Notifications",
+                        title = stringResource(R.string.mobile_factory_ui_loading_notifications),
                         body = "Fetching your latest alerts and messages."
                     )
                 }

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.loadingbay.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.ui.components.FactorySectionHeader
 import com.pegasusx.factory.ui.components.HandoffTimelineSection
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun LoadingBayGrid(
@@ -26,6 +29,7 @@ fun LoadingBayGrid(
     dispatched: List<Transfer>,
     handoffEvents: List<PulseEvent>,
     handoffLoading: Boolean,
+    handoffError: String? = null,
     onTransferClick: (String) -> Unit,
     innerPadding: PaddingValues
 ) {
@@ -47,9 +51,10 @@ fun LoadingBayGrid(
             HandoffTimelineSection(
                 events = handoffEvents,
                 loading = handoffLoading,
+                error = handoffError,
             )
         }
-        item { FactorySectionHeader(title = "Ready for Loading", count = approved.size) }
+        item { FactorySectionHeader(title = stringResource(R.string.mobile_factory_ui_ready_for_loading), count = approved.size) }
         if (approved.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { 
                 PegasusStatePane(
@@ -63,7 +68,7 @@ fun LoadingBayGrid(
                 TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
             }
         }
-        item { FactorySectionHeader(title = "Now Loading", count = loadingState.size) }
+        item { FactorySectionHeader(title = stringResource(R.string.mobile_factory_ui_now_loading), count = loadingState.size) }
         if (loadingState.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { 
                 PegasusStatePane(
@@ -77,7 +82,7 @@ fun LoadingBayGrid(
                 TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
             }
         }
-        item { FactorySectionHeader(title = "Dispatched", count = dispatched.size) }
+        item { FactorySectionHeader(title = stringResource(R.string.supplier_portal_dispatch_text_dispatched), count = dispatched.size) }
         if (dispatched.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) { 
                 PegasusStatePane(

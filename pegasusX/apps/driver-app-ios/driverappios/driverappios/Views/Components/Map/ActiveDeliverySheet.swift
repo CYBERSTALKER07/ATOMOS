@@ -65,16 +65,16 @@ struct ActiveDeliverySheet: View {
                     Image(systemName: "clock.fill")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(LabTheme.fgTertiary)
-                    Text("ETA \(formatETATime(eta))")
+                    Text(L10n.format("mobile_driver.ui.eta_formatetatime", "\(formatETATime(eta))"))
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
                     if let dur = order.etaDurationSec {
-                        Text("· \(formatDuration(dur))")
+                        Text(L10n.format("mobile_driver.ui.formatduration", "\(formatDuration(dur))"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                     if let distM = order.etaDistanceM {
-                        Text("· \(formatETADistance(distM))")
+                        Text(L10n.format("mobile_driver.ui.formatetadistance", "\(formatETADistance(distM))"))
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
@@ -91,7 +91,7 @@ struct ActiveDeliverySheet: View {
                     HStack(spacing: 7) {
                         Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
                             .font(.system(size: 13, weight: .semibold))
-                        Text("Navigate in Maps")
+                        Text("mobile_driver.ui.navigate_in_maps")
                             .font(.system(size: 14, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.buttonFg)
@@ -127,7 +127,7 @@ struct ActiveDeliverySheet: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "pencil.and.list.clipboard").font(.system(size: 11))
-                            Text("Delivery Correction").font(.system(size: 12, weight: .semibold))
+                            Text("mobile_driver.ui.delivery_correction").font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(LabTheme.fgSecondary)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
@@ -141,7 +141,7 @@ struct ActiveDeliverySheet: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 11))
-                            Text("Rescue").font(.system(size: 12, weight: .semibold))
+                            Text("mobile_driver.ui.rescue").font(.system(size: 12, weight: .semibold))
                         }
                         .foregroundStyle(LabTheme.warning)
                         .frame(maxWidth: .infinity).padding(.vertical, 10)

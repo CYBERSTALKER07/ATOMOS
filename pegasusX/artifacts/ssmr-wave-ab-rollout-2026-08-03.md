@@ -1,5 +1,10 @@
 # SSMR Wave A/B backend image roll — 2026-08-03
 
+
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`../docs/DOCS_SOURCE_OF_TRUTH.md`](../docs/DOCS_SOURCE_OF_TRUTH.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md) · [`../context/current_status.md`](../context/current_status.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
 ## Image
 
 | Field | Value |

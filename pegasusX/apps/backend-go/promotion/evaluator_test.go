@@ -9,15 +9,15 @@ func TestPickBestPromotion_MinLineQuantity(t *testing.T) {
 	now := time.Date(2026, 6, 11, 12, 0, 0, 0, time.UTC)
 	promos := []Promotion{{
 		PromotionID:     "p1",
-		DiscountBps:     1000,
+		Tiers:           []PromotionTier{{MinQuantity: 10, DiscountBps: 1000}},
 		ScopeType:       ScopeTypeProduct,
 		ScopeProductID:  "prod-1",
 		RetailerScope:   RetailerScopeAll,
-		MinLineQuantity: 10,
-		IsActive:        true,
+
+		IsActive: true,
 	}}
 
-	best, unit := PickBestPromotion(now, "ret-1", "prod-1", "cat-1", 5, 10000, 50000, promos)
+	best, unit, _ := PickBestPromotion(now, "ret-1", "prod-1", "cat-1", 5, 10000, 50000, promos)
 	if best != nil {
 		t.Fatalf("expected no promo below min quantity")
 	}
@@ -25,7 +25,7 @@ func TestPickBestPromotion_MinLineQuantity(t *testing.T) {
 		t.Fatalf("unit=%d want list price", unit)
 	}
 
-	best, unit = PickBestPromotion(now, "ret-1", "prod-1", "cat-1", 10, 10000, 100000, promos)
+	best, unit, _ = PickBestPromotion(now, "ret-1", "prod-1", "cat-1", 10, 10000, 100000, promos)
 	if best == nil || unit != 9000 {
 		t.Fatalf("expected 10%% discount at quantity threshold, unit=%d", unit)
 	}
@@ -35,7 +35,7 @@ func TestApplyQuote_OrderThreshold(t *testing.T) {
 	now := time.Date(2026, 6, 11, 12, 0, 0, 0, time.UTC)
 	promos := []Promotion{{
 		PromotionID:         "p2",
-		DiscountBps:         500,
+		Tiers: []PromotionTier{{MinQuantity: 1, DiscountBps: 500}},
 		ScopeType:           ScopeTypeAllProducts,
 		RetailerScope:       RetailerScopeAll,
 		MinOrderAmountMinor: 100000,

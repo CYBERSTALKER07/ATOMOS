@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,14 +11,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.CashReconciliationRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import java.util.UUID
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +70,7 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
                 title = { Text("Cash reconciliations") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -75,7 +78,7 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Driver cash reconciliations",
                 modifier = Modifier.padding(padding),
             )
@@ -107,8 +110,8 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(row.reconciliationId, style = MaterialTheme.typography.labelMedium)
-                            Text("Driver ${row.driverId} · ${row.status}")
-                            Text("Diff ${row.differenceMinor} minor")
+                            Text(stringResource(R.string.mobile_supplier_ui_driver_driverid_status, row.driverId, row.status))
+                            Text(stringResource(R.string.mobile_supplier_ui_diff_differenceminor_minor, row.differenceMinor))
                             val open = row.status.equals("PENDING", ignoreCase = true) ||
                                 row.status.equals("DISPUTED", ignoreCase = true)
                             if (open) {

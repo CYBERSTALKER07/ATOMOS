@@ -1,95 +1,37 @@
-# Design System Master File
+# Unified Design System Master File (V.O.I.D & Pegasus Master Standard)
 
-> [!NOTE]
-> **Current Project State:** GCP Migration (Phase 2)
-> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
-
-
-
-> **LOGIC:** When building a specific page, first check `design-system/pegasusx-retailer-portal/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> [!IMPORTANT]
+> **BINDING AGENT DIRECTIVE**: All pages, components, and layouts MUST strictly adhere to:
+> - Master System Rules: [.agents/rules/ui-design-system.md](file:///Users/shakhzod/Desktop/V.O.I.D/.agents/rules/ui-design-system.md)
+> - Master Design Guide: [DESIGN.md](file:///Users/shakhzod/Desktop/V.O.I.D/DESIGN.md)
 
 ---
 
-**Project:** pegasusX Retailer Portal
-**Generated:** 2026-06-21
-**Category:** B2B retailer commerce / ordering / procurement dashboard
+## 1. Visual Language & Token Mappings
 
----
+| Role / Token | Dark Value (Tactical Canvas) | Light Value (Operational Canvas) | CSS Variable |
+|:---|:---|:---|:---|
+| Canvas | `#09090B` | `#F8FAFC` | `--desk-canvas` |
+| Surface (Card) | `#121216` | `#FFFFFF` | `--desk-surface` |
+| Surface Subtle | `#181820` | `#F1F5F9` | `--desk-surface-subtle` |
+| Surface Sunken | `#0D0D11` | `#E2E8F0` | `--desk-surface-sunken` |
+| Border | `#22222C` | `#E2E8F0` | `--desk-border` |
+| Border Strong | `#333342` | `#CBD5E1` | `--desk-border-strong` |
+| Text Primary | `#F8FAFC` | `#0F172A` | `--desk-text-primary` |
+| Text Secondary | `#94A3B8` | `#475569` | `--desk-text-secondary` |
+| Text Tertiary | `#64748B` | `#94A3B8` | `--desk-text-tertiary` |
+| Accent Cobalt | `#3B82F6` | `#2563EB` | `--desk-accent` |
+| Accent Orange | `#FF7A1A` | `#F97316` | `--desk-accent-orange` |
+| Accent Lime | `#E2FD52` | `#65A30D` | `--desk-accent-lime` |
+| Accent Purple | `#8B5CF6` | `#7C3AED` | `--desk-accent-purple` |
+| Accent Cyan | `#06B6D4` | `#0284C7` | `--desk-accent-cyan` |
+| Success Mint | `#10B981` | `#059669` | `--desk-success` |
+| Warning Amber | `#F59E0B` | `#D97706` | `--desk-warning` |
+| Danger Crimson| `#EF4444` | `#DC2626` | `--desk-danger` |
 
-## Global Rules
+## 2. Mandatory Component Conventions
 
-### Color Palette
-
-| Role | Token | Usage |
-|------|-------|-------|
-| Canvas | `--desk-canvas` | App background |
-| Surface | `--desk-surface` | Cards, panels |
-| Accent | `--desk-accent` | Primary actions, active nav, cart CTA |
-| Text primary | `--desk-text-primary` | Headings, body |
-| Danger | `--desk-danger` | Errors, alerts |
-
-**Style:** Flat SaaS, desk accent, 150–200ms transitions, 44px touch targets, visible focus rings.
-
-### Typography
-
-- **Heading / Body:** Plus Jakarta Sans (`--font-sans`)
-- **Accent:** EB Garamond (`--font-garamond`) — marketing/auth only
-- **Mood:** professional, commerce-focused, catalog-friendly
-
-### Primitives
-
-Import from `@pegasusx/ui-kit/portal` via `@/components/portal` wrappers:
-
-- `PageChrome` — page title, icon slot, loading/error/empty
-- `PortalField` / `PortalInput` / `PortalSelect` — forms
-- `PortalSection` — grouped blocks (preserve `PageSection` for inner bento)
-- `portal-btn` / `portal-btn--primary` — actions (prefer over HeroUI Button)
-
-### CSS stack
-
-```css
-@import "@pegasusx/ui-kit/styles/desktop-foundation.css";
-@import "@pegasusx/ui-kit/styles/auth-layout.css";
-@import "@pegasusx/ui-kit/styles/portal-ui.css";
-@import "@pegasusx/ui-kit/styles/setup-onboarding.css";
-```
-
-### Shell
-
-- `RetailerShell` wraps `(dashboard)` routes only; bare routes: `/auth/*`, `/setup/*`
-- Root `#app-splash` dismissed via `data-hydrated` on `<html>`
-- Sidebar active route: `desk-sidebar-link--active` + `data-active="true"`
-- Theme toggle: `portal-btn portal-btn--ghost`
-
-### HeroUI
-
-- v3.1.0 — `@heroui/styles` for semantic tokens only
-- No `HeroUIProvider`
-- Prefer `portal-btn` / `portal-input` for forms and actions
-
-### Retailer-specific (preserve)
-
-- `CartProvider`, `CheckoutModal`, `CartDrawer`, `PaymentModal`, `ShopClosedModal`
-- `PendingCheckoutFlusher`, `WebSocketProvider`, `ClientPolicyBanner`
-- `LocaleBootstrap`, Tauri bridge
-
----
-
-## QA Matrix
-
-| Viewport | Light | Dark | Notes |
-|----------|-------|------|-------|
-| 375px | ✓ | ✓ | Mobile nav drawer, auth split stacks |
-| 768px | ✓ | ✓ | Setup mobile progress bar |
-| 1024px | ✓ | ✓ | Setup rail visible |
-| 1440px | ✓ | ✓ | Full sidebar + catalog grid |
-
-**Tauri:** verify `[data-tauri]` titlebar padding in `globals.css`.
-
-**Checks:** Cart/checkout toasts, middleware `is_configured` → `/setup`, auth splash post-mount only, setup bare route without `RetailerShell`, `LocaleBootstrap` before providers.
-
-```bash
-cd pegasusX && pnpm --filter @pegasusx/retailer-app-desktop typecheck
-```
+1. **Tabular Monospace**: All numbers, quantities, money, percentages, ETAs, plates, and timestamps MUST use `font-mono tabular-nums`.
+2. **Hairline Precision**: 1px borders only (`border border-[var(--desk-border)]`). No heavy, blurry dark shadows.
+3. **Status Badges**: Always use a tactical pill with status dot (`●`) and monospace text.
+4. **Layout**: 3-Column Control Tower layout (Nav Rail → Operations Stage / Feed → Inspector Drawer) & floating command bar.

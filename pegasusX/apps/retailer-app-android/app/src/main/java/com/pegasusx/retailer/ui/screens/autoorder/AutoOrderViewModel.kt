@@ -6,6 +6,8 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.model.AutoOrderRun
 import com.pegasusx.retailer.data.model.AutoOrderRunsResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
+import com.pegasusx.retailer.data.model.AutoOrderShadowProposal
+import com.pegasusx.retailer.data.model.AutoOrderSoakGate
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.RetailerReorderSuggestion
 import com.pegasusx.retailer.data.model.UpdateGlobalSettingsRequest
@@ -42,7 +44,9 @@ data class AutoOrderUiState(
     val settings: AutoOrderSettings? = null,
     val forecasts: List<DemandForecast> = emptyList(),
     val reorderSuggestions: List<RetailerReorderSuggestion> = emptyList(),
+    val shadowProposals: List<AutoOrderShadowProposal> = emptyList(),
     val globalEnabled: Boolean = false,
+    val executionMode: String = "draft",
     /** Non-null when the "Use past history or start fresh?" dialog should be shown. */
     val pendingEnableTarget: EnableTarget? = null,
     val error: String? = null,
@@ -54,6 +58,7 @@ data class AutoOrderUiState(
     val lastRun: AutoOrderRun? = null,
     val runBanner: String? = null,
     val placeConfirmOpen: Boolean = false,
+    val soakGate: AutoOrderSoakGate? = null,
 ) {
     val syncMessage: String?
         get() = when {
@@ -95,33 +100,59 @@ class AutoOrderViewModel @Inject constructor(
                 nextError = resolveErrorMessage(e, nextIssue)
             }
 
-            val rid = tokenManager.getUserId().orEmpty()
-            val nextForecasts = try {
-                api.getPredictions(rid)
-            } catch (e: Exception) {
-                if (nextIssue == null) {
-                    nextIssue = resolveLoadIssue(e)
-                    nextError = resolveErrorMessage(e, nextIssue)
-                }
-                _uiState.value.forecasts
-            }
-
             val nextRuns = loadRunsInternal()
             val nextSuggestions = loadSuggestionsInternal()
+            val nextShadow = loadShadowInternal()
+            val nextSoak = loadSoakGateInternal()
 
             _uiState.update {
                 val effectiveSettings = nextSettings ?: it.settings
+                val mode = normalizeMode(effectiveSettings?.executionMode, effectiveSettings?.globalEnabled)
                 it.copy(
                     isLoading = false,
                     settings = effectiveSettings,
-                    forecasts = nextForecasts,
+                    forecasts = emptyList(),
                     reorderSuggestions = nextSuggestions,
+                    shadowProposals = nextShadow,
+                    soakGate = nextSoak,
                     globalEnabled = effectiveSettings?.globalEnabled ?: it.globalEnabled,
+                    executionMode = mode,
                     error = nextError,
                     loadIssue = nextIssue,
                     runs = nextRuns,
                     runsLoading = false,
                 )
+            }
+        }
+    }
+
+    fun setExecutionMode(mode: String) {
+        viewModelScope.launch {
+            try {
+                api.updateGlobalAutoOrder(
+                    UpdateGlobalSettingsRequest(
+                        executionMode = mode,
+                        globalEnabled = mode != "off",
+                        globalAutoOrderEnabled = mode != "off",
+                    ),
+                )
+                loadAll()
+                _uiState.update {
+                    it.copy(
+                        runBanner = when (mode) {
+                            "off" -> "Auto-order off."
+                            "shadow" -> "Mode: Shadow (proposals only — recommended)."
+                            "draft" -> "Mode: Draft cart lines."
+                            "place" -> "Mode: Place (still requires Place now + server flag)."
+                            else -> "Mode updated."
+                        },
+                    )
+                }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue, runBanner = resolveErrorMessage(e, issue))
+                }
             }
         }
     }
@@ -135,6 +166,8 @@ class AutoOrderViewModel @Inject constructor(
     }
 
     fun runAutoOrderNow() = runAutoOrder(mode = "draft")
+
+    fun runAutoOrderShadow() = runAutoOrder(mode = "shadow")
 
     fun runAutoOrderPlace() = runAutoOrder(mode = "place")
 
@@ -158,6 +191,9 @@ class AutoOrderViewModel @Inject constructor(
                             (run.message?.let { " — $it" } ?: "")
                     mode == "place" ->
                         "Place run ${run.status}${run.message?.let { ": $it" } ?: ""}"
+                    mode == "shadow" && (run.status == "OK" || run.status == "PARTIAL") ->
+                        "Shadow run: ${run.draftLines} proposal(s)" +
+                            (run.message?.let { " — $it" } ?: "")
                     run.status == "OK" || run.status == "PARTIAL" ->
                         "Draft run complete: ${run.draftLines} line(s)" +
                             (run.message?.let { " — $it" } ?: "")
@@ -166,6 +202,7 @@ class AutoOrderViewModel @Inject constructor(
                 }
                 val runs = loadRunsInternal()
                 val suggestions = loadSuggestionsInternal()
+                val shadow = loadShadowInternal()
                 _uiState.update {
                     it.copy(
                         running = false,
@@ -174,6 +211,7 @@ class AutoOrderViewModel @Inject constructor(
                         runBanner = banner,
                         runs = runs,
                         reorderSuggestions = suggestions,
+                        shadowProposals = shadow,
                     )
                 }
             } catch (e: Exception) {
@@ -227,6 +265,29 @@ class AutoOrderViewModel @Inject constructor(
             api.getReorderSuggestions().items
         } catch (_: Exception) {
             _uiState.value.reorderSuggestions
+        }
+    }
+
+    private suspend fun loadShadowInternal(): List<AutoOrderShadowProposal> {
+        return try {
+            api.getAutoOrderShadowProposals().items
+        } catch (_: Exception) {
+            _uiState.value.shadowProposals
+        }
+    }
+
+    private suspend fun loadSoakGateInternal(): AutoOrderSoakGate? {
+        return try {
+            api.getAutoOrderSoakGate()
+        } catch (_: Exception) {
+            _uiState.value.soakGate
+        }
+    }
+
+    private fun normalizeMode(raw: String?, globalEnabled: Boolean?): String {
+        return when (raw?.lowercase()) {
+            "off", "shadow", "draft", "place" -> raw.lowercase()
+            else -> if (globalEnabled == true) "draft" else "off"
         }
     }
 

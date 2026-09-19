@@ -27,6 +27,7 @@ apps/ai-worker/*-ai-worker
 
 # === Android ===
 **/build/
+**/.gradle/
 *.apk
 *.aab
 local.properties

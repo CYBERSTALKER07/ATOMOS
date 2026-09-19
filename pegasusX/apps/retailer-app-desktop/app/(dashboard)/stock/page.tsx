@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
@@ -30,6 +31,7 @@ type Location = {
 };
 
 export default function StockPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<Balance[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState("");
@@ -82,7 +84,7 @@ export default function StockPage() {
       const json = (await res.json()) as { items?: Balance[] };
       setItems(json.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load stock");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_stock"));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export default function StockPage() {
       setOrderId("");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Receive failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.receive_failed"));
     } finally {
       setBusy(false);
     }
@@ -156,7 +158,7 @@ export default function StockPage() {
       setBanner("Stock adjusted");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Adjust failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.adjust_failed"));
     } finally {
       setBusy(false);
     }
@@ -190,7 +192,7 @@ export default function StockPage() {
       setBanner("Transferred BACKROOM → FLOOR");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Transfer failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.transfer_failed"));
     } finally {
       setBusy(false);
     }
@@ -222,7 +224,7 @@ export default function StockPage() {
       setBanner("Cycle count committed");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Count failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.count_failed"));
     } finally {
       setBusy(false);
     }
@@ -230,8 +232,8 @@ export default function StockPage() {
 
   return (
     <PageChrome
-      title="Store stock"
-      description="Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count."
+      title={t("portal.nav.store_stock")}
+      description={t("retailer_desktop.residual.text.backroom_floor_inventory_separate_from_supplier_warehouse_atp_re")}
     >
       <div className="mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-2">
         {banner && (
@@ -295,7 +297,7 @@ export default function StockPage() {
             </h3>
             <input
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Order ID (COMPLETED / ARRIVED)"
+              placeholder={t("retailer_desktop.stock.text.order_id_completed_arrived")}
               value={orderId}
               onChange={(e) => setOrderId(e.target.value)}
             />
@@ -321,7 +323,7 @@ export default function StockPage() {
             />
             <input
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Qty"
+              placeholder={t("retailer_desktop.pos.text.qty")}
               value={xferQty}
               onChange={(e) => setXferQty(e.target.value)}
             />
@@ -336,7 +338,7 @@ export default function StockPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <h3 className="font-semibold">Adjust</h3>
+            <h3 className="font-semibold">{t("retailer_desktop.stock.text.adjust")}</h3>
             <input
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
@@ -345,7 +347,7 @@ export default function StockPage() {
             />
             <input
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Qty delta (+/-)"
+              placeholder={t("retailer_desktop.stock.text.qty_delta")}
               value={adjustDelta}
               onChange={(e) => setAdjustDelta(e.target.value)}
             />
@@ -380,7 +382,7 @@ export default function StockPage() {
             />
             <input
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Counted qty"
+              placeholder={t("retailer_desktop.stock.text.counted_qty")}
               value={countQty}
               onChange={(e) => setCountQty(e.target.value)}
             />
@@ -422,11 +424,11 @@ export default function StockPage() {
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="py-2 pr-3">SKU</th>
-                  <th className="py-2 pr-3">Bin</th>
-                  <th className="py-2 pr-3">On hand</th>
-                  <th className="py-2 pr-3">Reserved</th>
-                  <th className="py-2 pr-3">Available</th>
-                  <th className="py-2">Actions</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.bin")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.on_hand")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.reserved")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.available")}</th>
+                  <th className="py-2">{t("retailer_desktop.stock.text.actions")}</th>
                 </tr>
               </thead>
               <tbody>

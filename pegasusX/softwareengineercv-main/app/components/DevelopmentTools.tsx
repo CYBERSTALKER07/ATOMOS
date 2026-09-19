@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
+import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
 import {
@@ -39,8 +39,7 @@ import {
 } from 'react-icons/si';
 import { VscCode } from 'react-icons/vsc';
 import { FaAws } from 'react-icons/fa6';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useLanguage } from '../context/LanguageContext';
 
 const SPOTLIGHT_RADIUS = 140;
 const MONO_FILTER = 'grayscale(1) brightness(1.85)';
@@ -124,6 +123,8 @@ function revealLogo(el: HTMLElement) {
 }
 
 export default function DevelopmentTools() {
+  const { t } = useLanguage();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
   const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '0px' });
   const titleRef = useRef<HTMLDivElement>(null);
   const stackRef = useRef<HTMLDivElement>(null);
@@ -138,6 +139,11 @@ export default function DevelopmentTools() {
   useEffect(() => {
     if (!sectionRef.current) return;
 
+    if (isMobile || isLowEnd || prefersReducedMotion) {
+      gsap.set([titleRef.current, rowsRef.current], { opacity: 1, y: 0 });
+      return;
+    }
+
     const ctx = gsap.context(() => {
       const timeline = gsap.timeline({
         scrollTrigger: {
@@ -145,20 +151,21 @@ export default function DevelopmentTools() {
           start: 'top 80%',
           end: 'bottom 20%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         },
       });
 
-      timeline.fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8 });
+      timeline.fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' });
       timeline.fromTo(
         rowsRef.current,
         { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 0.7 },
+        { opacity: 1, y: 0, duration: 0.7, ease: 'pegasus' },
         '-=0.45'
       );
     }, sectionRef);
 
     return () => ctx.revert();
-  }, [sectionRef]);
+  }, [sectionRef, isMobile, isLowEnd, prefersReducedMotion]);
 
   useEffect(() => {
     const stack = stackRef.current;
@@ -201,6 +208,7 @@ export default function DevelopmentTools() {
 
   const handlePointerMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (isLowEnd) return;
       pointerRef.current = { x: event.clientX, y: event.clientY, active: true };
 
       if (rafRef.current !== null) return;
@@ -209,29 +217,33 @@ export default function DevelopmentTools() {
         applySpotlight();
       });
     },
-    [applySpotlight]
+    [applySpotlight, isLowEnd]
   );
 
   const handlePointerLeave = useCallback(() => {
+    if (isLowEnd) return;
     pointerRef.current.active = false;
     applySpotlight();
-  }, [applySpotlight]);
+  }, [applySpotlight, isLowEnd]);
 
   return (
     <PageSection ref={sectionRef} id="tools">
       <div ref={titleRef}>
         <SectionHeader
           align="center"
-          eyebrow="Under the hood"
-          title="Built to run at network scale"
-          description="Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages."
+          eyebrow={t('tools_eyebrow', 'Under the hood')}
+          title={t('tools_title', 'Built to run at network scale')}
+          description={t(
+            'tools_desc',
+            'Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages.'
+          )}
         />
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/technology" className="editorial-btn">
-            VIEW TECHNOLOGY
+            {t('tools_cta_tech', 'VIEW TECHNOLOGY')}
           </Link>
           <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
-            OPEN SOURCE STACK →
+            {t('tools_cta_oss', 'OPEN SOURCE STACK →')}
           </Link>
         </div>
       </div>
@@ -256,7 +268,7 @@ export default function DevelopmentTools() {
                 fadeOut
                 fadeOutColor="#000000"
                 active={isInView}
-                ariaLabel="Platform stack technologies"
+                ariaLabel={t('tools_aria_stack', 'Platform stack technologies')}
               />
             </div>
           ))}

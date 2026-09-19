@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import type { SupplierProfile } from '@pegasusx/types';
 
@@ -6,6 +9,8 @@ export type ProfileDraft = {
   contact_name: string;
   email: string;
   phone: string;
+  gln: string;
+  gs1_company_prefix: string;
 };
 
 export function draftFromProfile(profile: SupplierProfile): ProfileDraft {
@@ -14,6 +19,8 @@ export function draftFromProfile(profile: SupplierProfile): ProfileDraft {
     contact_name: profile.contact_name ?? "",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
+    gln: profile.gln ?? "",
+    gs1_company_prefix: profile.gs1_company_prefix ?? "",
   };
 }
 
@@ -60,30 +67,43 @@ export function ContactDetailsForm({
   onSave,
   onReset,
 }: ContactDetailsFormProps) {
+  const t = usePortalT();
   return (
     <div className="md-card p-6 space-y-4">
-      <h2 className="md-typescale-title-medium font-semibold">Edit contact details</h2>
+      <h2 className="md-typescale-title-medium font-semibold">{t("supplier_portal.profile.contact_details_form.text.edit_contact_details")}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <EditableField
-          label="Legal name"
+          label={t("supplier_portal.residual.text.legal_name")}
           value={draft.legal_name}
           onChange={(value) => setDraft((prev) => (prev ? { ...prev, legal_name: value } : prev))}
         />
         <EditableField
-          label="Contact name"
+          label={t("supplier_portal.residual.text.contact_name")}
           value={draft.contact_name}
           onChange={(value) => setDraft((prev) => (prev ? { ...prev, contact_name: value } : prev))}
         />
         <EditableField
-          label="Email"
+          label={t("supplier_portal.auth.login.email_label")}
           value={draft.email}
           type="email"
           onChange={(value) => setDraft((prev) => (prev ? { ...prev, email: value } : prev))}
         />
         <EditableField
-          label="Phone"
+          label={t("common.field.phone")}
           value={draft.phone}
           onChange={(value) => setDraft((prev) => (prev ? { ...prev, phone: value } : prev))}
+        />
+        <EditableField
+          label={t("supplier_portal.residual.text.gln_13_digits")}
+          value={draft.gln}
+          onChange={(value) => setDraft((prev) => (prev ? { ...prev, gln: value } : prev))}
+        />
+        <EditableField
+          label={t("supplier_portal.residual.text.gs1_company_prefix_7_10_digits")}
+          value={draft.gs1_company_prefix}
+          onChange={(value) =>
+            setDraft((prev) => (prev ? { ...prev, gs1_company_prefix: value } : prev))
+          }
         />
       </div>
 

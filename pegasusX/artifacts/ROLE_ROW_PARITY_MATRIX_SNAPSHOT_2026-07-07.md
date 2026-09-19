@@ -1,5 +1,10 @@
 # pegasusX Role-Row Parity Matrix
 
+
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`../docs/DOCS_SOURCE_OF_TRUTH.md`](../docs/DOCS_SOURCE_OF_TRUTH.md) · [`../docs/PROD_READINESS_SEQUENCE.md`](../docs/PROD_READINESS_SEQUENCE.md) · [`../context/current_status.md`](../context/current_status.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
 > **Canonical cross-role spec:** [`FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md`](./FULL_SYSTEM_PARITY_AND_ECOSYSTEM_MASTER_PLAN.md) — use this matrix for screen-level parity; use the master plan for end-to-end flows, comms, and verification gates.
 
 Last updated: 2026-07-07 (PX-ECS doc alignment; full mobile API wiring). Canonical reference: `pegasus/`. Delivery tree: `pegasusX/`.

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.operations
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -16,13 +18,14 @@ import com.pegasusx.supplier.data.model.SUPPLIER_BROADCAST_TEMPLATES
 import com.pegasusx.supplier.data.model.SupplierBroadcastRequest
 import com.pegasusx.supplier.data.model.SupplierEmpathyAdoption
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierMetricTile
 import com.pegasusx.supplier.ui.components.SupplierSectionTitle
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.data.remote.TokenHolder
 import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 private val broadcastRoles = listOf("ALL", "DRIVER", "RETAILER", "PAYLOAD")
 
@@ -148,7 +151,7 @@ fun OperationsScreen(
         AlertDialog(
             onDismissRequest = { if (!bypassing) showBypassConfirm = false },
             title = { Text("Issue payment bypass?") },
-            text = { Text("Order $orderId must be AWAITING_PAYMENT. Driver receives a one-time bypass token.") },
+            text = { Text(stringResource(R.string.mobile_supplier_ui_order_orderid_must_be_awaiting_payment_driver_receives_a_one_time_bypass, orderId)) },
             confirmButton = {
                 TextButton(onClick = { issueBypass() }, enabled = !bypassing) { Text("Issue") }
             },
@@ -164,7 +167,7 @@ fun OperationsScreen(
                 title = { Text("Operations") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )

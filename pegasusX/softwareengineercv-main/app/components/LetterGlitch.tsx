@@ -166,6 +166,11 @@ export default function LetterGlitch({
   };
 
   const animate = () => {
+    if (!isVisibleRef.current) {
+      animationRef.current = 0;
+      return;
+    }
+
     const now = Date.now();
     if (now - lastGlitchTime.current >= glitchSpeed) {
       updateLetters();
@@ -180,12 +185,30 @@ export default function LetterGlitch({
     animationRef.current = requestAnimationFrame(animate);
   };
 
+  const isVisibleRef = useRef(true);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     context.current = canvas.getContext('2d');
     resizeCanvas();
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const wasVisible = isVisibleRef.current;
+        isVisibleRef.current = !!entry?.isIntersecting;
+        if (isVisibleRef.current && !wasVisible && !animationRef.current) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+      },
+      { rootMargin: '80px' }
+    );
+
+    if (canvas.parentElement) {
+      io.observe(canvas.parentElement);
+    }
+
     animate();
 
     let resizeTimeout: ReturnType<typeof setTimeout>;
@@ -202,6 +225,7 @@ export default function LetterGlitch({
     window.addEventListener('resize', handleResize);
 
     return () => {
+      io.disconnect();
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       window.removeEventListener('resize', handleResize);
     };

@@ -1,7 +1,9 @@
 'use client';
+import { usePolling } from '@pegasusx/api-react';
 
+
+import { usePortalT } from "@/lib/i18n";
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { usePolling } from '@pegasusx/api-client';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
 import type { StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
@@ -33,6 +35,7 @@ function formatSyncTime(value: number | null) {
 
 
 export default function ManifestExceptionsPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [exceptions, setExceptions] = useState<ManifestException[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,7 +116,7 @@ export default function ManifestExceptionsPage() {
       onMessage: (raw) => {
         const event = parseFactoryLiveEvent(raw);
         if (!event?.type) return;
-        if (event.type === 'FACTORY_MANIFEST_UPDATE' || event.type === 'FACTORY_TRANSFER_UPDATE') {
+        if (event.type.startsWith('TRANSFER_') || event.type.startsWith('MANIFEST_') || event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           void fetchExceptions({ background: true, silent: true });
         }
       },
@@ -173,8 +176,8 @@ export default function ManifestExceptionsPage() {
     <PageTransition>
       <PageChrome
         icon="insights"
-        title="Gate exceptions"
-        description="Transfers removed from manifests during loading — overflow, damage, or manual pull."
+        title={t("factory_portal.manifest_exceptions.text.gate_exceptions")}
+        description={t("factory_portal.residual.text.transfers_removed_from_manifests_during_loading_overflow_damage_")}
         loading={loading}
         skeletonVariant="table"
         error={showFatalError ? error : null}
@@ -194,10 +197,10 @@ export default function ManifestExceptionsPage() {
 
         <div className="mt-4">
         <KpiStatGrid columns={4}>
-          <KpiStatCard label="Open exceptions" value={exceptions.length} sub={escalatedOnly ? 'Escalated filter on' : 'All reasons'} />
-          <KpiStatCard label="DLQ threshold" value={dlqCount} sub="3+ overflow attempts" />
-          <KpiStatCard label="Escalated" value={escalatedCount} sub="Requires operator review" />
-          <KpiStatCard label="Last sync" value={formatSyncTime(lastSyncedAt)} sub={isOffline ? 'Offline' : 'Live inbox'} />
+          <KpiStatCard label={t("supplier_portal.live_ops_map.text.open_exceptions")} value={exceptions.length} sub={escalatedOnly ? 'Escalated filter on' : 'All reasons'} />
+          <KpiStatCard label={t("factory_portal.residual.text.dlq_threshold")} value={dlqCount} sub="3+ overflow attempts" />
+          <KpiStatCard label={t("factory_portal.residual.text.escalated")} value={escalatedCount} sub="Requires operator review" />
+          <KpiStatCard label={t("factory_portal.residual.text.last_sync")} value={formatSyncTime(lastSyncedAt)} sub={isOffline ? 'Offline' : 'Live inbox'} />
         </KpiStatGrid>
         </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { CatalogProduct } from "@pegasusx/types";
@@ -20,6 +21,7 @@ function formatPrice(product: CatalogProduct) {
 }
 
 export default function PricingPage() {
+  const t = usePortalT();
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,18 +33,18 @@ export default function PricingPage() {
         const rows = (await res.json()) as CatalogProduct[];
         setProducts(Array.isArray(rows) ? rows : []);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_pricing_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_pricing_failed")))
       .finally(() => setLoading(false));
   }, []);
 
   return (
     <PageChrome
-      title="Pricing"
-      description="Set list and sale pricing per catalog product. Add products in Catalog first."
+      title={t("portal.nav.pricing")}
+      description={t("supplier_portal.residual.text.set_list_and_sale_pricing_per_catalog_product_add_products_in_ca")}
       loading={loading}
       error={error}
       empty={products.length === 0}
-      emptyMessage="No products to price. Create products in Catalog, then return here."
+      emptyMessage={t("supplier_portal.residual.text.no_products_to_price_create_products_in_catalog_then_return_here")}
       actions={
         <Link href="/catalog" className="md-btn md-btn-tonal md-typescale-label-large px-4 py-2 inline-flex">
           Open catalog

@@ -86,8 +86,31 @@ func AggregateDemandConfidence(ctx context.Context, client *spanner.Client, supp
 		return FallbackDemandConfidence(q.FallbackQty, q.SourceHint, q.PredictionCount), nil
 	}
 	src := NormalizeBaselineSource(baselineSource.StringVal, q.SourceHint)
-	if confidencePct <= 0 {
-		confidencePct = defaultConfidencePct(src, q.PredictionCount)
+	// §8.4: prefer measured WAPE28 → empirical ConfidencePct; no magic {65,72,75}.
+	wh := ""
+	if q.Granularity == "regional" {
+		wh = strings.TrimSpace(q.WarehouseID)
+	}
+	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, wh, day); werr == nil && ok {
+		if pct, have := ConfidencePctFromWape(wape, sample); have {
+			confidencePct = pct
+		} else if confidencePct <= 0 {
+			return ForecastConfidence{
+				LowUnits:       low,
+				HighUnits:      high,
+				BaselineSource: src,
+				BlockedReason:  "insufficient_history",
+				Label:          "insufficient_history",
+			}, nil
+		}
+	} else if confidencePct <= 0 {
+		return ForecastConfidence{
+			LowUnits:       low,
+			HighUnits:      high,
+			BaselineSource: src,
+			BlockedReason:  "insufficient_history",
+			Label:          "insufficient_history",
+		}, nil
 	}
 	if low <= 0 || high <= 0 {
 		spread := int64(math.Max(1, math.Round(float64(mid)*0.1)))
@@ -218,6 +241,16 @@ func ProductForecastBreakdown(ctx context.Context, client *spanner.Client, suppl
 		out["confidence_pct"] = confidencePct.Int64
 	} else if confidence > 0 {
 		out["confidence_pct"] = int64(math.Round(confidence * 100))
+	}
+	if wape, sample, ok, werr := LoadLatestSeriesWape28(ctx, client, supplierID, warehouseID, day); werr == nil && ok {
+		if pct, have := ConfidencePctFromWape(wape, sample); have {
+			out["confidence_pct"] = pct
+			delete(out, "blocked_reason")
+			out["label"] = "standard"
+		} else if _, has := out["confidence_pct"]; !has {
+			out["blocked_reason"] = "insufficient_history"
+			out["label"] = "insufficient_history"
+		}
 	}
 	return out
 }

@@ -2,6 +2,7 @@ package com.pegasusx.supplier.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -96,6 +97,7 @@ class OnboardingViewModel @Inject constructor(
                         TokenHolder.token = token
                         TokenHolder.supplierId = body.jsonObject["supplier_id"]?.jsonPrimitive?.content
                         TokenHolder.isConfigured = false
+                        DeviceTokenRegistrar.uploadBestEffort(api)
                     }
                     onSuccess()
                 } else {

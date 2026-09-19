@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { usePortalT } from "@/lib/i18n";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, Camera, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "../lib/auth";
-import { retailerShopClosedResponseKey } from "@pegasusx/api-client";
+import { uploadClaimPhoto } from "../lib/api";
+import { retailerShopClosedResponseKey } from "@pegasusx/api-core";
 import { useWebSocket, useWsEvent, type WsMessage } from "../lib/ws";
 
 type ShopClosedAlert = {
@@ -66,90 +68,143 @@ function messageToAlert(msg: WsMessage): ShopClosedAlert | null {
   };
 }
 
+function formatShopClosedError(raw: string): string {
+  if (raw.includes("photo_url_required_for_bypass")) {
+    return "Doorway / drop-off photo is required to authorize bypass.";
+  }
+  return raw || "Could not submit shop status";
+}
+
 export default function ShopClosedModal() {
+  const t = usePortalT();
   const { reconnectEpoch } = useWebSocket();
   const [alert, setAlert] = useState<ShopClosedAlert | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bypassPending, setBypassPending] = useState(false);
+  const [bypassPhotoUrl, setBypassPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (reconnectEpoch > 0 && submitting) {
       setSubmitting(false);
-      setError("Connection restored — verify response before retrying.");
+      setError(t("retailer_desktop.residual.text.connection_restored_verify_response_before_retrying"));
     }
   }, [reconnectEpoch, submitting]);
 
-  const openAlert = useCallback((msg: WsMessage) => {
-    const next = messageToAlert(msg);
-    if (next) {
-      setAlert(next);
-      setError(null);
-    }
+  const resetBypass = useCallback(() => {
+    setBypassPending(false);
+    setBypassPhotoUrl(null);
+    setUploading(false);
   }, []);
+
+  const openAlert = useCallback(
+    (msg: WsMessage) => {
+      const next = messageToAlert(msg);
+      if (next) {
+        setAlert(next);
+        setError(null);
+        resetBypass();
+      }
+    },
+    [resetBypass],
+  );
 
   useWsEvent("SHOP_CLOSED", openAlert);
   useWsEvent("SHOP_CLOSED_ALERT", openAlert);
 
   useWsEvent(
     "SHOP_CLOSED_RESOLVED",
-    useCallback(
-      (msg: WsMessage) => {
-        const orderId = typeof msg.order_id === "string" ? msg.order_id : "";
-        setAlert((current) => {
-          if (!current) return current;
-          if (!orderId || orderId === current.order_id) return null;
-          return current;
-        });
-      },
-      [],
-    ),
+    useCallback((msg: WsMessage) => {
+      const orderId = typeof msg.order_id === "string" ? msg.order_id : "";
+      setAlert((current) => {
+        if (!current) return current;
+        if (!orderId || orderId === current.order_id) return null;
+        return current;
+      });
+      resetBypass();
+    }, [resetBypass]),
   );
 
   useWsEvent(
     "SHOP_CLOSED_RESPONSE",
-    useCallback(
-      (msg: WsMessage) => {
-        const orderId = typeof msg.order_id === "string" ? msg.order_id : "";
-        setAlert((current) => {
-          if (!current) return current;
-          if (!orderId || orderId === current.order_id) return null;
-          return current;
-        });
-      },
-      [],
-    ),
+    useCallback((msg: WsMessage) => {
+      const orderId = typeof msg.order_id === "string" ? msg.order_id : "";
+      setAlert((current) => {
+        if (!current) return current;
+        if (!orderId || orderId === current.order_id) return null;
+        return current;
+      });
+      resetBypass();
+    }, [resetBypass]),
   );
 
   const respond = useCallback(
-    async (option: string) => {
+    async (option: string, photoUrl?: string) => {
       if (!alert || submitting) return;
+      if (option === "AUTHORIZE_BYPASS" && !photoUrl?.trim()) {
+        setBypassPending(true);
+        setError(t("retailer_desktop.residual.text.doorway_drop_off_photo_is_required_to_authorize_bypass"));
+        return;
+      }
       setSubmitting(true);
       setError(null);
       try {
+        const body: Record<string, string> = {
+          order_id: alert.order_id,
+          response: option,
+        };
+        if (photoUrl?.trim()) {
+          body.photo_url = photoUrl.trim();
+        }
         const res = await apiFetch("/v1/retailer/shop-closed-response", {
           method: "POST",
           headers: {
-            "Idempotency-Key": retailerShopClosedResponseKey(alert.order_id, option),
+            "Idempotency-Key": retailerShopClosedResponseKey(
+              alert.order_id,
+              option,
+            ),
           },
-          body: JSON.stringify({
-            order_id: alert.order_id,
-            response: option,
-          }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
           const text = await res.text();
-          throw new Error(text || "Could not submit shop status");
+          throw new Error(formatShopClosedError(text));
         }
         setAlert(null);
+        resetBypass();
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Could not submit shop status",
+          err instanceof Error
+            ? formatShopClosedError(err.message)
+            : "Could not submit shop status",
         );
       } finally {
         setSubmitting(false);
       }
     },
-    [alert, submitting],
+    [alert, submitting, resetBypass],
+  );
+
+  const onBypassFile = useCallback(
+    async (file: File | null) => {
+      if (!file || !alert) return;
+      setUploading(true);
+      setError(null);
+      try {
+        const url = await uploadClaimPhoto(file, alert.order_id);
+        setBypassPhotoUrl(url);
+      } catch (err) {
+        setBypassPhotoUrl(null);
+        setError(
+          err instanceof Error ? err.message : t("retailer_desktop.residual.text.photo_upload_failed"),
+        );
+      } finally {
+        setUploading(false);
+      }
+    },
+    [alert],
   );
 
   return (
@@ -181,13 +236,67 @@ export default function ShopClosedModal() {
             {error && (
               <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>
             )}
+            {bypassPending && (
+              <div className="mt-4 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-bg)] p-3">
+                <p className="text-sm text-[var(--desk-text-secondary)]">
+                  Doorway / drop-off proof is required for authorize bypass.
+                </p>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    void onBypassFile(e.target.files?.[0] ?? null);
+                    e.target.value = "";
+                  }}
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={uploading || submitting}
+                    onClick={() => fileRef.current?.click()}
+                    className="portal-btn portal-btn--secondary inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm"
+                  >
+                    <Camera size={16} />
+                    {uploading ? "Uploading…" : bypassPhotoUrl ? "Replace photo" : "Take or choose photo"}
+                  </button>
+                  {bypassPhotoUrl && (
+                    <button
+                      type="button"
+                      disabled={submitting || uploading}
+                      onClick={() => void respond("AUTHORIZE_BYPASS", bypassPhotoUrl)}
+                      className="portal-btn portal-btn--primary h-10 rounded-xl px-3 text-sm"
+                    >
+                      Confirm bypass
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={resetBypass}
+                    className="text-sm text-[var(--desk-text-secondary)] underline"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="mt-5 flex flex-col gap-2">
               {alert.options.map((option) => (
                 <button
                   key={option}
                   type="button"
-                  disabled={submitting}
-                  onClick={() => void respond(option)}
+                  disabled={submitting || uploading}
+                  onClick={() => {
+                    if (option === "AUTHORIZE_BYPASS") {
+                      setBypassPending(true);
+                      setError(null);
+                      return;
+                    }
+                    void respond(option);
+                  }}
                   className="portal-btn portal-btn--primary h-11 rounded-xl font-light disabled:opacity-60"
                 >
                   {submitting ? (

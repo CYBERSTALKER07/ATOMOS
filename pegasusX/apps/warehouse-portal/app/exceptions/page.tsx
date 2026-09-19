@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/auth';
@@ -17,6 +18,7 @@ type ExceptionRow = {
 };
 
 export default function ExceptionsPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<ExceptionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +33,10 @@ export default function ExceptionsPage() {
   }, []);
 
   return (
-    <PageChrome title="Exception triage" description="Manifest, order, and lock exceptions in one queue." loading={loading}>
+    <PageChrome title={t("warehouse_portal.exceptions.text.exception_triage")} description={t("warehouse_portal.residual.text.manifest_order_and_lock_exceptions_in_one_queue")} loading={loading}>
       <div className="grid gap-3">
         {rows.length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">No open exceptions.</p>
+          <p className="text-sm text-[var(--muted)]">{t("warehouse_portal.exceptions.text.no_open_exceptions")}</p>
         ) : (
           rows.map((row, index) => (
             <div key={row.exception_id ?? `${row.kind}-${index}`} className="border border-[var(--border)] rounded-xl p-4">

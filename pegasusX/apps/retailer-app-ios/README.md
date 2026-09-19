@@ -19,7 +19,7 @@ Demo login: `+998901000077` / `1234`
 
 ```bash
 cd pegasusX/apps/retailer-app-ios/retailerapp
-xcodebuild -scheme reatilerapp build
+xcodebuild -scheme retailerapp build
 ```
 
 WebSocket path: `/v1/ws`
@@ -38,7 +38,7 @@ See `Layout/RetailerSection.swift` for the full enum. Summary:
 | Procurement | Sidebar sheet | `/procurement` |
 | Insights | Sidebar sheet | `/insights` |
 | Suppliers | Suppliers tab | catalog |
-| Auto-order | Sidebar sheet | `/settings` |
+| Auto-order | Sidebar sheet | `/auto-order` (soak readiness strip; evidence download on desktop/script) |
 | Future demand | Sidebar sheet | dashboard |
 | Notifications | Inbox sheet | `/notifications` |
 | Settings | Profile tab | `/settings` |
@@ -46,3 +46,5 @@ See `Layout/RetailerSection.swift` for the full enum. Summary:
 Post-login gate: when JWT `is_configured=false`, `SetupView` runs before `ContentView`.
 
 Pending checkout replay: `PendingOrderReplayer` on WS reconnect in `ContentView`.
+
+Reports Pro: summary + **Export sales CSV** share sheet (`/v1/retailer/reports/export`). Dashboard **network pulse** strip uses `/v1/retailer/pulse` (Control Tower uses `/v1/retailer/control-tower/pulse`).

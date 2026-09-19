@@ -8,7 +8,7 @@ struct RegisterView: View {
     var body: some View {
         Form {
             Section {
-                Text("Step \(vm.step.rawValue + 1) of \(RegisterStep.allCases.count) — \(vm.step.title)")
+                Text(L10n.format("mobile_supplier.ui.step_rawvalue_1_of_count_title", "\(vm.step.rawValue + 1)", "\(RegisterStep.allCases.count)", "\(vm.step.title)"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -26,11 +26,11 @@ struct RegisterView: View {
                 Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
             }
         }
-        .navigationTitle("Register supplier")
+        .navigationTitle("mobile_supplier.ui.register_supplier")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("common.action.cancel") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
                 if vm.step == .profile {
@@ -39,7 +39,7 @@ struct RegisterView: View {
                     }
                     .disabled(vm.loading)
                 } else {
-                    Button("Continue") {
+                    Button("supplier_portal.bulk_import_wizard.text.continue") {
                         _ = vm.advanceStep()
                     }
                     .disabled(vm.loading)
@@ -47,7 +47,7 @@ struct RegisterView: View {
             }
             if vm.step != .identity {
                 ToolbarItem(placement: .bottomBar) {
-                    Button("Back") { vm.retreatStep() }
+                    Button("common.action.back") { vm.retreatStep() }
                 }
             }
         }
@@ -65,7 +65,7 @@ struct RegisterView: View {
             Section("Phone") {
                 HStack {
                     Text(vm.dialCode).foregroundStyle(.secondary)
-                    TextField("Phone number", text: $vm.phoneLocal)
+                    TextField("mobile_supplier.ui.phone_number", text: $vm.phoneLocal)
                         .keyboardType(.phonePad)
                 }
             }
@@ -74,9 +74,9 @@ struct RegisterView: View {
 
     private var verificationStep: some View {
         Section("Verification code") {
-            TextField("6-digit code", text: $vm.otpCode)
+            TextField("mobile_supplier.ui.6_digit_code", text: $vm.otpCode)
                 .keyboardType(.numberPad)
-            Text("Enter the verification code sent to \(vm.fullPhone).")
+            Text(L10n.format("mobile_supplier.ui.enter_the_verification_code_sent_to_fullphone", "\(vm.fullPhone)"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -85,9 +85,9 @@ struct RegisterView: View {
     private var profileStep: some View {
         Group {
             Section("Business") {
-                TextField("Legal name", text: $vm.legalName)
-                TextField("Contact name", text: $vm.contactName)
-                TextField("Email", text: $vm.email)
+                TextField("supplier_portal.residual.text.legal_name", text: $vm.legalName)
+                TextField("supplier_portal.residual.text.contact_name", text: $vm.contactName)
+                TextField("supplier_portal.auth.login.email_label", text: $vm.email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
                     .textInputAutocapitalization(.never)

@@ -18,23 +18,23 @@ struct CreateDriverSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("common.field.phone", text: $phone)
                 SecureField("PIN", text: $pin)
                 Picker("Node type", selection: $nodeType) {
-                    Text("Warehouse").tag("WAREHOUSE")
-                    Text("Factory").tag("FACTORY")
+                    Text("factory_portal.insights.text.warehouse").tag("WAREHOUSE")
+                    Text("factory_portal.setup.factory.text.factory").tag("FACTORY")
                 }
                 .onChange(of: nodeType) { _, _ in nodeId = ""; vehicleId = "" }
                 Picker("Home node", selection: $nodeId) {
-                    Text("Select node").tag("")
+                    Text("supplier_portal.org_fleet.components.org_member_form.text.select_node").tag("")
                     ForEach(nodeOptions, id: \.0) { id, label in
                         Text(label).tag(id)
                     }
                 }
                 if !filteredVehicles.isEmpty {
                     Picker("Vehicle", selection: $vehicleId) {
-                        Text("Assign later").tag("")
+                        Text("mobile_supplier.ui.assign_later").tag("")
                         ForEach(filteredVehicles) { vehicle in
                             Text(vehicle.licensePlate).tag(vehicle.vehicleId)
                         }
@@ -42,9 +42,9 @@ struct CreateDriverSheet: View {
                 }
                 if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("Create driver")
+            .navigationTitle("mobile_supplier.ui.create_driver")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Create") { Task { await create() } }
                         .disabled(busy || name.isEmpty || phone.isEmpty || pin.isEmpty || nodeId.isEmpty)

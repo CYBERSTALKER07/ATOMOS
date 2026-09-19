@@ -27,7 +27,7 @@ struct ManifestHeader: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("Loading Mode")
+                    Text("mobile_driver.ui.loading_mode")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(loadingMode ? LabTheme.fg : LabTheme.fgTertiary)
                         .tracking(0.8)

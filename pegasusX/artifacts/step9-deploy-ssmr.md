@@ -4,6 +4,8 @@
 **Namespace:** `pegasusx-ssmr`  
 **Date:** 2026-07-26
 
+> **Still true for optimizer:** SSMR does not run `optimizer-core`; dispatch soft-fails to heuristic. Current SoT: [`docs/OPTIMIZER_AND_ROUTING_RUNTIME.md`](../docs/OPTIMIZER_AND_ROUTING_RUNTIME.md). Geometry is Google Routes → OSRM → dense (not OSRM-only).
+
 ## Workloads (all Ready 1/1)
 
 | Deployment | Image | Notes |

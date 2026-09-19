@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState, useCallback } from "react";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import {
@@ -30,13 +31,14 @@ import { apiFetch } from "../../../lib/auth";
 import {
   retailerSupplierAddKey,
   retailerSupplierRemoveKey,
-} from "@pegasusx/api-client";
+} from "@pegasusx/api-core";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Supplier, RetailerAnalytics } from "../../../lib/types";
 
 type LoadIssue = "restricted" | "offline" | "error";
 
 export default function ProcurementPage() {
+  const t = usePortalT();
   const {
     data: suppliers,
     loading: loadingSuppliers,
@@ -87,35 +89,35 @@ export default function ProcurementPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Procurement access is partially restricted for this account.",
+        message: t("retailer_desktop.residual.text.procurement_access_is_partially_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Offline mode active. Showing latest procurement data.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_latest_procurement_data"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Procurement sync degraded. Auto-retry is active.",
+        message: t("retailer_desktop.residual.text.procurement_sync_degraded_auto_retry_is_active"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Updates may arrive with delay.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_updates_may_arrive_with_delay"),
       };
     }
     if (isRefreshing && !loadingSuppliers) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing procurement feeds...",
+        message: t("retailer_desktop.residual.text.syncing_procurement_feeds"),
       };
     }
     return null;
@@ -124,7 +126,7 @@ export default function ProcurementPage() {
   const suppliersEmptyState = useMemo(() => {
     if (loadIssue === "restricted") {
       return {
-        headline: "Procurement access restricted",
+        headline: t("retailer_desktop.residual.text.procurement_access_restricted"),
         body: "Your account cannot load vendor connections right now.",
         variant: "restricted" as const,
         action: "Retry",
@@ -133,7 +135,7 @@ export default function ProcurementPage() {
     }
     if (loadIssue === "offline") {
       return {
-        headline: "Procurement is offline",
+        headline: t("retailer_desktop.residual.text.procurement_is_offline"),
         body: "Reconnect to refresh vendor and spend feeds.",
         variant: "offline" as const,
         action: "Retry",
@@ -142,7 +144,7 @@ export default function ProcurementPage() {
     }
     if (loadIssue === "error") {
       return {
-        headline: "Vendor feed unavailable",
+        headline: t("retailer_desktop.residual.text.vendor_feed_unavailable"),
         body: "Connected vendor data could not be loaded right now.",
         variant: "error" as const,
         action: "Retry",
@@ -150,7 +152,7 @@ export default function ProcurementPage() {
       };
     }
     return {
-      headline: "No vendors connected",
+      headline: t("retailer_desktop.residual.text.no_vendors_connected"),
       body: undefined,
       variant: "no-data" as const,
       action: "Connect Vendor",
@@ -265,8 +267,8 @@ export default function ProcurementPage() {
     >
       <PageChrome
         icon="procurement"
-        title="Vendor Operations"
-        description="Lifecycle management for connected supply nodes and trade settlements."
+        title={t("retailer_desktop.procurement.text.vendor_operations")}
+        description={t("retailer_desktop.residual.text.lifecycle_management_for_connected_supply_nodes_and_trade_settle")}
         loading={loadingSuppliers}
         skeletonVariant="table"
         actions={
@@ -593,7 +595,7 @@ export default function ProcurementPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => void searchSuppliers(e.target.value)}
-                    placeholder="Search network nodes..."
+                    placeholder={t("retailer_desktop.procurement.text.search_network_nodes")}
                     className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium"
                     autoFocus
                   />
@@ -609,7 +611,7 @@ export default function ProcurementPage() {
                   ) : searchResults.length === 0 ? (
                     <div className="py-12 text-center opacity-40">
                       <Building2 size={48} className="mx-auto mb-4" />
-                      <p>No available nodes found</p>
+                      <p>{t("retailer_desktop.procurement.text.no_available_nodes_found")}</p>
                     </div>
                   ) : (
                     searchResults.map((s) => (

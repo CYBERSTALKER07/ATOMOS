@@ -1,18 +1,17 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import PageSection from './layout/PageSection';
 import SystemLoadWidget from './SystemLoadWidget';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useLanguage } from '../context/LanguageContext';
+import { usePerfProfile } from '../hooks/useDevice';
 
 const SIDEBAR_NAV = [
   { id: 'supplier', label: 'Supplier Operations', icon: 'M4 19a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M3.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h7.2a2 2 0 0 1 1.9 1.6l1.4 6.2 M2 9h10 M17 17a2 2 0 1 0 4 0a2 2 0 0 0 -4 0 M15.1 17l1.4 -6.2a2 2 0 0 1 1.9 -1.6h1.2' },
   { id: 'warehouse', label: 'Warehouse Control', icon: 'M3 21v-14l8 -4l8 4v14 M8 21v-4a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v4 M8 10h8 M8 13h8' },
   { id: 'retailer', label: 'Retailer Network', icon: 'M3 21l18 0 M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4' },
-  { id: 'fleet', label: 'Fleet Telemetry', icon: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 14l5.5 5.5' },
+  { id: 'fleet', label: 'Fleet Operations', icon: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M12 14l5.5 5.5' },
 ];
 
 const TAB_DATA = {
@@ -33,13 +32,13 @@ const TAB_DATA = {
   retailer: {
     title: 'Retailer Network Hub',
     subtitle: 'Store delivery statuses and unloading turnaround metrics',
-    card1: { title: 'Delivery Status', subtitle: 'Live fleet telemetry', value: '142', unit: 'Active Routes', percent: 88, stat1: '96%', label1: 'ON-TIME', stat2: '4K', label2: 'STOPS', metric: '96.2%' },
+    card1: { title: 'Delivery Status', subtitle: 'Fleet route tracking', value: '142', unit: 'Active Routes', percent: 88, stat1: '96%', label1: 'ON-TIME', stat2: '4K', label2: 'STOPS', metric: '96.2%' },
     card2: { title: 'Unload SLA', subtitle: 'Turnaround time monitoring', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
     card3: { title: 'Received Volume', subtitle: 'Daily units received', value: '12.5K', stat1: '99%', label1: 'MATCH', stat2: '15', label2: 'DC', metric: '3.4M' },
   },
   fleet: {
-    title: 'Global Fleet Telemetry',
-    subtitle: 'Live vehicle tracking, fuel consumption, and route efficiency',
+    title: 'Global Fleet Network',
+    subtitle: 'Vehicle tracking, fuel consumption, and route efficiency',
     card1: { title: 'Active Vehicles', subtitle: 'Vehicles currently on route', value: '450', unit: 'Trucks', percent: 95, stat1: '1.2K', label1: 'DRIVERS', stat2: '99%', label2: 'UPTIME', metric: '99.9%' },
     card2: { title: 'Fuel Efficiency', subtitle: 'Average MPG performance', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
     card3: { title: 'Total Mileage', subtitle: 'Daily distance covered', value: '85K', stat1: '400', label1: 'ROUTES', stat2: '12', label2: 'ZONES', metric: '2.1M' },
@@ -49,10 +48,62 @@ const TAB_DATA = {
 export default function EcosystemStats() {
   const [activeTab, setActiveTab] = useState<keyof typeof TAB_DATA>('supplier');
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const { t, language } = useLanguage();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
 
   const data = TAB_DATA[activeTab];
+  const tabDataRu: typeof TAB_DATA | null = language === 'ru' ? {
+    supplier: {
+      title: 'Центр операций поставщика',
+      subtitle: 'Видимость исходящего исполнения и диспетчеризации в реальном времени',
+      card1: { title: 'Объём заказов', subtitle: 'Активная исходящая обработка', value: '8.2K', unit: 'Заказов в день', percent: 92, stat1: '99%', label1: 'ЗАПОЛНЕНИЕ', stat2: '2M', label2: 'ЕДИНИЦ', metric: '98.7%' },
+      card2: { title: 'SLA диспетчеризации', subtitle: 'Мониторинг выезда вовремя', metric: '99.99%', bars: [45, 75, 35, 90, 55, 100, 40, 65] },
+      card3: { title: 'Здоровье запасов', subtitle: 'Глобальная доступность стока', value: '94%', stat1: '12K', label1: 'SKU', stat2: '45', label2: 'ПЛОЩАДОК', metric: '8.4M' },
+    },
+    warehouse: {
+      title: 'Диспетчерская склада',
+      subtitle: 'Живой мониторинг ворот, рамп и пропускной способности DC',
+      card1: { title: 'Загрузка рамп', subtitle: 'Живая обработка на воротах', value: '14', unit: 'Активных ворот', percent: 75, stat1: '85%', label1: 'ЗАГРУЗКА', stat2: '1.2K', label2: 'ПАЛЛЕТ', metric: '92.4%' },
+      card2: { title: 'Время кросс-дока', subtitle: 'Внутренние SLA транзита', metric: '42m', bars: [60, 50, 80, 40, 70, 90, 50, 85] },
+      card3: { title: 'Пропускная способность', subtitle: 'Часовой обработанный объём', value: '840', stat1: '150', label1: 'ГРУЗОВИКОВ', stat2: '3', label2: 'СМЕНЫ', metric: '1.2M' },
+    },
+    retailer: {
+      title: 'Хаб сети ритейлеров',
+      subtitle: 'Статусы доставки в магазины и метрики разгрузки',
+      card1: { title: 'Статус доставки', subtitle: 'Маршруты автопарка', value: '142', unit: 'Активных маршрутов', percent: 88, stat1: '96%', label1: 'ВОВРЕМЯ', stat2: '4K', label2: 'ОСТАНОВОК', metric: '96.2%' },
+      card2: { title: 'SLA разгрузки', subtitle: 'Мониторинг времени оборота', metric: '18m', bars: [30, 40, 60, 35, 80, 55, 90, 45] },
+      card3: { title: 'Принятый объём', subtitle: 'Единиц принято за день', value: '12.5K', stat1: '99%', label1: 'СОВПАДЕНИЕ', stat2: '15', label2: 'DC', metric: '3.4M' },
+    },
+    fleet: {
+      title: 'Глобальный автопарк',
+      subtitle: 'Отслеживание ТС, расход топлива и эффективность маршрутов',
+      card1: { title: 'Активный транспорт', subtitle: 'ТС сейчас на маршруте', value: '450', unit: 'Грузовиков', percent: 95, stat1: '1.2K', label1: 'ВОДИТЕЛЕЙ', stat2: '99%', label2: 'АПТАЙМ', metric: '99.9%' },
+      card2: { title: 'Топливная эффективность', subtitle: 'Средний расход', metric: '8.4', bars: [50, 60, 55, 80, 65, 95, 75, 85] },
+      card3: { title: 'Общий пробег', subtitle: 'Дневная дистанция', value: '85K', stat1: '400', label1: 'МАРШРУТОВ', stat2: '12', label2: 'ЗОН', metric: '2.1M' },
+    },
+  } as any : null;
+  const localizedData = (tabDataRu?.[activeTab] ?? data);
+
+  const roleTabs = language === 'ru' ? [
+    { id: 'supplier', label: 'Поставщик' },
+    { id: 'warehouse', label: 'Склад' },
+    { id: 'retailer', label: 'Ритейлер' },
+    { id: 'fleet', label: 'Автопарк' },
+  ] : [
+    { id: 'supplier', label: 'Supplier' },
+    { id: 'warehouse', label: 'Warehouse' },
+    { id: 'retailer', label: 'Retailer' },
+    { id: 'fleet', label: 'Fleet' },
+  ];
 
   useEffect(() => {
+    if (!dashboardRef.current) return;
+
+    if (isLowEnd || prefersReducedMotion) {
+      gsap.set('.stat-card', { opacity: 1, y: 0, scale: 1 });
+      return;
+    }
+
     // Advanced staggered entrance animation
     const ctx = gsap.context(() => {
       gsap.timeline({
@@ -60,18 +111,19 @@ export default function EcosystemStats() {
           trigger: dashboardRef.current,
           start: 'top 80%',
           toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         }
       })
       .fromTo('.stat-card',
         { opacity: 0, y: 40, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'back.out(1.2)', clearProps: 'all' }
+        { opacity: 1, y: 0, scale: 1, duration: 0.8, stagger: 0.15, ease: 'pegasus', clearProps: 'all' }
       );
     }, dashboardRef);
     return () => ctx.revert();
-  }, [activeTab]);
+  }, [activeTab, isLowEnd, prefersReducedMotion]);
 
   return (
-    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden !p-0" aria-labelledby="ecosystem-stats-heading">
+    <PageSection bleed={true} className="bg-[#020202] w-full border-t border-white/5 relative overflow-hidden py-16 sm:py-24" aria-labelledby="ecosystem-stats-heading">
 
       {/* Background ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-white/[0.015] blur-[120px] pointer-events-none rounded-full" />
@@ -79,27 +131,77 @@ export default function EcosystemStats() {
       <div className="w-full relative z-10">
 
         {/* Header */}
-        <div className="mb-16 px-4 md:px-8">
-          <div className="flex items-center gap-3 text-white/40 mb-6">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 15l8-8 8 8" />
-            </svg>
-            <span className="text-[10px] tracking-[0.2em] uppercase font-mono">Ecosystem Statistics</span>
-          </div>
-          <h2 id="ecosystem-stats-heading" className="text-5xl md:text-7xl font-medium tracking-tight mb-6 text-white">
-            Optimized for the entire chain
+        <div className="mb-12 max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8">
+          <h2 id="ecosystem-stats-heading" className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight bg-gradient-to-r from-[#A9EBF9] via-[#8DDC96] to-[#FBFF63] bg-clip-text text-transparent inline-block drop-shadow-[0_0_35px_rgba(141,220,150,0.2)]">
+            {t('ecosystem_title', 'Optimized for the entire chain')}
           </h2>
-
         </div>
 
-        {/* Massive Dashboard UI */}
-        <div ref={dashboardRef} className="bg-[#050505] border-none  border-white/10 overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col lg:flex-row min-h-[800px] w-full">
+        {/* Screen Mockup Container with Bottom Opacity Fade */}
+        <div className="max-w-[1380px] mx-auto px-4 sm:px-6 md:px-8 relative">
+          
+          {/* Outer Screen Window Bezel */}
+          <div className="relative rounded-2xl sm:rounded-3xl border border-white/10 bg-black shadow-[0_30px_100px_rgba(0,0,0,0.95)] overflow-hidden max-h-[580px] sm:max-h-[660px] md:max-h-[720px]">
+            
+            {/* Top Screen Window Chrome Bar */}
+            <div className="h-12 border-b border-white/10 bg-black px-4 sm:px-6 flex items-center justify-between z-30 relative select-none">
+              
+              {/* Traffic Light Window Dots */}
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-[#FF5F56]/80 border border-[#E0443E]/50" />
+                <span className="w-3 h-3 rounded-full bg-[#FFBD2E]/80 border border-[#DEA123]/50" />
+                <span className="w-3 h-3 rounded-full bg-[#27C93F]/80 border border-[#1AAB29]/50" />
+              </div>
 
-          {/* Sidebar */}
+              {/* Center Role Switcher Tabs */}
+              <div className="hidden sm:flex items-center gap-1 bg-zinc-950 p-1 rounded-lg border border-white/10">
+                {roleTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-3 py-1 rounded-md text-[11px] font-mono tracking-wider transition-all duration-200 cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'bg-white text-black font-semibold shadow-sm'
+                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
+              {/* Right Window Status */}
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-white/20" />
+                <span className="font-mono text-[10px] text-white/30 tracking-widest hidden sm:inline">SYS.CONSOLE</span>
+              </div>
+            </div>
 
-          {/* Main Content Area */}
-          <div className="flex-1 p-6 md:p-10 dashboard-content flex flex-col bg-[#000000]  relative">
+            {/* Mobile Tab Switcher Row */}
+            <div className="flex sm:hidden overflow-x-auto gap-1 p-2 bg-[#0a0a0e] border-b border-white/5 no-scrollbar">
+              {roleTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-2.5 py-1 rounded text-[10px] font-mono whitespace-nowrap tracking-wider transition-all ${
+                    activeTab === tab.id
+                      ? 'bg-white text-black font-bold'
+                      : 'text-white/50 bg-white/5'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Screen Content Viewport with Opacity Gradient Mask */}
+            <div 
+              ref={dashboardRef}
+              className="relative overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)] [-webkit-mask-image:linear-gradient(to_bottom,black_45%,transparent_96%)]"
+            >
+              <div className="flex-1 p-4 sm:p-6 md:p-10 dashboard-content flex flex-col bg-[#000000] relative">
             {/* Grid Pattern Background */}
             <div className="absolute inset-0 bg-[url('/images/grid-pattern.svg')] opacity-[0.03] pointer-events-none" style={{ backgroundSize: '40px 40px' }} />
 
@@ -118,15 +220,15 @@ export default function EcosystemStats() {
                   </div>
 
                   {/* Secondary large widget */}
-                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 group- group-hover:bg-[#0000000]">
+                  <div className="bg-[#000000] border border-white/5 p-8 rounded shadow-2xl flex flex-col relative h-[380px] md:h-full transition-colors duration-500 hover:border-white/15">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
                         </div>
-                        <span className="text-base font-medium text-white/90">Revenue Impact</span>
+                        <span className="text-base font-medium text-white/90">{t('ecosystem_revenue', 'Revenue Impact')}</span>
                       </div>
-                      <span className="text-xs font-mono text-green-400">+12.4%</span>
+                      <span className="text-xs font-mono text-white">+12.4%</span>
                     </div>
                     <div className="flex-1 flex flex-col justify-end pb-4">
                       <div className="text-5xl font-light text-white mb-8">$2.4M</div>
@@ -141,20 +243,20 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 1: Circle Gauge */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] md:h-full shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card1.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card1.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card1.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card1.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-8">{data.card1.subtitle}</div>
+                <div className="text-sm text-white/40 mb-8">{localizedData.card1.subtitle}</div>
 
                 <div className="flex-1 flex items-center justify-center relative">
-                  <svg width="220" height="220" className="-rotate-90 drop-shadow-xl">
+                  <svg viewBox="0 0 220 220" className="w-full max-w-[160px] sm:max-w-[220px] h-auto -rotate-90 drop-shadow-xl">
                     <circle cx="110" cy="110" r="85" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="20" />
                     {/* ticks */}
                     <g stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
@@ -164,40 +266,40 @@ export default function EcosystemStats() {
                     </g>
                     <circle cx="110" cy="110" r="85" fill="none" stroke="white" strokeWidth="20"
                       strokeDasharray={2 * Math.PI * 85}
-                      strokeDashoffset={(2 * Math.PI * 85) * (1 - data.card1.percent / 100)}
+                      strokeDashoffset={(2 * Math.PI * 85) * (1 - localizedData.card1.percent / 100)}
                       className="transition-all duration-1000 ease-out group-hover:stroke-[#fbff63]"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-4xl font-light tracking-tight text-white">{data.card1.value}</span>
-                    <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">{data.card1.unit}</span>
+                    <span className="text-4xl font-light tracking-tight text-white">{localizedData.card1.value}</span>
+                    <span className="text-[10px] font-mono text-white/40 mt-1 uppercase">{localizedData.card1.unit}</span>
                   </div>
 
                   <div className="absolute left-0 bottom-0 flex flex-col gap-4">
                     <div>
-                      <div className="text-xs text-white/90">{data.card1.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label1}</div>
+                      <div className="text-xs text-white/90">{localizedData.card1.stat1}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label1}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-white/90">{data.card1.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card1.label2}</div>
+                      <div className="text-xs text-white/90">{localizedData.card1.stat2}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card1.label2}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: Bar Chart */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card2.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card2.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card2.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card2.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-10">{data.card2.subtitle}</div>
+                <div className="text-sm text-white/40 mb-10">{localizedData.card2.subtitle}</div>
 
                 <div className="flex-1 flex items-end justify-between relative px-2 pb-6">
                   <div className="absolute top-[35%] left-0 right-0 border-t border-dashed border-white/10" />
@@ -205,7 +307,7 @@ export default function EcosystemStats() {
                     SLA TARGET
                   </div>
 
-                  {data.card2.bars.map((h, i) => (
+                  {localizedData.card2.bars.map((h, i) => (
                     <div key={i} className="flex flex-col items-center gap-1.5 relative z-0 h-[180px] justify-end">
                       {i === 4 ? (
                         <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-[#FF3366] to-[#33CCFF] absolute -top-5 shadow-[0_0_12px_rgba(255,51,102,0.8)] z-10" />
@@ -219,20 +321,20 @@ export default function EcosystemStats() {
               </div>
 
               {/* Card 3: Speedometer */}
-              <div className="bg-[#000000] border border-white/5 p-8 rounded flex flex-col relative h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500   hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:bg-[#0000000]">
+              <div className="bg-[#000000] border border-white/5 p-6 sm:p-8 rounded flex flex-col relative h-[300px] sm:h-[380px] xl:col-span-2 shadow-2xl stat-card group transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(255,255,255,0.05)] hover:border-white/15">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 border border-white/10 flex items-center justify-center text-white/40 bg-white/5 rounded-sm">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12" strokeWidth="1.5" strokeLinecap="square" /></svg>
                     </div>
-                    <span className="text-base font-medium text-white/90">{data.card3.title}</span>
+                    <span className="text-base font-medium text-white/90">{localizedData.card3.title}</span>
                   </div>
-                  <span className="text-xs font-mono text-white/40">{data.card3.metric}</span>
+                  <span className="text-xs font-mono text-white/40">{localizedData.card3.metric}</span>
                 </div>
-                <div className="text-sm text-white/40 mb-8">{data.card3.subtitle}</div>
+                <div className="text-sm text-white/40 mb-8">{localizedData.card3.subtitle}</div>
 
                 <div className="flex-1 flex flex-col items-center justify-end relative pt-4 pb-4">
-                  <svg width="320" height="170" className="overflow-visible drop-shadow-xl absolute top-4">
+                  <svg viewBox="0 0 320 170" className="w-full max-w-[320px] h-auto overflow-visible drop-shadow-xl absolute top-4">
                     <g className="text-white/15" strokeWidth="1.5">
                       {[...Array(35)].map((_, i) => (
                         <line key={i} x1="160" y1="16" x2="160" y2="24" transform={`rotate(${i * 5 - 85} 160 160)`} stroke="currentColor" />
@@ -246,17 +348,17 @@ export default function EcosystemStats() {
                   </svg>
 
                   <div className="absolute top-[80px] flex flex-col items-center pointer-events-none">
-                    <span className="text-6xl font-light tracking-tight text-white">{data.card3.value}</span>
+                    <span className="text-6xl font-light tracking-tight text-white">{localizedData.card3.value}</span>
                   </div>
 
                   <div className="w-full flex justify-between px-12 mt-32 z-10">
                     <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{data.card3.stat1}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label1}</div>
+                      <div className="text-xs text-white/90">{localizedData.card3.stat1}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label1}</div>
                     </div>
                     <div className="text-center bg-[#000000]/80 backdrop-blur-sm px-4 py-2 rounded border border-white/5">
-                      <div className="text-xs text-white/90">{data.card3.stat2}</div>
-                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{data.card3.label2}</div>
+                      <div className="text-xs text-white/90">{localizedData.card3.stat2}</div>
+                      <div className="text-[9px] tracking-wider text-white/40 font-mono mt-0.5 uppercase">{localizedData.card3.label2}</div>
                     </div>
                   </div>
                 </div>
@@ -265,7 +367,13 @@ export default function EcosystemStats() {
             </div>
           </div>
         </div>
+
+        {/* Bottom Fade Gradient Overlay */}
+        <div className="absolute inset-x-0 bottom-0 h-44 sm:h-64 bg-gradient-to-t from-black via-black/90 to-transparent pointer-events-none z-20" />
+
       </div>
-    </PageSection>
+    </div>
+  </div>
+</PageSection>
   );
 }

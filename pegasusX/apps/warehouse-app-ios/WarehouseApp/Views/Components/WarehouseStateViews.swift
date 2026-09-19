@@ -42,11 +42,11 @@ struct WarehouseErrorView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Unable to load", systemImage: "exclamationmark.triangle")
+            Label("warehouse_portal.residual.text.unable_to_load", systemImage: "exclamationmark.triangle")
         } description: {
             Text(message)
         } actions: {
-            Button("Retry", action: retry)
+            Button("common.action.retry", action: retry)
                 .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, minHeight: 200)

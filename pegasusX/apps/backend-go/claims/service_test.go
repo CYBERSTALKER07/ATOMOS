@@ -211,8 +211,8 @@ func TestApproveRejectResolvesStoreStock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(stock.resolves) != 1 || stock.resolves[0] != "RETURN" {
-		t.Fatalf("resolves=%v want RETURN", stock.resolves)
+	if len(stock.resolves) != 1 || stock.resolves[0] != "WASTE" {
+		t.Fatalf("resolves=%v want WASTE", stock.resolves)
 	}
 
 	// Reject path
@@ -716,5 +716,77 @@ func TestFileRetailerClaim_BlocksOverClaimAcrossClaims(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected cumulative over-claim error")
+	}
+}
+
+func TestFileRetailerClaim_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	o := completedOrder(now)
+	o.Currency = ""
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: o},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "ccy1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.FileRetailerClaim(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != nil {
+		t.Fatalf("FileRetailerClaim: %v", err)
+	}
+	if c.Currency != "UZS" {
+		t.Fatalf("currency=%q want UZS from pack", c.Currency)
+	}
+}
+
+func TestFileRetailerClaim_EmptyCurrencyPlannedFailsClosed(t *testing.T) {
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	o := completedOrder(now)
+	o.Currency = ""
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: o},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "ccy2" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	ctx := auth.WithClaims(context.Background(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer, MarketCode: "EU",
+	})
+	_, err := svc.FileRetailerClaim(ctx, auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}, "ord-1", FileClaimRequest{
+		ClaimType: ClaimTypeMissing,
+		LineItems: []ClaimLine{{SKU: "sku-1", Quantity: 1}},
+	})
+	if err != auth.ErrMarketPackNotShipped {
+		t.Fatalf("err=%v want %v", err, auth.ErrMarketPackNotShipped)
+	}
+}
+
+func TestCreateFromDriverException_EmptyCurrencyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 7, 28, 12, 0, 0, 0, time.UTC)
+	o := completedOrder(now)
+	o.Currency = ""
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: o},
+		Now:    func() time.Time { return now },
+		NewID:  func() string { return "drv1" },
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	c, err := svc.CreateFromDriverException(context.Background(), o, "drv-1", ClaimTypeMissing, []ClaimLine{{SKU: "sku-1", Quantity: 1}}, nil, "note")
+	if err != nil {
+		t.Fatalf("CreateFromDriverException: %v", err)
+	}
+	if c.Currency != "UZS" {
+		t.Fatalf("currency=%q want UZS from pack", c.Currency)
 	}
 }

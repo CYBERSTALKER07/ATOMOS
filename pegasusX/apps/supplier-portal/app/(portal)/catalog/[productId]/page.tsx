@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { useParams } from "next/navigation";
@@ -38,6 +39,7 @@ function draftFromProduct(product: CatalogProduct): ProductDraft {
 }
 
 export default function CatalogProductDetailPage() {
+  const t = usePortalT();
   const params = useParams<{ productId: string }>();
   const productId = decodeURIComponent(params.productId);
   const [product, setProduct] = useState<CatalogProduct | null>(null);
@@ -57,7 +59,7 @@ export default function CatalogProductDetailPage() {
       setProduct(row);
       setDraft(draftFromProduct(row));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load product");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_product"));
       setProduct(null);
       setDraft(null);
     } finally {
@@ -137,7 +139,7 @@ export default function CatalogProductDetailPage() {
       setProduct(updated);
       setDraft(draftFromProduct(updated));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save product");
+      setSaveError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_save_product"));
     } finally {
       setSaving(false);
     }
@@ -146,7 +148,7 @@ export default function CatalogProductDetailPage() {
   return (
     <PageChrome
       icon="catalog"
-      title="Product detail"
+      title={t("supplier_portal.catalog._product_id_.text.product_detail")}
       description={productId}
       loading={loading}
       error={error}
@@ -160,25 +162,25 @@ export default function CatalogProductDetailPage() {
       {product && draft ? (
         <div className="space-y-6">
           <div className="md-card p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="Product ID">
+            <Field label={t("supplier_portal.analytics.demand.signals.text.product_id")}>
               <div className="font-mono text-sm mt-1">{product.product_id}</div>
             </Field>
-            <Field label="Category">
+            <Field label={t("supplier_portal.catalog.components.catalog_table.text.category")}>
               <div className="font-mono text-sm mt-1">{product.category_id}</div>
             </Field>
-            <Field label="Name">
+            <Field label={t("supplier_portal.analytics.knowledge_graph.text.name")}>
               <input
                 className="md-input-outlined mt-1 w-full px-3 py-2"
                 value={draft.name}
                 onChange={(event) => setDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
               />
             </Field>
-            <Field label="Barcode">
+            <Field label={t("supplier_portal.catalog.components.catalog_table.text.barcode")}>
               <input
                 className="md-input-outlined mt-1 w-full px-3 py-2 font-mono"
                 value={draft.barcode}
                 onChange={(event) => setDraft((prev) => (prev ? { ...prev, barcode: event.target.value } : prev))}
-                placeholder="EAN / GTIN"
+                placeholder={t("supplier_portal.catalog._product_id_.text.ean_gtin")}
               />
             </Field>
             <Field label={`Price (${product.currency}, minor units)`}>
@@ -193,7 +195,7 @@ export default function CatalogProductDetailPage() {
                 }
               />
             </Field>
-            <Field label="Unit volume (VU)">
+            <Field label={t("supplier_portal.residual.text.unit_volume_vu")}>
               <input
                 type="number"
                 min="0.1"
@@ -205,10 +207,10 @@ export default function CatalogProductDetailPage() {
                 }
               />
             </Field>
-            <Field label="Status">
+            <Field label={t("supplier_portal.compliance.text.status")}>
               <div className="mt-1">{product.is_active ? "Active" : "Inactive"}</div>
             </Field>
-            <Field label="Version">
+            <Field label={t("supplier_portal.residual.text.version")}>
               <div className="mt-1 font-mono text-sm">{product.version}</div>
             </Field>
           </div>

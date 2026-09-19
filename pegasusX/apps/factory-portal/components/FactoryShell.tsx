@@ -7,44 +7,14 @@ import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { apiFetch, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
+import { SessionPackChip } from './SessionPackChip';
 import ClientPolicyBanner from './ClientPolicyBanner';
 import NotificationPanel from './NotificationPanel';
+import LanguageSwitcher from './LanguageSwitcher';
 import { useNotifications } from '@/lib/useNotifications';
+import { usePortalT } from '@/lib/i18n';
+import { ALL_NAV_ITEMS, NAV, navSectionIsActive } from '@/lib/nav';
 import { motion, useReducedMotion } from 'framer-motion';
-
-type NavEntry = { href: string; icon: string; label: string };
-type NavSection = { label?: string; items: NavEntry[] };
-
-const NAV: NavSection[] = [
-  {
-    items: [
-      { href: '/', icon: 'dashboard', label: 'Dashboard' },
-      { href: '/loading-bay', icon: 'loadingBay', label: 'Loading Bay' },
-      { href: '/transfers', icon: 'transfers', label: 'Transfers' },
-    ],
-  },
-  {
-    label: 'Operations',
-    items: [
-      { href: '/fleet', icon: 'fleet', label: 'Fleet' },
-      { href: '/staff', icon: 'staff', label: 'Staff' },
-      { href: '/settings/location', icon: 'loadingBay', label: 'Location' },
-      { href: '/insights', icon: 'insights', label: 'Insights' },
-      { href: '/analytics', icon: 'analytics', label: 'Analytics' },
-    ],
-  },
-  {
-    label: 'Supply Chain',
-    items: [
-      { href: '/supply-requests', icon: 'transfers', label: 'Supply Requests' },
-      { href: '/payload-override', icon: 'loadingBay', label: 'Payload Override' },
-      { href: '/manifests', icon: 'manifests', label: 'Manifests' },
-      { href: '/manifest-exceptions', icon: 'insights', label: 'Gate Exceptions' },
-    ],
-  },
-];
-
-const ALL_NAV_ITEMS = NAV.flatMap((section) => section.items);
 const BARE_ROUTES = ['/auth/', '/setup/'];
 
 function isActiveRoute(pathname: string, href: string): boolean {
@@ -55,10 +25,16 @@ function isActiveRoute(pathname: string, href: string): boolean {
 /* ── Theme Toggle ── */
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
+  const t = usePortalT();
   const iconName: Record<ThemeMode, string> = {
     system: 'autoMode',
     light: 'lightMode',
     dark: 'darkMode',
+  };
+  const labelKey: Record<ThemeMode, string> = {
+    system: 'portal.chrome.theme_system',
+    light: 'portal.chrome.theme_light',
+    dark: 'portal.chrome.theme_dark',
   };
 
   return (
@@ -66,8 +42,8 @@ const ThemeToggle = memo(function ThemeToggle() {
       type="button"
       onClick={cycle}
       className="portal-btn portal-btn--ghost desk-icon-btn"
-      title={`Theme: ${mode}`}
-      aria-label={`Theme: ${mode}`}
+      title={t(labelKey[mode])}
+      aria-label={t(labelKey[mode])}
     >
       <Icon name={iconName[mode]} size={18} />
     </button>
@@ -91,6 +67,7 @@ const DrawerContent = memo(function DrawerContent({
   onLogout: () => void;
 }) {
   const isRail = collapsed && !isMobile;
+  const t = usePortalT();
 
   return (
     <div className="flex flex-col h-full">
@@ -98,7 +75,7 @@ const DrawerContent = memo(function DrawerContent({
         {/* Header */}
         <div className={`flex items-center gap-3 transition-all duration-200 ${isRail ? 'justify-center px-2 pt-4 pb-2' : 'px-4 pt-4 pb-2'}`}>
           {isRail ? (
-            <button onClick={onToggle} aria-label="Open sidebar" className="desk-icon-btn">
+            <button onClick={onToggle} aria-label={t("portal.chrome.open_sidebar")} className="desk-icon-btn">
               <PanelLeft size={20} strokeWidth={1.75} />
             </button>
           ) : (
@@ -109,13 +86,13 @@ const DrawerContent = memo(function DrawerContent({
             >
               <div className="desk-logo-mark">F</div>
               <div className="min-w-0 flex-1">
-                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>Factory workspace</p>
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>{t("portal.chrome.factory_hub")}</p>
                 <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
                   {factoryName}
                 </h1>
               </div>
               {!isMobile && (
-                <button onClick={onToggle} className="desk-icon-btn" style={{ width: 28, height: 28 }} aria-label="Collapse sidebar">
+                <button onClick={onToggle} className="desk-icon-btn" style={{ width: 28, height: 28 }} aria-label={t("portal.chrome.collapse_sidebar")}>
                   <PanelLeftClose size={16} strokeWidth={1.75} />
                 </button>
               )}
@@ -127,15 +104,13 @@ const DrawerContent = memo(function DrawerContent({
         <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '4px 8px' : '4px 16px' }} />
 
         {/* Navigation */}
-        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
-          {NAV.map((section, si) => (
-            <div key={si}>
-              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
-              {section.label && !isRail && (
-                <div className="desk-sidebar-section-label">{section.label}</div>
-              )}
-              {section.items.map((item, ii) => {
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`} data-testid="gs-un-nav">
+          {NAV.map((section, si) => {
+            const isPrimary = si === 0;
+            const sectionActive = navSectionIsActive(section, pathname, isActiveRoute);
+            const links = section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
+                const label = t(item.labelKey);
                 return (
                   <motion.div
                     key={item.href}
@@ -149,18 +124,37 @@ const DrawerContent = memo(function DrawerContent({
                       className={`desk-sidebar-item desk-sidebar-link${active ? ' desk-sidebar-link--active' : ''}`}
                       data-active={active ? 'true' : undefined}
                       aria-current={active ? 'page' : undefined}
-                      title={isRail ? item.label : undefined}
-                      aria-label={item.label}
+                      title={isRail ? label : undefined}
+                      aria-label={label}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                     >
                       <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
-                      {!isRail && <span className="truncate">{item.label}</span>}
+                      {!isRail && <span className="truncate">{label}</span>}
                     </Link>
                   </motion.div>
                 );
-              })}
-            </div>
-          ))}
+            });
+            return (
+              <div key={si} data-nav-primary={isPrimary ? "true" : undefined}>
+                {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
+                {isPrimary || isRail ? (
+                  <>
+                    {section.labelKey && !isRail && (
+                      <div className="desk-sidebar-section-label">{t(section.labelKey)}</div>
+                    )}
+                    {links}
+                  </>
+                ) : (
+                  <details open={sectionActive}>
+                    <summary className="desk-sidebar-section-label" style={{ cursor: "pointer", listStyle: "none" }}>
+                      {t(section.labelKey ?? "portal.nav.more")}
+                    </summary>
+                    {links}
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </nav>
       </div>
 
@@ -170,7 +164,7 @@ const DrawerContent = memo(function DrawerContent({
           <div className="desk-card-padded desk-card mb-3" style={{ borderRadius: 'var(--radius-md)' }}>
             <div className="flex items-center gap-2">
               <span className="desk-live-dot" />
-              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-primary)', fontWeight: 600 }}>Desktop command ready</span>
+              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-primary)', fontWeight: 600 }}>{t("factory_portal.factory_shell.text.desktop_command_ready")}</span>
             </div>
             <p style={{ font: '400 12px/18px var(--desktop-font-sans)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>
               Dispatch, transfer, and loading views synced.
@@ -185,13 +179,15 @@ const DrawerContent = memo(function DrawerContent({
               href="/auth/login"
               onClick={onLogout}
               className="desk-sidebar-item flex-1"
-              title="Sign Out"
+              title={t("common.action.sign_out")}
+              aria-label={t("common.action.sign_out")}
             >
               <Icon name="logout" size={18} />
-              <span>Sign Out</span>
+              <span>{t("common.action.sign_out")}</span>
             </Link>
           )}
         </div>
+        {!isRail && <div className="mt-2"><LanguageSwitcher /></div>}
       </div>
     </div>
   );
@@ -221,9 +217,13 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
     () => ALL_NAV_ITEMS.find((item) => isActiveRoute(pathname, item.href)) ?? ALL_NAV_ITEMS[0],
     [pathname],
   );
+  const t = usePortalT();
   const currentSection = useMemo(
-    () => NAV.find((section) => section.items.some((item) => item.href === currentEntry.href))?.label ?? 'Factory workspace',
-    [currentEntry.href],
+    () => {
+      const section = NAV.find((s) => s.items.some((item) => item.href === currentEntry.href));
+      return section?.labelKey ? t(section.labelKey) : t('portal.chrome.factory_hub');
+    },
+    [currentEntry.href, t],
   );
 
   const handleLogout = useCallback(() => {
@@ -300,14 +300,15 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
         {/* Top bar */}
         <header className="desk-topbar shrink-0">
           <div className="desk-topbar-left">
-            <nav className="desk-breadcrumb" aria-label="Breadcrumb">
+            <nav className="desk-breadcrumb" aria-label={t("factory_portal.factory_shell.text.breadcrumb")}>
               <span className="desk-breadcrumb-sep">{currentSection}</span>
               <span className="desk-breadcrumb-sep">/</span>
-              <span className="desk-breadcrumb-current">{currentEntry.label}</span>
+              <span className="desk-breadcrumb-current">{t(currentEntry.labelKey)}</span>
             </nav>
           </div>
 
           <div className="desk-topbar-right">
+            <SessionPackChip />
             <div className="desk-live-indicator hidden lg:inline-flex">
               <span className="desk-live-dot" />
               Factory network live
@@ -316,7 +317,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
             <div className="relative" ref={notifRef}>
               <button
                 className="desk-icon-btn"
-                aria-label="Notifications"
+                aria-label={t("portal.nav.notifications")}
                 onClick={() => setNotifOpen(p => !p)}
               >
                 <Icon name="notifications" />

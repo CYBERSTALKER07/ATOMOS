@@ -29,7 +29,7 @@ struct DemandHistoryView: View {
                             ForEach(history.timeSeries) { point in
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                                     Text(point.date).font(.headline)
-                                    Text("Baseline \(Int(point.predictedQty)) · Actual \(Int(point.actualQty))")
+                                    Text(L10n.format("mobile_supplier.ui.baseline_predictedqty_actual_actualqty", "\(Int(point.predictedQty))", "\(Int(point.actualQty))"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -41,7 +41,7 @@ struct DemandHistoryView: View {
                             ForEach(history.upcoming) { row in
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                                     Text(row.productName).font(.headline)
-                                    Text("\(row.retailerName) · \(row.date) · qty \(Int(row.predictedQty))")
+                                    Text(L10n.format("mobile_supplier.ui.retailername_date_qty_predictedqty", "\(row.retailerName)", "\(row.date)", "\(Int(row.predictedQty))"))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -55,7 +55,7 @@ struct DemandHistoryView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Demand forecast")
+        .navigationTitle("supplier_portal.analytics.demand.text.demand_forecast")
         .task { await load() }
         .refreshable { await load(silent: true) }
     }

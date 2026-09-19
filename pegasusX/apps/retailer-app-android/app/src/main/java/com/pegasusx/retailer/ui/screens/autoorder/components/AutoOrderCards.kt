@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.autoorder.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -33,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun HeaderCard(supplierCount: Int, categoryCount: Int, productCount: Int, predictionCount: Int) {
@@ -54,10 +57,10 @@ fun HeaderCard(supplierCount: Int, categoryCount: Int, productCount: Int, predic
             }
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
-                HeaderStat(value = "$supplierCount", label = "Suppliers", modifier = Modifier.weight(1f))
-                HeaderStat(value = "$categoryCount", label = "Categories", modifier = Modifier.weight(1f))
-                HeaderStat(value = "$productCount", label = "Products", modifier = Modifier.weight(1f))
-                HeaderStat(value = "$predictionCount", label = "Predictions", modifier = Modifier.weight(1f))
+                HeaderStat(value = "$supplierCount", label = stringResource(R.string.retailer_desktop_residual_text_suppliers), modifier = Modifier.weight(1f))
+                HeaderStat(value = "$categoryCount", label = stringResource(R.string.supplier_portal_auth_register_steps_categories), modifier = Modifier.weight(1f))
+                HeaderStat(value = "$productCount", label = stringResource(R.string.portal_nav_products), modifier = Modifier.weight(1f))
+                HeaderStat(value = "$predictionCount", label = stringResource(R.string.supplier_portal_residual_text_predictions), modifier = Modifier.weight(1f))
             }
         }
     }
@@ -136,7 +139,7 @@ fun GlobalToggleCard(
             if (analyticsStartDate != null) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    "Analytics since: $analyticsStartDate",
+                    stringResource(R.string.mobile_retailer_ui_analytics_since_analyticsstartdate, analyticsStartDate),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
                 )
@@ -161,10 +164,10 @@ fun HowItWorksCard() {
                 Text("How It Works", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold))
             }
             Spacer(modifier = Modifier.height(12.dp))
-            ExplainerStep(num = "1", text = "The AI analyzes your purchase patterns even when auto-order is off")
-            ExplainerStep(num = "2", text = "When you enable, choose to use your history or start fresh")
-            ExplainerStep(num = "3", text = "Starting fresh requires at least 2 orders per product")
-            ExplainerStep(num = "4", text = "Overrides hierarchy: Variant > Product > Category > Supplier > Global")
+            ExplainerStep(num = "1", text = stringResource(R.string.mobile_retailer_ui_the_ai_analyzes_your_purchase_patterns_even_when_auto_order_is_o))
+            ExplainerStep(num = "2", text = stringResource(R.string.mobile_retailer_ui_when_you_enable_choose_to_use_your_history_or_start_fresh))
+            ExplainerStep(num = "3", text = stringResource(R.string.mobile_retailer_ui_starting_fresh_requires_at_least_2_orders_per_product))
+            ExplainerStep(num = "4", text = stringResource(R.string.mobile_retailer_ui_overrides_hierarchy_variant_product_category_supplier_global))
         }
     }
 }

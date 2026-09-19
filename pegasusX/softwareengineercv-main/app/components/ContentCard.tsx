@@ -25,7 +25,7 @@ export function ContentCardTag({
   className?: string;
 }) {
   return (
-    <p className={`editorial-tag ${className}`}>{formatTag(children)}</p>
+    <p className={`editorial-tag font-mono ${className}`}>{formatTag(children)}</p>
   );
 }
 
@@ -36,7 +36,7 @@ export function ContentCardEyebrow({
   children: string;
   className?: string;
 }) {
-  return <p className={`editorial-eyebrow ${className}`}>{children}</p>;
+  return <p className={`editorial-eyebrow font-mono ${className}`}>{children}</p>;
 }
 
 export function ContentCardButton({
@@ -50,15 +50,19 @@ export function ContentCardButton({
   className?: string;
   inverted?: boolean;
 }) {
-  const classes = `editorial-btn ${className}`;
+  const classes = `editorial-btn bg-white hover:bg-zinc-200 text-black font-bold border border-white ${className}`;
   if (href) {
     return (
       <Link href={href as Route} prefetch={false} className={classes}>
-        {children}
+        <span className="relative z-10 text-black font-bold">{children}</span>
       </Link>
     );
   }
-  return <span className={classes}>{children}</span>;
+  return (
+    <span className={classes}>
+      <span className="relative z-10 text-black font-bold">{children}</span>
+    </span>
+  );
 }
 
 export function ContentCardLink({
@@ -72,7 +76,7 @@ export function ContentCardLink({
 }) {
   return (
     <Link href={href as Route} prefetch={false} className={`editorial-link ${className}`}>
-      {children} <span aria-hidden="true">&gt;</span>
+      {children}
     </Link>
   );
 }
@@ -254,7 +258,7 @@ function ContentCard({
   mediaVisual,
   children,
 }: ContentCardProps) {
-  const isLight = tone === 'light' || variant === 'featured';
+  const isLight = false;
   const actionLabel = resolveHoverLabel(ctaLabel, hoverLabel);
   const useSplitCta = splitCta && Boolean(href) && ctaStyle === 'button';
   const shellClass = [
@@ -286,7 +290,7 @@ function ContentCard({
         )
       ) : href ? (
         <span className="editorial-link">
-          {ctaLabel} <span aria-hidden="true">&gt;</span>
+          {ctaLabel}
         </span>
       ) : null
     ) : null;
@@ -350,13 +354,13 @@ function ContentCard({
 
   if (href && !useSplitCta) {
     return (
-      <Link href={href as Route} prefetch={false} className={shellClass}>
+      <Link href={href as Route} prefetch={false} className={shellClass} data-card="editorial">
         {inner}
       </Link>
     );
   }
 
-  return <article className={shellClass}>{inner}</article>;
+  return <article className={shellClass} data-card="editorial">{inner}</article>;
 }
 
 export default memo(ContentCard);

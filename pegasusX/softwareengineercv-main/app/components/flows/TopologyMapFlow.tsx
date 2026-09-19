@@ -1,28 +1,37 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type Props = { config?: FlowConfig };
 
 export default function TopologyMapFlow({ config }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const highlight = config?.highlightStep ?? 0;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
-    gsap.fromTo(
-      ref.current.querySelectorAll('.topo-node'),
-      { opacity: 0.2 },
-      { opacity: 1, stagger: 0.12, scrollTrigger: { trigger: ref.current, start: 'top 78%' } }
-    );
+    if (!ref.current) return;
+    const topoNodes = ref.current.querySelectorAll('.topo-node');
+
+    if (reduced) {
+      gsap.set(topoNodes, { opacity: 1 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        topoNodes,
+        { opacity: 0.2 },
+        { opacity: 1, stagger: 0.12, ease: 'pegasus', scrollTrigger: { trigger: ref.current, start: 'top 78%', fastScrollEnd: true } }
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   const nodes = [

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -8,6 +9,7 @@ import { useToast } from '@/components/Toast';
 import { warehouseOps } from '@/lib/warehouse-ops';
 
 export default function TransfersPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [volume, setVolume] = useState('20');
   const [notes, setNotes] = useState('');
@@ -32,14 +34,14 @@ export default function TransfersPage() {
     <PageTransition>
       <PageChrome
         icon="transfers"
-        title="Transfer actions"
-        description="Factory inbound transfer controls for warehouse operators."
+        title={t("warehouse_portal.transfers.text.transfer_actions")}
+        description={t("warehouse_portal.residual.text.factory_inbound_transfer_controls_for_warehouse_operators")}
         skeletonVariant="form"
       >
-        <PageSection title="Transfer controls" description="Emergency inbound, force receive, and transfer receipt by ID.">
+        <PageSection title={t("warehouse_portal.transfers.text.transfer_controls")} description={t("warehouse_portal.residual.text.emergency_inbound_force_receive_and_transfer_receipt_by_id")}>
         <div className="space-y-4 max-w-2xl">
           <label className="block space-y-1">
-            <span className="text-sm text-[var(--muted)]">Volume (VU)</span>
+            <span className="text-sm text-[var(--muted)]">{t("warehouse_portal.transfers.text.volume_vu")}</span>
             <input
               value={volume}
               onChange={(e) => setVolume(e.target.value)}
@@ -52,7 +54,7 @@ export default function TransfersPage() {
             />
           </label>
           <label className="block space-y-1">
-            <span className="text-sm text-[var(--muted)]">Notes (optional)</span>
+            <span className="text-sm text-[var(--muted)]">{t("warehouse_portal.transfers.text.notes_optional")}</span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -92,7 +94,7 @@ export default function TransfersPage() {
             </button>
           </div>
           <label className="block space-y-1">
-            <span className="text-sm text-[var(--muted)]">Transfer ID to receive</span>
+            <span className="text-sm text-[var(--muted)]">{t("warehouse_portal.transfers.text.transfer_id_to_receive")}</span>
             <input
               value={transferId}
               onChange={(e) => setTransferId(e.target.value)}

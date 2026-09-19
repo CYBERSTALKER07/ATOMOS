@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
@@ -13,6 +15,7 @@ import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.ui.components.AddressLocationField
 import com.pegasusx.supplier.ui.components.AddressLocationValue
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @Composable
 fun AddWarehouseDialog(
@@ -37,7 +40,7 @@ fun AddWarehouseDialog(
                     geocodeApi = geocodeApi,
                     value = location,
                     onValueChange = { location = it },
-                    label = "Warehouse address",
+                    label = stringResource(R.string.supplier_portal_residual_text_warehouse_address),
                 )
                 OutlinedTextField(value = radius, onValueChange = { radius = it }, label = { Text("Coverage km") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true)
             }

@@ -25,6 +25,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/promotions", d.Service.HandleCreateSupplierPromotion)
 		gr.Patch("/v1/supplier/promotions/{promotionID}", d.Service.HandleUpdateSupplierPromotion)
 		gr.Delete("/v1/supplier/promotions/{promotionID}", d.Service.HandleDeactivateSupplierPromotion)
+		gr.Post("/v1/supplier/campaigns", d.Service.HandleCreateCampaign)
 	})
-
+	r.Group(func(gr chi.Router) {
+		gr.Use(auth.CookieAuth(d.JWTSecret))
+		gr.Use(auth.RequireRole(auth.RoleRetailer))
+		gr.Post("/v1/retailer/promotions/enroll", d.Service.HandleEnrollRetailer)
+	})
 }

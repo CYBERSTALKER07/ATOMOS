@@ -12,7 +12,7 @@ from contract_solver import CONTRACT_V, SolverError, solve_contract
 
 AUTH_HEADER = "X-Internal-Api-Key"
 SOLVE_PATH = "/v1/optimizer/solve"
-DEFAULT_TIMEOUT_SEC = 2.0
+DEFAULT_TIMEOUT_SEC = 8.0
 
 
 def _env_float(name: str, fallback: float) -> float:

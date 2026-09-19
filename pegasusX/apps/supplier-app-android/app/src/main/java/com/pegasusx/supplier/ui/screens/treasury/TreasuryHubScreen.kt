@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,15 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
 import com.pegasusx.supplier.ui.components.SupplierLeadingIcon
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.components.formatMinorAmount
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.ui.viewmodel.TreasuryViewModel
+import com.pegasusx.supplier.R
 
 private data class TreasuryLink(
     val title: String,
@@ -70,7 +73,7 @@ fun TreasuryHubScreen(
                 title = { Text("Treasury hub") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -78,7 +81,7 @@ fun TreasuryHubScreen(
     ) { padding ->
         when {
             showFullScreenLoading(state.loading, state.earnings != null) -> PegasusLoadingState(
-                title = "Loading treasury…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_treasury),
                 body = "KPIs and links",
                 modifier = Modifier.padding(padding),
             )
@@ -99,13 +102,13 @@ fun TreasuryHubScreen(
                     val earnings = state.earnings
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                         SupplierKpiTile(
-                            label = "Month revenue",
+                            label = stringResource(R.string.mobile_supplier_ui_month_revenue),
                             value = formatMinorAmount(earnings?.monthMinor ?: 0, earnings?.currency.orEmpty()),
                             icon = Icons.Default.TrendingUp,
                             modifier = Modifier.weight(1f),
                         )
                         SupplierKpiTile(
-                            label = "Ledger entries",
+                            label = stringResource(R.string.mobile_supplier_ui_ledger_entries),
                             value = state.ledgerEntryCount.toString(),
                             icon = Icons.Default.Receipt,
                             modifier = Modifier.weight(1f),
@@ -114,7 +117,7 @@ fun TreasuryHubScreen(
                 }
                 item {
                     SupplierKpiTile(
-                        label = "Reconciliation mismatches",
+                        label = stringResource(R.string.supplier_portal_earnings_text_reconciliation_mismatches),
                         value = state.mismatchCount.toString(),
                         icon = Icons.Default.Warning,
                     )

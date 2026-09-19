@@ -1,17 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
-import { usePolling } from "@pegasusx/api-client";
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import { usePolling } from '@pegasusx/api-react';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_CACHE_MAX_AGE_MS, cacheGet, cacheSet } from "@pegasusx/desktop-cache";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import type { OrderStatus } from "@pegasusx/types";
-import type { SupplierDashboardResponse } from "@pegasusx/types";
+import type { ManifestState, SupplierDashboardResponse } from "@pegasusx/types";
+import {
+  canonicalizeOrderStatus,
+  emptyManifestStateCounts,
+  emptyOrderStatusCounts,
+  incrementOrderStatusCount,
+} from "@pegasusx/types";
+import {
+  DASHBOARD_ROLLUP_REFRESH_EVENTS,
+  shouldRefetchDashboardRollup,
+} from "@pegasusx/ws-refresh-contract";
 import { createSupplierApi } from "@/lib/api";
+import { orderStatusFromWsRaw } from "@/lib/dashboard-command";
 import { supplierDashboardCacheKey } from "@/lib/supplier-cache-keys";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
+import { useSupplierWsRefresh } from "@/lib/use-supplier-ws-refresh";
 
 export interface DashboardMetrics {
   ordersByStatus: Partial<Record<OrderStatus, number>>;
+  manifestsByState: Record<ManifestState, number>;
   revenueToday: number;
-  revenueChangePct: number;
+  completedToday: number;
+  attemptedToday: number;
   activeDrivers: number;
   totalDrivers: number;
   deliveryCompletionRate: number;
@@ -19,6 +33,8 @@ export interface DashboardMetrics {
   totalRetailers: number;
   fleetVuUsed: number;
   fleetVuTotal: number;
+  fleetVuAvailable: boolean;
+  asOf: string | null;
 }
 
 export interface DispatchManifest {
@@ -46,30 +62,22 @@ type DashboardCacheBundle = {
   isPaymentConfigured: boolean | null;
 };
 
-function emptyOrderStatusCounts(): Partial<Record<OrderStatus, number>> {
-  return {
-    PENDING: 0,
-    SCHEDULED: 0,
-    AUTO_ACCEPTED: 0,
-    LOADED: 0,
-    IN_TRANSIT: 0,
-    ARRIVED: 0,
-    AWAITING_PAYMENT: 0,
-    PENDING_CASH_COLLECTION: 0,
-    COMPLETED: 0,
-    CANCELLED: 0,
-    DELAYED: 0,
-  };
-}
-
 const api = createSupplierApi();
 
 function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
-  const ordersByStatus = emptyOrderStatusCounts();
+  const ordersByStatus: Record<string, number> = emptyOrderStatusCounts();
   for (const [key, value] of Object.entries(resp.orders_by_status ?? {})) {
-    const normalized = key.toUpperCase() as OrderStatus;
+    const normalized = canonicalizeOrderStatus(key);
     if (normalized in ordersByStatus) {
       ordersByStatus[normalized] = value;
+    }
+  }
+
+  const manifestsByState = emptyManifestStateCounts();
+  for (const [key, value] of Object.entries(resp.manifests_by_state ?? {})) {
+    const state = key.toUpperCase() as ManifestState;
+    if (state in manifestsByState) {
+      manifestsByState[state] = value;
     }
   }
 
@@ -93,15 +101,19 @@ function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
   return {
     metrics: {
       ordersByStatus,
+      manifestsByState,
       revenueToday: resp.today_revenue_minor ?? 0,
-      revenueChangePct: 0,
+      completedToday: resp.deliveries_completed_today ?? 0,
+      attemptedToday: resp.deliveries_attempted_today ?? 0,
       activeDrivers: resp.active_drivers ?? 0,
-      totalDrivers: Math.max(resp.total_drivers ?? 0, resp.active_drivers ?? 0, 1),
+      totalDrivers: resp.total_drivers ?? 0,
       deliveryCompletionRate: resp.delivery_completion_rate_pct ?? 0,
       retailersOrderedToday: resp.retailers_ordered_today ?? 0,
-      totalRetailers: Math.max(resp.total_retailers ?? 0, resp.retailers_ordered_today ?? 0, 1),
+      totalRetailers: resp.total_retailers ?? 0,
       fleetVuUsed: resp.fleet_vu_used ?? 0,
-      fleetVuTotal: Math.max(resp.fleet_vu_total ?? 1, 1),
+      fleetVuTotal: Math.max(resp.fleet_vu_total ?? 0, 0),
+      fleetVuAvailable: resp.fleet_vu_available === true,
+      asOf: resp.updated_at ?? null,
     },
     recentManifests,
     recentEvents,
@@ -111,15 +123,19 @@ function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
 const empty: DashboardData = {
   metrics: {
     ordersByStatus: emptyOrderStatusCounts(),
+    manifestsByState: emptyManifestStateCounts(),
     revenueToday: 0,
-    revenueChangePct: 0,
+    completedToday: 0,
+    attemptedToday: 0,
     activeDrivers: 0,
-    totalDrivers: 1,
+    totalDrivers: 0,
     deliveryCompletionRate: 0,
     retailersOrderedToday: 0,
-    totalRetailers: 1,
+    totalRetailers: 0,
     fleetVuUsed: 0,
-    fleetVuTotal: 1,
+    fleetVuTotal: 0,
+    fleetVuAvailable: false,
+    asOf: null,
   },
   recentManifests: [],
   recentEvents: [],
@@ -130,13 +146,16 @@ export function useDashboardData() {
   const [isPaymentConfigured, setIsPaymentConfigured] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const etagRef = useRef<string | null>(null);
 
   const refresh = useCallback(async (silent = false) => {
     const cacheKey = supplierDashboardCacheKey();
     let hydratedFromCache = false;
 
     if (isTauri()) {
-      const cached = await cacheGet<DashboardCacheBundle>(cacheKey);
+      const cached = await cacheGet<DashboardCacheBundle>(cacheKey, {
+        maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+      });
       if (cached?.data) {
         setData(cached.data);
         setIsPaymentConfigured(cached.isPaymentConfigured);
@@ -150,22 +169,32 @@ export function useDashboardData() {
     }
 
     try {
-      const [dashResp, profResp] = await Promise.all([
-        api.getSupplierDashboard(),
-        api.getSupplierProfile(),
-      ]);
-      const nextData = mapDashboard(dashResp);
-      const paymentConfigured =
-        Boolean(profResp?.selected_gateways && profResp.selected_gateways.length > 0);
-      setData(nextData);
-      setIsPaymentConfigured(paymentConfigured);
-      setError(null);
-      if (isTauri()) {
-        void cacheSet(cacheKey, {
-          data: nextData,
-          isPaymentConfigured: paymentConfigured,
-        });
+      const dashResp = await api.getSupplierDashboardConditional(etagRef.current ?? undefined);
+      if (!dashResp.notModified) {
+        etagRef.current = dashResp.etag;
+        const nextData = mapDashboard(dashResp.data);
+        setData(nextData);
+        if (!silent) {
+          const profResp = await api.getSupplierProfile();
+          const paymentConfigured =
+            Boolean(profResp?.selected_gateways && profResp.selected_gateways.length > 0);
+          setIsPaymentConfigured(paymentConfigured);
+          if (isTauri()) {
+            void cacheSet(cacheKey, {
+              data: nextData,
+              isPaymentConfigured: paymentConfigured,
+            });
+          }
+        } else if (isTauri()) {
+          void cacheSet(cacheKey, {
+            data: nextData,
+            isPaymentConfigured,
+          });
+        }
+      } else if (dashResp.etag) {
+        etagRef.current = dashResp.etag;
       }
+      setError(null);
     } catch (err) {
       if (!hydratedFromCache) {
         setError(err instanceof Error ? err.message : "load_dashboard_failed");
@@ -183,6 +212,30 @@ export function useDashboardData() {
     void refresh(true);
   });
 
+  useSupplierWsRefresh(
+    (eventType, raw) => {
+      if (eventType === "ORDER_STATUS_CHANGED") {
+        const status = orderStatusFromWsRaw(raw);
+        if (status) {
+          setData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              metrics: {
+                ...prev.metrics,
+                ordersByStatus: incrementOrderStatusCount(prev.metrics.ordersByStatus, status),
+              },
+            };
+          });
+        }
+      }
+      if (shouldRefetchDashboardRollup(eventType)) {
+        void refresh(true);
+      }
+    },
+    { eventTypes: DASHBOARD_ROLLUP_REFRESH_EVENTS, debounceMs: 500 },
+  );
+
   usePolling(
     async (signal) => {
       if (signal.aborted) return;
@@ -190,7 +243,7 @@ export function useDashboardData() {
     },
     60_000,
     [refresh],
-    { pauseWhenHidden: true },
+    { pauseWhenHidden: true, immediate: false },
   );
 
   return {

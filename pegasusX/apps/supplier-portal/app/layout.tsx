@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, EB_Garamond } from "next/font/google";
 import Providers from "@/components/Providers";
+import LocaleBootstrap from "@/components/LocaleBootstrap";
 import "./globals.css";
 
 const fontJakarta = Plus_Jakarta_Sans({
@@ -49,6 +50,7 @@ export default function RootLayout({
           </div>
         </div>
 
+        <LocaleBootstrap />
         <Providers>{children}</Providers>
       </body>
     </html>

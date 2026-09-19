@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // responseRecorder captures the response body and status code to save in the store.
@@ -48,14 +50,20 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				return
 			}
 
-			key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
-			if key == "" {
-				key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+			rawKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+			if rawKey == "" {
+				rawKey = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
 			}
-			if key == "" {
+			if rawKey == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
+			principal := ""
+			if claims, ok := auth.FromContext(r.Context()); ok {
+				principal = strings.TrimSpace(claims.Subject)
+			}
+			routePattern := r.Method + " " + r.URL.Path
+			key := ScopeKey(principal, routePattern, rawKey)
 
 			bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
 			if err != nil {
@@ -95,7 +103,15 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 				body:           &bytes.Buffer{},
 			}
 
-			next.ServeHTTP(recorder, r)
+			func() {
+				defer func() {
+					if rec := recover(); rec != nil {
+						_ = store.Release(r.Context(), key)
+						panic(rec)
+					}
+				}()
+				next.ServeHTTP(recorder, r)
+			}()
 
 			if recorder.status >= 200 && recorder.status < 300 {
 				_ = store.Save(r.Context(), key, Record{

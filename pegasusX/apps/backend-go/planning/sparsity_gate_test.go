@@ -3,14 +3,16 @@ package planning
 import (
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
 )
 
 func TestTemplateActiveOn_HolidayPeak(t *testing.T) {
-	tpl := builtinSeasonalTemplates[0]
-	if !templateActiveOn(tpl, time.Date(2026, 12, 20, 0, 0, 0, 0, time.UTC)) {
+	tpl := seasonalcore.Builtins[0]
+	if !seasonalcore.ActiveOn(tpl, time.Date(2026, 12, 20, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("expected holiday peak active in December")
 	}
-	if templateActiveOn(tpl, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)) {
+	if seasonalcore.ActiveOn(tpl, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatal("expected holiday peak inactive in March")
 	}
 }

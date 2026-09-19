@@ -14,14 +14,14 @@ export const aiVisionTopics = {
     flow: 'aiAssist',
     relatedProjectSlug: 'dispatch-engine',
   }),
-  'ai-worker-vrp': seedContent({
-    title: 'AI Worker / VRP',
-    summary: 'Route optimization via Kafka consumer — suggestions, not silent commits.',
-    problem: 'VRP solvers running inline would block dispatch during peak.',
-    outcomes: ['Async optimization jobs', 'Kafka-triggered worker', 'Results as recommendations'],
+  'AI assist-vrp': seedContent({
+    title: 'Smart Route Assist',
+    summary: 'Route optimization via background optimizer — suggestions, not silent commits.',
+    problem: 'route planning solvers running inline would block dispatch during peak.',
+    outcomes: ['Async optimization jobs', 'live events-triggered worker', 'Results as recommendations'],
     howItWorks: defaultHowItWorks([
       ['Enqueue job', 'Dispatch board requests optimization.'],
-      ['Worker solves', 'VRP sidecar returns ranked routes.'],
+      ['Worker solves', 'route solver returns ranked routes.'],
       ['Surface results', 'Warehouse reviews before apply.'],
     ]),
     flow: 'aiAssist',
@@ -63,7 +63,7 @@ export const aiVisionTopics = {
     howItWorks: defaultHowItWorks([
       ['Map state codes', 'Lifecycle → copy per role.'],
       ['Show in context', 'Order detail, tracking, driver mission.'],
-      ['Update live', 'WS refresh when state changes.'],
+      ['Update live', 'live refresh when state changes.'],
     ]),
     flow: 'orderLifecycle',
     flowConfig: { highlightStep: 3 },

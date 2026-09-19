@@ -1,34 +1,42 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type Props = { config?: FlowConfig };
 
 export default function FleetMapFlow({ config }: Props) {
   const ref = useRef<SVGSVGElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const progress = (config?.highlightStep ?? 3) / 6;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
+    if (!ref.current) return;
     const planned = ref.current.querySelector('.route-planned');
     const actual = ref.current.querySelector('.route-actual');
     if (!planned || !actual) return;
-    gsap.fromTo(
-      [planned, actual],
-      { strokeDashoffset: 400 },
-      {
-        strokeDashoffset: 0,
-        scrollTrigger: { trigger: ref.current, start: 'top 75%', end: 'bottom 45%', scrub: 1 },
-      }
-    );
+
+    if (reduced) {
+      gsap.set([planned, actual], { strokeDashoffset: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        [planned, actual],
+        { strokeDashoffset: 400 },
+        {
+          strokeDashoffset: 0,
+          scrollTrigger: { trigger: ref.current, start: 'top 75%', end: 'bottom 45%', scrub: 1, fastScrollEnd: true },
+        }
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   const path = 'M 40 180 Q 200 40 400 120 T 760 80';

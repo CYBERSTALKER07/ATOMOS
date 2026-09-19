@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.navigation
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -53,7 +55,9 @@ import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverOutdatedState
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.services.OfflineSyncScheduler
+import com.pegasusx.driver.services.TelemetrySyncScheduler
 import com.pegasusx.driver.service.AutoUpdater
 import com.pegasusx.driver.service.EnterpriseUpdateConfig
 import com.pegasusx.driver.data.remote.TokenHolder
@@ -79,6 +83,7 @@ import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
 import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
 import com.pegasusx.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.launch
+import com.pegasusx.driver.R
 
 object DriverRoutes {
     const val LOGIN = "login"
@@ -119,6 +124,7 @@ object DriverRoutes {
 fun DriverNavigation(
     api: DriverApi,
     driverWebSocket: DriverWebSocket,
+    telemetrySocket: TelemetrySocket,
     windowSizeClass: WindowSizeClass? = null,
 ) {
     val navController = rememberNavController()
@@ -200,6 +206,9 @@ fun DriverNavigation(
                 mainHandler.post {
                     if (!networkAvailable) {
                         OfflineSyncScheduler.enqueue(context)
+                        driverWebSocket.resetAndReconnect()
+                        telemetrySocket.resetAndReconnect()
+                        TelemetrySyncScheduler.enqueue(context)
                     }
                     networkAvailable = true
                 }
@@ -277,6 +286,8 @@ fun DriverNavigation(
                     order.latitude != null &&
                     order.longitude != null
             }
+            val pendingVm: PendingSyncCountViewModel = hiltViewModel()
+            val pendingCount by pendingVm.pendingCount.collectAsState()
             MainTabView(
                 requestedTab = handoffTabRequest,
                 onRequestedTabConsumed = { handoffTabRequest = null },
@@ -292,6 +303,13 @@ fun DriverNavigation(
                         },
                         onNotificationsClick = { navController.navigate(DriverRoutes.NOTIFICATIONS) { launchSingleTop = true } },
                         onOpenSupplyTransfers = { navController.navigate(DriverRoutes.SUPPLY_TRANSFERS) },
+                        onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        onStopClick = { order ->
+                            navController.navigate(
+                                DriverRoutes.correctionRoute(order.id, order.retailerName)
+                            )
+                        },
+                        pendingCount = pendingCount,
                     )
                 },
                 mapContent = {
@@ -318,8 +336,6 @@ fun DriverNavigation(
                     )
                 },
                 profileContent = {
-                    val pendingVm: PendingSyncCountViewModel = hiltViewModel()
-                    val pendingCount by pendingVm.pendingCount.collectAsState()
                     ProfileScreen(
                         viewModel = manifestViewModel,
                         onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
@@ -547,7 +563,7 @@ private fun DriverOutdatedOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "App Update Required",
+                text = stringResource(R.string.mobile_driver_ui_app_update_required),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -557,12 +573,12 @@ private fun DriverOutdatedOverlay(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "Blocked event: $blocked | Required schema: $required",
+                text = stringResource(R.string.mobile_driver_ui_blocked_event_blocked_required_schema_required),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Button(onClick = onSignOut) {
-                Text(text = "Sign Out")
+                Text(text = stringResource(R.string.common_action_sign_out))
             }
         }
     }

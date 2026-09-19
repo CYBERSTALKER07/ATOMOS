@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import type { RetailerSegmentRow, SkuClassRow } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
@@ -10,6 +11,7 @@ const SEGMENTS = ["A", "B", "C"];
 const VELOCITY = ["A", "B", "C"];
 
 export function SegmentationPanel() {
+  const t = usePortalT();
   const [retailers, setRetailers] = useState<RetailerSegmentRow[]>([]);
   const [skuClasses, setSkuClasses] = useState<SkuClassRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export function SegmentationPanel() {
         setRetailers(r.retailers ?? []);
         setSkuClasses(s.sku_classes ?? []);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_segmentation_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_segmentation_failed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,7 +42,7 @@ export function SegmentationPanel() {
       await api.bootstrapSegmentation();
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "bootstrap_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.bootstrap_failed"));
     } finally {
       setBootstrapping(false);
     }
@@ -52,7 +54,7 @@ export function SegmentationPanel() {
       await api.setRetailerSegment(retailerId, { segment, reason: "portal override" });
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_retailer_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.update_retailer_failed"));
     } finally {
       setActing(null);
     }
@@ -64,14 +66,14 @@ export function SegmentationPanel() {
       await api.setSkuClass(sku, { velocity_class: velocityClass });
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_sku_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.update_sku_failed"));
     } finally {
       setActing(null);
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-[var(--color-md-outline)]">Loading segmentation…</p>;
+    return <p className="text-sm text-[var(--color-md-outline)]">{t("supplier_portal.settings.segmentation_panel.text.loading_segmentation")}</p>;
   }
 
   return (
@@ -93,9 +95,9 @@ export function SegmentationPanel() {
       {error ? <p className="text-sm text-[var(--color-md-error)]">{error}</p> : null}
 
       <section>
-        <h2 className="md-typescale-title-medium mb-3">Retailer segments</h2>
+        <h2 className="md-typescale-title-medium mb-3">{t("supplier_portal.settings.segmentation_panel.text.retailer_segments")}</h2>
         {retailers.length === 0 ? (
-          <p className="text-sm text-[var(--color-md-outline)]">No retailer segments yet. Run bootstrap after orders exist.</p>
+          <p className="text-sm text-[var(--color-md-outline)]">{t("supplier_portal.settings.segmentation_panel.text.no_retailer_segments_yet_run_bootstrap_after_orders_exist")}</p>
         ) : (
           <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
             {retailers.map((row) => (
@@ -121,9 +123,9 @@ export function SegmentationPanel() {
       </section>
 
       <section>
-        <h2 className="md-typescale-title-medium mb-3">SKU velocity classes</h2>
+        <h2 className="md-typescale-title-medium mb-3">{t("supplier_portal.settings.segmentation_panel.text.sku_velocity_classes")}</h2>
         {skuClasses.length === 0 ? (
-          <p className="text-sm text-[var(--color-md-outline)]">No SKU classes yet.</p>
+          <p className="text-sm text-[var(--color-md-outline)]">{t("supplier_portal.settings.segmentation_panel.text.no_sku_classes_yet")}</p>
         ) : (
           <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">
             {skuClasses.map((row) => (
@@ -139,7 +141,7 @@ export function SegmentationPanel() {
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
-                {row.strategic_flag ? <span className="md-chip h-6 text-xs">Strategic</span> : null}
+                {row.strategic_flag ? <span className="md-chip h-6 text-xs">{t("supplier_portal.settings.segmentation_panel.text.strategic")}</span> : null}
               </li>
             ))}
           </ul>

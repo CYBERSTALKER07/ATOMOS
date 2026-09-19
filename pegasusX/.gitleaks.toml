@@ -1,0 +1,29 @@
+# gitleaks — fail on high-confidence secrets in tracked source.
+# Allow committed Firebase client configs / example env placeholders via allowlist rules.
+
+title = "pegasusX"
+
+[allowlist]
+description = "Known non-secret fixtures and public client configs"
+paths = [
+  '''(?i)google-services\.json$''',
+  '''(?i)GoogleService-Info\.plist$''',
+  '''(?i)\.env\.example$''',
+  '''(?i)\.env\.ssmr\.example$''',
+  '''(?i)docs/CLOUD_CREDENTIALS_CHECKLIST\.md$''',
+  '''(?i)artifacts/''',
+  '''(?i)softwareengineercv-main/''',
+  '''(?i)\.gradle/''',
+  '''(?i)node_modules/''',
+  '''(?i)pnpm-lock\.yaml$''',
+]
+regexes = [
+  '''dev-only-change-me''',
+  '''dev-global-pay-secret''',
+  '''dev-adyen-secret''',
+  '''dev-stripe-secret''',
+  '''dev-payme-secret''',
+  '''dev-click-secret''',
+  '''dev-internal-key''',
+  '''unused-rail-placeholder''',
+]

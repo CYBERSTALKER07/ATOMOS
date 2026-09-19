@@ -309,6 +309,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if let cue = navigationCue, shouldAnnounceManeuverAdvance(previousIndex: previousIndex, nextIndex: navigationStepIndex) {
             navigationVoiceAnnouncer.announce(cue)
         }
+
+        let progress = routeSteps.isEmpty ? 0.0 : Double(navigationStepIndex) / Double(routeSteps.count)
+        let etaMinutes = max(1, Int((navigationCue?.distanceM ?? 500) / 400))
+        DriverLiveActivityManager.shared.updateNavigationState(
+            cue: navigationCue,
+            etaMinutes: etaMinutes,
+            progress: progress,
+            currentStepIndex: navigationStepIndex + 1,
+            totalSteps: routeSteps.count
+        )
     }
 
     func startLocationInterpolation() {
@@ -343,6 +353,19 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         refreshPlannedRoute()
         Task { await loadRouteGeometry() }
         showMarkerSheet = true
+
+        let dest = activeOrder?.retailerName ?? "Destination"
+        let items = activeOrder?.items.count ?? 1
+        let amount = Int64(activeOrder?.totalAmount ?? mission.amount)
+        DriverLiveActivityManager.shared.startNavigationActivity(
+            orderId: mission.order_id,
+            routeId: mission.route_id ?? "",
+            destinationName: dest,
+            totalItems: items,
+            totalAmountMinor: amount,
+            initialCue: navigationCue,
+            totalSteps: routeSteps.count
+        )
     }
 
     func markCompleted(_ orderId: String) {
@@ -358,6 +381,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             activeOrder = nil
             showMarkerSheet = false
             refreshPlannedRoute()
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
         }
     }
 
@@ -423,6 +447,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 return
             }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
             truckStatus = "AVAILABLE"
             isReturning = false
             returnGoodsLines = []
@@ -524,11 +549,17 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
+        photoLocalPath: String? = nil,
+        signatureLocalPath: String? = nil
+    ) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
         do {
-            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl, signatureUrl: signatureUrl)
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {

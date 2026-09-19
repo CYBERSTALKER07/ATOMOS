@@ -7,15 +7,32 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 )
 
 // ReleaseReservationsInTxn decrements QuantityReserved for each line item within an existing RW transaction.
 func ReleaseReservationsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string, source OrderSource, lineItems []LineItem) error {
-	if source == OrderSourceBackorder || strings.TrimSpace(warehouseID) == "" || len(lineItems) == 0 {
+	return ReleaseReservationsForOrderInTxn(ctx, txn, supplierID, warehouseID, "", source, lineItems)
+}
+
+// ReleaseReservationsForOrderInTxn releases bag or lot reservations for an order.
+func ReleaseReservationsForOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID, orderID string, source OrderSource, lineItems []LineItem) error {
+	if source == OrderSourceBackorder || strings.TrimSpace(warehouseID) == "" {
 		return nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
 	warehouseID = strings.TrimSpace(warehouseID)
+	orderID = strings.TrimSpace(orderID)
+
+	if stocklots.LotsEnabled() && orderID != "" {
+		return stocklots.ReleaseLotReservationsInTxn(ctx, txn, supplierID, warehouseID, orderID)
+	}
+	if stocklots.LotsEnabled() && orderID == "" {
+		return fmt.Errorf("lot inventory release requires order_id when WMS_LOTS_ENABLED")
+	}
+	if len(lineItems) == 0 {
+		return nil
+	}
 	for _, item := range lineItems {
 		sku := strings.TrimSpace(item.SKU)
 		if sku == "" || item.Quantity <= 0 {
@@ -59,13 +76,23 @@ func ReleaseReservationsFromOrderFields(
 	supplierID, warehouseID, orderSource string,
 	lineItemsRaw []byte,
 ) error {
+	return ReleaseReservationsFromOrderFieldsWithID(ctx, txn, supplierID, warehouseID, "", orderSource, lineItemsRaw)
+}
+
+// ReleaseReservationsFromOrderFieldsWithID releases with an explicit order ID for lot paths.
+func ReleaseReservationsFromOrderFieldsWithID(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID, warehouseID, orderID, orderSource string,
+	lineItemsRaw []byte,
+) error {
 	var lineItems []LineItem
 	if len(lineItemsRaw) > 0 {
 		if err := json.Unmarshal(lineItemsRaw, &lineItems); err != nil {
 			return fmt.Errorf("parse line items for release: %w", err)
 		}
 	}
-	return ReleaseReservationsInTxn(ctx, txn, supplierID, warehouseID, OrderSource(orderSource), lineItems)
+	return ReleaseReservationsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, OrderSource(orderSource), lineItems)
 }
 
 // releaseOrderReservationsInTxn releases stock for a loaded Order aggregate.
@@ -73,5 +100,5 @@ func releaseOrderReservationsInTxn(ctx context.Context, txn *spanner.ReadWriteTr
 	if o == nil {
 		return nil
 	}
-	return ReleaseReservationsInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.Source, o.LineItems)
+	return ReleaseReservationsForOrderInTxn(ctx, txn, o.SupplierID, o.WarehouseID, o.OrderID, o.Source, o.LineItems)
 }

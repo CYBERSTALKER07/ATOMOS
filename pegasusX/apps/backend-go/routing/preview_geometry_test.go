@@ -15,7 +15,7 @@ func TestAttachRouteGeometryToProposedRoutes(t *testing.T) {
 			},
 		},
 	}
-	builder := NewGeometryBuilder(nil)
+	builder := NewGeometryBuilder(nil, nil, RoutingProviderAuto)
 	AttachRouteGeometryToProposedRoutes(context.Background(), builder, LatLng{
 		Lat: 41.30,
 		Lng: 69.24,

@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -88,9 +89,11 @@ func TestFormatFromEvent_ManifestOrderException(t *testing.T) {
 }
 
 func TestFormatFromEvent_RetailerPriceOverride(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
 	payload, _ := json.Marshal(map[string]any{
 		"type":        events.EventRetailerPriceOverride,
 		"retailer_id": "ret-1",
+		"supplier_id": "sup-1",
 		"product_id":  "SSMR-SKU-1",
 		"price_minor": 42000,
 		"action":      "CREATED",
@@ -102,14 +105,53 @@ func TestFormatFromEvent_RetailerPriceOverride(t *testing.T) {
 	if got.DeepLink != "/catalog" {
 		t.Fatalf("deep_link=%q", got.DeepLink)
 	}
+	if !strings.Contains(got.Body, "UZS") {
+		t.Fatalf("want pack UZS in body, got %q", got.Body)
+	}
+}
+
+func TestPriceOverrideCurrency_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	if got := priceOverrideCurrency("sup-1", ""); got != "UZS" {
+		t.Fatalf("got %q want UZS from pack", got)
+	}
+}
+
+func TestPriceOverrideCurrency_StoredWins(t *testing.T) {
+	if got := priceOverrideCurrency("sup-1", "eur"); got != "EUR" {
+		t.Fatalf("got %q want EUR", got)
+	}
+}
+
+func TestPriceOverrideCurrency_PlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	if got := priceOverrideCurrency("sup-1", ""); got != "" {
+		t.Fatalf("planned pack must not invent UZS, got %q", got)
+	}
+}
+
+func TestFormatFromEvent_RetailerPriceOverride_PlannedDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	payload, _ := json.Marshal(map[string]any{
+		"type":        events.EventRetailerPriceOverride,
+		"retailer_id": "ret-eu",
+		"supplier_id": "sup-eu",
+		"product_id":  "SKU-EU",
+		"price_minor": 42000,
+		"action":      "CREATED",
+	})
+	got := FormatFromEvent(events.EventRetailerPriceOverride, payload)
+	if strings.Contains(got.Body, "UZS") {
+		t.Fatalf("planned pack must not invent UZS, body=%q", got.Body)
+	}
 }
 
 func TestFormatFromEvent_CashReconciliationCreated(t *testing.T) {
 	payload, _ := json.Marshal(map[string]any{
-		"type":               "cash_reconciliation.created",
-		"reconciliation_id":  "cr-1",
-		"driver_id":          "drv-1",
-		"difference_minor":   500,
+		"type":              "cash_reconciliation.created",
+		"reconciliation_id": "cr-1",
+		"driver_id":         "drv-1",
+		"difference_minor":  500,
 	})
 	got := FormatFromEvent("cash_reconciliation.created", payload)
 	if got.DeepLink != "/treasury/cash-reconciliations" {

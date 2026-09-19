@@ -1,6 +1,13 @@
 package payload
 
-import "strings"
+import (
+	"context"
+	"math"
+	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+)
 
 func dispatchCodeForOrder(orderID string) string {
 	orderID = strings.TrimSpace(orderID)
@@ -34,12 +41,33 @@ func buildTruckRecommendationsLocked(s *Service, order OrderRow, recs []Reassign
 				break
 			}
 		}
+
+		distKm := 0.0
+		targetDriverID := rec.ToDriverID
+		if targetDriverID == "" && manifest != nil {
+			targetDriverID = manifest.DriverID
+		}
+		if (order.Lat != 0 || order.Lng != 0) && s.locations != nil && targetDriverID != "" {
+			if loc, ok, _ := s.locations.GetDriverLocation(context.Background(), targetDriverID); ok && (loc.Lat != 0 || loc.Lng != 0) {
+				distKm = proximity.HaversineDistance(order.Lat, order.Lng, loc.Lat, loc.Lng)
+			}
+		}
+		if distKm == 0 && (order.Lat != 0 || order.Lng != 0) {
+			if p, ok := auth.ResolveShippedMarketPack(auth.DefaultMarketCodeFromEnv()); ok && (p.MapCenterLat != 0 || p.MapCenterLng != 0) {
+				distKm = proximity.HaversineDistance(order.Lat, order.Lng, p.MapCenterLat, p.MapCenterLng)
+			}
+		}
+		if distKm <= 0 {
+			distKm = 1.2
+		}
+		distKm = math.Round(distKm*10) / 10
+
 		w := truckRecommendationWire{
 			DriverID:       rec.ToDriverID,
 			DriverName:     rec.ToDriverID,
 			Score:          rec.Score,
 			Recommendation: rec.Reason,
-			DistanceKm:     1.2,
+			DistanceKm:     distKm,
 		}
 		if manifest != nil {
 			w.VehicleID = manifest.VehicleID

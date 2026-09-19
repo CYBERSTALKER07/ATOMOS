@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,6 +25,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun StatsSection(earnings: DriverEarningsResponse?) {
@@ -32,7 +35,7 @@ fun StatsSection(earnings: DriverEarningsResponse?) {
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Earnings",
+            text = stringResource(R.string.portal_nav_earnings),
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
@@ -44,13 +47,13 @@ fun StatsSection(earnings: DriverEarningsResponse?) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             StatCard(
-                title = "Total Volume",
+                title = stringResource(R.string.warehouse_portal_supply_requests_id_text_total_volume),
                 value = if (totalValue > 0) totalValue.formattedAmount() else "—",
                 icon = Icons.Default.DirectionsCar,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
-                title = "Deliveries",
+                title = stringResource(R.string.mobile_driver_ui_deliveries),
                 value = if (deliveries > 0) deliveries.toString() else "—",
                 icon = Icons.Default.LocalShipping,
                 modifier = Modifier.weight(1f)

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -95,6 +97,7 @@ import com.pegasusx.driver.ui.screens.manifest.components.CorrectionFooter
 import com.pegasusx.driver.ui.screens.manifest.components.LineItemCard
 import com.pegasusx.driver.ui.screens.manifest.components.ModificationSheetContent
 import com.pegasusx.driver.ui.screens.manifest.components.formatAmount
+import com.pegasusx.driver.R
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DeliveryCorrectionScreen — Line-Item Reconciliation UI
@@ -140,7 +143,7 @@ fun DeliveryCorrectionScreen(
                     IconButton(onClick = onClose) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.common_action_back)
                         )
                     }
                 },
@@ -152,7 +155,7 @@ fun DeliveryCorrectionScreen(
                             color = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Text(
-                                text = "${state.modifiedCount} MODIFIED",
+                                text = stringResource(R.string.mobile_driver_ui_modifiedcount_modified, state.modifiedCount),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
@@ -207,14 +210,14 @@ fun DeliveryCorrectionScreen(
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                        text = "Partial Order Split",
+                                        text = stringResource(R.string.mobile_driver_ui_partial_order_split),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "This order is split across multiple trucks. Press Start Transit when you are heading to this route to notify the other driver.",
+                                        text = stringResource(R.string.mobile_driver_ui_this_order_is_split_across_multiple_trucks_press_start_transit_w),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                     )
@@ -231,7 +234,7 @@ fun DeliveryCorrectionScreen(
                     }
 
                     item {
-                        DriverSectionTitle(title = "MANIFEST ITEMS · ${state.audits.size}")
+                        DriverSectionTitle(title = stringResource(R.string.mobile_driver_ui_manifest_items_size, state.audits.size))
                     }
 
                     // Order ID mono badge
@@ -329,14 +332,14 @@ fun DeliveryCorrectionScreen(
             },
             title = {
                 Text(
-                    text = "Confirm Amendment",
+                    text = stringResource(R.string.mobile_driver_ui_confirm_amendment),
                     style = MaterialTheme.typography.headlineSmall
                 )
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "You are about to submit an amended delivery manifest with ${state.modifiedCount} modifications.",
+                        text = stringResource(R.string.mobile_driver_ui_you_are_about_to_submit_an_amended_delivery_manifest_with_modifiedcount, state.modifiedCount),
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Surface(
@@ -346,7 +349,7 @@ fun DeliveryCorrectionScreen(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Refund Amount",
+                                text = stringResource(R.string.mobile_driver_ui_refund_amount),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -368,7 +371,7 @@ fun DeliveryCorrectionScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Confirm Amendment")
+                    Text(stringResource(R.string.mobile_driver_ui_confirm_amendment))
                 }
             },
             dismissButton = {
@@ -393,7 +396,7 @@ private fun LoadingState(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
     ) {
         DriverLoadingState(
-            title = "Loading manifest",
+            title = stringResource(R.string.mobile_driver_ui_loading_manifest),
             body = "Fetching line items and audit state for this delivery.",
             compact = true,
         )

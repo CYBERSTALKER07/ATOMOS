@@ -84,15 +84,33 @@ func TestDispatchConsumerTopic_cutover(t *testing.T) {
 	}
 }
 
-func TestDispatcherConsumerTopics_cutover(t *testing.T) {
+func TestTwinConsumerTopics_cutover(t *testing.T) {
 	os.Unsetenv("KAFKA_TOPIC_CONSUME_DOMAIN")
-	topics := DispatcherConsumerTopics()
+	topics := TwinConsumerTopics()
 	if len(topics) != 1 || topics[0] != TopicMain {
-		t.Fatalf("default topics = %v", topics)
+		t.Fatalf("default twin topics = %v", topics)
 	}
 	t.Setenv("KAFKA_TOPIC_CONSUME_DOMAIN", "true")
-	topics = DispatcherConsumerTopics()
+	topics = TwinConsumerTopics()
 	if len(topics) < 4 {
-		t.Fatalf("domain fan-in topics = %v", topics)
+		t.Fatalf("domain twin topics = %v", topics)
+	}
+	for _, tpc := range topics {
+		if tpc == TopicWebhooks {
+			t.Fatalf("retired TopicWebhooks must not be in twin fan-in: %v", topics)
+		}
+	}
+}
+
+func TestDomainTopicNeverWebhooks(t *testing.T) {
+	t.Parallel()
+	samples := []string{
+		EventOrderCreated, EventPaymentCleared, EventDriverLocationUpdated,
+		EventManifestSealed, EventDemandSignal, EventClaimFiled,
+	}
+	for _, typ := range samples {
+		if got := DomainTopicForEventType(typ); got == TopicWebhooks {
+			t.Fatalf("%s mapped to retired TopicWebhooks", typ)
+		}
 	}
 }

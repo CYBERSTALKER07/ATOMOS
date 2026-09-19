@@ -1,8 +1,8 @@
 'use client';
 
+import { useLanguage } from '../context/LanguageContext';
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import {
   motion,
   useScroll,
@@ -15,8 +15,7 @@ import {
 import { useLayoutEffect, useState } from 'react';
 import PageSection from './layout/PageSection';
 import SectionHeader from './layout/SectionHeader';
-
-gsap.registerPlugin(ScrollTrigger);
+import { usePerfProfile } from '../hooks/useDevice';
 
 interface Company {
   name: string;
@@ -47,31 +46,31 @@ function useElementWidth<T extends HTMLElement>(ref: React.RefObject<T | null>):
 
 const CompanyCard = ({ company }: { company: Company }) => (
   <div className="inline-block mx-4">
-    <div className="bg-white text-black border-2 border-black rounded-2xl p-6 min-w-[350px] transition-all duration-300 group company-card hover-orange">
+    <div className="bg-black text-white border border-white/20 hover:border-white rounded-none p-4 sm:p-6 min-w-[280px] sm:min-w-[350px] transition-all duration-300 group company-card">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-4">
           {/* Company Logo */}
-          <div className="w-12 h-12 bg-black group-hover:bg-white rounded-xl flex items-center justify-center border-2 border-black transition-all duration-300">
+          <div className="w-12 h-12 bg-black group-hover:bg-white rounded-none flex items-center justify-center border border-white/30 group-hover:border-white transition-all duration-300">
             <span className={`font-black text-white group-hover:text-black transition-colors duration-300 ${company.logoStyle || 'text-xl'}`}>
               {company.logo}
             </span>
           </div>
           <div>
-            <h3 className="text-2xl font-light">{company.name}</h3>
-            <p className="text-sm text-gray-600 group-hover:text-white transition-colors duration-300">{company.role}</p>
+            <h3 className="text-2xl font-light text-white">{company.name}</h3>
+            <p className="text-sm text-white/60 font-mono tracking-wide">{company.role}</p>
           </div>
         </div>
       </div>
       
-      <p className="text-sm text-gray-600 group-hover:text-white transition-colors duration-300 mb-4">
+      <p className="text-sm text-white/50 mb-4 leading-relaxed font-sans">
         {company.tags}
       </p>
       
       <div className="flex items-center justify-between gap-2">
-        <span className="px-4 py-2 bg-black text-white group-hover:bg-white group-hover:text-black text-xs font-light rounded-xl border-2 border-black transition-all duration-300">
+        <span className="px-4 py-2 bg-white hover:bg-white/90 text-black text-xs font-mono font-bold uppercase rounded-none border border-white transition-colors shadow-sm">
           {company.badge}
         </span>
-        <span className="text-xs text-gray-500 group-hover:text-white transition-colors duration-300">
+        <span className="text-xs text-white/40 font-mono tracking-wider">
           • {company.remote}
         </span>
       </div>
@@ -163,27 +162,40 @@ function VelocityScroll({ companies, velocity, numCopies = 2 }: VelocityScrollPr
 }
 
 export default function Companies() {
+  const { t, language } = useLanguage();
+  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
+
   const sectionRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sectionRef.current && titleRef.current) {
+    if (!sectionRef.current || !titleRef.current) return;
+
+    if (isMobile || isLowEnd || prefersReducedMotion) {
+      gsap.set(titleRef.current, { opacity: 1, y: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
       const timeline = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
           end: 'bottom 20%',
-          toggleActions: 'play none none reverse'
+          toggleActions: 'play none none reverse',
+          fastScrollEnd: true,
         }
       });
 
       timeline.fromTo(
         titleRef.current,
         { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 1 }
+        { opacity: 1, y: 0, duration: 1, ease: 'pegasus' }
       );
-    }
-  }, []);
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   const rowOneCompanies: Company[] = [
     {
@@ -281,6 +293,24 @@ export default function Companies() {
     }
   ];
 
+
+  const rowOneCompaniesRu: Company[] = [
+    { name: 'Поставщик', logo: 'S', logoStyle: 'text-3xl font-black', role: 'Контроль сети', tags: 'Проверка, Топология, Казначейство, Диспетчеризация', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Мобильные' },
+    { name: 'Склад', logo: 'W', logoStyle: 'text-3xl font-black', role: 'Хаб диспетчеризации', tags: 'Предзаказы, Сток, Карта автопарка', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Android' },
+    { name: 'Завод', logo: 'F', logoStyle: 'text-3xl font-black', role: 'Погрузка и пломба', tags: 'Манифесты, Поставка, Погрузочные полосы', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Портал + Мобильные' },
+    { name: 'Водитель', logo: 'D', logoStyle: 'text-2xl font-black', role: 'Исполнение в поле', tags: 'Маршруты, Доставка, Сбор наличных', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Android + iOS' },
+    { name: 'Ритейлер', logo: 'R', logoStyle: 'text-3xl font-black', role: 'Коммерция и отслеживание', tags: 'Каталог, Оформление, Живой трекинг', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Десктоп + Мобильные' },
+  ];
+  const rowTwoCompaniesRu: Company[] = [
+    { name: 'Payload', logo: 'P', logoStyle: 'text-2xl font-black', role: 'Контроль ворот', tags: 'Пломба, Скан, Терминал, Подотчётность', badge: 'КЛЮЧЕВАЯ РОЛЬ', remote: 'Терминал + Мобильные' },
+    { name: 'FMCG-сеть', logo: 'FN', logoStyle: 'text-2xl font-black', role: 'Высокообъёмная дистрибуция', tags: 'Пиковая диспетчеризация, Мультисайт, COD', badge: 'СЕГМЕНТ', remote: 'Мультирегион' },
+    { name: 'Холодовая цепь', logo: 'CC', logoStyle: 'text-2xl font-black', role: 'Температурно-чувствительные', tags: 'Видимость автопарка, SLA', badge: 'СЕГМЕНТ', remote: 'Региональный' },
+    { name: 'Стройматериалы', logo: 'BM', logoStyle: 'text-2xl font-black', role: 'Тяжёлые грузы', tags: 'Планирование вместимости, Мультистоп', badge: 'СЕГМЕНТ', remote: 'Региональный' },
+    { name: 'Наложенный платёж', logo: 'COD', logoStyle: 'text-xl font-black', role: 'Оплата у двери', tags: 'Сбор водителем, Сверка', badge: 'СЕГМЕНТ', remote: 'По всей сети' },
+  ];
+  const rowOne = language === 'ru' ? rowOneCompaniesRu : rowOneCompanies;
+  const rowTwo = language === 'ru' ? rowTwoCompaniesRu : rowTwoCompanies;
+
   return (
     <PageSection
       ref={sectionRef}
@@ -292,15 +322,15 @@ export default function Companies() {
         <div ref={titleRef}>
           <SectionHeader
             align="center"
-            title="Six Roles, One Network"
-            description="Every team in a supplier-led logistics network — connected on Pegasus"
+            title={t('companies_title', 'Six Roles, One Network')}
+            description={t('companies_desc', 'Every team in a supplier-led logistics network — connected on Pegasus')}
             className="mb-0"
           />
         </div>
       </div>
 
-      <VelocityScroll companies={rowOneCompanies} velocity={30} numCopies={2} />
-      <VelocityScroll companies={rowTwoCompanies} velocity={-30} numCopies={2} />
+      <VelocityScroll companies={rowOne} velocity={30} numCopies={2} />
+      <VelocityScroll companies={rowTwo} velocity={-30} numCopies={2} />
     </PageSection>
   );
 }

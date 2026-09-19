@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+async function sendResendEmail(params: { from: string; to: string[]; subject: string; html: string }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: params.from,
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.error('Failed to send resend email via fetch:', err);
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,12 +50,10 @@ export async function POST(request: NextRequest) {
       read: false
     };
 
-    // Send email notification to you if resend is configured
-    let data = null;
-    if (resend) {
-      data = await resend.emails.send({
+    // Send email notification to recipient if RESEND_API_KEY is configured
+    const data = await sendResendEmail({
       from: 'Team Applications <onboarding@resend.dev>',
-      to: [process.env.RECIPIENT_EMAIL || 'your-email@example.com'],
+      to: [process.env.RECIPIENT_EMAIL || 'shsoliyev@aut-edu.uz'],
       subject: `New Team Application: ${position} - ${name}`,
       html: `
         <!DOCTYPE html>
@@ -94,8 +115,7 @@ export async function POST(request: NextRequest) {
           </body>
         </html>
       `,
-      });
-    }
+    });
 
     console.log('Application submitted:', { name, email, position, data });
 

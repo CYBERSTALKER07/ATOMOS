@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Skeleton } from "../Skeleton";
 import type { Supplier } from "../../lib/types";
@@ -33,6 +36,7 @@ export function CatalogFilters({
   setActiveSupplier,
   supplierList
 }: CatalogFiltersProps) {
+  const t = usePortalT();
   return (
     <div className="mb-8 flex flex-col gap-6">
         <div className="flex flex-wrap items-center gap-4 p-2 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
@@ -43,7 +47,7 @@ export function CatalogFilters({
             />
             <input
               type="text"
-              placeholder="Search assets and suppliers..."
+              placeholder={t("retailer_desktop.catalog.catalog_filters.text.search_assets_and_suppliers")}
               className="w-full h-11 pl-11 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium text-[var(--desk-text-primary)]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

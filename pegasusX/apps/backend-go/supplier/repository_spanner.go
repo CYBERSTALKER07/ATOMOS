@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
@@ -54,6 +55,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"CountryCode",
 		"Currency",
 		"IsConfigured",
+		"MarketCode",
+		"HomeCell",
 		"CreatedAt",
 		"UpdatedAt",
 	})
@@ -65,17 +68,22 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	}
 
 	var p Profile
+	var marketCode, homeCell spanner.NullString
 	if err := row.Columns(
 		&p.SupplierID,
 		&p.LegalName,
 		&p.Country,
 		&p.Currency,
 		&p.IsConfigured,
+		&marketCode,
+		&homeCell,
 		&p.RegisteredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier %s: %w", supplierID, err)
 	}
+	p.MarketCode = nullString(marketCode)
+	p.HomeCell = nullString(homeCell)
 
 	profileRow, err := r.client.Single().ReadRow(ctx, "SupplierProfiles", spanner.Key{supplierID}, []string{
 		"SupplierId",
@@ -104,6 +112,8 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 		"IBAN",
 		"SelectedGatewaysJson",
 		"PaymentAcceptor",
+		"Gln",
+		"Gs1CompanyPrefix",
 		"RegisteredAt",
 		"ConfiguredAt",
 		"UpdatedAt",
@@ -119,41 +129,72 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	var billingLat, billingLng spanner.NullFloat64
 	var fleetVehicleCount, fleetMaxVU, factoryCount spanner.NullInt64
 	var categoriesJSON, selectedGatewaysJSON []byte
-	var configuredAt spanner.NullTime
-	var paymentAcceptor spanner.NullString
+	var configuredAt, registeredAt spanner.NullTime
+	var contactName, email, phone spanner.NullString
+	var warehouseName, warehouseAddress, billingAddress spanner.NullString
+	var taxID, companyRegNumber spanner.NullString
+	var bankName, accountHolder, accountNumber, swiftBic, iban spanner.NullString
+	var paymentAcceptor, gln, gs1Prefix spanner.NullString
 
 	if err := profileRow.Columns(
 		new(string),
-		&p.ContactName,
-		&p.Email,
-		&p.Phone,
-		&p.WarehouseName,
-		&p.WarehouseAddress,
+		&contactName,
+		&email,
+		&phone,
+		&warehouseName,
+		&warehouseAddress,
 		&warehouseLat,
 		&warehouseLng,
 		&p.BillingSameAsWh,
-		&p.BillingAddress,
+		&billingAddress,
 		&billingLat,
 		&billingLng,
-		&p.TaxID,
-		&p.CompanyRegNumber,
+		&taxID,
+		&companyRegNumber,
 		&fleetVehicleCount,
 		&fleetMaxVU,
 		&factoryCount,
 		&categoriesJSON,
 		&p.IsRegistered,
-		&p.BankName,
-		&p.AccountHolder,
-		&p.AccountNumber,
-		&p.SwiftBic,
-		&p.IBAN,
+		&bankName,
+		&accountHolder,
+		&accountNumber,
+		&swiftBic,
+		&iban,
 		&selectedGatewaysJSON,
 		&paymentAcceptor,
-		&p.RegisteredAt,
+		&gln,
+		&gs1Prefix,
+		&registeredAt,
 		&configuredAt,
 		&p.UpdatedAt,
 	); err != nil {
 		return Profile{}, false, fmt.Errorf("scan supplier profile %s: %w", supplierID, err)
+	}
+	p.ContactName = contactName.StringVal
+	p.Email = email.StringVal
+	p.Phone = phone.StringVal
+	p.WarehouseName = warehouseName.StringVal
+	p.WarehouseAddress = warehouseAddress.StringVal
+	p.BillingAddress = billingAddress.StringVal
+	p.TaxID = taxID.StringVal
+	p.CompanyRegNumber = companyRegNumber.StringVal
+	p.BankName = bankName.StringVal
+	p.AccountHolder = accountHolder.StringVal
+	p.AccountNumber = accountNumber.StringVal
+	p.SwiftBic = swiftBic.StringVal
+	p.IBAN = iban.StringVal
+	if paymentAcceptor.Valid {
+		p.PaymentAcceptor = paymentAcceptor.StringVal
+	}
+	if gln.Valid {
+		p.Gln = gln.StringVal
+	}
+	if gs1Prefix.Valid {
+		p.Gs1CompanyPrefix = gs1Prefix.StringVal
+	}
+	if registeredAt.Valid {
+		p.RegisteredAt = registeredAt.Time
 	}
 
 	if warehouseLat.Valid {
@@ -320,9 +361,9 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 
 	warehouseStmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Name, Lat, Lng, Address, PlaceId, CoverageRadiusKm, IsActive, IsOnShift,
-		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId,
+		      TransferMode, CoLocateWithFactoryId, PrimaryFactoryId, SecondaryFactoryId,
 		      COALESCE(DefaultOutOfStockPolicy, 'REJECT'), OperatingSchedule,
-		      CreatedAt, UpdatedAt
+		      COALESCE(CountryCode, ''), CreatedAt, UpdatedAt
 		      FROM Warehouses
 		      WHERE SupplierId = @supplierId
 		      ORDER BY WarehouseId`,
@@ -342,9 +383,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		var node WarehouseNode
 		var lat, lng, coverage spanner.NullFloat64
 		var address, placeID spanner.NullString
-		var transferMode, coLocate, primaryFactory spanner.NullString
+		var transferMode, coLocate, primaryFactory, secondaryFactory spanner.NullString
 		var policy spanner.NullString
 		var schedule spanner.NullJSON
+		var country string
 		if err := row.Columns(
 			&node.WarehouseID,
 			&node.Name,
@@ -358,8 +400,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&transferMode,
 			&coLocate,
 			&primaryFactory,
+			&secondaryFactory,
 			&policy,
 			&schedule,
+			&country,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -391,6 +435,10 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		if primaryFactory.Valid {
 			node.PrimaryFactoryID = primaryFactory.StringVal
 		}
+		if secondaryFactory.Valid {
+			node.SecondaryFactoryID = secondaryFactory.StringVal
+		}
+		node.CountryCode = strings.ToUpper(strings.TrimSpace(country))
 		if policy.Valid {
 			node.DefaultOutOfStockPolicy = normalizeOutOfStockPolicy(policy.StringVal)
 		}
@@ -403,7 +451,8 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	}
 
 	factoryStmt := spanner.Statement{
-		SQL: `SELECT FactoryId, Name, Lat, Lng, Address, PlaceId, IsActive, CreatedAt, UpdatedAt
+		SQL: `SELECT FactoryId, Name, Lat, Lng, Address, PlaceId, IsActive,
+		      COALESCE(CountryCode, ''), CreatedAt, UpdatedAt
 		      FROM Factories
 		      WHERE SupplierId = @supplierId
 		      ORDER BY FactoryId`,
@@ -423,6 +472,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		var node FactoryNode
 		var lat, lng spanner.NullFloat64
 		var address, placeID spanner.NullString
+		var country string
 		if err := row.Columns(
 			&node.FactoryID,
 			&node.Name,
@@ -431,6 +481,7 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 			&address,
 			&placeID,
 			&node.IsActive,
+			&country,
 			&node.CreatedAt,
 			&node.UpdatedAt,
 		); err != nil {
@@ -448,10 +499,79 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 		if placeID.Valid {
 			node.PlaceID = placeID.StringVal
 		}
+		node.CountryCode = strings.ToUpper(strings.TrimSpace(country))
 		result.Factories = append(result.Factories, node)
 	}
 
+	if err := r.attachTopologyGraph(ctx, supplierID, &result); err != nil {
+		return SupplierTopology{}, err
+	}
 	return result, nil
+}
+
+func (r *SpannerRepository) attachTopologyGraph(ctx context.Context, supplierID string, result *SupplierTopology) error {
+	if r == nil || r.client == nil || result == nil {
+		return nil
+	}
+	cityIter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT WarehouseId, CityName, Lat, Lng FROM WarehouseCoverageCities WHERE SupplierId = @sid`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer cityIter.Stop()
+	cities := map[string][]order.CoverageCity{}
+	for {
+		row, err := cityIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query warehouse coverage cities: %w", err)
+		}
+		var wid, name string
+		var lat, lng float64
+		if err := row.Columns(&wid, &name, &lat, &lng); err != nil {
+			continue
+		}
+		cities[wid] = append(cities[wid], order.CoverageCity{Name: name, Lat: lat, Lng: lng})
+	}
+
+	laneIter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT WarehouseId, FactoryId, COALESCE(Priority, 0)
+		      FROM SupplyLanes WHERE SupplierId = @sid AND COALESCE(IsActive, true) = true
+		      ORDER BY WarehouseId, Priority, FactoryId`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer laneIter.Stop()
+	lanes := map[string][]string{}
+	secondary := map[string]string{}
+	for {
+		row, err := laneIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("query supply lanes: %w", err)
+		}
+		var wid, fid string
+		var priority int64
+		if err := row.Columns(&wid, &fid, &priority); err != nil {
+			continue
+		}
+		lanes[wid] = append(lanes[wid], fid)
+		if priority == 1 && secondary[wid] == "" {
+			secondary[wid] = fid
+		}
+	}
+
+	for i := range result.Warehouses {
+		wid := result.Warehouses[i].WarehouseID
+		result.Warehouses[i].CoverageCities = cities[wid]
+		result.Warehouses[i].AssignedFactoryIDs = lanes[wid]
+		if result.Warehouses[i].SecondaryFactoryID == "" {
+			result.Warehouses[i].SecondaryFactoryID = secondary[wid]
+		}
+	}
+	return nil
 }
 
 // GetPricingRule fetches one supplier pricing authority row.
@@ -560,25 +680,7 @@ func (r *SpannerRepository) UpsertPricingRule(ctx context.Context, rule Supplier
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -608,8 +710,7 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
               FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone} su
               LEFT JOIN SupplierProfiles sp ON su.SupplierId = sp.SupplierId
               LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
-              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'
-              LIMIT 1`,
+              WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'`,
 		Params: map[string]any{"phone": trimmedPhone},
 	}
 	iter := r.client.Single().Query(ctx, stmt)
@@ -626,6 +727,12 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 	var rec SupplierAuthRecord
 	if err := row.Columns(&rec.UserID, &rec.SupplierID, &rec.Phone, &rec.PasswordHash, &rec.IsRegistered, &rec.IsConfigured); err != nil {
 		return SupplierAuthRecord{}, false, fmt.Errorf("scan supplier auth by phone: %w", err)
+	}
+	
+	// Check for ambiguous multi-tenant collision
+	_, nextErr := iter.Next()
+	if nextErr == nil {
+		return SupplierAuthRecord{}, false, fmt.Errorf("ambiguous phone number: belongs to multiple tenants")
 	}
 	return rec, true, nil
 }
@@ -691,6 +798,8 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 			"IBAN":                   strings.TrimSpace(p.IBAN),
 			"SelectedGatewaysJson":   selectedGatewaysJSON,
 			"PaymentAcceptor":        normalizeSupplierPaymentAcceptor(p.PaymentAcceptor),
+			"Gln":                    strings.TrimSpace(p.Gln),
+			"Gs1CompanyPrefix":       strings.TrimSpace(p.Gs1CompanyPrefix),
 			"RegisteredAt":           registeredAt,
 			"ConfiguredAt":           nullableTime(p.ConfiguredAt),
 			"UpdatedAt":              updatedAt,
@@ -703,6 +812,8 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 				"CountryCode":  p.Country,
 				"Currency":     p.Currency,
 				"IsConfigured": p.IsConfigured,
+				"MarketCode":   nullableString(strings.ToUpper(strings.TrimSpace(p.MarketCode))),
+				"HomeCell":     nullableString(strings.ToLower(strings.TrimSpace(p.HomeCell))),
 				"CreatedAt":    registeredAt,
 				"UpdatedAt":    updatedAt,
 			}),
@@ -779,25 +890,7 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = now
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -826,6 +919,85 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 		}
 
+		// Pre-flight check: prevent removing warehouses with active inventory or orders
+		whIter := txn.Query(ctx, spanner.Statement{
+			SQL: `SELECT WarehouseId FROM Warehouses WHERE SupplierId = @sid`,
+			Params: map[string]any{"sid": supplierID},
+		})
+		var existingWarehouses []string
+		if err := whIter.Do(func(row *spanner.Row) error {
+			var wid string
+			if err := row.Columns(&wid); err == nil {
+				existingWarehouses = append(existingWarehouses, wid)
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("query existing warehouses: %w", err)
+		}
+
+		newWarehouses := make(map[string]bool)
+		for _, w := range topology.Warehouses {
+			newWarehouses[w.WarehouseID] = true
+		}
+
+		var removedWarehouses []string
+		for _, wid := range existingWarehouses {
+			if !newWarehouses[wid] {
+				removedWarehouses = append(removedWarehouses, wid)
+			}
+		}
+
+		if len(removedWarehouses) > 0 {
+			// Check inventory
+			invIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT WarehouseId FROM SupplierInventoryV2
+				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
+				      AND (QuantityOnHand > 0 OR QuantityReserved > 0) LIMIT 1`,
+				Params: map[string]any{
+					"sid": supplierID,
+					"removed": removedWarehouses,
+				},
+			})
+			var hasInv bool
+			if err := invIter.Do(func(*spanner.Row) error { hasInv = true; return nil }); err != nil {
+				return fmt.Errorf("check removed warehouse inventory: %w", err)
+			}
+			if hasInv {
+				return errors.New("cannot remove warehouse with active inventory")
+			}
+
+			// Check orders
+			ordIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT WarehouseId FROM Orders
+				      WHERE SupplierId = @sid AND WarehouseId IN UNNEST(@removed)
+				      AND Status NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED') LIMIT 1`,
+				Params: map[string]any{
+					"sid": supplierID,
+					"removed": removedWarehouses,
+				},
+			})
+			var hasOrd bool
+			if err := ordIter.Do(func(*spanner.Row) error { hasOrd = true; return nil }); err != nil {
+				return fmt.Errorf("check removed warehouse orders: %w", err)
+			}
+			if hasOrd {
+				return errors.New("cannot remove warehouse with active orders")
+			}
+		}
+
+		if _, err := txn.Update(ctx, spanner.Statement{
+
+			SQL:    `DELETE FROM WarehouseCoverageCells WHERE SupplierId = @supplierId`,
+			Params: map[string]any{"supplierId": supplierID},
+		}); err != nil {
+			return fmt.Errorf("delete warehouse coverage cells: %w", err)
+		}
+		if _, err := txn.Update(ctx, spanner.Statement{
+			SQL:    `DELETE FROM WarehouseCoverageCities WHERE SupplierId = @supplierId`,
+			Params: map[string]any{"supplierId": supplierID},
+		}); err != nil {
+			return fmt.Errorf("delete warehouse coverage cities: %w", err)
+		}
 		if _, err := txn.Update(ctx, spanner.Statement{
 			SQL:    `DELETE FROM Warehouses WHERE SupplierId = @supplierId`,
 			Params: map[string]any{"supplierId": supplierID},
@@ -870,18 +1042,23 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				createdAt = now
 			}
 
+			factoryCountry := strings.ToUpper(strings.TrimSpace(fc.CountryCode))
+			if factoryCountry == "" {
+				return fmt.Errorf("factory country_code required")
+			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Factories", map[string]any{
-				"FactoryId":  id,
-				"SupplierId": supplierID,
-				"Name":       name,
-				"Lat":        nullableFloat(fc.Lat),
-				"Lng":        nullableFloat(fc.Lng),
-				"H3Cell":     topologyH3CellString(fc.Lat, fc.Lng),
-				"Address":    nullableString(strings.TrimSpace(fc.Address)),
-				"PlaceId":    nullableString(strings.TrimSpace(fc.PlaceID)),
-				"IsActive":   fc.IsActive,
-				"CreatedAt":  createdAt,
-				"UpdatedAt":  now,
+				"FactoryId":   id,
+				"SupplierId":  supplierID,
+				"Name":        name,
+				"Lat":         nullableFloat(fc.Lat),
+				"Lng":         nullableFloat(fc.Lng),
+				"H3Cell":      topologyH3CellString(fc.Lat, fc.Lng),
+				"Address":     nullableString(strings.TrimSpace(fc.Address)),
+				"PlaceId":     nullableString(strings.TrimSpace(fc.PlaceID)),
+				"CountryCode": factoryCountry,
+				"IsActive":    fc.IsActive,
+				"CreatedAt":   createdAt,
+				"UpdatedAt":   now,
 			}))
 		}
 
@@ -904,32 +1081,53 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}
 
 			row := map[string]any{
-				"WarehouseId":      id,
-				"SupplierId":       supplierID,
-				"Name":             name,
-				"Lat":              nullableFloat(wh.Lat),
-				"Lng":              nullableFloat(wh.Lng),
-				"H3Cell":           topologyH3CellString(wh.Lat, wh.Lng),
-				"Address":          nullableString(strings.TrimSpace(wh.Address)),
-				"PlaceId":          nullableString(strings.TrimSpace(wh.PlaceID)),
-				"CoverageRadiusKm": coverage,
-				"TransferMode":     normalizeTransferMode(wh.TransferMode),
-				"IsActive":         wh.IsActive,
-				"IsOnShift":        wh.IsOnShift,
+				"WarehouseId":             id,
+				"SupplierId":              supplierID,
+				"Name":                    name,
+				"Lat":                     nullableFloat(wh.Lat),
+				"Lng":                     nullableFloat(wh.Lng),
+				"H3Cell":                  topologyH3CellString(wh.Lat, wh.Lng),
+				"Address":                 nullableString(strings.TrimSpace(wh.Address)),
+				"PlaceId":                 nullableString(strings.TrimSpace(wh.PlaceID)),
+				"CoverageRadiusKm":        coverage,
+				"TransferMode":            normalizeTransferMode(wh.TransferMode),
+				"IsActive":                wh.IsActive,
+				"IsOnShift":               wh.IsOnShift,
 				"DefaultOutOfStockPolicy": normalizeOutOfStockPolicy(wh.DefaultOutOfStockPolicy),
-				"CreatedAt":        createdAt,
-				"UpdatedAt":        now,
+				"CreatedAt":               createdAt,
+				"UpdatedAt":               now,
 			}
 			if coLocate := strings.TrimSpace(wh.CoLocateWithFactoryID); coLocate != "" {
 				row["CoLocateWithFactoryId"] = coLocate
 			}
-			if primaryFactoryID != "" {
-				row["PrimaryFactoryId"] = primaryFactoryID
+			primary := strings.TrimSpace(wh.PrimaryFactoryID)
+			if primary == "" {
+				primary = primaryFactoryID
+			}
+			if primary != "" {
+				row["PrimaryFactoryId"] = primary
+			}
+			if sec := strings.TrimSpace(wh.SecondaryFactoryID); sec != "" {
+				row["SecondaryFactoryId"] = sec
+			}
+			if cc := strings.ToUpper(strings.TrimSpace(wh.CountryCode)); cc != "" {
+				row["CountryCode"] = cc
+			} else {
+				return fmt.Errorf("warehouse country_code required")
 			}
 			if sched := strings.TrimSpace(wh.OperatingSchedule); sched != "" {
 				row["OperatingSchedule"] = spanner.NullJSON{Value: json.RawMessage(sched), Valid: true}
 			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("Warehouses", row))
+			laneIDs := append([]string(nil), wh.AssignedFactoryIDs...)
+			if primary != "" {
+				laneIDs = append([]string{primary}, laneIDs...)
+			}
+			if sec := strings.TrimSpace(wh.SecondaryFactoryID); sec != "" {
+				laneIDs = append(laneIDs, sec)
+			}
+			mutations = append(mutations, order.SupplyLaneMutations(supplierID, id, laneIDs, now)...)
+			mutations = append(mutations, order.CoverageMutations(supplierID, id, wh.CoverageCities, now)...)
 
 			for _, seed := range wh.InitialInventory {
 				if seed.Quantity <= 0 || strings.TrimSpace(seed.ProductID) == "" {
@@ -947,23 +1145,7 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = now
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, portalOutboxMutation(e))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -1039,7 +1221,7 @@ func (r *SpannerRepository) CountSuppliers(ctx context.Context) (int64, error) {
 	if r == nil || r.client == nil {
 		return 0, fmt.Errorf("spanner supplier repository: nil client")
 	}
-	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers`}
+	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers WHERE SupplierId IS NOT NULL`}
 	iter := r.client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
@@ -1080,9 +1262,9 @@ func topologyH3CellString(lat, lng float64) any {
 	if lat == 0 && lng == 0 {
 		return nil
 	}
-	cells, err := proximity.CellsInRadius(lat, lng, 9, 0)
-	if err != nil || len(cells) == 0 {
+	cell := proximity.MatchingH3Cell(lat, lng)
+	if cell == "" {
 		return nil
 	}
-	return cells[0]
+	return cell
 }

@@ -13,7 +13,7 @@ struct TreasuryTransactionList: View {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(inv.retailerName)
                                 .font(.headline)
-                            Text("\(inv.amountUzs.formatted()) \(inv.currency) · Due: \(inv.dueDate)")
+                            Text(L10n.format("mobile_warehouse.ui.formatted_currency_due_duedate", "\(inv.amountUzs.formatted())", "\(inv.currency)", "\(inv.dueDate)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             let ownerType = inv.payoutOwnerType.isEmpty ? "SUPPLIER" : inv.payoutOwnerType

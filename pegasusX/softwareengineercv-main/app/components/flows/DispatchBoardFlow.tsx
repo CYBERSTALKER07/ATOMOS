@@ -1,29 +1,38 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 type Props = { config?: FlowConfig };
 
 export default function DispatchBoardFlow({ config }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const trucks = 3;
   const orders = config?.highlightStep !== undefined ? config.highlightStep + 2 : 4;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
-    gsap.fromTo(
-      ref.current.querySelectorAll('.dispatch-chip'),
-      { opacity: 0, y: 12 },
-      { opacity: 1, y: 0, stagger: 0.08, scrollTrigger: { trigger: ref.current, start: 'top 78%' } }
-    );
+    if (!ref.current) return;
+    const chips = ref.current.querySelectorAll('.dispatch-chip');
+
+    if (reduced) {
+      gsap.set(chips, { opacity: 1, y: 0 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        chips,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, stagger: 0.08, ease: 'pegasus', scrollTrigger: { trigger: ref.current, start: 'top 78%', fastScrollEnd: true } }
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   return (

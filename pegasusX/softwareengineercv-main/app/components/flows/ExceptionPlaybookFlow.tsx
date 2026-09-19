@@ -1,11 +1,15 @@
 'use client';
 
+import { useLanguage } from '@/app/context/LanguageContext';
+
 import type { FlowConfig } from '@/app/data/topicTypes';
 import { FlowShell } from './FlowShell';
 
 type Props = { config?: FlowConfig };
 
 export default function ExceptionPlaybookFlow({ config }: Props) {
+  const { language } = useLanguage();
+
   const steps = config?.roles ?? ['Trigger', 'Guard', 'Recovery', 'Notify'];
   const branchAt = config?.highlightStep ?? 2;
 
@@ -24,7 +28,7 @@ export default function ExceptionPlaybookFlow({ config }: Props) {
               {step}
             </p>
             {i === branchAt ? (
-              <p className="mt-1 text-sm text-white/60">Recovery path engaged — state stays consistent</p>
+              <p className="mt-1 text-sm text-white/60">{language === 'ru' ? 'Путь восстановления активен — состояние согласовано' : 'Recovery path engaged — state stays consistent'}</p>
             ) : null}
           </div>
         ))}

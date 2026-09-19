@@ -1,5 +1,8 @@
 # Schema Sketch (Spanner)
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 Additive sketches — refine in DDL PRs. Prefer new tables over overloading JSON blobs when queried.
 
 ## Planning / graph

@@ -8,7 +8,7 @@ func (s *Service) hydrateFromRepo(ctx context.Context) error {
 	if s == nil || s.repo == nil {
 		return nil
 	}
-	return s.repo.Hydrate(ctx, s.supplierID, s)
+	return s.repo.Hydrate(ctx, s.resolveSupplierScope(ctx), s)
 }
 
 // ensureManifestStateLocked seeds demo manifests only when the in-memory cache is

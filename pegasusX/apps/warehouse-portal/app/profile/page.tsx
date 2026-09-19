@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo } from 'react';
 import Link from 'next/link';
 import PageTransition from '@/components/PageTransition';
@@ -18,6 +19,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 }
 
 export default function WarehouseProfilePage() {
+  const t = usePortalT();
   const session = useMemo(() => {
     const token = readTokenFromCookie();
     if (!token) return null;
@@ -32,12 +34,12 @@ export default function WarehouseProfilePage() {
     <PageTransition>
       <PageChrome
         icon="warehouse"
-        title="Profile"
-        description="Warehouse operator session and scope."
+        title={t("portal.nav.profile")}
+        description={t("warehouse_portal.residual.text.warehouse_operator_session_and_scope")}
       >
         <div className="max-w-xl space-y-4">
           <div className="md-card p-4 space-y-2">
-            <p className="md-typescale-label-large" style={{ color: 'var(--color-md-on-surface-variant)' }}>Signed in as</p>
+            <p className="md-typescale-label-large" style={{ color: 'var(--color-md-on-surface-variant)' }}>{t("warehouse_portal.profile.text.signed_in_as")}</p>
             <p className="md-typescale-title-large">{subject || 'Warehouse operator'}</p>
             <p className="md-typescale-body-medium" style={{ color: 'var(--color-md-on-surface-variant)' }}>
               Role: {role}

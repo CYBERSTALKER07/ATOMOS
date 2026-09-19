@@ -1,6 +1,11 @@
 # Wave C — Agent-executable implementation plan
 
-**Status:** Product answers locked · C1.1 done · ready for C1.2  
+> **HISTORICAL / FROZEN — do not plan from this file alone.**
+> Current SoT: [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md) · [`session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md`](./session-2026-08-07/ECOSYSTEM_GAP_REGISTER_2026-08-12.md) · [`FEATURES_BY_APP_ROLE.md`](./FEATURES_BY_APP_ROLE.md).
+> Body is a point-in-time snapshot; re-verify any claim against code before acting.
+
+
+**Status:** C1–C4.1 **code complete** (historical Wave C runbook) · residual flags/pilot ops — use [`PROD_READINESS_SEQUENCE.md`](./PROD_READINESS_SEQUENCE.md)  
 **Companion design:** `docs/WAVE_C_ENTERPRISE_SCALE_PLAN.md`  
 **Repo root:** `pegasusX/`  
 **Env for prove:** SSMR (`pegasus-503013`, `api-ssmr.pegasusx.app`, ns `pegasusx-ssmr`)
@@ -31,7 +36,7 @@ This document is the runbook for agents and humans. Each PR has: goal, files, DD
 | `MULTI_ORG_RETAILER_ALLOWLIST` | empty | Optional comma `RetailerId`s |
 | `PENDING_ORG_SELECT_TTL_SEC` | `420` (7m) | Intermediate JWT |
 | `HQ_ANALYTICS_ENABLED` | `false` | C2 |
-| `POS_HOLDS_ENABLED` | `false` | C3 holds |
+| `POS_HOLDS_ENABLED` | pilot default **on** (unset); set `false` to disable | C3 holds |
 | `OFFLINE_COUNT_ENABLED` | `false` | C3 count |
 | `ASSIST_SLA_ENABLED` | `false` | C4 |
 | `ASSIST_SLA_MINUTES` | `15` | C4 |

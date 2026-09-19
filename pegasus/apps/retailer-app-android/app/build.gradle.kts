@@ -25,17 +25,16 @@ val goBinary: String = localProps.getProperty("go.path", "go")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
 val backendGoDir = rootProject.file("../../apps/backend-go")
-val i18nAndroidDir = rootProject.file("../../packages/i18n/generated/android")
 val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasus/retailer/generated/contracts/PegasusWSEventEnvelope.kt"
 )
 
-fun assertCommandAvailable(command: String, propName: String) {
+fun assertCommandAvailable(command: String) {
     val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
     val exitCode = process.waitFor()
     if (exitCode != 0) {
         throw GradleException(
-            "Binary '$command' not found. Install it or set '$propName' in local.properties",
+            "quicktype not found (binary: $command). Install quicktype or set quicktype.path in local.properties",
         )
     }
 }
@@ -46,7 +45,7 @@ val generateEventSchema by tasks.registering(Exec::class) {
     workingDir = backendGoDir
 
     doFirst {
-        assertCommandAvailable(goBinary, "go.path")
+        assertCommandAvailable(goBinary)
     }
 
     commandLine(
@@ -74,7 +73,7 @@ val generateWsEventModels by tasks.registering(Exec::class) {
 
     doFirst {
         generatedWsModelFile.parentFile.mkdirs()
-        assertCommandAvailable(quicktypeBinary, "quicktype.path")
+        assertCommandAvailable(quicktypeBinary)
     }
 
     commandLine(
@@ -83,7 +82,6 @@ val generateWsEventModels by tasks.registering(Exec::class) {
         "kotlin",
         "--src-lang",
         "schema",
-        "--src",
         contractsSchemaFile.absolutePath,
         "--package",
         "com.pegasus.retailer.generated.contracts",
@@ -96,16 +94,8 @@ val generateWsEventModels by tasks.registering(Exec::class) {
     )
 }
 
-val copyI18nAndroidStrings by tasks.registering(Copy::class) {
-    group = "codegen"
-    description = "Copy shared i18n Android string resources into the app module"
-    from(i18nAndroidDir)
-    into("src/main/res")
-    include("**/strings.xml")
-}
-
 tasks.named("preBuild") {
-    dependsOn(generateWsEventModels, copyI18nAndroidStrings)
+    dependsOn(generateWsEventModels)
 }
 
 android {

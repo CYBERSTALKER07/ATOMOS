@@ -20,7 +20,7 @@ struct LocationSettingsView: View {
             Section { Text(factoryName) }
           }
           Section("Factory address") {
-            Text("Used for supply routing and dispatch. Coordinates stay hidden from daily ops screens.")
+            Text("mobile_factory.ui.used_for_supply_routing_and_dispatch_coordinates_stay_hidden_fro")
               .font(.caption)
               .foregroundStyle(.secondary)
             AddressLocationField(value: $location, label: "Factory address")
@@ -35,10 +35,10 @@ struct LocationSettingsView: View {
         }
       }
     }
-    .navigationTitle("Factory location")
+    .navigationTitle("factory_portal.settings.location.text.factory_location")
     .toolbar {
       ToolbarItem(placement: .topBarTrailing) {
-        Button("Refresh", systemImage: "arrow.clockwise") { load() }
+        Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
       }
     }
     .task { load() }

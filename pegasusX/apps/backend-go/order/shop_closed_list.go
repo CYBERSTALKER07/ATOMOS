@@ -46,7 +46,7 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 
 	supplierID, ok := auth.ResolveSupplierID(r.Context())
 	if !ok {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierScope(r.Context())
 	}
 	if supplierID == "" {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})

@@ -18,15 +18,15 @@ import type { MegaNavCategory, MegaNavPromo } from '../data/megaNavigation';
 
 function getIconForFlow(flow?: string) {
   switch (flow) {
-    case 'controlPlane': return <Layers className="w-6 h-6 text-blue-500" />;
-    case 'orderLifecycle': return <Activity className="w-6 h-6 text-blue-500" />;
-    case 'mutatingHandler': return <Settings className="w-6 h-6 text-blue-500" />;
-    case 'realtimePipeline': return <Zap className="w-6 h-6 text-blue-500" />;
-    case 'topologyMap': return <Network className="w-6 h-6 text-blue-500" />;
-    case 'dispatchBoard': return <Truck className="w-6 h-6 text-blue-500" />;
-    case 'fleetMap': return <Navigation className="w-6 h-6 text-blue-500" />;
-    case 'paymentFlow': return <Shield className="w-6 h-6 text-blue-500" />;
-    default: return <Box className="w-6 h-6 text-blue-500" />;
+    case 'controlPlane': return <Layers className="w-6 h-6 text-white" />;
+    case 'orderLifecycle': return <Activity className="w-6 h-6 text-white" />;
+    case 'mutatingHandler': return <Settings className="w-6 h-6 text-white" />;
+    case 'realtimePipeline': return <Zap className="w-6 h-6 text-white" />;
+    case 'topologyMap': return <Network className="w-6 h-6 text-white" />;
+    case 'dispatchBoard': return <Truck className="w-6 h-6 text-white" />;
+    case 'fleetMap': return <Navigation className="w-6 h-6 text-white" />;
+    case 'paymentFlow': return <Shield className="w-6 h-6 text-white" />;
+    default: return <Box className="w-6 h-6 text-white" />;
   }
 }
 
@@ -123,13 +123,13 @@ export default function GigaMenuDropdown({
                     <div className="flex justify-between items-start">
                       {getIconForFlow(link.flow)}
                       {link.badge && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-sm tracking-wider">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-white text-black rounded-none tracking-wider">
                           {link.badge}
                         </span>
                       )}
                     </div>
                     <div className="mt-6">
-                      <div className="text-white font-medium text-sm group-hover:text-blue-400 transition-colors">
+                      <div className="text-white font-medium text-sm group-hover:text-white transition-colors">
                         {link.label}
                       </div>
                       {link.description && (
@@ -149,7 +149,7 @@ export default function GigaMenuDropdown({
                   </div>
                   <Link
                     href={renderedCategory.viewAllHref}
-                    className="inline-flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-[#222] text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-lg"
+                    className="inline-flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-[#222] text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-none"
                   >
                     {renderedCategory.viewAllLabel || 'Learn More'}
                     <span className="ml-4">▼</span>
@@ -166,7 +166,7 @@ export default function GigaMenuDropdown({
                 </h2>
                 <Link
                   href={renderedCategory.promo.primaryHref}
-                  className="relative h-[400px] bg-gradient-to-br from-[#222] to-[#0a0a0a] rounded-lg border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
+                  className="relative h-[400px] bg-gradient-to-br from-[#222] to-[#0a0a0a] rounded-none border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
                 >
                   {/* Subtle background abstract pattern/gradient */}
                   <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent mix-blend-overlay"></div>

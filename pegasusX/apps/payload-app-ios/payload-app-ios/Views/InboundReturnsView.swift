@@ -54,10 +54,10 @@ struct InboundReturnsView: View {
                     }
                 }
             }
-            .navigationTitle("Inbound Returns")
+            .navigationTitle("warehouse_portal.returns.text.inbound_returns")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
+                    Button("common.action.close") { dismiss() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Task { await load() } } label: {
@@ -79,11 +79,11 @@ struct InboundReturnsView: View {
                 },
                 enabled: scannerEnabled && !scanning
             )
-            Text("EAN / barcode")
+            Text("mobile_payload.ui.ean_barcode_2")
                 .font(.caption)
                 .foregroundStyle(TermTheme.secondary)
             HStack(spacing: TermTheme.s8) {
-                TextField("Scan or type EAN", text: $barcode)
+                TextField("mobile_payload.ui.scan_or_type_ean", text: $barcode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .padding(TermTheme.s12)
@@ -97,17 +97,17 @@ struct InboundReturnsView: View {
                 .disabled(scanning || barcode.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             HStack(spacing: TermTheme.s8) {
-                Button("Restock") { Task { await confirm(disposition: "RESTOCK") } }
+                Button("mobile_payload.ui.restock") { Task { await confirm(disposition: "RESTOCK") } }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.borderedProminent)
                     .tint(.green)
-                Button("Write off") { Task { await confirm(disposition: "WRITE_OFF") } }
+                Button("supplier_portal.returns.text.write_off") { Task { await confirm(disposition: "WRITE_OFF") } }
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.borderedProminent)
                     .tint(.red)
             }
             if queuedScans > 0 {
-                Text("\(queuedScans) scan(s) queued offline")
+                Text(L10n.format("mobile_payload.ui.queuedscans_scan_s_queued_offline_2", "\(queuedScans)"))
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }

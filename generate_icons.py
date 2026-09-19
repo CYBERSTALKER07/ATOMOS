@@ -92,7 +92,7 @@ if __name__ == "__main__":
         "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/driver-app-ios/driverappios/driverappios/Assets.xcassets/AppIcon.appiconset",
         "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/warehouse-app-ios/WarehouseApp/Assets.xcassets/AppIcon.appiconset",
         "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/payload-app-ios/payload-app-ios/Assets.xcassets/AppIcon.appiconset",
-        "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/retailer-app-ios/retailerapp/reatilerapp/Assets.xcassets/AppIcon.appiconset",
+        "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/retailer-app-ios/retailerapp/retailerapp/Assets.xcassets/AppIcon.appiconset",
         "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/supplier-app-ios/SupplierApp/Assets.xcassets/AppIcon.appiconset"
     ]
     

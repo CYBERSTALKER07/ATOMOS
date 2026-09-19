@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -95,7 +96,42 @@ type gorillaConn struct {
 	conn     *websocket.Conn
 	joinedAt time.Time
 	mu       sync.Mutex
+	send     chan []byte
+	stop     chan struct{}
 }
+
+func (c *gorillaConn) writePump() {
+	ticker := time.NewTicker(30 * time.Second) // Ping interval
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
+	for {
+		select {
+		case <-c.stop:
+			return
+		case payload, ok := <-c.send:
+			if !ok {
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if err := c.conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+				return
+			}
+			n := len(c.send)
+			for i := 0; i < n; i++ {
+				c.conn.WriteMessage(websocket.TextMessage, <-c.send)
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+		}
+	}
+}
+
 
 func (c *gorillaConn) ID() string {
 	return c.id
@@ -106,14 +142,16 @@ func (c *gorillaConn) Identity() auth.Claims {
 }
 
 func (c *gorillaConn) Send(ctx context.Context, payload []byte) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(5 * time.Second)
+	select {
+	case c.send <- payload:
+		return nil
+	case <-c.stop:
+		return fmt.Errorf("connection closed")
+	default:
+		// Queue full, drop slow consumer
+		c.close()
+		return fmt.Errorf("slow consumer dropped")
 	}
-	_ = c.conn.SetWriteDeadline(deadline)
-	return c.conn.WriteMessage(websocket.TextMessage, payload)
 }
 
 func (c *gorillaConn) ping(timeout time.Duration) error {

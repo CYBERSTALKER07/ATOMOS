@@ -1,0 +1,9 @@
+{
+  "artifact": "auto-order-soak",
+  "version": 1,
+  "soak_days": 0,
+  "window_days": 30,
+  "unmodified_accept_rate": 0,
+  "unmodified_acceptance_rate": 0,
+  "note": "Placeholder schema — regenerate with scripts/generate_auto_order_soak_artifact.sh before any place flip."
+}

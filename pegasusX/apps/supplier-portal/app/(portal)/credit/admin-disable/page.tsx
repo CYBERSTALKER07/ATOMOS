@@ -1,11 +1,13 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
 
 /** Pegaus support/admin console surface: permanent disable with ticket linkage. */
 export default function CreditAdminDisablePage() {
+  const t = usePortalT();
   const [supplierId, setSupplierId] = useState("");
   const [retailerId, setRetailerId] = useState("");
   const [ticketId, setTicketId] = useState("");
@@ -31,7 +33,7 @@ export default function CreditAdminDisablePage() {
       if (!res.ok) throw new Error(body.error || `status_${res.status}`);
       setMsg("disabled_ok");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "failed");
+      setMsg(e instanceof Error ? e.message : t("supplier_portal.residual.text.failed"));
     } finally {
       setBusy(false);
     }
@@ -39,15 +41,15 @@ export default function CreditAdminDisablePage() {
 
   return (
     <PageChrome
-      title="Admin: disable credit"
-      description="Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible."
+      title={t("supplier_portal.credit.admin_disable.text.admin_disable_credit")}
+      description={t("supplier_portal.residual.text.support_only_permanent_disable_requires_ticket_id_reason_open_ar")}
     >
       <div className="space-y-3 max-w-lg text-sm">
         <label className="block">
           Mode
           <select className="ml-2 border rounded px-2 py-1" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>
-            <option value="relationship">Relationship</option>
-            <option value="program">Program</option>
+            <option value="relationship">{t("supplier_portal.credit.admin_disable.text.relationship")}</option>
+            <option value="program">{t("supplier_portal.credit.admin_disable.text.program")}</option>
           </select>
         </label>
         <label className="block">

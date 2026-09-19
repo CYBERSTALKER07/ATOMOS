@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState } from "react";
@@ -10,6 +11,7 @@ import { PageChrome } from "@/components/PageChrome";
 const api = createSupplierApi();
 
 export default function KnowledgeGraphPage() {
+  const t = usePortalT();
   const [graph, setGraph] = useState<SupplierKnowledgeGraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export default function KnowledgeGraphPage() {
         if (!cancelled) setGraph(resp);
       })
       .catch(() => {
-        if (!cancelled) setError("load_knowledge_graph_failed");
+        if (!cancelled) setError(t("supplier_portal.residual.text.load_knowledge_graph_failed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -35,8 +37,8 @@ export default function KnowledgeGraphPage() {
   return (
     <PageChrome
       icon="topology"
-      title="Enterprise knowledge graph"
-      description="Read-only supplier planning graph — factories, warehouses, SKUs, and relationships."
+      title={t("supplier_portal.analytics.knowledge_graph.text.enterprise_knowledge_graph")}
+      description={t("supplier_portal.residual.text.read_only_supplier_planning_graph_factories_warehouses_skus_and_")}
       loading={loading}
       skeletonVariant="dashboard"
       error={error}
@@ -55,8 +57,8 @@ export default function KnowledgeGraphPage() {
                 <thead>
                   <tr style={{ color: "var(--desk-text-secondary)" }}>
                     <th className="md-typescale-label-medium p-3 text-left font-medium">ID</th>
-                    <th className="md-typescale-label-medium p-3 text-left font-medium">Type</th>
-                    <th className="md-typescale-label-medium p-3 text-left font-medium">Name</th>
+                    <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.ledger.text.type")}</th>
+                    <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -78,8 +80,8 @@ export default function KnowledgeGraphPage() {
               <table className="desk-table w-full">
                 <thead>
                   <tr style={{ color: "var(--desk-text-secondary)" }}>
-                    <th className="md-typescale-label-medium p-3 text-left font-medium">From</th>
-                    <th className="md-typescale-label-medium p-3 text-left font-medium">Relation</th>
+                    <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.knowledge_graph.text.from")}</th>
+                    <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.analytics.knowledge_graph.text.relation")}</th>
                     <th className="md-typescale-label-medium p-3 text-left font-medium">To</th>
                   </tr>
                 </thead>

@@ -20,7 +20,7 @@ struct InventoryStockList: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(item.productName)
                                     .font(.headline)
-                                Text("Qty: \(item.quantity) · Reorder: \(item.reorderThreshold)")
+                                Text(L10n.format("mobile_warehouse.ui.qty_quantity_reorder_reorderthreshold", "\(item.quantity)", "\(item.reorderThreshold)"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -33,7 +33,7 @@ struct InventoryStockList: View {
                                     .foregroundStyle(.white)
                                     .background(.red, in: Capsule())
                             }
-                            Button("Adjust") { onAdjust(item) }
+                            Button("retailer_desktop.stock.text.adjust") { onAdjust(item) }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                         }

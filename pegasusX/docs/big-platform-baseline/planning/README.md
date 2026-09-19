@@ -1,5 +1,8 @@
 # 2. Planning & Intelligence (O9 / Kinaxis baseline)
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 | Doc | Topic |
 |-----|--------|
 | [2.1-causal-demand-sensing.md](./2.1-causal-demand-sensing.md) | Demand + external signals |

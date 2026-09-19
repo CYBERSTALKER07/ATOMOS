@@ -1,10 +1,11 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
-import { factoryTransferCreateKey } from '@pegasusx/api-client';
+import { factoryTransferCreateKey } from '@pegasusx/api-core';
 import { factoryOperatorId } from '@/lib/factory-scope';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { useToast } from '@/components/Toast';
@@ -31,6 +32,7 @@ interface CreateTransferResponse {
 }
 
 export default function CreateTransferPage() {
+  const t = usePortalT();
   const router = useRouter();
   const { toast } = useToast();
   const [loadingFleet, setLoadingFleet] = useState(true);
@@ -123,7 +125,7 @@ export default function CreateTransferPage() {
   if (loadingFleet) {
     return (
       <PageTransition>
-        <PageChrome icon="transfers" title="Create transfer" description="Loading fleet assignment options." loading skeletonVariant="form" />
+        <PageChrome icon="transfers" title={t("factory_portal.transfers.create.text.create_transfer")} description={t("factory_portal.residual.text.loading_fleet_assignment_options")} loading skeletonVariant="form" />
       </PageTransition>
     );
   }
@@ -133,8 +135,8 @@ export default function CreateTransferPage() {
       <PageTransition>
         <PageChrome
           icon="transfers"
-          title="Create transfer"
-          description="Stage a factory-to-warehouse movement."
+          title={t("factory_portal.transfers.create.text.create_transfer")}
+          description={t("factory_portal.residual.text.stage_a_factory_to_warehouse_movement")}
           error={error}
           actions={
             <button type="button" className="portal-btn portal-btn--outline" onClick={() => void loadFleet()}>
@@ -150,8 +152,8 @@ export default function CreateTransferPage() {
     <PageTransition>
       <PageChrome
         icon="transfers"
-        title="Create transfer"
-        description="Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading."
+        title={t("factory_portal.transfers.create.text.create_transfer")}
+        description={t("factory_portal.residual.text.stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu_o")}
         actions={
           <Link href="/transfers" className="portal-btn portal-btn--ghost text-sm">
             ← Back to transfers
@@ -159,15 +161,15 @@ export default function CreateTransferPage() {
         }
       >
       <form onSubmit={(event) => void handleSubmit(event)} className="max-w-xl space-y-4">
-        <PortalField id="order_id" label="Order ID" optional>
-          <PortalInput id="order_id" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="ord_…" />
+        <PortalField id="order_id" label={t("supplier_portal.admin.control_center.field.order_id")} optional>
+          <PortalInput id="order_id" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder={t("factory_portal.transfers.create.text.ord")} />
         </PortalField>
-        <PortalField id="total_vu" label="Total volume (VU)">
+        <PortalField id="total_vu" label={t("factory_portal.residual.text.total_volume_vu")}>
           <PortalInput id="total_vu" type="number" min={1} step={1} required value={totalVu} onChange={(e) => setTotalVu(e.target.value)} />
         </PortalField>
-        <PortalField id="driver_id" label="Driver" optional>
+        <PortalField id="driver_id" label={t("supplier_portal.analytics.route_performance.text.driver")} optional>
           <PortalSelect id="driver_id" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t("factory_portal.transfers._id_.text.unassigned")}</option>
             {drivers.map((driver) => (
               <option key={driver.driver_id} value={driver.driver_id}>
                 {driver.name} {driver.on_shift ? '(on shift)' : ''}
@@ -175,9 +177,9 @@ export default function CreateTransferPage() {
             ))}
           </PortalSelect>
         </PortalField>
-        <PortalField id="vehicle_id" label="Vehicle" optional>
+        <PortalField id="vehicle_id" label={t("supplier_portal.org_fleet.components.driver_table.text.vehicle")} optional>
           <PortalSelect id="vehicle_id" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-            <option value="">Unassigned</option>
+            <option value="">{t("factory_portal.transfers._id_.text.unassigned")}</option>
             {vehicles.map((vehicle) => (
               <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>
                 {vehicle.plate_no} · {vehicle.state}

@@ -46,8 +46,8 @@ JOIN Orders o ON o.OrderId = pl.OrderId
 WHERE o.DriverId = @driverId
   AND pl.Method = @method
   AND pl.Status = @status
-  AND o.CreatedAt >= @start
-  AND o.CreatedAt < @end`
+  AND pl.CapturedAt >= @start
+  AND pl.CapturedAt < @end`
 	if routeID != nil && strings.TrimSpace(*routeID) != "" {
 		sql += ` AND o.RouteId = @routeId`
 		params["routeId"] = strings.TrimSpace(*routeID)

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import type { WarehouseDispatchDriver, WarehouseUnavailableDispatchDriver } from '@pegasusx/types';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
@@ -34,11 +35,12 @@ export default function DispatchDriverList({
   drivers,
   unavailableDrivers,
 }: DispatchDriverListProps) {
+  const t = usePortalT();
   return (
     <PageSection title={`Available drivers (${drivers.length})`}>
       <div className="space-y-4 max-h-80 overflow-y-auto">
         {drivers.length === 0 ? (
-          <EmptyState variant="no-data" headline="No drivers available" body="All drivers are on route or blocked." />
+          <EmptyState variant="no-data" headline={t("warehouse_portal.residual.text.no_drivers_available")} body={t("warehouse_portal.residual.text.all_drivers_are_on_route_or_blocked")} />
         ) : (
           <div className="space-y-2">
             {drivers.map(driver => (
@@ -65,7 +67,7 @@ export default function DispatchDriverList({
             Unavailable ({unavailableDrivers.length})
           </h3>
           {unavailableDrivers.length === 0 ? (
-            <p className="text-sm text-(--muted) py-2 text-center">No drivers blocked — all assigned trucks eligible or off-shift reasons shown here in real time.</p>
+            <p className="text-sm text-(--muted) py-2 text-center">{t("warehouse_portal.dispatch.dispatch_driver_list.text.no_drivers_blocked_all_assigned_trucks_eligible_or_off_shift_rea")}</p>
           ) : (
             <div className="space-y-2">
               {unavailableDrivers.map(driver => (

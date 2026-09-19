@@ -1,13 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import type { FlowConfig } from '@/app/data/topicTypes';
-import { useReducedMotion } from '@/app/hooks/useDevice';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FlowShell, StepNode } from './FlowShell';
-
-gsap.registerPlugin(ScrollTrigger);
 
 const STEPS = ['Verify', 'Validate', 'Save', 'Refresh', 'Notify'];
 
@@ -15,18 +12,29 @@ type Props = { config?: FlowConfig };
 
 export default function MutatingHandlerFlow({ config }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const reduced = prefersReducedMotion || isLowEnd;
   const highlight = config?.highlightStep ?? 2;
 
   useEffect(() => {
-    if (reduced || !ref.current) return;
+    if (!ref.current) return;
     const bar = ref.current.querySelector('.flow-progress');
     if (!bar) return;
-    gsap.fromTo(
-      bar,
-      { scaleX: 0 },
-      { scaleX: 1, ease: 'none', scrollTrigger: { trigger: ref.current, start: 'top 70%', end: 'bottom 50%', scrub: 1 } }
-    );
+
+    if (reduced) {
+      gsap.set(bar, { scaleX: 1 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        bar,
+        { scaleX: 0 },
+        { scaleX: 1, ease: 'none', scrollTrigger: { trigger: ref.current, start: 'top 70%', end: 'bottom 50%', scrub: 1, fastScrollEnd: true } }
+      );
+    }, ref);
+
+    return () => ctx.revert();
   }, [reduced]);
 
   return (

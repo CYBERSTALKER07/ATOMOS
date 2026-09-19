@@ -9,7 +9,7 @@ SwiftUI iPad app for payload operators.
 
 - Default API: `http://localhost:8180` (override with `PEGASUS_DEV_HOST` in Xcode scheme)
 - Auth: `POST /v1/auth/payloader/login`
-- WebSocket: `/v1/ws?token=...`
+- WebSocket: `/v1/ws` with `Authorization: Bearer <session JWT>` (no query token)
 
 ```bash
 cd pegasusX/apps/payload-app-ios

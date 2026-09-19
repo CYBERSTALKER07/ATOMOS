@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
+import LanguageSwitcher from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
+import { useTheme } from '../context/ThemeContext';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 export type PillNavItem = {
@@ -47,12 +50,35 @@ const PillNav: React.FC<PillNavProps> = ({
   showMenuButton = false,
   categories,
 }) => {
-  const resolvedPillTextColor = pillTextColor ?? baseColor;
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === 'light';
+
+  const effectiveBaseColor = isLight && (baseColor === '#000000' || baseColor === '#000') ? '#ffffff' : baseColor;
+  const effectivePillColor = isLight && (pillColor === '#ffffff' || pillColor === '#fff') ? '#f4f4f5' : pillColor;
+  const effectiveHoveredPillTextColor = isLight && (hoveredPillTextColor === '#000000' || hoveredPillTextColor === '#000') ? '#ffffff' : hoveredPillTextColor;
+  const effectivePillTextColor = isLight && (!pillTextColor || pillTextColor === '#000000' || pillTextColor === '#000') ? '#09090b' : (pillTextColor ?? effectiveBaseColor);
+
+  const resolvedPillTextColor = effectivePillTextColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
 
-  const displayItems = categories ? categories.map(c => ({ label: c.label, href: c.viewAllHref || '#', id: c.id })) : items;
+  const displayItems = useMemo(
+    () =>
+      categories
+        ? categories.map((c) => ({ label: c.label, href: c.viewAllHref || '#', id: c.id }))
+        : items,
+    [categories, items],
+  );
+
+  // Content signature — ignore array identity so form re-renders don't restart GSAP.
+  const navLayoutKey = useMemo(
+    () =>
+      categories
+        ? categories.map((c) => `${c.id}:${c.label}`).join('|')
+        : items.map((i) => `${i.href}:${i.label}`).join('|'),
+    [categories, items],
+  );
 
   const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
@@ -63,6 +89,7 @@ const PillNav: React.FC<PillNavProps> = ({
   const navItemsRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const introPlayedRef = useRef(false);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -158,7 +185,9 @@ const PillNav: React.FC<PillNavProps> = ({
       gsap.set(menu, { visibility: 'hidden', opacity: 0, scaleY: 1, y: 0 });
     }
 
-    if (initialLoadAnimation) {
+    // Play the entrance animation once per mount — never on form focus/typing re-renders.
+    if (initialLoadAnimation && !introPlayedRef.current) {
+      introPlayedRef.current = true;
       const logo = logoRef.current;
       const navItems = navItemsRef.current;
 
@@ -167,7 +196,7 @@ const PillNav: React.FC<PillNavProps> = ({
         gsap.to(logo, {
           scale: 1,
           duration: 0.6,
-          ease
+          ease,
         });
       }
 
@@ -177,13 +206,13 @@ const PillNav: React.FC<PillNavProps> = ({
           opacity: 1,
           x: 0,
           duration: 0.6,
-          ease
+          ease,
         });
       }
     }
 
     return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation, showMenuButton]);
+  }, [navLayoutKey, ease, initialLoadAnimation, showMenuButton]);
 
   useEffect(() => {
     const navItems = navItemsRef.current;
@@ -278,18 +307,18 @@ const PillNav: React.FC<PillNavProps> = ({
     href.startsWith('#');
 
   const cssVars = {
-    ['--base']: baseColor,
-    ['--pill-bg']: pillColor,
-    ['--hover-text']: hoveredPillTextColor,
+    ['--base']: effectiveBaseColor,
+    ['--pill-bg']: effectivePillColor,
+    ['--hover-text']: effectiveHoveredPillTextColor,
     ['--pill-text']: resolvedPillTextColor,
-    ['--nav-h']: '42px',
+    ['--nav-h']: '40px',
     ['--logo']: '36px',
-    ['--pill-pad-x']: '12px',
+    ['--pill-pad-x']: '10px',
     ['--pill-gap']: '2px'
   } as React.CSSProperties;
 
   const basePillClasses =
-    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
 
   const pillStyleBase: React.CSSProperties = {
     background: 'var(--pill-bg, #fff)',
@@ -301,16 +330,20 @@ const PillNav: React.FC<PillNavProps> = ({
   return (
     <div
       ref={wrapperRef}
-      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 bg-black border-b border-white/10`}
+      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 ${
+        isLight
+          ? 'bg-white/95 border-b border-black/10 shadow-sm backdrop-blur-md'
+          : 'bg-black border-b border-white/10'
+      }`}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
           setActiveCategory(null);
         }
       }}
     >
-      <div className="relative pointer-events-none px-4 py-3">
+      <div className="relative pointer-events-none px-4 sm:px-6 py-2.5">
         <nav
-          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
+          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-[1600px] mx-auto ${className}`}
           aria-label="Primary"
           style={cssVars}
         >
@@ -320,11 +353,13 @@ const PillNav: React.FC<PillNavProps> = ({
             ref={el => {
               logoRef.current = el;
             }}
-            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
+            className={`shrink-0 inline-flex items-center justify-center overflow-hidden outline-none rounded-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
+            }`}
             style={{
               width: '64px',
               height: '64px',
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <img
@@ -337,10 +372,10 @@ const PillNav: React.FC<PillNavProps> = ({
 
           <div
             ref={navItemsRef}
-            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
+            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
             style={{
               height: 'var(--nav-h)',
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <ul
@@ -386,7 +421,7 @@ const PillNav: React.FC<PillNavProps> = ({
                     </span>
                     {isActive && (
                       <span
-                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-3 rounded-full z-[4]"
+                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-1 z-[4]"
                         style={{ background: 'var(--base, #000)' }}
                         aria-hidden="true"
                       />
@@ -438,13 +473,19 @@ const PillNav: React.FC<PillNavProps> = ({
             </ul>
           </div>
 
-          <div className="shrink-0 ml-auto flex items-center gap-0 pointer-events-auto">
+          <div className="shrink-0 ml-auto flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+            <ThemeSwitcher className="mr-0.5 sm:mr-1" />
+            <LanguageSwitcher className="mr-1 sm:mr-2" />
             <button
               ref={hamburgerRef}
               onClick={toggleMobileMenu}
               aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
               aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
-              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
+              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isLight
+                  ? 'border-black text-black hover:bg-black hover:text-white focus-visible:ring-black'
+                  : 'border-white text-white hover:bg-white hover:text-black focus-visible:ring-white'
+              }`}
             >
               <span className="text-sm font-medium tracking-wider">MENU</span>
               <div className="flex flex-col items-center justify-center gap-[4px] w-5">
@@ -464,7 +505,11 @@ const PillNav: React.FC<PillNavProps> = ({
             </button>
             <Link
               href="/contact"
-              className="hidden sm:block px-4 py-2 bg-white text-black border border-white text-sm font-medium tracking-wider hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
+              className={`hidden sm:block px-4 py-2 text-sm font-medium tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isLight
+                  ? 'bg-black text-white border border-black hover:bg-zinc-800 focus-visible:ring-black'
+                  : 'bg-white text-black border border-white hover:bg-gray-200 focus-visible:ring-white'
+              }`}
             >
               REQUEST DEMO
             </Link>
@@ -490,10 +535,12 @@ const PillNav: React.FC<PillNavProps> = ({
         {(!showMenuButton && !categories) ? (
           <div
             ref={mobileMenuRef}
-            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
+            className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none border shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto ${
+              isLight ? 'border-black/10 bg-white' : 'border-white/10 bg-black'
+            }`}
             style={{
               ...cssVars,
-              background: 'var(--base, #000)'
+              background: isLight ? '#ffffff' : 'var(--base, #000)'
             }}
           >
             <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
@@ -512,7 +559,7 @@ const PillNav: React.FC<PillNavProps> = ({
                 };
 
                 const linkClasses =
-                  'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+                  'block py-3 px-4 text-[16px] font-medium rounded-none transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
 
                 return (
                   <li key={item.href}>

@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { decodeJwtPayload, parseFactoryLiveEvent, FactoryLiveEvent } from '../auth';
+import { decodeJwtPayload, httpAuthorizationToken, parseFactoryLiveEvent, FactoryLiveEvent } from '../auth';
 
 describe('auth.ts utilities', () => {
+  describe('httpAuthorizationToken', () => {
+    it('uses session JWT and never falls back to Firebase ID', () => {
+      expect(httpAuthorizationToken('session-jwt', 'firebase-id')).toBe('session-jwt');
+      expect(httpAuthorizationToken('session-jwt', '')).toBe('session-jwt');
+      expect(httpAuthorizationToken('', 'firebase-id')).toBe('');
+      expect(httpAuthorizationToken('  ', 'firebase-id')).toBe('');
+    });
+  });
+
   describe('decodeJwtPayload', () => {
     it('decodes a valid JWT payload', () => {
       // Mock JWT format: header.payload.signature

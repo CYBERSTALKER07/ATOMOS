@@ -1,21 +1,25 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
 
 export function ForecastSkuTable({ products }: { products: any[] }) {
+  const t = usePortalT();
   return (
     <div className="border border-[var(--border)] rounded-xl overflow-hidden">
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Product</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Stock</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Recommended</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Stockout</th>
-            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Priority</th>
-            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Confidence</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Incoming</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">AI Pred</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Pre-Orders</th>
-            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">Burn/Day</th>
+            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("portal.nav.stock")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.recommended")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.stockout")}</th>
+            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.supply_requests._id_.text.priority")}</th>
+            <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.confidence")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.incoming")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.ai_pred")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.pre_orders")}</th>
+            <th className="text-right px-4 py-3 font-semibold text-[var(--muted)]">{t("warehouse_portal.forecast.forecast_sku_table.text.burn_day")}</th>
           </tr>
         </thead>
         <tbody>

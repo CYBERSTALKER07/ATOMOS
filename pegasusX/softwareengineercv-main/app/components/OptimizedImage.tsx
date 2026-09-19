@@ -42,7 +42,7 @@ export default function OptimizedImage({
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
       />
       {isLoading && (
-        <div className="absolute inset-0 bg-[#0D0D0D] animate-pulse" />
+        <div className="absolute inset-0 bg-[#0D0D0D]" />
       )}
     </div>
   );

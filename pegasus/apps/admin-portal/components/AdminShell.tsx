@@ -112,18 +112,21 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 
 // Routes where the navigation drawer should NOT render
 const BARE_ROUTES = ['/login', '/signup', '/auth/'];
+const splashDurationMs = 1600;
 
 /* ── Splash Screen (Cinematic) ── */
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
+  useEffect(() => {
+    const timer = window.setTimeout(onComplete, splashDurationMs);
+    return () => window.clearTimeout(timer);
+  }, [onComplete]);
+
   return (
     <motion.div
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      onAnimationComplete={(definition) => {
-        if (definition === 'exit') onComplete();
-      }}
       className="fixed inset-0 z-9999 flex items-center justify-center"
       style={{ background: 'var(--desk-canvas)' }}
     >
@@ -493,7 +496,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      {!splashDone && <SplashScreen onComplete={dismissSplash} />}
+      <AnimatePresence>
+        {!splashDone && <SplashScreen onComplete={dismissSplash} />}
+      </AnimatePresence>
 
       {/* ── Desktop: M3 Navigation Rail / Drawer ─────────────────────── */}
       <motion.aside

@@ -1,13 +1,16 @@
 package com.pegasusx.driver.offline
 
+import com.pegasusx.mobilekit.offline.OfflineEndpointCatalog
+import com.pegasusx.mobilekit.offline.OfflineHttpSemantics
+
 /**
  * Offline-eligible driver mutations and flush priority (lower = earlier).
  * Aligns with docs/big-platform-baseline/last-mile/4.1-offline-sync-protocol.md
  */
-object DriverOfflineActionCatalog {
-    const val STATUS_PENDING = "PENDING"
-    const val STATUS_DEAD = "DEAD"
-    const val MAX_ATTEMPTS = 8
+object DriverOfflineActionCatalog : OfflineEndpointCatalog {
+    const val STATUS_PENDING = OfflineHttpSemantics.STATUS_PENDING
+    const val STATUS_DEAD = OfflineHttpSemantics.STATUS_DEAD
+    const val MAX_ATTEMPTS = OfflineHttpSemantics.MAX_ATTEMPTS_DEFAULT
     const val PROXIMITY_MAX_AGE_MS = 2 * 60 * 1000L
 
     const val ENDPOINT_PROXIMITY = "v1/delivery/proximity-unlock"
@@ -29,14 +32,14 @@ object DriverOfflineActionCatalog {
     const val ENDPOINT_ROUTE_REORDER = "v1/fleet/route/reorder"
     const val ENDPOINT_AVAILABILITY = "v1/driver/availability"
 
-    fun priorityFor(endpoint: String): Int = when (normalize(endpoint)) {
+    override fun priorityFor(endpoint: String): Int = when (normalize(endpoint)) {
         ENDPOINT_PROXIMITY -> 10
         ENDPOINT_SHOP_CLOSED, ENDPOINT_PARTIAL, ENDPOINT_DELIVER -> 20
         ENDPOINT_COLLECT_CASH, ENDPOINT_CREDIT -> 30
         else -> 40
     }
 
-    fun isOfflineEligible(endpoint: String): Boolean {
+    override fun isOfflineEligible(endpoint: String): Boolean {
         val ep = normalize(endpoint)
         return ep in setOf(
             ENDPOINT_PROXIMITY,
@@ -59,21 +62,18 @@ object DriverOfflineActionCatalog {
         ) || ep.contains("/fiscal/retry")
     }
 
-    fun normalize(endpoint: String): String =
-        endpoint.trim().removePrefix("/").removePrefix("api/")
+    override fun normalize(endpoint: String): String =
+        OfflineHttpSemantics.normalizeEndpoint(endpoint)
 
-    fun isRetryableHttp(code: Int): Boolean =
-        code == 408 || code == 429 || code in 500..599
+    fun isRetryableHttp(code: Int): Boolean = OfflineHttpSemantics.isRetryableHttp(code)
 
-    fun isSuccessHttp(code: Int): Boolean =
-        code in 200..299 || code == 409
+    fun isSuccessHttp(code: Int): Boolean = OfflineHttpSemantics.isSuccessHttp(code)
 
-    fun isNetworkEnqueueable(error: Throwable): Boolean = when (error) {
-        is java.io.IOException -> true
-        is retrofit2.HttpException -> isRetryableHttp(error.code())
-        else -> {
-            val msg = error.message.orEmpty().lowercase()
-            "unable to resolve host" in msg || "failed to connect" in msg || "timeout" in msg
+    fun isNetworkEnqueueable(error: Throwable): Boolean {
+        if (OfflineHttpSemantics.isNetworkEnqueueable(error)) return true
+        return when (error) {
+            is retrofit2.HttpException -> isRetryableHttp(error.code())
+            else -> false
         }
     }
 }

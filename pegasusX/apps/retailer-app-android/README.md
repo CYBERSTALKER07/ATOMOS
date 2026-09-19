@@ -43,7 +43,7 @@ cd pegasusX/apps/retailer-app-android
 | Procurement | Sidebar `PROCUREMENT` | `/procurement` |
 | Insights / Analytics | Sidebar `ANALYTICS` | `/insights` |
 | Suppliers | `SUPPLIERS` | catalog / procurement |
-| Auto-order | Sidebar `AUTO_ORDER` | `/settings` (subsection) |
+| Auto-order | Sidebar `AUTO_ORDER` | `/auto-order` (soak readiness strip; evidence download on desktop/script) |
 | Future demand | Sidebar `FUTURE_DEMAND` | dashboard + insights |
 | Notifications | Inbox overlay | `/notifications` |
 | Settings / Profile | Profile stack | `/settings`, `/settings/cards`, `/settings/family` |
@@ -55,3 +55,4 @@ Dock deep-link: sidebar `DOCK` → `DeliveriesHubScreen(initialTabIndex = 1)`.
 - Post-register setup: `AuthViewModel` posts `POST /v1/retailer/setup` after registration (best-effort).
 - `cashCheckout` in `NavigationViewModel` is reserved for cash-at-order experiments; delivery cash confirmation uses `confirmCash` at handoff.
 - Pending checkout replay: `PendingOrderSyncWorker` enqueued on WebSocket reconnect via `NavigationViewModel`.
+- Reports Pro: summary + **Export sales CSV** (`GET /v1/retailer/reports/export?report=sales` → share sheet). Dashboard shows a compact **network pulse** strip from `GET /v1/retailer/pulse` (Control Tower keeps `/v1/retailer/control-tower/pulse`).

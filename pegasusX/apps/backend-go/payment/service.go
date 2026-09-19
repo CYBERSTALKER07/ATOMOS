@@ -2,15 +2,16 @@
 package payment
 
 import (
-		"context"
+	"context"
 	"crypto/sha256"
-			"encoding/hex"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,10 +20,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-
-	)
+)
 
 // Repository is the storage seam. Production binds this to Spanner-backed
 // implementations with real RW transactions and OutboxEvents writes.
@@ -210,17 +211,19 @@ type ReconciliationMismatchRow struct {
 
 // Service wires repository + cache + idempotency + secrets.
 type Service struct {
-	repo       Repository
-	cache      *cache.Cache
-	idem       idempotency.Store
-	supplierID string
-	currency   string
-	execution  *ProviderExecutionRouter
+	repo  Repository
+	cache *cache.Cache
+	idem  idempotency.Store
+	// seedSupplierID is fixtures/bootstrap only — request paths use resolveSupplierID.
+	seedSupplierID string
+	currency       string
+	execution      *ProviderExecutionRouter
 
 	cartCheckout    CartCheckoutHandler
 	checkoutPreview CheckoutPreviewHandler
-	orderReader  OrderCheckoutReader
-	policy       PolicyResolver
+	orderReader     OrderCheckoutReader
+	orderCash       OrderCashSelector
+	policy          PolicyResolver
 
 	globalPayEnv           string
 	globalPayUsername      string
@@ -230,9 +233,11 @@ type Service struct {
 	stripeWebhookSecret    string
 	paymeWebhookSecret     string
 	clickWebhookSecret     string
+	paymeTx                *paymeMerchantMemory
 
 	webhookInbox *WebhookInboxStore
 
+	fx    *fxrates.Service
 	log   *slog.Logger
 	now   func() time.Time
 	newID func(prefix string) string
@@ -240,9 +245,12 @@ type Service struct {
 
 // ServiceConfig is constructor input.
 type ServiceConfig struct {
-	Repo                            Repository
-	Cache                           *cache.Cache
-	Idem                            idempotency.Store
+	Repo  Repository
+	Cache *cache.Cache
+	Idem  idempotency.Store
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
 	SupplierID                      string
 	Currency                        string
 	Execution                       *ProviderExecutionRouter
@@ -264,6 +272,8 @@ type ServiceConfig struct {
 	NewID func(prefix string) string
 
 	Policy PolicyResolver
+
+	Fx *fxrates.Service
 }
 
 // CheckoutRequest is the wire payload for checkout endpoints.
@@ -343,23 +353,18 @@ func NewService(c ServiceConfig) *Service {
 		}
 	}
 	if c.Currency == "" {
-		c.Currency = "UZS"
+		if cur, err := auth.CurrencyFromContext(context.Background(), strings.TrimSpace(c.SupplierID)); err == nil {
+			c.Currency = cur
+		}
 	}
-	if c.GlobalPayWebhookSecret == "" {
-		c.GlobalPayWebhookSecret = "dev-global-pay-secret"
-	}
-	if c.AdyenWebhookSecret == "" {
-		c.AdyenWebhookSecret = "dev-adyen-secret"
-	}
-	if c.StripeWebhookSecret == "" {
-		c.StripeWebhookSecret = "dev-stripe-secret"
-	}
-	if c.PaymeWebhookSecret == "" {
-		c.PaymeWebhookSecret = "dev-payme-secret"
-	}
-	if c.ClickWebhookSecret == "" {
-		c.ClickWebhookSecret = "dev-click-secret"
-	}
+	// Webhook secrets: never invent. Bootstrap may supply local/SSMR defaults via
+	// envOr; production must set real secrets (ValidateProductionProfile). Empty
+	// or known-weak secrets in production are stripped so webhooks fail closed.
+	c.GlobalPayWebhookSecret = normalizeWebhookSecret(c.GlobalPayWebhookSecret)
+	c.AdyenWebhookSecret = normalizeWebhookSecret(c.AdyenWebhookSecret)
+	c.StripeWebhookSecret = normalizeWebhookSecret(c.StripeWebhookSecret)
+	c.PaymeWebhookSecret = normalizeWebhookSecret(c.PaymeWebhookSecret)
+	c.ClickWebhookSecret = normalizeWebhookSecret(c.ClickWebhookSecret)
 	if c.Execution == nil {
 		c.Execution = NewProviderExecutionRouter(ProviderExecutionRouterConfig{
 			AirwallexDirectExecutionEnabled: c.AirwallexDirectExecutionEnabled,
@@ -369,11 +374,15 @@ func NewService(c ServiceConfig) *Service {
 			GlobalPayPassword:               c.GlobalPayPassword,
 		})
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
 		repo:                   c.Repo,
 		cache:                  c.Cache,
 		idem:                   c.Idem,
-		supplierID:             c.SupplierID,
+		seedSupplierID:         seedID,
 		currency:               c.Currency,
 		execution:              c.Execution,
 		globalPayEnv:           c.GlobalPayEnv,
@@ -384,12 +393,41 @@ func NewService(c ServiceConfig) *Service {
 		stripeWebhookSecret:    c.StripeWebhookSecret,
 		paymeWebhookSecret:     c.PaymeWebhookSecret,
 		clickWebhookSecret:     c.ClickWebhookSecret,
+		paymeTx:                newPaymeMerchantMemory(),
 		webhookInbox:           c.WebhookInbox,
 		policy:                 c.Policy,
+		fx:                     c.Fx,
 		log:                    c.Log,
 		now:                    c.Now,
 		newID:                  c.NewID,
 	}
+}
+
+// normalizeWebhookSecret leaves configured secrets as-is outside production.
+// In PEGASUSX_ENV=production, empty and "dev-*" values are rejected (empty →
+// webhook verify fails closed) so NewService cannot paper over a missed
+// ValidateProductionProfile (P2-9).
+func normalizeWebhookSecret(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if !isProductionPaymentEnv() {
+		return trimmed
+	}
+	if trimmed == "" || strings.HasPrefix(strings.ToLower(trimmed), "dev-") {
+		return ""
+	}
+	return trimmed
+}
+
+func isProductionPaymentEnv() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "production")
+}
+
+// SetFxRates attaches theatre #13 ConvertMinor for settlement operating rollups.
+func (s *Service) SetFxRates(fx *fxrates.Service) {
+	if s == nil {
+		return
+	}
+	s.fx = fx
 }
 
 // HandleB2BCheckout serves POST /v1/checkout/b2b.
@@ -470,6 +508,16 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.Currency) == "" {
 		req.Currency = s.currency
 	}
+	// Theatre #13: reject chargeback currency ≠ existing session currency when known.
+	if session, ok, err := s.repo.GetSessionByOrderID(r.Context(), req.OrderID); err == nil && ok {
+		sessCur := strings.TrimSpace(session.Currency)
+		if sessCur != "" {
+			if err := fxrates.AssertSameCurrency(sessCur, req.Currency); err != nil {
+				writeJSONError(w, http.StatusUnprocessableEntity, "currency_mismatch", "chargeback currency must match payment session currency", "/v1/payment/chargeback", false, "")
+				return
+			}
+		}
+	}
 	executionResult, err := s.execution.Execute(r.Context(), ExecutionRequest{
 		Gateway:     req.Gateway,
 		Action:      ExecutionActionChargebackRecord,
@@ -485,7 +533,7 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 	rec := ChargebackRecord{
 		ChargebackID: s.newID("chargeback"),
 		OrderID:      strings.TrimSpace(req.OrderID),
-		SupplierID:   s.supplierID,
+		SupplierID:   s.resolveSupplierID(r.Context()),
 		RetailerID:   strings.TrimSpace(req.RetailerID),
 		Gateway:      executionResult.ResolvedGateway,
 		AmountMinor:  amount,
@@ -592,10 +640,10 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 	rev := ReversalRecord{
 		ReversalID:  s.newID("reversal"),
 		SessionID:   strings.TrimSpace(req.SessionID),
-		SupplierID:  s.supplierID,
+		SupplierID:  s.resolveSupplierID(r.Context()),
 		Gateway:     executionResult.ResolvedGateway,
-		AmountMinor: 0,
-		Currency:    s.currency,
+		AmountMinor: session.AmountMinor,
+		Currency:    session.Currency,
 		CreatedAt:   now,
 	}
 	if err := s.repo.SaveReversal(r.Context(), rev, func(txn outbox.TxnBuffer) error {
@@ -626,15 +674,98 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 }
 
 // CaptureCardPayment synchronously executes the capture action for a completed card-based order.
-func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error {
-	_, err := s.execution.Execute(ctx, ExecutionRequest{
-		Gateway:     "GLOBALPAY",
+// It resolves the checkout session for the order (gateway + provider payment id) and
+// short-circuits when the payment is already settled, so retries never double-capture.
+// Returns the provider reference of the confirmed capture.
+func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) (string, error) {
+	gateway := "GLOBAL_PAY"
+	sessionID := ""
+	if s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, orderID); err == nil && ok {
+			if g := strings.ToUpper(strings.TrimSpace(session.Gateway)); g != "" {
+				gateway = g
+			}
+			sessionID = session.SessionID
+			switch strings.ToUpper(strings.TrimSpace(session.Status)) {
+			case "PAID", "CAPTURED", "SUCCESS":
+				return sessionID, nil
+			}
+		}
+	}
+	// Query-before-capture: if the provider already settled this payment (a prior
+	// capture succeeded but our confirmation write was lost), do not capture twice.
+	if res, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
+		Action:      ExecutionActionStatusCheck,
+		OrderID:     orderID,
+		SessionID:   sessionID,
+		AmountMinor: amountMinor,
+		Currency:    currency,
+	}); err == nil {
+		switch strings.ToUpper(strings.TrimSpace(res.ProviderRef)) {
+		case "PAID", "CAPTURED", "SUCCESS":
+			if res.ProviderRef != "" {
+				return res.ProviderRef, nil
+			}
+			return sessionID, nil
+		}
+	}
+	result, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
 		Action:      ExecutionActionCheckoutCapture,
 		OrderID:     orderID,
+		SessionID:   sessionID,
 		AmountMinor: amountMinor,
 		Currency:    currency,
 	})
-	return err
+	if err != nil {
+		return "", err
+	}
+	return result.ProviderRef, nil
+}
+
+// RefundCardPayment reverses a captured card payment (full or partial) via the
+// gateway. Implements order.PaymentRefunder. Retry-safety comes from the
+// execution layer's idempotency keys plus the caller's refund idempotency key.
+func (s *Service) RefundCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) (string, error) {
+	if s == nil || s.execution == nil {
+		return "", fmt.Errorf("payment execution unavailable")
+	}
+	if strings.TrimSpace(orderID) == "" || amountMinor <= 0 {
+		return "", fmt.Errorf("order_id and positive amount_minor required")
+	}
+	gateway := "GLOBAL_PAY"
+	sessionID := ""
+	if s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, orderID); err == nil && ok {
+			if g := strings.ToUpper(strings.TrimSpace(session.Gateway)); g != "" {
+				gateway = g
+			}
+			sessionID = session.SessionID
+		}
+	}
+	if currency == "" {
+		currency = s.currency
+	}
+	if currency == "" {
+		cur, err := auth.CurrencyFromContext(ctx, "")
+		if err != nil {
+			return "", err
+		}
+		currency = cur
+	}
+	result, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     gateway,
+		Action:      ExecutionActionRefund,
+		OrderID:     orderID,
+		SessionID:   sessionID,
+		AmountMinor: amountMinor,
+		Currency:    currency,
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.ProviderRef, nil
 }
 
 // ClaimChargebackInput is used by claims.Service for marketplace chargebacks.
@@ -676,11 +807,15 @@ func (s *Service) SettleClaimChargeback(ctx context.Context, in ClaimChargebackI
 		currency = s.currency
 	}
 	if currency == "" {
-		currency = "UZS"
+		cur, err := auth.CurrencyFromContext(ctx, strings.TrimSpace(in.SupplierID))
+		if err != nil {
+			return ClaimChargebackResult{}, err
+		}
+		currency = cur
 	}
 	supplierID := strings.TrimSpace(in.SupplierID)
 	if supplierID == "" {
-		supplierID = s.supplierID
+		supplierID = s.resolveSupplierID(ctx)
 	}
 	now := s.now()
 	gateway := "INTERNAL"
@@ -803,7 +938,7 @@ func (s *Service) HandleClaimChargebacks(w http.ResponseWriter, r *http.Request)
 		writeJSONError(w, http.StatusServiceUnavailable, "ledger_repository_unavailable", "Ledger repository is unavailable", endpoint, false, "")
 		return
 	}
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -858,7 +993,7 @@ func (s *Service) HandleLedger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -929,7 +1064,7 @@ func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -990,15 +1125,26 @@ func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Reque
 		return currencyTotals[i].Currency < currencyTotals[j].Currency
 	})
 
+	operating := fxrates.NormalizeCurrency(s.currency)
+	if operating == "" {
+		if cur, err := auth.CurrencyFromContext(r.Context(), supplierID); err == nil {
+			operating = cur
+		}
+	}
+	opTotal, opPartial := rollupOperatingCurrencyMinor(r.Context(), s.fx, operating, rows, s.now)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"items":              rows,
-		"count":              len(rows),
-		"group_limit":        groupLimit,
-		"supplier_id":        supplierID,
-		"entry_count_total":  entryCountTotal,
-		"totals_by_currency": currencyTotals,
+		"items":                          rows,
+		"count":                          len(rows),
+		"group_limit":                    groupLimit,
+		"supplier_id":                    supplierID,
+		"entry_count_total":              entryCountTotal,
+		"totals_by_currency":             currencyTotals,
+		"operating_currency":             operating,
+		"operating_currency_total_minor": opTotal,
+		"operating_conversion_partial":   opPartial,
 		"filters": map[string]any{
 			"gateway":       gateway,
 			"entry_type":    entryType,
@@ -1020,7 +1166,7 @@ func (s *Service) HandleReconciliationMismatches(w http.ResponseWriter, r *http.
 		return
 	}
 
-	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.seedSupplierID, endpoint)
 	if !ok {
 		return
 	}
@@ -1269,7 +1415,11 @@ func (s *Service) writeExecutionError(w http.ResponseWriter, endpoint string, er
 		if code == "" {
 			code = "payment_gateway_policy_violation"
 		}
-		writeJSONError(w, http.StatusUnprocessableEntity, code, policyErr.Error(), endpoint, false, "")
+		status := http.StatusUnprocessableEntity
+		if code == "no_live_keys" {
+			status = http.StatusNotImplemented
+		}
+		writeJSONError(w, status, code, policyErr.Error(), endpoint, false, "")
 		return
 	}
 	writeJSONError(w, http.StatusBadGateway, "payment_gateway_execution_failed", err.Error(), endpoint, false, "")
@@ -1332,24 +1482,41 @@ func (s *Service) persistIdempotencyRecord(ctx context.Context, key, bodyHash st
 }
 
 func resolvePaymentSupplierScope(w http.ResponseWriter, r *http.Request, fallbackSupplierID string, endpoint string) (string, bool) {
-	supplierID := strings.TrimSpace(fallbackSupplierID)
-	if scopedSupplierID, ok := auth.ResolveSupplierID(r.Context()); ok {
-		scopedSupplierID = strings.TrimSpace(scopedSupplierID)
-		if scopedSupplierID != "" {
-			supplierID = scopedSupplierID
-		}
-	}
+	supplierID := auth.PreferTenantSupplierID(r.Context(), fallbackSupplierID)
 
 	requestedSupplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
 	if requestedSupplierID != "" {
-		if supplierID != "" && requestedSupplierID != supplierID {
+		if auth.IsPlatformAdmin(r.Context()) {
+			return requestedSupplierID, true
+		}
+		if supplierID == "" {
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized", "tenant_required", endpoint, false, "")
+			return "", false
+		}
+		if requestedSupplierID != supplierID {
 			writeJSONError(w, http.StatusForbidden, "forbidden", "supplier scope mismatch", endpoint, false, "")
 			return "", false
 		}
-		supplierID = requestedSupplierID
 	}
 
 	return supplierID, true
+}
+
+// resolveSupplierID prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierID(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
+}
+
+// resolveWebhookSupplierID prefers payment-session tenant, then seed (webhooks lack JWT).
+func (s *Service) resolveWebhookSupplierID(ctx context.Context, orderID string) string {
+	if oid := strings.TrimSpace(orderID); oid != "" && s.repo != nil {
+		if session, ok, err := s.repo.GetSessionByOrderID(ctx, oid); err == nil && ok {
+			if sid := strings.TrimSpace(session.SupplierID); sid != "" {
+				return sid
+			}
+		}
+	}
+	return strings.TrimSpace(s.seedSupplierID)
 }
 
 func parseBoundedIntQuery(raw string, defaultValue int, minValue int, maxValue int) (int, error) {
@@ -1480,4 +1647,27 @@ func paymentSessionKey(sessionID string) string {
 
 func paymentRetailerKey(retailerID string) string {
 	return "payment:retailer:" + retailerID
+}
+
+// assertSessionCurrency rejects requestCurrency when a known session currency differs (theatre #13).
+func (s *Service) assertSessionCurrency(ctx context.Context, sessionID, orderID, requestCurrency string) error {
+	if s == nil || s.repo == nil {
+		return nil
+	}
+	requestCurrency = strings.TrimSpace(requestCurrency)
+	if requestCurrency == "" {
+		return nil
+	}
+	var session SessionRecord
+	var ok bool
+	var err error
+	if sid := strings.TrimSpace(sessionID); sid != "" {
+		session, ok, err = s.repo.GetSession(ctx, sid)
+	} else if oid := strings.TrimSpace(orderID); oid != "" {
+		session, ok, err = s.repo.GetSessionByOrderID(ctx, oid)
+	}
+	if err != nil || !ok {
+		return nil
+	}
+	return fxrates.AssertSameCurrency(session.Currency, requestCurrency)
 }

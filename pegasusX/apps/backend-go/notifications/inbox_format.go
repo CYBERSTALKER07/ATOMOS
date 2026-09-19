@@ -1,10 +1,12 @@
 package notifications
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 )
 
@@ -64,6 +66,25 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		var e events.ManifestEvent
 		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
 			return FormatManifestOrderException(e.ManifestID, e.OrderID, e.Reason)
+		}
+	case events.EventManifestExceptionResolved:
+		var e events.ManifestEvent
+		if json.Unmarshal(payload, &e) == nil && e.ManifestID != "" {
+			return FormatManifestExceptionResolved(e.ManifestID, e.Reason)
+		}
+	case events.EventFactoryStaffCreated:
+		var e events.FactoryEvent
+		if json.Unmarshal(payload, &e) == nil && e.UserID != "" {
+			return FormatFactoryStaffCreated(e.UserID, e.FactoryID)
+		}
+	case events.EventFactoryTransferCreated:
+		var e events.WarehouseTransferEvent
+		if json.Unmarshal(payload, &e) == nil && e.TransferID != "" {
+			return FormatFactoryTransferCreated(e.TransferID)
+		}
+		var wh events.WarehouseEvent
+		if json.Unmarshal(payload, &wh) == nil && wh.TransferID != "" {
+			return FormatFactoryTransferCreated(wh.TransferID)
 		}
 	case events.EventManifestDLQEscalation:
 		var e events.ManifestEvent
@@ -140,10 +161,36 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
 			return FormatClaimFiled(e.ClaimID, e.OrderID, e.ClaimType)
 		}
+	case events.EventClaimUnderReview:
+		var e events.LogisticsException
+		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
+			return FormatClaimUnderReview(e.ClaimID, e.OrderID)
+		}
+		// Map payloads use claim_id keys without LogisticsException shape.
+		var m map[string]any
+		if json.Unmarshal(payload, &m) == nil {
+			cid, _ := m["claim_id"].(string)
+			oid, _ := m["order_id"].(string)
+			if cid != "" {
+				return FormatClaimUnderReview(cid, oid)
+			}
+		}
 	case events.EventClaimResolved:
 		var e events.LogisticsException
 		if json.Unmarshal(payload, &e) == nil && e.ClaimID != "" {
 			return FormatClaimResolved(e.ClaimID, e.OrderID, e.Status)
+		}
+	case events.EventARInvoiceOpened, events.EventARInvoicePayment,
+		events.EventARInvoiceSettled, events.EventARInvoiceDunned:
+		var e events.ARInvoiceEvent
+		if json.Unmarshal(payload, &e) == nil && e.InvoiceID != "" {
+			return FormatARInvoice(e.Type, e.InvoiceID, e.OrderID, e.Status, e.BalanceMinor, "")
+		}
+	case events.EventPayoutBatchGenerated, events.EventPayoutBatchExported,
+		events.EventPayoutBatchDispatched, events.EventPayoutBatchPaid:
+		var e events.PayoutBatchEvent
+		if json.Unmarshal(payload, &e) == nil && e.BatchID != "" {
+			return FormatPayoutBatch(e.Type, e.BatchID, e.Status, e.NetPayoutMinor, e.Currency)
 		}
 	case events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired:
 		var e events.LogisticsException
@@ -173,7 +220,7 @@ func FormatFromEvent(eventType string, payload []byte) FormattedNotification {
 	case events.EventRetailerPriceOverride:
 		var e events.RetailerPriceOverrideEvent
 		if json.Unmarshal(payload, &e) == nil && e.RetailerID != "" {
-			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, "UZS", strings.EqualFold(e.Action, "CREATED"))
+			return FormatRetailerPriceOverride(e.ProductID, e.PriceMinor, priceOverrideCurrency(e.SupplierID, ""), strings.EqualFold(e.Action, "CREATED"))
 		}
 	case events.EventPreOrderDateProposed:
 		var e events.OrderEvent
@@ -334,4 +381,14 @@ func humanizeEventType(eventType string) string {
 		parts[i] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
 	}
 	return strings.Join(parts, " ")
+}
+
+// priceOverrideCurrency is empty-currency law for retailer price-override inbox
+// copy: shipped pack ISO. Planned/unknown packs stay empty — never invent UZS.
+func priceOverrideCurrency(supplierID, stored string) string {
+	c, err := auth.CoalesceCurrency(context.Background(), supplierID, stored)
+	if err != nil {
+		return strings.ToUpper(strings.TrimSpace(stored))
+	}
+	return c
 }

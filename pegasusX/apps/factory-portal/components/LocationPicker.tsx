@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   autocompleteAddress,
@@ -10,6 +11,7 @@ import {
   reverseGeocode,
   type ResolvedLocation,
 } from "@/lib/geocode";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 import MapGL, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -27,7 +29,9 @@ type LocationPickerProps = {
   label?: string;
 };
 
-export function LocationPicker({ value, onChange, label = "Address" }: LocationPickerProps) {
+export function LocationPicker({ value, onChange, label }: LocationPickerProps) {
+  const t = usePortalT();
+  const resolvedLabel = label ?? t("factory_portal.residual.text.address");
   const [query, setQuery] = useState(value.address);
   const [suggestions, setSuggestions] = useState<{ place_id: string; description: string }[]>([]);
   const [open, setOpen] = useState(false);
@@ -110,7 +114,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
         applyResolved(fallback, description);
         return;
       }
-      setError("Could not resolve that address. Try another suggestion.");
+      setError(t("factory_portal.residual.text.could_not_resolve_that_address_try_another_suggestion"));
     } finally {
       setResolving(false);
     }
@@ -127,7 +131,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
     try {
       const ok = await resolveText(trimmed);
       if (!ok) {
-        setError("Pick an address from the list or refine your search.");
+        setError(t("factory_portal.residual.text.pick_an_address_from_the_list_or_refine_your_search"));
       }
     } finally {
       setResolving(false);
@@ -136,7 +140,7 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   const useMyLocation = () => {
     if (!navigator.geolocation) {
-      setError("Geolocation is not supported in this browser.");
+      setError(t("factory_portal.residual.text.geolocation_is_not_supported_in_this_browser"));
       return;
     }
     setLocating(true);
@@ -146,11 +150,11 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
         const loc = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         setLocating(false);
         if (loc) applyResolved(loc);
-        else setError("Could not resolve your location to an address.");
+        else setError(t("factory_portal.residual.text.could_not_resolve_your_location_to_an_address"));
       },
       () => {
         setLocating(false);
-        setError("Location permission denied.");
+        setError(t("factory_portal.residual.text.location_permission_denied"));
       },
       { enableHighAccuracy: true, timeout: 12000 },
     );
@@ -178,11 +182,11 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
 
   return (
     <div className="space-y-2">
-      <label className="portal-label">{label}</label>
+      <label className="portal-label">{resolvedLabel}</label>
       <div className="relative">
         <input
           className="portal-input w-full"
-          placeholder="Start typing street address…"
+          placeholder={t("factory_portal.location_picker.text.start_typing_street_address")}
           value={query}
           onChange={(e) => onInputChange(e.target.value)}
           onBlur={() => {
@@ -221,9 +225,9 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
           {locating ? "Locating…" : "Share my location"}
         </button>
         {pinned ? (
-          <span className="md-helper">Pinned for supply routing</span>
+          <span className="md-helper">{t("factory_portal.location_picker.text.pinned_for_supply_routing")}</span>
         ) : resolving ? (
-          <span className="md-helper">Resolving address…</span>
+          <span className="md-helper">{t("factory_portal.location_picker.text.resolving_address")}</span>
         ) : null}
       </div>
       {error ? <p className="md-helper" data-error="true">{error}</p> : null}
@@ -231,9 +235,10 @@ export function LocationPicker({ value, onChange, label = "Address" }: LocationP
       <div className="h-64 w-full mt-2 rounded-xl overflow-hidden border" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
         <MapGL
           initialViewState={{
-            longitude: pinned ? parseFloat(value.lng) : -122.4194,
-            latitude: pinned ? parseFloat(value.lat) : 37.7749,
-            zoom: pinned ? 14 : 10,
+            ...mapInitialViewState(readCachedAuthSession()?.pack, pinned ? 14 : 10),
+            ...(pinned
+              ? { longitude: parseFloat(value.lng), latitude: parseFloat(value.lat), zoom: 14 }
+              : {}),
           }}
           longitude={pinned ? parseFloat(value.lng) : undefined}
           latitude={pinned ? parseFloat(value.lat) : undefined}

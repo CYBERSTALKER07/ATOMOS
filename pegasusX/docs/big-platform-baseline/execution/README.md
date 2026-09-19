@@ -1,5 +1,8 @@
 # 3. Execution Depth (Blue Yonder / Manhattan class)
 
+> **PLANNING BASELINE** — not living runtime status. Prefer [`../DOCS_SOURCE_OF_TRUTH.md`](../DOCS_SOURCE_OF_TRUTH.md) and code for what is shipped.
+
+
 | Doc | Topic |
 |-----|--------|
 | [3.1-advanced-wms.md](./3.1-advanced-wms.md) | Slotting, waves, yard, robotics interface |

@@ -1,8 +1,9 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import type { WarehouseFleetVehicle, WarehouseVehicleUnavailableReason } from '@pegasusx/types';
-import { warehouseUpdateVehicleKey } from '@pegasusx/api-client';
+import { warehouseUpdateVehicleKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import {
@@ -22,6 +23,7 @@ export default function VehicleAvailabilityPanel({
   onUpdated,
   compact = false,
 }: VehicleAvailabilityPanelProps) {
+  const t = usePortalT();
   const [reason, setReason] = useState<WarehouseVehicleUnavailableReason>(
     vehicle.unavailable_reason || 'MANUAL_HOLD',
   );
@@ -81,8 +83,8 @@ export default function VehicleAvailabilityPanel({
     <div className={`rounded-xl border border-(--border) ${compact ? 'p-3' : 'p-4'}`} style={{ background: 'var(--surface)' }}>
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <h3 className={`font-semibold ${compact ? 'text-sm' : 'text-base'}`}>Availability</h3>
-          <p className="text-xs text-(--muted)">Dispatch and smart suggest exclude unavailable trucks immediately.</p>
+          <h3 className={`font-semibold ${compact ? 'text-sm' : 'text-base'}`}>{t("warehouse_portal.vehicle_availability_panel.text.availability")}</h3>
+          <p className="text-xs text-(--muted)">{t("warehouse_portal.vehicle_availability_panel.text.dispatch_and_smart_suggest_exclude_unavailable_trucks_immediatel")}</p>
         </div>
         <span className={`status-chip ${vehicle.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
           {vehicleStatusLabel(vehicle.is_active)}
@@ -97,7 +99,7 @@ export default function VehicleAvailabilityPanel({
 
       {vehicle.is_active && (
         <div className={`space-y-2 mb-3 ${compact ? '' : 'max-w-md'}`}>
-          <label className="text-xs font-medium text-(--muted) uppercase tracking-wide">Unavailable reason</label>
+          <label className="text-xs font-medium text-(--muted) uppercase tracking-wide">{t("warehouse_portal.vehicle_availability_panel.text.unavailable_reason")}</label>
           <select
             value={reason}
             onChange={event => setReason(event.target.value as WarehouseVehicleUnavailableReason)}
@@ -112,7 +114,7 @@ export default function VehicleAvailabilityPanel({
           {reason === 'OTHER' && (
             <input
               type="text"
-              placeholder="Custom reason (required)"
+              placeholder={t("warehouse_portal.vehicle_availability_panel.text.custom_reason_required")}
               value={note}
               onChange={event => setNote(event.target.value)}
               disabled={mutating}

@@ -1,7 +1,6 @@
-// Phase 2 Enterprise Integration: Auth0 Identity & Access Management
-// This file is currently commented out for Phase 1 (Trial).
-// Uncomment this block and run `go get github.com/auth0/go-jwt-middleware/v2`
-// when the enterprise contract is secured.
+// GS-I: do not mount SetupAuth0Middleware on the chi router.
+// A process-global AUTH0_DOMAIN wrap 401s native HS256 staff/driver JWTs.
+// Per-supplier OIDC lives in orgoidc (id_token exchange → auth.Issue).
 
 package enterprise
 

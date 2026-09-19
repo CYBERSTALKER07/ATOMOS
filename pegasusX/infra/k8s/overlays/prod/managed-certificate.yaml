@@ -1,0 +1,12 @@
+# Google-managed TLS for production API (Gate-0).
+# Becomes Active after DNS A/AAAA for api.pegasusx.app points at the Ingress LB IP.
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: pegasusx-api-cert
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    pegasusx.io/environment: production
+spec:
+  domains:
+    - api.pegasusx.app

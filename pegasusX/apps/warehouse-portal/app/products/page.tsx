@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
@@ -18,6 +19,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const t = usePortalT();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -42,12 +44,12 @@ export default function ProductsPage() {
     <PageTransition>
       <PageChrome
         icon="catalog"
-        title="Product Catalog"
-        description="Read-only view of supplier product catalog."
+        title={t("warehouse_portal.products.text.product_catalog")}
+        description={t("warehouse_portal.residual.text.read_only_view_of_supplier_product_catalog")}
         actions={
           <div className="flex gap-2 items-center">
             <input
-              placeholder="Search products..."
+              placeholder={t("warehouse_portal.inventory.text.search_products")}
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}
               className="px-3 py-1.5 rounded-lg border text-sm w-48 focus:ring-2 focus:ring-[var(--primary)] outline-none"
@@ -72,7 +74,7 @@ export default function ProductsPage() {
         ) : products.length === 0 ? (
           <EmptyState
             variant={search ? 'no-results' : 'no-data'}
-            headline="No products found"
+            headline={t("warehouse_portal.residual.text.no_products_found")}
             body={search ? `No products matching "${search}" were found in the catalog.` : "The product catalog is currently empty."}
           />
         ) : (
@@ -84,11 +86,11 @@ export default function ProductsPage() {
             <table className="desk-table w-full text-sm">
               <thead>
                 <tr className="table__header border-b border-[var(--border)] bg-[var(--default)]">
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Name</th>
+                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.drivers.text.name")}</th>
                   <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">SKU</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Category</th>
-                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Price (UZS)</th>
-                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.products.text.category")}</th>
+                  <th className="table__column text-right py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.products.text.price_uzs")}</th>
+                  <th className="table__column text-left py-3 px-4 font-medium uppercase tracking-wider text-[11px]">{t("warehouse_portal.bins.text.status")}</th>
                 </tr>
               </thead>
               <tbody>
