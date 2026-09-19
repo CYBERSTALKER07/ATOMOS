@@ -52,7 +52,7 @@ export default function About() {
     <PageSection id="about" ref={aboutRef}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 lg:gap-12 items-center">
         <div ref={imageRef} className="relative">
-          <div className="relative h-[240px] sm:h-[320px] md:h-[400px] lg:h-[500px] overflow-hidden border border-white/10 bg-black">
+          <div className="relative h-[240px] sm:h-[320px] md:h-[400px] lg:h-[500px] overflow-hidden bg-black">
             <DigitalizedImage
               src={PEGASUS_LOGO}
               alt="Pegasus"
@@ -98,14 +98,8 @@ export default function About() {
           </p>
 
           <div className="flex flex-wrap gap-4">
-            <Link href="/solutions/visual-dispatch-engine" className="editorial-btn editorial-btn--sm">
-              {t('about_btn_dispatch')}
-            </Link>
-            <Link href="/capabilities/payment-confidence" className="editorial-btn editorial-btn--sm">
-              {t('about_btn_payments')}
-            </Link>
-            <Link href="/capabilities/instant-coordination" className="editorial-btn editorial-btn--sm">
-              {t('about_btn_coordination')}
+            <Link href="/join" className="editorial-btn editorial-btn--sm">
+              {t('about_btn_join_us', 'Join Us')}
             </Link>
           </div>
         </div>

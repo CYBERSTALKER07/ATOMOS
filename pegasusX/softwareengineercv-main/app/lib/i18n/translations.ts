@@ -200,9 +200,7 @@ const EN_DICT = {
     about_type_3: 'Six roles on one platform',
     about_type_4: 'Operations teams stay aligned',
     about_desc: 'Pegasus is the logistics operating system for supplier-led networks. From morning dispatch to live fleet tracking and payment reconciliation, every team — supplier, warehouse, factory, driver, retailer, and gate — works from the same source of truth.',
-    about_btn_dispatch: 'Dispatch & Fleet',
-    about_btn_payments: 'Payments & Treasury',
-    about_btn_coordination: 'Live Coordination',
+    about_btn_join_us: 'Join Us',
 
     // Deployment Section
     deployment_heading: 'DEPLOYMENT',
@@ -761,9 +759,7 @@ const RU_DICT = {
     about_type_3: 'Шесть ролей в единой системе',
     about_type_4: 'Слаженная работа всех отделов',
     about_desc: 'Pegasus — операционная система для логистических сетей поставщиков. От утренней диспетчеризации до мониторинга автопарка и сверки платежей — каждая команда (поставщик, склад, фабрика, водитель, ритейлер и ворота) работает с едиными актуальными данными.',
-    about_btn_dispatch: 'Диспетчеризация и автопарк',
-    about_btn_payments: 'Платежи и казначейство',
-    about_btn_coordination: 'Оперативный мониторинг',
+    about_btn_join_us: 'Присоединиться',
 
     // Deployment Section
     deployment_heading: 'РАЗВЕРТЫВАНИЕ',

@@ -50,7 +50,7 @@ export default function LastMileSection() {
     <PageSection id="last-mile" ref={sectionRef} className="border-t border-white/10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         <div ref={imageRef} className="relative order-1">
-          <div className="relative aspect-[4/3] w-full overflow-hidden bg-black border border-white/10">
+          <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
             <Image
               src={SITE_IMAGES.lastMileDelivery}
               alt={t(
