@@ -256,29 +256,6 @@ export default async function GlobalLogisticsPage() {
  </div>
  </section>
 
- {/* Bottom CTA */}
- <section className="mt-24 p-10 sm:p-14 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
- <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white">
- Ready to Modernize Your Global Logistics?
- </h2>
- <p className="mt-4 text-base sm:text-lg text-white/70 max-w-2xl mx-auto font-light">
- Deploy the modern logistics operating system built for high-throughput enterprise networks, automated fleets, and frictionless cross-border trade.
- </p>
- <div className="mt-8 flex flex-wrap justify-center gap-4">
- <Link
- href="/join"
- className="px-8 py-4 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors "
- >
- Request Live Enterprise Demo
- </Link>
- <Link
- href="/contact"
- className="px-8 py-4 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
- >
- Speak with a Solutions Architect
- </Link>
- </div>
- </section>
  </main>
 
  <Footer />

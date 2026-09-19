@@ -261,29 +261,6 @@ export default async function MarketCountryPage({ params }: Props) {
  </div>
  </section>
 
- {/* Bottom CTA */}
- <section className="mt-20 p-8 sm:p-12 rounded-none bg-gradient-to-b from-white/[0.06] to-transparent border border-white/15 text-center">
- <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-white">
- Deploy Pegasus in {market.name}
- </h2>
- <p className="mt-3 text-sm sm:text-base text-white/70 max-w-xl mx-auto font-light">
- Empower your supplier, warehouse, carrier, and retail network with the world's most advanced logistics operating system.
- </p>
- <div className="mt-8 flex flex-wrap justify-center gap-4">
- <Link
- href="/join"
- className="px-8 py-3.5 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors "
- >
- Schedule {market.name} Demo
- </Link>
- <Link
- href="/markets"
- className="px-8 py-3.5 rounded-none bg-white/5 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/10 transition-colors border border-white/15"
- >
- View All Global Markets
- </Link>
- </div>
- </section>
  </main>
 
  <Footer />
