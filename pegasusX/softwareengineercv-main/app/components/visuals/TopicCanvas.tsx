@@ -12,18 +12,52 @@ const WaveOscillatorCanvas = dynamic(() => import('./canvases/algorithms/WaveOsc
 
 export default function TopicCanvasRouter({ slug }: { slug: string }) {
   let CanvasEngine;
+  
+  const s = slug.toLowerCase();
 
-  // The Decamodel Registry Mapper
-  if (slug.includes('fleet') || slug.includes('tracking') || slug === 'driver-app') {
+  // Phase 3: The Decamodel Registry Mapper - Routing every slug to a physics engine
+  if (
+    s.includes('fleet') || 
+    s.includes('tracking') || 
+    s.includes('driver') ||
+    s.includes('telemetry') ||
+    s.includes('weather') ||
+    s.includes('vehicle') ||
+    s.includes('transport')
+  ) {
     CanvasEngine = FleetRadarCanvas;
-  } else if (slug.includes('route') || slug.includes('dispatch') || slug.includes('network')) {
+  } else if (
+    s.includes('route') || 
+    s.includes('dispatch') || 
+    s.includes('network') ||
+    s.includes('topology') ||
+    s.includes('zone') ||
+    s.includes('node') ||
+    s.includes('supplier')
+  ) {
     CanvasEngine = NodeNetworkCanvas;
-  } else if (slug.includes('warehouse') || slug.includes('fulfillment') || slug.includes('inventory')) {
+  } else if (
+    s.includes('warehouse') || 
+    s.includes('fulfillment') || 
+    s.includes('inventory') ||
+    s.includes('payload') ||
+    s.includes('stock') ||
+    s.includes('gate') ||
+    s.includes('barcode')
+  ) {
     CanvasEngine = GridSorterCanvas;
-  } else if (slug.includes('demand') || slug.includes('planning') || slug.includes('forecast')) {
+  } else if (
+    s.includes('demand') || 
+    s.includes('planning') || 
+    s.includes('forecast') ||
+    s.includes('pulse') ||
+    s.includes('timeline') ||
+    s.includes('future') ||
+    s.includes('analytics')
+  ) {
     CanvasEngine = WaveOscillatorCanvas;
   } else {
-    // Default fallback to Data Mesh
+    // Default fallback (DataMesh is used for finance, security, integration, etc.)
     CanvasEngine = DataMeshCanvas;
   }
 

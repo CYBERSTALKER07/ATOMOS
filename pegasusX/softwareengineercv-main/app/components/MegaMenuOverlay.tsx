@@ -167,7 +167,7 @@ export default function MegaMenuOverlay({
  const previousFocusRef = useRef<HTMLElement | null>(null);
 
  const activeCategory = categories.find((c) => c.id === activeId) ?? categories[0];
- const promo = activeCategory?.promo ?? DEFAULT_MEGA_PROMO;
+ 
 
  const handleNavigate = useCallback(() => {
  onClose();
@@ -330,9 +330,7 @@ export default function MegaMenuOverlay({
  );
  })}
  </ul>
- <div className="hidden lg:block mt-auto pt-8">
- <PromoBlock promo={promo} onNavigate={handleNavigate} />
- </div>
+
  </div>
 
  {/* Right Column: Panels */}
@@ -366,10 +364,7 @@ export default function MegaMenuOverlay({
  </span>
  </Link>
  </div>
- {/* Mobile Promo */}
- <div className="block lg:hidden mt-12 shrink-0">
- <PromoBlock promo={promo} onNavigate={handleNavigate} />
- </div>
+
  </div>
  </div>
  </div>
