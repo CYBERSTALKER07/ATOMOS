@@ -24,7 +24,7 @@ const EN_DICT = {
     // Hero
     hero_title: 'Pegasus — Global Logistics, Supply Chain Software & Automation',
     hero_subtitle: 'Global logistics, enterprise supply chain software, and fleet automation across your entire enterprise network.',
-    hero_desc: 'Run global logistics and supply chain operations from one platform — automated dispatch, real-time fleet telemetry, warehouse gate control, and instant payment reconciliation.',
+    hero_desc: 'Run global logistics from one platform.',
     hero_explore: 'Explore Platform',
     hero_demo: 'Request Demo',
     hero_type_1: 'Global Logistics',
@@ -583,7 +583,7 @@ const RU_DICT = {
     // Hero
     hero_title: 'Pegasus — Глобальная логистика, ПО для цепей поставок и автоматизация',
     hero_subtitle: 'Глобальная логистика, корпоративное ПО для цепей поставок и автоматизация автопарка для всей сети.',
-    hero_desc: 'Управляйте глобальной логистикой и цепями поставок из единой системы — умная диспетчеризация, мониторинг автопарка в реальном времени, контроль ворот и мгновенные расчёты.',
+    hero_desc: 'Управляйте логистикой из единой платформы.',
     hero_explore: 'Изучить платформу',
     hero_demo: 'Запросить демо',
     hero_type_1: 'Глобальная логистика',
