@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { gsap } from '@/app/lib/gsap';
+import { gsap } from 'gsap';
 import PageSection from './layout/PageSection';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 import GooeyAgent from './visuals/GooeyAgent';
@@ -25,13 +25,13 @@ export default function SmartDispatchArcade() {
    const ctx = gsap.context(() => {
      gsap.fromTo(
        containerRef.current?.children ? Array.from(containerRef.current.children) : [],
-       { opacity: 0, scale: 0.95 },
+       { opacity: 0, y: 40 },
        {
          opacity: 1,
-         scale: 1,
-         duration: 1.2,
-         stagger: 0.2,
-         ease: 'pegasus',
+         y: 0,
+         duration: 1,
+         stagger: 0.1,
+         ease: 'power3.out',
          scrollTrigger: { trigger: sectionRef.current, start: 'top 85%', fastScrollEnd: true },
        }
      );
@@ -41,31 +41,32 @@ export default function SmartDispatchArcade() {
  }, [reduced]);
 
  return (
-   <PageSection ref={sectionRef} className="border-t border-white/10 bg-black overflow-hidden">
-     <div ref={containerRef} className="w-full max-w-[1560px] mx-auto min-h-[600px] grid grid-cols-1 lg:grid-cols-2">
-       
-       {/* Left half: Text */}
-       <div className="p-8 sm:p-12 lg:p-24 flex flex-col justify-center border-b lg:border-b-0 lg:border-r border-white/10 z-10 relative bg-black">
-         <div className="mb-8 flex items-center">
-            <div className="h-1.5 w-1.5 bg-white mr-3"></div>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-white/50">
-              PEGASUS INTELLIGENCE
-            </span>
+   <PageSection ref={sectionRef} className="py-24 bg-[#0a0a0a]">
+     <div className="w-full max-w-[1200px] mx-auto px-6">
+       <div 
+         ref={containerRef} 
+         className="w-full bg-[#1c1c1c] rounded-[32px] overflow-hidden relative flex flex-col md:flex-row min-h-[500px]"
+       >
+         
+         {/* Left half: Text */}
+         <div className="p-10 md:p-16 lg:p-20 flex flex-col justify-center w-full md:w-[55%] z-10 relative">
+           <h2 className="text-[32px] sm:text-[40px] md:text-[48px] font-medium tracking-tight text-white leading-[1.1] mb-6">
+             Message Bots like teammates
+           </h2>
+           <p className="text-[17px] md:text-[20px] text-white/60 font-light leading-[1.5]">
+             Give tasks to Bots like you would a teammate on desktop or iOS. Your AI teammates take projects from start to end, keep context on how you work and get smarter over time, and come back when your approval is needed.
+           </p>
          </div>
-         <h2 className="text-4xl sm:text-5xl lg:text-[5rem] font-medium tracking-tight text-white leading-[1.05] mb-8">
-           Autonomous<br/>Supply Chain<br/>Agent
-         </h2>
-         <p className="text-xl font-light text-white/50 max-w-lg leading-relaxed">
-           The engine behind your operations. Grok-powered intelligence dynamically learning, routing, and optimizing your logistics network in real-time.
-         </p>
-       </div>
 
-       {/* Right half: Massive Gooey Bot */}
-       <div className="p-8 md:p-12 bg-[#050505] flex items-center justify-center w-full min-h-[500px] lg:min-h-[800px] relative overflow-hidden">
-         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-         <GooeyAgent size={700} />
-       </div>
+         {/* Right half: The Agent (positioned at bottom right) */}
+         <div className="w-full md:w-[45%] h-[300px] md:h-auto relative z-0">
+           {/* Position the agent to crop off the bottom right */}
+           <div className="absolute -bottom-[20%] -right-[20%] md:-bottom-[40%] md:-right-[30%] w-[120%] h-[120%] flex items-center justify-center">
+             <GooeyAgent size={700} />
+           </div>
+         </div>
 
+       </div>
      </div>
    </PageSection>
  );

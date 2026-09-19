@@ -166,11 +166,6 @@ export default function OrderLifecycleVideo({
  ) : null}
  </div>
 
- {variant === 'hero' && !videoMissing ? (
- <p className="order-lifecycle-video__hint font-mono text-[10px] uppercase tracking-[0.18em] text-white/35">
- Hover to play with sound · Black & white line-art lifecycle
- </p>
- ) : null}
  </div>
  </section>
  );

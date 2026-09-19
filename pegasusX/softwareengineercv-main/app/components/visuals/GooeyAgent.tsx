@@ -17,13 +17,27 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
     const container = containerRef.current;
 
     const ctx = gsap.context(() => {
-      // Breathing only (perfect circle idle)
+      // Idle breathing for blobs
       gsap.to('.blob-center', {
         scale: 1.05,
         duration: 2,
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut'
+      });
+      gsap.to('.blob-orbit-1', {
+        rotation: 360,
+        transformOrigin: '100px 100px',
+        duration: 8,
+        repeat: -1,
+        ease: 'none'
+      });
+      gsap.to('.blob-orbit-2', {
+        rotation: -360,
+        transformOrigin: '100px 100px',
+        duration: 12,
+        repeat: -1,
+        ease: 'none'
       });
 
       // Blinking animation
@@ -41,33 +55,25 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
       };
       gsap.delayedCall(2, blink);
 
-      // Mouse tracking
       let mouseTimeout: NodeJS.Timeout;
 
       const handleMouseMove = (e: MouseEvent) => {
         const rect = container.getBoundingClientRect();
-        
-        // Calculate center of the SVG component
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         
-        // Distance from center
         const deltaX = e.clientX - centerX;
         const deltaY = e.clientY - centerY;
         
         const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-        // Normalize pull based on screen size (max effect at 400px away)
         const maxDist = 400; 
         const pull = Math.min(distance / maxDist, 1);
         
         const angle = Math.atan2(deltaY, deltaX);
 
-        // Max pixel translation within the 200x200 viewBox
-        const eyeMax = 18;
-        const blobStretch = 15; // How much the main blob stretches
-        const blobMove = 10; // How much it moves
+        const eyeMax = 25;
+        const blobPullMax = 40;
         
-        // Animate eyes looking at mouse
         gsap.to('.eyes-container', {
           x: Math.cos(angle) * pull * eyeMax,
           y: Math.sin(angle) * pull * eyeMax,
@@ -75,19 +81,21 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
           ease: 'power2.out'
         });
 
-        // Stretch and pull the main blob slightly toward the mouse (no gooey filter needed, just clean stretching)
-        gsap.to('.blob-center', {
-          x: Math.cos(angle) * pull * blobMove,
-          y: Math.sin(angle) * pull * blobMove,
-          scaleX: 1 + (pull * 0.15),
-          scaleY: 1 - (pull * 0.05),
-          rotation: angle * (180 / Math.PI), // Rotate to face mouse direction
-          transformOrigin: '50% 50%',
-          duration: 0.7,
+        // Pull the orbital blobs aggressively toward the mouse
+        gsap.to(['.blob-orbit-1-inner', '.blob-orbit-2-inner'], {
+          x: Math.cos(angle) * pull * blobPullMax,
+          y: Math.sin(angle) * pull * blobPullMax,
+          duration: 0.6,
           ease: 'power3.out'
         });
+        
+        gsap.to('.blob-center', {
+          x: Math.cos(angle) * pull * (blobPullMax * 0.5),
+          y: Math.sin(angle) * pull * (blobPullMax * 0.5),
+          duration: 0.7,
+          ease: 'power2.out'
+        });
 
-        // Debounce returning to center when mouse stops moving
         clearTimeout(mouseTimeout);
         mouseTimeout = setTimeout(() => {
           returnToCenter();
@@ -95,12 +103,9 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
       };
 
       const returnToCenter = () => {
-        gsap.to(['.eyes-container', '.blob-center'], {
+        gsap.to(['.eyes-container', '.blob-orbit-1-inner', '.blob-orbit-2-inner', '.blob-center'], {
           x: 0,
           y: 0,
-          scaleX: 1,
-          scaleY: 1,
-          rotation: 0,
           duration: 1.5,
           ease: 'elastic.out(1, 0.4)'
         });
@@ -111,7 +116,6 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         returnToCenter();
       };
 
-      // Only attach to container, not window, so it only follows when mouse is ON the section
       container.addEventListener('mousemove', handleMouseMove);
       container.addEventListener('mouseleave', handleMouseLeave);
 
@@ -133,22 +137,46 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
       style={{ width: size, height: size, maxWidth: '100%' }}
     >
       <svg
-        viewBox="0 0 200 200"
+        viewBox="-50 -50 300 300"
         width="100%"
         height="100%"
         xmlns="http://www.w3.org/2000/svg"
         className="overflow-visible"
       >
-        {/* The Crisp White Blob (Stretches smoothly via GSAP instead of glitchy SVG filters) */}
-        <g fill="#ffffff">
-          <circle cx="100" cy="100" r="55" className="blob-center" />
+        <defs>
+          {/* Expanded filter bounds to prevent clipping glitches */}
+          <filter id="gooey-effect" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+            <feColorMatrix
+              in="blur"
+              mode="matrix"
+              values="
+                1 0 0 0 0  
+                0 1 0 0 0  
+                0 0 1 0 0  
+                0 0 0 25 -10"
+              result="gooey"
+            />
+            <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
+          </filter>
+        </defs>
+
+        <g filter="url(#gooey-effect)" fill="#ffffff">
+          <circle cx="100" cy="100" r="50" className="blob-center" />
+          
+          <g className="blob-orbit-1">
+            <circle cx="100" cy="65" r="25" className="blob-orbit-1-inner" />
+          </g>
+          
+          <g className="blob-orbit-2">
+            <circle cx="65" cy="120" r="20" className="blob-orbit-2-inner" />
+          </g>
         </g>
 
-        {/* The Eyes (Slanted like the screenshot) */}
         <g className="eyes-container" fill="#000000">
-          <g style={{ transformOrigin: '90px 100px', transform: 'rotate(25deg)' }}>
-            <rect x="74" y="80" width="14" height="32" rx="7" className="eye" />
-            <rect x="110" y="80" width="14" height="32" rx="7" className="eye" />
+          <g style={{ transformOrigin: '100px 100px', transform: 'rotate(25deg)' }}>
+            <rect x="74" y="80" width="16" height="36" rx="8" className="eye" />
+            <rect x="110" y="80" width="16" height="36" rx="8" className="eye" />
           </g>
         </g>
       </svg>
