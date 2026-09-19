@@ -89,7 +89,7 @@ export default function Hero() {
  >
 
 
- <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+ <div className="w-full relative z-10">
  {/* Tactical Framed Container */}
  <div className={`relative grid grid-cols-1 lg:grid-cols-2 transition-colors duration-200 ${
  isLight
@@ -99,7 +99,7 @@ export default function Hero() {
  {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
  <div
  ref={textRef}
- className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
+ className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]"
  >
  <div className="space-y-4">
  {/* Primary Headline with Interactive ParticleText */}

@@ -50,12 +50,12 @@ export default function SubpageHero({
   };
 
   return (
-    <section className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16">
-      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000]">
+    <section className="min-h-screen w-full relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-0">
+      <div className="w-full relative z-10">
+        <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000] w-full min-h-[calc(100vh-5rem)]">
           
           {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
-          <div className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]">
+          <div className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]">
             
             {/* Eyebrow */}
             <div className="mb-8 flex items-center">
@@ -66,13 +66,13 @@ export default function SubpageHero({
             </div>
 
             <div className="space-y-6">
-              {/* Primary Headline (Static text, no ParticleText or TextType) */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.5rem] font-medium tracking-tight text-white leading-[1.05]">
+              {/* Primary Headline */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.75rem] font-medium tracking-tight text-white leading-[1.05]">
                 {title}
               </h1>
 
               {/* Subtitle Description */}
-              <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-lg pt-2 text-white/60">
+              <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed max-w-2xl pt-2 text-white/60">
                 {summary}
               </p>
             </div>
@@ -97,8 +97,8 @@ export default function SubpageHero({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Dedicated 2D Topic Canvas */}
-          <div className="flex flex-col justify-between relative overflow-hidden bg-[#050505] min-h-[400px] lg:min-h-[640px] xl:min-h-[700px]">
+          {/* RIGHT COLUMN: Full Wide Generated Topic Visual */}
+          <div className="flex flex-col justify-between relative overflow-hidden bg-[#050505] min-h-[450px] lg:min-h-full w-full h-full">
             <TopicCanvas slug={topicSlug || 'default'} />
           </div>
           
