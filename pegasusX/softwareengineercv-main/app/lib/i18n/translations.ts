@@ -289,10 +289,10 @@ const EN_DICT = {
     home_lane_signal: 'Signal',
     home_lane_operations: 'Operations',
     home_lane_proof: 'Proof',
-    home_lane_last_mile: 'Last mile',
+    home_lane_last_mile: 'Delivery',
 
-    // Home — last-mile delivery section
-    last_mile_eyebrow: 'Last mile',
+    // Home — delivery section
+    last_mile_eyebrow: 'Delivery',
     last_mile_title: 'Track every single order',
     last_mile_desc:
       'Built for retailers and suppliers — on every OS they use. Live status from warehouse to door so both sides see the same stop, without phone calls or guesswork.',
@@ -850,10 +850,10 @@ const RU_DICT = {
     home_lane_signal: 'Сигналы',
     home_lane_operations: 'Операции',
     home_lane_proof: 'Доказательства',
-    home_lane_last_mile: 'Последняя миля',
+    home_lane_last_mile: 'Доставка',
 
-    // Home — last-mile delivery section
-    last_mile_eyebrow: 'Последняя миля',
+    // Home — секция доставки
+    last_mile_eyebrow: 'Доставка',
     last_mile_title: 'Отслеживайте каждый заказ',
     last_mile_desc:
       'Сделано для ритейлеров и поставщиков — на каждой ОС, которой они пользуются. Живой статус от склада до двери: обе стороны видят одну и ту же остановку, без звонков и догадок.',

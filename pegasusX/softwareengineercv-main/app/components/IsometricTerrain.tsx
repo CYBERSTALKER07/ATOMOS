@@ -641,10 +641,6 @@ export default function IsometricTerrain() {
         ref={canvasRef}
         className="block w-full h-full cursor-grab active:cursor-grabbing"
       />
-      {/* Subtle tactical hardware badge in footer corner */}
-      <div className="absolute bottom-2 right-2 text-[9px] font-mono tracking-widest uppercase text-white/20 select-none pointer-events-none">
-        {activeRenderer === 'webgpu' ? 'GPU: WebGPU accelerated' : 'Canvas2D: Battery optimized'}
-      </div>
     </div>
   );
 }

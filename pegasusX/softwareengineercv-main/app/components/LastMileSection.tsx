@@ -67,7 +67,7 @@ export default function LastMileSection() {
 
         <div ref={contentRef} className="order-2 space-y-6 max-w-xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
-            {t('last_mile_eyebrow', 'Last mile')}
+            {t('last_mile_eyebrow', 'Delivery')}
           </p>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-white">
             {t('last_mile_title', 'Track every single order')}
