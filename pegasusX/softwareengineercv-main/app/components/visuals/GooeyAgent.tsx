@@ -14,64 +14,13 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
   useEffect(() => {
     if (!containerRef.current) return;
     const ctx = gsap.context(() => {
-      // Orbiting blobs
-      gsap.to('.blob-orb-1', {
-        x: 'random(-20, 20)',
-        y: 'random(-20, 20)',
-        scale: 'random(0.8, 1.3)',
-        duration: 'random(1.5, 3)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-
-      gsap.to('.blob-orb-2', {
-        x: 'random(-25, 25)',
-        y: 'random(-25, 25)',
-        scale: 'random(0.8, 1.4)',
-        duration: 'random(2, 3.5)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-
-      gsap.to('.blob-orb-3', {
-        x: 'random(-15, 15)',
-        y: 'random(-15, 15)',
-        scale: 'random(0.7, 1.2)',
-        duration: 'random(1.8, 2.8)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-
-      gsap.to('.blob-orb-4', {
-        x: 'random(-30, 30)',
-        y: 'random(-10, 10)',
-        scale: 'random(0.9, 1.5)',
-        duration: 'random(2.5, 4)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-
-      // Center blob breathing
+      // Breathing only (perfect circle idle)
       gsap.to('.blob-center', {
-        scale: 1.1,
+        scale: 1.05,
         duration: 2,
         repeat: -1,
         yoyo: true,
         ease: 'sine.inOut'
-      });
-
-      // Eyes shifting slightly
-      gsap.to('.eyes-container', {
-        x: 'random(-4, 4)',
-        y: 'random(-3, 3)',
-        duration: 'random(1, 3)',
-        repeat: -1,
-        yoyo: true,
-        ease: 'power1.inOut'
       });
 
       // Blinking animation
@@ -87,6 +36,97 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         });
       };
       gsap.delayedCall(2, blink);
+
+      // Mouse tracking
+      let mouseTimeout: NodeJS.Timeout;
+
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        
+        // Calculate center of the SVG component
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        
+        // Distance from center
+        const deltaX = e.clientX - centerX;
+        const deltaY = e.clientY - centerY;
+        
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        // Normalize pull based on screen size (max effect at 400px away)
+        const maxDist = 400; 
+        const pull = Math.min(distance / maxDist, 1);
+        
+        const angle = Math.atan2(deltaY, deltaX);
+
+        // Max pixel translation within the 200x200 viewBox
+        const eyeMax = 14;
+        const orb1Max = 35; // Stretches out far
+        const orb2Max = 20; // Stretches medium
+        const orb3Max = 10; // Stretches short
+        
+        // Animate eyes looking at mouse
+        gsap.to('.eyes-container', {
+          x: Math.cos(angle) * pull * eyeMax,
+          y: Math.sin(angle) * pull * eyeMax,
+          duration: 0.4,
+          ease: 'power2.out'
+        });
+
+        // Orbs pulling (creates the gooey stretch)
+        gsap.to('.blob-orb-1', {
+          x: Math.cos(angle) * pull * orb1Max,
+          y: Math.sin(angle) * pull * orb1Max,
+          scale: 1 - (pull * 0.2), // gets slightly thinner as it stretches
+          duration: 0.7,
+          ease: 'power3.out'
+        });
+
+        gsap.to('.blob-orb-2', {
+          x: Math.cos(angle + 0.15) * pull * orb2Max,
+          y: Math.sin(angle + 0.15) * pull * orb2Max,
+          duration: 0.9,
+          ease: 'power3.out'
+        });
+        
+        gsap.to('.blob-orb-3', {
+          x: Math.cos(angle - 0.15) * pull * orb3Max,
+          y: Math.sin(angle - 0.15) * pull * orb3Max,
+          duration: 0.8,
+          ease: 'power3.out'
+        });
+
+        // Debounce returning to center when mouse stops
+        clearTimeout(mouseTimeout);
+        mouseTimeout = setTimeout(() => {
+          returnToCenter();
+        }, 2000);
+      };
+
+      const returnToCenter = () => {
+        gsap.to(['.eyes-container', '.blob-orb-1', '.blob-orb-2', '.blob-orb-3'], {
+          x: 0,
+          y: 0,
+          scale: 1,
+          duration: 1.5,
+          ease: 'elastic.out(1, 0.4)'
+        });
+      };
+
+      const handleMouseLeave = () => {
+        clearTimeout(mouseTimeout);
+        returnToCenter();
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseleave', handleMouseLeave);
+
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseleave', handleMouseLeave);
+        clearTimeout(mouseTimeout);
+      };
+
     }, containerRef);
 
     return () => ctx.revert();
@@ -126,9 +166,8 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         <g filter="url(#gooey-effect)" fill="#ffffff">
           <circle cx="100" cy="100" r="45" className="blob-center origin-center" />
           <circle cx="100" cy="100" r="30" className="blob-orb-1 origin-center" />
-          <circle cx="100" cy="100" r="35" className="blob-orb-2 origin-center" />
+          <circle cx="100" cy="100" r="38" className="blob-orb-2 origin-center" />
           <circle cx="100" cy="100" r="25" className="blob-orb-3 origin-center" />
-          <circle cx="100" cy="100" r="28" className="blob-orb-4 origin-center" />
         </g>
 
         {/* The Eyes (No Filter, Crisp Edges) */}
