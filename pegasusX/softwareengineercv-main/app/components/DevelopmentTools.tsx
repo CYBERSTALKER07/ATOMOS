@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
-import Link from 'next/link';
 import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
@@ -234,14 +233,7 @@ export default function DevelopmentTools() {
           eyebrow={t('tools_eyebrow', 'Under the hood')}
           title={t('tools_title', 'Built to run at network scale')}
         />
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link href="/technology" className="editorial-btn">
-            {t('tools_cta_tech', 'VIEW TECHNOLOGY')}
-          </Link>
-          <Link href="/technology/go-backend-platform" className="editorial-btn editorial-btn--sm">
-            {t('tools_cta_oss', 'OPEN SOURCE STACK →')}
-          </Link>
-        </div>
+
       </div>
 
       <div
