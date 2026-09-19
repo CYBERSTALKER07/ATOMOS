@@ -2,87 +2,108 @@
 
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
+import TopicCanvas from './visuals/TopicCanvas';
+import { useLanguage } from '../context/LanguageContext';
 
 export type SubpageHeroProps = {
- categoryLabel?: string;
- categoryHref?: string;
- badge?: string;
- badgeIcon?: ReactNode;
- title: string;
- summary: string;
- primaryCta?: {
- label: string;
- href: string;
- };
- secondaryCta?: {
- label: string;
- href: string;
- };
- widget?: any;
- nodes?: any;
- breadcrumb?: any;
+  topicSlug?: string;
+  categoryLabel?: string;
+  categoryHref?: string;
+  badge?: string;
+  badgeIcon?: ReactNode;
+  title: string;
+  summary: string;
+  primaryCta?: {
+    label: string;
+    href: string;
+  };
+  secondaryCta?: {
+    label: string;
+    href: string;
+  };
+  widget?: any;
+  nodes?: any;
+  breadcrumb?: any;
 };
 
 export default function SubpageHero({
- categoryLabel,
- categoryHref,
- badge,
- title,
- summary,
- primaryCta,
- secondaryCta,
+  topicSlug,
+  categoryLabel,
+  categoryHref,
+  badge,
+  title,
+  summary,
+  primaryCta,
+  secondaryCta,
 }: SubpageHeroProps) {
- const eyebrowBadge = badge || (categoryLabel ? `PEGASUS // ${categoryLabel.toUpperCase()}` : 'PEGASUS OS');
- 
- const primaryButton = primaryCta || {
- label: 'Request Demo',
- href: '/join',
- };
+  const { language } = useLanguage();
+  const eyebrowBadge = badge || (categoryLabel ? `PEGASUS // ${categoryLabel.toUpperCase()}` : 'PEGASUS OS');
+  
+  const primaryButton = primaryCta || {
+    label: language === 'ru' ? 'Запросить демо' : 'Request Demo',
+    href: '/join',
+  };
 
- const secondaryButton = secondaryCta || {
- label: 'Explore Stack',
- href: categoryHref || '/platform',
- };
+  const secondaryButton = secondaryCta || {
+    label: language === 'ru' ? 'Обзор платформы' : 'Explore Stack',
+    href: categoryHref || '/platform',
+  };
 
- return (
- <section className="relative w-full bg-[#000000] text-white pt-40 pb-20 px-4 sm:px-6 lg:px-8 border-b border-white/10 select-none overflow-hidden">
- <div className="w-full max-w-[1560px] mx-auto relative z-10 flex flex-col justify-end min-h-[400px]">
- {/* Eyebrow */}
- <div className="mb-6 flex items-center">
- <div className="h-1.5 w-1.5 bg-white mr-3"></div>
- <span className="font-mono text-xs uppercase tracking-widest text-zinc-400">
- {eyebrowBadge}
- </span>
- </div>
+  return (
+    <section className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16 border-b border-white/10">
+      <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000] border border-white/10">
+          
+          {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
+          <div className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px] border-b lg:border-b-0 lg:border-r border-white/10">
+            
+            {/* Eyebrow */}
+            <div className="mb-8 flex items-center">
+              <div className="h-1.5 w-1.5 bg-white mr-3"></div>
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+                {eyebrowBadge}
+              </span>
+            </div>
 
- {/* Title */}
- <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[5rem] font-medium tracking-tight text-white max-w-5xl leading-[1.05] mb-8">
- {title}
- </h1>
+            <div className="space-y-6">
+              {/* Primary Headline (Static text, no ParticleText or TextType) */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[4.5rem] font-medium tracking-tight text-white leading-[1.05]">
+                {title}
+              </h1>
 
- {/* Summary */}
- <p className="text-lg sm:text-xl font-light leading-relaxed max-w-2xl text-zinc-400 mb-12">
- {summary}
- </p>
+              {/* Subtitle Description */}
+              <p className="text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-lg pt-2 text-white/60">
+                {summary}
+              </p>
+            </div>
 
- {/* CTA Buttons - Using the global sweep classes */}
- <div className="flex flex-wrap items-center gap-4">
- <Link
- href={primaryButton.href}
- className="editorial-btn"
- >
- <span>{primaryButton.label}</span>
- <span className="text-lg leading-none mt-[-2px]">›</span>
- </Link>
- <Link
- href={secondaryButton.href}
- className="editorial-btn editorial-btn--inverted"
- >
- <span>{secondaryButton.label}</span>
- <span className="text-lg leading-none mt-[-2px]">›</span>
- </Link>
- </div>
- </div>
- </section>
- );
+            {/* Action Buttons */}
+            <div className="pt-10 flex flex-wrap items-center gap-4">
+              <Link
+                href={primaryButton.href}
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white text-black hover:bg-white/90 rounded-none"
+              >
+                <span>{primaryButton.label}</span>
+                <span className="text-lg leading-none mt-[-2px]">›</span>
+              </Link>
+
+              <Link
+                href={secondaryButton.href}
+                className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-none"
+              >
+                <span>{secondaryButton.label}</span>
+                <span className="text-lg leading-none mt-[-2px]">›</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Dedicated 2D Topic Canvas */}
+          <div className="flex flex-col justify-between relative overflow-hidden bg-[#050505] min-h-[400px] lg:min-h-[640px] xl:min-h-[700px]">
+            <TopicCanvas slug={topicSlug || 'default'} />
+          </div>
+          
+        </div>
+      </div>
+    </section>
+  );
 }

@@ -8,6 +8,7 @@ import O9SplitTourCTA from './O9SplitTourCTA';
 
 export type O9FleekPageLayoutProps = {
   variant?: 'full' | 'secondary';
+  topicSlug?: string;
   categoryLabel: string;
   categoryHref: string;
   title: string;
@@ -35,6 +36,7 @@ export type O9FleekPageLayoutProps = {
 };
 
 export default function O9FleekPageLayout({
+  topicSlug,
   categoryLabel,
   categoryHref,
   title,
@@ -55,6 +57,7 @@ export default function O9FleekPageLayout({
   return (
     <div className="o9-page">
       <O9HeroSplit
+        topicSlug={topicSlug}
         categoryLabel={categoryLabel}
         categoryHref={categoryHref}
         title={title}

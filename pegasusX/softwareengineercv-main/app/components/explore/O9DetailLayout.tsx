@@ -67,7 +67,8 @@ export default function O9DetailLayout({ topic, showFleetShowcase }: O9DetailLay
  <O9FleekPageLayout
  categoryLabel={categoryLabel}
  categoryHref={`/${categoryId}`}
- title={isWarehouse ? warehouseTitle : content.title}
+ topicSlug={slug}
+        title={isWarehouse ? warehouseTitle : content.title}
  summary={content.summary}
  badge={badge}
  heroImageSrc={

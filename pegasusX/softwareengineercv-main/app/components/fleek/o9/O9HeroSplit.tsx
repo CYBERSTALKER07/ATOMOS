@@ -7,6 +7,7 @@ import type { ProofItem } from '@/app/data/topicTypes';
 import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 
 type O9HeroSplitProps = {
+ topicSlug?: string;
  categoryLabel: string;
  categoryHref: string;
  title: string;
@@ -24,6 +25,7 @@ type O9HeroSplitProps = {
 };
 
 export default function O9HeroSplit({
+ topicSlug,
  categoryLabel,
  categoryHref,
  title,
@@ -39,6 +41,7 @@ export default function O9HeroSplit({
  return (
  <div className="w-full">
  <SubpageHero
+        topicSlug={topicSlug}
  categoryLabel={categoryLabel}
  categoryHref={categoryHref}
  title={title}
