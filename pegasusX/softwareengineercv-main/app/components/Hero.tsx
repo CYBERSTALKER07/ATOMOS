@@ -31,25 +31,7 @@ export default function Hero() {
     t('hero_type_4'),
   ];
 
-  const isRu = language === 'ru';
-  const metrics = [
-    {
-      label: isRu ? 'АКТИВНЫЕ ЯЧЕЙКИ' : 'ACTIVE CELLS',
-      value: '16 Nodes',
-    },
-    {
-      label: isRu ? 'ОБЪЁМ ИНТЕНТОВ' : 'DAILY INTENTS',
-      value: '2.4M+',
-    },
-    {
-      label: isRu ? 'РОЛЕВЫЕ ПОВЕРХНОСТИ' : 'CONNECTED ROLES',
-      value: '6 Surfaces',
-    },
-    {
-      label: isRu ? 'АПТАЙМ СЕТИ' : 'GLOBAL UPTIME',
-      value: '99.99%',
-    },
-  ];
+
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -254,25 +236,7 @@ export default function Hero() {
               <IsometricTerrain />
             </div>
 
-            {/* Bottom Metric Bar: 4-stat row strictly following the reference image */}
-            <div className={`border-t grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x ${
-              isLight ? 'border-black/10 divide-black/10 bg-zinc-50' : 'border-white/15 divide-white/15 bg-black'
-            }`}>
-              {metrics.map((m, idx) => (
-                <div key={idx} className="p-4 sm:px-6 sm:py-5 flex flex-col justify-center">
-                  <span className={`text-[10px] sm:text-[11px] font-mono tracking-wider uppercase mb-1 truncate ${
-                    isLight ? 'text-zinc-500' : 'text-white/45'
-                  }`}>
-                    {m.label}
-                  </span>
-                  <span className={`text-base sm:text-lg lg:text-xl font-mono font-medium tracking-tight ${
-                    isLight ? 'text-zinc-900' : 'text-white'
-                  }`}>
-                    {m.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+
           </div>
         </div>
       </div>
