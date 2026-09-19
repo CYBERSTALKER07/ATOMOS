@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Maximize2, Copy, Check, RotateCcw, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import GooeyAgent from './visuals/GooeyAgent';
 
 type ChatRole = 'user' | 'assistant';
 
@@ -410,7 +409,7 @@ export default function SiteAssistant() {
  <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-black border-b border-white/10 shrink-0">
  <div className="flex items-center gap-2.5 min-w-0">
  <div className="w-7 h-7 border border-white/20 bg-black flex items-center justify-center shrink-0 p-1">
- <GooeyAgent color="#ffffff" size={20} />
+ <img src="/pegasus.jpg" alt="" className="w-full h-full object-contain" />
  </div>
  <div className="min-w-0">
  <div className="flex items-center gap-1.5">
@@ -605,7 +604,13 @@ export default function SiteAssistant() {
  {open ? (
  <X className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:scale-110" />
  ) : (
- <GooeyAgent color="#ffffff" size={34} className="group-hover:scale-105 transition-transform duration-200" />
+ <img
+            src="/pegasus.jpg"
+            alt="Pegasus AI Assistant"
+            width={34}
+            height={34}
+            className="w-8 h-8 sm:w-9 sm:h-9 object-contain select-none transition-transform duration-200 group-hover:scale-105"
+          />
  )}
  <span className="site-assistant__badge" aria-hidden="true">
  {open ? 'ESC' : '⌘K'}
