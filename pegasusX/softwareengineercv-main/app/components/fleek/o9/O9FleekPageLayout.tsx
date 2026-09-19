@@ -55,22 +55,29 @@ export default function O9FleekPageLayout({
   const footerCta = showTourCta ? (tourCta ?? <O9SplitTourCTA relatedProjectSlug={relatedProjectSlug} />) : null;
 
   return (
-    <div className="o9-page">
-      <O9HeroSplit
-        topicSlug={topicSlug}
-        categoryLabel={categoryLabel}
-        categoryHref={categoryHref}
-        title={title}
-        summary={summary}
-        badge={badge}
-        imageSrc={heroImageSrc}
-        imageAlt={heroImageAlt}
-        visual={heroVisual}
-        proofItems={proofItems}
-        showProofStrip={showProofStrip}
-      />
-      <div className="o9-details">{details}</div>
-      {footerCta}
+    <div className="w-full flex flex-col">
+      {/* Hero Section: 100% Full Width Edge-to-Edge */}
+      <div className="w-full">
+        <O9HeroSplit
+          topicSlug={topicSlug}
+          categoryLabel={categoryLabel}
+          categoryHref={categoryHref}
+          title={title}
+          summary={summary}
+          badge={badge}
+          imageSrc={heroImageSrc}
+          imageAlt={heroImageAlt}
+          visual={heroVisual}
+          proofItems={proofItems}
+          showProofStrip={showProofStrip}
+        />
+      </div>
+
+      {/* Subsequent Editorial Details & Content */}
+      <div className="o9-page">
+        <div className="o9-details">{details}</div>
+        {footerCta}
+      </div>
     </div>
   );
 }

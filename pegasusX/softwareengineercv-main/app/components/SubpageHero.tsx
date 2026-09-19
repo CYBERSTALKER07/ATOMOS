@@ -2,6 +2,7 @@
 
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import TopicCanvas from './visuals/TopicCanvas';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -37,6 +38,10 @@ export default function SubpageHero({
   secondaryCta,
 }: SubpageHeroProps) {
   const { language } = useLanguage();
+  const pathname = usePathname();
+  const slugFromPath = pathname?.split('/').filter(Boolean).pop();
+  const activeSlug = topicSlug || slugFromPath || 'default';
+
   const eyebrowBadge = badge || (categoryLabel ? `PEGASUS // ${categoryLabel.toUpperCase()}` : 'PEGASUS OS');
   
   const primaryButton = primaryCta || {
@@ -99,7 +104,7 @@ export default function SubpageHero({
 
           {/* RIGHT COLUMN: Full Wide Generated Topic Visual */}
           <div className="flex flex-col justify-between relative overflow-hidden bg-[#050505] min-h-[450px] lg:min-h-full w-full h-full">
-            <TopicCanvas slug={topicSlug || 'default'} />
+            <TopicCanvas slug={activeSlug} />
           </div>
           
         </div>

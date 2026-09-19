@@ -54,7 +54,8 @@ export function getTopicImage(slug: string): TopicImageConfig {
     s.includes('transport') ||
     s.includes('vehicle') ||
     s.includes('telemetry') ||
-    s.includes('weather')
+    s.includes('weather') ||
+    s.includes('automation')
   ) {
     return {
       src: '/images/topics/fleet_radar.jpg',
@@ -102,7 +103,7 @@ export function getTopicImage(slug: string): TopicImageConfig {
     };
   }
 
-  // Treasury, Financial, Ledger, Audit, Payments
+  // Treasury, Financial, Ledger, Audit, Payments, Compliance
   if (
     s.includes('payment') ||
     s.includes('treasury') ||
@@ -110,7 +111,9 @@ export function getTopicImage(slug: string): TopicImageConfig {
     s.includes('audit') ||
     s.includes('trust') ||
     s.includes('settle') ||
-    s.includes('confidence')
+    s.includes('confidence') ||
+    s.includes('cookie') ||
+    s.includes('legal')
   ) {
     return {
       src: '/images/topics/financial_treasury.jpg',
@@ -120,14 +123,17 @@ export function getTopicImage(slug: string): TopicImageConfig {
     };
   }
 
-  // Route Mesh & Network Topology & Dispatch
+  // Route Mesh & Network Topology & Dispatch & Markets
   if (
     s.includes('route') ||
     s.includes('dispatch') ||
     s.includes('network') ||
     s.includes('topology') ||
     s.includes('zone') ||
-    s.includes('map')
+    s.includes('map') ||
+    s.includes('market') ||
+    s.includes('compare') ||
+    s.includes('alternative')
   ) {
     return {
       src: '/images/topics/route_mesh.jpg',
@@ -137,7 +143,7 @@ export function getTopicImage(slug: string): TopicImageConfig {
     };
   }
 
-  // Default: Control Plane
+  // Default: Control Plane (platform, supply chain, cloud ecosystem)
   return {
     src: '/images/topics/control_plane.jpg',
     alt: 'Pegasus Mission Control Plane',
@@ -150,7 +156,7 @@ export default function TopicCanvas({ slug }: { slug: string }) {
   const visual = getTopicImage(slug);
 
   return (
-    <div className="relative w-full h-full min-h-[400px] lg:min-h-[640px] xl:min-h-[700px] bg-[#030303] overflow-hidden flex items-center justify-center group select-none">
+    <div className="relative w-full h-full min-h-[420px] lg:min-h-[640px] xl:min-h-[700px] bg-[#030303] overflow-hidden flex items-center justify-center group select-none">
       {/* Background Generated Image */}
       <div className="absolute inset-0 transition-transform duration-1000 ease-out group-hover:scale-105">
         <Image
