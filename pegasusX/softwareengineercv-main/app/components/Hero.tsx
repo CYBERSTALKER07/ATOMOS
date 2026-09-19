@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react';
 import { gsap, smoothScrollTo } from '@/app/lib/gsap';
 import ParticleText from './ParticleText';
-import CurvedLoop from './CurvedLoop';
 import TextType from './TextType';
 import IsometricTerrain from './IsometricTerrain';
 import { usePerfProfile } from '../hooks/useDevice';
@@ -88,43 +87,7 @@ export default function Hero() {
       id="hero"
       className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16"
     >
-      {/* Decorative Curved Loops for desktop / Mac */}
-      {!isMobile && (
-        <>
-          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={900}
-              direction="right"
-              interactive={false}
-              className={isLight ? 'fill-black' : 'fill-white'}
-            />
-          </div>
 
-          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={500}
-              direction="left"
-              interactive={false}
-              className={isLight ? 'fill-black' : 'fill-white'}
-            />
-          </div>
-
-          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-20 z-0 rotate-180 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={200}
-              direction="right"
-              interactive={false}
-              className={isLight ? 'fill-black' : 'fill-white'}
-            />
-          </div>
-        </>
-      )}
 
       <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Tactical Framed Container */}
