@@ -233,10 +233,6 @@ export default function DevelopmentTools() {
           align="center"
           eyebrow={t('tools_eyebrow', 'Under the hood')}
           title={t('tools_title', 'Built to run at network scale')}
-          description={t(
-            'tools_desc',
-            'Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages.'
-          )}
         />
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link href="/technology" className="editorial-btn">

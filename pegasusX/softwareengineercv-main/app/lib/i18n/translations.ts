@@ -546,8 +546,6 @@ const EN_DICT = {
 
     tools_eyebrow: 'Under the hood',
     tools_title: 'Built to run at network scale',
-    tools_desc:
-      'Production-grade infrastructure keeps your operation reliable — explore the full technology stack, open-source components, and architecture on our technology pages.',
     tools_cta_tech: 'VIEW TECHNOLOGY',
     tools_cta_oss: 'OPEN SOURCE STACK →',
     tools_aria_stack: 'Platform stack technologies',
@@ -1106,8 +1104,6 @@ const RU_DICT = {
 
     tools_eyebrow: 'Под капотом',
     tools_title: 'Построено для масштаба сети',
-    tools_desc:
-      'Инфраструктура промышленного уровня держит операции надёжными — изучите полный технологический стек, open-source компоненты и архитектуру на страницах технологий.',
     tools_cta_tech: 'СМОТРЕТЬ ТЕХНОЛОГИИ',
     tools_cta_oss: 'OPEN SOURCE СТЕК →',
     tools_aria_stack: 'Технологии платформенного стека',
