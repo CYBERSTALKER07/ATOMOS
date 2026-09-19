@@ -50,12 +50,12 @@ export default function SubpageHero({
   };
 
   return (
-    <section className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16 border-b border-white/10">
+    <section className="min-h-screen relative flex flex-col justify-center bg-[#000000] overflow-hidden pt-20 sm:pt-24 pb-14 sm:pb-16">
       <div className="w-full max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000] border border-white/10">
+        <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000]">
           
           {/* LEFT COLUMN: Editorial Headline, Subtitle, Description & Outlined CTA */}
-          <div className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px] border-b lg:border-b-0 lg:border-r border-white/10">
+          <div className="flex flex-col justify-end p-6 sm:p-8 lg:p-10 xl:p-12 relative z-10 min-h-[540px] lg:min-h-[640px] xl:min-h-[700px]">
             
             {/* Eyebrow */}
             <div className="mb-8 flex items-center">
