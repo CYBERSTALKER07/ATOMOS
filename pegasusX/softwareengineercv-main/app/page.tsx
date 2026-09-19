@@ -6,12 +6,12 @@ import SiteNav from './components/explore/SiteNav';
 
 import type { Metadata } from 'next';
 import {
-  pageMetadata,
-  organizationJsonLd,
-  websiteJsonLd,
-  softwareApplicationJsonLd,
-  faqPageJsonLd,
-  jsonLdGraphScript,
+ pageMetadata,
+ organizationJsonLd,
+ websiteJsonLd,
+ softwareApplicationJsonLd,
+ faqPageJsonLd,
+ jsonLdGraphScript,
 } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
@@ -41,119 +41,119 @@ const Licensing = dynamic(() => import('./components/Licensing'));
 const Footer = dynamic(() => import('./components/Footer'));
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = await getServerLanguage();
-  const dict = translations[lang] ?? translations.en;
-  return pageMetadata({
-    title: dict.meta_home_title,
-    description: dict.meta_home_desc,
-    path: '/',
-    language: lang,
-  });
+ const lang = await getServerLanguage();
+ const dict = translations[lang] ?? translations.en;
+ return pageMetadata({
+ title: dict.meta_home_title,
+ description: dict.meta_home_desc,
+ path: '/',
+ language: lang,
+ });
 }
 
 export default async function Home() {
-  const lang = await getServerLanguage();
-  const faqs =
-    lang === 'ru'
-      ? [
-          {
-            question: 'Что такое Pegasus?',
-            answer:
-              'Pegasus — операционная система логистики для сетей под управлением поставщика. Она объединяет диспетчеризацию, мониторинг автопарка, платежи и координацию шести ролей в одной системе состояний.',
-          },
-          {
-            question: 'Какие роли поддерживает платформа?',
-            answer:
-              'Поставщик, склад, ритейлер, водитель, завод и ворота — у каждой роли свои приложения с общей правдой статуса заказа.',
-          },
-          {
-            question: 'Как запросить демо?',
-            answer:
-              'Откройте страницу Request Demo (/join) или Contact и оставьте заявку — команда свяжется в течение рабочего дня.',
-          },
-        ]
-      : [
-          {
-            question: 'What is Pegasus?',
-            answer:
-              'Pegasus is the logistics operating system for supplier-led networks. It unifies dispatch, fleet tracking, payments, and coordination across six roles in one governed state machine.',
-          },
-          {
-            question: 'Which roles does the platform support?',
-            answer:
-              'Supplier, warehouse, retailer, driver, factory, and gate — each role gets purpose-built apps that share one order-status truth.',
-          },
-          {
-            question: 'How do I request a demo?',
-            answer:
-              'Open the Request Demo page (/join) or Contact and submit the form — the team typically responds within one business day.',
-          },
-        ];
+ const lang = await getServerLanguage();
+ const faqs =
+ lang === 'ru'
+ ? [
+ {
+ question: 'Что такое Pegasus?',
+ answer:
+ 'Pegasus — операционная система логистики для сетей под управлением поставщика. Она объединяет диспетчеризацию, мониторинг автопарка, платежи и координацию шести ролей в одной системе состояний.',
+ },
+ {
+ question: 'Какие роли поддерживает платформа?',
+ answer:
+ 'Поставщик, склад, ритейлер, водитель, завод и ворота — у каждой роли свои приложения с общей правдой статуса заказа.',
+ },
+ {
+ question: 'Как запросить демо?',
+ answer:
+ 'Откройте страницу Request Demo (/join) или Contact и оставьте заявку — команда свяжется в течение рабочего дня.',
+ },
+ ]
+ : [
+ {
+ question: 'What is Pegasus?',
+ answer:
+ 'Pegasus is the logistics operating system for supplier-led networks. It unifies dispatch, fleet tracking, payments, and coordination across six roles in one governed state machine.',
+ },
+ {
+ question: 'Which roles does the platform support?',
+ answer:
+ 'Supplier, warehouse, retailer, driver, factory, and gate — each role gets purpose-built apps that share one order-status truth.',
+ },
+ {
+ question: 'How do I request a demo?',
+ answer:
+ 'Open the Request Demo page (/join) or Contact and submit the form — the team typically responds within one business day.',
+ },
+ ];
 
-  const structuredData = [
-    organizationJsonLd(lang),
-    websiteJsonLd(lang),
-    softwareApplicationJsonLd(lang),
-    faqPageJsonLd(faqs, lang),
-  ];
+ const structuredData = [
+ organizationJsonLd(lang),
+ websiteJsonLd(lang),
+ softwareApplicationJsonLd(lang),
+ faqPageJsonLd(faqs, lang),
+ ];
 
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLdGraphScript(structuredData)}
-      />
+ return (
+ <>
+ <script
+ type="application/ld+json"
+ dangerouslySetInnerHTML={jsonLdGraphScript(structuredData)}
+ />
 
-      <div className="relative">
-        <SiteNav activeHref="/" />
+ <div className="relative">
+ <SiteNav activeHref="/" />
 
-        <section id="section-overview">
-          <Hero />
-        </section>
+ <section id="section-overview">
+ <Hero />
+ </section>
 
-        <section id="section-platform">
-          <About />
-          <OrderCycleVisualSection />
-          <DispatchVisualSection />
-        </section>
+ <section id="section-platform">
+ <About />
+ <OrderCycleVisualSection />
+ <DispatchVisualSection />
+ </section>
 
-        <section id="section-last-mile">
-          <LastMileSection />
-        </section>
+ <section id="section-last-mile">
+ <LastMileSection />
+ </section>
 
-        <section id="section-analytics">
-          <PlatformFeatures />
-          <PromptDashboardSection />
-          <AskPromptSection />
-        </section>
+ <section id="section-analytics">
+ <PlatformFeatures />
+ <PromptDashboardSection />
+ <AskPromptSection />
+ </section>
 
-        <section id="section-workflow">
-          {/* <EcosystemStats /> - hidden: Optimized for the entire chain */}
-          {/* <EcosystemDitherSection /> - hidden for now */}
-          {/* <LogisticsWorkflow /> - hidden for now */}
-          <OurApproach />
-          <Skills />
-          <DevelopmentTools />
-          {/* <CloudEcosystemSection /> - hidden for now */}
-        </section>
+ <section id="section-workflow">
+ {/* <EcosystemStats /> - hidden: Optimized for the entire chain */}
+ {/* <EcosystemDitherSection /> - hidden for now */}
+ {/* <LogisticsWorkflow /> - hidden for now */}
+ <OurApproach />
+ <Skills />
+ <DevelopmentTools />
+ {/* <CloudEcosystemSection /> - hidden for now */}
+ </section>
 
-        <section id="section-showcase">
-          {/* <ShowcaseWall /> - hidden for now */}
-          <PegasusTestimonialsSection />
-          {/* <UserStoriesSection /> - hidden for now */}
-          <Projects />
-          <Companies />
-        </section>
+ <section id="section-showcase">
+ {/* <ShowcaseWall /> - hidden for now */}
+ <PegasusTestimonialsSection />
+ {/* <UserStoriesSection /> - hidden for now */}
+ <Projects />
+ <Companies />
+ </section>
 
-        <section id="section-intelligence" className="relative z-10">
-          <SpurIntelligenceSection />
-        </section>
+ <section id="section-intelligence" className="relative z-10">
+ <SpurIntelligenceSection />
+ </section>
 
-        <section id="section-deploy">
-          <Licensing />
-          <Footer />
-        </section>
-      </div>
-    </>
-  );
+ <section id="section-deploy">
+ <Licensing />
+ <Footer />
+ </section>
+ </div>
+ </>
+ );
 }

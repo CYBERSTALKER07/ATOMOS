@@ -9,310 +9,310 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { Check, X, Minus, ArrowRight, Shield, Zap, RefreshCw, Cpu } from 'lucide-react';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const lang = await getServerLanguage();
-  return pageMetadata({
-    title: lang === 'ru' 
-      ? 'Лучшие альтернативы TMS и систем диспетчеризации (2026)' 
-      : 'Best TMS & Fleet Management Alternatives (2026)',
-    description: lang === 'ru'
-      ? 'Сравнение ведущих систем управления транспортом и диспетчеризации автопарка. Выберите лучшую альтернативу Samsara, Rose Rocket, Motive и Turvo.'
-      : 'Compare the top transportation management systems and fleet dispatch software. Find the best alternative to Samsara, Rose Rocket, Motive, and Turvo.',
-    path: '/alternatives',
-    language: lang,
-  });
+ const lang = await getServerLanguage();
+ return pageMetadata({
+ title: lang === 'ru' 
+ ? 'Лучшие альтернативы TMS и систем диспетчеризации (2026)' 
+ : 'Best TMS & Fleet Management Alternatives (2026)',
+ description: lang === 'ru'
+ ? 'Сравнение ведущих систем управления транспортом и диспетчеризации автопарка. Выберите лучшую альтернативу Samsara, Rose Rocket, Motive и Turvo.'
+ : 'Compare the top transportation management systems and fleet dispatch software. Find the best alternative to Samsara, Rose Rocket, Motive, and Turvo.',
+ path: '/alternatives',
+ language: lang,
+ });
 }
 
 export default async function AlternativesPage() {
-  const lang = await getServerLanguage();
-  const isRu = lang === 'ru';
+ const lang = await getServerLanguage();
+ const isRu = lang === 'ru';
 
-  const breadcrumbs = [
-    { name: isRu ? 'Главная' : 'Home', path: '/' },
-    { name: isRu ? 'Альтернативы TMS' : 'TMS Alternatives', path: '/alternatives' },
-  ];
+ const breadcrumbs = [
+ { name: isRu ? 'Главная' : 'Home', path: '/' },
+ { name: isRu ? 'Альтернативы TMS' : 'TMS Alternatives', path: '/alternatives' },
+ ];
 
-  return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
-      />
-      <SiteNav activeHref="/alternatives" />
+ return (
+ <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-white selection:text-black">
+ <script
+ type="application/ld+json"
+ dangerouslySetInnerHTML={jsonLdScript(breadcrumbJsonLd(breadcrumbs))}
+ />
+ <SiteNav activeHref="/alternatives" />
 
-      <SubpageHero
-        badge={isRu ? 'РУКОВОДСТВО ПОКУПАТЕЛЯ TMS 2026' : '2026 TMS EVALUATION GUIDE'}
-        title={isRu ? 'Альтернативы системам управления транспортом' : 'Transportation Management Software Alternatives'}
-        summary={isRu
-          ? 'Ищете замену устаревшим монолитам или дорогим телематическим контрактам? Ознакомьтесь с независимым сравнением ведущих платформ для B2B-логистики.'
-          : 'Looking to replace legacy monoliths or restrictive telematics contracts? Review our objective breakdown of the leading platforms for B2B fleet dispatch and physical goods distribution.'}
-        primaryCta={{
-          label: isRu ? 'Сравнить платформы' : 'Compare Platforms',
-          href: '#platforms',
-        }}
-        secondaryCta={{
-          label: isRu ? 'Таблицы сравнения' : 'Head-to-head guides',
-          href: '/compare',
-        }}
-        widget={{
-          title: 'HARDWARE-INDEPENDENT',
-          description: 'Zero proprietary ELD leases. BYOD mobile & open telematics.',
-          href: '/compare',
-        }}
-        breadcrumb={{
-          currentPage: isRu ? 'Альтернативы TMS' : 'TMS Alternatives',
-        }}
-      />
+ <SubpageHero
+ badge={isRu ? 'РУКОВОДСТВО ПОКУПАТЕЛЯ TMS 2026' : '2026 TMS EVALUATION GUIDE'}
+ title={isRu ? 'Альтернативы системам управления транспортом' : 'Transportation Management Software Alternatives'}
+ summary={isRu
+ ? 'Ищете замену устаревшим монолитам или дорогим телематическим контрактам? Ознакомьтесь с независимым сравнением ведущих платформ для B2B-логистики.'
+ : 'Looking to replace legacy monoliths or restrictive telematics contracts? Review our objective breakdown of the leading platforms for B2B fleet dispatch and physical goods distribution.'}
+ primaryCta={{
+ label: isRu ? 'Сравнить платформы' : 'Compare Platforms',
+ href: '#platforms',
+ }}
+ secondaryCta={{
+ label: isRu ? 'Таблицы сравнения' : 'Head-to-head guides',
+ href: '/compare',
+ }}
+ widget={{
+ title: 'HARDWARE-INDEPENDENT',
+ description: 'Zero proprietary ELD leases. BYOD mobile & open telematics.',
+ href: '/compare',
+ }}
+ breadcrumb={{
+ currentPage: isRu ? 'Альтернативы TMS' : 'TMS Alternatives',
+ }}
+ />
 
-      <main id="platforms" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
-        {/* Evaluation Pillars */}
-        <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Независимость от "железа"' : 'Hardware Independence'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Избегайте многолетней аренды проприетарных черных ящиков. Современные системы работают на смартфонах водителей и открытых датчиках.'
-                : 'Avoid 36-60 month proprietary black-box hardware leases. Modern platforms leverage driver mobile devices and open telematics APIs.'}
-            </p>
-          </div>
+ <main id="platforms" className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-24 w-full">
+ {/* Evaluation Pillars */}
+ <section className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
+ <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+ <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
+ <Zap className="w-5 h-5 text-white" />
+ </div>
+ <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
+ {isRu ? 'Независимость от "железа"' : 'Hardware Independence'}
+ </h3>
+ <p className="text-sm text-white/60 leading-relaxed font-light">
+ {isRu
+ ? 'Избегайте многолетней аренды проприетарных черных ящиков. Современные системы работают на смартфонах водителей и открытых датчиках.'
+ : 'Avoid 36-60 month proprietary black-box hardware leases. Modern platforms leverage driver mobile devices and open telematics APIs.'}
+ </p>
+ </div>
 
-          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
-              <RefreshCw className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Сквозной B2B контур (6 ролей)' : 'Full 6-Role Closed Loop'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Объединение поставщика, склада, фабрики, водителя, ритейлера и ворот в единой системе состояний с нулевыми потерями данных.'
-                : 'Connect suppliers, warehouses, factories, drivers, retailers, and security gates into one shared transactional state without dropped handoffs.'}
-            </p>
-          </div>
+ <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+ <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
+ <RefreshCw className="w-5 h-5 text-white" />
+ </div>
+ <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
+ {isRu ? 'Сквозной B2B контур (6 ролей)' : 'Full 6-Role Closed Loop'}
+ </h3>
+ <p className="text-sm text-white/60 leading-relaxed font-light">
+ {isRu
+ ? 'Объединение поставщика, склада, фабрики, водителя, ритейлера и ворот в единой системе состояний с нулевыми потерями данных.'
+ : 'Connect suppliers, warehouses, factories, drivers, retailers, and security gates into one shared transactional state without dropped handoffs.'}
+ </p>
+ </div>
 
-          <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
-            <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
-            <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
-              {isRu ? 'Финансовая сверка' : 'Financial Reconciliation'}
-            </h3>
-            <p className="text-sm text-white/60 leading-relaxed font-light">
-              {isRu
-                ? 'Прямая сверка наложенных платежей (COD), банковских переводов и доказательств доставки в казначействе день в день.'
-                : 'Same-day point-of-delivery cash-on-delivery reconciliation and instant credit limit validation directly within the operations core.'}
-            </p>
-          </div>
-        </section>
+ <div className="p-6 rounded-none bg-white/[0.03] border border-white/10">
+ <div className="w-10 h-10 rounded-none bg-white/10 flex items-center justify-center mb-4">
+ <Shield className="w-5 h-5 text-white" />
+ </div>
+ <h3 className="text-lg font-bold uppercase tracking-wide mb-2">
+ {isRu ? 'Финансовая сверка' : 'Financial Reconciliation'}
+ </h3>
+ <p className="text-sm text-white/60 leading-relaxed font-light">
+ {isRu
+ ? 'Прямая сверка наложенных платежей (COD), банковских переводов и доказательств доставки в казначействе день в день.'
+ : 'Same-day point-of-delivery cash-on-delivery reconciliation and instant credit limit validation directly within the operations core.'}
+ </p>
+ </div>
+ </section>
 
-        {/* Competitor Cards Grid */}
-        <section className="mt-20">
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
-            <div>
-              <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-                {isRu ? 'Обзор платформ и альтернатив' : 'Evaluated Software Platforms'}
-              </h2>
-              <p className="text-sm text-white/50 font-mono mt-1">
-                {isRu ? 'Сравнение архитектур, цен и сценариев применения' : 'Architectural breakdown, pricing models, and key tradeoffs'}
-              </p>
-            </div>
-            <Link
-              href="/compare"
-              className="text-xs font-mono tracking-wider uppercase text-white/70 hover:text-white transition-colors flex items-center gap-1.5"
-            >
-              {isRu ? 'Сравнение лицом к лицу →' : 'Head-to-head guides →'}
-            </Link>
-          </div>
+ {/* Competitor Cards Grid */}
+ <section className="mt-20">
+ <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
+ <div>
+ <h2 className="text-2xl font-black uppercase tracking-tight text-white">
+ {isRu ? 'Обзор платформ и альтернатив' : 'Evaluated Software Platforms'}
+ </h2>
+ <p className="text-sm text-white/50 font-mono mt-1">
+ {isRu ? 'Сравнение архитектур, цен и сценариев применения' : 'Architectural breakdown, pricing models, and key tradeoffs'}
+ </p>
+ </div>
+ <Link
+ href="/compare"
+ className="text-xs font-mono tracking-wider uppercase text-white/70 hover:text-white transition-colors flex items-center gap-1.5"
+ >
+ {isRu ? 'Сравнение лицом к лицу →' : 'Head-to-head guides →'}
+ </Link>
+ </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {COMPETITORS_DATA.map((competitor) => (
-              <article
-                key={competitor.slug}
-                className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
-                        {competitor.category}
-                      </span>
-                      <h3 className="text-2xl font-bold uppercase tracking-tight text-white mt-1">
-                        {competitor.name}
-                      </h3>
-                    </div>
-                    <span className="text-xs font-mono px-2.5 py-1 rounded-none bg-white/5 border border-white/10 text-white/80">
-                      {competitor.hardwareRequired ? (isRu ? 'Требует датчики' : 'Hardware required') : (isRu ? 'Только софт' : 'Software-first')}
-                    </span>
-                  </div>
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+ {COMPETITORS_DATA.map((competitor) => (
+ <article
+ key={competitor.slug}
+ className="p-8 rounded-none bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between"
+ >
+ <div>
+ <div className="flex items-start justify-between gap-4 mb-4">
+ <div>
+ <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-white/40">
+ {competitor.category}
+ </span>
+ <h3 className="text-2xl font-bold uppercase tracking-tight text-white mt-1">
+ {competitor.name}
+ </h3>
+ </div>
+ <span className="text-xs font-mono px-2.5 py-1 rounded-none bg-white/5 border border-white/10 text-white/80">
+ {competitor.hardwareRequired ? (isRu ? 'Требует датчики' : 'Hardware required') : (isRu ? 'Только софт' : 'Software-first')}
+ </span>
+ </div>
 
-                  <p className="text-sm text-white/70 font-light mb-6">
-                    {competitor.tagline} — {competitor.marketPosition}.
-                  </p>
+ <p className="text-sm text-white/70 font-light mb-6">
+ {competitor.tagline} — {competitor.marketPosition}.
+ </p>
 
-                  <div className="space-y-3 mb-6 pb-6 border-b border-white/5">
-                    <p className="text-xs font-mono uppercase tracking-wider text-white/40">
-                      {isRu ? 'Почему переходят на Pegasus:' : 'Why teams switch to Pegasus:'}
-                    </p>
-                    <ul className="space-y-2">
-                      {competitor.whySwitchToPegasus.slice(0, 3).map((reason, idx) => (
-                         <li key={idx} className="flex items-start gap-2.5 text-xs text-white/80 font-light">
-                           <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
-                           <span>{reason}</span>
-                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+ <div className="space-y-3 mb-6 pb-6 border-b border-white/5">
+ <p className="text-xs font-mono uppercase tracking-wider text-white/40">
+ {isRu ? 'Почему переходят на Pegasus:' : 'Why teams switch to Pegasus:'}
+ </p>
+ <ul className="space-y-2">
+ {competitor.whySwitchToPegasus.slice(0, 3).map((reason, idx) => (
+ <li key={idx} className="flex items-start gap-2.5 text-xs text-white/80 font-light">
+ <Check className="w-3.5 h-3.5 text-white shrink-0 mt-0.5" />
+ <span>{reason}</span>
+ </li>
+ ))}
+ </ul>
+ </div>
+ </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                  <div>
-                    <span className="text-[10px] font-mono text-white/40 block">
-                      {isRu ? 'Оценка стоимости:' : 'Pricing estimate:'}
-                    </span>
-                    <span className="text-xs font-mono text-white/80">{competitor.pricingEstimate}</span>
-                  </div>
+ <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+ <div>
+ <span className="text-[10px] font-mono text-white/40 block">
+ {isRu ? 'Оценка стоимости:' : 'Pricing estimate:'}
+ </span>
+ <span className="text-xs font-mono text-white/80">{competitor.pricingEstimate}</span>
+ </div>
 
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/compare/pegasus-vs-${competitor.slug}`}
-                      className="text-xs font-mono text-white/60 hover:text-white transition-colors"
-                    >
-                      {isRu ? 'Vs Pegasus' : 'Vs Pegasus'}
-                    </Link>
-                    <Link
-                      href={`/alternatives/${competitor.slug}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-none bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
-                    >
-                      <span>{isRu ? 'Полный анализ' : 'Alternative guide'}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+ <div className="flex items-center gap-3">
+ <Link
+ href={`/compare/pegasus-vs-${competitor.slug}`}
+ className="text-xs font-mono text-white/60 hover:text-white transition-colors"
+ >
+ {isRu ? 'Vs Pegasus' : 'Vs Pegasus'}
+ </Link>
+ <Link
+ href={`/alternatives/${competitor.slug}`}
+ className="inline-flex items-center gap-1.5 px-4 py-2 rounded-none bg-white text-black text-xs font-bold uppercase tracking-wider hover:bg-white/90 transition-colors"
+ >
+ <span>{isRu ? 'Полный анализ' : 'Alternative guide'}</span>
+ <ArrowRight className="w-3.5 h-3.5" />
+ </Link>
+ </div>
+ </div>
+ </article>
+ ))}
+ </div>
+ </section>
 
-        {/* Comparison Summary Table */}
-        <section className="mt-24">
-          <div className="mb-8">
-            <h2 className="text-2xl font-black uppercase tracking-tight text-white">
-              {isRu ? 'Сводная матрица возможностей' : 'Feature Comparison Matrix'}
-            </h2>
-            <p className="text-sm text-white/50 font-mono mt-1">
-              {isRu ? 'Технические различия по ключевым модулям' : 'Technical capabilities across critical B2B logistics layers'}
-            </p>
-          </div>
+ {/* Comparison Summary Table */}
+ <section className="mt-24">
+ <div className="mb-8">
+ <h2 className="text-2xl font-black uppercase tracking-tight text-white">
+ {isRu ? 'Сводная матрица возможностей' : 'Feature Comparison Matrix'}
+ </h2>
+ <p className="text-sm text-white/50 font-mono mt-1">
+ {isRu ? 'Технические различия по ключевым модулям' : 'Technical capabilities across critical B2B logistics layers'}
+ </p>
+ </div>
 
-          <div className="overflow-x-auto border border-white/10 rounded-none bg-black">
-            <table className="w-full text-left text-xs font-mono">
-              <thead>
-                <tr className="border-b border-white/10 bg-white/5 text-white/60">
-                  <th className="p-4 uppercase tracking-wider">{isRu ? 'Платформа' : 'Platform'}</th>
-                  <th className="p-4 uppercase tracking-wider">{isRu ? '6-ролевая сеть' : '6-Role Network'}</th>
-                  <th className="p-4 uppercase tracking-wider">{isRu ? 'Без "железа"' : 'Hardware Free'}</th>
-                  <th className="p-4 uppercase tracking-wider">{isRu ? 'B2B Платежи' : 'B2B Payments'}</th>
-                  <th className="p-4 uppercase tracking-wider">{isRu ? 'Ворота/Терминал' : 'Gate Terminal'}</th>
-                  <th className="p-4 uppercase tracking-wider">{isRu ? 'Маршрутизация CVRP' : 'CVRP Optimization'}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-white/80">
-                <tr className="bg-white/10 font-bold text-white">
-                  <td className="p-4 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-none bg-white" />
-                    Pegasus TMS
-                  </td>
-                  <td className="p-4 text-white font-bold">Full (6 roles)</td>
-                  <td className="p-4 text-white font-bold">Yes (Mobile apps)</td>
-                  <td className="p-4 text-white font-bold">Full (COD + Audit)</td>
-                  <td className="p-4 text-white font-bold">Yes (Native app)</td>
-                  <td className="p-4 text-white font-bold">Google OR-Tools</td>
-                </tr>
-                {COMPETITORS_DATA.map((c) => (
-                  <tr key={c.slug} className="hover:bg-white/[0.02]">
-                    <td className="p-4 font-semibold text-white/90">{c.name}</td>
-                    <td className="p-4">
-                      {c.featureRatings.multiRoleDispatch.rating === 'full' ? (
-                        <span className="text-white font-semibold">Full</span>
-                      ) : c.featureRatings.multiRoleDispatch.rating === 'partial' ? (
-                        <span className="text-zinc-400">Partial</span>
-                      ) : (
-                        <span className="text-zinc-600">None</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {c.featureRatings.hardwareIndependence.rating === 'full' ? (
-                        <span className="text-white font-semibold">Yes</span>
-                      ) : (
-                        <span className="text-zinc-600">Hardware locked</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {c.featureRatings.integratedB2BPayments.rating === 'full' ? (
-                        <span className="text-white font-semibold">Full</span>
-                      ) : c.featureRatings.integratedB2BPayments.rating === 'partial' ? (
-                        <span className="text-zinc-400">Partial</span>
-                      ) : (
-                        <span className="text-zinc-600">None</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {c.featureRatings.warehouseGateTerminal.rating === 'full' ? (
-                        <span className="text-white font-semibold">Yes</span>
-                      ) : c.featureRatings.warehouseGateTerminal.rating === 'partial' ? (
-                        <span className="text-zinc-400">Partial</span>
-                      ) : (
-                        <span className="text-zinc-600">None</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      {c.featureRatings.routeOptimization.rating === 'full' ? (
-                        <span className="text-white font-semibold">Advanced</span>
-                      ) : c.featureRatings.routeOptimization.rating === 'partial' ? (
-                        <span className="text-zinc-400">Basic</span>
-                      ) : (
-                        <span className="text-zinc-600">None</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+ <div className="overflow-x-auto border border-white/10 rounded-none bg-black">
+ <table className="w-full text-left text-xs font-mono">
+ <thead>
+ <tr className="border-b border-white/10 bg-white/5 text-white/60">
+ <th className="p-4 uppercase tracking-wider">{isRu ? 'Платформа' : 'Platform'}</th>
+ <th className="p-4 uppercase tracking-wider">{isRu ? '6-ролевая сеть' : '6-Role Network'}</th>
+ <th className="p-4 uppercase tracking-wider">{isRu ? 'Без "железа"' : 'Hardware Free'}</th>
+ <th className="p-4 uppercase tracking-wider">{isRu ? 'B2B Платежи' : 'B2B Payments'}</th>
+ <th className="p-4 uppercase tracking-wider">{isRu ? 'Ворота/Терминал' : 'Gate Terminal'}</th>
+ <th className="p-4 uppercase tracking-wider">{isRu ? 'Маршрутизация CVRP' : 'CVRP Optimization'}</th>
+ </tr>
+ </thead>
+ <tbody className="divide-y divide-white/5 text-white/80">
+ <tr className="bg-white/10 font-bold text-white">
+ <td className="p-4 flex items-center gap-2">
+ <span className="w-2 h-2 rounded-none bg-white" />
+ Pegasus TMS
+ </td>
+ <td className="p-4 text-white font-bold">Full (6 roles)</td>
+ <td className="p-4 text-white font-bold">Yes (Mobile apps)</td>
+ <td className="p-4 text-white font-bold">Full (COD + Audit)</td>
+ <td className="p-4 text-white font-bold">Yes (Native app)</td>
+ <td className="p-4 text-white font-bold">Google OR-Tools</td>
+ </tr>
+ {COMPETITORS_DATA.map((c) => (
+ <tr key={c.slug} className="hover:bg-white/[0.02]">
+ <td className="p-4 font-semibold text-white/90">{c.name}</td>
+ <td className="p-4">
+ {c.featureRatings.multiRoleDispatch.rating === 'full' ? (
+ <span className="text-white font-semibold">Full</span>
+ ) : c.featureRatings.multiRoleDispatch.rating === 'partial' ? (
+ <span className="text-zinc-400">Partial</span>
+ ) : (
+ <span className="text-zinc-600">None</span>
+ )}
+ </td>
+ <td className="p-4">
+ {c.featureRatings.hardwareIndependence.rating === 'full' ? (
+ <span className="text-white font-semibold">Yes</span>
+ ) : (
+ <span className="text-zinc-600">Hardware locked</span>
+ )}
+ </td>
+ <td className="p-4">
+ {c.featureRatings.integratedB2BPayments.rating === 'full' ? (
+ <span className="text-white font-semibold">Full</span>
+ ) : c.featureRatings.integratedB2BPayments.rating === 'partial' ? (
+ <span className="text-zinc-400">Partial</span>
+ ) : (
+ <span className="text-zinc-600">None</span>
+ )}
+ </td>
+ <td className="p-4">
+ {c.featureRatings.warehouseGateTerminal.rating === 'full' ? (
+ <span className="text-white font-semibold">Yes</span>
+ ) : c.featureRatings.warehouseGateTerminal.rating === 'partial' ? (
+ <span className="text-zinc-400">Partial</span>
+ ) : (
+ <span className="text-zinc-600">None</span>
+ )}
+ </td>
+ <td className="p-4">
+ {c.featureRatings.routeOptimization.rating === 'full' ? (
+ <span className="text-white font-semibold">Advanced</span>
+ ) : c.featureRatings.routeOptimization.rating === 'partial' ? (
+ <span className="text-zinc-400">Basic</span>
+ ) : (
+ <span className="text-zinc-600">None</span>
+ )}
+ </td>
+ </tr>
+ ))}
+ </tbody>
+ </table>
+ </div>
+ </section>
 
-        {/* CTA */}
-        <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
-          <h2 className="text-3xl font-black uppercase tracking-tight text-white">
-            {isRu ? 'Готовы оптимизировать диспетчеризацию?' : 'Ready to upgrade your logistics operations?'}
-          </h2>
-          <p className="mt-3 text-sm text-white/70 max-w-xl mx-auto font-light leading-relaxed">
-            {isRu
-              ? 'Запросите демонстрацию Pegasus и узнайте, как связать поставщиков, склады, фабрики, водителей и ритейлеров без лишних затрат на оборудование.'
-              : 'Book a tailored demonstration of Pegasus to see how unified multi-role dispatch and automated reconciliation transform physical goods distribution.'}
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/join"
-              className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
-            >
-              {isRu ? 'Запросить демо' : 'Request Live Demo'}
-            </Link>
-            <Link
-              href="/platform"
-              className="px-6 py-3 rounded-none bg-white/10 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/15 transition-colors border border-white/20"
-            >
-              {isRu ? 'Обзор платформы' : 'Explore Platform'}
-            </Link>
-          </div>
-        </div>
-      </main>
+ {/* CTA */}
+ <div className="mt-24 p-10 rounded-none bg-gradient-to-b from-white/10 to-white/5 border border-white/15 text-center">
+ <h2 className="text-3xl font-black uppercase tracking-tight text-white">
+ {isRu ? 'Готовы оптимизировать диспетчеризацию?' : 'Ready to upgrade your logistics operations?'}
+ </h2>
+ <p className="mt-3 text-sm text-white/70 max-w-xl mx-auto font-light leading-relaxed">
+ {isRu
+ ? 'Запросите демонстрацию Pegasus и узнайте, как связать поставщиков, склады, фабрики, водителей и ритейлеров без лишних затрат на оборудование.'
+ : 'Book a tailored demonstration of Pegasus to see how unified multi-role dispatch and automated reconciliation transform physical goods distribution.'}
+ </p>
+ <div className="mt-8 flex flex-wrap justify-center gap-4">
+ <Link
+ href="/join"
+ className="px-6 py-3 rounded-none bg-white text-black font-bold uppercase tracking-wider text-xs hover:bg-white/90 transition-colors"
+ >
+ {isRu ? 'Запросить демо' : 'Request Live Demo'}
+ </Link>
+ <Link
+ href="/platform"
+ className="px-6 py-3 rounded-none bg-white/10 text-white font-bold uppercase tracking-wider text-xs hover:bg-white/15 transition-colors border border-white/20"
+ >
+ {isRu ? 'Обзор платформы' : 'Explore Platform'}
+ </Link>
+ </div>
+ </div>
+ </main>
 
-      <Footer />
-    </div>
-  );
+ <Footer />
+ </div>
+ );
 }

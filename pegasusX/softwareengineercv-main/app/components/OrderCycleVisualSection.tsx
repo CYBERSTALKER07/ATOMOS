@@ -3,13 +3,13 @@
 import dynamic from 'next/dynamic';
 
 const OrderLifecycleVideo = dynamic(() => import('./lifecycle/OrderLifecycleVideo'), {
-  ssr: false,
+ ssr: false,
 });
 
 export default function OrderCycleVisualSection() {
-  return (
-    <>
-      <OrderLifecycleVideo variant="hero" />
-    </>
-  );
+ return (
+ <>
+ <OrderLifecycleVideo variant="hero" />
+ </>
+ );
 }

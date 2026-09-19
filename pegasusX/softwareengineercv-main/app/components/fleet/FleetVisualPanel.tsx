@@ -7,107 +7,107 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 
 type FleetVisualPanelProps = {
-  mode: 'fleet' | 'dispatch';
+ mode: 'fleet' | 'dispatch';
 };
 
 export default function FleetVisualPanel({ mode }: FleetVisualPanelProps) {
-  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
-  const panelRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
+ const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+ const panelRef = useRef<HTMLDivElement>(null);
+ const imageRef = useRef<HTMLDivElement>(null);
+ const heroRef = useRef<HTMLDivElement>(null);
 
-  const images =
-    mode === 'fleet'
-      ? [FLEET_TRUCK_IMAGES[2], FLEET_TRUCK_IMAGES[4], FLEET_TRUCK_IMAGES[5]]
-      : [FLEET_TRUCK_IMAGES[0], FLEET_TRUCK_IMAGES[1], FLEET_TRUCK_IMAGES[3]];
+ const images =
+ mode === 'fleet'
+ ? [FLEET_TRUCK_IMAGES[2], FLEET_TRUCK_IMAGES[4], FLEET_TRUCK_IMAGES[5]]
+ : [FLEET_TRUCK_IMAGES[0], FLEET_TRUCK_IMAGES[1], FLEET_TRUCK_IMAGES[3]];
 
-  useEffect(() => {
-    if (!panelRef.current || prefersReducedMotion || isLowEnd) {
-      const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
-      if (imageEls?.length) {
-        gsap.set(imageEls, { opacity: 0 });
-        gsap.set(imageEls[0], { opacity: 1 });
-      }
-      return;
-    }
+ useEffect(() => {
+ if (!panelRef.current || prefersReducedMotion || isLowEnd) {
+ const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
+ if (imageEls?.length) {
+ gsap.set(imageEls, { opacity: 0 });
+ gsap.set(imageEls[0], { opacity: 1 });
+ }
+ return;
+ }
 
-    const ctx = gsap.context(() => {
-      const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
-      if (!imageEls?.length) return;
+ const ctx = gsap.context(() => {
+ const imageEls = imageRef.current?.querySelectorAll('.fleet-panel__slide');
+ if (!imageEls?.length) return;
 
-      gsap.set(imageEls, { opacity: 0 });
-      gsap.set(imageEls[0], { opacity: 1 });
+ gsap.set(imageEls, { opacity: 0 });
+ gsap.set(imageEls[0], { opacity: 1 });
 
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: panelRef.current,
-          start: 'top 85%',
-          end: 'bottom 60%',
-          scrub: 1,
-          fastScrollEnd: true,
-        },
-      });
+ const tl = gsap.timeline({
+ scrollTrigger: {
+ trigger: panelRef.current,
+ start: 'top 85%',
+ end: 'bottom 60%',
+ scrub: 1,
+ fastScrollEnd: true,
+ },
+ });
 
-      imageEls.forEach((el, i) => {
-        if (i === 0) return;
-        tl.to(imageEls[i - 1], { opacity: 0, duration: 0.4 }, i * 0.45).to(
-          el,
-          { opacity: 1, duration: 0.4 },
-          i * 0.45,
-        );
-      });
+ imageEls.forEach((el, i) => {
+ if (i === 0) return;
+ tl.to(imageEls[i - 1], { opacity: 0, duration: 0.4 }, i * 0.45).to(
+ el,
+ { opacity: 1, duration: 0.4 },
+ i * 0.45,
+ );
+ });
 
-      if (heroRef.current) {
-        gsap.fromTo(
-          heroRef.current,
-          { y: 24, opacity: 0.85 },
-          {
-            y: 0,
-            opacity: 1,
-            scrollTrigger: {
-              trigger: panelRef.current,
-              start: 'top 80%',
-              end: 'top 40%',
-              scrub: 1,
-            },
-          },
-        );
-      }
-    }, panelRef);
+ if (heroRef.current) {
+ gsap.fromTo(
+ heroRef.current,
+ { y: 24, opacity: 0.85 },
+ {
+ y: 0,
+ opacity: 1,
+ scrollTrigger: {
+ trigger: panelRef.current,
+ start: 'top 80%',
+ end: 'top 40%',
+ scrub: 1,
+ },
+ },
+ );
+ }
+ }, panelRef);
 
-    return () => ctx.revert();
-  }, [mode, prefersReducedMotion]);
+ return () => ctx.revert();
+ }, [mode, prefersReducedMotion]);
 
-  return (
-    <div
-      ref={panelRef}
-      className="fleet-visual-panel relative flex h-full min-h-[18rem] flex-col bg-[#141414] border-l border-white/10"
-    >
-      <div ref={heroRef} className="relative h-40 shrink-0 border-b border-white/10 md:h-48 overflow-hidden">
-        <Image
-          src={images[0].src}
-          alt={images[0].alt}
-          fill
-          className="object-cover object-center"
-          sizes="50vw"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <p className="absolute left-4 top-4 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-white/50">
-          {mode === 'fleet' ? 'Live fleet map' : 'Dispatch board'}
-        </p>
-      </div>
+ return (
+ <div
+ ref={panelRef}
+ className="fleet-visual-panel relative flex h-full min-h-[18rem] flex-col bg-[#141414] border-l border-white/10"
+ >
+ <div ref={heroRef} className="relative h-40 shrink-0 border-b border-white/10 md:h-48 overflow-hidden">
+ <Image
+ src={images[0].src}
+ alt={images[0].alt}
+ fill
+ className="object-cover object-center"
+ sizes="50vw"
+ />
+ <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+ <p className="absolute left-4 top-4 font-mono text-[0.6rem] uppercase tracking-[0.18em] text-white/50">
+ {mode === 'fleet' ? 'Live fleet map' : 'Dispatch board'}
+ </p>
+ </div>
 
-      <div ref={imageRef} className="relative flex-1">
-        {images.map((img) => (
-          <div key={img.src} className="fleet-panel__slide absolute inset-0">
-            <Image src={img.src} alt={img.alt} fill className="object-cover" sizes="50vw" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-            <p className="absolute bottom-4 left-4 right-4 font-mono text-[0.65rem] uppercase tracking-wider text-white/70">
-              {img.caption}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+ <div ref={imageRef} className="relative flex-1">
+ {images.map((img) => (
+ <div key={img.src} className="fleet-panel__slide absolute inset-0">
+ <Image src={img.src} alt={img.alt} fill className="object-cover" sizes="50vw" />
+ <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+ <p className="absolute bottom-4 left-4 right-4 font-mono text-[0.65rem] uppercase tracking-wider text-white/70">
+ {img.caption}
+ </p>
+ </div>
+ ))}
+ </div>
+ </div>
+ );
 }

@@ -1,6 +1,6 @@
 import {
-  createCategoryHubMetadata,
-  createCategoryHubPage,
+ createCategoryHubMetadata,
+ createCategoryHubPage,
 } from '@/app/lib/explore/createTopicPage';
 
 const categoryId = 'operations' as const;

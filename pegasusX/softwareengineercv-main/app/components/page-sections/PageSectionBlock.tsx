@@ -7,48 +7,48 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 import { cn } from '@/lib/utils';
 
 type PageSectionBlockProps = {
-  eyebrow: string;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-  animate?: boolean;
+ eyebrow: string;
+ title: string;
+ children: React.ReactNode;
+ className?: string;
+ animate?: boolean;
 };
 
 export default function PageSectionBlock({
-  eyebrow,
-  title,
-  children,
-  className = '',
-  animate = true,
+ eyebrow,
+ title,
+ children,
+ className = '',
+ animate = true,
 }: PageSectionBlockProps) {
-  const ref = useRef<HTMLElement>(null);
-  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+ const ref = useRef<HTMLElement>(null);
+ const { isLowEnd, prefersReducedMotion } = usePerfProfile();
 
-  useEffect(() => {
-    if (!ref.current || !animate || prefersReducedMotion || isLowEnd) return;
+ useEffect(() => {
+ if (!ref.current || !animate || prefersReducedMotion || isLowEnd) return;
 
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        ref.current,
-        { opacity: 0, y: 28 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.7,
-          ease: 'pegasus',
-          scrollTrigger: { trigger: ref.current, start: 'top 88%', once: true },
-        }
-      );
-    }, ref);
+ const ctx = gsap.context(() => {
+ gsap.fromTo(
+ ref.current,
+ { opacity: 0, y: 28 },
+ {
+ opacity: 1,
+ y: 0,
+ duration: 0.7,
+ ease: 'pegasus',
+ scrollTrigger: { trigger: ref.current, start: 'top 88%', once: true },
+ }
+ );
+ }, ref);
 
-    return () => ctx.revert();
-  }, [animate, prefersReducedMotion, isLowEnd]);
+ return () => ctx.revert();
+ }, [animate, prefersReducedMotion, isLowEnd]);
 
-  return (
-    <section ref={ref} className={cn('border-t border-white/10 py-12 md:py-16', className)}>
-      <ContentCardEyebrow>{eyebrow}</ContentCardEyebrow>
-      <h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h2>
-      <div className="mt-6">{children}</div>
-    </section>
-  );
+ return (
+ <section ref={ref} className={cn('border-t border-white/10 py-12 md:py-16', className)}>
+ <ContentCardEyebrow>{eyebrow}</ContentCardEyebrow>
+ <h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">{title}</h2>
+ <div className="mt-6">{children}</div>
+ </section>
+ );
 }

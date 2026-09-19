@@ -6,15 +6,15 @@ import { getTopicLayoutConfig } from '@/app/lib/explore/topicLayouts';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 type TopicPageClientProps = {
-  topic: TopicPage;
+ topic: TopicPage;
 };
 
 export default function TopicPageClient({ topic }: TopicPageClientProps) {
-  const { language } = useLanguage();
-  const content = (topic.content as any)?.[language] || topic.content?.en || (topic.content as any);
-  const config = getTopicLayoutConfig(content?.flow);
+ const { language } = useLanguage();
+ const content = (topic.content as any)?.[language] || topic.content?.en || (topic.content as any);
+ const config = getTopicLayoutConfig(content?.flow);
 
-  return (
-    <O9DetailLayout topic={topic} showFleetShowcase={config.showFleetShowcase} />
-  );
+ return (
+ <O9DetailLayout topic={topic} showFleetShowcase={config.showFleetShowcase} />
+ );
 }
