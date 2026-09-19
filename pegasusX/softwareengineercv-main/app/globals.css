@@ -327,35 +327,56 @@ h3,
   letter-spacing: normal !important;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.3s ease !important;
+  transition: color 0.3s ease, border-color 0.3s ease !important;
   clip-path: none !important;
   isolation: isolate;
+  overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Remove old complex pseudo-element sweep animations */
-.editorial-btn::before, .editorial-btn::after,
-.chamfer-btn::before, .chamfer-btn::after {
+/* Sweep fill transition element */
+.editorial-btn::before, .chamfer-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.editorial-btn::after, .chamfer-btn::after {
   display: none !important;
 }
 
-/* Hover: Fill with white, text to black */
+/* Ensure children are above the pseudo-element */
+.editorial-btn > *, .chamfer-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hover: Trigger the sweep and text color change */
+.editorial-btn:hover::before, .editorial-btn:focus-visible::before,
+.chamfer-btn:hover::before, .chamfer-btn:focus-visible::before,
+a.editorial-card--interactive:hover .editorial-btn::before,
+.editorial-card--interactive:hover .chamfer-btn::before {
+  transform: scaleX(1);
+}
+
 .editorial-btn:hover, .editorial-btn:focus-visible,
 .chamfer-btn:hover, .chamfer-btn:focus-visible,
 a.editorial-card--interactive:hover .editorial-btn,
 .editorial-card--interactive:hover .chamfer-btn {
-  background: #fff !important;
   color: #000 !important;
 }
 
 .editorial-btn:disabled, .chamfer-btn:disabled {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
-  background: transparent !important;
-  color: #fff !important;
 }
 
-/* Light mode overrides (invert the logic) */
+/* Light mode overrides */
 .editorial-btn--on-light,
 .editorial-card--light .editorial-btn,
 .editorial-card--featured .editorial-btn {
@@ -364,22 +385,30 @@ a.editorial-card--interactive:hover .editorial-btn,
   border: 1px solid #000 !important;
 }
 
+.editorial-btn--on-light::before,
+.editorial-card--light .editorial-btn::before,
+.editorial-card--featured .editorial-btn::before {
+  background: #000 !important;
+}
+
 .editorial-btn--on-light:hover,
 .editorial-card--light .editorial-btn:hover,
 .editorial-card--featured .editorial-btn:hover {
-  background: #000 !important;
   color: #fff !important;
 }
 
-/* Secondary/Ghost Variants (slightly subdued default) */
+/* Secondary/Ghost Variants */
 .chamfer-btn--ghost, .editorial-btn--inverted {
   background: transparent !important;
   color: #fff !important;
   border: 1px solid rgba(255, 255, 255, 0.4) !important;
 }
 
-.chamfer-btn--ghost:hover, .editorial-btn--inverted:hover {
+.chamfer-btn--ghost::before, .editorial-btn--inverted::before {
   background: #fff !important;
+}
+
+.chamfer-btn--ghost:hover, .editorial-btn--inverted:hover {
   color: #000 !important;
 }
 
@@ -388,6 +417,7 @@ a.editorial-card--interactive:hover .editorial-btn,
   padding: 0.5rem 1rem !important;
   font-size: 0.875rem !important;
 }
+
 
 
 
