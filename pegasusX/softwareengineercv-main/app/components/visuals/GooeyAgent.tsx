@@ -13,6 +13,9 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
 
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+
     const ctx = gsap.context(() => {
       // Breathing only (perfect circle idle)
       gsap.to('.blob-center', {
@@ -41,8 +44,7 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
       let mouseTimeout: NodeJS.Timeout;
 
       const handleMouseMove = (e: MouseEvent) => {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
+        const rect = container.getBoundingClientRect();
         
         // Calculate center of the SVG component
         const centerX = rect.left + rect.width / 2;
@@ -96,7 +98,7 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
           ease: 'power3.out'
         });
 
-        // Debounce returning to center when mouse stops
+        // Debounce returning to center when mouse stops moving
         clearTimeout(mouseTimeout);
         mouseTimeout = setTimeout(() => {
           returnToCenter();
@@ -118,12 +120,13 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         returnToCenter();
       };
 
-      window.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseleave', handleMouseLeave);
+      // Only attach to container, not window, so it only follows when mouse is ON the section
+      container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('mouseleave', handleMouseLeave);
 
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseleave', handleMouseLeave);
+        container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseleave', handleMouseLeave);
         clearTimeout(mouseTimeout);
       };
 
@@ -136,7 +139,7 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
     <div 
       ref={containerRef}
       className={`relative flex items-center justify-center ${className}`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, maxWidth: "100%" }}
     >
       <svg
         viewBox="0 0 200 200"
