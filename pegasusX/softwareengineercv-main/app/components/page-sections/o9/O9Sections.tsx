@@ -2,7 +2,6 @@
 
 import { motion } from 'framer-motion';
 import type { TopicCard } from '@/app/data/topicTypes';
-import { cn } from '@/app/lib/utils';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 const FADE_UP = {
