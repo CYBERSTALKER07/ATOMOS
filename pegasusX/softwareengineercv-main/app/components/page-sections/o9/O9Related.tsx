@@ -116,3 +116,58 @@ export function O9RelatedUseCases({
     </motion.section>
   );
 }
+
+export function O9TourCTA({
+  relatedProjectSlug,
+}: {
+  relatedProjectSlug?: string;
+}) {
+  const { t } = useLanguage();
+  return (
+    <motion.section 
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-10%" }}
+      className="py-24 lg:py-40 px-4 sm:px-6 lg:px-8 w-full max-w-[1560px] mx-auto border-t border-white/10"
+    >
+      <div className="p-[6px] rounded-[2rem] bg-white/[0.03] border border-white/10 relative overflow-hidden group">
+        <div className="relative h-full w-full rounded-[calc(2rem-6px)] bg-[#050505] p-12 lg:p-24 text-center overflow-hidden flex flex-col items-center justify-center">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 z-10" />
+          
+          <O9SectionLabel>{t('licensing_tour_tag')}</O9SectionLabel>
+          <motion.h2 variants={FADE_UP} className="mt-8 max-w-3xl text-4xl sm:text-5xl lg:text-7xl font-medium tracking-tight text-white leading-[1.05]">
+            {t('licensing_demo_title')}
+          </motion.h2>
+          <motion.p variants={FADE_UP} className="mt-8 max-w-2xl text-lg sm:text-xl font-light text-white/50 leading-relaxed">
+            {t('licensing_demo_desc')}
+          </motion.p>
+          
+          <motion.div variants={FADE_UP} className="mt-12 flex flex-col sm:flex-row items-center gap-6">
+            <Link 
+              href="/join" 
+              className="group/btn relative inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-medium text-black transition-all hover:scale-[0.98] hover:bg-white/90"
+            >
+              <span className="relative z-10">{t('nav_demo')}</span>
+            </Link>
+            
+            {relatedProjectSlug ? (
+              <Link 
+                href={`/projects/${relatedProjectSlug}`} 
+                className="group/btn relative inline-flex items-center justify-center rounded-full bg-white/[0.05] border border-white/10 px-8 py-4 text-sm font-medium text-white transition-all hover:bg-white/[0.1] hover:scale-[0.98]"
+              >
+                <span className="relative z-10">{t('nav_modules')}</span>
+              </Link>
+            ) : (
+              <Link 
+                href="/platform" 
+                className="group/btn relative inline-flex items-center justify-center rounded-full bg-white/[0.05] border border-white/10 px-8 py-4 text-sm font-medium text-white transition-all hover:bg-white/[0.1] hover:scale-[0.98]"
+              >
+                <span className="relative z-10">{t('nav_tour')}</span>
+              </Link>
+            )}
+          </motion.div>
+        </div>
+      </div>
+    </motion.section>
+  );
+}
