@@ -40,29 +40,34 @@ export function ContentCardEyebrow({
 }
 
 export function ContentCardButton({
- children,
- href,
- className = '',
- inverted = false,
+  children,
+  href,
+  className = '',
+  inverted = false,
 }: {
- children: React.ReactNode;
- href?: string;
- className?: string;
- inverted?: boolean;
+  children: React.ReactNode;
+  href?: string;
+  className?: string;
+  inverted?: boolean;
 }) {
- const classes = `editorial-btn bg-white hover:bg-zinc-200 text-black font-bold border border-white ${className}`;
- if (href) {
- return (
- <Link href={href as Route} prefetch={false} className={classes}>
- <span className="relative z-10 text-black font-bold">{children}</span>
- </Link>
- );
- }
- return (
- <span className={classes}>
- <span className="relative z-10 text-black font-bold">{children}</span>
- </span>
- );
+  const classes = `content-card-btn inline-flex items-center justify-center min-h-[2.75rem] px-6 py-3 text-sm font-bold tracking-wider uppercase transition-colors duration-200 cursor-pointer ${
+    inverted
+      ? 'bg-transparent text-white border border-white hover:bg-white hover:text-black'
+      : 'bg-white text-black border border-white hover:bg-zinc-200 hover:border-zinc-200'
+  } ${className}`.trim();
+
+  if (href) {
+    return (
+      <Link href={href as Route} prefetch={false} className={classes}>
+        <span className="relative z-10 font-bold">{children}</span>
+      </Link>
+    );
+  }
+  return (
+    <span className={classes}>
+      <span className="relative z-10 font-bold">{children}</span>
+    </span>
+  );
 }
 
 export function ContentCardLink({
@@ -277,14 +282,10 @@ function ContentCard({
  const cta =
  ctaLabel ? (
  ctaStyle === 'button' ? (
- href ? (
- useSplitCta ? (
+ href && useSplitCta ? (
  <ContentCardButton href={href} className={isLight ? 'editorial-btn--on-light' : ''}>
  {ctaLabel}
  </ContentCardButton>
- ) : (
- <span className={buttonClass}>{ctaLabel}</span>
- )
  ) : (
  <ContentCardButton className={isLight ? 'editorial-btn--on-light' : ''}>{ctaLabel}</ContentCardButton>
  )

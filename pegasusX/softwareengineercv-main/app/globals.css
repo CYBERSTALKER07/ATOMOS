@@ -307,6 +307,76 @@ h3,
  padding-top: 1.75rem;
 }
 
+/* Deploy Pegasus and content card CTA buttons — Solid crisp white fill with bold black text */
+.content-card-btn,
+.deployment-card .content-card-btn,
+.deployment-card .editorial-btn,
+.editorial-card__cta .content-card-btn,
+.editorial-card__cta .editorial-btn {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 2.75rem !important;
+  padding: 0.75rem 1.5rem !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+  border-radius: 0 !important;
+  font-family: var(--font-geist-sans), sans-serif !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+}
+
+.content-card-btn *,
+.deployment-card .content-card-btn *,
+.deployment-card .editorial-btn *,
+.editorial-card__cta .content-card-btn *,
+.editorial-card__cta .editorial-btn * {
+  color: #000000 !important;
+  cursor: pointer !important;
+}
+
+.content-card-btn::before,
+.content-card-btn::after,
+.deployment-card .editorial-btn::before,
+.deployment-card .editorial-btn::after,
+.editorial-card__cta .editorial-btn::before,
+.editorial-card__cta .editorial-btn::after {
+  display: none !important;
+}
+
+.content-card-btn:hover,
+.content-card-btn:focus-visible,
+.deployment-card .content-card-btn:hover,
+.deployment-card .content-card-btn:focus-visible,
+.deployment-card .editorial-btn:hover,
+.deployment-card .editorial-btn:focus-visible,
+.editorial-card__cta .content-card-btn:hover,
+.editorial-card__cta .content-card-btn:focus-visible,
+.editorial-card__cta .editorial-btn:hover,
+.editorial-card__cta .editorial-btn:focus-visible {
+  background: #e4e4e7 !important;
+  border-color: #e4e4e7 !important;
+  color: #000000 !important;
+}
+
+.content-card-btn:hover *,
+.deployment-card .content-card-btn:hover *,
+.deployment-card .editorial-btn:hover *,
+.editorial-card__cta .content-card-btn:hover *,
+.editorial-card__cta .editorial-btn:hover * {
+  color: #000000 !important;
+}
+
 /* Base button reset */
 .editorial-btn, .chamfer-btn {
  position: relative;
@@ -1179,6 +1249,18 @@ a.editorial-card--interactive:hover .editorial-btn,
  [class*="card-hover"]:hover,
  [class*="card-hover"]:hover * {
  cursor: none !important;
+ }
+
+ /* Restore visible pointer cursor on buttons and interactive CTA elements within cards */
+ .editorial-card__cta,
+ .editorial-card__cta *,
+ .editorial-btn,
+ .editorial-btn *,
+ .content-card-btn,
+ .content-card-btn *,
+ .editorial-link,
+ .editorial-link * {
+ cursor: pointer !important;
  }
 
  /* Instantly hide custom TargetCursor when mouse hovers over any card */

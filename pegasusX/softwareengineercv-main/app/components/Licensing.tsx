@@ -23,7 +23,7 @@ export default function Licensing() {
  description: t('licensing_tour_desc'),
  image: EDITORIAL_IMAGES[4],
  href: '/platform',
- ctaLabel: t('nav_tour').toUpperCase(),
+ ctaLabel: (t('nav_tour') || 'Take Platform Tour').toUpperCase(),
  },
  {
  tone: 'dark' as const,
@@ -32,7 +32,7 @@ export default function Licensing() {
  description: t('licensing_demo_desc'),
  image: EDITORIAL_IMAGES[1],
  href: '/join',
- ctaLabel: t('nav_demo').toUpperCase(),
+ ctaLabel: (t('nav_demo') || 'Request Demo').toUpperCase(),
  },
  ];
 

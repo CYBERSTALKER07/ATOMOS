@@ -116,7 +116,6 @@ export default async function Home() {
  <section id="section-platform">
  <About />
  <OrderCycleVisualSection />
- <DispatchVisualSection />
  </section>
 
  <section id="section-last-mile">
@@ -152,6 +151,7 @@ export default async function Home() {
  </section>
 
  <section id="section-deploy">
+ <DispatchVisualSection />
  <Licensing />
  <Footer />
  </section>
