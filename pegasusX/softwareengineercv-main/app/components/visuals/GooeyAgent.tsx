@@ -69,7 +69,8 @@ export default function GooeyAgent({
 
       // Hover reaction (eyes follow pointer slightly)
       const handleMouseMove = (e: MouseEvent) => {
-        const bounds = containerRef.current!.getBoundingClientRect();
+        if (!containerRef.current) return;
+        const bounds = containerRef.current.getBoundingClientRect();
         const mouseX = e.clientX - bounds.left - bounds.width / 2;
         const mouseY = e.clientY - bounds.top - bounds.height / 2;
         
@@ -94,8 +95,8 @@ export default function GooeyAgent({
         });
       };
 
-      containerRef.current.addEventListener('mousemove', handleMouseMove);
-      containerRef.current.addEventListener('mouseleave', handleMouseLeave);
+      containerRef.current?.addEventListener('mousemove', handleMouseMove);
+      containerRef.current?.addEventListener('mouseleave', handleMouseLeave);
 
       return () => {
         containerRef.current?.removeEventListener('mousemove', handleMouseMove);
