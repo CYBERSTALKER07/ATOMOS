@@ -5,13 +5,11 @@ import { gsap } from 'gsap';
 import PageSection from './layout/PageSection';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 import GooeyAgent from './visuals/GooeyAgent';
-import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function SmartDispatchArcade() {
  const sectionRef = useRef<HTMLElement>(null);
  const containerRef = useRef<HTMLDivElement>(null);
- const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
- const { language } = useLanguage();
+ const { isLowEnd, prefersReducedMotion } = usePerfProfile();
  const reduced = prefersReducedMotion || isLowEnd;
 
  useEffect(() => {

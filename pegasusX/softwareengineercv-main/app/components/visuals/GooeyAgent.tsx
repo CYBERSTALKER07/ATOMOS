@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
+import { usePerfProfile } from '@/app/hooks/useDevice';
 
 interface GooeyAgentProps {
   size?: number;
@@ -10,6 +11,8 @@ interface GooeyAgentProps {
 
 export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isLowEnd, prefersReducedMotion } = usePerfProfile();
+  const disableHeavyFx = isLowEnd || prefersReducedMotion;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -17,30 +20,36 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
     const container = containerRef.current;
 
     const ctx = gsap.context(() => {
-      // Idle breathing for blobs
-      gsap.to('.blob-center', {
-        scale: 1.05,
-        duration: 2,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
-      gsap.to('.blob-orbit-1', {
-        rotation: 360,
-        transformOrigin: '100px 100px',
-        duration: 8,
-        repeat: -1,
-        ease: 'none'
-      });
-      gsap.to('.blob-orbit-2', {
-        rotation: -360,
-        transformOrigin: '100px 100px',
-        duration: 12,
-        repeat: -1,
-        ease: 'none'
-      });
+      // Idle breathing for main blob
+      if (!prefersReducedMotion) {
+        gsap.to('.blob-center', {
+          scale: 1.05,
+          duration: 2,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut'
+        });
+      }
 
-      // Blinking animation
+      // Orbital blobs - disabled entirely on low end / reduced motion to save paint operations
+      if (!disableHeavyFx) {
+        gsap.to('.blob-orbit-1', {
+          rotation: 360,
+          transformOrigin: '100px 100px',
+          duration: 8,
+          repeat: -1,
+          ease: 'none'
+        });
+        gsap.to('.blob-orbit-2', {
+          rotation: -360,
+          transformOrigin: '100px 100px',
+          duration: 12,
+          repeat: -1,
+          ease: 'none'
+        });
+      }
+
+      // Blinking animation is extremely lightweight, keep it even on low end, unless explicitly reduced motion
       const blink = () => {
         gsap.to('.eye', {
           scaleY: 0.1,
@@ -53,11 +62,15 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
           }
         });
       };
-      gsap.delayedCall(2, blink);
+      if (!prefersReducedMotion) {
+        gsap.delayedCall(2, blink);
+      }
 
       let mouseTimeout: NodeJS.Timeout;
 
       const handleMouseMove = (e: MouseEvent) => {
+        if (prefersReducedMotion) return;
+
         const rect = container.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
@@ -71,8 +84,9 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         
         const angle = Math.atan2(deltaY, deltaX);
 
-        const eyeMax = 25;
-        const blobPullMax = 40;
+        // Reduce movement intensity on low end
+        const eyeMax = disableHeavyFx ? 10 : 25;
+        const blobPullMax = disableHeavyFx ? 15 : 40;
         
         gsap.to('.eyes-container', {
           x: Math.cos(angle) * pull * eyeMax,
@@ -81,13 +95,14 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
           ease: 'power2.out'
         });
 
-        // Pull the orbital blobs aggressively toward the mouse
-        gsap.to(['.blob-orbit-1-inner', '.blob-orbit-2-inner'], {
-          x: Math.cos(angle) * pull * blobPullMax,
-          y: Math.sin(angle) * pull * blobPullMax,
-          duration: 0.6,
-          ease: 'power3.out'
-        });
+        if (!disableHeavyFx) {
+          gsap.to(['.blob-orbit-1-inner', '.blob-orbit-2-inner'], {
+            x: Math.cos(angle) * pull * blobPullMax,
+            y: Math.sin(angle) * pull * blobPullMax,
+            duration: 0.6,
+            ease: 'power3.out'
+          });
+        }
         
         gsap.to('.blob-center', {
           x: Math.cos(angle) * pull * (blobPullMax * 0.5),
@@ -112,6 +127,7 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
       };
 
       const handleMouseLeave = () => {
+        if (prefersReducedMotion) return;
         clearTimeout(mouseTimeout);
         returnToCenter();
       };
@@ -128,7 +144,7 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
     }, containerRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [disableHeavyFx, prefersReducedMotion]);
 
   return (
     <div 
@@ -144,33 +160,39 @@ export default function GooeyAgent({ size = 200, className = '' }: GooeyAgentPro
         className="overflow-visible"
       >
         <defs>
-          {/* Expanded filter bounds to prevent clipping glitches */}
-          <filter id="gooey-effect" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="
-                1 0 0 0 0  
-                0 1 0 0 0  
-                0 0 1 0 0  
-                0 0 0 25 -10"
-              result="gooey"
-            />
-            <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
-          </filter>
+          {/* Only render filter if high-end device */}
+          {!disableHeavyFx && (
+            <filter id="gooey-effect" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+              <feColorMatrix
+                in="blur"
+                mode="matrix"
+                values="
+                  1 0 0 0 0  
+                  0 1 0 0 0  
+                  0 0 1 0 0  
+                  0 0 0 25 -10"
+                result="gooey"
+              />
+              <feComposite in="SourceGraphic" in2="gooey" operator="atop" />
+            </filter>
+          )}
         </defs>
 
-        <g filter="url(#gooey-effect)" fill="#ffffff">
+        <g filter={!disableHeavyFx ? "url(#gooey-effect)" : undefined} fill="#ffffff">
           <circle cx="100" cy="100" r="50" className="blob-center" />
           
-          <g className="blob-orbit-1">
-            <circle cx="100" cy="65" r="25" className="blob-orbit-1-inner" />
-          </g>
-          
-          <g className="blob-orbit-2">
-            <circle cx="65" cy="120" r="20" className="blob-orbit-2-inner" />
-          </g>
+          {!disableHeavyFx && (
+            <>
+              <g className="blob-orbit-1">
+                <circle cx="100" cy="65" r="25" className="blob-orbit-1-inner" />
+              </g>
+              
+              <g className="blob-orbit-2">
+                <circle cx="65" cy="120" r="20" className="blob-orbit-2-inner" />
+              </g>
+            </>
+          )}
         </g>
 
         <g className="eyes-container" fill="#000000">
