@@ -307,7 +307,7 @@ h3,
   padding-top: 1.75rem;
 }
 
-/* Base button reset and Hero-style uniform */
+/* Base button reset */
 .editorial-btn, .chamfer-btn {
   position: relative;
   display: inline-flex;
@@ -316,9 +316,9 @@ h3,
   gap: 0.35rem;
   min-height: 2.75rem;
   padding: 0.75rem 1.5rem;
-  background: #fff !important;
-  color: #000 !important;
-  border: none !important;
+  background: transparent !important;
+  color: #fff !important;
+  border: 1px solid #fff !important;
   border-radius: 0 !important;
   font-family: var(--font-geist-sans), sans-serif;
   font-size: 1rem !important;
@@ -327,23 +327,23 @@ h3,
   letter-spacing: normal !important;
   text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  transition: all 0.3s ease !important;
   clip-path: none !important;
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Remove all before/after complex sweep animations from previous design */
+/* Remove old complex pseudo-element sweep animations */
 .editorial-btn::before, .editorial-btn::after,
 .chamfer-btn::before, .chamfer-btn::after {
   display: none !important;
 }
 
+/* Hover: Fill with white, text to black */
 .editorial-btn:hover, .editorial-btn:focus-visible,
 .chamfer-btn:hover, .chamfer-btn:focus-visible,
 a.editorial-card--interactive:hover .editorial-btn,
 .editorial-card--interactive:hover .chamfer-btn {
-  opacity: 0.85;
   background: #fff !important;
   color: #000 !important;
 }
@@ -351,33 +351,36 @@ a.editorial-card--interactive:hover .editorial-btn,
 .editorial-btn:disabled, .chamfer-btn:disabled {
   opacity: 0.5 !important;
   cursor: not-allowed !important;
+  background: transparent !important;
+  color: #fff !important;
 }
 
-/* Light mode overrides */
+/* Light mode overrides (invert the logic) */
 .editorial-btn--on-light,
 .editorial-card--light .editorial-btn,
 .editorial-card--featured .editorial-btn {
-  background: #000 !important;
-  color: #fff !important;
+  background: transparent !important;
+  color: #000 !important;
+  border: 1px solid #000 !important;
 }
 
 .editorial-btn--on-light:hover,
 .editorial-card--light .editorial-btn:hover,
 .editorial-card--featured .editorial-btn:hover {
-  opacity: 0.85;
   background: #000 !important;
   color: #fff !important;
 }
 
-/* Secondary/Ghost Variants */
+/* Secondary/Ghost Variants (slightly subdued default) */
 .chamfer-btn--ghost, .editorial-btn--inverted {
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: transparent !important;
   color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
 }
 
 .chamfer-btn--ghost:hover, .editorial-btn--inverted:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  opacity: 1;
+  background: #fff !important;
+  color: #000 !important;
 }
 
 .editorial-btn--sm, .chamfer-btn--sm {
@@ -385,6 +388,7 @@ a.editorial-card--interactive:hover .editorial-btn,
   padding: 0.5rem 1rem !important;
   font-size: 0.875rem !important;
 }
+
 
 
 /* Feature card — top-right chamfer */
