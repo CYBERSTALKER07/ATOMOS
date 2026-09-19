@@ -51,7 +51,7 @@ export default function GlobalSectionTracker() {
   };
 
   return (
-    <div className="fixed left-6 sm:left-10 top-1/2 -translate-y-1/2 z-[9999] opacity-30 hover:opacity-100 transition-opacity duration-300 hidden 2xl:block mix-blend-difference pointer-events-auto">
+    <div className="fixed left-6 sm:left-10 top-1/2 -translate-y-1/2 z-[9999] opacity-30 hover:opacity-100 transition-opacity duration-300 hidden lg:block mix-blend-difference pointer-events-auto">
       <BranchedMenu
         items={[
           {
