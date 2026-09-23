@@ -40,9 +40,13 @@ export default function Hero() {
 
    const timeline = gsap.timeline({ defaults: { ease: 'pegasus' } });
 
-   gsap.set(titleRef.current, { opacity: 1, y: 0 });
-
    timeline
+    .fromTo(
+     titleRef.current,
+     { opacity: 0, y: 16 },
+     { opacity: 1, y: 0, duration: 0.55 },
+     0
+    )
     .fromTo(
      subtitleRef.current,
      { opacity: 0, y: 16 },
@@ -105,7 +109,7 @@ export default function Hero() {
    <video
     ref={videoRef}
     className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-700"
-    src="/videos/hero-bg.mp4"
+    src="/videos/command-facility.mp4"
     autoPlay
     muted
     loop
@@ -127,27 +131,24 @@ export default function Hero() {
     <div className="space-y-4 max-w-3xl">
     {/* Primary Headline with Interactive ParticleText */}
     <div className="space-y-2">
-     <div ref={titleRef} className="w-full h-20 sm:h-24 md:h-28 xl:h-32">
-     <span className="sr-only">{t('hero_title')}</span>
-     <ParticleText
-      text="Pegasus"
-      particleSize={2.2}
-      density={4}
-      color="#f8fafc"
-      highlightColor="#10B981"
-      scatter={190}
-      gatherDuration={1600}
-      stagger={420}
-      pointerRepel={42}
-      repelRadius={120}
-      idleDrift={0.8}
-      trigger="mount"
-      fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
-      fontWeight={800}
-      fontFamily="inherit"
-      textAlign="left"
-      glow
-     />
+     <div ref={titleRef} className="w-full h-16 sm:h-20 md:h-24 lg:h-28 max-w-3xl">
+      <span className="sr-only">{t('hero_title')}</span>
+      <ParticleText
+       useBrandmark={true}
+       particleSize={2.1}
+       density={2.2}
+       color="#FFFFFF"
+       highlightColor="#7DD3FC"
+       scatter={120}
+       gatherDuration={1200}
+       stagger={260}
+       pointerRepel={38}
+       repelRadius={95}
+       idleDrift={0.25}
+       trigger="mount"
+       textAlign="left"
+       glow
+      />
      </div>
 
      <h1

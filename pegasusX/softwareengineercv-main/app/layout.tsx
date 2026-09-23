@@ -148,7 +148,7 @@ export default async function RootLayout({
  const dict = translations[lang] ?? translations.en;
  const skipLabel = dict.skip_to_content || 'Skip to content';
  return (
- <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+ <html lang={lang} dir={lang === 'ar' ? 'rtl' : 'ltr'} suppressHydrationWarning>
  <head>
  <meta name="theme-color" content="#000000" />
  <script

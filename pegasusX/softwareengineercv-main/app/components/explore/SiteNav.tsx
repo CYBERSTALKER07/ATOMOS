@@ -25,10 +25,11 @@ function SiteNav({ activeHref }: SiteNavProps) {
  categories={categories}
  items={EMPTY_ITEMS}
  activeHref={activeHref}
- baseColor="#000000"
- pillColor="#000000"
- hoveredPillTextColor="#000000"
- pillTextColor="#ffffff"
+ baseColor="transparent"
+ pillColor="#ffffff"
+ hoveredPillTextColor="#ffffff"
+      hoverCircleColor="#000000"
+ pillTextColor="#000000"
  />
  );
 }

@@ -54,12 +54,12 @@ const PillNav: React.FC<PillNavProps> = ({
  const { resolvedTheme } = useTheme();
  const isLight = resolvedTheme === 'light';
 
- const effectiveBaseColor = isLight && (baseColor === '#000000' || baseColor === '#000') ? '#ffffff' : baseColor;
- const effectivePillColor = isLight && (pillColor === '#000000' || pillColor === '#000') ? '#ffffff' : pillColor;
- const effectiveHoverCircleBg = hoverCircleColor ?? (isLight ? '#000000' : '#ffffff');
- const effectiveHoveredPillTextColor = isLight && (hoveredPillTextColor === '#000000' || hoveredPillTextColor === '#000') ? '#ffffff' : hoveredPillTextColor;
- const effectivePillTextColor = isLight && (pillTextColor === '#ffffff' || pillTextColor === '#fff') ? '#09090b' : (pillTextColor ?? (isLight ? '#09090b' : '#ffffff'));
-
+  const effectiveBaseColor = baseColor ?? 'transparent';
+  const effectivePillColor = pillColor ?? '#ffffff';
+  const isWhitePill = effectivePillColor === '#ffffff' || effectivePillColor === '#fff';
+  const effectiveHoverCircleBg = hoverCircleColor ?? (isWhitePill ? '#000000' : '#ffffff');
+  const effectiveHoveredPillTextColor = hoveredPillTextColor ?? (isWhitePill ? '#ffffff' : '#000000');
+  const effectivePillTextColor = pillTextColor ?? (isWhitePill ? '#000000' : '#ffffff');
  const resolvedPillTextColor = effectivePillTextColor;
  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
@@ -324,8 +324,8 @@ const PillNav: React.FC<PillNavProps> = ({
   'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
 
  const pillStyleBase: React.CSSProperties = {
-  background: 'var(--pill-bg, #000000)',
-  color: 'var(--pill-text, #ffffff)',
+  background: 'var(--pill-bg, #ffffff)',
+  color: 'var(--pill-text, #000000)',
   paddingLeft: 'var(--pill-pad-x)',
   paddingRight: 'var(--pill-pad-x)',
  };
@@ -334,7 +334,7 @@ const PillNav: React.FC<PillNavProps> = ({
  <div
  ref={wrapperRef}
  className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 ${
-  isLight ? 'bg-white' : 'bg-black'
+   'bg-black/20 backdrop-blur-md'
  }`}
  onBlur={(e) => {
  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -360,7 +360,7 @@ const PillNav: React.FC<PillNavProps> = ({
  style={{
  width: '64px',
  height: '64px',
- background: isLight ? '#ffffff' : 'var(--base, #000)'
+ background: 'transparent'
  }}
  >
  <img
@@ -376,7 +376,7 @@ const PillNav: React.FC<PillNavProps> = ({
  className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
  style={{
  height: 'var(--nav-h)',
- background: isLight ? '#ffffff' : 'var(--base, #000)'
+ background: 'transparent'
  }}
  >
  <ul
@@ -396,8 +396,8 @@ const PillNav: React.FC<PillNavProps> = ({
 
   const pillStyle: React.CSSProperties = {
    ...pillStyleBase,
-   background: isActive ? (isLight ? '#000000' : '#ffffff') : 'var(--pill-bg, #000000)',
-   color: isActive ? (isLight ? '#ffffff' : '#000000') : 'var(--pill-text, #ffffff)',
+   background: isActive ? (effectivePillColor === '#ffffff' ? '#000000' : '#ffffff') : 'var(--pill-bg, #ffffff)',
+   color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : 'var(--pill-text, #000000)',
   };
 
   const PillContent = (
@@ -417,7 +417,7 @@ const PillNav: React.FC<PillNavProps> = ({
   <span
   className="pill-label relative z-[2] inline-block leading-[1]"
   style={{
-  color: isActive ? (isLight ? '#ffffff' : '#000000') : undefined,
+  color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : undefined,
   willChange: 'transform'
   }}
   >
@@ -426,7 +426,7 @@ const PillNav: React.FC<PillNavProps> = ({
   <span
   className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
   style={{
-  color: isActive ? (isLight ? '#ffffff' : '#000000') : 'var(--hover-text, #000000)',
+  color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : 'var(--hover-text, #ffffff)',
   willChange: 'transform, opacity'
   }}
   aria-hidden="true"
@@ -437,7 +437,7 @@ const PillNav: React.FC<PillNavProps> = ({
   {isActive && (
   <span
   className="absolute bottom-0 left-0 right-0 h-[2px] z-[4]"
-  style={{ background: isLight ? '#000000' : '#ffffff' }}
+  style={{ background: effectivePillColor === '#ffffff' ? '#ffffff' : '#000000' }}
   aria-hidden="true"
   />
   )}
@@ -550,17 +550,17 @@ const PillNav: React.FC<PillNavProps> = ({
  <div
  ref={mobileMenuRef}
  className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none z-[998] origin-top max-h-[70vh] overflow-y-auto ${
-  isLight ? 'bg-white' : 'bg-black'
+   'bg-black/80 backdrop-blur-2xl'
  }`}
  style={{
  ...cssVars,
- background: isLight ? '#ffffff' : 'var(--base, #000)'
+ background: 'transparent'
  }}
  >
  <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
  {displayItems.map(item => {
   const defaultStyle: React.CSSProperties = {
-  background: 'var(--pill-bg, #000000)',
+  background: 'var(--pill-bg, #ffffff)',
   color: 'var(--pill-text, #ffffff)'
   };
   const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {

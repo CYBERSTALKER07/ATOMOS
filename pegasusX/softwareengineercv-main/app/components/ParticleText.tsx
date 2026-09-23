@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef, type CSSProperties } from 'react';
+import { PEGASUS_GLYPHS, PEGASUS_LETTER_OFFSETS } from './visuals/PegasusSciFiLogo';
 
 export interface ParticleTextProps {
   text?: string;
+  useBrandmark?: boolean;
   particleSize?: number;
   density?: number;
   color?: string;
@@ -100,6 +102,7 @@ const waitForFonts = async (font: string): Promise<void> => {
 
 const ParticleText = ({
   text = 'React Bits',
+  useBrandmark = false,
   particleSize = 2,
   density = 4,
   color = '#ffffff',
@@ -200,7 +203,7 @@ const ParticleText = ({
       ctx.clearRect(0, 0, width, height);
 
       if (glow && !reducedMotion) {
-        ctx.shadowBlur = particleSize * 3;
+        ctx.shadowBlur = Math.min(4, particleSize * 1.6);
         ctx.shadowColor = highlightColor;
       } else {
         ctx.shadowBlur = 0;
@@ -279,94 +282,151 @@ const ParticleText = ({
       canvas.style.height = '100%';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const computed = window.getComputedStyle(container);
-      const resolvedFamily = fontFamily === 'inherit' ? computed.fontFamily || 'sans-serif' : fontFamily;
-      let resolvedSize = resolveFontSize(fontSize, container, fontWeight, resolvedFamily);
-      let font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
-
-      await waitForFonts(font);
-      if (currentBuild !== buildId) return;
-
       const offscreen = document.createElement('canvas');
       const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
       if (!offCtx) return;
 
-      const content = String(text || ' ');
-      const maxTextWidth = width * 0.98;
-      const maxTextHeight = height * 0.94;
-      offCtx.font = font;
-      if (letterSpacing && 'letterSpacing' in offCtx) {
-        (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-      }
-      let metrics = offCtx.measureText(content);
-      let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
-      let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-      let currentHeight = ascent + descent;
-      let measuredWidth = Math.max(1, metrics.width);
-
-      if (fitContainer) {
-        const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
-        const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
-        const scale = Math.min(widthScale, heightScale);
-
-        if (scale < 1) {
-          resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
-          font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
-          await waitForFonts(font);
-          if (currentBuild !== buildId) return;
-          offCtx.font = font;
-          if (letterSpacing && 'letterSpacing' in offCtx) {
-            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-          }
-          metrics = offCtx.measureText(content);
-        }
-      }
-
-      const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
-      const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
-      const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
-      const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-      const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
-      const textWidth = Math.max(1, left + right);
-      const textHeight = Math.max(1, finalAscent + finalDescent);
-      const startX = padding + Math.max(0, left);
-
-      offscreen.width = textWidth + padding * 2;
-      offscreen.height = textHeight + padding * 2;
-      offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
-      offCtx.font = font;
-      if (letterSpacing && 'letterSpacing' in offCtx) {
-        (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-      }
-      offCtx.textAlign = 'left';
-      offCtx.textBaseline = 'alphabetic';
-      offCtx.fillStyle = '#ffffff';
-      offCtx.fillText(content, startX, padding + finalAscent);
-
-      const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
       const targets: Target[] = [];
-      const step = Math.max(2, Math.floor(density));
+      const step = useBrandmark ? Math.max(1, density) : Math.max(2, Math.floor(density));
 
-      for (let y = 0; y < offscreen.height; y += step) {
-        for (let x = 0; x < offscreen.width; x += step) {
-          const alpha = imageData.data[(y * offscreen.width + x) * 4 + 3];
-          if (alpha > 40) {
-            let targetX = width / 2 - offscreen.width / 2 + x;
-            if (textAlign === 'left') {
-              targetX = x - startX;
-            } else if (textAlign === 'right') {
-              targetX = width - (offscreen.width - x);
+      if (useBrandmark) {
+        // Precision PEGASUS Sci-Fi Vector Wordmark (772.033 x 55.506)
+        const VECTOR_WIDTH = 772.033;
+        const VECTOR_HEIGHT = 55.506;
+        const maxW = width * 0.98;
+        const maxH = height * 0.92;
+        const scale = Math.min(maxW / VECTOR_WIDTH, maxH / VECTOR_HEIGHT);
+        const renderW = Math.ceil(VECTOR_WIDTH * scale);
+        const renderH = Math.ceil(VECTOR_HEIGHT * scale);
+        const padding = 6;
+
+        offscreen.width = renderW + padding * 2;
+        offscreen.height = renderH + padding * 2;
+        offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+
+        offCtx.save();
+        offCtx.translate(padding, padding);
+        offCtx.scale(scale, scale);
+        offCtx.fillStyle = '#ffffff';
+
+        PEGASUS_LETTER_OFFSETS.forEach(({ char, x }) => {
+          const pathData = PEGASUS_GLYPHS[char as keyof typeof PEGASUS_GLYPHS];
+          if (pathData && typeof Path2D !== 'undefined') {
+            offCtx.save();
+            offCtx.translate(x, 0);
+            const path = new Path2D(pathData);
+            offCtx.fill(path);
+            offCtx.restore();
+          }
+        });
+        offCtx.restore();
+
+        const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+        for (let y = 0; y < offscreen.height; y += step) {
+          const pixelY = Math.min(offscreen.height - 1, Math.floor(y));
+          for (let x = 0; x < offscreen.width; x += step) {
+            const pixelX = Math.min(offscreen.width - 1, Math.floor(x));
+            const alpha = imageData.data[(pixelY * offscreen.width + pixelX) * 4 + 3];
+            if (alpha > 40) {
+              let targetX = x - padding;
+              if (textAlign === 'center') {
+                targetX = width / 2 - renderW / 2 + (x - padding);
+              } else if (textAlign === 'right') {
+                targetX = width - renderW + (x - padding);
+              }
+              targets.push({
+                x: targetX,
+                y: height / 2 - renderH / 2 + (y - padding),
+                alpha: alpha / 255
+              });
             }
-            targets.push({
-              x: targetX,
-              y: height / 2 - offscreen.height / 2 + y,
-              alpha: alpha / 255
-            });
+          }
+        }
+      } else {
+        const computed = window.getComputedStyle(container);
+        const resolvedFamily = fontFamily === 'inherit' ? computed.fontFamily || 'sans-serif' : fontFamily;
+        let resolvedSize = resolveFontSize(fontSize, container, fontWeight, resolvedFamily);
+        let font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+
+        await waitForFonts(font);
+        if (currentBuild !== buildId) return;
+
+        const content = String(text || ' ');
+        const maxTextWidth = width * 0.98;
+        const maxTextHeight = height * 0.94;
+        offCtx.font = font;
+        if (letterSpacing && 'letterSpacing' in offCtx) {
+          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+        }
+        let metrics = offCtx.measureText(content);
+        let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+        let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+        let currentHeight = ascent + descent;
+        let measuredWidth = Math.max(1, metrics.width);
+
+        if (fitContainer) {
+          const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
+          const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
+          const scale = Math.min(widthScale, heightScale);
+
+          if (scale < 1) {
+            resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+            font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+            await waitForFonts(font);
+            if (currentBuild !== buildId) return;
+            offCtx.font = font;
+            if (letterSpacing && 'letterSpacing' in offCtx) {
+              (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+            }
+            metrics = offCtx.measureText(content);
+          }
+        }
+
+        const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
+        const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
+        const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+        const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+        const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
+        const textWidth = Math.max(1, left + right);
+        const textHeight = Math.max(1, finalAscent + finalDescent);
+        const startX = padding + Math.max(0, left);
+
+        offscreen.width = textWidth + padding * 2;
+        offscreen.height = textHeight + padding * 2;
+        offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+        offCtx.font = font;
+        if (letterSpacing && 'letterSpacing' in offCtx) {
+          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+        }
+        offCtx.textAlign = 'left';
+        offCtx.textBaseline = 'alphabetic';
+        offCtx.fillStyle = '#ffffff';
+        offCtx.fillText(content, startX, padding + finalAscent);
+
+        const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+        for (let y = 0; y < offscreen.height; y += step) {
+          for (let x = 0; x < offscreen.width; x += step) {
+            const alpha = imageData.data[(y * offscreen.width + x) * 4 + 3];
+            if (alpha > 40) {
+              let targetX = width / 2 - offscreen.width / 2 + x;
+              if (textAlign === 'left') {
+                targetX = x - startX;
+              } else if (textAlign === 'right') {
+                targetX = width - (offscreen.width - x);
+              }
+              targets.push({
+                x: targetX,
+                y: height / 2 - offscreen.height / 2 + y,
+                alpha: alpha / 255
+              });
+            }
           }
         }
       }
 
-      const maxParticles = Math.max(900, Math.min(5200, Math.floor((width * height) / 90)));
+      const maxParticles = useBrandmark ? Math.max(5000, Math.min(10000, targets.length)) : Math.max(900, Math.min(5200, Math.floor((width * height) / 90)));
       const stride = Math.max(1, Math.ceil(targets.length / maxParticles));
       const baseRgb = hexToRgb(color);
       const highlightRgb = hexToRgb(highlightColor);
@@ -495,6 +555,7 @@ const ParticleText = ({
     };
   }, [
     text,
+    useBrandmark,
     particleSize,
     density,
     color,
