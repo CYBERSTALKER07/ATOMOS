@@ -26,9 +26,9 @@ function SiteNav({ activeHref }: SiteNavProps) {
  items={EMPTY_ITEMS}
  activeHref={activeHref}
  baseColor="#000000"
- pillColor="#ffffff"
- hoveredPillTextColor="#ffffff"
- pillTextColor="#000000"
+ pillColor="#000000"
+ hoveredPillTextColor="#000000"
+ pillTextColor="#ffffff"
  />
  );
 }

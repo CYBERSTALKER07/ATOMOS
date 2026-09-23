@@ -25,6 +25,7 @@ export interface PillNavProps {
  ease?: string;
  baseColor?: string;
  pillColor?: string;
+ hoverCircleColor?: string;
  hoveredPillTextColor?: string;
  pillTextColor?: string;
  onMobileMenuClick?: () => void;
@@ -41,9 +42,10 @@ const PillNav: React.FC<PillNavProps> = ({
  className = '',
  ease = 'power3.easeOut',
  baseColor = '#000000',
- pillColor = '#ffffff',
+ pillColor = '#000000',
+ hoverCircleColor,
  hoveredPillTextColor = '#000000',
- pillTextColor,
+ pillTextColor = '#ffffff',
  onMobileMenuClick,
  initialLoadAnimation = true,
  showMenuButton = false,
@@ -53,9 +55,10 @@ const PillNav: React.FC<PillNavProps> = ({
  const isLight = resolvedTheme === 'light';
 
  const effectiveBaseColor = isLight && (baseColor === '#000000' || baseColor === '#000') ? '#ffffff' : baseColor;
- const effectivePillColor = isLight && (pillColor === '#ffffff' || pillColor === '#fff') ? '#f4f4f5' : pillColor;
+ const effectivePillColor = isLight && (pillColor === '#000000' || pillColor === '#000') ? '#ffffff' : pillColor;
+ const effectiveHoverCircleBg = hoverCircleColor ?? (isLight ? '#000000' : '#ffffff');
  const effectiveHoveredPillTextColor = isLight && (hoveredPillTextColor === '#000000' || hoveredPillTextColor === '#000') ? '#ffffff' : hoveredPillTextColor;
- const effectivePillTextColor = isLight && (!pillTextColor || pillTextColor === '#000000' || pillTextColor === '#000') ? '#09090b' : (pillTextColor ?? effectiveBaseColor);
+ const effectivePillTextColor = isLight && (pillTextColor === '#ffffff' || pillTextColor === '#fff') ? '#09090b' : (pillTextColor ?? (isLight ? '#09090b' : '#ffffff'));
 
  const resolvedPillTextColor = effectivePillTextColor;
  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -306,24 +309,27 @@ const PillNav: React.FC<PillNavProps> = ({
  href.startsWith('#');
 
  const cssVars = {
- ['--base']: effectiveBaseColor,
- ['--pill-bg']: effectivePillColor,
- ['--hover-text']: effectiveHoveredPillTextColor,
- ['--pill-text']: resolvedPillTextColor,
- ['--nav-h']: '40px',
- ['--logo']: '36px',
- ['--pill-pad-x']: '10px',
- ['--pill-gap']: '2px'
+  ['--base']: effectiveBaseColor,
+  ['--pill-bg']: effectivePillColor,
+  ['--hover-circle-bg']: effectiveHoverCircleBg,
+  ['--hover-text']: effectiveHoveredPillTextColor,
+  ['--pill-text']: resolvedPillTextColor,
+  ['--nav-h']: '40px',
+  ['--logo']: '36px',
+  ['--pill-pad-x']: '10px',
+  ['--pill-gap']: '2px'
  } as React.CSSProperties;
 
  const basePillClasses =
- 'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
+  `relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none ${
+   isLight ? 'border-black/10' : 'border-white/15'
+  }`;
 
  const pillStyleBase: React.CSSProperties = {
- background: 'var(--pill-bg, #fff)',
- color: 'var(--pill-text, var(--base, #000))',
- paddingLeft: 'var(--pill-pad-x)',
- paddingRight: 'var(--pill-pad-x)',
+  background: 'var(--pill-bg, #000000)',
+  color: 'var(--pill-text, #ffffff)',
+  paddingLeft: 'var(--pill-pad-x)',
+  paddingRight: 'var(--pill-pad-x)',
  };
 
  return (
@@ -382,92 +388,113 @@ const PillNav: React.FC<PillNavProps> = ({
  className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
  style={{ gap: 'var(--pill-gap)' }}
  >
- {displayItems.map((item, i) => {
- const isActive = activeHref === item.href;
+  {displayItems.map((item, i) => {
+  const isCategoryActive = Boolean(activeCategory && categories && activeCategory.id === categories[i]?.id);
+  const isHrefActive = Boolean(
+   activeHref && (
+    activeHref === item.href ||
+    (item.href !== '/' && item.href !== '#' && activeHref.startsWith(item.href))
+   )
+  );
+  const isActive = isHrefActive || isCategoryActive;
 
- const pillStyle: React.CSSProperties = { ...pillStyleBase };
+  const pillStyle: React.CSSProperties = {
+   ...pillStyleBase,
+   background: isActive ? (isLight ? '#000000' : '#ffffff') : 'var(--pill-bg, #000000)',
+   color: isActive ? (isLight ? '#ffffff' : '#000000') : 'var(--pill-text, #ffffff)',
+   borderColor: isActive ? (isLight ? '#000000' : '#ffffff') : undefined,
+  };
 
- const PillContent = (
- <>
- <span
- className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
- style={{
- background: 'var(--base, #000)',
- willChange: 'transform'
- }}
- aria-hidden="true"
- ref={el => {
- circleRefs.current[i] = el;
- }}
- />
- <span className="label-stack relative inline-block leading-[1] z-[2]">
- <span
- className="pill-label relative z-[2] inline-block leading-[1]"
- style={{ willChange: 'transform' }}
- >
- {item.label}
- </span>
- <span
- className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
- style={{
- color: 'var(--hover-text, #fff)',
- willChange: 'transform, opacity'
- }}
- aria-hidden="true"
- >
- {item.label}
- </span>
- </span>
- {isActive && (
- <span
- className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-1 z-[4]"
- style={{ background: 'var(--base, #000)' }}
- aria-hidden="true"
- />
- )}
- </>
- );
+  const PillContent = (
+  <>
+  <span
+  className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
+  style={{
+  background: 'var(--hover-circle-bg, #ffffff)',
+  willChange: 'transform'
+  }}
+  aria-hidden="true"
+  ref={el => {
+  circleRefs.current[i] = el;
+  }}
+  />
+  <span className="label-stack relative inline-block leading-[1] z-[2]">
+  <span
+  className="pill-label relative z-[2] inline-block leading-[1]"
+  style={{
+  color: isActive ? (isLight ? '#ffffff' : '#000000') : undefined,
+  willChange: 'transform'
+  }}
+  >
+  {item.label}
+  </span>
+  <span
+  className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
+  style={{
+  color: isActive ? (isLight ? '#ffffff' : '#000000') : 'var(--hover-text, #000000)',
+  willChange: 'transform, opacity'
+  }}
+  aria-hidden="true"
+  >
+  {item.label}
+  </span>
+  </span>
+  {isActive && (
+  <span
+  className="absolute bottom-0 left-0 right-0 h-[2px] z-[4]"
+  style={{ background: isLight ? '#000000' : '#ffffff' }}
+  aria-hidden="true"
+  />
+  )}
+  </>
+  );
 
- return (
- <li key={item.href} role="none" className="flex h-full">
- {isExternalLink(item.href) ? (
- <a
- role="menuitem"
- href={item.href}
- aria-current={isActive ? 'page' : undefined}
- className={basePillClasses}
- style={pillStyle}
- onMouseEnter={() => handleEnter(i)}
- onMouseLeave={() => handleLeave(i)}
- onFocus={() => handleEnter(i)}
- onBlur={() => handleLeave(i)}
- onClick={(e) => {
- if (categories) {
- e.preventDefault();
- setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
- }
- }}
- >
- {PillContent}
- </a>
- ) : (
- <Link
- role="menuitem"
- href={item.href}
- aria-current={isActive ? 'page' : undefined}
- className={basePillClasses}
- style={pillStyle}
- onMouseEnter={() => handleEnter(i)}
- onMouseLeave={() => handleLeave(i)}
- onFocus={() => handleEnter(i)}
- onBlur={() => handleLeave(i)}
- >
- {PillContent}
- </Link>
- )}
- </li>
- );
- })}
+  return (
+  <li key={item.href} role="none" className="flex h-full">
+  {isExternalLink(item.href) ? (
+  <a
+  role="menuitem"
+  href={item.href}
+  aria-current={isActive ? 'page' : undefined}
+  className={basePillClasses}
+  style={pillStyle}
+  onMouseEnter={() => handleEnter(i)}
+  onMouseLeave={() => handleLeave(i)}
+  onFocus={() => handleEnter(i)}
+  onBlur={() => handleLeave(i)}
+  onClick={(e) => {
+  if (categories) {
+  e.preventDefault();
+  setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
+  }
+  }}
+  >
+  {PillContent}
+  </a>
+  ) : (
+  <Link
+  role="menuitem"
+  href={item.href}
+  aria-current={isActive ? 'page' : undefined}
+  className={basePillClasses}
+  style={pillStyle}
+  onMouseEnter={() => handleEnter(i)}
+  onMouseLeave={() => handleLeave(i)}
+  onFocus={() => handleEnter(i)}
+  onBlur={() => handleLeave(i)}
+  onClick={(e) => {
+  if (categories) {
+  e.preventDefault();
+  setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
+  }
+  }}
+  >
+  {PillContent}
+  </Link>
+  )}
+  </li>
+  );
+  })}
  {/* Text menu button removed in favor of hamburger */}
  </ul>
  </div>
@@ -544,18 +571,18 @@ const PillNav: React.FC<PillNavProps> = ({
  >
  <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
  {displayItems.map(item => {
- const defaultStyle: React.CSSProperties = {
- background: 'var(--pill-bg, #fff)',
- color: 'var(--pill-text, #000)'
- };
- const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
- e.currentTarget.style.background = 'var(--base)';
- e.currentTarget.style.color = 'var(--hover-text, #fff)';
- };
- const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
- e.currentTarget.style.background = 'var(--pill-bg, #fff)';
- e.currentTarget.style.color = 'var(--pill-text, #000)';
- };
+  const defaultStyle: React.CSSProperties = {
+  background: 'var(--pill-bg, #000000)',
+  color: 'var(--pill-text, #ffffff)'
+  };
+  const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+  e.currentTarget.style.background = 'var(--hover-circle-bg, #ffffff)';
+  e.currentTarget.style.color = 'var(--hover-text, #000000)';
+  };
+  const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+  e.currentTarget.style.background = 'var(--pill-bg, #000000)';
+  e.currentTarget.style.color = 'var(--pill-text, #ffffff)';
+  };
 
  const linkClasses =
  'block py-3 px-4 text-[16px] font-medium rounded-none transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';

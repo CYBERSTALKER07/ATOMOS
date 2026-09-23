@@ -104,8 +104,9 @@ export default function Hero() {
    <div className="absolute inset-0 z-0 bg-black">
    <video
     ref={videoRef}
-    className="absolute inset-0 w-full h-full object-cover opacity-40 transition-opacity duration-700"
+    className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-700"
     src="/videos/hero-bg.mp4"
+    autoPlay
     muted
     loop
     playsInline
@@ -113,9 +114,8 @@ export default function Hero() {
     poster="/images/topics/control_plane.jpg"
    />
    {/* Cinematic overlays for text readability */}
-   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/30 pointer-events-none" />
-   <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent pointer-events-none" />
-   <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
+   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none" />
    </div>
 
    {/* ── Content Overlay ── */}
