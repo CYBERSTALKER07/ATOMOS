@@ -292,41 +292,56 @@ const ParticleText = ({
       if (!offCtx) return;
 
       const content = String(text || ' ');
-      const maxTextWidth = width * 0.98;
+      const maxTextWidth = width * 0.90;
+      const maxTextHeight = height * 0.80;
       offCtx.font = font;
       if (letterSpacing && 'letterSpacing' in offCtx) {
         (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
       }
       let metrics = offCtx.measureText(content);
-      const measuredWidth = Math.max(1, metrics.width);
-      if (fitContainer && measuredWidth > maxTextWidth) {
-        resolvedSize = Math.max(18, resolvedSize * (maxTextWidth / measuredWidth));
-        font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
-        await waitForFonts(font);
-        if (currentBuild !== buildId) return;
-        offCtx.font = font;
-        if (letterSpacing && 'letterSpacing' in offCtx) {
-          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+      let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+      let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+      let currentHeight = ascent + descent;
+      let measuredWidth = Math.max(1, metrics.width);
+
+      if (fitContainer) {
+        const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
+        const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
+        const scale = Math.min(widthScale, heightScale);
+
+        if (scale < 1) {
+          resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+          font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+          await waitForFonts(font);
+          if (currentBuild !== buildId) return;
+          offCtx.font = font;
+          if (letterSpacing && 'letterSpacing' in offCtx) {
+            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+          }
+          metrics = offCtx.measureText(content);
         }
-        metrics = offCtx.measureText(content);
       }
 
       const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
       const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
-      const ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
-      const descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-      const padding = Math.max(12, Math.ceil(resolvedSize * 0.08));
+      const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+      const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+      const padding = Math.max(8, Math.ceil(resolvedSize * 0.05));
       const textWidth = Math.max(1, left + right);
-      const textHeight = Math.max(1, ascent + descent);
+      const textHeight = Math.max(1, finalAscent + finalDescent);
+      const startX = padding + Math.max(0, left);
 
       offscreen.width = textWidth + padding * 2;
       offscreen.height = textHeight + padding * 2;
       offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
       offCtx.font = font;
+      if (letterSpacing && 'letterSpacing' in offCtx) {
+        (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+      }
       offCtx.textAlign = 'left';
       offCtx.textBaseline = 'alphabetic';
       offCtx.fillStyle = '#ffffff';
-      offCtx.fillText(content, padding - left, padding + ascent);
+      offCtx.fillText(content, startX, padding + finalAscent);
 
       const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
       const targets: Target[] = [];
@@ -338,9 +353,9 @@ const ParticleText = ({
           if (alpha > 40) {
             let targetX = width / 2 - offscreen.width / 2 + x;
             if (textAlign === 'left') {
-              targetX = x - (padding - left);
+              targetX = x - startX;
             } else if (textAlign === 'right') {
-              targetX = width - offscreen.width + x;
+              targetX = width - (offscreen.width - x);
             }
             targets.push({
               x: targetX,

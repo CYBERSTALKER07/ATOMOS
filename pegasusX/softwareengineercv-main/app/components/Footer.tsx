@@ -176,11 +176,11 @@ export default function Footer() {
 
  {/* Platform Links col */}
  <div className="p-12 max-md:border-b border-white/5">
- <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
+ <h4 className="text-[11px] tracking-[0.2em] text-white/60 mb-8 font-mono uppercase">{t('footer_platform_title')}</h4>
  <ul className="space-y-4">
  {platformLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+ <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
@@ -190,11 +190,11 @@ export default function Footer() {
 
  {/* Company col */}
  <div className="p-12 max-md:border-b border-white/5">
- <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_company')}</h4>
+ <h4 className="text-[11px] tracking-[0.2em] text-white/60 mb-8 font-mono uppercase">{t('footer_company')}</h4>
  <ul className="space-y-4">
  {companyLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+ <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
@@ -204,31 +204,31 @@ export default function Footer() {
 
  {/* Resources col */}
  <div className="p-12">
- <h4 className="text-[11px] tracking-[0.2em] text-white/40 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
+ <h4 className="text-[11px] tracking-[0.2em] text-white/60 mb-8 font-mono uppercase">{t('footer_policies')}</h4>
  <ul className="space-y-4 mb-10">
  {policiesLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/70 hover:text-white text-sm transition-colors">
+ <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
  ))}
  <li>
- <CookieSettingsTrigger className="text-white/70 hover:text-white text-sm" />
+ <CookieSettingsTrigger className="text-white/85 hover:text-white text-sm" />
  </li>
  </ul>
  </div>
  </div>
 
  {/* Huge text */}
- <div className="pt-24 pb-8 px-4 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
- <div className="w-full h-[20vw] min-h-[140px] relative flex items-center justify-center">
+ <div className="pt-20 pb-8 px-4 sm:px-6 flex justify-center items-center overflow-hidden border-b border-white/5 relative z-10">
+ <div className="w-full max-w-[1500px] h-[22vw] min-h-[160px] max-h-[360px] relative flex items-center justify-center">
  <ParticleText
  text="pegasus"
- fontSize="25vw"
+ fontSize="clamp(3.5rem, 18vw, 16rem)"
  fontWeight={900}
- letterSpacing="-0.05em"
- fitContainer={false}
+ letterSpacing="-0.03em"
+ fitContainer={true}
  color="#ffffff"
  highlightColor="#ffffff"
  particleSize={2.4}
@@ -247,14 +247,14 @@ export default function Footer() {
  </div>
 
  {/* Copyright & Legal Row */}
- <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/40 text-[11px] font-mono relative z-10">
+ <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/60 text-xs font-mono relative z-10">
  <span>©2026 Pegasus. {t('footer_rights')}</span>
  <span>·</span>
  <Link href="/cookie-policy" className="hover:text-white transition-colors">
  {t('nav_cookie_policy', 'Cookie Policy')}
  </Link>
  <span>·</span>
- <CookieSettingsTrigger className="text-[11px] font-mono text-white/40 hover:text-white" />
+ <CookieSettingsTrigger className="text-xs font-mono text-white/60 hover:text-white" />
  </div>
  </footer>
  );
