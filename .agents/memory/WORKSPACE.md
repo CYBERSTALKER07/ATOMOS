@@ -106,13 +106,16 @@
 - **Layer B (Operational Deployment Secrets)**: LIVE SECRETS DEFERRED TO OPS. Live Cloud IdP credentials, Soliq OFD PKCS#12 signing keys, APNs/FCM production push certificates, and live Global Pay production merchant keys are deployed at runtime via Secret Manager / ExternalSecrets.
 
 
-# Universal Agent & Engineering Guidelines
-When developing, designing, or planning, always ensure to account for:
-- Gaps, edge cases, and comprehensive feature validation.
-- Best practices and optimized integration for Kafka, Redis, Backend, Optimizers, AI, and UI.
-- Real-time concepts including WebSockets, webhooks, and their native app equivalents.
-- Thorough business logic for features, understanding how the role, app, and ecosystem work together, and engagements with other roles and features.
-- Best practices for backend, frontend, and infrastructure libraries/packages. Always prefer existing, high-quality open-source libraries and packages that best suit our features before creating our own.
-- Optimal UI infrastructure and UX patterns (e.g., optimal screen positioning for drivers during an active route), applying the same high standards to backend and cloud architecture.
-- ALWAYS search the web to find open-source code, libraries, packages, math, algorithms, approaches, and best practices for anything we are doing. If none exist, then create our own.
-- Always search the web to get the correct logic, and incorporate edge cases, business logic for features, operations (ops), workflow, data consistency, finance, and AI into everything we do.
+# Universal Agent & Engineering Guidelines (Google Principal & Hacker Standard)
+When developing, designing, or planning, every AI agent must strictly follow:
+1. **Google Principal Engineer & Limitless Red Team Hacker Posture**:
+   - Zero-tolerance for naive CRUD. Every endpoint, table, and UI must feature rigorous state machines, invariant guards, atomic outbox events, and audit logging.
+   - Sourcing Hierarchy: (1) Use battle-tested Big Tech / open-source packages (`pgx/v5`, `go-chi`, `redis-go`, `pydantic-v2`, `zod`, `tailwind v4`). (2) If no package fits, reverse-engineer and natively implement the mathematical algorithms and state machines of top-tier systems (Google OR-Tools, Maglev, Uber H3, Stripe Idempotency, Amazon Shuffle Sharding). (3) If none exist, invent mathematically sound novel algorithms from first principles.
+2. **Mandatory Dual-Domain Pre-Edit & Post-Edit Brainstorming**:
+   - **Pre-Edit Gate**: Proactively search the web for industry standards, RFCs, statutory specs, and libraries. Brainstorm both *Technical Edge Cases* (races, deadlocks, TOCTOU, connection pool exhaustion, memory bloat, backpressure, slow consumers) and *Non-Technical Business Edge Cases* (cellular dead-zones, driver breakdowns, freight damage disputes, Soliq 12% VAT minor unit rounding, B2B cash limits, axle weight physics).
+   - **Post-Edit Gate**: Perform adversarial blast-radius checks, verify cross-role contract parity across role clients, and execute automated regression test suites (`go test -v -race ./...`).
+3. **Holistic Cross-Role Interlock & Real-Time Data Pipeline**:
+   - Zero orphaned features. An event in one role (`Supplier <-> Factory <-> Warehouse <-> Payloader <-> Dispatcher <-> Driver <-> Retailer <-> Finance`) MUST cascade in real-time across all interacting roles via transactional outbox, Redis 7 Streams / Kafka, and WebSocket monotonic sequences (`seq_id`).
+4. **Retroactive Modernization & Zero Technical Debt**:
+   - Mandate applies retroactively to existing codebase, features, backend, UI, and infra. Agents are empowered and commanded to execute deep refactors or complete rewrites when encountering naive CRUD, fake mocks, memory fallbacks, or race conditions.
+

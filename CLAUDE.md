@@ -4,7 +4,94 @@
 
 ---
 
-## 1. Architectural Taxonomy & Monorepo Topology
+## 1. Core Posture: Google Principal Engineers & Limitless Red Team Hackers
+
+All AI agents operating within `V.O.I.D` must embody the engineering caliber of **Google Principal Software Engineers, Staff Infrastructure Architects, and Limitless World-Class Red Team Hackers**. 
+
+### Zero-Tolerance for Naive CRUD
+- **Naive CRUD is strictly forbidden**: Never write dumb table mutations that lack domain state machines, concurrency checks, transactional outbox events, validation guards, or comprehensive telemetry.
+- **Production-Grade Rigor**: Every feature, backend service, database table, UI view, and pipeline must be built with production depth, resilience, and mathematical elegance.
+- **Fail-Closed & Defensive Architecture**: Systems must fail safely, recover gracefully, prevent cascade failures, and handle Byzantine faults, network drops, and corrupted inputs without crashing or corrupting state.
+
+### The Three-Tier Sourcing Hierarchy (Best Practices & Algorithms)
+1. **Tier 1 — Battle-Tested Big Tech & Open-Source Tools**:
+   - If an industry-standard, high-performance open-source library, tool, or framework exists and fits the target stack (`pgx/v5`, `go-chi/chi/v5`, `redis-go`, `uber-go/zap`, `pydantic-v2`, `zod`, `tailwind v4`, `timescaledb`), evaluate, select, and integrate it rather than rolling naive custom implementations.
+2. **Tier 2 — Algorithmic Reverse-Engineering & Native Adaptation**:
+   - If no direct open-source package or cloud tool fits our sovereign single-tenant or global multi-tenant stack, dissect and extract the mathematical models, algorithmic logic, data structures, and state machines from world-class systems (Google OR-Tools CVRP, Maglev consistent hashing, Uber H3 spatial indexing, Stripe Idempotency, Amazon Shuffle Sharding, Netflix Concurrency Limiters) and implement them natively at enterprise grade.
+3. **Tier 3 — First-Principles Novel Engineering**:
+   - If no algorithm, library, or tool exists anywhere in the world to solve our exact problem, design a novel, mathematically sound, enterprise-grade algorithm from first principles. Formalize its invariants, prove its boundary conditions, test its edge cases, and implement it with zero compromises.
+
+---
+
+## 2. Mandatory Dual-Domain Pre-Edit & Post-Edit Brainstorming Protocol
+
+Every code edit—regardless of size—must pass through two non-bypassable verification gates:
+
+### Gate A: Pre-Edit Research & Brainstorming (BEFORE touching code)
+1. **Mandatory Web & Codebase Research**:
+   - Proactively search the web for industry gold standards, RFCs, statutory specifications, algorithmic benchmarks, battle-tested open-source libraries, and real-world failure postmortems.
+   - Search the codebase using CodeGraph and Kythe to inspect existing patterns, data structures, and shared types.
+2. **Dual-Domain Brainstorming (Technical + Non-Technical)**:
+   - **Technical Edge Cases**:
+     - Concurrency races, goroutine leaks, deadlocks, connection pool starvation (`pgxpool`).
+     - Time-of-Check to Time-of-Use (TOCTOU) windows, reentrancy vulnerabilities.
+     - Out-of-order event delivery, slow consumer head-of-line blocking, backpressure exhaustion.
+     - Distributed partition hazards, split-brain conditions, clock skew, retry storms.
+     - Memory bloat, memory leak under heavy continuous streaming, unhandled context cancellations.
+   - **Non-Technical & Physical Logistics Edge Cases**:
+     - Real-world road conditions, mountainous/rural terrain, cellular dropouts (offline-first sync).
+     - Mid-shift vehicle breakdowns, dynamic hot-swap rescue transfers, driver shift timeouts.
+     - Doorstep freight damage disputes, itemized returns, partial cancellations, carton rejections.
+     - Uzbekistan statutory tax compliance: Soliq 12% VAT integer rounding discrepancies, STIR/MXIK commodity validations.
+     - B2B cash payment transaction rules, corporate card webhook latency, driver cash drawer reconciliation.
+     - Cargo physical properties: longitudinal axle weight static moments (11.5T single axle, 20% steer traction), temperature deviations in cold-chain reefers.
+
+### Gate B: Post-Edit Verification & Pressure-Testing (AFTER editing code)
+1. **Blast-Radius & Reverse Dependency Audit**:
+   - Re-read every edit with Red Team adversarial eyes to identify unintentional contract drift, unhandled error branches, or regression vectors.
+   - Run Bazel/Kythe graph queries or static analysis to verify affected dependents across both backend and client tiers.
+2. **Cross-Role Parity & Contract Synchronization**:
+   - Verify that changes to backend DTOs, API routes, or event schemas are symmetrically updated across all role clients (Desktop, Web, Android, iOS, Telegram MiniApp).
+3. **Automated Test Execution & Regression Gates**:
+   - Execute targeted and full automated test suites with race detection enabled (`go test -v -race ./...`).
+   - If any test fails, STOP immediately, analyze the root cause, remediate the code, and re-verify until 100% passing.
+
+---
+
+## 3. Holistic Cross-Role Interlock & Real-Time Data Pipeline
+
+Pegasus is a living, multi-role distributed organism. It is NOT a set of isolated CRUD apps.
+
+### The 8-Role Interlocking Pipeline
+$$\text{Supplier} \longleftrightarrow \text{Factory} \longleftrightarrow \text{Warehouse Admin} \longleftrightarrow \text{Payloader / Picker} \longleftrightarrow \text{Dispatcher} \longleftrightarrow \text{Driver} \longleftrightarrow \text{Retailer Storefront} \longleftrightarrow \text{Finance / Auditor}$$
+
+### The Zero-Orphaned-Features Doctrine
+- **No feature exists in a vacuum**: Every feature depends on and impacts upstream and downstream roles.
+- **Atomic Cascading Workflows**: Any state change in one role MUST trigger real-time reactive workflows across all affected roles.
+  - *Example (Doorstep Rejection)*: When a Driver rejects 2 damaged cartons of milk at a Retailer's storefront:
+    1. **Driver App**: Instantly recalculates cash/card invoice total in minor units; locks photo proof.
+    2. **Retailer App**: Instantly updates inspection manifest; dynamic QR code refreshes with updated tiyin amount.
+    3. **Warehouse Admin / WMS**: Automatically generates an inbound Quarantine Return order (`WH-QUARANTINE-01`) upon truck return.
+    4. **Supplier Portal**: Instantly flags lot batch variance; creates pending credit memo.
+    5. **Finance / Auditor**: Adjusts general ledger journal entries; triggers Soliq OFD fiscal check with adjusted line items.
+- **Real-Time Data Pipeline Requirements**:
+  - **Transactional Outbox**: Entity state mutation and outbox event MUST be written in the **exact same database transaction** (`pgx.Tx` in PostgreSQL 16; `spanner.ReadWriteTransaction` in Spanner).
+  - **Monotonic Event Streaming**: Stream events via Redis 7 Streams (`XADD` with aggregate root partition keys) in `pegasus.x` or Apache Kafka in `pegasusX`.
+  - **WebSocket Hubs with Monotonic Sequencing**: Events delivered to client apps must include sequential IDs (`seq_id`). Clients must detect sequence gaps and auto-reconcile without requiring a full application refresh.
+
+---
+
+## 4. Retroactive Modernization & Zero Technical Debt Mandate
+
+This doctrine applies **retroactively** to all existing code, not just new edits:
+
+- **Continuous Codebase Hardening**: Whenever an agent touches, reviews, or audits a file, package, or subsystem, it must inspect the surrounding code for architectural flaws, naive CRUD, fake mocks, memory fallbacks, missing error checks, and floating-point money.
+- **Authority for Deep Refactoring & Full Rewrites**: If an existing component is structurally flawed, naive, or prone to race conditions, agents are empowered and commanded to execute full architectural rewrites to bring it to Google/Hacker standards.
+- **Purge All Fake Seeds & Memory Repositories**: In-memory repository stubs (`MemoryRepository`) and static fake seeds in production packages are treated as critical defects and must be eliminated.
+
+---
+
+## 5. Architectural Taxonomy & Monorepo Topology (Zero Cross-Pollution)
 
 Within the `V.O.I.D` workspace, three codebases exist. Each serves a distinct phase or architectural tier in the ecosystem:
 
@@ -30,12 +117,7 @@ Within the `V.O.I.D` workspace, three codebases exist. Each serves a distinct ph
 | **Client Applications** | Web portal prototype | Native Android Compose + SwiftUI iOS + Next.js 15 web | Tauri v2 Desktop (Next.js 15), Telegram MiniApp/Bot, Native Mobile |
 | **Financial Arithmetic** | Legacy floating point | Strict 64-bit integer minor units (`tiyins`/`cents`) | Strict 64-bit integer minor units (`tiyins`/`cents`) |
 
----
-
-## 2. Strict Two-System Architectural Boundary (Zero Cross-Pollution)
-
-`pegasusX` and `pegasus.x` are completely separate production architectures. Cross-contamination between them is strictly forbidden:
-
+### Strict Two-System Architectural Boundary
 1. **In `pegasus.x/` (Sovereign Core)**:
    - **Strictly PostgreSQL 16 + Redis 7**.
    - **NEVER** import Google Cloud Spanner SDKs, Spanner DDL, Spanner mutations, or Apache Kafka drivers (`sarama`, `kafka-go`, `confluent-kafka-go`).
@@ -48,154 +130,70 @@ Within the `V.O.I.D` workspace, three codebases exist. Each serves a distinct ph
    - All persistence must use `cloud.google.com/go/spanner` with `spanner.ReadWriteTransaction` and table interleaving.
    - All event streaming must use Apache Kafka with partition keys and `RequiredAcks=all`.
 
-3. **Cross-Scanning & Logical Feature Sync**:
-   - AI agents must inspect **BOTH** repositories to detect feature gaps, micro-features, state machine transitions, and UI/UX patterns in `pegasusX` and logically adapt/port them into `pegasus.x` using the PostgreSQL 16 + Redis 7 stack.
-   - **Active Primary Focus**: Full Fleet & Driver Management lifecycle (Vehicles/Trucks, Drivers, Dynamic Daily Shift Pairing, Mid-Shift Hot-Swapping, Pre-trip Vehicle Inspections [DVIR]) ported into `pegasus.x`.
-
-4. **`pegasus/` Status**:
+3. **`pegasus/` Status**:
    - Strictly a **read-only historical reference**. Never add new code, create plans, or ship production features from `pegasus/`.
 
 ---
 
-## 3. Big Tech Engineering Rigor & Truth Protocol
-
-Follow Google and Microsoft monorepo engineering disciplines:
-
-### Live Code is the Only Status Source of Truth
-- Repository source code and passing automated tests (`go test -v -race ./...`) are the **sole Source of Truth (SoT)**.
-- Documentation, architecture diagrams, roadmap plans, and matrices labeled "Wired" are **hypotheses** that must be continuously re-verified against live code.
-- Never claim a feature is **"wired"**, **"done"**, **"implemented"**, or **"production-ready"** without providing verifiable `file:line` citations and executing passing automated test suites.
-
-### Zero Mock Data Policy
-- Zero mock data, in-memory repository fallbacks, or static fake seeds in production packages.
-- All domain data must be dynamically persisted in PostgreSQL 16 (for `pegasus.x`) or Google Cloud Spanner (for `pegasusX`).
-- Fallback in-memory stubs (e.g. `MemoryRepository`) in production code are treated as critical defects and must be purged.
-
-### Strict Currency & Minor Unit Arithmetic
-- All money, pricing, fees, margins, discounts, and payments must be calculated and stored strictly in **64-bit integer minor units** (`tiyins` for UZS, `cents` for USD).
-- **Floating-point arithmetic for currency is strictly prohibited** (`float32`, `float64`).
-- Double-entry general ledger invariant: For every financial transaction, `Total Debits == Total Credits`.
-
-### Two-Tier Verification Gate (Mandatory on Every Edit)
-1. **Tier 1 — Bazel/Kythe Dynamic CodeGraph (Global Radar)**:
-   - Run before touching code to identify the mathematical blast radius, reverse dependencies, and taint violations:
-   - Kythe/CodeGraph callers: `python3 pegasusX/scripts/advanced_codegraph_analyzer.py --blast-radius <symbol> --depth 3 --json`
-   - Bazel affected test targets: `python3 pegasusX/scripts/bazel_target_graph.py --query-rdeps <target>`
-2. **Tier 2 — Targeted Raw Reading (Local Microscope)**:
-   - Never rely on the graph alone. Open and raw-read the exact files identified in Tier 1:
-   - Verify runtime conditionals (`if err != nil`, guard clauses, feature flags).
-   - Verify transaction boundaries (`pgx.Tx` / `RunInTx` in `pegasus.x`, `spanner.ReadWriteTransaction` in `pegasusX`).
-   - Re-read every edit after writing to ensure zero contract drift or unhandled side-effects.
-3. **Execution & Regression Testing**:
-   - Immediately execute relevant test suites (`go test -v -race ./...`). If tests fail, replan and remediate immediately.
-
----
-
-## 4. Web Search & Knowledge Sourcing Protocol
-
-### What to Touch in the Codebase
-- Touch only files within the active target system (`pegasus.x/` for sovereign, `pegasusX/` for global cloud).
-- Implement complete vertical slices: Database migration → Domain models → Repository → Service → Handler/Router → Outbox Event → Client UI. Never leave orphan endpoints or unwired clients.
-
-### When to Search the Web
-Always proactively search the web when:
-1. **Statutory & Regulatory Rules**: Uzbekistan Soliq OFD/EHF fiscalization APIs, 12% VAT calculations, 25M UZS B2B cash payment limits, 17-digit MXIK product classification codes, 9-digit STIR/INN formats.
-2. **Standard Algorithms & Mathematics**: GS1 Mod-10 barcode check digit math, Haversine/Vincenty geofence distance calculation, Uber H3 spatial indexing (Res-7), Croston-SBA intermittent demand forecasting, Multi-Echelon Inventory Optimization (MEIO), Vehicle Routing Problem (CVRP / OR-Tools).
-3. **Third-Party Gateways & Protocols**: Uzbekistan payment gateway webhook signatures (Payme HMAC-SHA256, Click MD5/SHA1, Global Pay B2B Corporate Card protocols), Telegram Bot API webhook lifecycle, Telegram WebApp Mini App SDK.
-4. **Open-Source Libraries & Best Practices**: Always search for and evaluate well-maintained, high-performance open-source libraries before rolling custom implementations (e.g. `pgx/v5`, `go-chi/chi/v5`, `redis-go`, `uber-go/zap`, `pydantic-v2`, `fastapi`).
-
----
-
-## 5. Skill Selection & Activation Matrix
-
-Use specialized agent skills according to this precise decision matrix:
-
-| Task / Domain | Primary Skill(s) | Usage Objective |
-| :--- | :--- | :--- |
-| **Context Retrieval & Memory** | `graph-retrieval-memory` | Read `.agents/memory/WORKSPACE.md` and query codebase graph via `graph_retrieve.py`. |
-| **Truth & Gap Verification** | `honest-code-gate`, `gap-hunter` | Audit claims against live code; identify missing endpoints, fake mocks, or theatre. |
-| **Blast Radius & CodeGraph** | `codegraph-deep-audit` | Trace callers, reverse dependencies, and cross-package impact before editing. |
-| **Database & Persistence** | `postgresql`, `database-design`, `database-optimizer` | Design PG16 schemas, indexes, JSONB constraints, migration scripts, and query plans. |
-| **Backend & Concurrency** | `golang-pro`, `backend-architect`, `redis-performance` | Go Chi routing, goroutine pools, Redis Streams consumer groups, connection pool sizing. |
-| **Frontend & UI Systems** | `ui-ux-designer`, `tailwind-patterns`, `react-patterns` | Next.js 15 App Router, React 19, Tailwind v4, tactical control tower layouts. |
-| **Desktop & Native Mobile** | `tauri`, `swiftui-pro`, `flutter-expert` | Tauri v2 desktop shells, native Swift/Kotlin driver execution apps. |
-| **Diagnostics & Failures** | `systematic-debugging`, `debugger`, `error-detective` | Isolate test failures, panic traces, race conditions, and deadlocks. |
-| **Security & Cryptography** | `security-auditor`, `financial-integrity` | Webhook signature verification, JWT token claims scoping, double-entry ledger audits. |
-
----
-
-## 6. User Confirmation Protocol (Autonomous vs. Confirmed Actions)
-
-### Proceed Autonomously (DO NOT block or ask for permission):
-- Implementing features according to established project requirements, specs, and plans.
-- Writing, executing, and fixing unit, integration, and end-to-end tests (`go test -v -race`).
-- Creating forward database migrations (`database/migrations/*.sql`) and updating repositories.
-- Refactoring internal code for performance, safety, type correctness, or eliminating mock data.
-- Syncing API contracts and types across role-row clients (desktop, web, mobile, bot).
-- Searching the web for technical documentation, specifications, RFCs, and open-source packages.
-- Running builds, linters, and CodeGraph audits.
-
-### Always Ask User for Confirmation (BLOCK and request input):
-- **Destructive Operations**: Dropping production/staging tables, deleting migrations, truncating columns, or running irreversible data deletion scripts.
-- **Financial & Cloud Spending**: Provisioning paid external cloud resources (e.g. creating real Google Cloud Spanner instances, spinning up GKE Autopilot clusters, provisioning SMS gateways).
-- **Secrets & Legal Credentials**: Entering real production private keys, production banking certificates, or live Soliq tax authority API credentials.
-- **Ambiguous Business Decisions**: Fundamental conflicts in product business rules where multiple commercially valid paths exist without clear project specification.
-
----
-
-## 7. Distributed Systems & Core Technical Architecture
+## 6. High-Performance Distributed Systems & Reliability Engineering
 
 Every feature in the ecosystem must be designed for enterprise scalability, resilience, and high concurrency:
 
-### Distributed Messaging & Event Streaming
-- **`pegasus.x` (Redis Streams)**:
-  - Events produced via `XADD` into topic-specific streams (e.g. `events:order`, `events:fleet`, `events:inventory`).
-  - Consumer groups (`XREADGROUP`) with dedicated consumer names, ACK processing (`XACK`), and PEL inspection for abandoned message claiming.
-  - Partition key: Always aggregate root ID (e.g. `order_id`, `driver_id`) to preserve strict per-entity FIFO ordering.
-- **`pegasusX` (Apache Kafka)**:
-  - Topics partitioned by aggregate root key; `RequiredAcks=all` (wait for all in-sync replicas).
-  - Consumer group concurrency tuned to partition count (`GOMAXPROCS` bounded).
+### Stripe-Grade Idempotency Architecture
+- Mutating endpoints (`POST`, `PUT`, `PATCH`) must support client-generated idempotency keys (`Idempotency-Key` HTTP header / UUIDv4).
+- The idempotency layer caches the full response code, headers, and payload for a configurable TTL (e.g. 24 hours).
+- Concurrent identical requests must resolve safely without double execution (first request acquires distributed lock; second waits or returns conflict).
 
-### Transactional Outbox Pattern & CDC
-- State transitions MUST write the domain entity mutation AND the outbox record in the **EXACT SAME database transaction** (`pgx.Tx` in PostgreSQL 16; `spanner.ReadWriteTransaction` in Spanner).
-- An outbox relay worker polls unpublished events with `FOR UPDATE SKIP LOCKED`, emits to the streaming bus (Redis Streams / Kafka), and marks `published_at = NOW()` on successful broker ACK.
-- Prevents dual-write hazards and ghost state transitions.
+### Google SRE NALSD (Non-Abstract Large System Design)
+- **Physical Capacity & Constraints**: Explicitly design around CPU, memory, network throughput, disk IOPS, and connection pool limits.
+- **Graceful Degradation**: When under extreme load, degrade gracefully (serve cached read models, drop optional telemetry, prioritize checkout/delivery handshakes over analytics).
+- **Circuit Breaking & Backpressure**: Use circuit breakers with exponential backoff and jitter on all outbound HTTP calls. Implement Priority Guard middleware: return HTTP 503 + `Retry-After` under severe connection pool pressure rather than stalling databases.
+- **Workload Isolation (Amazon Shuffle Sharding)**: Isolate high-throughput tenants or noisy neighbors into partitioned shards to prevent single-point blast radius contagion.
 
 ### Connection Pooling & Concurrency Resilience
-- **PostgreSQL `pgxpool`**:
+- **PostgreSQL `pgxpool` Standards**:
   - `MaxConns: 25`, `MinConns: 5`, `MaxConnLifetime: 1 * time.Hour`, `MaxConnIdleTime: 15 * time.Minute`, `HealthCheckPeriod: 1 * time.Minute`.
-- **Rate Limiting & Load Shedding**:
-  - Distributed token-bucket rate limiter in Redis for API endpoints.
-  - Priority Guard middleware: shed non-critical traffic under high connection pool utilization (HTTP 503 + `Retry-After`) rather than stalling PostgreSQL or Spanner.
-  - Circuit breakers with exponential backoff and jitter on all third-party outbound HTTP integrations.
+- **Atomic Concurrency Controls**:
+  - Use `FOR UPDATE SKIP LOCKED` for worker queues and outbox polling to prevent lock contention across multiple replicas.
+  - Use advisory locks (`pg_try_advisory_xact_lock`) or Redis distributed locks with TTL and monotonic ownership tokens for critical single-instance jobs (e.g. smart dispatch solver).
 
 ---
 
-## 8. Third-Party Integrations & Statutory Compliance
+## 7. Adversarial Red Team Security & Cryptographic Integrity
 
-### Uzbekistan Tax & Fiscalization (Soliq OFD / EHF)
-- **VAT Rate**: Statutory 12% VAT applied to taxable goods.
-- **B2B Cash Limit**: Statutory limit of **25,000,000 UZS** per cash transaction for B2B wholesale trade. Orders exceeding this limit must use bank transfer, corporate card, or split billing.
-- **MXIK Code**: Mandatory 17-digit national product classification code (`Tasnif` commodity code).
-- **STIR / INN**: Mandatory 9-digit taxpayer identification number for suppliers and corporate retailers. Unique index in database.
-- **E-Factura**: Electronic invoice generation and signing (PKCS#7 / Soliq EHF).
+### Zero Trust & Defense-in-Depth
+- Every request, RPC, and internal message must be authenticated, authorized, and cryptographically verified. Never trust network boundaries.
+- Input validation: Strict schema parsing at ingress boundaries (Zod for TypeScript, Pydantic for Python, strict struct unmarshaling with field tags in Go).
 
-### Barcodes & Packaging Standards
-- **GS1 EAN-13 Barcodes**: 13-digit standard retail barcodes with Mod-10 check digit algorithm.
-- Multi-pack hierarchy: Unit Barcode → Case Barcode (ITF-14 / GS1-128) → Pallet SSCC-18.
-
-### Payment Gateways
-- **Payme & Click**: Webhook signature verification (HMAC-SHA256 for Payme, Click MD5/SHA1 secret hashing) evaluated **before** body parsing and DB queries.
-- **Global Pay**: Corporate B2B card gateway supporting Uzcard and Humo corporate cards with BIN-level validation.
-- **Cash on Delivery**: Gated by driver geofence and cash drawer limits.
-
-### Communications & Geospatial
-- **Telegram Bot API & MiniApp**: Webhook-based updates, inline query catalogs, WebApp SDK authorization header verification (`initData` HMAC validation with bot token).
-- **Geospatial & Geofencing**: Uber H3 Resolution 7 cells (~1.22 km edge) for regional demand aggregation, haversine distance verification for delivery completion geofences (< 150 meters).
+### Webhook & Gateway Security
+- **Payme**: HMAC-SHA256 signature verification evaluated **before** body parsing and database lookups.
+- **Click**: MD5/SHA1 secret hashing verified **before** request execution.
+- **Telegram MiniApp**: Complete `initData` validation using HMAC-SHA256 with the bot secret token. Reject expired auth timestamps (> 24 hours).
+- **Constant-Time Comparison**: Use constant-time comparison (`crypto/subtle.ConstantTimeCompare`) for all HMAC, token, and password hash validations to prevent timing attacks.
 
 ---
 
-## 9. Strict UI/UX Design System (Tactical Monolithic Control Tower)
+## 8. Statutory & Regulatory Rules (Uzbekistan FMCG / B2B)
+
+### Fiscalization & Tax Compliance (Soliq OFD / EHF)
+- **Currency Arithmetic**: Strict 64-bit integer tiyin minor unit arithmetic (`int64`). Floating-point arithmetic for currency is strictly prohibited (`float32`, `float64`).
+- **VAT Calculation**: Statutory 12% VAT applied to taxable items using standard integer round-half-up math (`(price * 12 + 50) / 100`).
+- **MXIK Codes**: Mandatory 17-digit national commodity classification code (`Tasnif` commodity code).
+- **STIR / INN**: Mandatory 9-digit taxpayer identification number for suppliers and retailers. Unique index in database.
+- **E-Factura**: Electronic invoice generation, PKCS#7 signing, and fiscal QR receipt generation.
+- **B2B Payment Settlement**: Support Cash on Delivery (with driver drawer limit tracking and depot vault drop rituals), Corporate Cards (Uzcard/Humo B2B via Global Pay), and Bank Direct Invoicing.
+
+### Physical Logistics & Packaging Standards
+- **GS1 EAN-13 Barcodes**: 13-digit standard retail barcodes verified via Mod-10 check digit algorithm.
+- **Multi-Pack Hierarchy**: Unit Barcode (EAN-13) → Case Barcode (ITF-14 / GS1-128) → Pallet SSCC-18.
+- **Longitudinal Axle Weight Physics (3L-CVRP)**:
+  - Static longitudinal moments: $W_{\text{steer}} = W_{\text{curb,steer}} + \sum \frac{w_i (L - x_i)}{L}$, $W_{\text{drive}} = W_{\text{curb,drive}} + \sum \frac{w_i x_i}{L}$.
+  - Statutory 11,500 kg single axle weight limit; minimum 20% steer axle tractive ratio.
+  - Manual supervisor override workflow: 4-digit supervisor PIN / 14-digit PINFL recorded with reason code and digital bolt seal serial.
+
+---
+
+## 9. Tactical UI/UX Control Tower Design System
 
 All client surfaces (desktop, web portals, mobile apps) must strictly follow the V.O.I.D. Tactical Design System:
 
@@ -230,33 +228,59 @@ All client surfaces (desktop, web portals, mobile apps) must strictly follow the
 
 ---
 
-## 10. Non-Technical & Supply Chain Operational Workflows
+## 10. Skill Selection & Activation Matrix
 
-1. **Supplier Onboarding & Catalog**:
-   - 3-step non-bypassable onboarding: STIR legal deduplication → Product Catalog (MXIK, EAN-13, VAT, tiyin pricing) → Payment Gateway configuration (Cash + Global Pay corporate card).
-   - Gate middleware: `RequireSupplierOnboardingCompleted` blocks operational endpoints (HTTP 428 Precondition Required) until onboarding completes.
+Use specialized agent skills according to this precise decision matrix:
 
-2. **Fleet & Driver Daily Shift Operations**:
-   - **Clock-In & Vehicle Pairing**: Driver clocks in via mobile app; pairs with assigned vehicle for the daily shift.
-   - **Pre-Trip DVIR Inspection**: Driver must complete and sign pre-trip Driver Vehicle Inspection Report (brakes, tires, lights, cold-chain temperature). Defects prevent dispatch.
-   - **Mid-Shift Hot-Swapping**: In the event of mechanical breakdown or accident, dispatcher or driver initiates vehicle hot-swap, transferring active route and loaded orders to a backup vehicle without canceling orders.
-   - **Geofenced Handover & Epod**: Driver executes route stops, validates doorstep geofence (< 150m), records retailer signature/photo (ePoD), collects cash or card payment, and triggers statutory fiscalization receipt.
-
-3. **Warehouse & Dock Bay Operations**:
-   - Warehouse loading dock bay scheduling, inbound factory payload bulk transfer receipt, cross-dock wave generation, and delivery manifest compilation.
+| Task / Domain | Primary Skill(s) | Usage Objective |
+| :--- | :--- | :--- |
+| **Context Retrieval & Memory** | `graph-retrieval-memory` | Read `.agents/memory/WORKSPACE.md` and query codebase graph via `graph_retrieve.py`. |
+| **Truth & Gap Verification** | `honest-code-gate`, `gap-hunter` | Audit claims against live code; identify missing endpoints, fake mocks, or theatre. |
+| **Blast Radius & CodeGraph** | `codegraph-deep-audit` | Trace callers, reverse dependencies, and cross-package impact before editing. |
+| **Database & Persistence** | `postgresql`, `database-design`, `database-optimizer` | Design PG16 schemas, indexes, JSONB constraints, migration scripts, and query plans. |
+| **Backend & Concurrency** | `golang-pro`, `backend-architect`, `redis-performance` | Go Chi routing, goroutine pools, Redis Streams consumer groups, connection pool sizing. |
+| **Frontend & UI Systems** | `ui-ux-designer`, `tailwind-patterns`, `react-patterns` | Next.js 15 App Router, React 19, Tailwind v4, tactical control tower layouts. |
+| **Desktop & Native Mobile** | `tauri`, `swiftui-pro`, `flutter-expert` | Tauri v2 desktop shells, native Swift/Kotlin driver execution apps. |
+| **Diagnostics & Failures** | `systematic-debugging`, `debugger`, `error-detective` | Isolate test failures, panic traces, race conditions, and deadlocks. |
+| **Security & Cryptography** | `security-auditor`, `financial-integrity` | Webhook signature verification, JWT token claims scoping, double-entry ledger audits. |
 
 ---
 
-## 11. Verification Checklist for Every Proposed Change
+## 11. User Confirmation Protocol (Autonomous vs. Confirmed Actions)
 
-Before declaring any task or phase complete, verify each step:
+### Proceed Autonomously (DO NOT block or ask for permission):
+- Implementing features according to established project requirements, specs, and plans.
+- Writing, executing, and fixing unit, integration, and end-to-end tests (`go test -v -race`).
+- Creating forward database migrations (`database/migrations/*.sql`) and updating repositories.
+- Refactoring internal code for performance, safety, type correctness, or eliminating mock data.
+- Deep architectural rewrites to replace naive CRUD with enterprise-grade state machines.
+- Syncing API contracts and types across role-row clients (desktop, web, mobile, bot).
+- Searching the web for technical documentation, specifications, RFCs, and open-source packages.
+- Running builds, linters, and CodeGraph audits.
 
-- [ ] Target codebase identified (`pegasus.x` vs `pegasusX`); zero cross-contamination.
-- [ ] Tier 1 CodeGraph blast radius & callers analyzed.
-- [ ] Tier 2 Raw Reading performed: transaction closures, guard clauses, error handling verified.
-- [ ] Zero mock data: all domain data dynamically persisted in PostgreSQL 16 or Spanner.
-- [ ] Strict 64-bit integer minor unit arithmetic used for all financial fields (`tiyins`/`cents`).
-- [ ] Outbox mutation paired atomically in the same database transaction as entity write.
-- [ ] Role-row client parity verified: all clients for the role updated with identical contract.
-- [ ] Automated tests executed and passing cleanly (`go test -v -race ./...`).
-- [ ] Live code matches claimed status; zero unverified claims of "wired" or "done".
+### Always Ask User for Confirmation (BLOCK and request input):
+- **Destructive Operations**: Dropping production/staging tables, deleting migrations, truncating columns, or running irreversible data deletion scripts.
+- **Financial & Cloud Spending**: Provisioning paid external cloud resources (e.g. creating real Google Cloud Spanner instances, spinning up GKE Autopilot clusters, provisioning SMS gateways).
+- **Secrets & Legal Credentials**: Entering real production private keys, production banking certificates, or live Soliq tax authority API credentials.
+- **Ambiguous Business Decisions**: Fundamental conflicts in product business rules where multiple commercially valid paths exist without clear project specification.
+
+---
+
+## 12. The 14-Point Pre-Completion Verification Gate
+
+Before declaring ANY task, feature, or phase complete, verify each step:
+
+- [ ] **Target Codebase Verified**: Active target confirmed (`pegasus.x` vs `pegasusX`); zero cross-contamination.
+- [ ] **Pre-Edit Web & Literature Search Done**: Industry standards, RFCs, and open-source algorithms researched.
+- [ ] **Dual-Domain Brainstorming Complete**: Both technical and non-technical edge cases addressed.
+- [ ] **Zero Naive CRUD**: All mutations guarded by state machines, invariants, and transaction closures.
+- [ ] **Zero Mock Data Policy**: Zero fake seeds, in-memory stubs, or placeholder mocks in production packages.
+- [ ] **Strict Integer Minor Units**: All money/pricing stored in 64-bit integer tiyins (`int64`); zero floats.
+- [ ] **Atomic Transactional Outbox**: Entity state and outbox event committed in the exact same transaction.
+- [ ] **Monotonic Real-Time Pipeline**: Events flow through streams; WebSocket sequence IDs prevent desync.
+- [ ] **Cross-Role Parity & Interlock**: Upstream and downstream roles updated; zero orphaned endpoints.
+- [ ] **Role-Row Client Symmetry**: Web, desktop, and mobile clients updated with identical contracts.
+- [ ] **Adversarial Security**: Constant-time comparisons, webhook signatures, idempotency tokens verified.
+- [ ] **CodeGraph Blast Radius Verified**: Reverse dependencies traced and verified without contract drift.
+- [ ] **Automated Tests Passing**: Full test suite passes cleanly with race detector (`go test -v -race ./...`).
+- [ ] **Live Code Matches Claims**: File and line citations verified; zero unverified claims of "done".
