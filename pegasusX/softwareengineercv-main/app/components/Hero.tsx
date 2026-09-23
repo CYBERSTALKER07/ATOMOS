@@ -101,10 +101,10 @@ export default function Hero() {
    className="min-h-screen relative flex flex-col justify-end bg-[#000000] overflow-hidden"
   >
    {/* ── Video Background ── */}
-   <div className="absolute inset-0 z-0">
+   <div className="absolute inset-0 z-0 bg-black">
    <video
     ref={videoRef}
-    className="absolute inset-0 w-full h-full object-cover"
+    className="absolute inset-0 w-full h-full object-cover opacity-40 transition-opacity duration-700"
     src="/videos/hero-bg.mp4"
     muted
     loop
