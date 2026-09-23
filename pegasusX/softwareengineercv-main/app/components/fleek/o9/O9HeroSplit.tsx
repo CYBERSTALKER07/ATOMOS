@@ -34,7 +34,7 @@ export default function O9HeroSplit({
  primaryHref = '/join',
  primaryLabel = 'REQUEST DEMO',
  secondaryHref,
- secondaryLabel = 'EXPLORE STACK',
+ secondaryLabel = 'TAKE PLATFORM TOUR',
  proofItems = DEFAULT_PROOF,
  showProofStrip = true,
 }: O9HeroSplitProps) {

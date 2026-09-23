@@ -248,9 +248,8 @@ export default function TopicCanvas({ slug }: { slug: string }) {
   const visual = getTopicImage(slug);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] lg:min-h-[640px] xl:min-h-[700px] bg-[#030303] overflow-hidden flex items-center justify-center group select-none">
-      {/* Background Generated Image */}
-      <div className="absolute inset-0 transition-transform duration-1000 ease-out group-hover:scale-105">
+    <div className="relative w-full h-full min-h-[380px] lg:min-h-[480px] bg-[#050505] overflow-hidden flex items-center justify-center group select-none">
+      <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
         <Image
           src={visual.src}
           alt={visual.alt}
@@ -260,35 +259,6 @@ export default function TopicCanvas({ slug }: { slug: string }) {
           className="object-cover object-center"
         />
       </div>
-
-      {/* Cinematic Vignettes & Edges */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-black/20 to-black/40 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-transparent to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-
-      {/* Subtle Grid Lines Overlay for Brutalist Aesthetic */}
-      <div
-        className="absolute inset-0 opacity-[0.07] pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)]"
-        style={{ backgroundSize: '24px 24px' }}
-      />
-
-      {/* Tech HUD Metadata Badges */}
-      <div className="absolute top-6 left-6 z-20 flex items-center space-x-2">
-        <div className="w-1.5 h-1.5 bg-white animate-pulse" />
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/90 bg-black/70 px-2.5 py-1 backdrop-blur-md border border-white/15">
-          {visual.badge}
-        </span>
-      </div>
-
-      <div className="absolute bottom-6 right-6 z-20">
-        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/70 bg-black/70 px-2.5 py-1 backdrop-blur-md border border-white/15">
-          {visual.metrics}
-        </span>
-      </div>
-
-      {/* Corner Tech Brackets */}
-      <div className="absolute top-4 right-4 w-3 h-3 border-t border-r border-white/30 pointer-events-none" />
-      <div className="absolute bottom-4 left-4 w-3 h-3 border-b border-l border-white/30 pointer-events-none" />
     </div>
   );
 }
