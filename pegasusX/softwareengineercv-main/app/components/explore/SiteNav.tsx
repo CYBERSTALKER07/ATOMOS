@@ -25,8 +25,8 @@ function SiteNav({ activeHref }: SiteNavProps) {
  categories={categories}
  items={EMPTY_ITEMS}
  activeHref={activeHref}
- baseColor="transparent"
- pillColor="transparent"
+ baseColor="#000000"
+ pillColor="#000000"
  hoveredPillTextColor="#000000"
  pillTextColor="#ffffff"
  />

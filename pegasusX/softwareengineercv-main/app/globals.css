@@ -1838,9 +1838,7 @@ a.editorial-card--interactive:hover .editorial-btn,
  position: fixed;
  inset: 0;
  z-index: 10001;
- background: rgba(0, 0, 0, 0.70);
- backdrop-filter: blur(24px) saturate(160%);
- -webkit-backdrop-filter: blur(24px) saturate(160%);
+ background: #000;
  color: #fff;
  display: flex;
  flex-direction: column;
@@ -6837,9 +6835,7 @@ html.light .lane-divider__label,
 /* MegaMenu in Light Mode */
 html.light .mega-menu,
 [data-theme="light"] .mega-menu {
- background: rgba(255, 255, 255, 0.75) !important;
- backdrop-filter: blur(24px) saturate(160%);
- -webkit-backdrop-filter: blur(24px) saturate(160%);
+ background: #FFFFFF !important;
  color: #09090B !important;
 }
 
