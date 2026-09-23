@@ -40,13 +40,9 @@ export default function Hero() {
 
    const timeline = gsap.timeline({ defaults: { ease: 'pegasus' } });
 
+   gsap.set(titleRef.current, { opacity: 1, y: 0 });
+
    timeline
-    .fromTo(
-     titleRef.current,
-     { opacity: 0.8, y: 12 },
-     { opacity: 1, y: 0, duration: 0.35 },
-     0
-    )
     .fromTo(
      subtitleRef.current,
      { opacity: 0, y: 16 },
@@ -120,17 +116,17 @@ export default function Hero() {
      <span className="sr-only">{t('hero_title')}</span>
      <ParticleText
       text="Pegasus"
-      particleSize={2.4}
-      density={4}
+      particleSize={2.2}
+      density={3.4}
       color="#f8fafc"
       highlightColor="#10B981"
-      scatter={0}
-      gatherDuration={0}
-      stagger={0}
-      pointerRepel={42}
-      repelRadius={120}
-      idleDrift={0.6}
-      trigger="none"
+      scatter={80}
+      gatherDuration={700}
+      stagger={140}
+      pointerRepel={48}
+      repelRadius={125}
+      idleDrift={0.8}
+      trigger="mount"
       fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
       fontWeight={800}
       textAlign="left"
