@@ -41,8 +41,8 @@ const PillNav: React.FC<PillNavProps> = ({
  activeHref,
  className = '',
  ease = 'power3.easeOut',
- baseColor = '#000000',
- pillColor = '#000000',
+ baseColor = 'transparent',
+ pillColor = 'transparent',
  hoverCircleColor,
  hoveredPillTextColor = '#000000',
  pillTextColor = '#ffffff',
@@ -54,8 +54,8 @@ const PillNav: React.FC<PillNavProps> = ({
  const { resolvedTheme } = useTheme();
  const isLight = resolvedTheme === 'light';
 
- const effectiveBaseColor = isLight && (baseColor === '#000000' || baseColor === '#000') ? '#ffffff' : baseColor;
- const effectivePillColor = isLight && (pillColor === '#000000' || pillColor === '#000') ? '#ffffff' : pillColor;
+ const effectiveBaseColor = baseColor ?? 'transparent';
+ const effectivePillColor = pillColor ?? 'transparent';
  const effectiveHoverCircleBg = hoverCircleColor ?? (isLight ? '#000000' : '#ffffff');
  const effectiveHoveredPillTextColor = isLight && (hoveredPillTextColor === '#000000' || hoveredPillTextColor === '#000') ? '#ffffff' : hoveredPillTextColor;
  const effectivePillTextColor = isLight && (pillTextColor === '#ffffff' || pillTextColor === '#fff') ? '#09090b' : (pillTextColor ?? (isLight ? '#09090b' : '#ffffff'));
@@ -321,12 +321,10 @@ const PillNav: React.FC<PillNavProps> = ({
  } as React.CSSProperties;
 
  const basePillClasses =
-  `relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 border transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none ${
-   isLight ? 'border-black/10' : 'border-white/15'
-  }`;
+  'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
 
  const pillStyleBase: React.CSSProperties = {
-  background: 'var(--pill-bg, #000000)',
+  background: 'transparent',
   color: 'var(--pill-text, #ffffff)',
   paddingLeft: 'var(--pill-pad-x)',
   paddingRight: 'var(--pill-pad-x)',
@@ -336,9 +334,9 @@ const PillNav: React.FC<PillNavProps> = ({
  <div
  ref={wrapperRef}
  className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 ${
- isLight
- ? 'bg-white/95 border-b border-black/10 backdrop-blur-md'
- : 'bg-black border-b border-white/10'
+  isLight
+   ? 'bg-white/40 backdrop-blur-xl backdrop-saturate-150'
+   : 'bg-black/40 backdrop-blur-xl backdrop-saturate-150'
  }`}
  onBlur={(e) => {
  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -364,7 +362,7 @@ const PillNav: React.FC<PillNavProps> = ({
  style={{
  width: '64px',
  height: '64px',
- background: isLight ? '#ffffff' : 'var(--base, #000)'
+ background: 'transparent'
  }}
  >
  <img
@@ -380,7 +378,7 @@ const PillNav: React.FC<PillNavProps> = ({
  className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
  style={{
  height: 'var(--nav-h)',
- background: isLight ? '#ffffff' : 'var(--base, #000)'
+ background: 'transparent'
  }}
  >
  <ul
@@ -400,9 +398,8 @@ const PillNav: React.FC<PillNavProps> = ({
 
   const pillStyle: React.CSSProperties = {
    ...pillStyleBase,
-   background: isActive ? (isLight ? '#000000' : '#ffffff') : 'var(--pill-bg, #000000)',
+   background: isActive ? (isLight ? '#000000' : '#ffffff') : 'transparent',
    color: isActive ? (isLight ? '#ffffff' : '#000000') : 'var(--pill-text, #ffffff)',
-   borderColor: isActive ? (isLight ? '#000000' : '#ffffff') : undefined,
   };
 
   const PillContent = (
@@ -507,12 +504,11 @@ const PillNav: React.FC<PillNavProps> = ({
  onClick={toggleMobileMenu}
  aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
  aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
- className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
- isLight
- ? 'border-black text-black hover:bg-black hover:text-white focus-visible:ring-black'
- : 'border-white text-white hover:bg-white hover:text-black focus-visible:ring-white'
- }`}
- >
+ className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+  isLight
+   ? 'text-black hover:bg-black/10 focus-visible:ring-black'
+   : 'text-white hover:bg-white/10 focus-visible:ring-white'
+ }`}>
  <span className="text-sm font-medium tracking-wider">MENU</span>
  <div className="flex flex-col items-center justify-center gap-[4px] w-5">
  <span
@@ -532,9 +528,9 @@ const PillNav: React.FC<PillNavProps> = ({
  <Link
  href="/contact"
  className={`hidden sm:block px-4 py-2 text-sm font-medium tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
- isLight
- ? 'bg-black text-white border border-black hover:bg-zinc-800 focus-visible:ring-black'
- : 'bg-white text-black border border-white hover:bg-gray-200 focus-visible:ring-white'
+  isLight
+   ? 'bg-black text-white hover:bg-zinc-800 focus-visible:ring-black'
+   : 'bg-white text-black hover:bg-gray-200 focus-visible:ring-white'
  }`}
  >
  REQUEST DEMO
@@ -561,8 +557,8 @@ const PillNav: React.FC<PillNavProps> = ({
  {(!showMenuButton && !categories) ? (
  <div
  ref={mobileMenuRef}
- className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none border z-[998] origin-top max-h-[70vh] overflow-y-auto ${
- isLight ? 'border-black/10 bg-white' : 'border-white/10 bg-black'
+ className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none z-[998] origin-top max-h-[70vh] overflow-y-auto ${
+  isLight ? 'bg-white/80 backdrop-blur-2xl' : 'bg-black/80 backdrop-blur-2xl'
  }`}
  style={{
  ...cssVars,

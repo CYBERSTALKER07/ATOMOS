@@ -72,7 +72,7 @@ function NavLink({
  const isExternal = href.startsWith('http');
 
  const content = (
- <div className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] relative w-full h-full overflow-hidden" style={{ clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)' }}>
+ <div className="group flex flex-col justify-between p-5 min-h-[140px] bg-white/[0.05] hover:bg-white/10 backdrop-blur-md relative w-full h-full overflow-hidden" style={{ clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)' }}>
  <div className="absolute inset-0 w-full h-full bg-white origin-left transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1)] z-0" />
  <div className="flex justify-between items-start relative z-10">
  {getIconForFlow(flow)}

@@ -95,7 +95,7 @@ export default function GigaMenuDropdown({
  ref={containerRef}
  onMouseEnter={onMouseEnter}
  onMouseLeave={onMouseLeave}
- className="absolute top-full left-0 right-0 z-50 bg-black border-b border-white/10 overflow-hidden"
+ className="absolute top-full left-0 right-0 z-50 bg-black/75 backdrop-blur-2xl backdrop-saturate-150 border-b border-white/10 overflow-hidden"
  style={{ height: 0 }}
  >
  <div 
@@ -115,7 +115,7 @@ export default function GigaMenuDropdown({
  <Link
  key={`${link.label}-${idx}`}
  href={link.href}
- className="group flex flex-col justify-between p-5 min-h-[140px] bg-[#111] hover:bg-[#222] transition-colors relative"
+ className="group flex flex-col justify-between p-5 min-h-[140px] bg-white/[0.04] hover:bg-white/10 backdrop-blur-md transition-colors relative"
  style={{
  clipPath: 'polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%)'
  }}
@@ -149,7 +149,7 @@ export default function GigaMenuDropdown({
  </div>
  <Link
  href={renderedCategory.viewAllHref}
- className="inline-flex items-center justify-between px-6 py-4 bg-[#111] hover:bg-[#222] text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-none"
+ className="inline-flex items-center justify-between px-6 py-4 bg-white/[0.04] hover:bg-white/10 text-white text-sm font-bold tracking-widest uppercase transition-colors rounded-none"
  >
  {renderedCategory.viewAllLabel || 'Learn More'}
  <span className="ml-4">▼</span>
@@ -166,7 +166,7 @@ export default function GigaMenuDropdown({
  </h2>
  <Link
  href={renderedCategory.promo.primaryHref}
- className="relative h-[400px] bg-gradient-to-br from-[#222] to-[#0a0a0a] rounded-none border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
+ className="relative h-[400px] bg-gradient-to-br from-white/[0.07] to-white/[0.02] backdrop-blur-xl rounded-none border border-white/10 p-8 flex flex-col justify-end overflow-hidden group block hover:border-white/30 transition-colors"
  >
  {/* Subtle background abstract pattern/gradient */}
  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent mix-blend-overlay"></div>
