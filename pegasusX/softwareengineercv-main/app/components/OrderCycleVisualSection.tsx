@@ -1,15 +1,7 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-
-const OrderLifecycleVideo = dynamic(() => import('./lifecycle/OrderLifecycleVideo'), {
- ssr: false,
-});
+import OrderLifecycleVideo from './lifecycle/OrderLifecycleVideo';
 
 export default function OrderCycleVisualSection() {
- return (
- <>
- <OrderLifecycleVideo variant="hero" />
- </>
- );
+  return <OrderLifecycleVideo variant="hero" />;
 }

@@ -909,12 +909,12 @@ a.editorial-card--interactive:hover .editorial-btn,
 .order-lifecycle-video--hero .order-lifecycle-video__pin {
  min-height: auto;
  display: block;
- padding: 3rem 70px 2rem;
+ padding: 2rem 1.25rem;
 }
 
 @media (min-width: 768px) {
  .order-lifecycle-video--hero .order-lifecycle-video__pin {
- padding: 4rem 70px 2rem;
+ padding: 3rem clamp(1.5rem, 5vw, 70px) 2rem;
  }
 }
 

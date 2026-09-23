@@ -14,6 +14,8 @@ export const SITE_IMAGES = {
  fleekHeroNew: '/Gemini_Generated_Image_un3te4un3te4un3t.png',
  /** Driver → storefront handoff (stipple). */
  lastMileDelivery: '/Unknown-11.jpg',
+	/** Autonomous geometric distribution hub and terminal (4K). */
+	geometricTerminal: '/images/building_geometric_4k.jpeg',
 } as const;
 
 /** Rotating editorial cards — supplier, warehouse, retailer, fleet, finance, etc. */
@@ -73,7 +75,7 @@ export const FLEET_SHOWCASE_CAPTIONS = [
 ] as const;
 
 export const HERO_VIDEO_POSTER = SITE_IMAGES.truckTerminal;
-export const ORDER_LIFECYCLE_POSTER = SITE_IMAGES.truckTerminal;
+export const ORDER_LIFECYCLE_POSTER = SITE_IMAGES.geometricTerminal;
 /** Brand mark — nav, footer, and social link previews. */
 export const BRAND_LOGO = '/pegasus.jpg';
 export const OG_IMAGE = BRAND_LOGO;
