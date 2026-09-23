@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 
 export interface ParticleTextProps {
@@ -128,6 +128,7 @@ const ParticleText = ({
  const canvasRef = useRef<HTMLCanvasElement | null>(null);
  const hasTriggeredInViewRef = useRef(false);
  const hasGatheredOnceRef = useRef(false);
+ const [canvasReady, setCanvasReady] = useState(false);
 
  useEffect(() => {
  if (typeof window === 'undefined' || isLowEnd) return undefined;
@@ -441,6 +442,7 @@ const ParticleText = ({
  }
 
  ensureRenderLoop();
+ setCanvasReady(true);
  };
 
  const queueSample = (): void => {
@@ -567,16 +569,46 @@ const ParticleText = ({
  );
  }
 
+ const justifyClass =
+  textAlign === 'center'
+   ? 'justify-center text-center'
+   : textAlign === 'right'
+   ? 'justify-end text-right'
+   : 'justify-start text-left';
+
+ const glowColor = highlightColor || '#ffffff';
+
  return (
- <Tag
- ref={containerRef as any}
- className={`relative block h-full w-full overflow-hidden touch-none ${className}`}
- style={style}
- aria-label={text}
- >
- <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
- <span className="sr-only">{text}</span>
- </Tag>
+  <Tag
+   ref={containerRef as any}
+   className={`relative block h-full w-full overflow-hidden touch-none ${className}`}
+   style={style}
+   aria-label={text}
+  >
+   {/* Instant fallback text rendered on SSR and initial paint */}
+   <span
+    className={`absolute inset-0 flex items-center ${justifyClass} font-black text-white select-none leading-[0.75] tracking-tight transition-opacity duration-300 ${
+     canvasReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    }`}
+    style={{
+     fontSize: typeof fontSize === 'string' ? fontSize : `${fontSize}px`,
+     fontWeight,
+     letterSpacing: letterSpacing || 'normal',
+     filter: glow ? `drop-shadow(0 0 20px ${glowColor})` : undefined
+    }}
+    aria-hidden={canvasReady}
+   >
+    {text}
+   </span>
+   <canvas
+    ref={canvasRef}
+    className={`absolute inset-0 block h-full w-full transition-opacity duration-300 ${
+     canvasReady ? 'opacity-100' : 'opacity-0'
+    }`}
+    aria-hidden="true"
+   />
+   <span className="sr-only">{text}</span>
+  </Tag>
  );
 };
 
