@@ -7,7 +7,6 @@ import { gsap } from 'gsap';
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
 import LanguageSwitcher from './LanguageSwitcher';
-import ThemeSwitcher from './ThemeSwitcher';
 import { useTheme } from '../context/ThemeContext';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
@@ -474,7 +473,7 @@ const PillNav: React.FC<PillNavProps> = ({
  </div>
 
  <div className="shrink-0 ml-auto flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
- <ThemeSwitcher className="mr-0.5 sm:mr-1" />
+ 
  <LanguageSwitcher className="mr-1 sm:mr-2" />
  <button
  ref={hamburgerRef}
