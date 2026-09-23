@@ -143,7 +143,7 @@ function FormattedContent({ text }: { text: string }) {
  const lang = lines[0]?.match(/^[a-zA-Z0-9_-]+$/) ? lines[0] : '';
  const code = lang ? lines.slice(1).join('\n') : lines.join('\n');
  return (
- <div key={idx} className="my-2 border border-white/20 bg-black p-3 font-mono text-xs overflow-x-auto text-zinc-200">
+ <div key={idx} className="my-2 border border-white/20 bg-black p-3 font-mono text-xs overflow-x-auto text-white rounded-xl">
  {lang && <div className="text-[10px] text-zinc-500 uppercase mb-1">{lang}</div>}
  <code>{code}</code>
  </div>
@@ -404,11 +404,11 @@ export default function SiteAssistant() {
  role="dialog"
  aria-label="Pegasus assistant"
  >
- <div className="site-assistant__chat-card rounded-none border border-white/20 bg-black text-white overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
+ <div className="site-assistant__chat-card rounded-3xl border border-white/20 bg-black text-white overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
  {/* Header Bar */}
  <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-black border-b border-white/10 shrink-0">
  <div className="flex items-center gap-2.5 min-w-0">
- <div className="w-7 h-7 border border-white/20 bg-black flex items-center justify-center shrink-0 p-1">
+ <div className="w-8 h-8 rounded-xl border border-white/20 bg-black flex items-center justify-center shrink-0 p-1.5 overflow-hidden">
  <img src="/pegasus.jpg" alt="Pegasus" className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-110" />
  </div>
  <div className="min-w-0">
@@ -416,7 +416,7 @@ export default function SiteAssistant() {
  <span className="text-xs font-mono font-bold tracking-wider text-white uppercase truncate">
  PEGASUS OS
  </span>
- <span className="text-[9px] font-mono font-semibold px-1 py-0.2 border border-white/20 text-white/70 uppercase">
+ <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white uppercase">
  CORNER
  </span>
  </div>
@@ -440,7 +440,7 @@ export default function SiteAssistant() {
  {/* Open in Separate Window Fullscreen */}
  <button
  type="button"
- className="site-assistant__toggle-fullscreen inline-flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold text-white bg-black border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all cursor-pointer uppercase tracking-wider rounded-none"
+ className="site-assistant__toggle-fullscreen inline-flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold text-white bg-black border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all cursor-pointer uppercase tracking-wider rounded-full"
  title={language === 'ru' ? 'Открыть в отдельном окне на весь экран' : 'Open in separate window fullscreen'}
  onClick={handleExpandToSeparateWindow}
  >
@@ -467,8 +467,8 @@ export default function SiteAssistant() {
  key={msg.id}
  className={`site-assistant__msg ${
  msg.role === 'assistant'
- ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/10 text-[#EDEDED] p-3 text-xs leading-relaxed rounded-none'
- : 'site-assistant__msg--user self-end max-w-[85%] bg-white text-black p-3 text-xs font-medium rounded-none '
+ ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/20 text-white p-3.5 text-xs leading-relaxed rounded-2xl rounded-tl-sm'
+ : 'site-assistant__msg--user self-end max-w-[85%] bg-white text-black p-3.5 text-xs font-medium rounded-2xl rounded-tr-sm shadow-sm'
  }`}
  >
  <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/5">
@@ -504,12 +504,12 @@ export default function SiteAssistant() {
  ))}
 
  {loading && (
- <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/10 text-white p-3 text-xs rounded-none">
+ <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/10 text-white p-3 text-xs rounded-full">
  <div className="flex items-center gap-1.5 mb-1 opacity-60">
  <span className="text-[10px] font-mono font-bold uppercase tracking-wider">PEGASUS INTELLIGENCE</span>
  </div>
  <div className="flex items-center gap-2 text-xs font-mono text-white/70 py-1">
- <span className="w-1.5 h-1.5 rounded-none bg-white" />
+ <span className="w-2 h-2 rounded-full bg-white" />
  <span>{language === 'ru' ? 'Генерация ответа...' : 'Synthesizing telemetry...'}</span>
  </div>
  </div>
@@ -525,13 +525,13 @@ export default function SiteAssistant() {
  {action.dismiss ? (
  <button
  type="button"
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+ className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
  onClick={() => {
  setOpen(false);
  setDismissed(true);
  }}
  >
- <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase">
+ <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase">
  {action.badge}
  </span>
  <span className="text-white/70 truncate flex-1 ml-2">{action.label}</span>
@@ -539,11 +539,11 @@ export default function SiteAssistant() {
  ) : action.prompt ? (
  <button
  type="button"
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+ className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
  disabled={loading}
  onClick={() => void sendPrompt(action.prompt!)}
  >
- <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase shrink-0">
+ <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase shrink-0">
  {action.badge}
  </span>
  <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
@@ -552,10 +552,10 @@ export default function SiteAssistant() {
  ) : (
  <Link
  href={action.href!}
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-none"
+ className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
  onClick={() => setOpen(false)}
  >
- <span className="px-1.5 py-0.5 bg-white text-black font-bold text-[10px] uppercase shrink-0">
+ <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase shrink-0">
  {action.badge}
  </span>
  <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
@@ -576,13 +576,13 @@ export default function SiteAssistant() {
  placeholder={language === 'ru' ? 'Спросите о платформе, ролях, решениях...' : 'Ask about the platform, roles, solutions...'}
  maxLength={2000}
  disabled={loading}
- className="flex-1 bg-black text-white placeholder-white/40 border border-white/20 focus:border-white px-3 py-2 text-xs font-mono rounded-none outline-none"
+ className="flex-1 bg-black text-white placeholder-white/40 border border-white/20 focus:border-white px-3 py-2 text-xs font-mono rounded-full outline-none"
  aria-label={language === 'ru' ? 'Сообщение' : 'Message'}
  />
  <button
  type="submit"
  disabled={loading || !input.trim()}
- className="px-3.5 py-2 bg-white text-black hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer rounded-none shrink-0"
+ className="px-3.5 py-2 bg-white text-black hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer rounded-full shrink-0"
  >
  {language === 'ru' ? 'Ввод' : 'Send'}
  </button>
@@ -596,7 +596,7 @@ export default function SiteAssistant() {
  <button
  ref={launcherRef}
  type="button"
- className={`glowing-squircle-launcher group focus:outline-none ${open ? 'border-white/90 bg-black' : ''}`}
+ className={`glowing-squircle-launcher group focus:outline-none rounded-2xl ${open ? 'border-white/90 bg-black' : ''}`}
  title={open ? (language === 'ru' ? 'Закрыть Pegasus AI (Esc)' : 'Close Pegasus AI Assistant (Esc)') : (language === 'ru' ? 'Открыть Pegasus AI (⌘K)' : 'Open Pegasus AI Assistant (⌘K)')}
  aria-label={open ? 'Close Pegasus AI Assistant' : 'Open Pegasus AI Assistant'}
  onClick={() => setOpen((prev) => !prev)}
@@ -606,7 +606,7 @@ export default function SiteAssistant() {
  ) : (
  <img src="/pegasus.jpg" alt="Pegasus" className="w-5 h-5 sm:w-6 sm:h-6 object-contain transition-transform duration-200 group-hover:scale-110" />
  )}
- <span className="site-assistant__badge" aria-hidden="true">
+ <span className="site-assistant__badge rounded-full" aria-hidden="true">
  {open ? 'ESC' : '⌘K'}
  </span>
  </button>

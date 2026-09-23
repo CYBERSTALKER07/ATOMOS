@@ -371,3 +371,20 @@ Every modified or audited component must be verified with automated test coverag
 - [ ] Full backend test suite passes cleanly with race detector: go test -v -race ./...
 - [ ] Existing scale benchmarks remain 100% passing (1,000-order H3 clustering in <100ms, 100-order dispatch with 0 abandoned orders, fleet breakdown rescue hot-swap).
 
+## 2026-09-23T18:07:53Z
+
+CRITICAL REMEDIATION DIRECTIVE FOR VICTORY AUDIT CERTIFICATION:
+
+The Victory Auditor will run these exact commands from handoff.md:
+1. `grep -rnI --exclude="*_test.go" -E '(Memory.*Repo|memFallback)' internal/` (MUST return 0 matches - PASSED!)
+2. `grep -rnI "inMemoryOrders" internal/order/` (MUST return 0 matches - CURRENTLY FAILING: lines 46, 56, 81, 108, 264, 344, etc. still exist!)
+3. `grep -rnI "vat := (tot \* 12) / 112" internal/retailer/` (MUST return 0 matches - PASSED!)
+4. Constructors fail-closed: `order.NewService` and `credit.NewService` must panic if `pool == nil`.
+5. Eliminate `inMemoryApps`, `inMemoryLines`, `inMemoryDebts` from `internal/credit/service.go`.
+
+For order and credit tests without database:
+- Create `internal/api/order_mock_test.go` and `internal/api/credit_mock_test.go` (or test doubles) and wire them via `server.SetOrderService` / `server.SetCreditService`.
+- Also wire `server.SetEmptiesService`, `server.SetCrossDockService`, `server.SetControlTowerService`, `server.SetCommitmentsService` in `setupTestServer` in `retailer_e2e_test.go` and `supplier_e2e_test.go` so all e2e tests pass.
+
+Ensure `grep -rnI "inMemoryOrders" internal/order/` returns 0 matches!
+
