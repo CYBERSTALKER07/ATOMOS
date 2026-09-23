@@ -216,17 +216,7 @@ function PromptOverlay({
  promptText: string;
  promptTextMobile: string;
 }) {
- const [cursorOn, setCursorOn] = useState(true);
  const showFx = !reducedMotion && !isLowEnd && inView;
-
- useEffect(() => {
- if (reducedMotion) {
- setCursorOn(false);
- return;
- }
- const id = window.setInterval(() => setCursorOn((v) => !v), 530);
- return () => window.clearInterval(id);
- }, [reducedMotion]);
 
  return (
  <div className="relative w-full max-w-[36rem] mx-auto px-4">
@@ -252,10 +242,7 @@ function PromptOverlay({
  {isMobile ? promptTextMobile : promptText}
  {!reducedMotion && (
  <span
- className={cn(
- 'inline-block w-[2px] h-[1em] align-[-0.1em] ml-0.5 bg-white/80',
- cursorOn ? 'opacity-100' : 'opacity-0'
- )}
+ className="inline-block w-[2px] h-[1em] align-[-0.1em] ml-0.5 bg-white/80 animate-[pulse_1s_ease-in-out_infinite]"
  aria-hidden
  />
  )}

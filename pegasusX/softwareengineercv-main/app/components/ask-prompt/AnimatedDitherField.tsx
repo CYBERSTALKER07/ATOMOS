@@ -18,10 +18,53 @@ interface AnimatedDitherFieldProps {
   speed?: number;
 }
 
+interface DitherDot {
+  x: number;
+  y: number;
+  vignette: number;
+  threshold: number; // bayerThreshold * 0.7
+  phase1: number;    // x * 0.045 + y * 0.018
+  phase2: number;    // x * 0.025 + y * 0.05
+}
+
+interface PaletteItem {
+  color: string;
+  radius: number;
+}
+
+const PALETTE_STEPS = 16;
+
+const createPalette = (isLight: boolean): PaletteItem[] => {
+  const baseR = isLight ? 124 : 167;
+  const baseG = isLight ? 58 : 139;
+  const baseB = isLight ? 237 : 250;
+
+  const peakR = isLight ? 99 : 224;
+  const peakG = isLight ? 102 : 231;
+  const peakB = isLight ? 241 : 255;
+
+  const list: PaletteItem[] = [];
+  for (let i = 0; i <= PALETTE_STEPS; i++) {
+    const level = i / PALETTE_STEPS;
+    const alpha = Math.max(0.12, Math.min(0.95, 0.2 + level * 0.75));
+    const radius = 0.75 + level * 0.85;
+
+    const red = Math.round(baseR + (peakR - baseR) * level);
+    const green = Math.round(baseG + (peakG - baseG) * level);
+    const blue = Math.round(baseB + (peakB - baseB) * level);
+
+    list.push({
+      color: `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(2)})`,
+      radius,
+    });
+  }
+  return list;
+};
+
 export default function AnimatedDitherField({
   className = '',
-  dotSpacing = 8,
-  speed = 1.0,
+  dotSpacing = 11,
+  speed = 0.9,
 }: AnimatedDitherFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -51,9 +94,11 @@ export default function AnimatedDitherField({
     let dpr = 1;
     let lastDrawTime = 0;
 
-    const spacing = isMobile ? Math.max(9, dotSpacing) : Math.max(7, dotSpacing);
+    const spacing = isMobile ? Math.max(12, dotSpacing) : Math.max(10, dotSpacing);
+    const palette = createPalette(isLight);
+    let dots: DitherDot[] = [];
 
-    // Responsive canvas sizing with device pixel ratio
+    // Responsive canvas sizing and LUT precomputation
     const updateSize = () => {
       const rect = container.getBoundingClientRect();
       width = Math.max(rect.width, 100);
@@ -66,77 +111,88 @@ export default function AnimatedDitherField({
       canvas.style.height = `${height}px`;
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
 
-    updateSize();
-
-    // Render single frame of animated dither
-    const drawFrame = (timeSeconds: number) => {
-      ctx.clearRect(0, 0, width, height);
-
-      const t = timeSeconds * speed;
-      const mouse = mouseRef.current;
       const cols = Math.ceil(width / spacing);
       const rows = Math.ceil(height / spacing);
-
-      const baseR = isLight ? 124 : 167;
-      const baseG = isLight ? 58 : 139;
-      const baseB = isLight ? 237 : 250;
-
-      const peakR = isLight ? 99 : 224;
-      const peakG = isLight ? 102 : 231;
-      const peakB = isLight ? 241 : 255;
+      const newDots: DitherDot[] = [];
 
       for (let c = 0; c < cols; c++) {
         const x = c * spacing;
         const normX = x / width;
+        const edgeFadeX = Math.sin(Math.PI * Math.min(Math.max(normX, 0), 1));
 
         for (let r = 0; r < rows; r++) {
           const y = r * spacing;
           const normY = y / height;
-
-          // 1. Primary data flow wave: travels left to right
-          const primaryWave = Math.sin(x * 0.045 - t * 2.6 + y * 0.018);
-
-          // 2. Secondary diagonal harmonic shimmer
-          const crossWave = Math.cos(x * 0.025 + y * 0.05 - t * 1.5);
-
-          // 3. Mouse proximity ripple
-          let mouseFactor = 0;
-          if (mouse.active) {
-            const dx = x - mouse.x;
-            const dy = y - mouse.y;
-            const distSq = dx * dx + dy * dy;
-            if (distSq < 10000) {
-              mouseFactor = Math.exp(-distSq / 3200) * 0.55;
-            }
-          }
-
-          // Edge vignette
-          const edgeFadeX = Math.sin(Math.PI * Math.min(Math.max(normX, 0), 1));
           const edgeFadeY = Math.sin(Math.PI * Math.min(Math.max(normY, 0), 1));
           const vignette = Math.pow(edgeFadeX * edgeFadeY, 0.45);
 
-          // Combine wave intensities
-          const rawIntensity = 0.42 + 0.32 * primaryWave + 0.18 * crossWave + mouseFactor;
-          const intensity = Math.max(0, Math.min(1, rawIntensity * vignette));
+          // Discard dots that fade out completely at borders
+          if (vignette < 0.02) continue;
 
-          // 4. Ordered Bayer dither quantization
           const bayerThreshold = BAYER_4X4[c % 4][r % 4];
+          newDots.push({
+            x,
+            y,
+            vignette,
+            threshold: bayerThreshold * 0.7,
+            phase1: x * 0.045 + y * 0.018,
+            phase2: x * 0.025 + y * 0.05,
+          });
+        }
+      }
 
-          if (intensity > bayerThreshold * 0.7) {
-            const level = Math.min(1, (intensity - bayerThreshold * 0.7) / 0.6);
-            const alpha = Math.max(0.12, Math.min(0.95, 0.2 + level * 0.75));
-            const radius = 0.75 + level * 0.85;
+      dots = newDots;
+    };
 
-            const red = Math.round(baseR + (peakR - baseR) * level);
-            const green = Math.round(baseG + (peakG - baseG) * level);
-            const blue = Math.round(baseB + (peakB - baseB) * level);
+    updateSize();
 
-            ctx.fillStyle = `rgba(${red}, ${green}, ${blue}, ${alpha.toFixed(2)})`;
-            // Fast square fill (10x faster than ctx.arc and authentic dither pattern)
-            ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    // Render single frame of animated dither - completely zero allocations in hot loop
+    const drawFrame = (timeSeconds: number) => {
+      ctx.clearRect(0, 0, width, height);
+
+      const t = timeSeconds * speed;
+      const tPhase1 = t * 2.6;
+      const tPhase2 = t * 1.5;
+      const mouse = mouseRef.current;
+      const hasMouse = mouse.active;
+      const mx = mouse.x;
+      const my = mouse.y;
+
+      const len = dots.length;
+      for (let i = 0; i < len; i++) {
+        const dot = dots[i];
+
+        // 1. Primary data flow wave: travels left to right
+        const primaryWave = Math.sin(dot.phase1 - tPhase1);
+
+        // 2. Secondary diagonal harmonic shimmer
+        const crossWave = Math.cos(dot.phase2 - tPhase2);
+
+        // 3. Mouse proximity ripple
+        let mouseFactor = 0;
+        if (hasMouse) {
+          const dx = dot.x - mx;
+          const dy = dot.y - my;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 10000) {
+            mouseFactor = Math.exp(-distSq / 3200) * 0.55;
           }
+        }
+
+        // Combine wave intensities with precomputed static vignette
+        const rawIntensity = 0.42 + 0.32 * primaryWave + 0.18 * crossWave + mouseFactor;
+        const intensity = rawIntensity * dot.vignette;
+
+        // 4. Ordered Bayer dither quantization
+        if (intensity > dot.threshold) {
+          const level = Math.min(1, (intensity - dot.threshold) / 0.6);
+          const step = Math.min(PALETTE_STEPS, Math.max(0, (level * PALETTE_STEPS) | 0));
+          const p = palette[step];
+
+          ctx.fillStyle = p.color;
+          const radius = p.radius;
+          ctx.fillRect(dot.x - radius, dot.y - radius, radius * 2, radius * 2);
         }
       }
     };
@@ -180,6 +236,7 @@ export default function AnimatedDitherField({
 
         if (isVisible && !wasVisible) {
           if (animationFrameId === 0) {
+            lastDrawTime = performance.now();
             animationFrameId = requestAnimationFrame(loop);
           }
         } else if (!isVisible && wasVisible) {

@@ -66,14 +66,29 @@ export default function Hero() {
   return () => ctx.revert();
  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
- // Autoplay video when component mounts
+ // Autoplay video and pause when scrolled out of view to eliminate GPU/CPU decode lag
  useEffect(() => {
   const video = videoRef.current;
-  if (video) {
-   video.play().catch(() => {
-    // Autoplay blocked — silent fallback to poster
-   });
-  }
+  if (!video) return;
+
+  const observer = new IntersectionObserver(
+   ([entry]) => {
+    if (entry?.isIntersecting) {
+     video.play().catch(() => {
+      // Autoplay blocked — silent fallback to poster
+     });
+    } else {
+     video.pause();
+    }
+   },
+   { threshold: 0.05 }
+  );
+
+  observer.observe(video);
+
+  return () => {
+   observer.disconnect();
+  };
  }, []);
 
  const scrollToNext = () => {

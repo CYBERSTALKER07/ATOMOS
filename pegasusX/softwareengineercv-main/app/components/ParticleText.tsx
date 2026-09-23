@@ -144,6 +144,7 @@ const ParticleText = ({
     let width = 0;
     let height = 0;
     let dpr = 1;
+    let isVisible = true;
 
     const pointer = {
       active: false,
@@ -191,6 +192,11 @@ const ParticleText = ({
     };
 
     const render = (now: number): void => {
+      if (!isVisible) {
+        animationFrame = null;
+        return;
+      }
+
       ctx.clearRect(0, 0, width, height);
 
       if (glow && !reducedMotion) {
@@ -253,7 +259,7 @@ const ParticleText = ({
     };
 
     const ensureRenderLoop = (): void => {
-      if (animationFrame === null) {
+      if (isVisible && animationFrame === null) {
         animationFrame = window.requestAnimationFrame(render);
       }
     };
@@ -438,11 +444,31 @@ const ParticleText = ({
 
     const resizeObserver = new ResizeObserver(queueSample);
     resizeObserver.observe(container);
+
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        const wasVisible = isVisible;
+        isVisible = entry?.isIntersecting ?? false;
+
+        if (isVisible && !wasVisible) {
+          ensureRenderLoop();
+        } else if (!isVisible && wasVisible) {
+          if (animationFrame !== null) {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+          }
+        }
+      },
+      { rootMargin: '80px', threshold: 0.05 }
+    );
+    intersectionObserver.observe(container);
+
     void sampleText();
 
     return () => {
       buildId += 1;
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
       reduceMotionQuery?.removeEventListener('change', handleReduceMotionChange);
       canvas.removeEventListener('pointerenter', handlePointerEnter);
       canvas.removeEventListener('pointermove', handlePointerMove);

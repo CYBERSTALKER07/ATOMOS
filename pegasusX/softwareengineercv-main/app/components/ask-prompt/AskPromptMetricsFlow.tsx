@@ -76,9 +76,9 @@ function MetricsPromptBridge({ prompt }: { prompt: string }) {
  {/* Double chevron + animated dither matrix field */}
  <div className="absolute inset-0 flex items-center justify-center overflow-hidden" aria-hidden>
  <div className="relative h-[78%] w-[90%] max-w-[17rem]">
- {/* 60fps Interactive Bayer Dither Field */}
+ {/* Interactive Bayer Dither Field */}
  <div className="absolute inset-0 z-0">
- <AnimatedDitherField dotSpacing={6} speed={1.1} className="w-full h-full" />
+ <AnimatedDitherField dotSpacing={11} speed={0.9} className="w-full h-full" />
  </div>
 
  {/* SVG Chevron Flow Vectors */}
