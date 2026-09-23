@@ -457,11 +457,8 @@ const PillNav: React.FC<PillNavProps> = ({
   onMouseLeave={() => handleLeave(i)}
   onFocus={() => handleEnter(i)}
   onBlur={() => handleLeave(i)}
-  onClick={(e) => {
-  if (categories) {
-  e.preventDefault();
-  setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
-  }
+  onClick={() => {
+    setActiveCategory(null);
   }}
   >
   {PillContent}
@@ -477,11 +474,8 @@ const PillNav: React.FC<PillNavProps> = ({
   onMouseLeave={() => handleLeave(i)}
   onFocus={() => handleEnter(i)}
   onBlur={() => handleLeave(i)}
-  onClick={(e) => {
-  if (categories) {
-  e.preventDefault();
-  setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
-  }
+  onClick={() => {
+    setActiveCategory(null);
   }}
   >
   {PillContent}
