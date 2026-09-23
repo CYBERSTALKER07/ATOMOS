@@ -292,8 +292,8 @@ const ParticleText = ({
       if (!offCtx) return;
 
       const content = String(text || ' ');
-      const maxTextWidth = width * 0.90;
-      const maxTextHeight = height * 0.80;
+      const maxTextWidth = width * 0.98;
+      const maxTextHeight = height * 0.94;
       offCtx.font = font;
       if (letterSpacing && 'letterSpacing' in offCtx) {
         (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
@@ -326,7 +326,7 @@ const ParticleText = ({
       const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
       const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
       const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-      const padding = Math.max(8, Math.ceil(resolvedSize * 0.05));
+      const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
       const textWidth = Math.max(1, left + right);
       const textHeight = Math.max(1, finalAscent + finalDescent);
       const startX = padding + Math.max(0, left);

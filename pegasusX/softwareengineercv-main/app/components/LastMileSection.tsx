@@ -50,7 +50,7 @@ export default function LastMileSection() {
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
         <div ref={imageRef} className="relative order-1 lg:col-span-7">
-          <div className="relative aspect-[3/2] w-full overflow-hidden bg-black border border-white/10">
+          <div className="relative aspect-[3/2] w-full overflow-hidden bg-black">
             <Image
               src={SITE_IMAGES.lastMileDelivery}
               alt={t(
