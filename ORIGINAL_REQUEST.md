@@ -296,3 +296,53 @@ Integrity mode: development
 - [ ] Zero mock data or fallback memory repositories remain in the supplier package.
 - [ ] `go test -v -race ./...` passes across `pegasus.x/backend`.
 
+## 2026-09-23T10:38:17Z
+
+# Teamwork Project Prompt — Codebase Hardening & Enterprise Doctrine Enforcement
+
+Autonomous audit and surgical hardening of the pegasus.x codebase against the Universal Engineering Doctrine (Google Principal Engineer & Limitless Hacker standards). Preserves all battle-tested, high-performance logic while identifying, refactoring, or fully rewriting naive CRUD, in-memory repository fallbacks, floating-point currency arithmetic, and uncoordinated cross-role event pipelines.
+
+Working directory: /Users/shakhzod/Desktop/V.O.I.D/pegasus.x  
+Integrity mode: development  
+
+## Requirements
+
+### R1. Live Code & Architectural Purity Audit
+Conduct an exhaustive, non-destructive audit of all backend packages, route handlers, and domain models against the Universal Engineering Doctrine:
+- Identify any instances of naive CRUD that lack domain state machines, concurrency checks, validation guards, or atomic outbox event emissions.
+- Audit all currency arithmetic to guarantee zero floating-point math, enforcing strict 64-bit integer tiyin minor units (int64).
+- Identify any in-memory repository stubs (MemoryRepository) or fake seeds residing in production packages.
+- If a package or component already functions with enterprise rigor and passes all invariants, leave it untouched.
+
+### R2. Purge In-Memory Repository Fallbacks in Production
+Refactor production packages (internal/consignment, internal/rebate, internal/payout, internal/wmsops) to eliminate silent fallbacks to in-memory repositories:
+- Production constructors (NewService, NewRepository, NewPostgresRepository) must fail closed if the database pool is nil, preventing silent in-memory fallback during DB misconfiguration or connection loss.
+- Move any mock repository implementations strictly into _test.go files for unit testing.
+
+### R3. Cross-Role Real-Time Monotonic Pipeline Parity
+Ensure seamless event interlock across all 7 ecosystem roles (Supplier, Warehouse Admin, Payloader, Dispatcher, Driver, Retailer, Finance):
+- Verify that every mutating state transition pairs the entity state update and the outbox event in the exact same database transaction (pgx.Tx).
+- Verify that the outbox relay polls events (FOR UPDATE SKIP LOCKED) and publishes to Redis 7 Streams (XADD with aggregate root partition keys).
+- Verify that the WebSocket Hub broadcasts monotonic RealtimeEnvelope frames (seq, event_type, type, payload) and that client desktop apps process real-time events without requiring full application refreshes.
+
+### R4. Automated Test Suite & Race Detection Verification
+Every modified or audited component must be verified with automated test coverage:
+- Execute go test -v -race ./... across all backend packages.
+- Zero race conditions, goroutine leaks, or test failures permitted.
+
+## Acceptance Criteria
+
+### Architectural Integrity & Zero Mock Data
+- [ ] Zero MemoryRepository definitions or fallback instantiations in non-test production Go files (internal/consignment/service.go, internal/rebate/service.go, internal/payout/repository.go, internal/wmsops/repository.go).
+- [ ] All production service and repository constructors require a valid *db.Pool and fail closed if nil.
+- [ ] Zero floating-point math used for pricing, invoices, VAT, discounts, or ledger balances (int64 tiyins only).
+
+### Cross-Role Real-Time Pipeline
+- [ ] Every mutating lifecycle endpoint pairs entity state mutation and outbox event write in the exact same pgx.Tx transaction closure.
+- [ ] WebSocket hub broadcasts frames with monotonic sequence numbering (seq) and dual-compatible event_type and type fields.
+- [ ] Desktop applications listen for real-time invalidation and data refresh without requiring manual page reloads.
+
+### Regression & Performance Safety
+- [ ] Full backend test suite passes cleanly with race detector: go test -v -race ./...
+- [ ] Existing scale benchmarks remain 100% passing (1,000-order H3 clustering in <100ms, 100-order dispatch with 0 abandoned orders, fleet breakdown rescue hot-swap).
+
