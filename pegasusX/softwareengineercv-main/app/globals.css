@@ -1263,7 +1263,15 @@ a.editorial-card--interactive:hover .editorial-btn,
  cursor: pointer !important;
  }
 
- /* Instantly hide custom TargetCursor when mouse hovers over any card */
+	/* Instantly hide custom TargetCursor when mouse hovers over navigation, chrome, or cards */
+	body:has(nav:hover) #target-cursor,
+	body:has(header:hover) #target-cursor,
+	body:has(.pill-nav:hover) #target-cursor,
+	body:has([role="navigation"]:hover) #target-cursor,
+	body:has(nav:hover) .target-cursor,
+	body:has(header:hover) .target-cursor,
+	body:has(.pill-nav:hover) .target-cursor,
+	body:has([role="navigation"]:hover) .target-cursor,
  body:has(.editorial-card:hover) #target-cursor,
  body:has(.deployment-card:hover) #target-cursor,
  body:has(#deployment article:hover) #target-cursor,

@@ -48,9 +48,9 @@ export default function LastMileSection() {
   return (
     <PageSection id="last-mile" ref={sectionRef} className="border-t border-white/10 relative">
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-        <div ref={imageRef} className="relative order-1 pl-12 lg:pl-24">
-          <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+        <div ref={imageRef} className="relative order-1 lg:col-span-7">
+          <div className="relative aspect-[3/2] w-full overflow-hidden bg-black border border-white/10">
             <Image
               src={SITE_IMAGES.lastMileDelivery}
               alt={t(
@@ -58,14 +58,14 @@ export default function LastMileSection() {
                 'Driver handing Pegasus packages to a retailer at the door',
               )}
               fill
-              className="object-contain object-center"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 60vw"
               priority={false}
             />
           </div>
         </div>
 
-        <div ref={contentRef} className="order-2 space-y-6 max-w-xl">
+        <div ref={contentRef} className="order-2 space-y-6 max-w-xl lg:col-span-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
             {t('last_mile_eyebrow', 'Delivery')}
           </p>

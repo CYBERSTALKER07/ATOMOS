@@ -79,11 +79,15 @@ export default function Footer() {
  ];
 
  const companyLinks = [
- { name: t('nav_demo'), href: '/join' },
- { name: t('nav_contact'), href: '/contact' },
- { name: t('nav_roles'), href: '/roles' },
- { name: t('nav_modules'), href: '/projects' },
- ];
+    { name: t('footer_about', 'About Pegasus'), href: '/#about' },
+    { name: t('nav_demo'), href: '/join' },
+    { name: t('nav_contact'), href: '/contact' },
+    { name: t('nav_roles'), href: '/roles' },
+    { name: t('nav_modules'), href: '/projects' },
+    { name: t('nav_solutions', 'Solutions'), href: '/solutions' },
+    { name: t('cloud_eco_nav', 'Cloud Ecosystem'), href: '/cloud-ecosystem' },
+    { name: t('footer_trust'), href: '/platform/trust-reliability' },
+  ];
 
  const policiesLinks = [
  { name: t('nav_tour'), href: '/platform' },

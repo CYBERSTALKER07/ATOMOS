@@ -390,7 +390,7 @@ const PillNav: React.FC<PillNavProps> = ({
  const PillContent = (
  <>
  <span
- className="hover-circle absolute left-1/2 bottom-0 rounded- z-[1] block pointer-events-none"
+ className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
  style={{
  background: 'var(--base, #000)',
  willChange: 'transform'

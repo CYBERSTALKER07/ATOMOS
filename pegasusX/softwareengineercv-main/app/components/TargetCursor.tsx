@@ -30,7 +30,7 @@ const getContainingBlockOffset = (block: HTMLElement | null): { x: number; y: nu
 };
 
 const CARD_SELECTOR =
- '.editorial-card, .card-hover-action, .deployment-card, .company-card, .stat-card, .bento-card, .chamfer-card, .docs-card, .platform-card, .o9-card, .capability-card, [data-card], [class*="editorial-card"], [class*="card-hover"], #deployment article, #deployment .grid > div, #deployment .grid > *';
+  'nav, header, [role="navigation"], .pill-nav, [data-nav], .editorial-card, .card-hover-action, .deployment-card, .company-card, .stat-card, .bento-card, .chamfer-card, .docs-card, .platform-card, .o9-card, .capability-card, [data-card], [class*="editorial-card"], [class*="card-hover"], #deployment article, #deployment .grid > div, #deployment .grid > *';
 
 export interface TargetCursorProps {
  targetSelector?: string;
@@ -136,7 +136,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  .to(cursor, { rotation: '+=360', duration: spinDuration, ease: 'none' });
  };
 
- createSpinTimeline();
+  // Keep reticle stationary and axis-aligned when idle
+  gsap.set(cursor, { rotation: 0 });
 
  const tickerFn = () => {
  if (!targetCornerPositionsRef.current || !cursorRef.current || !cornersRef.current) {
@@ -200,8 +201,9 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  moveCursor(e.clientX, e.clientY);
 
  const targetEl = e.target as Element | null;
+ const overNavbar = e.clientY < 72 || Boolean(targetEl?.closest('nav, header, .pill-nav, [role="navigation"]'));
  const overCard = Boolean(targetEl?.closest(CARD_SELECTOR));
- if (overCard) {
+ if (overNavbar || overCard) {
  setCursorHidden(true);
  return;
  }
@@ -232,22 +234,31 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  window.addEventListener('blur', windowLeaveHandler);
  window.addEventListener('focus', windowEnterHandler);
 
- const scrollHandler = () => {
- if (!cursorRef.current || lastClientX < 0) return;
- const elementUnderMouse = document.elementFromPoint(lastClientX, lastClientY);
- if (elementUnderMouse?.closest(CARD_SELECTOR)) {
- setCursorHidden(true);
- } else {
- setCursorHidden(false);
- }
- if (!activeTarget) return;
- const isStillOverTarget =
- elementUnderMouse &&
- (elementUnderMouse === activeTarget || elementUnderMouse.closest(targetSelector) === activeTarget);
- if (!isStillOverTarget) {
- currentLeaveHandler?.();
- }
- };
+  let scrollRaf: number | null = null;
+  const scrollHandler = () => {
+    if (!cursorRef.current || lastClientX < 0) return;
+    if (scrollRaf !== null) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null;
+      if (lastClientY < 72) {
+        setCursorHidden(true);
+        return;
+      }
+      const elementUnderMouse = document.elementFromPoint(lastClientX, lastClientY);
+      if (elementUnderMouse?.closest(CARD_SELECTOR)) {
+        setCursorHidden(true);
+      } else {
+        setCursorHidden(false);
+      }
+      if (!activeTarget) return;
+      const isStillOverTarget =
+        elementUnderMouse &&
+        (elementUnderMouse === activeTarget || elementUnderMouse.closest(targetSelector) === activeTarget);
+      if (!isStillOverTarget) {
+        currentLeaveHandler?.();
+      }
+    });
+  };
  window.addEventListener('scroll', scrollHandler, { passive: true });
 
  const mouseDownHandler = () => {
@@ -377,25 +388,10 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  tl.to(corner, { x: positions[index].x, y: positions[index].y, duration: 0.3, ease: 'power3.out' }, 0);
  });
  }
- resumeTimeout = setTimeout(() => {
- if (!activeTarget && cursorRef.current && spinTl.current) {
- const currentRotation = gsap.getProperty(cursorRef.current, 'rotation') as number;
- const normalizedRotation = currentRotation % 360;
- spinTl.current.kill();
- spinTl.current = gsap
- .timeline({ repeat: -1 })
- .to(cursorRef.current, { rotation: '+=360', duration: spinDuration, ease: 'none' });
- gsap.to(cursorRef.current, {
- rotation: normalizedRotation + 360,
- duration: spinDuration * (1 - normalizedRotation / 360),
- ease: 'none',
- onComplete: () => {
- spinTl.current?.restart();
- }
- });
- }
- resumeTimeout = null;
- }, 50);
+      if (cursorRef.current) {
+        gsap.set(cursorRef.current, { rotation: 0 });
+      }
+      resumeTimeout = null;
  cleanupTarget(target);
  };
  currentLeaveHandler = leaveHandler;
@@ -412,6 +408,9 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  return () => {
  if (tickerFnRef.current) {
  gsap.ticker.remove(tickerFnRef.current);
+ }
+ if (scrollRaf !== null) {
+ cancelAnimationFrame(scrollRaf);
  }
  window.removeEventListener('mousemove', moveHandler);
  document.removeEventListener('mouseleave', windowLeaveHandler);
@@ -447,15 +446,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  cursorColorOnTarget
  ]);
 
- useEffect(() => {
- if (isMobile || !cursorRef.current || !spinTl.current) return;
- if (spinTl.current.isActive()) {
- spinTl.current.kill();
- spinTl.current = gsap
- .timeline({ repeat: -1 })
- .to(cursorRef.current, { rotation: '+=360', duration: spinDuration, ease: 'none' });
- }
- }, [spinDuration, isMobile]);
+
 
  if (isMobile) {
  return null;
@@ -465,7 +456,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  <div
  id="target-cursor"
  ref={cursorRef}
- className="target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[9999]"
+ className="target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[10005]"
  style={{ willChange: 'transform' }}
  >
  <div
