@@ -48,11 +48,11 @@ export default function OrderCycleVisualSection() {
   return (
     <section
       ref={sectionRef}
-      className="relative w-full min-h-[580px] sm:min-h-[660px] lg:min-h-[780px] xl:min-h-[860px] flex items-center overflow-hidden bg-black select-none"
+      className="relative w-full aspect-[16/9] min-h-[540px] sm:min-h-[620px] lg:min-h-[720px] max-h-[92vh] flex items-center overflow-hidden bg-black select-none"
       aria-label={isRu ? 'Логистическая сеть Pegasus' : 'Pegasus Logistics Network'}
     >
-      {/* Background Image — 4K Geometric Logistics Architecture (preserves user image) */}
-      <div className="absolute inset-0 z-0 bg-black">
+      {/* Background Image — 4K Geometric Logistics Architecture (Full width edge-to-edge, centered) */}
+      <div className="absolute inset-0 z-0 w-full h-full bg-black">
         <Image
           src={SITE_IMAGES.geometricTerminal}
           alt={
@@ -63,29 +63,26 @@ export default function OrderCycleVisualSection() {
           fill
           priority
           sizes="100vw"
-          className="object-cover object-[28%_center] lg:object-[24%_center]"
+          className="object-cover object-center w-full h-full"
         />
 
-        {/* Atmospheric overlays matching screenshot reference */}
-        {/* Right side gradient for optimal text readability while keeping architecture bright on left */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/50 to-black/90 lg:from-transparent lg:via-black/35 lg:to-black/85 pointer-events-none" />
+        {/* Transparent ambient overlay preserving the entire full-width image from edge to edge */}
+        <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
-        {/* Top edge soft blend into About section */}
-        <div className="absolute inset-x-0 top-0 h-28 sm:h-40 bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
-
-        {/* Bottom edge soft blend into LastMileSection */}
-        <div className="absolute inset-x-0 bottom-0 h-28 sm:h-40 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+        {/* Soft top and bottom edge transitions */}
+        <div className="absolute inset-x-0 top-0 h-24 sm:h-32 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-24 sm:h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
       </div>
 
-      {/* Content Container positioned right as in reference screenshot */}
-      <div className="relative z-20 w-full max-w-[1500px] mx-auto px-6 sm:px-10 lg:px-16 py-20 lg:py-28">
+      {/* Content Container positioned right matching reference screenshot */}
+      <div className="relative z-20 w-full max-w-[1500px] mx-auto px-6 sm:px-10 lg:px-16 py-16 sm:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           <div
             ref={contentRef}
             className="lg:col-span-6 lg:col-start-7 xl:col-span-6 xl:col-start-7 flex flex-col justify-center text-left"
           >
-            {/* Main Headline */}
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] xl:text-[4rem] font-light text-white leading-[1.08] tracking-tight">
+            {/* Main Headline with drop shadow for crisp clarity over the full-width image */}
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] xl:text-[4rem] font-light text-white leading-[1.08] tracking-tight drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)]">
               {isRu ? (
                 <>
                   Логистическая сеть для <br className="hidden sm:inline" />
@@ -100,7 +97,7 @@ export default function OrderCycleVisualSection() {
             </h2>
 
             {/* Subtitle / Description */}
-            <p className="mt-4 sm:mt-6 text-base sm:text-lg lg:text-xl text-white/70 font-light leading-relaxed max-w-lg">
+            <p className="mt-4 sm:mt-6 text-base sm:text-lg lg:text-xl text-white/80 font-light leading-relaxed max-w-lg drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
               {isRu
                 ? 'Объединение визуальной диспетчеризации, телеметрии автопарка и координации шести ролей в единой системе.'
                 : 'Combining visual dispatch, fleet telemetry, and multi-role coordination all under one roof.'}
@@ -110,7 +107,7 @@ export default function OrderCycleVisualSection() {
             <div className="mt-7 sm:mt-9">
               <Link
                 href="/platform"
-                className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 bg-white text-black text-sm sm:text-base font-medium tracking-wide rounded-none hover:bg-zinc-200 transition-colors"
+                className="inline-flex items-center justify-center gap-2.5 px-6 sm:px-7 py-3 sm:py-3.5 bg-white text-black text-sm sm:text-base font-medium tracking-wide rounded-none hover:bg-zinc-200 transition-colors drop-shadow-md"
               >
                 <span>{isRu ? 'Подробнее' : 'Learn More'}</span>
                 <span className="text-base leading-none">›</span>
