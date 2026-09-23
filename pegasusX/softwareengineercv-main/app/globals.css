@@ -1620,7 +1620,7 @@ a.editorial-card--interactive:hover .editorial-btn,
 }
 
 .prompt-dash-prompt-glow {
- animation: prompt-dash-glow 3.5s ease-in-out infinite;
+ box-shadow: 0 0 36px rgba(124, 58, 237, 0.35);
 }
 
 .prompt-dash-live {

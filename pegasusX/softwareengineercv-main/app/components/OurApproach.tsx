@@ -17,7 +17,7 @@ export default function OurApproach() {
  </div>
 
  <div className="flex-1 flex flex-col bg-[#e6e6e6] text-black relative">
- <div className="absolute inset-0 bg-[url('https://framerusercontent.com/images/6mcf62RlDfRfU61Yg5vb2pefpi4.png')] opacity-[0.04] mix-blend-multiply pointer-events-none" />
+ <div className="absolute inset-0 bg-[linear-gradient(to_right,#0000000a_1px,transparent_1px),linear-gradient(to_bottom,#0000000a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
  <div className="relative z-10 flex flex-col h-full w-full max-w-[800px]">
  <div className="p-6 sm:p-8 md:p-12 lg:p-16 border-b border-black/10">

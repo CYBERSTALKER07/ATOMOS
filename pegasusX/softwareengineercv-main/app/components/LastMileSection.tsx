@@ -30,8 +30,7 @@ export default function LastMileSection() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: 'top 78%',
-            toggleActions: 'play none none reverse',
-            fastScrollEnd: true,
+            once: true,
           },
         })
         .fromTo(imageRef.current, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.9, ease: 'pegasus' })

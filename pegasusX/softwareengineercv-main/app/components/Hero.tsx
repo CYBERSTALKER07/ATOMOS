@@ -117,20 +117,21 @@ export default function Hero() {
      <ParticleText
       text="Pegasus"
       particleSize={2.2}
-      density={3.4}
+      density={4}
       color="#f8fafc"
       highlightColor="#10B981"
-      scatter={80}
-      gatherDuration={700}
-      stagger={140}
-      pointerRepel={48}
-      repelRadius={125}
+      scatter={190}
+      gatherDuration={1600}
+      stagger={420}
+      pointerRepel={42}
+      repelRadius={120}
       idleDrift={0.8}
       trigger="mount"
       fontSize="clamp(3.2rem, 6.2vw, 5.8rem)"
       fontWeight={800}
+      fontFamily="inherit"
       textAlign="left"
-      glow={true}
+      glow
      />
      </div>
 
