@@ -92,6 +92,16 @@ const PillNav: React.FC<PillNavProps> = ({
  const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
  const wrapperRef = useRef<HTMLDivElement | null>(null);
  const introPlayedRef = useRef(false);
+ const [isScrolled, setIsScrolled] = useState(false);
+
+ useEffect(() => {
+  const handleScroll = () => {
+   setIsScrolled(window.scrollY > 20);
+  };
+  handleScroll();
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  return () => window.removeEventListener('scroll', handleScroll);
+ }, []);
 
  useEffect(() => {
  function handleClickOutside(event: MouseEvent) {
@@ -323,9 +333,15 @@ const PillNav: React.FC<PillNavProps> = ({
  return (
  <div
  ref={wrapperRef}
- className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 ${
-   'bg-black/20 backdrop-blur-md'
- }`}
+ className={`fixed top-0 left-0 right-0 z-[10002] transition-all duration-300 ${
+   isLight
+    ? isScrolled
+     ? 'bg-white/95 backdrop-blur-md border-b border-black/10 shadow-sm'
+     : 'bg-white/80 backdrop-blur-md'
+    : isScrolled
+     ? 'bg-black/95 backdrop-blur-md border-b border-white/[0.08] shadow-sm'
+     : 'bg-black/75 backdrop-blur-md'
+  }`}
  onBlur={(e) => {
  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
  setActiveCategory(null);

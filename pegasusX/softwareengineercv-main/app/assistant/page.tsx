@@ -59,7 +59,7 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
 
  {/* Tactical Badge */}
  <div className="inline-flex items-center gap-2 px-3 py-0.5 mb-2.5 rounded-full border border-white/20 bg-white/5 text-white font-mono text-[10px] uppercase tracking-wider">
- <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+ <span className="w-1.5 h-1.5 rounded-full bg-white " />
  Pegasus Autonomous Operations AI
  </div>
 
@@ -128,7 +128,7 @@ export default function AssistantPage() {
  </div>
  </div>
  <div className="flex items-center gap-2">
- <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+ <span className="w-2 h-2 rounded-full bg-white " />
  <span className="text-[11px] font-mono text-white/70">GENUI ACTIVE</span>
  </div>
  </header>

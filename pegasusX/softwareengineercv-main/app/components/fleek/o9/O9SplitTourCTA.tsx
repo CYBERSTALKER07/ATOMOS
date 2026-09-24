@@ -68,7 +68,7 @@ export default function O9SplitTourCTA({
             />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent pointer-events-none" />
             <div className="absolute top-4 left-4 z-10 inline-flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               <span className="font-mono text-[10px] sm:text-[11px] tracking-widest text-emerald-400 uppercase bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-1">
                 {t('licensing_demo_tag', 'ENTERPRISE ARCHITECTURE DEMO')}
               </span>

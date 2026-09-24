@@ -63,7 +63,7 @@ export default function BrandingShowcasePage() {
         {/* Intro Header */}
         <div className="space-y-4 max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-xs font-mono tracking-wide">
-            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 " />
             TERAFAB-MATCHED GEOMETRIC BRAND SYSTEM
           </div>
           <h1 className="text-4xl sm:text-5xl font-light tracking-tight text-white">

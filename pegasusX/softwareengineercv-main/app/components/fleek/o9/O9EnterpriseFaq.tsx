@@ -290,7 +290,7 @@ export default function O9EnterpriseFaq({
       {/* Header Eyebrow & Headline */}
       <div className="flex flex-col gap-4 max-w-4xl">
         <div className="inline-flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
           <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-widest text-emerald-600 dark:text-emerald-400 font-medium">
             {resolvedKicker}
           </span>

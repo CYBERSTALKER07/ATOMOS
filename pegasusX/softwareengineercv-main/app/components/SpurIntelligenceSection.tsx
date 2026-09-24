@@ -128,8 +128,8 @@ export default function SpurIntelligenceSection({
  preserveAspectRatio="none"
  className="w-full h-14 sm:h-20 md:h-24 lg:h-28 block"
  >
- {/* Base bottom solid fill matching dark section background (#09090B) */}
- <rect x="0" y="20" width="1024" height="60" fill="#09090B" />
+ {/* Base bottom solid fill matching dark section background (#000000) */}
+ <rect x="0" y="20" width="1024" height="60" fill="#000000" />
 
  {/* Top row (y=0..20): black blocks cutting up into lime canvas */}
  {/* Mid row (y=20..40): lime blocks protruding down into dark base */}
@@ -139,7 +139,7 @@ export default function SpurIntelligenceSection({
  return (
  <g key={i}>
  {top === 1 && (
- <rect x={x.toFixed(2)} y="0" width={w.toFixed(2)} height="20" fill="#09090B" />
+ <rect x={x.toFixed(2)} y="0" width={w.toFixed(2)} height="20" fill="#000000" />
  )}
  {bot === 0 && (
  <rect x={x.toFixed(2)} y="20" width={w.toFixed(2)} height="20" fill="#CEFF00" />
