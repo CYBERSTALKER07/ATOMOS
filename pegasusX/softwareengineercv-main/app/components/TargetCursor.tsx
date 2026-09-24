@@ -48,8 +48,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  hideDefaultCursor = false,
  hoverDuration = 0.2,
  parallaxOn = true,
- cursorColor = '#ffffff',
- cursorColorOnTarget = '#10B981'
+ cursorColor = '#10B981',
+ cursorColorOnTarget = '#B497CF'
 }) => {
  const cursorRef = useRef<HTMLDivElement>(null);
  const cornersRef = useRef<NodeListOf<HTMLDivElement> | null>(null);
@@ -464,28 +464,28 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  <div
  id="target-cursor"
  ref={cursorRef}
- className="target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[10005] opacity-0"
+ className="target-cursor-wrapper target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[2147483647] opacity-0"
  style={{ willChange: 'transform' }}
  >
  <div
  ref={dotRef}
- className="absolute top-1/2 left-1/2 w-1 h-1 rounded-none -translate-x-1/2 -translate-y-1/2"
+ className="target-cursor-dot absolute top-1/2 left-1/2 w-1 h-1 rounded-full -translate-x-1/2 -translate-y-1/2"
  style={{ willChange: 'transform', backgroundColor: cursorColor }}
  />
  <div
- className="target-cursor-corner absolute top-1/2 left-1/2 w-3 h-3 border-[3px] -translate-x-[150%] -translate-y-[150%] border-r-0 border-b-0"
+ className="target-cursor-corner corner-tl absolute top-1/2 left-1/2 w-3 h-3 border-[3px] -translate-x-[150%] -translate-y-[150%] border-r-0 border-b-0"
  style={{ willChange: 'transform', borderColor: cursorColor }}
  />
  <div
- className="target-cursor-corner absolute top-1/2 left-1/2 w-3 h-3 border-[3px] translate-x-1/2 -translate-y-[150%] border-l-0 border-b-0"
+ className="target-cursor-corner corner-tr absolute top-1/2 left-1/2 w-3 h-3 border-[3px] translate-x-1/2 -translate-y-[150%] border-l-0 border-b-0"
  style={{ willChange: 'transform', borderColor: cursorColor }}
  />
  <div
- className="target-cursor-corner absolute top-1/2 left-1/2 w-3 h-3 border-[3px] translate-x-1/2 translate-y-1/2 border-l-0 border-t-0"
+ className="target-cursor-corner corner-br absolute top-1/2 left-1/2 w-3 h-3 border-[3px] translate-x-1/2 translate-y-1/2 border-l-0 border-t-0"
  style={{ willChange: 'transform', borderColor: cursorColor }}
  />
  <div
- className="target-cursor-corner absolute top-1/2 left-1/2 w-3 h-3 border-[3px] -translate-x-[150%] translate-y-1/2 border-r-0 border-t-0"
+ className="target-cursor-corner corner-bl absolute top-1/2 left-1/2 w-3 h-3 border-[3px] -translate-x-[150%] translate-y-1/2 border-r-0 border-t-0"
  style={{ willChange: 'transform', borderColor: cursorColor }}
  />
  </div>

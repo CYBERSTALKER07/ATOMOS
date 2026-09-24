@@ -95,10 +95,12 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
               {allowHoverFx ? (
                 <TargetCursor
-                  targetSelector=".cursor-target, button, a[href], [role='button'], input[type='submit']"
                   spinDuration={2}
-                  cursorColor="#ffffff"
-                  cursorColorOnTarget="#10B981"
+                  hideDefaultCursor
+                  parallaxOn
+                  hoverDuration={0.2}
+                  cursorColor="#10B981"
+                  cursorColorOnTarget="#B497CF"
                 />
               ) : null}
               {children}
