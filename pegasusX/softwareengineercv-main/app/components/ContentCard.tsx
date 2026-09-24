@@ -58,7 +58,7 @@ export function ContentCardButton({
 
   if (href) {
     return (
-      <Link href={href as Route} prefetch={false} className={classes}>
+      <Link href={href as Route} prefetch={true} className={classes}>
         <span className="relative z-10 font-bold">{children}</span>
       </Link>
     );
@@ -80,7 +80,7 @@ export function ContentCardLink({
  className?: string;
 }) {
  return (
- <Link href={href as Route} prefetch={false} className={`editorial-link ${className}`}>
+ <Link href={href as Route} prefetch={true} className={`editorial-link ${className}`}>
  {children}
  </Link>
  );
@@ -338,7 +338,7 @@ function ContentCard({
  useSplitCta && href ? (
  <Link
  href={href as Route}
- prefetch={false}
+ prefetch={true}
  className="editorial-card__media editorial-card__media--linked"
  >
  {mediaInner}
@@ -356,7 +356,7 @@ function ContentCard({
 
  if (href && !useSplitCta) {
  return (
- <Link href={href as Route} prefetch={false} className={shellClass} data-card="editorial">
+ <Link href={href as Route} prefetch={true} className={shellClass} data-card="editorial">
  {inner}
  </Link>
  );

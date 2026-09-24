@@ -110,7 +110,7 @@ function NavLink({
  }
 
  return (
- <Link href={href} className="block w-full h-full" onClick={onNavigate} prefetch={false}>
+ <Link href={href} className="block w-full h-full" onClick={onNavigate} prefetch={true}>
  {content}
  </Link>
  );
@@ -126,7 +126,7 @@ function PromoBlock({ promo, onNavigate }: { promo: MegaNavPromo; onNavigate: ()
  href={promo.primaryHref}
  className="mega-menu__promo-link"
  onClick={onNavigate}
- prefetch={false}
+ prefetch={true}
  >
  {promo.primaryLabel}
  </Link>
@@ -135,7 +135,7 @@ function PromoBlock({ promo, onNavigate }: { promo: MegaNavPromo; onNavigate: ()
  href={promo.secondaryHref}
  className="mega-menu__promo-link"
  onClick={onNavigate}
- prefetch={false}
+ prefetch={true}
  >
  {promo.secondaryLabel}
  </Link>
@@ -345,7 +345,7 @@ export default function MegaMenuOverlay({
  href={activeCategory?.viewAllHref ?? '/projects'}
  className="group relative h-full flex items-center justify-center p-5 min-h-[140px] border border-white/10 rounded-none bg-[#111] hover:bg-[#222] overflow-hidden transition-colors"
  onClick={handleNavigate}
- prefetch={false}
+ prefetch={true}
  >
  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-0">
  {allowHoverFx ? (
@@ -377,7 +377,7 @@ export default function MegaMenuOverlay({
  href={link.href}
  className="mega-menu__footer-link"
  onClick={handleNavigate}
- prefetch={false}
+ prefetch={true}
  >
  {link.label}
  </Link>

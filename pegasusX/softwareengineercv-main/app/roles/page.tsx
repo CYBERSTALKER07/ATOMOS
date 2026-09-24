@@ -7,7 +7,6 @@ import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
 import { FLEET_TRUCK_IMAGES } from '@/app/lib/fleetAssets';
 import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
-import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 function roleImage(index: number): string {
@@ -41,7 +40,7 @@ export default function RolesPage() {
  title={t('roles_hero_title', 'Six roles, one order truth')}
  summary={t('roles_hero_summary', 'Supplier, warehouse, factory, driver, retailer, and payload/gate — features mapped across portal, mobile, and desktop on one shared order record.')}
  heroImageSrc={EDITORIAL_IMAGES[0]}
- proofItems={DEFAULT_PROOF}
+				showProofStrip={false}
  hubId="roles"
  differentiators={differentiators}
  differentiatorsTitle={t('roles_diff_title', 'Tailored logistics for every business role')}

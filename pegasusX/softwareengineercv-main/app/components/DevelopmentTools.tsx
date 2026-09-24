@@ -6,7 +6,6 @@ import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
 import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
-import SectionHeader from './layout/SectionHeader';
 import {
  SiReact,
  SiNextdotjs,
@@ -125,7 +124,6 @@ export default function DevelopmentTools() {
  const { t } = useLanguage();
  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
  const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '0px' });
- const titleRef = useRef<HTMLDivElement>(null);
  const stackRef = useRef<HTMLDivElement>(null);
  const rowsRef = useRef<HTMLDivElement>(null);
  const rafRef = useRef<number | null>(null);
@@ -139,7 +137,7 @@ export default function DevelopmentTools() {
  if (!sectionRef.current) return;
 
  if (isMobile || isLowEnd || prefersReducedMotion) {
- gsap.set([titleRef.current, rowsRef.current], { opacity: 1, y: 0 });
+			if (rowsRef.current) gsap.set(rowsRef.current, { opacity: 1, y: 0 });
  return;
  }
 
@@ -154,7 +152,6 @@ export default function DevelopmentTools() {
  },
  });
 
- timeline.fromTo(titleRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' });
  timeline.fromTo(
  rowsRef.current,
  { opacity: 0, y: 40 },
@@ -227,14 +224,6 @@ export default function DevelopmentTools() {
 
  return (
  <PageSection ref={sectionRef} id="tools">
- <div ref={titleRef}>
- <SectionHeader
- align="center"
- eyebrow={t('tools_eyebrow', 'Under the hood')}
- title={t('tools_title', 'Built to run at network scale')}
- />
-
- </div>
 
  <div
  ref={stackRef}

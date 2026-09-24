@@ -7,11 +7,11 @@ export const SITE_IMAGES = {
  logisticsPlatformUi: '/Unknown-8.jpg',
  deliveryDrone: '/Unknown-9.jpg',
  containerShip: '/EbszSCwA.jpeg',
- terminalArchitecture: '/Gemini_Generated_Image_1y7rbo1y7rbo1y7r.png',
- portCraneScene: '/Gemini_Generated_Image_ngsos5ngsos5ngso.png',
- operationsTeam: '/Gemini_Generated_Image_xvlgisxvlgisxvlg.png',
- warehouseWireframe: '/Gemini_Generated_Image_y7jkmqy7jkmqy7jk.png',
- fleekHeroNew: '/Gemini_Generated_Image_un3te4un3te4un3t.png',
+ terminalArchitecture: '/Gemini_Generated_Image_1y7rbo1y7rbo1y7r.webp',
+ portCraneScene: '/Gemini_Generated_Image_ngsos5ngsos5ngso.webp',
+ operationsTeam: '/Gemini_Generated_Image_xvlgisxvlgisxvlg.webp',
+ warehouseWireframe: '/Gemini_Generated_Image_y7jkmqy7jkmqy7jk.webp',
+ fleekHeroNew: '/Gemini_Generated_Image_un3te4un3te4un3t.webp',
  /** Driver → storefront handoff (stipple). */
  lastMileDelivery: '/Unknown-11.jpg',
 	/** Autonomous geometric distribution hub and terminal (4K). */

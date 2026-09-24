@@ -11,6 +11,7 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 
 import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
+import NavigationProgressBar from './NavigationProgressBar';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
 import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
@@ -32,7 +33,12 @@ interface ClientLayoutProps {
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }) => {
   const pathname = usePathname();
   const isAssistantPage = pathname?.startsWith('/assistant');
-  const { allowHeavyFx, allowHoverFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
+  const { allowHeavyFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
+
+  // Instant scroll-to-top on route navigation
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
 
   useEffect(() => {
     initGSAP(isLowEnd, prefersReducedMotion);
@@ -80,6 +86,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
     <ThemeProvider>
       <LanguageProvider initialLanguage={initialLanguage}>
         <CookieConsentProvider>
+          <NavigationProgressBar />
           {isAssistantPage ? (
             children
           ) : (

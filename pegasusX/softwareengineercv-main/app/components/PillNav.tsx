@@ -354,7 +354,7 @@ const PillNav: React.FC<PillNavProps> = ({
  aria-label="Primary"
  style={cssVars}
  >
- <Link
+ <Link prefetch={true}
  href="/"
  aria-label="Home"
  ref={el => {
@@ -463,7 +463,7 @@ const PillNav: React.FC<PillNavProps> = ({
   {PillContent}
   </a>
   ) : (
-  <Link
+  <Link prefetch={true}
   role="menuitem"
   href={item.href}
   aria-current={isActive ? 'page' : undefined}
@@ -516,7 +516,7 @@ const PillNav: React.FC<PillNavProps> = ({
  />
  </div>
  </button>
- <Link
+ <Link prefetch={true}
  href="/contact"
  className={`hidden sm:block px-4 py-2 text-sm font-medium tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
   isLight
@@ -590,7 +590,7 @@ const PillNav: React.FC<PillNavProps> = ({
  {item.label}
  </a>
  ) : (
- <Link
+ <Link prefetch={true}
  href={item.href}
  className={linkClasses}
  style={defaultStyle}

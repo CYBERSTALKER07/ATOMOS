@@ -1,19 +1,13 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import type { CategoryHub } from '@/app/data/topicPages';
 import { HubTopicGrid } from '@/app/components/page-sections';
 import type { HubLayoutConfig } from '@/app/lib/explore/hubLayouts';
 import { O9FleekPageLayout } from '@/app/components/fleek/o9';
 import FleekPageShell from '@/app/components/fleek/FleekPageShell';
 import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
-import { DEFAULT_PROOF } from '@/app/data/topicContent/helpers';
 import { useLanguage } from '@/app/context/LanguageContext';
 import { getBusinessValueTabs } from '@/app/data/o9FleekDefaults';
-
-const FleetScrollShowcase = dynamic(() => import('@/app/components/fleet/FleetScrollShowcase'), {
-  ssr: false,
-});
 
 type HubLayoutRendererProps = {
   hub: CategoryHub;
@@ -23,19 +17,6 @@ type HubLayoutRendererProps = {
 export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProps) {
   const { language, t } = useLanguage();
   const categoryLabel = t(`nav_${hub.id}`, hub.label);
-
-  const fleetBand =
-    config.showFleetBand && hub.id === 'apps-deploy' ? (
-      <FleetScrollShowcase
-        eyebrow={t('nav_apps-deploy', 'Deploy')}
-        title={t('fleet_showcase_title', 'Fleet-ready on every surface')}
-        subtitle={t(
-          'fleet_showcase_sub',
-          'Warehouse boards, driver missions, and retailer tracking — the same fleet picture whether you deploy portal, mobile, or desktop.'
-        )}
-        learnMoreHref="/apps-deploy/dispatch-fleet"
-      />
-    ) : null;
 
   // Capabilities: forward config.capabilities or map from hub topics
   const defaultCapabilities = hub.topics.map((item, i) => {
@@ -76,7 +57,7 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
         title={config.intro?.title ? t(`hub_${hub.id}_title`, config.intro.title) : categoryLabel}
         summary={config.intro?.body ? t(`hub_${hub.id}_body`, config.intro.body) : `${categoryLabel}`}
         heroImageSrc={EDITORIAL_IMAGES[hub.topics.length % EDITORIAL_IMAGES.length]}
-        proofItems={DEFAULT_PROOF}
+        showProofStrip={false}
         hubId={hub.id}
         differentiators={resolvedDifferentiators}
         differentiatorsTitle={t(`hub_${hub.id}_diff_title`, `Why leaders choose Pegasus ${categoryLabel}`)}
@@ -84,7 +65,6 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
         capabilities={resolvedCapabilities}
         capabilitiesTitle={`${categoryLabel}`}
         faq={resolvedFaq}
-        fleetBand={fleetBand ? <div className="o9-section">{fleetBand}</div> : undefined}
         cta={config.cta}
         showTourCta
         details={

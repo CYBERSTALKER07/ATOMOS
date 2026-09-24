@@ -180,7 +180,7 @@ export default function Footer() {
  <ul className="space-y-4">
  {platformLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
+ <Link prefetch={true} href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
@@ -194,7 +194,7 @@ export default function Footer() {
  <ul className="space-y-4">
  {companyLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
+ <Link prefetch={true} href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
@@ -208,7 +208,7 @@ export default function Footer() {
  <ul className="space-y-4 mb-10">
  {policiesLinks.map(link => (
  <li key={link.name}>
- <Link href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
+ <Link prefetch={true} href={link.href} className="text-white/85 hover:text-white text-sm transition-colors">
  {link.name}
  </Link>
  </li>
@@ -250,7 +250,7 @@ export default function Footer() {
  <div className="py-6 px-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-center text-white/60 text-xs font-mono relative z-10">
  <span>©2026 Pegasus. {t('footer_rights')}</span>
  <span>·</span>
- <Link href="/cookie-policy" className="hover:text-white transition-colors">
+ <Link prefetch={true} href="/cookie-policy" className="hover:text-white transition-colors">
  {t('nav_cookie_policy', 'Cookie Policy')}
  </Link>
  <span>·</span>
