@@ -99,7 +99,7 @@ export default function O9DifferentiatorGrid({
             <article
               key={card.title + i}
               className={cn(
-                'relative p-6 sm:p-8 bg-white dark:bg-black/60 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between shadow-sm dark:shadow-none',
+                'relative p-5 sm:p-7 md:p-8 bg-white dark:bg-black/60 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all duration-300 group flex flex-col justify-between shadow-sm dark:shadow-none',
                 isFeatured && 'md:col-span-2'
               )}
             >
@@ -115,49 +115,49 @@ export default function O9DifferentiatorGrid({
 
               <div>
                 {/* Header row: Icon & Badges */}
-                <div className="flex items-center justify-between gap-4 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform duration-200">
-                      <Icon className="w-5 h-5" aria-hidden />
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform duration-200 shrink-0">
+                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
                     </div>
-                    <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 font-medium">
+                    <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 font-medium shrink-0">
                       {indexTag}
                     </span>
                   </div>
 
                   {card.badge && (
-                    <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-950/40">
+                    <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 dark:bg-emerald-950/40 shrink-0 text-right">
                       {card.badge}
                     </span>
                   )}
                 </div>
 
                 {/* Card Title */}
-                <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors break-words">
                   {card.title}
                 </h3>
 
                 {/* Card Body */}
-                <p className="mt-2.5 text-sm sm:text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
+                <p className="mt-2.5 text-sm sm:text-base leading-relaxed text-zinc-600 dark:text-zinc-300 break-words">
                   {card.description}
                 </p>
               </div>
 
               {/* Optional Telemetry Preview or Link Trigger */}
-              <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/5 flex items-center justify-between text-xs font-mono">
+              <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                 {card.previewType === 'telemetry' || card.previewValue ? (
-                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                    <span>{card.previewValue ?? 'ACTIVE TELEMETRY: 99.98%'}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                    <span className="break-words">{card.previewValue ?? 'ACTIVE TELEMETRY: 99.98%'}</span>
                   </span>
                 ) : (
-                  <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                  <span className="text-zinc-400 dark:text-zinc-500 uppercase tracking-wider shrink-0">
                     {language === 'ru' ? 'ПРОВЕРЕНО НА СЕТИ' : 'VERIFIED IN NETWORK'}
                   </span>
                 )}
 
                 {card.href && (
-                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform">
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform shrink-0">
                     <span>{language === 'ru' ? 'ПОДРОБНЕЕ' : 'LEARN MORE'}</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </span>

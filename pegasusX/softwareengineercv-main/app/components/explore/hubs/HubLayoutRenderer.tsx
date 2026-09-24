@@ -91,13 +91,13 @@ export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProp
           <>
             {config.intro ? (
               <section className="docs-section">
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500 dark:text-white/45">
                   {config.intro.eyebrow}
                 </p>
-                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl">
+                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl text-zinc-900 dark:text-white">
                   {t(`hub_${hub.id}_title`, config.intro.title)}
                 </h2>
-                <p className="mt-4 max-w-3xl text-base leading-relaxed text-white/70">
+                <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-600 dark:text-white/70">
                   {t(`hub_${hub.id}_body`, config.intro.body)}
                 </p>
               </section>

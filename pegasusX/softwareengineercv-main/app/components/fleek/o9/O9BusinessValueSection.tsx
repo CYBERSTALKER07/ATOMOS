@@ -105,7 +105,7 @@ export default function O9BusinessValueSection({
                 aria-controls={`value-tabpanel-${tab.id}`}
                 onClick={() => setActiveId(tab.id)}
                 className={cn(
-                  'px-4 py-2 font-mono text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 cursor-pointer relative border rounded-none',
+                  'px-3 sm:px-4 py-1.5 sm:py-2 font-mono text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 cursor-pointer relative border rounded-none',
                   isSelected
                     ? 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold shadow-sm'
                     : 'border-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:border-zinc-300 dark:hover:border-white/20'
@@ -141,7 +141,7 @@ export default function O9BusinessValueSection({
             return (
               <article
                 key={`${stat.label}-${idx}`}
-                className="relative p-6 sm:p-7 bg-white dark:bg-black/60 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group shadow-sm dark:shadow-none"
+                className="relative p-5 sm:p-6 md:p-7 bg-white dark:bg-black/60 border border-zinc-200 dark:border-white/10 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all duration-300 flex flex-col justify-between group shadow-sm dark:shadow-none"
               >
                 {/* Tactical Corner Brackets */}
                 <span
@@ -155,33 +155,33 @@ export default function O9BusinessValueSection({
 
                 {/* Context Description on top */}
                 {stat.context && (
-                  <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed min-h-[3rem]">
+                  <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed min-h-[3rem] break-words">
                     {stat.context}
                   </p>
                 )}
 
                 {/* Big Metric Stat and Delta */}
                 <div className="mt-6 pt-4 border-t border-zinc-100 dark:border-white/5">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-mono text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-mono text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-400 break-words">
                       {stat.value}
                     </span>
 
                     {(stat as BusinessValueStatItem).delta && (
-                      <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5">
-                        <TrendingUp className="w-3 h-3" />
-                        {(stat as BusinessValueStatItem).delta}
+                      <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 px-1.5 py-0.5 shrink-0">
+                        <TrendingUp className="w-3 h-3 shrink-0" />
+                        <span>{(stat as BusinessValueStatItem).delta}</span>
                       </span>
                     )}
                   </div>
 
                   {/* Metric Label */}
-                  <p className="mt-2 font-mono text-[11px] sm:text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-medium">
+                  <p className="mt-2 font-mono text-[11px] sm:text-xs uppercase tracking-wider text-zinc-500 dark:text-zinc-400 font-medium break-words">
                     {stat.label}
                   </p>
 
                   {(stat as BusinessValueStatItem).subtext && (
-                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-normal">
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 leading-normal break-words">
                       {(stat as BusinessValueStatItem).subtext}
                     </p>
                   )}

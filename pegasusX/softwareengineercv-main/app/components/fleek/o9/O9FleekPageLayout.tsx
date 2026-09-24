@@ -271,12 +271,12 @@ export default function O9FleekPageLayout({
       : null);
 
   return (
-    <div className="w-full flex flex-col">
+    <div className="w-full flex flex-col min-w-0">
       {/* 1. Hero Section: 100% Full Width Edge-to-Edge */}
-      <div className="w-full">{resolvedHero}</div>
+      <div className="w-full min-w-0">{resolvedHero}</div>
 
       {/* Subsequent Sections in Exact o9 Narrative Flow */}
-      <div className="o9-page">
+      <div className="o9-page w-full min-w-0">
         {/* 2. Differentiators Bento Grid */}
         {differentiatorComponent}
 
@@ -292,7 +292,7 @@ export default function O9FleekPageLayout({
         {showInsightCards && <O9InsightCards />}
 
         {/* 5. Topic Details Grid */}
-        {details && <div className="o9-details">{details}</div>}
+        {details && <div className="o9-details w-full min-w-0">{details}</div>}
 
         {/* 6. Enterprise FAQ Accordion */}
         {faqComponent}

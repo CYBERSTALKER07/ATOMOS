@@ -76,12 +76,12 @@ export default function O9SplitTourCTA({
           </div>
 
           {/* Content Body */}
-          <div className="p-6 sm:p-8 flex flex-col flex-1 justify-between gap-6 -mt-8 relative z-10">
+          <div className="p-5 sm:p-7 lg:p-8 flex flex-col flex-1 justify-between gap-6 -mt-8 relative z-10">
             <div>
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight text-white leading-tight">
+              <h3 className="text-lg sm:text-2xl lg:text-3xl font-semibold tracking-tight text-white leading-tight break-words">
                 {t('licensing_demo_title', 'Schedule a Live Control Plane Walkthrough')}
               </h3>
-              <p className="mt-3 text-sm sm:text-base leading-relaxed text-zinc-300">
+              <p className="mt-3 text-sm sm:text-base leading-relaxed text-zinc-300 break-words">
                 {t(
                   'licensing_demo_desc',
                   'Experience multi-role dispatch boards, atomic freeze-lock state machines, and real-time Kafka outbox synchronization tailored to your network topology.'
@@ -92,13 +92,13 @@ export default function O9SplitTourCTA({
             <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <Link
                 href={demoHref}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.25)] rounded-none"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-black font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-200 shadow-[0_0_20px_rgba(16,185,129,0.25)] rounded-none w-full sm:w-auto"
               >
                 <span>{t('nav_demo', 'REQUEST DEMO')}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <span className="font-mono text-[11px] text-zinc-400 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span className="font-mono text-[11px] text-zinc-400 flex items-center gap-1.5 justify-center sm:justify-start">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>NDA & Architecture Walkthrough</span>
               </span>
             </div>
@@ -136,12 +136,12 @@ export default function O9SplitTourCTA({
           </div>
 
           {/* Content Body */}
-          <div className="p-6 sm:p-8 flex flex-col flex-1 justify-between gap-6 -mt-8 relative z-10">
+          <div className="p-5 sm:p-7 lg:p-8 flex flex-col flex-1 justify-between gap-6 -mt-8 relative z-10">
             <div>
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight text-white leading-tight">
+              <h3 className="text-lg sm:text-2xl lg:text-3xl font-semibold tracking-tight text-white leading-tight break-words">
                 {t('licensing_tour_title', 'Explore the 6 Network Roles in Action')}
               </h3>
-              <p className="mt-3 text-sm sm:text-base leading-relaxed text-zinc-300">
+              <p className="mt-3 text-sm sm:text-base leading-relaxed text-zinc-300 break-words">
                 {t(
                   'licensing_tour_desc',
                   'Test real-world operational flows from supplier placement, warehouse picking, driver routing, to retailer pay-at-delivery across web and mobile surfaces.'
@@ -152,12 +152,12 @@ export default function O9SplitTourCTA({
             <div className="pt-4 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <Link
                 href={resolvedTourHref}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-zinc-200 text-black font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-200 rounded-none"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white hover:bg-zinc-200 text-black font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-200 rounded-none w-full sm:w-auto"
               >
                 <span>{t('nav_tour', 'TAKE PLATFORM TOUR')}</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <span className="font-mono text-[11px] text-zinc-400">
+              <span className="font-mono text-[11px] text-zinc-400 text-center sm:text-left">
                 Instant Access · No Credit Card
               </span>
             </div>
@@ -166,14 +166,14 @@ export default function O9SplitTourCTA({
       </div>
 
       {/* Trust Markers Bar */}
-      <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-white/10 flex flex-wrap items-center justify-center sm:justify-between gap-4 text-xs font-mono text-zinc-500 dark:text-zinc-400">
+      <div className="mt-8 pt-6 border-t border-zinc-200 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-500 dark:text-zinc-400 text-center sm:text-left">
         <span className="uppercase tracking-wider">
           {language === 'ru' ? 'СТАНДАРТЫ НАДЕЖНОСТИ ПЛАТФОРМЫ:' : 'ENTERPRISE ASSURANCE:'}
         </span>
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-6">
           {trustMarkers.map((marker, idx) => (
             <div key={idx} className="inline-flex items-center gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               <span>{marker}</span>
             </div>
           ))}

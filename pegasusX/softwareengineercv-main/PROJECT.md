@@ -38,8 +38,8 @@
 |---|------|-------|-------------|--------|
 | 1 | Enterprise Component System & Layout Pipeline | Implement `O9EnterpriseFaq.tsx`, polish `O9DifferentiatorGrid.tsx`, `O9BusinessValueSection.tsx`, `O9CapabilityShowcase.tsx`, `O9HeroSplit.tsx`, `O9SplitTourCTA.tsx`, and wire complete narrative in `O9FleekPageLayout.tsx`. | none | DONE |
 | 2 | Platform & Capabilities Content Modernization | Enrich `hubLayouts.ts` with domain-authentic Pegasus data for `/platform` and `/capabilities` (Bento, KPI Tabs, Use Cases, FAQs). | M1 | DONE |
-| 3 | Operations & Technology Content Modernization | Enrich `hubLayouts.ts` with domain-authentic Pegasus data for `/operations` and `/technology` (Bento, KPI Tabs, Use Cases, FAQs). | M1 | IN_PROGRESS |
-| 4 | Responsive Polish, Dual Theme & Build Verification | Audit responsiveness, theme switching, route health, and execute `npm run build` verification. | M2, M3 | PLANNED |
+| 3 | Operations & Technology Content Modernization | Enrich `hubLayouts.ts` with domain-authentic Pegasus data for `/operations` and `/technology` (Bento, KPI Tabs, Use Cases, FAQs). | M1 | DONE |
+| 4 | Responsive Polish, Dual Theme & Build Verification | Audit responsiveness, theme switching, route health, and execute `npm run build` verification. | M2, M3 | DONE |
 
 ## Interface Contracts
 ### `HubLayoutRenderer` ↔ `O9FleekPageLayout`

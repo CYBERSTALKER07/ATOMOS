@@ -64,20 +64,20 @@ export function O9Hero({
 }
 
 export function O9ProofStrip({ items }: { items: ProofItem[] }) {
- if (!items.length) return null;
- return (
- <div className="docs-proof docs-grain">
- <p className="border-b border-white/10 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
- Built for supplier-led logistics networks
- </p>
- <div className="grid grid-cols-2 divide-x divide-y divide-white/10 md:grid-cols-4 md:divide-y-0">
- {items.map((item) => (
- <div key={item.label} className="px-4 py-5 md:px-5 md:py-6">
- <p className="font-mono text-[10px] uppercase tracking-widest text-white/45">{item.label}</p>
- <p className="mt-2 text-sm font-medium text-white/90 md:text-base">{item.value}</p>
- </div>
- ))}
- </div>
- </div>
- );
+  if (!items.length) return null;
+  return (
+    <div className="border border-zinc-200 dark:border-white/10 bg-white dark:bg-black/60 shadow-sm dark:shadow-none overflow-hidden">
+      <p className="border-b border-zinc-200 dark:border-white/10 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+        Built for supplier-led logistics networks
+      </p>
+      <div className="grid grid-cols-2 divide-x divide-y divide-zinc-200 dark:divide-white/10 md:grid-cols-4 md:divide-y-0">
+        {items.map((item) => (
+          <div key={item.label} className="px-4 py-4 sm:py-5 md:px-5 md:py-6">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500 dark:text-zinc-400">{item.label}</p>
+            <p className="mt-1 sm:mt-2 text-sm font-medium text-zinc-900 dark:text-white md:text-base">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

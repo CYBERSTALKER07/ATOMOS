@@ -446,16 +446,16 @@ export default function O9EnterpriseFaq({
                   aria-expanded={isOpen}
                   aria-controls={contentId}
                   onClick={() => toggleItem(item.id)}
-                  className="w-full py-5 sm:py-6 flex items-start sm:items-center justify-between gap-4 text-left cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500"
+                  className="w-full py-4 sm:py-5 md:py-6 flex items-start sm:items-center justify-between gap-3 sm:gap-4 text-left cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1 pr-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 flex-1 pr-1 sm:pr-2 min-w-0">
                     {/* Index & Category Badges */}
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                         [{indexNumber}]
                       </span>
                       {item.tag && (
-                        <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 border border-zinc-300 dark:border-white/10 text-zinc-600 dark:text-zinc-400 bg-white dark:bg-white/5">
+                        <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 border border-zinc-300 dark:border-white/10 text-zinc-600 dark:text-zinc-400 bg-white dark:bg-white/5 shrink-0">
                           {item.tag}
                         </span>
                       )}
@@ -464,7 +464,7 @@ export default function O9EnterpriseFaq({
                     {/* Question Text */}
                     <h3
                       className={cn(
-                        'text-base sm:text-lg md:text-xl font-medium tracking-tight transition-colors duration-200',
+                        'text-sm sm:text-base md:text-lg lg:text-xl font-medium tracking-tight transition-colors duration-200 break-words',
                         isOpen
                           ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
                           : 'text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400'
@@ -503,21 +503,21 @@ export default function O9EnterpriseFaq({
                       transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="pb-6 pt-1 sm:pl-10 pr-2 sm:pr-8 flex flex-col gap-4">
+                      <div className="pb-5 sm:pb-6 pt-1 sm:pl-8 md:pl-10 pr-2 sm:pr-8 flex flex-col gap-4">
                         {/* Answer Body */}
-                        <p className="text-sm sm:text-base leading-relaxed text-zinc-700 dark:text-zinc-300">
+                        <p className="text-sm sm:text-base leading-relaxed text-zinc-700 dark:text-zinc-300 break-words">
                           {item.answer}
                         </p>
 
                         {/* Optional Tactical Highlights */}
                         {item.highlights && item.highlights.length > 0 && (
-                          <div className="mt-2 pt-3 border-t border-zinc-200/80 dark:border-white/5 flex flex-wrap gap-x-6 gap-y-2">
+                          <div className="mt-2 pt-3 border-t border-zinc-200/80 dark:border-white/5 flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-2">
                             {item.highlights.map((hl) => (
                               <div
                                 key={hl}
-                                className="inline-flex items-center gap-2 font-mono text-[11px] text-zinc-600 dark:text-zinc-400"
+                                className="inline-flex items-start sm:items-center gap-2 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 break-words"
                               >
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5 sm:mt-0" />
                                 <span>{hl}</span>
                               </div>
                             ))}

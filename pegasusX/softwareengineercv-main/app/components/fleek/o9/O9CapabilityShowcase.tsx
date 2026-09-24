@@ -126,8 +126,8 @@ export default function O9CapabilityShowcase({
 
                 {/* Optional SLA Badge */}
                 {item.sla && (
-                  <div className="absolute bottom-3 left-3 z-10">
-                    <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 bg-emerald-950/80 backdrop-blur-md border border-emerald-500/40 text-emerald-400">
+                  <div className="absolute bottom-3 left-3 z-10 max-w-[calc(100%-1.5rem)]">
+                    <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-wider px-2 py-0.5 bg-emerald-950/80 backdrop-blur-md border border-emerald-500/40 text-emerald-400 truncate inline-block max-w-full">
                       SLA: {item.sla}
                     </span>
                   </div>
@@ -135,13 +135,13 @@ export default function O9CapabilityShowcase({
               </div>
 
               {/* Body Content */}
-              <div className="p-6 flex flex-col flex-1 justify-between gap-6">
+              <div className="p-5 sm:p-6 flex flex-col flex-1 justify-between gap-6">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                  <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-zinc-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors break-words">
                     {item.title}
                   </h3>
 
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed line-clamp-3">
+                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed line-clamp-3 break-words">
                     {item.description}
                   </p>
 
@@ -153,7 +153,7 @@ export default function O9CapabilityShowcase({
                         return (
                           <span
                             key={sIdx}
-                            className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-white/5"
+                            className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 bg-zinc-100 dark:bg-white/5 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-white/5 break-words"
                           >
                             {String(sIdx + 1).padStart(2, '0')} {cleanStep}
                           </span>
@@ -164,16 +164,16 @@ export default function O9CapabilityShowcase({
                 </div>
 
                 {/* Card Footer Link */}
-                <div className="pt-4 border-t border-zinc-100 dark:border-white/5 flex items-center justify-between">
+                <div className="pt-4 border-t border-zinc-100 dark:border-white/5 flex flex-wrap items-center justify-between gap-2">
                   <Link
                     href={href}
-                    className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform"
+                    className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-0.5 transition-transform shrink-0"
                   >
                     <span>{t('btn_read_more', 'READ MORE')}</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
                   </Link>
 
-                  <span className="font-mono text-[10px] text-zinc-400 dark:text-zinc-600">
+                  <span className="font-mono text-[10px] text-zinc-400 dark:text-zinc-600 shrink-0">
                     [{String(idx + 1).padStart(2, '0')}]
                   </span>
                 </div>

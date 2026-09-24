@@ -23,8 +23,8 @@ export type SubpageHeroProps = {
     label: string;
     href: string;
   };
-  widget?: any;
-  nodes?: any;
+  widget?: ReactNode | { title?: string; description?: string; href?: string; [key: string]: unknown };
+  nodes?: ReactNode | unknown;
   breadcrumb?: {
     homeLabel?: string;
     categoryLabel?: string;
@@ -32,7 +32,7 @@ export type SubpageHeroProps = {
     subCategoryLabel?: string;
     subCategoryHref?: string;
     currentPage?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   imageSrc?: string;
   imageAlt?: string;
@@ -257,13 +257,13 @@ export default function SubpageHero({
       </div>
 
       {/* BOTTOM MARQUEE / TICKER BANNER */}
-      <div className="w-full border-t border-white/10 px-8 lg:px-16 xl:px-20 py-4 sm:py-5 flex items-center justify-between text-white bg-black">
-        <span className="font-mono text-xs sm:text-sm uppercase tracking-[0.2em] text-white/90 font-medium">
+      <div className="w-full border-t border-white/10 px-4 sm:px-8 lg:px-16 xl:px-20 py-3.5 sm:py-5 flex items-center justify-between gap-3 text-white bg-black">
+        <span className="font-mono text-[11px] sm:text-xs md:text-sm uppercase tracking-wider sm:tracking-[0.2em] text-white/90 font-medium leading-normal break-words min-w-0">
           {language === 'ru'
             ? 'ОТКРЫВАЯ МИЛЛИАРДЫ В СТОИМОСТИ ДЛЯ КЛИЕНТОВ В 30+ ОТРАСЛЯХ'
             : (footerTickerText || 'UNLOCKING BILLIONS IN VALUE FOR CLIENTS IN 30+ INDUSTRIES')}
         </span>
-        <div className="flex items-center text-zinc-400">
+        <div className="flex items-center text-zinc-400 shrink-0">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
