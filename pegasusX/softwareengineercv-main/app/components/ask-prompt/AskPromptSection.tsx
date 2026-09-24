@@ -35,8 +35,10 @@ export default function AskPromptSection({
  const metric = content.metric ?? getAskPromptContent(language).metric!;
 
  useEffect(() => {
- if (isInView && !prefersReducedMotion && !isLowEnd) setChartsAnimated(true);
- }, [isInView, prefersReducedMotion, isLowEnd]);
+ if (isInView && !chartsAnimated && !prefersReducedMotion && !isLowEnd) {
+  setChartsAnimated(true);
+ }
+ }, [isInView, chartsAnimated, prefersReducedMotion, isLowEnd]);
 
  useEffect(() => {
  const section = sectionRef.current;

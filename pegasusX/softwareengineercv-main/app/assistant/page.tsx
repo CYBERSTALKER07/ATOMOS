@@ -51,28 +51,28 @@ function AssistantWelcome({ starters }: { starters: typeof STARTERS }) {
  const isRunning = useThread((s) => s.isRunning);
 
  return (
- <div className="flex flex-col items-center justify-center max-w-3xl w-full px-4 text-center my-auto py-6">
+ <div className="flex flex-col items-center justify-center max-w-3xl w-full px-4 text-center my-auto py-2">
  {/* Pegasus Logo Icon */}
- <div className="w-14 h-14 mb-4 rounded-2xl border border-white/20 bg-black flex items-center justify-center p-2.5 select-none shadow-[0_0_24px_rgba(255,255,255,0.08)]">
+ <div className="w-12 h-12 mb-3 rounded-2xl border border-white/20 bg-black flex items-center justify-center p-2 select-none shadow-[0_0_24px_rgba(255,255,255,0.08)]">
  <img src="/pegasus.jpg" alt="Pegasus Logo" className="w-full h-full object-contain rounded-xl" />
  </div>
 
  {/* Tactical Badge */}
- <div className="inline-flex items-center gap-2 px-3.5 py-1 mb-4 rounded-full border border-white/20 bg-white/5 text-white font-mono text-[11px] uppercase tracking-wider">
+ <div className="inline-flex items-center gap-2 px-3 py-0.5 mb-2.5 rounded-full border border-white/20 bg-white/5 text-white font-mono text-[10px] uppercase tracking-wider">
  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
  Pegasus Autonomous Operations AI
  </div>
 
- <h1 className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-white mb-3">
+ <h1 className="text-xl sm:text-2xl font-mono font-bold tracking-tight text-white mb-2">
  ECOSYSTEM INTELLIGENCE
  </h1>
 
- <p className="text-xs sm:text-sm font-mono text-white/60 max-w-xl mb-8 leading-relaxed">
+ <p className="text-xs font-mono text-white/60 max-w-xl mb-4 leading-relaxed">
  Real-time multi-tenant fleet telemetry, Spanner transactional ledger verification, and Google OR-Tools CVRP dispatch optimization.
  </p>
 
  {/* 2x2 Starter Grid */}
- <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left">
  {starters.map((starter, idx) => (
  <button
  key={idx}
@@ -141,8 +141,6 @@ export default function AssistantPage() {
  agentName="Pegasus AI Assistant"
  logoUrl="/pegasus.jpg"
  theme={{ mode: 'dark' }}
- starters={STARTERS}
- starterVariant="long"
  scrollVariant="always"
  >
  <AgentInterface.Welcome>

@@ -222,12 +222,11 @@ function PromptOverlay({
  <div className="relative w-full max-w-[36rem] mx-auto px-4">
  {showFx && (
  <div
- className="pointer-events-none absolute left-1/2 top-1/2 h-[4.5rem] w-[min(140vw,64rem)] -translate-x-1/2 -translate-y-1/2"
+ className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 will-change-transform"
  aria-hidden
  >
- <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(124,58,237,0.15)_20%,rgba(167,139,250,0.35)_50%,rgba(124,58,237,0.15)_80%,transparent_100%)] opacity-80" />
- <div className="absolute inset-0 opacity-50 [background-image:repeating-linear-gradient(90deg,rgba(255,255,255,0.1)_0,rgba(255,255,255,0.1)_1px,transparent_1px,transparent_4px)]" />
- <div className="absolute top-1/2 inset-x-[10%] h-px -translate-y-1/2 bg-violet-300/40" />
+ <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(124,58,237,0.18)_25%,rgba(167,139,250,0.32)_50%,rgba(124,58,237,0.18)_75%,transparent_100%)] blur-sm" />
+ <div className="absolute top-1/2 inset-x-[12%] h-px -translate-y-1/2 bg-violet-300/40" />
  </div>
  )}
  <div
@@ -267,8 +266,10 @@ export default function PromptDashboardSection() {
  const compact = isMobile || isTablet;
 
  useEffect(() => {
- if (isInView && !prefersReducedMotion && !isLowEnd) setChartsAnimated(true);
- }, [isInView, prefersReducedMotion, isLowEnd]);
+ if (isInView && !chartsAnimated && !prefersReducedMotion && !isLowEnd) {
+  setChartsAnimated(true);
+ }
+ }, [isInView, chartsAnimated, prefersReducedMotion, isLowEnd]);
 
  useEffect(() => {
  const section = sectionRef.current;

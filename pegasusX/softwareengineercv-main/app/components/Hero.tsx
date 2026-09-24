@@ -137,15 +137,15 @@ export default function Hero() {
        useBrandmark={true}
        particleSize={2.1}
        density={2.2}
-       color="#FFFFFF"
-       highlightColor="#7DD3FC"
+       color="#10b981"
+       highlightColor="#34d399"
        scatter={120}
        gatherDuration={1200}
        stagger={260}
        pointerRepel={38}
        repelRadius={95}
        idleDrift={0.25}
-       trigger="mount"
+       trigger="none"
        textAlign="left"
        glow
       />

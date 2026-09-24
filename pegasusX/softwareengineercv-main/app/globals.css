@@ -1616,6 +1616,7 @@ a.editorial-card--interactive:hover .editorial-btn,
 
 .prompt-dash-chart-in {
  opacity: 0;
+ will-change: opacity;
  animation: prompt-dash-chart-in 0.9s ease-out forwards;
 }
 
@@ -1624,6 +1625,8 @@ a.editorial-card--interactive:hover .editorial-btn,
 }
 
 .prompt-dash-bar {
+ will-change: transform;
+ transform: translateZ(0);
  animation: prompt-dash-bar 0.55s ease-out forwards;
 }
 
@@ -7178,4 +7181,67 @@ html.light .text-white\/30,
   background: #000000 !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
+}
+
+/* OpenUI Agent Interface B&W and Fully Rounded System */
+.openui-agent-sidebar-container {
+  background-color: #000000 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+}
+
+.openui-agent-sidebar-item {
+  border-radius: 9999px !important;
+  color: #ffffff !important;
+}
+
+.openui-agent-sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.openui-agent-sidebar-item__icon {
+  border-radius: 9999px !important;
+}
+
+.openui-agent-new-chat-button {
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.openui-agent-new-chat-button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.openui-agent-thread-composer__input-wrapper {
+  background-color: #000000 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 1.5rem !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7) !important;
+}
+
+.openui-agent-thread-composer__input {
+  color: #ffffff !important;
+}
+
+.openui-agent-thread-composer__submit-button,
+.openui-agent-thread-composer button {
+  border-radius: 9999px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.openui-agent-thread-composer__submit-button:hover,
+.openui-agent-thread-composer button:hover {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.openui-agent-welcome-glow {
+  display: none !important;
+}
+
+.openui-agent-conversation-starter {
+  display: none !important;
 }

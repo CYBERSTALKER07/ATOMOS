@@ -434,13 +434,6 @@ const PillNav: React.FC<PillNavProps> = ({
   {item.label}
   </span>
   </span>
-  {isActive && (
-  <span
-  className="absolute bottom-0 left-0 right-0 h-[2px] z-[4]"
-  style={{ background: effectivePillColor === '#ffffff' ? '#ffffff' : '#000000' }}
-  aria-hidden="true"
-  />
-  )}
   </>
   );
 

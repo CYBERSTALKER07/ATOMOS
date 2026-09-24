@@ -147,9 +147,16 @@ export default function AnimatedDitherField({
 
     updateSize();
 
-    // Render single frame of animated dither - completely zero allocations in hot loop
+    // Pre-allocated coordinate buckets to eliminate GC pressure and batch fillStyle calls
+    const stepBuckets: number[][] = Array.from({ length: PALETTE_STEPS + 1 }, () => []);
+
+    // Render single frame of animated dither - zero allocations, batched fillStyle
     const drawFrame = (timeSeconds: number) => {
       ctx.clearRect(0, 0, width, height);
+
+      for (let s = 0; s <= PALETTE_STEPS; s++) {
+        stepBuckets[s].length = 0;
+      }
 
       const t = timeSeconds * speed;
       const tPhase1 = t * 2.6;
@@ -188,11 +195,24 @@ export default function AnimatedDitherField({
         if (intensity > dot.threshold) {
           const level = Math.min(1, (intensity - dot.threshold) / 0.6);
           const step = Math.min(PALETTE_STEPS, Math.max(0, (level * PALETTE_STEPS) | 0));
-          const p = palette[step];
+          const bucket = stepBuckets[step];
+          bucket.push(dot.x, dot.y);
+        }
+      }
 
-          ctx.fillStyle = p.color;
-          const radius = p.radius;
-          ctx.fillRect(dot.x - radius, dot.y - radius, radius * 2, radius * 2);
+      // Batch render: set ctx.fillStyle at most PALETTE_STEPS times instead of per-dot
+      for (let s = 0; s <= PALETTE_STEPS; s++) {
+        const coords = stepBuckets[s];
+        const clen = coords.length;
+        if (clen === 0) continue;
+
+        const p = palette[s];
+        ctx.fillStyle = p.color;
+        const radius = p.radius;
+        const size = radius * 2;
+
+        for (let j = 0; j < clen; j += 2) {
+          ctx.fillRect(coords[j] - radius, coords[j + 1] - radius, size, size);
         }
       }
     };
