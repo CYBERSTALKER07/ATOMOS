@@ -1,12 +1,36 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap, smoothScrollTo } from '@/app/lib/gsap';
 import ParticleText from './ParticleText';
 import TextType from './TextType';
 import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+
+const HERO_VIDEOS = [
+ {
+  id: 'fpv-drone',
+  src: '/videos/hero-drone.mp4',
+  label: '01',
+  name: 'Terminal Entry',
+  nameRu: 'Вход в терминал',
+ },
+ {
+  id: 'fleet-dock',
+  src: '/videos/hero-fleet.mp4',
+  label: '02',
+  name: 'Robotic Loading',
+  nameRu: 'Роботизированная погрузка',
+ },
+ {
+  id: 'command-aerial',
+  src: '/videos/command-facility.mp4',
+  label: '03',
+  name: 'Command Facility 4K',
+  nameRu: 'Командный центр 4K',
+ },
+];
 
 export default function Hero() {
  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
@@ -19,7 +43,9 @@ export default function Hero() {
  const subtitleRef = useRef<HTMLHeadingElement>(null);
  const descRef = useRef<HTMLParagraphElement>(null);
  const ctaRef = useRef<HTMLDivElement>(null);
- const videoRef = useRef<HTMLVideoElement>(null);
+ const [activeVideoIdx, setActiveVideoIdx] = useState(0);
+ const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+ const isIntersectingRef = useRef(true);
 
  const typedPhrases = [
   t('hero_type_1'),
@@ -70,30 +96,44 @@ export default function Hero() {
   return () => ctx.revert();
  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
+ // Play active video when activeVideoIdx changes or when section becomes visible
+ useEffect(() => {
+  const currentVideo = videoRefs.current[activeVideoIdx];
+  if (currentVideo && isIntersectingRef.current) {
+   currentVideo.currentTime = 0;
+   currentVideo.play().catch(() => {});
+  }
+  videoRefs.current.forEach((vid, i) => {
+   if (vid && i !== activeVideoIdx) {
+    vid.pause();
+   }
+  });
+ }, [activeVideoIdx]);
+
  // Autoplay video and pause when scrolled out of view to eliminate GPU/CPU decode lag
  useEffect(() => {
-  const video = videoRef.current;
-  if (!video) return;
+  const section = document.getElementById('hero');
+  if (!section) return;
 
   const observer = new IntersectionObserver(
    ([entry]) => {
+    isIntersectingRef.current = !!entry?.isIntersecting;
+    const currentVideo = videoRefs.current[activeVideoIdx];
     if (entry?.isIntersecting) {
-     video.play().catch(() => {
-      // Autoplay blocked — silent fallback to poster
-     });
+     currentVideo?.play().catch(() => {});
     } else {
-     video.pause();
+     videoRefs.current.forEach((v) => v?.pause());
     }
    },
    { threshold: 0.05 }
   );
 
-  observer.observe(video);
+  observer.observe(section);
 
   return () => {
    observer.disconnect();
   };
- }, []);
+ }, [activeVideoIdx]);
 
  const scrollToNext = () => {
   smoothScrollTo('#about', { offsetY: 64, duration: 1.1, ease: 'pegasus' });
@@ -106,20 +146,27 @@ export default function Hero() {
   >
    {/* ── Video Background ── */}
    <div className="absolute inset-0 z-0 bg-black">
-   <video
-    ref={videoRef}
-    className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-700"
-    src="/videos/command-facility.mp4"
-    autoPlay
-    muted
-    loop
-    playsInline
-    preload="auto"
-    poster="/images/topics/control_plane.jpg"
-   />
+   {HERO_VIDEOS.map((vid, idx) => (
+    <video
+     key={vid.id}
+     ref={(el) => {
+      videoRefs.current[idx] = el;
+     }}
+     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+      idx === activeVideoIdx ? 'opacity-90 z-[1]' : 'opacity-0 z-0 pointer-events-none'
+     }`}
+     src={vid.src}
+     autoPlay={idx === 0}
+     muted
+     loop
+     playsInline
+     preload={idx === 0 ? 'auto' : 'metadata'}
+     poster="/images/topics/control_plane.jpg"
+    />
+   ))}
    {/* Cinematic overlays for text readability */}
-   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
-   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none" />
+   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-[2]" />
+   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-[2]" />
    </div>
 
    {/* ── Content Overlay ── */}
@@ -200,6 +247,36 @@ export default function Hero() {
     </a>
     </div>
    </div>
+   </div>
+
+   {/* ── Minimalist Tactical Video Switcher (01 / 02 / 03) ── */}
+   <div className="absolute bottom-8 right-24 sm:right-28 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/10 p-1.5 rounded-full select-none shadow-xl">
+    <span className="text-[10px] uppercase font-mono tracking-wider text-white/40 pl-2 pr-1 hidden sm:inline">
+     {language === 'ru' ? 'Камера' : 'Feed'}
+    </span>
+    {HERO_VIDEOS.map((vid, idx) => {
+     const isActive = activeVideoIdx === idx;
+     return (
+      <button
+       key={vid.id}
+       onClick={() => setActiveVideoIdx(idx)}
+       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono transition-all ${
+        isActive
+         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)] font-semibold'
+         : 'text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
+       }`}
+       title={language === 'ru' ? vid.nameRu : vid.name}
+       aria-label={`Switch feed to ${vid.label}: ${vid.name}`}
+      >
+       <span
+        className={`w-1.5 h-1.5 rounded-full ${
+         isActive ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'
+        }`}
+       />
+       <span>{vid.label}</span>
+      </button>
+     );
+    })}
    </div>
 
    {/* ── Bottom scroll indicator ── */}

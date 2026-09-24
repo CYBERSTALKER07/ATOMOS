@@ -115,7 +115,6 @@ export default async function Home() {
 
  <section id="section-platform">
  <About />
- <OrderCycleVisualSection />
  </section>
 
  <section id="section-last-mile">
@@ -143,7 +142,7 @@ export default async function Home() {
  <PegasusTestimonialsSection />
  {/* <UserStoriesSection /> - hidden for now */}
  <Projects />
- {/* <Companies /> - hidden for now */}
+ <OrderCycleVisualSection />
  </section>
 
  <section id="section-intelligence" className="relative z-10">
