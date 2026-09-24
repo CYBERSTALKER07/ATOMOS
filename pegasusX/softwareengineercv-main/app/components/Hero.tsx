@@ -96,6 +96,13 @@ export default function Hero() {
   return () => ctx.revert();
  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
+ // Play active video and loop to next video on end
+ const handleVideoEnded = (idx: number) => {
+  if (idx === activeVideoIdx) {
+   setActiveVideoIdx((prev) => (prev + 1) % HERO_VIDEOS.length);
+  }
+ };
+
  // Play active video when activeVideoIdx changes or when section becomes visible
  useEffect(() => {
   const currentVideo = videoRefs.current[activeVideoIdx];
@@ -103,11 +110,16 @@ export default function Hero() {
    currentVideo.currentTime = 0;
    currentVideo.play().catch(() => {});
   }
-  videoRefs.current.forEach((vid, i) => {
-   if (vid && i !== activeVideoIdx) {
-    vid.pause();
-   }
-  });
+  // Allow 1s crossfade to complete before pausing previous video
+  const timeout = setTimeout(() => {
+   videoRefs.current.forEach((vid, i) => {
+    if (vid && i !== activeVideoIdx) {
+     vid.pause();
+    }
+   });
+  }, 1000);
+
+  return () => clearTimeout(timeout);
  }, [activeVideoIdx]);
 
  // Autoplay video and pause when scrolled out of view to eliminate GPU/CPU decode lag
@@ -158,9 +170,9 @@ export default function Hero() {
      src={vid.src}
      autoPlay={idx === 0}
      muted
-     loop
      playsInline
-     preload={idx === 0 ? 'auto' : 'metadata'}
+     preload="auto"
+     onEnded={() => handleVideoEnded(idx)}
      poster="/images/topics/control_plane.jpg"
     />
    ))}

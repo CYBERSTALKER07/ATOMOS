@@ -190,17 +190,7 @@ const PillNav: React.FC<PillNavProps> = ({
  // Play the entrance animation once per mount — never on form focus/typing re-renders.
  if (initialLoadAnimation && !introPlayedRef.current) {
  introPlayedRef.current = true;
- const logo = logoRef.current;
  const navItems = navItemsRef.current;
-
- if (logo) {
- gsap.set(logo, { scale: 0 });
- gsap.to(logo, {
- scale: 1,
- duration: 0.6,
- ease,
- });
- }
 
  if (navItems) {
  gsap.set(navItems, { opacity: 0, x: -8 });
@@ -358,16 +348,16 @@ const PillNav: React.FC<PillNavProps> = ({
  isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
  }`}
  style={{
- width: '64px',
- height: '64px',
+ width: '46px',
+ height: 'var(--nav-h, 40px)',
  background: 'transparent'
  }}
  >
  <img
- src="/pegasus.jpg"
+ src={logo || "/pegasus-nav.png"}
  alt={logoAlt}
  ref={logoImgRef}
- className="w-full h-full object-contain"
+ className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-transform duration-200 hover:scale-105"
  />
  </Link>
 

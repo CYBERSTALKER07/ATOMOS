@@ -19,7 +19,7 @@ function SiteNav({ activeHref }: SiteNavProps) {
 
  return (
  <PillNav
- logo=""
+ logo="/pegasus-nav.png"
  logoAlt="Pegasus Logo"
  showMenuButton={true}
  categories={categories}
