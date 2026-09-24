@@ -9,3 +9,5 @@ export type { O9CapabilityCard } from './O9CapabilityShowcase';
 export { default as O9SplitTourCTA } from './O9SplitTourCTA';
 export { default as O9InsightCards } from './O9InsightCards';
 export { default as O9TrapsToAvoid } from './O9TrapsToAvoid';
+export { default as O9EnterpriseFaq } from './O9EnterpriseFaq';
+export type { O9EnterpriseFaqProps, O9FaqItem } from './O9EnterpriseFaq';

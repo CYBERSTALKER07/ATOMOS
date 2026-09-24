@@ -3,12 +3,14 @@
 import type { CategoryHub } from '@/app/data/topicPages';
 import HubLayoutRenderer from '@/app/components/explore/hubs/HubLayoutRenderer';
 import { getHubLayoutConfig } from '@/app/lib/explore/hubLayouts';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 type CategoryHubClientProps = {
- hub: CategoryHub;
+  hub: CategoryHub;
 };
 
 export default function CategoryHubClient({ hub }: CategoryHubClientProps) {
- const config = getHubLayoutConfig(hub.id);
- return <HubLayoutRenderer hub={hub} config={config} />;
+  const { language } = useLanguage();
+  const config = getHubLayoutConfig(hub.id, language);
+  return <HubLayoutRenderer hub={hub} config={config} />;
 }

@@ -105,12 +105,12 @@ export default function SubpageHero({
   };
 
   return (
-    <section className="min-h-screen w-full relative flex flex-col justify-between bg-[#000000] overflow-hidden pt-24 sm:pt-28 pb-0">
+    <section className="w-full relative flex flex-col justify-between bg-[#000000] overflow-hidden pt-6 sm:pt-8 lg:pt-10 pb-8 sm:pb-12">
       <div className="w-full flex-1 flex flex-col justify-center">
         <div className="relative grid grid-cols-1 lg:grid-cols-2 bg-[#000000] w-full items-center">
           
           {/* LEFT COLUMN: Breadcrumbs, Title, Summary, CTAs, Gartner Peer Insights Card */}
-          <div className="flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-20 py-10 lg:py-16 relative z-10">
+          <div className="flex flex-col justify-center px-5 sm:px-12 lg:px-16 xl:px-20 py-8 lg:py-16 relative z-10">
             
             {/* Breadcrumbs Navigation */}
             <nav aria-label="Breadcrumb" className="mb-6 sm:mb-8 flex flex-wrap items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
@@ -161,36 +161,36 @@ export default function SubpageHero({
                 </>
               ) : null}
 
-              <span className="text-zinc-300 truncate max-w-[240px] sm:max-w-[320px]">
+              <span className="text-zinc-300 truncate max-w-[200px] sm:max-w-[320px]">
                 {currentTitle.toUpperCase()}
               </span>
             </nav>
 
             {/* Typography Section */}
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               {/* Primary Headline */}
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] font-medium tracking-tight text-white leading-[1.08]">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-[3.75rem] font-medium tracking-tight text-white leading-[1.12] break-words">
                 {title}
               </h1>
 
               {/* Subtitle Description */}
-              <p className="text-base sm:text-lg text-zinc-300/80 font-light leading-relaxed max-w-xl">
+              <p className="text-sm sm:text-base md:text-lg text-zinc-300/80 font-light leading-relaxed max-w-xl">
                 {summary}
               </p>
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-8 sm:pt-10 flex flex-wrap items-center gap-4">
+            <div className="pt-6 sm:pt-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <Link
                 href={primaryButton.href}
-                className="inline-flex items-center justify-center px-7 py-3.5 text-xs sm:text-sm font-semibold tracking-wider uppercase bg-white text-black hover:bg-zinc-200 transition-colors rounded-none"
+                className="inline-flex items-center justify-center px-6 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold tracking-wider uppercase bg-white text-black hover:bg-zinc-200 transition-colors rounded-none text-center"
               >
                 {primaryButton.label.toUpperCase()}
               </Link>
 
               <Link
                 href={secondaryButton.href}
-                className="inline-flex items-center justify-center px-7 py-3.5 text-xs sm:text-sm font-semibold tracking-wider uppercase bg-transparent text-white hover:bg-white/10 border border-white transition-colors rounded-none"
+                className="inline-flex items-center justify-center px-6 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-semibold tracking-wider uppercase bg-transparent text-white hover:bg-white/10 border border-white transition-colors rounded-none text-center"
               >
                 {secondaryButton.label.toUpperCase()}
               </Link>
