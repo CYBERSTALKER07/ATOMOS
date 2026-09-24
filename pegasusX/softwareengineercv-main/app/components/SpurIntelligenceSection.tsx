@@ -55,20 +55,20 @@ export default function SpurIntelligenceSection({
  return (
  <section
  aria-label="Intelligence Overview"
- className={`relative w-full bg-[#CEFF00] text-black overflow-hidden select-none ${className}`}
+ className={`relative w-full bg-black text-white overflow-hidden select-none ${className}`}
  >
  {/* Top Content Area */}
  <div className="w-full max-w-[1440px] mx-auto px-6 sm:px-10 md:px-16 lg:px-20 pt-20 sm:pt-28 md:pt-36 pb-16 sm:pb-24 md:pb-28">
  {/* Eyebrow badge */}
  <div className="flex items-center gap-2.5 mb-6 sm:mb-8">
- <span className="w-2.5 h-2.5 bg-black inline-block flex-shrink-0" aria-hidden="true" />
- <span className="font-mono text-xs sm:text-[13px] font-bold tracking-[0.22em] uppercase text-black">
+ <span className="w-2.5 h-2.5 bg-[#b497cf] inline-block flex-shrink-0" aria-hidden="true" />
+ <span className="font-mono text-xs sm:text-[13px] font-bold tracking-[0.22em] uppercase text-[#b497cf]">
  {finalEyebrow}
  </span>
  </div>
 
  {/* Main Display Headline */}
- <h2 className="font-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[82px] 2xl:text-[92px] font-normal tracking-[-0.035em] leading-[1.04] text-black max-w-6xl">
+ <h2 className="font-title text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[82px] 2xl:text-[92px] font-normal tracking-[-0.035em] leading-[1.04] text-white max-w-6xl">
  <span className="block">{finalH1}</span>
  <span className="block">{finalH2}</span>
  </h2>
@@ -76,7 +76,7 @@ export default function SpurIntelligenceSection({
  {/* Offset Grid: Paragraph & CTAs positioned on the right */}
  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start mt-8 sm:mt-12 md:mt-16">
  <div className="lg:col-span-6 lg:col-start-7 flex flex-col gap-8 md:gap-10">
- <p className="text-base sm:text-lg md:text-xl text-black font-normal leading-[1.45] max-w-xl">
+ <p className="text-base sm:text-lg md:text-xl text-zinc-300 font-normal leading-[1.45] max-w-xl">
  {finalDesc}
  </p>
 
@@ -85,11 +85,11 @@ export default function SpurIntelligenceSection({
  {/* White Box CTA: REQUEST A DEMO ■ */}
  <Link
  href={demoHref}
- className="group inline-flex items-center justify-between gap-4 bg-white text-black font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] font-semibold px-6 sm:px-7 py-3.5 sm:py-4 transition-all duration-200 hover:bg-black hover:text-white "
+ className="group inline-flex items-center justify-between gap-4 bg-white text-black font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] font-semibold px-6 sm:px-7 py-3.5 sm:py-4 transition-all duration-200 hover:bg-[#b497cf] hover:text-black "
  >
  <span>{finalDemo}</span>
  <span
- className="w-2 h-2 bg-black transition-colors duration-200 group-hover:bg-white inline-block flex-shrink-0"
+ className="w-2 h-2 bg-black transition-colors duration-200 group-hover:bg-black inline-block flex-shrink-0"
  aria-hidden="true"
  />
  </Link>
@@ -98,7 +98,7 @@ export default function SpurIntelligenceSection({
  <div className="group inline-flex flex-col items-start cursor-pointer">
  <Link
  href={trialHref}
- className="inline-flex items-center gap-3 font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] font-semibold text-black transition-opacity hover:opacity-85"
+ className="inline-flex items-center gap-3 font-mono text-xs sm:text-[13px] uppercase tracking-[0.18em] font-semibold text-white transition-opacity hover:opacity-85"
  >
  <span>{finalTrial}</span>
  <span
@@ -109,8 +109,8 @@ export default function SpurIntelligenceSection({
  </span>
  </Link>
  {/* Stepped progress-line indicator: 35% bold segment, remainder subtle base */}
- <div className="w-full min-w-[155px] h-[3px] mt-2 relative bg-black/25 overflow-hidden">
- <div className="absolute left-0 top-0 h-full w-[35%] bg-black transition-all duration-300 ease-out group-hover:w-full" />
+ <div className="w-full min-w-[155px] h-[3px] mt-2 relative bg-white/25 overflow-hidden">
+ <div className="absolute left-0 top-0 h-full w-[35%] bg-[#b497cf] transition-all duration-300 ease-out group-hover:w-full" />
  </div>
  </div>
  </div>
@@ -120,7 +120,7 @@ export default function SpurIntelligenceSection({
 
  {/* Signature Stepped Pixel Crenellation Transition Border */}
  <div
- className="w-full relative overflow-hidden bg-[#CEFF00] leading-none select-none pointer-events-none"
+ className="w-full relative overflow-hidden bg-black leading-none select-none pointer-events-none"
  aria-hidden="true"
  >
  <svg
@@ -139,10 +139,10 @@ export default function SpurIntelligenceSection({
  return (
  <g key={i}>
  {top === 1 && (
- <rect x={x.toFixed(2)} y="0" width={w.toFixed(2)} height="20" fill="#000000" />
+ <rect x={x.toFixed(2)} y="0" width={w.toFixed(2)} height="20" fill="#b497cf" />
  )}
  {bot === 0 && (
- <rect x={x.toFixed(2)} y="20" width={w.toFixed(2)} height="20" fill="#CEFF00" />
+ <rect x={x.toFixed(2)} y="20" width={w.toFixed(2)} height="20" fill="#b497cf" />
  )}
  </g>
  );

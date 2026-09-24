@@ -225,7 +225,6 @@ export default function DevelopmentTools() {
 
  return (
  <PageSection ref={sectionRef} id="tools">
-		<PegasusInfraSection />
 
 
 
