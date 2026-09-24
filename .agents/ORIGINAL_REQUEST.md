@@ -388,3 +388,58 @@ For order and credit tests without database:
 
 Ensure `grep -rnI "inMemoryOrders" internal/order/` returns 0 matches!
 
+## 2026-09-24T13:02:48Z
+
+<USER_REQUEST>
+Execute full-stack modularization of the Pegasus Sovereign Core (`pegasus.x`) across backend (decompose the 2,448-line router monolith and group services into domain route modules), frontend (consolidate shared UI packages and synchronize types), and infrastructure (modularize Docker Compose overlays and Caddy gateway snippets) with zero regressions and strict backward compatibility.
+
+Working directory: `/Users/shakhzod/Desktop/V.O.I.D/pegasus.x`  
+Integrity mode: `development`  
+
+Reference material: `/Users/shakhzod/Desktop/V.O.I.D/pegasus.x/modularization-plan.md`
+
+## Requirements
+
+### R1. Backend Domain Subrouter & Route Module Decomposition
+Decompose the monolithic HTTP server router (`backend/internal/api/router.go`, 2,448 lines) into clean, self-registering domain subrouters (Logistics, Warehouse/WMS, Commercial/Retail, Finance/Soliq, and Core System):
+- Each domain module must encapsulate its own route registration through a standard `Module` interface without polluting `Server` with manual setter methods.
+- Unify inline DTO structs and request payloads across API handlers to prevent duplicate type declarations.
+- Guarantee 100% route contract parity: all HTTP paths, middleware, and query params must remain identical.
+
+### R2. Frontend Shared Monorepo Package Consolidation
+Consolidate repeated UI layouts and state logic across desktop and mobile applications into shared workspace packages:
+- Extract shared control tower primitives (Navigation Rail, Density Metric Cards, Context Inspector Drawer) into `@pegasusx/pulse-ui` and `@pegasusx/ui-kit`.
+- Eliminate contract drift by synchronizing `contracts/` with `@pegasusx/types` and deprecating outdated duplicate typings.
+- Purge stale and unused dependencies (such as `firebase` in `warehouse-desktop/package.json`) and ensure uniform compliance with V.O.I.D Tactical Control Tower styling tokens.
+
+### R3. Infrastructure Gateway & Compose Modularization
+Modularize configuration files for local development, staging, and production:
+- Refactor `docker-compose.yml` into a base service definition with clean environment overlays (`base`, `dev`, `prod`).
+- Decompose the monolithic `docker/Caddyfile` into modular domain route snippets (`api.caddy`, `ws.caddy`, `portal.caddy`) for TAS-IX peering and TLS termination.
+
+### R4. Comprehensive Verification & Zero-Regression Assurance
+Verify that every existing domain workflow, test suite, and build target continues to pass without errors:
+- Execute `go test -v -race ./...` across the entire backend Go workspace with 0 failures and 0 race conditions.
+- Execute type checks and builds across all frontend packages (`pnpm --filter @pegasusx/* build`).
+- Verify Docker compose config validity.
+
+## Acceptance Criteria
+
+### Backend Modularization
+- [ ] `backend/internal/api/router.go` line count is reduced by at least 60% (from 2,448 lines to under 950 lines).
+- [ ] Domain subrouters are isolated in modular files/packages with a clean registration interface.
+- [ ] `go vet ./...` exits with code 0 (0 diagnostics).
+- [ ] `go test -v -race ./...` passes 100% cleanly across all packages.
+
+### Frontend & Type System Integrity
+- [ ] TypeScript compilation succeeds with zero type errors across all shared packages (`@pegasusx/types`, `@pegasusx/pulse-ui`, `@pegasusx/ui-kit`).
+- [ ] Unused dependencies (`firebase`) purged from `apps/warehouse-desktop/package.json`.
+- [ ] Desktop applications build cleanly (`pnpm build`).
+
+### Infrastructure Modularity
+- [ ] `docker compose config` validates successfully with modular overlay files.
+- [ ] Caddy gateway configuration is split into maintainable domain snippets without route loss.
+
+</USER_REQUEST>
+
+
