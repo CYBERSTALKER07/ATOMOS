@@ -6,6 +6,7 @@ import LogoLoop, { type LogoItem } from './LogoLoop';
 import { useInView } from '../hooks/useInView';
 import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
+import { PegasusInfraSection } from './infra';
 import {
  SiReact,
  SiNextdotjs,
@@ -224,6 +225,13 @@ export default function DevelopmentTools() {
 
  return (
  <PageSection ref={sectionRef} id="tools">
+		<PegasusInfraSection />
+
+		<div className="pt-10 pb-4 text-center">
+			<p className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-semibold">
+				{t("tools_frameworks_title", "Core Runtime Protocols & Verified Frameworks")}
+			</p>
+		</div>
 
  <div
  ref={stackRef}

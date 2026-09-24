@@ -11,7 +11,6 @@ import { usePerfProfile } from '@/app/hooks/useDevice';
 
 import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
-import NavigationProgressBar from './NavigationProgressBar';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
 import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
@@ -86,7 +85,6 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
     <ThemeProvider>
       <LanguageProvider initialLanguage={initialLanguage}>
         <CookieConsentProvider>
-          <NavigationProgressBar />
           {isAssistantPage ? (
             children
           ) : (
