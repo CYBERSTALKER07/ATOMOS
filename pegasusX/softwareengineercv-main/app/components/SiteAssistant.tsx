@@ -400,11 +400,11 @@ export default function SiteAssistant() {
  <aside
  id={panelId}
  ref={containerRef}
- className="site-assistant__panel site-assistant__panel--chat fixed bottom-[76px] right-4 sm:bottom-[88px] sm:right-6 z-[10004] outline-none"
+ className="site-assistant__panel site-assistant__panel--chat fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] right-4 sm:bottom-[88px] sm:right-6 z-[10004] outline-none"
  role="dialog"
  aria-label="Pegasus assistant"
  >
- <div className="site-assistant__chat-card rounded-3xl border border-white/20 bg-black text-white overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)]">
+ <div className="site-assistant__chat-card rounded-3xl border border-white/20 bg-black text-white overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)] keep-dark" data-keep-dark data-keep-white>
  {/* Header Bar */}
  <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-black border-b border-white/10 shrink-0">
  <div className="flex items-center gap-2.5 min-w-0">
@@ -592,7 +592,7 @@ export default function SiteAssistant() {
  ) : null}
 
  {/* Floating Action Launcher in Corner - Always Visible */}
- <aside aria-label="Pegasus AI Assistant" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[10005]">
+ <aside aria-label="Pegasus AI Assistant" className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 sm:bottom-6 sm:right-6 z-[10005] keep-dark" data-keep-dark data-keep-white>
  <button
  ref={launcherRef}
  type="button"

@@ -108,9 +108,9 @@ export default function AssistantPage() {
  const mode = useSystemThemeMode();
 
  return (
- <div className="fixed inset-0 h-[100dvh] w-screen bg-black flex flex-col overflow-hidden text-white z-10">
+ <div className="fixed inset-0 h-[100dvh] w-screen bg-black flex flex-col overflow-hidden text-white z-10 keep-dark" data-keep-dark data-keep-white>
  {/* Top Header Bar */}
- <header className="h-14 border-b border-white/10 px-6 flex items-center justify-between bg-black z-20 shrink-0">
+ <header className="h-[calc(3.5rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] border-b border-white/10 px-4 sm:px-6 flex items-center justify-between bg-black z-20 shrink-0">
  <div className="flex items-center gap-3">
  <Link
  href="/"
@@ -134,7 +134,7 @@ export default function AssistantPage() {
  </header>
 
  {/* Main Agent Interface */}
- <main className="flex-1 w-full h-[calc(100dvh-3.5rem)] relative overflow-hidden bg-black">
+ <main className="flex-1 w-full relative overflow-hidden bg-black pb-[env(safe-area-inset-bottom,0px)]">
  <AgentInterface
  llm={llm}
  componentLibrary={openuiLibrary}

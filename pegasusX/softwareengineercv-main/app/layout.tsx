@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientLayout from "@/components/ClientLayout";
 import { BRAND_LOGO } from "@/app/lib/siteAssets";
 import { absoluteUrl, languageAlternates, SITE_NAME, SITE_URL } from "@/app/lib/seo";
 import { getServerLanguage } from "@/app/lib/i18n/server";
 import { translations } from "@/app/lib/i18n/translations";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#000000",
+};
 
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -160,8 +167,7 @@ export default async function RootLayout({
  }
  try {
  const t = localStorage.getItem('pegasus-theme');
- const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
- if (t === 'light' || (!t && !prefersDark)) {
+ if (t === 'light') {
  document.documentElement.classList.add('light');
  document.documentElement.classList.remove('dark');
  document.documentElement.setAttribute('data-theme', 'light');

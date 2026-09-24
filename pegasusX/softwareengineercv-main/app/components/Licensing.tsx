@@ -77,23 +77,23 @@ export default function Licensing() {
  <section
  ref={sectionRef}
  id="deployment"
- className="min-h-screen py-20 bg-black text-white relative overflow-hidden flex items-center"
+ className="min-h-screen py-20 bg-[#F8FAFC] dark:bg-black text-zinc-900 dark:text-white relative overflow-hidden flex items-center transition-colors"
  >
  <div className="container mx-auto px-4 relative z-10">
  <div className="max-w-6xl mx-auto">
  <div ref={titleRef} className="text-center mb-12 md:mb-16">
  {isMobile ? (
- <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-white">{t('deployment_heading')}</h2>
+ <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-6 text-zinc-900 dark:text-white">{t('deployment_heading')}</h2>
  ) : (
  <GlitchText speed={1} enableShadows={true} enableOnHover={true} className="mb-6">
  {t('deployment_heading')}
  </GlitchText>
  )}
- <div className="w-20 h-1 bg-white rounded-none mx-auto" />
+ <div className="w-20 h-1 bg-zinc-900 dark:bg-white rounded-none mx-auto" />
  </div>
 
  <div ref={contentRef} className="text-center mb-12 md:mb-16 max-w-3xl mx-auto">
- <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
+ <p className="text-lg md:text-xl text-zinc-600 dark:text-gray-300 leading-relaxed">
  {t('deployment_desc')}
  </p>
  </div>

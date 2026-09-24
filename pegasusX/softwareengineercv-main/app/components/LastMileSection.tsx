@@ -46,7 +46,7 @@ export default function LastMileSection() {
   }, [isMobile, isLowEnd, prefersReducedMotion]);
 
   return (
-    <PageSection id="last-mile" ref={sectionRef} className="border-t border-white/10 relative">
+    <PageSection id="last-mile" ref={sectionRef} className="border-t border-black/10 dark:border-white/10 relative">
       
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
         <div ref={imageRef} className="relative order-1 lg:col-span-7">
@@ -66,14 +66,14 @@ export default function LastMileSection() {
         </div>
 
         <div ref={contentRef} className="order-2 space-y-6 max-w-xl lg:col-span-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500 dark:text-white/45">
             {t('last_mile_eyebrow', 'Delivery')}
           </p>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-white">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-light tracking-tight text-zinc-900 dark:text-white">
             {t('last_mile_title', 'Track every single order')}
           </h2>
-          <div className="w-20 h-px bg-white" />
-          <p className="text-base md:text-lg font-extralight text-white/70 leading-relaxed">
+          <div className="w-20 h-px bg-zinc-900 dark:bg-white" />
+          <p className="text-base md:text-lg font-extralight text-zinc-600 dark:text-white/70 leading-relaxed">
             {t(
               'last_mile_desc',
               'Built for retailers and suppliers — on every OS they use. Live status from warehouse to door so both sides see the same stop, without phone calls or guesswork.',
@@ -82,13 +82,13 @@ export default function LastMileSection() {
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Link
               href="/capabilities/live-fleet-tracking"
-              className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] bg-white text-black hover:bg-white/90 transition-colors"
+              className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-white/90 transition-colors"
             >
               {t('last_mile_cta_primary', 'See live tracking')}
             </Link>
             <Link
               href="/roles/retailer"
-              className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] border border-white/30 text-white hover:border-white/60 transition-colors"
+              className="inline-flex items-center justify-center min-h-11 px-5 text-xs font-semibold uppercase tracking-[0.1em] border border-zinc-900/30 text-zinc-900 hover:border-zinc-900/60 dark:border-white/30 dark:text-white dark:hover:border-white/60 transition-colors"
             >
               {t('last_mile_cta_secondary', 'Retailer experience')}
             </Link>

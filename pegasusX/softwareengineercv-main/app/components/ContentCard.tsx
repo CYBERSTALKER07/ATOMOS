@@ -268,6 +268,7 @@ function ContentCard({
  const useSplitCta = splitCta && Boolean(href) && ctaStyle === 'button';
  const shellClass = [
  'editorial-card',
+    'keep-dark',
  useSplitCta ? '' : 'editorial-card--interactive',
  `editorial-card--${variant}`,
  isLight ? 'editorial-card--light' : 'editorial-card--dark',
@@ -361,7 +362,7 @@ function ContentCard({
  );
  }
 
- return <article className={shellClass} data-card="editorial">{inner}</article>;
+ return <article className={shellClass} data-card="editorial" data-keep-dark data-keep-white>{inner}</article>;
 }
 
 export default memo(ContentCard);

@@ -100,7 +100,7 @@ export default function Footer() {
  ];
 
  return (
- <footer className="bg-[#000000] text-white border-t border-white/5 overflow-hidden font-sans relative">
+ <footer className="bg-[#000000] text-white border-t border-white/5 overflow-hidden font-sans relative keep-dark" data-keep-dark data-keep-white>
 
  {/* Background grain / grid effect */}
  <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
@@ -109,7 +109,7 @@ export default function Footer() {
  {/* Top section with input */}
  <div className="border-b border-white/5 flex flex-col items-center justify-center py-16 px-4 relative z-10">
  <form onSubmit={handleSubmit} className="w-full max-w-[420px] flex flex-col gap-3">
- <div className="flex bg-black border border-white/10 focus-within:border-white/30 rounded-none overflow-hidden w-full transition-colors">
+ <div className="flex bg-[#111111] border border-white/20 focus-within:border-white/50 rounded-none overflow-hidden w-full transition-colors">
  <input
  type="email"
  value={email}
@@ -129,7 +129,7 @@ export default function Footer() {
  <button
  type="submit"
  disabled={status === 'loading'}
- className="bg-[#333] hover:bg-[#444] text-white px-6 py-3 transition-colors flex items-center justify-center gap-2 text-sm font-medium border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
+ className="bg-white hover:bg-zinc-200 text-black font-semibold px-6 py-3 transition-colors flex items-center justify-center gap-2 text-sm border-l border-white/10 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed min-w-[130px]"
  >
  {status === 'loading' ? (
  <>

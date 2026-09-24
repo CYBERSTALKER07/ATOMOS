@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { gsap } from 'gsap';
 
 const getContainingBlock = (element: HTMLElement | null): HTMLElement | null => {
@@ -62,14 +62,22 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  const tickerFnRef = useRef<(() => void) | null>(null);
  const activeStrengthRef = useRef({ current: 0 });
 
+ const [mounted, setMounted] = useState(false);
+
+ useEffect(() => {
+ setMounted(true);
+ }, []);
+
  const isMobile = useMemo(() => {
- if (typeof window === 'undefined') return false;
+ if (typeof window === 'undefined') return true;
+ if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+ if (window.matchMedia && window.matchMedia('(hover: none)').matches) return true;
  const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
  const isSmallScreen = window.innerWidth <= 768;
  const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
  const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i;
  const isMobileUserAgent = mobileRegex.test(userAgent.toLowerCase());
- return (hasTouchScreen && isSmallScreen) || isMobileUserAgent;
+ return hasTouchScreen || isSmallScreen || isMobileUserAgent;
  }, []);
 
  const constants = useMemo(() => ({ borderWidth: 3, cornerSize: 12 }), []);
@@ -448,7 +456,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
 
 
- if (isMobile) {
+ if (!mounted || isMobile) {
  return null;
  }
 
@@ -456,7 +464,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
  <div
  id="target-cursor"
  ref={cursorRef}
- className="target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[10005]"
+ className="target-cursor fixed top-0 left-0 w-0 h-0 pointer-events-none z-[10005] opacity-0"
  style={{ willChange: 'transform' }}
  >
  <div

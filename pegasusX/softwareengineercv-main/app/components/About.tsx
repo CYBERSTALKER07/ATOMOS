@@ -65,10 +65,10 @@ export default function About() {
 
  <div ref={contentRef} className="space-y-6">
  <div>
- <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-white">
+ <h2 className="text-4xl md:text-5xl lg:text-6xl font-light mb-4 text-zinc-900 dark:text-white">
  {t('about_title')}
  </h2>
- <div className="w-20 h-[0.5px] bg-white rounded-none mb-6" />
+ <div className="w-20 h-[0.5px] bg-zinc-900 dark:bg-white rounded-none mb-6" />
 
  <div className="mb-6">
  <TextType
@@ -85,15 +85,14 @@ export default function About() {
  showCursor={true}
  cursorCharacter="_"
  loop={true}
- textColors={['#ffffff', '#a3a3a3']}
- className="text-xl md:text-2xl font-light text-white"
- cursorClassName="text-white"
+ className="text-xl md:text-2xl font-light text-zinc-900 dark:text-white"
+ cursorClassName="text-zinc-900 dark:text-white"
  startOnVisible={true}
  />
  </div>
  </div>
 
- <p className="text-lg md:text-xl text-white/65 leading-relaxed font-light">
+ <p className="text-lg md:text-xl text-zinc-600 dark:text-white/65 leading-relaxed font-light">
  {t('about_desc')}
  </p>
 

@@ -348,7 +348,7 @@ const PillNav: React.FC<PillNavProps> = ({
  }
  }}
  >
- <div className="relative pointer-events-none px-4 sm:px-6 py-2.5">
+ <div className="relative pointer-events-none px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5">
  <nav
  className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-[1600px] mx-auto ${className}`}
  aria-label="Primary"

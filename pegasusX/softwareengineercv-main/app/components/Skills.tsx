@@ -206,7 +206,7 @@ export default function Skills() {
  <PageSection
  id="capabilities"
  bleed
- className="bg-[#050505] !p-0 border-t border-white/10"
+ className="bg-[#050505] !p-0 border-t border-white/10 keep-dark" data-keep-dark data-keep-white
  innerClassName="w-full max-w-[1600px] mx-auto px-0"
  >
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 bg-white/10 gap-px border-b border-white/10">

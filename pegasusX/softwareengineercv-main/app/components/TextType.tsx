@@ -39,7 +39,7 @@ const TextType = ({
  cursorCharacter = '|',
  cursorClassName = '',
  cursorBlinkDuration = 0.5,
- textColors = ['#FFFFFF'],
+ textColors,
  variableSpeed,
  onSentenceComplete,
  startOnVisible = false,
@@ -63,8 +63,8 @@ const TextType = ({
   return Math.random() * (max - min) + min;
  }, [variableSpeed, typingSpeed]);
 
- const getCurrentTextColor = () => {
-  if (textColors.length === 0) return '#FFFFFF';
+ const getCurrentTextColor = (): string | undefined => {
+  if (!textColors || textColors.length === 0) return undefined;
   return textColors[currentTextIndex % textColors.length];
  };
 
@@ -184,7 +184,7 @@ const TextType = ({
    className: `inline-block whitespace-pre-wrap tracking-tight ${className}`,
    ...props
   },
-  <span className="inline" style={{ color: getCurrentTextColor() }}>
+  <span className="inline" style={getCurrentTextColor() ? { color: getCurrentTextColor() } : undefined}>
    {displayedText}
   </span>,
   showCursor && (

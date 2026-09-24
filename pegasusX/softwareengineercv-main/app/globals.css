@@ -448,23 +448,44 @@ a.editorial-card--interactive:hover .editorial-btn,
 
 /* Light mode overrides */
 .editorial-btn--on-light,
-.editorial-card--light .editorial-btn,
-.editorial-card--featured .editorial-btn {
+.editorial-card--light .editorial-btn {
  background: transparent !important;
  color: #000 !important;
  border: 1px solid #000 !important;
 }
 
 .editorial-btn--on-light::before,
-.editorial-card--light .editorial-btn::before,
-.editorial-card--featured .editorial-btn::before {
+.editorial-card--light .editorial-btn::before {
  background: #000 !important;
 }
 
 .editorial-btn--on-light:hover,
-.editorial-card--light .editorial-btn:hover,
-.editorial-card--featured .editorial-btn:hover {
+.editorial-card--light .editorial-btn:hover {
  color: #fff !important;
+}
+
+html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]),
+[data-theme="light"] .editorial-btn:not(.keep-dark):not([data-keep-dark]) {
+ background: transparent !important;
+ color: #09090B !important;
+ border: 1px solid #09090B !important;
+}
+
+html.light .editorial-btn:not(.keep-dark):not([data-keep-dark])::before,
+[data-theme="light"] .editorial-btn:not(.keep-dark):not([data-keep-dark])::before {
+ background: #09090B !important;
+}
+
+html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover,
+html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):focus-visible,
+[data-theme="light"] .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover,
+[data-theme="light"] .editorial-btn:not(.keep-dark):not([data-keep-dark]):focus-visible {
+ color: #FFFFFF !important;
+}
+
+html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover *,
+[data-theme="light"] .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover * {
+ color: #FFFFFF !important;
 }
 
 /* Secondary/Ghost Variants */
@@ -1519,8 +1540,7 @@ a.editorial-card--interactive:hover .editorial-btn,
  color: #fff;
 }
 
-.editorial-card--light .editorial-link,
-.editorial-card--featured .editorial-link {
+.editorial-card--light .editorial-link {
  color: #000;
 }
 
@@ -7244,4 +7264,13 @@ html.light .text-white\/30,
 
 .openui-agent-conversation-starter {
   display: none !important;
+}
+
+/* OpenUI Mobile Safe Area Inset */
+.openui-agent-container {
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+.openui-agent-container [class*="composer"],
+.openui-agent-container form {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px)) !important;
 }
