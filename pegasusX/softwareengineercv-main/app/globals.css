@@ -1284,38 +1284,7 @@ html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover *,
  cursor: pointer !important;
  }
 
-	/* Instantly hide custom TargetCursor when mouse hovers over navigation, chrome, or cards */
-	body:has(nav:hover) #target-cursor,
-	body:has(header:hover) #target-cursor,
-	body:has(.pill-nav:hover) #target-cursor,
-	body:has([role="navigation"]:hover) #target-cursor,
-	body:has(nav:hover) .target-cursor,
-	body:has(header:hover) .target-cursor,
-	body:has(.pill-nav:hover) .target-cursor,
-	body:has([role="navigation"]:hover) .target-cursor,
- body:has(.editorial-card:hover) #target-cursor,
- body:has(.deployment-card:hover) #target-cursor,
- body:has(#deployment article:hover) #target-cursor,
- body:has(#deployment .grid > *:hover) #target-cursor,
- body:has(.card-hover-action:hover) #target-cursor,
- body:has(.company-card:hover) #target-cursor,
- body:has(.stat-card:hover) #target-cursor,
- body:has(.bento-card:hover) #target-cursor,
- body:has(.chamfer-card:hover) #target-cursor,
- body:has(.docs-card:hover) #target-cursor,
- body:has(.platform-card:hover) #target-cursor,
- body:has(.o9-card:hover) #target-cursor,
- body:has(.capability-card:hover) #target-cursor,
- body:has([data-card]:hover) #target-cursor,
- body:has([class*="editorial-card"]:hover) #target-cursor,
- body:has([class*="card-hover"]:hover) #target-cursor,
- body:has(.editorial-card:hover) .target-cursor,
- body:has(.deployment-card:hover) .target-cursor,
- body:has([data-card]:hover) .target-cursor {
- opacity: 0 !important;
- visibility: hidden !important;
- pointer-events: none !important;
- }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -7276,6 +7245,16 @@ html.light .text-white\/30,
 }
 
 /* Target Cursor */
+html.hide-default-cursor,
+html.hide-default-cursor body,
+html.hide-default-cursor a,
+html.hide-default-cursor button,
+html.hide-default-cursor [role="button"],
+html.hide-default-cursor input,
+html.hide-default-cursor select {
+  cursor: none !important;
+}
+
 .target-cursor-wrapper {
   position: fixed;
   top: 0;

@@ -93,16 +93,14 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               }}
             >
               {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
-              {allowHoverFx ? (
-                <TargetCursor
-                  spinDuration={2}
-                  hideDefaultCursor
-                  parallaxOn
-                  hoverDuration={0.2}
-                  cursorColor="#10B981"
-                  cursorColorOnTarget="#B497CF"
-                />
-              ) : null}
+              <TargetCursor
+                spinDuration={2}
+                hideDefaultCursor
+                parallaxOn
+                hoverDuration={0.2}
+                cursorColor="#10B981"
+                cursorColorOnTarget="#B497CF"
+              />
               {children}
               <SiteAssistant />
             </ReactLenis>
