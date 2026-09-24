@@ -28,7 +28,6 @@ import {
   Clock,
   Users,
 } from "lucide-react";
-import { Chip, Skeleton } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
 import { CreditProfileCard } from "@/components/CreditProfileCard";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
