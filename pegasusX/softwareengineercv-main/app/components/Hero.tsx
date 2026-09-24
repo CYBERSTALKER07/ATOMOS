@@ -261,35 +261,6 @@ export default function Hero() {
    </div>
    </div>
 
-   {/* ── Minimalist Tactical Video Switcher (01 / 02 / 03) ── */}
-   <div className="absolute bottom-8 right-24 sm:right-28 z-20 flex items-center gap-1.5 sm:gap-2 bg-black/60 backdrop-blur-md border border-white/10 p-1.5 rounded-full select-none shadow-xl">
-    <span className="text-[10px] uppercase font-mono tracking-wider text-white/40 pl-2 pr-1 hidden sm:inline">
-     {language === 'ru' ? 'Камера' : 'Feed'}
-    </span>
-    {HERO_VIDEOS.map((vid, idx) => {
-     const isActive = activeVideoIdx === idx;
-     return (
-      <button
-       key={vid.id}
-       onClick={() => setActiveVideoIdx(idx)}
-       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono transition-all ${
-        isActive
-         ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)] font-semibold'
-         : 'text-white/60 hover:text-white hover:bg-white/10 border border-transparent'
-       }`}
-       title={language === 'ru' ? vid.nameRu : vid.name}
-       aria-label={`Switch feed to ${vid.label}: ${vid.name}`}
-      >
-       <span
-        className={`w-1.5 h-1.5 rounded-full ${
-         isActive ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'
-        }`}
-       />
-       <span>{vid.label}</span>
-      </button>
-     );
-    })}
-   </div>
 
    {/* ── Bottom scroll indicator ── */}
    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-60">
