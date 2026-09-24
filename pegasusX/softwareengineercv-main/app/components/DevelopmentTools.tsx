@@ -227,11 +227,7 @@ export default function DevelopmentTools() {
  <PageSection ref={sectionRef} id="tools">
 		<PegasusInfraSection />
 
-		<div className="pt-10 pb-4 text-center">
-			<p className="font-mono text-xs uppercase tracking-widest text-zinc-500 font-semibold">
-				{t("tools_frameworks_title", "Core Runtime Protocols & Verified Frameworks")}
-			</p>
-		</div>
+
 
  <div
  ref={stackRef}
