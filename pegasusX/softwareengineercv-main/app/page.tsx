@@ -143,7 +143,7 @@ export default async function Home() {
  <PegasusTestimonialsSection />
  {/* <UserStoriesSection /> - hidden for now */}
  <Projects />
- <Companies />
+ {/* <Companies /> - hidden for now */}
  </section>
 
  <section id="section-intelligence" className="relative z-10">
