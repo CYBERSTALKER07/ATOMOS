@@ -135,32 +135,47 @@ export default function VehiclesPage() {
         <form onSubmit={handleCreate} className="p-4 rounded-xl border border-(--border) space-y-3" style={{ background: 'var(--surface)' }}>
           <h2 className="text-sm font-semibold">New Vehicle</h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input
-              placeholder="Label (e.g. Truck-01)"
-              value={form.label}
-              onChange={e => setForm({ ...form, label: e.target.value })}
-              required
-              className="px-3 py-2 rounded-lg border text-sm"
-              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-            />
-            <input
-              placeholder="License Plate"
-              value={form.license_plate}
-              onChange={e => setForm({ ...form, license_plate: e.target.value })}
-              required
-              className="px-3 py-2 rounded-lg border text-sm"
-              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-            />
-            <select
-              value={form.vehicle_class}
-              onChange={e => setForm({ ...form, vehicle_class: e.target.value })}
-              className="px-3 py-2 rounded-lg border text-sm"
-              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-            >
+            <div>
+              <label htmlFor="vehicle-label-input" className="sr-only">Vehicle Label</label>
+              <input
+                id="vehicle-label-input"
+                aria-label="Vehicle Label"
+                placeholder="Label (e.g. Truck-01)"
+                value={form.label}
+                onChange={e => setForm({ ...form, label: e.target.value })}
+                required
+                className="w-full px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="vehicle-plate-input" className="sr-only">License Plate</label>
+              <input
+                id="vehicle-plate-input"
+                aria-label="License Plate"
+                placeholder="License Plate"
+                value={form.license_plate}
+                onChange={e => setForm({ ...form, license_plate: e.target.value })}
+                required
+                className="w-full px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="vehicle-class-select" className="sr-only">Vehicle Class</label>
+              <select
+                id="vehicle-class-select"
+                aria-label="Vehicle Class"
+                value={form.vehicle_class}
+                onChange={e => setForm({ ...form, vehicle_class: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              >
               <option value="CLASS_A">Class A (50 VU)</option>
               <option value="CLASS_B">Class B (150 VU)</option>
               <option value="CLASS_C">Class C (400 VU)</option>
             </select>
+          </div>
           </div>
           <button type="submit" disabled={creating} className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50">
             {creating ? 'Creating...' : 'Create Vehicle'}

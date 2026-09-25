@@ -6,13 +6,13 @@ import Pressable from '../components/Pressable';
 import { isIOS, type AppTheme } from '../theme';
 import { clamp } from '../utils/math';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 
 export type UiToastTone = 'info' | 'success' | 'warning' | 'error';
 export type UiToast = { id: number; title: string; message?: string; tone: UiToastTone };
 export type ShowToast = (title: string, message?: string, tone?: UiToastTone, durationMs?: number) => void;
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+// --- Hook ---------------------------------------------------------------------
 
 export function useToast({ theme: T, isTabletLayout }: { theme: AppTheme; isTabletLayout: boolean }) {
   const toastMotionProfile = useMemo(

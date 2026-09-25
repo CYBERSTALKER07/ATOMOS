@@ -211,7 +211,7 @@ export const ManifestDetailPane: React.FC<ManifestDetailPaneProps> = ({
                     justifyContent: 'center',
                   }}>
                     {item.scanned && (
-                      <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>✓</Text>
+                      <MaterialIcons name="check" size={14} color="#FFFFFF" />
                     )}
                   </View>
                   <View>

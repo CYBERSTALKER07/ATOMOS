@@ -265,12 +265,14 @@ export default function DispatchPage() {
           )}
           <div className="relative">
             <input
+              id="searchquery-input-2"
+              aria-label={t("supplier_portal.dispatch.text.search_manifests")}
               type="search"
               placeholder={t("supplier_portal.dispatch.text.search_manifest")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="md-input-outlined h-10 w-64 pl-10"
-              aria-label={t("supplier_portal.dispatch.text.search_manifests")}
+              
             />
             <Icon name="search" size={18} className="absolute left-3 top-2.5" style={{ color: "var(--desk-text-secondary)" }} />
           </div>
@@ -439,6 +441,8 @@ export default function DispatchPage() {
                       className="flex items-center gap-2 text-sm cursor-pointer rounded-md px-2 py-1 hover:bg-[var(--color-md-surface-container-high)]"
                     >
                       <input
+                        id="page-checkbox-1"
+                        aria-label="Select Page option"
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleOrderSelection(order.order_id)}

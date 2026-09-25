@@ -336,13 +336,19 @@ export default function FamilyMembersPage() {
         {!familyGone && (
           <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <label htmlFor="family-member-name" className="sr-only">{t("retailer_desktop.pos.text.name")}</label>
               <input
+                id="family-member-name"
+                aria-label={t("retailer_desktop.pos.text.name")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("retailer_desktop.pos.text.name")}
                 className="h-11 px-4 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-canvas)]"
               />
+              <label htmlFor="family-member-phone" className="sr-only">{t("retailer_desktop.settings.family.text.phone_required_for_team_migrate")}</label>
               <input
+                id="family-member-phone"
+                aria-label={t("retailer_desktop.settings.family.text.phone_required_for_team_migrate")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t("retailer_desktop.settings.family.text.phone_required_for_team_migrate")}

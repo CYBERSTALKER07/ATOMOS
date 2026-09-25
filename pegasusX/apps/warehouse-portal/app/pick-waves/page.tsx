@@ -138,9 +138,11 @@ export default function PickWavesPage() {
         </p>
 
         <div className="mb-6 flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
+          <label htmlFor="pick-waves-manifest-id" className="flex flex-col gap-1 text-sm">
             Manifest ID
             <input
+              id="pick-waves-manifest-id"
+              aria-label="Manifest ID"
               className="border px-2 py-1 font-mono text-xs min-w-[16rem]"
               value={manifestId}
               onChange={(e) => setManifestId(e.target.value)}

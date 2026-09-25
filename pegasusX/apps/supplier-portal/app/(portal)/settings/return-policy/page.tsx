@@ -122,6 +122,8 @@ export default function ReturnPolicySettingsPage() {
               ))}
             </div>
             <input
+              id="hours-input-4"
+              aria-label="Hours"
               type="number"
               min={1}
               max={168}
@@ -139,6 +141,8 @@ export default function ReturnPolicySettingsPage() {
               Concealed damage window (hours, optional)
             </label>
             <input
+              id="concealed-damage-window-h-input-3"
+              aria-label="Concealed damage window (hours, optional)"
               type="number"
               min={1}
               max={168}
@@ -150,6 +154,8 @@ export default function ReturnPolicySettingsPage() {
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input
+              id="page-checkbox-2"
+              aria-label="Select Page option"
               type="checkbox"
               checked={requirePhoto}
               onChange={(e) => setRequirePhoto(e.target.checked)}
@@ -158,6 +164,8 @@ export default function ReturnPolicySettingsPage() {
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
+              id="page-checkbox-1"
+              aria-label="Select Page option"
               type="checkbox"
               checked={allowExpired}
               onChange={(e) => setAllowExpired(e.target.checked)}

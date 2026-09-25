@@ -107,7 +107,7 @@ function validateProfileFields(
   return errors;
 }
 
-/* ── Main Page ── */
+/* -- Main Page -- */
 
 export default function SettingsPage() {
   const t = usePortalT();
@@ -126,7 +126,7 @@ export default function SettingsPage() {
     return getBrowserStorage()?.getItem("retailer_notif") !== "false";
   });
 
-  /* ── Profile State ── */
+  /* -- Profile State -- */
   const [profileEditing, setProfileEditing] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");

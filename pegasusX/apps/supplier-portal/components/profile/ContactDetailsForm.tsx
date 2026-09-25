@@ -39,6 +39,8 @@ export function EditableField({
     <label className="block">
       <div className="md-typescale-label-medium text-[var(--color-md-outline)]">{label}</div>
       <input
+        id="value-input-1"
+        aria-label="Value"
         type={type}
         className="md-input-outlined mt-1 w-full px-3 py-2"
         value={value}

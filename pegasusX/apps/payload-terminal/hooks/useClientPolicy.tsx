@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { PayloadTerminalApi } from '../api';
 import { registerPayloadPushTokens } from '../pushRegistration';
 
-// ─── Client policy (force-update / outdated banner) ───────────────────────────
+// --- Client policy (force-update / outdated banner) ---------------------------
 
 export function useClientPolicy({ token }: { token: string | null }) {
   const [clientPolicyMessage, setClientPolicyMessage] = useState<string | null>(null);

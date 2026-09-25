@@ -149,6 +149,8 @@ export default function ReturnsPage() {
             <label className="flex-1 text-sm">
               <span className="text-[var(--muted)]">{t("warehouse_portal.returns.text.barcode_ean")}</span>
               <input
+                id="barcode-input-1"
+                aria-label="Barcode"
                 autoFocus
                 className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
                 value={barcode}

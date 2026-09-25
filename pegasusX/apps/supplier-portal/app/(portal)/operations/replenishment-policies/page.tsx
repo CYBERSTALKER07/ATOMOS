@@ -106,6 +106,8 @@ export default function ReplenishmentPoliciesPage() {
               <label className="flex flex-col gap-1">
                 <span className="md-typescale-label-medium">{t("supplier_portal.operations.replenishment_policies.text.target_service_level")}</span>
                 <input
+                  id="servicelevelpct-input-3"
+                  aria-label="Service level pct"
                   className="md-text-field"
                   type="number"
                   min={50}
@@ -118,6 +120,8 @@ export default function ReplenishmentPoliciesPage() {
               <label className="flex flex-col gap-1">
                 <span className="md-typescale-label-medium">{t("supplier_portal.operations.replenishment_policies.text.lead_time_days")}</span>
                 <input
+                  id="leaddays-input-2"
+                  aria-label="Lead days"
                   className="md-text-field"
                   type="number"
                   min={1}
@@ -133,6 +137,8 @@ export default function ReplenishmentPoliciesPage() {
                   <span style={{ color: "var(--desk-text-secondary)" }}>— assumed</span>
                 </span>
                 <input
+                  id="lead-days-assumed-input-1"
+                  aria-label="Lead σ (days){&quot; &quot;} — assumed"
                   className="md-text-field"
                   type="number"
                   min={0}

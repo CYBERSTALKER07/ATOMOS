@@ -201,6 +201,8 @@ export default function WarehouseCoveragePage() {
                 </select>
               ) : (
                 <input
+                  id="drafttarget-input-3"
+                  aria-label="Draft target"
                   className="md-input sm:col-span-2"
                   value={draftTarget}
                   placeholder={draftType === "LOCATION" ? "location_id" : "City name"}
@@ -208,6 +210,8 @@ export default function WarehouseCoveragePage() {
                 />
               )}
               <input
+                id="draftpriority-input-2"
+                aria-label="Priority"
                 className="md-input"
                 value={draftPriority}
                 placeholder="Priority"
@@ -246,6 +250,8 @@ export default function WarehouseCoveragePage() {
           </ul>
           <div className="flex gap-2">
             <input
+              id="regionname-input-1"
+              aria-label="Tashkent metro"
               className="md-input flex-1"
               value={regionName}
               placeholder="Tashkent metro"

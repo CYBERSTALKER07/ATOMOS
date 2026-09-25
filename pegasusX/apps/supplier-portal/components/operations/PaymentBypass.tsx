@@ -36,6 +36,8 @@ export function PaymentBypass({
             Order ID
           </span>
           <input
+            id="order-id-input-2"
+            aria-label="Order ID"
             className="md-input-outlined w-full font-mono"
             placeholder={t("supplier_portal.operations.payment_bypass.text.order_id_awaiting_payment")}
             value={orderId}
@@ -47,6 +49,8 @@ export function PaymentBypass({
             Reason (optional)
           </span>
           <input
+            id="reason-optional-input-1"
+            aria-label="Reason (optional)"
             className="md-input-outlined w-full"
             placeholder={t("supplier_portal.admin.control_center.field.reason")}
             value={bypassReason}

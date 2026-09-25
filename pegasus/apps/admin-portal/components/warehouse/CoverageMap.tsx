@@ -9,7 +9,7 @@ import { apiFetch } from '@/lib/auth';
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 const TASHKENT = { latitude: 41.2995, longitude: 69.2401 };
 
-/* ── Types ─────────────────────────────────────────────────────────────── */
+/* -- Types --------------------------------------------------------------- */
 
 interface ZoneRetailer {
   retailer_id: string;
@@ -44,7 +44,7 @@ interface CoverageMapProps {
   onLocationChange: (lat: number, lng: number, address: string) => void;
 }
 
-/* ── Circle GeoJSON Generator ──────────────────────────────────────────── */
+/* -- Circle GeoJSON Generator -------------------------------------------- */
 
 function createCircleGeoJSON(lat: number, lng: number, radiusKm: number, points = 64) {
   const coords: [number, number][] = [];
@@ -98,7 +98,7 @@ function retailersToGeoJSON(retailers: ZoneRetailer[]) {
   };
 }
 
-/* ── Component ─────────────────────────────────────────────────────────── */
+/* -- Component ----------------------------------------------------------- */
 
 export default function CoverageMap({
   latitude,
@@ -118,7 +118,7 @@ export default function CoverageMap({
   const lat = latitude || TASHKENT.latitude;
   const lng = longitude || TASHKENT.longitude;
 
-  /* ── Fetch zone preview (debounced) ──────────────────────────────── */
+  /* -- Fetch zone preview (debounced) -------------------------------- */
   const fetchPreview = useCallback(async (lt: number, ln: number, r: number) => {
     if (lt === 0 && ln === 0) return;
     setLoading(true);
@@ -148,12 +148,12 @@ export default function CoverageMap({
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [lat, lng, radiusKm, fetchPreview]);
 
-  /* ── Map click handler ───────────────────────────────────────────── */
+  /* -- Map click handler --------------------------------------------- */
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
     onLocationChange(e.lngLat.lat, e.lngLat.lng, addressText);
   }, [addressText, onLocationChange]);
 
-  /* ── Share location ──────────────────────────────────────────────── */
+  /* -- Share location ------------------------------------------------ */
   const handleShareLocation = useCallback(() => {
     if (!navigator.geolocation) return;
     setLocating(true);
@@ -168,7 +168,7 @@ export default function CoverageMap({
     );
   }, [addressText, onLocationChange]);
 
-  /* ── GeoJSON sources ─────────────────────────────────────────────── */
+  /* -- GeoJSON sources ----------------------------------------------- */
   const circleGeoJSON = useMemo(
     () => createCircleGeoJSON(lat, lng, radiusKm),
     [lat, lng, radiusKm]
@@ -298,7 +298,7 @@ export default function CoverageMap({
         </p>
       )}
 
-      {/* ── Density Stats Panel ──────────────────────────────────────── */}
+      {/* -- Density Stats Panel ---------------------------------------- */}
       {hasLocation && preview && (
         <div
           className="rounded-xl p-3 space-y-2"

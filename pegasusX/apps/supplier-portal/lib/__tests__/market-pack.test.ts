@@ -39,6 +39,19 @@ describe("GS-R market pack bind", () => {
     expect(canonicalizeOrderStatus("en_route")).toBe("IN_TRANSIT");
     expect(canonicalizeOrderStatus("DISPATCHED")).toBe("LOADED");
     expect(canonicalizeOrderStatus("SHOP_CLOSED_PENDING")).toBe("ARRIVED_SHOP_CLOSED");
+    // Pegasus.x sovereign 12-state mappings
+    expect(canonicalizeOrderStatus("DELIVERED")).toBe("COMPLETED");
+    expect(canonicalizeOrderStatus("DISPUTED")).toBe("RECONCILIATION_REQUIRED");
+    expect(canonicalizeOrderStatus("CONFIRMED")).toBe("AUTO_ACCEPTED");
+    expect(canonicalizeOrderStatus("PENDING_APPROVAL")).toBe("PENDING");
+    expect(canonicalizeOrderStatus("DRAFT")).toBe("PENDING");
+    expect(canonicalizeOrderStatus("PICKING")).toBe("PENDING");
+    expect(canonicalizeOrderStatus("PACKED")).toBe("LOADED");
+    expect(canonicalizeOrderStatus("CANCEL_REQUESTED")).toBe("CANCELLED");
+    // PegasusX core states
+    expect(canonicalizeOrderStatus("IN_TRANSIT")).toBe("IN_TRANSIT");
+    expect(canonicalizeOrderStatus("AWAITING_PAYMENT")).toBe("AWAITING_PAYMENT");
+    expect(canonicalizeOrderStatus("FISCALIZING")).toBe("FISCALIZING");
   });
 
   it("keeps localhost bootstrap and pins cell-eu off-box", () => {

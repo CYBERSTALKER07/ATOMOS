@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button } from '@heroui/react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import type { PaginationState } from "@/lib/usePagination";
 
 interface Props {
@@ -35,13 +36,13 @@ export default function PaginationControls({ pagination, pageSizeOptions = [10, 
           {totalItems === 0 ? '0 items' : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalItems)} of ${totalItems}`}
         </span>
         <div className="flex gap-1">
-          <Button variant="ghost" isIconOnly onPress={() => setPage(1)} isDisabled={!canPrev} aria-label="First page" className="w-8 h-8 min-w-0 text-sm">⟨⟨</Button>
-          <Button variant="ghost" isIconOnly onPress={prevPage} isDisabled={!canPrev} aria-label="Previous page" className="w-8 h-8 min-w-0 text-sm">⟨</Button>
+          <Button variant="ghost" isIconOnly onPress={() => setPage(1)} isDisabled={!canPrev} aria-label="First page" className="w-8 h-8 min-w-0 text-sm"><ChevronsLeft className="w-4 h-4" /></Button>
+          <Button variant="ghost" isIconOnly onPress={prevPage} isDisabled={!canPrev} aria-label="Previous page" className="w-8 h-8 min-w-0 text-sm"><ChevronLeft className="w-4 h-4" /></Button>
           <span className="md-typescale-label-small px-2 py-1 text-foreground">
             {page} / {totalPages}
           </span>
-          <Button variant="ghost" isIconOnly onPress={nextPage} isDisabled={!canNext} aria-label="Next page" className="w-8 h-8 min-w-0 text-sm">⟩</Button>
-          <Button variant="ghost" isIconOnly onPress={() => setPage(totalPages)} isDisabled={!canNext} aria-label="Last page" className="w-8 h-8 min-w-0 text-sm">⟩⟩</Button>
+          <Button variant="ghost" isIconOnly onPress={nextPage} isDisabled={!canNext} aria-label="Next page" className="w-8 h-8 min-w-0 text-sm"><ChevronRight className="w-4 h-4" /></Button>
+          <Button variant="ghost" isIconOnly onPress={() => setPage(totalPages)} isDisabled={!canNext} aria-label="Last page" className="w-8 h-8 min-w-0 text-sm"><ChevronsRight className="w-4 h-4" /></Button>
         </div>
       </div>
     </div>

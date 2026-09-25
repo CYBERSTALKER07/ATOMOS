@@ -287,16 +287,21 @@ export default function SupplyRequestDetailPage() {
                   <td className="px-4 py-3 font-mono">{item.shipped_quantity ?? '—'}</td>
                   <td className="px-4 py-3 font-mono">
                     {detail.linked_transfer_id ? (
-                      <input
-                        type="number"
-                        min={0}
-                        className="w-20 rounded border border-[var(--border)] px-2 py-1"
-                        value={receiveQty[item.item_id] ?? item.shipped_quantity ?? item.requested_quantity}
-                        onChange={(e) => setReceiveQty((prev) => ({
-                          ...prev,
-                          [item.item_id]: Number(e.target.value),
-                        }))}
-                      />
+                      <>
+                        <label htmlFor={`receive-qty-${item.item_id}`} className="sr-only">Received quantity for {item.product_id}</label>
+                        <input
+                          id={`receive-qty-${item.item_id}`}
+                          aria-label={`Received quantity for ${item.product_id}`}
+                          type="number"
+                          min={0}
+                          className="w-20 rounded border border-[var(--border)] px-2 py-1"
+                          value={receiveQty[item.item_id] ?? item.shipped_quantity ?? item.requested_quantity}
+                          onChange={(e) => setReceiveQty((prev) => ({
+                            ...prev,
+                            [item.item_id]: Number(e.target.value),
+                          }))}
+                        />
+                      </>
                     ) : (
                       item.received_quantity ?? '—'
                     )}

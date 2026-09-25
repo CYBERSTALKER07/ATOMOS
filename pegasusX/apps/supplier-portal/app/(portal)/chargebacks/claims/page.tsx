@@ -69,6 +69,8 @@ export default function ClaimChargebacksPage() {
     >
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
+          id="orderfilter-input-1"
+          aria-label="Order filter"
           className="border border-[var(--border)] rounded-lg px-3 py-1.5 text-sm font-mono min-w-[200px]"
           placeholder={t("supplier_portal.chargebacks.claims.text.filter_order_id")}
           value={orderFilter}

@@ -244,17 +244,21 @@ export default function ShiftsPage() {
         <section className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 font-semibold">{t("retailer_desktop.shifts.text.cash_shift")}</h2>
           <div className="mb-3 grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="opening-float-minor" className="flex flex-col gap-1 text-sm">
               Opening float (minor)
               <input
+                id="opening-float-minor"
+                aria-label="Opening float (minor)"
                 className="rounded-md border border-border bg-background px-3 py-2"
                 value={floatMinor}
                 onChange={(e) => setFloatMinor(e.target.value)}
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="closing-cash-minor" className="flex flex-col gap-1 text-sm">
               Closing cash (minor)
               <input
+                id="closing-cash-minor"
+                aria-label="Closing cash (minor)"
                 className="rounded-md border border-border bg-background px-3 py-2"
                 value={closingCash}
                 onChange={(e) => setClosingCash(e.target.value)}

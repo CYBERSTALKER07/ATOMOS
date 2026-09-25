@@ -123,6 +123,8 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
         onNext={pagination.next}
       />
       <input
+        id="catalogtable-file-4"
+        aria-label="Upload file"
         ref={rowImageInputRef}
         type="file"
         accept={ALLOWED_IMAGE_TYPES.join(",")}
@@ -198,6 +200,8 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                   <td className="px-4 py-3 font-mono text-sm">{product.category_id}</td>
                   <td className="px-4 py-3">
                     <input
+                      id="barcodevalue-input-3"
+                      aria-label="Barcode value"
                       type="text"
                       inputMode="numeric"
                       value={barcodeValue}
@@ -218,6 +222,8 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                   </td>
                   <td className="px-4 py-3 text-right">
                     <input
+                      id="vuvalue-input-2"
+                      aria-label="Vu value"
                       type="number"
                       min="0.1"
                       step="0.1"
@@ -256,6 +262,8 @@ export function CatalogTable({ products, onSaveEdits, onImageChange }: CatalogTa
                   <td className="px-4 py-3 text-right">
                     {saleUnit === "CASE" ? (
                       <input
+                        id="unitspercasevalue-input-1"
+                        aria-label="Units per case value"
                         type="number"
                         min="1"
                         step="1"

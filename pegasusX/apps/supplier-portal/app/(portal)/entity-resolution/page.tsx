@@ -66,11 +66,11 @@ export default function EntityResolutionPage() {
         </label>
         <label className="block space-y-1">
           <span className="md-typescale-label-medium">Query</span>
-          <input className="md-input w-full" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Label or phone" />
+          <input id="query-input-2" aria-label="Query" className="md-input w-full" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Label or phone" />
         </label>
         <label className="block space-y-1">
           <span className="md-typescale-label-medium">Entity ID</span>
-          <input className="md-input w-full" value={entityId} onChange={(e) => setEntityId(e.target.value)} placeholder="Optional exact id" />
+          <input id="entity-id-input-1" aria-label="Entity ID" className="md-input w-full" value={entityId} onChange={(e) => setEntityId(e.target.value)} placeholder="Optional exact id" />
         </label>
         <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={busy} onClick={() => void runResolve()}>
           {busy ? "Resolving…" : "Resolve"}

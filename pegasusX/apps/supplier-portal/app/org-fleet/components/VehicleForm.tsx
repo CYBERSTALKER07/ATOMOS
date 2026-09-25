@@ -61,6 +61,8 @@ export function VehicleForm({
       <h2 className="md-typescale-title-large">{t("supplier_portal.org_fleet.components.vehicle_form.text.vehicles")}</h2>
       <form className="grid gap-3 mt-4" onSubmit={submitVehicle}>
         <input
+          id="label-input-2"
+          aria-label="Label"
           className="md-input-outlined"
           placeholder={t("supplier_portal.org_fleet.components.vehicle_form.text.vehicle_label")}
           value={vehicleForm.label}
@@ -68,6 +70,8 @@ export function VehicleForm({
           disabled={vehicleSubmitting}
         />
         <input
+          id="licenseplate-input-1"
+          aria-label="License plate"
           className="md-input-outlined"
           placeholder={t("supplier_portal.org_fleet.components.vehicle_form.text.license_plate")}
           value={vehicleForm.licensePlate}

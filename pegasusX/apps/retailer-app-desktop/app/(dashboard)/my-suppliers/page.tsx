@@ -183,7 +183,12 @@ export default function MySuppliersPage() {
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)]"
                     size={18}
                   />
+                  <label htmlFor="search-suppliers-input" className="sr-only">
+                    {t("retailer_desktop.my_suppliers.text.search_by_name_or_category")}
+                  </label>
                   <input
+                    id="search-suppliers-input"
+                    aria-label={t("retailer_desktop.my_suppliers.text.search_by_name_or_category")}
                     type="text"
                     placeholder={t("retailer_desktop.my_suppliers.text.search_by_name_or_category")}
                     className="w-full h-11 pl-11 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium text-[var(--desk-text-primary)]"

@@ -163,6 +163,8 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
       <label className="text-xs font-medium text-(--muted)">{resolvedLabel}</label>
       <div className="relative">
         <input
+          id="query-input-1"
+          aria-label="Query"
           className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-sm"
           placeholder={t("warehouse_portal.location_picker.text.start_typing_street_address")}
           value={query}

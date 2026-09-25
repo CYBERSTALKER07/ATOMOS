@@ -159,11 +159,13 @@ export default function DigitalBrainPanel({ sku = "", retailerId = "" }: { sku?:
         <h2 className="md-typescale-title-medium mb-3">Sparsity</h2>
         <div className="flex flex-wrap gap-2 mb-3">
           <input
+            id="retailer-input-1"
+            aria-label="Retailer id"
             className="portal-input"
             value={retailer}
             onChange={(e) => setRetailer(e.target.value)}
             placeholder="Retailer id"
-            aria-label="Retailer id"
+            
           />
           <button type="button" className="portal-btn portal-btn--outline" onClick={() => void checkSparsity()}>
             Check

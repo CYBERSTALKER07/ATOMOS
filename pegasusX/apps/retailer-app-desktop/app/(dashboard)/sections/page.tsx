@@ -176,13 +176,19 @@ export default function SectionsPage() {
             <h2 className="font-semibold">{t("retailer_desktop.sections.text.new_section")}</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
+            <label htmlFor="section-name-input" className="sr-only">{t("retailer_desktop.pos.text.name")}</label>
             <input
+              id="section-name-input"
+              aria-label={t("retailer_desktop.pos.text.name")}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("retailer_desktop.pos.text.name")}
             />
+            <label htmlFor="section-aisle-input" className="sr-only">{t("retailer_desktop.sections.text.aisle_tag")}</label>
             <input
+              id="section-aisle-input"
+              aria-label={t("retailer_desktop.sections.text.aisle_tag")}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm"
               value={aisle}
               onChange={(e) => setAisle(e.target.value)}
@@ -257,7 +263,10 @@ export default function SectionsPage() {
             >
               Save SKUs
             </button>
+            <label htmlFor="section-staff-ids-input" className="sr-only">{t("retailer_desktop.sections.text.staff_user_ids_comma_separated")}</label>
             <input
+              id="section-staff-ids-input"
+              aria-label={t("retailer_desktop.sections.text.staff_user_ids_comma_separated")}
               className="mt-3 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
               placeholder={t("retailer_desktop.sections.text.staff_user_ids_comma_separated")}
               value={staffIds}

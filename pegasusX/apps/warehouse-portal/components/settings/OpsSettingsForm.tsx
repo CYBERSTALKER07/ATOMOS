@@ -100,26 +100,26 @@ export function OpsSettingsForm({
 
       <PortalSection icon="settings" title={t("warehouse_portal.settings.ops_settings_form.text.out_of_stock_orders")}>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showStockCounts} onChange={(e: ChangeEvent<HTMLInputElement>) => setShowStockCounts(e.target.checked)} />
+          <input id="opssettingsform-checkbox-5" aria-label="Select Opssettingsform option" type="checkbox" checked={showStockCounts} onChange={(e: ChangeEvent<HTMLInputElement>) => setShowStockCounts(e.target.checked)} />
           Show stock counts to retailers
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="radio" checked={policy === 'REJECT'} onChange={() => setPolicy('REJECT')} />
+          <input id="opssettingsform-radio-4" aria-label="Opssettingsform input field" type="radio" checked={policy === 'REJECT'} onChange={() => setPolicy('REJECT')} />
           Reject orders when out of stock
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="radio" checked={policy === 'ACCEPT_BACKORDER'} onChange={() => setPolicy('ACCEPT_BACKORDER')} />
+          <input id="opssettingsform-radio-3" aria-label="Opssettingsform input field" type="radio" checked={policy === 'ACCEPT_BACKORDER'} onChange={() => setPolicy('ACCEPT_BACKORDER')} />
           Accept orders — warn retailer, fulfill when stock arrives
         </label>
       </PortalSection>
 
       <PortalSection icon="settings" title={t("warehouse_portal.settings.ops_settings_form.text.order_acceptance_hours")} description={t("warehouse_portal.residual.text.when_enforcement_is_on_retailers_cannot_preview_or_create_orders")}>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={enforceOrderAcceptance} onChange={(e: ChangeEvent<HTMLInputElement>) => setEnforceOrderAcceptance(e.target.checked)} />
+          <input id="opssettingsform-checkbox-2" aria-label="Select Opssettingsform option" type="checkbox" checked={enforceOrderAcceptance} onChange={(e: ChangeEvent<HTMLInputElement>) => setEnforceOrderAcceptance(e.target.checked)} />
           Enforce order acceptance hours
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={scheduleIs24h} onChange={(e: ChangeEvent<HTMLInputElement>) => setScheduleIs24h(e.target.checked)} />
+          <input id="opssettingsform-checkbox-1" aria-label="Select Opssettingsform option" type="checkbox" checked={scheduleIs24h} onChange={(e: ChangeEvent<HTMLInputElement>) => setScheduleIs24h(e.target.checked)} />
           Open 24 hours
         </label>
         <PortalField id="scheduleTimezone" label={t("supplier_portal.configuration.countries.field.timezone")}>

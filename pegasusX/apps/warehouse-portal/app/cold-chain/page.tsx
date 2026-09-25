@@ -119,9 +119,11 @@ export default function ColdChainPage() {
       ) : (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-3 items-end">
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="cold-chain-manifest-id" className="flex flex-col gap-1 text-sm">
               Manifest ID
               <input
+                id="cold-chain-manifest-id"
+                aria-label="Manifest ID"
                 className="md-input min-w-[220px]"
                 value={manifestId}
                 onChange={(e) => setManifestId(e.target.value)}
@@ -134,21 +136,47 @@ export default function ColdChainPage() {
           </div>
 
           <div className="flex flex-wrap gap-3 items-end p-4 rounded border" style={{ borderColor: 'var(--desk-border)' }}>
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="cold-chain-sensor-id" className="flex flex-col gap-1 text-sm">
               Sensor ID
-              <input className="md-input" value={sensorId} onChange={(e) => setSensorId(e.target.value)} />
+              <input
+                id="cold-chain-sensor-id"
+                aria-label="Sensor ID"
+                className="md-input"
+                value={sensorId}
+                onChange={(e) => setSensorId(e.target.value)}
+              />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="cold-chain-temp-c" className="flex flex-col gap-1 text-sm">
               Temp °C
-              <input className="md-input w-28" value={tempC} onChange={(e) => setTempC(e.target.value)} />
+              <input
+                id="cold-chain-temp-c"
+                aria-label="Temp °C"
+                className="md-input w-28"
+                value={tempC}
+                onChange={(e) => setTempC(e.target.value)}
+              />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="cold-chain-min-c" className="flex flex-col gap-1 text-sm">
               Min °C
-              <input className="md-input w-24" value={minC} onChange={(e) => setMinC(e.target.value)} placeholder="opt" />
+              <input
+                id="cold-chain-min-c"
+                aria-label="Min °C"
+                className="md-input w-24"
+                value={minC}
+                onChange={(e) => setMinC(e.target.value)}
+                placeholder="opt"
+              />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
+            <label htmlFor="cold-chain-max-c" className="flex flex-col gap-1 text-sm">
               Max °C
-              <input className="md-input w-24" value={maxC} onChange={(e) => setMaxC(e.target.value)} placeholder="opt" />
+              <input
+                id="cold-chain-max-c"
+                aria-label="Max °C"
+                className="md-input w-24"
+                value={maxC}
+                onChange={(e) => setMaxC(e.target.value)}
+                placeholder="opt"
+              />
             </label>
             <button type="button" className="md-btn md-btn-tonal" onClick={() => void ingest()} disabled={posting}>
               Record reading

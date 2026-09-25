@@ -76,9 +76,15 @@ export default function BinsPage() {
           </p>
         )}
         <div className="mb-6 flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
+          <label htmlFor="bin-zone-input" className="flex flex-col gap-1 text-sm">
             {t("warehouse_portal.bins.text.zone")}
-            <input className="border px-2 py-1" value={zone} onChange={(e) => setZone(e.target.value)} />
+            <input
+              id="bin-zone-input"
+              aria-label={t("warehouse_portal.bins.text.zone")}
+              className="border px-2 py-1"
+              value={zone}
+              onChange={(e) => setZone(e.target.value)}
+            />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             {t("warehouse_portal.bins.text.type")}

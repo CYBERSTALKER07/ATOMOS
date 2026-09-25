@@ -56,6 +56,8 @@ export function CoverageCityChips({ cities, onChange }: Props) {
       </div>
       <div className="flex gap-2">
         <input
+          id="draft-input-1"
+          aria-label="Add city (geocoded)"
           className="md-input flex-1"
           value={draft}
           placeholder="Add city (geocoded)"

@@ -38,7 +38,7 @@ async function proxy(req: NextRequest, context: RouteContext) {
   const url = targetURL(pathname, req.nextUrl.search);
 
   const outboundHeaders = new Headers();
-  req.headers.forEach((value, key) => {
+  req.headers.forEach((value: string, key: string) => {
     const lower = key.toLowerCase();
     if (HOP_BY_HOP_HEADERS.has(lower)) {
       return;

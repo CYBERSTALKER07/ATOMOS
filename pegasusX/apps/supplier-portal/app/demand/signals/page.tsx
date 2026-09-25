@@ -2,6 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect } from "react";
+import { Info } from "lucide-react";
 
 
 type SignalType = "PROMO" | "EVENT" | "PAYDAY" | "EVENT_DENSITY" | "COMPETITOR_PRESSURE";
@@ -196,7 +197,9 @@ export default function SignalsPage() {
         </select>
 
         <label className="flex items-center gap-2 text-sm">
-          <input 
+          <input
+            id="page-checkbox-7"
+            aria-label="Select Page option"
             type="checkbox" 
             checked={filterActive} 
             onChange={(e) => setFilterActive(e.target.checked)}
@@ -280,7 +283,7 @@ export default function SignalsPage() {
             
             <div className="p-6 overflow-y-auto space-y-4">
               <div className="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg flex items-start gap-2">
-                <span className="text-xl">ℹ️</span>
+                <Info className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
                 <p>{t("supplier_portal.demand.signals.text.this_multiplies_expected_demand_by_your_chosen_factor_for_the_se")}</p>
               </div>
 
@@ -301,7 +304,9 @@ export default function SignalsPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">{t("supplier_portal.analytics.demand.signals.text.scope")}</label>
-                  <input 
+                  <input
+                    id="scope-input-6"
+                    aria-label="Scope"
                     type="text" 
                     value={form.scope}
                     onChange={e => setForm({...form, scope: e.target.value})}
@@ -313,7 +318,9 @@ export default function SignalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.signals.text.sku_optional")}</label>
-                <input 
+                <input
+                  id="sku-input-5"
+                  aria-label="Sku"
                   type="text" 
                   value={form.sku}
                   onChange={e => setForm({...form, sku: e.target.value})}
@@ -325,7 +332,9 @@ export default function SignalsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.start_time")}</label>
-                  <input 
+                  <input
+                    id="startat-input-4"
+                    aria-label="Start at"
                     type="datetime-local" 
                     value={form.startAt}
                     onChange={e => setForm({...form, startAt: e.target.value})}
@@ -334,7 +343,9 @@ export default function SignalsPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.end_time")}</label>
-                  <input 
+                  <input
+                    id="endat-input-3"
+                    aria-label="End at"
                     type="datetime-local" 
                     value={form.endAt}
                     onChange={e => setForm({...form, endAt: e.target.value})}
@@ -345,7 +356,9 @@ export default function SignalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Multiplier ({form.multiplier.toFixed(2)}x)</label>
-                <input 
+                <input
+                  id="multiplier-form-multiplie-input-2"
+                  aria-label="Multiplier ({form.multiplier.toFixed(2)}x)"
                   type="range" 
                   min="0.5" 
                   max="2.5" 
@@ -363,7 +376,9 @@ export default function SignalsPage() {
 
               <div className="space-y-1 pt-2 border-t">
                 <label className="text-xs font-medium text-gray-700">{t("supplier_portal.admin.control_center.field.title")}</label>
-                <input 
+                <input
+                  id="title-input-1"
+                  aria-label="Title"
                   type="text" 
                   value={form.title}
                   onChange={e => setForm({...form, title: e.target.value})}

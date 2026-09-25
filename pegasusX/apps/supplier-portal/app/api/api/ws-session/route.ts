@@ -38,7 +38,7 @@ function backendWebSocketURL() {
 
 export async function GET(req: NextRequest) {
   const outboundHeaders = new Headers();
-  req.headers.forEach((value, key) => {
+  req.headers.forEach((value: string, key: string) => {
     if (HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
       return;
     }

@@ -266,6 +266,8 @@ export default function OrderDetailPage() {
                     <label className="portal-field">
                       <span className="portal-label">{t("warehouse_portal.orders._id_.text.proposed_delivery_date")}</span>
                       <input
+                        id="proposeddate-input-1"
+                        aria-label="Proposed date"
                         type="date"
                         value={proposedDate}
                         onChange={(e) => setProposedDate(e.target.value)}

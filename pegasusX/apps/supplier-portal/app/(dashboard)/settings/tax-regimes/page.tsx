@@ -131,7 +131,9 @@ export default function TaxRegimesPage() {
                   <label className="block text-sm font-medium text-[var(--desk-text-secondary)] mb-1">
                     Country Code
                   </label>
-                  <input 
+                  <input
+                    id="country-code-input-4"
+                    aria-label="Country Code"
                     type="text" 
                     required
                     value={formData.country_code}
@@ -143,7 +145,9 @@ export default function TaxRegimesPage() {
                   <label className="block text-sm font-medium text-[var(--desk-text-secondary)] mb-1">
                     Currency
                   </label>
-                  <input 
+                  <input
+                    id="currency-input-3"
+                    aria-label="Currency"
                     type="text" 
                     required
                     value={formData.currency}
@@ -155,7 +159,9 @@ export default function TaxRegimesPage() {
                   <label className="block text-sm font-medium text-[var(--desk-text-secondary)] mb-1">
                     Effective From
                   </label>
-                  <input 
+                  <input
+                    id="effective-from-input-2"
+                    aria-label="Effective From"
                     type="datetime-local" 
                     required
                     value={formData.effective_from}
@@ -167,7 +173,9 @@ export default function TaxRegimesPage() {
                   <label className="block text-sm font-medium text-[var(--desk-text-secondary)] mb-1">
                     VAT Rate (Basis Points) - e.g. 1200 for 12%
                   </label>
-                  <input 
+                  <input
+                    id="vat-rate-basis-points-e-g-input-1"
+                    aria-label="VAT Rate (Basis Points) - e.g. 1200 for 12%"
                     type="number" 
                     required
                     min="0"

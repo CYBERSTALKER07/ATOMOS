@@ -254,7 +254,17 @@ export type OrderStatus =
   // Operational / legacy client aliases still seen on WS payloads and fleet guards.
   | "DISPATCHED"
   | "ARRIVING"
-  | "EN_ROUTE";
+  | "EN_ROUTE"
+  // Pegasus.x sovereign state machine states
+  | "DRAFT"
+  | "PENDING_APPROVAL"
+  | "CONFIRMED"
+  | "PICKING"
+  | "PACKED"
+  | "DELIVERED"
+  | "DISPUTED"
+  | "SHOP_CLOSED_PENDING"
+  | "CANCEL_REQUESTED";
 
 /** ADR-009 fiscal attempt / order rollup status. */
 export type FiscalStatus =
@@ -292,6 +302,14 @@ export const ORDER_STATUS_ALIASES: Record<string, OrderStatusFunnel> = {
   EN_ROUTE: "IN_TRANSIT",
   ARRIVING: "ARRIVED",
   SHOP_CLOSED_PENDING: "ARRIVED_SHOP_CLOSED",
+  DELIVERED: "COMPLETED",
+  DISPUTED: "RECONCILIATION_REQUIRED",
+  CONFIRMED: "AUTO_ACCEPTED",
+  PENDING_APPROVAL: "PENDING",
+  DRAFT: "PENDING",
+  PICKING: "PENDING",
+  PACKED: "LOADED",
+  CANCEL_REQUESTED: "CANCELLED",
 };
 
 export function canonicalizeOrderStatus(status: string): string {

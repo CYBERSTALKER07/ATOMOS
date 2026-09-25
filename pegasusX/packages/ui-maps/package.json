@@ -23,7 +23,7 @@
     "@deck.gl/geo-layers": "^9.3.5",
     "@deck.gl/layers": "^9.3.5",
     "@deck.gl/react": "^9.3.5",
-    "@types/mapbox-gl": "^3.4.1",
+    "@types/geojson": "^7946.0.14",
     "deck.gl": "^9.3.5",
     "h3-js": "^4.5.0",
     "mapbox-gl": "^3.20.0",

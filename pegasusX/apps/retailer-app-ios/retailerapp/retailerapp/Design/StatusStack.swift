@@ -54,10 +54,15 @@ let factoryDriverDuty = ["ON_SHIFT", "OFF_SHIFT"]
 
 func canonicalizeOrderStatus(_ status: String) -> String {
     switch status.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() {
-    case "DISPATCHED": return "LOADED"
+    case "DISPATCHED", "PACKED": return "LOADED"
     case "EN_ROUTE": return "IN_TRANSIT"
     case "ARRIVING": return "ARRIVED"
     case "SHOP_CLOSED_PENDING": return "ARRIVED_SHOP_CLOSED"
+    case "DELIVERED": return "COMPLETED"
+    case "DISPUTED": return "RECONCILIATION_REQUIRED"
+    case "CONFIRMED": return "AUTO_ACCEPTED"
+    case "PENDING_APPROVAL", "DRAFT", "PICKING": return "PENDING"
+    case "CANCEL_REQUESTED": return "CANCELLED"
     default: return status.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 }

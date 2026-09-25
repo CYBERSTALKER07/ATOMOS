@@ -17,7 +17,7 @@ import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
-/* ── Types ── */
+/* -- Types -- */
 
 type PaymentEvent = Omit<PaymentRequiredEvent, "available_card_gateways"> & {
   available_card_gateways?: string[];
@@ -77,7 +77,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
   };
 }
 
-/* ── Component ── */
+/* -- Component -- */
 
 export default function PaymentModal() {
   const [event, setEvent] = useState<PaymentEvent | null>(null);

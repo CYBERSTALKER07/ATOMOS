@@ -118,36 +118,36 @@ export default function DemandSignalsPage() {
             {(scope === "RETAILER" || scope === "RETAILER_SKU") && (
               <div className="flex flex-col gap-1">
                 <label className="md-typescale-label-small">{t("supplier_portal.chargebacks.text.retailer_id")}</label>
-                <input className="desk-input" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} required />
+                <input id="retailerid-input-6" aria-label="Retailer id" className="desk-input" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} required />
               </div>
             )}
 
             {scope === "RETAILER_SKU" && (
               <div className="flex flex-col gap-1">
                 <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.product_id")}</label>
-                <input className="desk-input" value={productId} onChange={(e) => setProductId(e.target.value)} required />
+                <input id="productid-input-5" aria-label="Product id" className="desk-input" value={productId} onChange={(e) => setProductId(e.target.value)} required />
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.start_date")}</label>
-                <input type="date" className="desk-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                <input id="startdate-input-4" aria-label="Start date" type="date" className="desk-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.end_date")}</label>
-                <input type="date" className="desk-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                <input id="enddate-input-3" aria-label="End date" type="date" className="desk-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
               </div>
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.multiplier_e_g_1_2_for_20_increase")}</label>
-              <input type="number" step="0.01" min="0.1" className="desk-input" value={multiplier} onChange={(e) => setMultiplier(parseFloat(e.target.value))} required />
+              <input id="multiplier-input-2" aria-label="Multiplier" type="number" step="0.01" min="0.1" className="desk-input" value={multiplier} onChange={(e) => setMultiplier(parseFloat(e.target.value))} required />
             </div>
 
             <div className="flex flex-col gap-1">
               <label className="md-typescale-label-small">{t("supplier_portal.analytics.demand.signals.text.description")}</label>
-              <input className="desk-input" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <input id="description-input-1" aria-label="Description" className="desk-input" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
           </div>
           <div className="flex items-center gap-4 mt-6">

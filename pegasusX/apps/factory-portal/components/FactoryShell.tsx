@@ -22,7 +22,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/* ── Theme Toggle ── */
+/* -- Theme Toggle -- */
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
   const t = usePortalT();
@@ -50,7 +50,7 @@ const ThemeToggle = memo(function ThemeToggle() {
   );
 });
 
-/* ── Drawer Content ── */
+/* -- Drawer Content -- */
 const DrawerContent = memo(function DrawerContent({
   collapsed,
   isMobile,
@@ -193,7 +193,7 @@ const DrawerContent = memo(function DrawerContent({
   );
 });
 
-/* ── Shell ── */
+/* -- Shell -- */
 export default function FactoryShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const reducedMotion = useReducedMotion();

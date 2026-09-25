@@ -129,7 +129,10 @@ function SetPasswordForm({ staffId }: { staffId: string }) {
     >
       <h2 className="text-sm font-semibold">Set login PIN</h2>
       <p className="text-xs text-[var(--muted)]">Never stored in plaintext. Invite rows must set a PIN before login.</p>
+      <label htmlFor="staff-login-pin" className="sr-only">Login PIN</label>
       <input
+        id="staff-login-pin"
+        aria-label="Login PIN"
         type="password"
         minLength={4}
         required

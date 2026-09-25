@@ -143,8 +143,10 @@ export default function NewSupplyRequestPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Factory selector */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.factory_id")}</label>
+          <label htmlFor="supply-factory-id" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.factory_id")}</label>
           <input
+            id="supply-factory-id"
+            aria-label={t("warehouse_portal.supply_requests.new.text.factory_id")}
             type="text"
             value={factoryId}
             onChange={e => setFactoryId(e.target.value)}
@@ -165,8 +167,10 @@ export default function NewSupplyRequestPage() {
 
         {/* Delivery date */}
         <div>
-          <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.requested_delivery_date")}</label>
+          <label htmlFor="supply-delivery-date" className="block text-xs font-medium mb-1.5 text-[var(--muted)]">{t("warehouse_portal.supply_requests.new.text.requested_delivery_date")}</label>
           <input
+            id="supply-delivery-date"
+            aria-label={t("warehouse_portal.supply_requests.new.text.requested_delivery_date")}
             type="date"
             value={deliveryDate}
             onChange={e => setDeliveryDate(e.target.value)}
@@ -181,8 +185,10 @@ export default function NewSupplyRequestPage() {
 
         {/* Use AI forecast toggle */}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label htmlFor="toggle-use-forecast" className="flex items-center gap-2 cursor-pointer">
             <input
+              id="toggle-use-forecast"
+              aria-label={t("warehouse_portal.supply_requests.new.text.use_ai_demand_forecast")}
               type="checkbox"
               checked={useForecast}
               onChange={e => setUseForecast(e.target.checked)}
@@ -263,7 +269,10 @@ export default function NewSupplyRequestPage() {
             </div>
             {manualItems.map((item, idx) => (
               <div key={idx} className="flex gap-2">
+                <label htmlFor={`manual-product-${idx}`} className="sr-only">{t("warehouse_portal.supply_requests.new.text.product_id")}</label>
                 <input
+                  id={`manual-product-${idx}`}
+                  aria-label={t("warehouse_portal.supply_requests.new.text.product_id")}
                   type="text"
                   placeholder={t("warehouse_portal.supply_requests.new.text.product_id")}
                   value={item.product_id}
@@ -275,7 +284,10 @@ export default function NewSupplyRequestPage() {
                   className="flex-1 px-3 py-2 rounded-lg border text-sm outline-none"
                   style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
                 />
+                <label htmlFor={`manual-qty-${idx}`} className="sr-only">{t("warehouse_portal.pick_waves.text.qty")}</label>
                 <input
+                  id={`manual-qty-${idx}`}
+                  aria-label={t("warehouse_portal.pick_waves.text.qty")}
                   type="number"
                   placeholder={t("warehouse_portal.pick_waves.text.qty")}
                   min={1}

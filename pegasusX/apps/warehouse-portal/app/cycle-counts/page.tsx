@@ -134,15 +134,15 @@ export default function CycleCountsPage() {
         <div className="mb-6 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm">
             Location ID
-            <input className="border px-2 py-1 font-mono text-xs" value={locationId} onChange={(e) => setLocationId(e.target.value)} />
+            <input id="location-id-input-4" aria-label="Location ID" className="border px-2 py-1 font-mono text-xs" value={locationId} onChange={(e) => setLocationId(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             Product ID
-            <input className="border px-2 py-1 font-mono text-xs" value={productId} onChange={(e) => setProductId(e.target.value)} />
+            <input id="product-id-input-3" aria-label="Product ID" className="border px-2 py-1 font-mono text-xs" value={productId} onChange={(e) => setProductId(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             Expected (optional)
-            <input className="border px-2 py-1 w-24" value={expectedQty} onChange={(e) => setExpectedQty(e.target.value)} placeholder={t("warehouse_portal.cycle_counts.text.auto")} />
+            <input id="expected-optional-input-2" aria-label="Expected (optional)" className="border px-2 py-1 w-24" value={expectedQty} onChange={(e) => setExpectedQty(e.target.value)} placeholder={t("warehouse_portal.cycle_counts.text.auto")} />
           </label>
           <button type="button" className="border px-3 py-1.5 text-sm" disabled={creating || !enabled} onClick={() => void createCount()}>
             {creating ? 'Creating…' : 'Create count'}
@@ -181,6 +181,8 @@ export default function CycleCountsPage() {
                       {c.status === 'OPEN' ? (
                         <span className="inline-flex items-center gap-2">
                           <input
+                            id="page-input-1"
+                            aria-label="Page input field"
                             className="border px-1 py-0.5 w-16 text-xs"
                             value={submitQty[c.count_id] ?? String(c.expected_qty)}
                             onChange={(e) => setSubmitQty((s) => ({ ...s, [c.count_id]: e.target.value }))}

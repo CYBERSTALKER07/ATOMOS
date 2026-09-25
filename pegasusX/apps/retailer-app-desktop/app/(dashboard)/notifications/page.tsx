@@ -32,6 +32,7 @@ export default function NotificationsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -288,9 +289,11 @@ export default function NotificationsPage() {
                         </p>
                         {item.handoffMetadata ? (
                           <div
+                            tabIndex={-1}
                             className="mt-3 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-3"
-                            onClick={(e) => e.stopPropagation()}
-                            role="presentation"
+                            onClick={stopPropagation}
+                            role="button"
+                            onKeyDown={stopPropagation}
                           >
                             <HandoffCard
                               metadata={item.handoffMetadata}

@@ -660,7 +660,7 @@ func emptyOrderStatusCounts() map[string]int {
 
 func canonicalizeOrderStatus(status string) string {
 	switch strings.ToUpper(strings.TrimSpace(status)) {
-	case "DISPATCHED":
+	case "DISPATCHED", "PACKED":
 		return "LOADED"
 	case "EN_ROUTE":
 		return "IN_TRANSIT"
@@ -668,6 +668,16 @@ func canonicalizeOrderStatus(status string) string {
 		return "ARRIVED"
 	case "SHOP_CLOSED_PENDING":
 		return "ARRIVED_SHOP_CLOSED"
+	case "DELIVERED":
+		return "COMPLETED"
+	case "DISPUTED":
+		return "RECONCILIATION_REQUIRED"
+	case "CONFIRMED":
+		return "AUTO_ACCEPTED"
+	case "PENDING_APPROVAL", "DRAFT", "PICKING":
+		return "PENDING"
+	case "CANCEL_REQUESTED":
+		return "CANCELLED"
 	default:
 		return strings.ToUpper(strings.TrimSpace(status))
 	}

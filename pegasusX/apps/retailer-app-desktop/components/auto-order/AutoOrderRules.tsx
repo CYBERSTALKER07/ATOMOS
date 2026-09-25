@@ -26,8 +26,10 @@ export function AutoOrderRules({
             <h3 className="md-typescale-title-medium font-light text-[var(--desk-text-primary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.global_auto_order")}</h3>
             <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.auto_order.auto_order_rules.text.auto_order_everything_from_all_suppliers")}</p>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label htmlFor="toggle-global-auto-order" className="relative inline-flex items-center cursor-pointer">
             <input
+              id="toggle-global-auto-order"
+              aria-label={t("retailer_desktop.auto_order.auto_order_rules.text.global_auto_order")}
               type="checkbox"
               className="sr-only peer"
               checked={settings?.global_enabled || false}
@@ -56,8 +58,10 @@ export function AutoOrderRules({
                     <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.supplier_level_override")}</div>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label htmlFor={`toggle-supplier-${item.supplier_id}`} className="relative inline-flex items-center cursor-pointer">
                   <input
+                    id={`toggle-supplier-${item.supplier_id}`}
+                    aria-label={`Toggle auto order for supplier ${item.supplier_id}`}
                     type="checkbox"
                     className="sr-only peer"
                     checked={item.enabled}
@@ -83,8 +87,10 @@ export function AutoOrderRules({
                     <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.category_level_override")}</div>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label htmlFor={`toggle-category-${item.category_id}`} className="relative inline-flex items-center cursor-pointer">
                   <input
+                    id={`toggle-category-${item.category_id}`}
+                    aria-label={`Toggle auto order for category ${item.category_id}`}
                     type="checkbox"
                     className="sr-only peer"
                     checked={item.enabled}
@@ -110,8 +116,10 @@ export function AutoOrderRules({
                     <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.product_level_override")}</div>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label htmlFor={`toggle-product-${item.product_id}`} className="relative inline-flex items-center cursor-pointer">
                   <input
+                    id={`toggle-product-${item.product_id}`}
+                    aria-label={`Toggle auto order for product ${item.product_id}`}
                     type="checkbox"
                     className="sr-only peer"
                     checked={item.enabled}
@@ -137,8 +145,10 @@ export function AutoOrderRules({
                     <div className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.auto_order.auto_order_rules.text.size_variant_override")}</div>
                   </div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label htmlFor={`toggle-variant-${item.variant_id}`} className="relative inline-flex items-center cursor-pointer">
                   <input
+                    id={`toggle-variant-${item.variant_id}`}
+                    aria-label={`Toggle auto order for variant ${item.variant_id}`}
                     type="checkbox"
                     className="sr-only peer"
                     checked={item.enabled}

@@ -295,7 +295,10 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <Plus className="h-4 w-4" /> Receive order into stock
             </h3>
+            <label htmlFor="receive-order-id" className="sr-only">Order ID</label>
             <input
+              id="receive-order-id"
+              aria-label="Order ID"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder={t("retailer_desktop.stock.text.order_id_completed_arrived")}
               value={orderId}
@@ -315,13 +318,19 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <ArrowLeftRight className="h-4 w-4" /> Putaway transfer
             </h3>
+            <label htmlFor="putaway-sku" className="sr-only">Transfer SKU</label>
             <input
+              id="putaway-sku"
+              aria-label="Transfer SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={xferSku}
               onChange={(e) => setXferSku(e.target.value)}
             />
+            <label htmlFor="putaway-qty" className="sr-only">Transfer Quantity</label>
             <input
+              id="putaway-qty"
+              aria-label="Transfer Quantity"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder={t("retailer_desktop.pos.text.qty")}
               value={xferQty}
@@ -339,13 +348,19 @@ export default function StockPage() {
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-2">
             <h3 className="font-semibold">{t("retailer_desktop.stock.text.adjust")}</h3>
+            <label htmlFor="adjust-sku" className="sr-only">Adjust SKU</label>
             <input
+              id="adjust-sku"
+              aria-label="Adjust SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={adjustSku}
               onChange={(e) => setAdjustSku(e.target.value)}
             />
+            <label htmlFor="adjust-delta" className="sr-only">Quantity Delta</label>
             <input
+              id="adjust-delta"
+              aria-label="Quantity Delta"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder={t("retailer_desktop.stock.text.qty_delta")}
               value={adjustDelta}
@@ -374,13 +389,19 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <ClipboardList className="h-4 w-4" /> Cycle count
             </h3>
+            <label htmlFor="count-sku" className="sr-only">Cycle Count SKU</label>
             <input
+              id="count-sku"
+              aria-label="Cycle Count SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={countSku}
               onChange={(e) => setCountSku(e.target.value)}
             />
+            <label htmlFor="count-qty" className="sr-only">Counted Quantity</label>
             <input
+              id="count-qty"
+              aria-label="Counted Quantity"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder={t("retailer_desktop.stock.text.counted_qty")}
               value={countQty}

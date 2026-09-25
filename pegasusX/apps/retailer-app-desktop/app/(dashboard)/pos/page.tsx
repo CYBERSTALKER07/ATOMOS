@@ -638,7 +638,10 @@ export default function POSPage() {
           {registers.length === 0 ? (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">{t("retailer_desktop.pos.text.no_registers_yet")}</p>
+              <label htmlFor="pos-new-register-label" className="sr-only">Register label</label>
               <input
+                id="pos-new-register-label"
+                aria-label="Register label"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 value={newRegLabel}
                 onChange={(e) => setNewRegLabel(e.target.value)}
@@ -671,9 +674,11 @@ export default function POSPage() {
               </label>
               {!session ? (
                 <>
-                  <label className="block text-sm">
+                  <label htmlFor="pos-opening-float" className="block text-sm">
                     Opening float (minor units)
                     <input
+                      id="pos-opening-float"
+                      aria-label="Opening float (minor units)"
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                       value={floatMinor}
                       onChange={(e) => setFloatMinor(e.target.value)}
@@ -694,9 +699,11 @@ export default function POSPage() {
                     Open · {session.session_id.slice(0, 12)}… · float{" "}
                     {formatMoney(session.opening_float_minor, session.currency)}
                   </p>
-                  <label className="block text-sm">
+                  <label htmlFor="pos-closing-cash" className="block text-sm">
                     Closing cash counted (minor)
                     <input
+                      id="pos-closing-cash"
+                      aria-label="Closing cash counted (minor)"
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                       value={closingCash}
                       onChange={(e) => setClosingCash(e.target.value)}
@@ -763,25 +770,37 @@ export default function POSPage() {
           {session && (
             <>
               <div className="grid grid-cols-2 gap-2">
+                <label htmlFor="pos-cart-sku" className="sr-only">{t("retailer_desktop.pos.text.sku_barcode")}</label>
                 <input
+                  id="pos-cart-sku"
+                  aria-label={t("retailer_desktop.pos.text.sku_barcode")}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   placeholder={t("retailer_desktop.pos.text.sku_barcode")}
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                 />
+                <label htmlFor="pos-cart-name" className="sr-only">{t("retailer_desktop.pos.text.name")}</label>
                 <input
+                  id="pos-cart-name"
+                  aria-label={t("retailer_desktop.pos.text.name")}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   placeholder={t("retailer_desktop.pos.text.name")}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
+                <label htmlFor="pos-cart-qty" className="sr-only">{t("retailer_desktop.pos.text.qty")}</label>
                 <input
+                  id="pos-cart-qty"
+                  aria-label={t("retailer_desktop.pos.text.qty")}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   placeholder={t("retailer_desktop.pos.text.qty")}
                   value={qty}
                   onChange={(e) => setQty(e.target.value)}
                 />
+                <label htmlFor="pos-cart-price" className="sr-only">{t("retailer_desktop.pos.text.price_major_e_g_150_00")}</label>
                 <input
+                  id="pos-cart-price"
+                  aria-label={t("retailer_desktop.pos.text.price_major_e_g_150_00")}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
                   placeholder={t("retailer_desktop.pos.text.price_major_e_g_150_00")}
                   value={price}
@@ -822,9 +841,11 @@ export default function POSPage() {
               </div>
               {holdsEnabled && (
                 <div className="space-y-2 border-t border-border pt-3">
-                  <label className="block text-sm text-muted-foreground">
+                  <label htmlFor="pos-hold-note" className="block text-sm text-muted-foreground">
                     Park note (optional)
                     <input
+                      id="pos-hold-note"
+                      aria-label="Park note (optional)"
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
                       value={holdNote}
                       onChange={(e) => setHoldNote(e.target.value)}

@@ -32,7 +32,7 @@ import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-r
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
 import { moneyCurrency } from "../../../lib/payment-catalog";
 
-/* ── Config ── */
+/* -- Config -- */
 
 const chipCfg: Record<
   string,
@@ -84,7 +84,7 @@ function buildDeliveryQrPayload(order: TrackingOrder): string {
   });
 }
 
-/* ── Types ── */
+/* -- Types -- */
 
 interface SupplierGroup {
   supplierId: string;
@@ -95,7 +95,7 @@ interface SupplierGroup {
   hasArrived: boolean;
 }
 
-/* ── Page ── */
+/* -- Page -- */
 
 export default function DockPage() {
   const t = usePortalT();

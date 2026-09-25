@@ -241,7 +241,10 @@ export default function ShopClosedModal() {
                 <p className="text-sm text-[var(--desk-text-secondary)]">
                   Doorway / drop-off proof is required for authorize bypass.
                 </p>
+                <label htmlFor="bypass-proof-file" className="sr-only">Upload doorway or drop-off proof image</label>
                 <input
+                  id="bypass-proof-file"
+                  aria-label="Upload doorway or drop-off proof image"
                   ref={fileRef}
                   type="file"
                   accept="image/*"

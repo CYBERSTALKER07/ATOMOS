@@ -242,8 +242,11 @@ export function StockRequestReturnModal({
                 </p>
               )}
               <div className="relative">
+                <label htmlFor="return-search-order-id" className="sr-only">{t("retailer_desktop.stock_request_return_modal.text.search_by_order_id")}</label>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
+                  id="return-search-order-id"
+                  aria-label={t("retailer_desktop.stock_request_return_modal.text.search_by_order_id")}
                   className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm"
                   placeholder={t("retailer_desktop.stock_request_return_modal.text.search_by_order_id")}
                   value={query}

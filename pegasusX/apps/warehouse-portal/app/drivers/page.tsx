@@ -141,22 +141,32 @@ export default function DriversPage() {
           >
             <h2 className="text-sm font-semibold">{t("warehouse_portal.drivers.text.new_driver")}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                placeholder={t("warehouse_portal.drivers.text.name")}
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
-              <input
-                placeholder={t("common.field.phone")}
-                value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
+              <div>
+                <label htmlFor="new-driver-name" className="sr-only">{t("warehouse_portal.drivers.text.name")}</label>
+                <input
+                  id="new-driver-name"
+                  aria-label={t("warehouse_portal.drivers.text.name")}
+                  placeholder={t("warehouse_portal.drivers.text.name")}
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="new-driver-phone" className="sr-only">{t("common.field.phone")}</label>
+                <input
+                  id="new-driver-phone"
+                  aria-label={t("common.field.phone")}
+                  placeholder={t("common.field.phone")}
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
             </div>
             <button
               type="submit"

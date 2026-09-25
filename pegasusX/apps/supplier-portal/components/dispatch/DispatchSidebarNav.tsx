@@ -2,6 +2,7 @@
 
 import { usePortalT } from "@/lib/i18n";
 import React from "react";
+import { ArrowRight, Truck, Package, Wrench, User, BarChart2 } from "lucide-react";
 
 interface DispatchSidebarNavProps {
   activeTab?: string;
@@ -20,7 +21,7 @@ export const DispatchSidebarNav: React.FC<DispatchSidebarNavProps> = ({
       {/* Brand Header */}
       <div className="flex items-center gap-3 px-2 py-3 mb-6">
         <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/20">
-          ➔
+          <ArrowRight size={18} />
         </div>
         <div>
           <h1 className="font-semibold text-white text-base leading-tight">{t("supplier_portal.dispatch.dispatch_sidebar_nav.text.right_direction")}</h1>
@@ -126,11 +127,11 @@ export const DispatchSidebarNav: React.FC<DispatchSidebarNavProps> = ({
       {/* Bottom Actions & Create New Request Button */}
       <div className="pt-4 border-t border-gray-800 space-y-3">
         <div className="flex items-center justify-around bg-gray-900/80 p-2 rounded-lg text-gray-400">
-          <span className="hover:text-white cursor-pointer title='Trucks'">🚚</span>
-          <span className="hover:text-white cursor-pointer title='Cargo'">📦</span>
-          <span className="hover:text-white cursor-pointer title='Repair'">🛠️</span>
-          <span className="hover:text-white cursor-pointer title='Drivers'">👤</span>
-          <span className="hover:text-white cursor-pointer title='Reports'">📊</span>
+          <span className="hover:text-white cursor-pointer" title="Trucks"><Truck size={16} /></span>
+          <span className="hover:text-white cursor-pointer" title="Cargo"><Package size={16} /></span>
+          <span className="hover:text-white cursor-pointer" title="Repair"><Wrench size={16} /></span>
+          <span className="hover:text-white cursor-pointer" title="Drivers"><User size={16} /></span>
+          <span className="hover:text-white cursor-pointer" title="Reports"><BarChart2 size={16} /></span>
         </div>
 
         <button

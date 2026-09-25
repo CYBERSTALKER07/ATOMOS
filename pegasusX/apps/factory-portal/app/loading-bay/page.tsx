@@ -170,12 +170,24 @@ export default function LoadingBayPage() {
           <ExplainStatusBanner explain={dispatchExplain} className="mb-4" />
         ) : null}
         <div className="mb-4 flex flex-wrap items-center gap-4 text-sm">
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" checked={forceCapacity} onChange={(e) => setForceCapacity(e.target.checked)} />
+          <label htmlFor="factory-force-capacity" className="inline-flex items-center gap-2">
+            <input
+              id="factory-force-capacity"
+              aria-label="Force capacity"
+              type="checkbox"
+              checked={forceCapacity}
+              onChange={(e) => setForceCapacity(e.target.checked)}
+            />
             Force capacity
           </label>
-          <label className="inline-flex items-center gap-2">
-            <input type="checkbox" checked={acceptPartial} onChange={(e) => setAcceptPartial(e.target.checked)} />
+          <label htmlFor="factory-accept-partial" className="inline-flex items-center gap-2">
+            <input
+              id="factory-accept-partial"
+              aria-label="Accept partial (orphans)"
+              type="checkbox"
+              checked={acceptPartial}
+              onChange={(e) => setAcceptPartial(e.target.checked)}
+            />
             Accept partial (orphans)
           </label>
         </div>

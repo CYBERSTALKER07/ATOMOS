@@ -37,6 +37,8 @@ export const PartnerFilterBar: React.FC<PartnerFilterBarProps> = ({
         <h2 className="text-2xl font-bold text-white tracking-tight">{t("portal.nav.tracking")}</h2>
         <div className="relative">
           <input
+            id="searchquery-input-1"
+            aria-label="Search query"
             type="text"
             placeholder={t("supplier_portal.dispatch.partner_filter_bar.text.search_vehicle_or_route")}
             value={searchQuery}

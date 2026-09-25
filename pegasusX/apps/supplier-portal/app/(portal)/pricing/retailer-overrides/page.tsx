@@ -219,6 +219,8 @@ export default function RetailerOverridesPage() {
       <div className="md-card p-4 mb-6 flex flex-wrap gap-3 items-end">
         <Field label={t("supplier_portal.residual.text.filter_retailer_id")}>
           <input
+            id="filterretailer-input-5"
+            aria-label="Filter retailer"
             className="md-input-outlined w-full min-w-[12rem] px-3 py-2"
             value={filterRetailer}
             onChange={(event) => setFilterRetailer(event.target.value)}
@@ -259,6 +261,8 @@ export default function RetailerOverridesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label={t("supplier_portal.chargebacks.text.retailer_id")}>
               <input
+                id="retailer-id-input-4"
+                aria-label="Retailer id"
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.retailer_id}
                 onChange={(event) => setForm((prev) => ({ ...prev, retailer_id: event.target.value }))}
@@ -283,6 +287,8 @@ export default function RetailerOverridesPage() {
                 </select>
               ) : (
                 <input
+                  id="product-id-input-3"
+                  aria-label="Product id"
                   className="md-input-outlined w-full px-3 py-2 font-mono"
                   value={form.product_id}
                   onChange={(event) => setForm((prev) => ({ ...prev, product_id: event.target.value }))}
@@ -293,6 +299,8 @@ export default function RetailerOverridesPage() {
             </Field>
             <Field label={t("supplier_portal.residual.text.override_price_minor_units")}>
               <input
+                id="price-input-2"
+                aria-label="Price"
                 type="number"
                 min="1"
                 className="md-input-outlined w-full px-3 py-2 font-mono"
@@ -303,6 +311,8 @@ export default function RetailerOverridesPage() {
             </Field>
             <Field label={t("supplier_portal.pricing.retailer_overrides.text.notes")}>
               <input
+                id="notes-input-1"
+                aria-label="Notes"
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.notes}
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}

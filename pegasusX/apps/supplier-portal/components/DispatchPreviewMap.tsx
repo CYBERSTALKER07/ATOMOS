@@ -89,7 +89,7 @@ export default function DispatchPreviewMap({ routes, className }: DispatchPrevie
   return (
     <div className={className}>
       <MapGL
-        ref={(ref) => {
+        ref={(ref: any) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{

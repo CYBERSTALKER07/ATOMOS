@@ -196,6 +196,8 @@ export function AdminOrderOpsPanel({
             <p className="md-typescale-label-medium mb-2">{t("supplier_portal.admin_order_ops_panel.text.assign_driver")}</p>
             <div className="grid gap-2 sm:grid-cols-3">
               <input
+                id="driverid-input-4"
+                aria-label="Driver id"
                 className="md-input-outlined w-full px-3 py-2"
                 placeholder={t("supplier_portal.exceptions.early_complete.text.driver_id")}
                 value={driverId}
@@ -203,6 +205,8 @@ export function AdminOrderOpsPanel({
                 disabled={busy}
               />
               <input
+                id="routeid-input-3"
+                aria-label="Route id"
                 className="md-input-outlined w-full px-3 py-2"
                 placeholder={t("supplier_portal.admin_order_ops_panel.text.route_id")}
                 value={routeId}
@@ -210,6 +214,8 @@ export function AdminOrderOpsPanel({
                 disabled={busy}
               />
               <input
+                id="vehicleid-input-2"
+                aria-label="Vehicle id"
                 className="md-input-outlined w-full px-3 py-2"
                 placeholder={t("supplier_portal.admin_order_ops_panel.text.vehicle_id_optional")}
                 value={vehicleId}
@@ -245,6 +251,8 @@ export function AdminOrderOpsPanel({
                 ))}
               </select>
               <input
+                id="statusreason-input-1"
+                aria-label="Status reason"
                 className="md-input-outlined w-full px-3 py-2"
                 placeholder={t("supplier_portal.admin_order_ops_panel.text.reason_optional")}
                 value={statusReason}

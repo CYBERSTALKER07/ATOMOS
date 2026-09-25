@@ -73,6 +73,8 @@ export function OperatorBroadcast({
           Template date (optional)
         </span>
         <input
+          id="template-date-optional-input-2"
+          aria-label="Template date (optional)"
           type="date"
           className="md-input-outlined w-full"
           value={templateDate}
@@ -85,6 +87,8 @@ export function OperatorBroadcast({
             {t("supplier_portal.admin.control_center.field.title")}
           </span>
           <input
+            id="title-input-1"
+            aria-label="Title"
             className="md-input-outlined w-full"
             placeholder={t("supplier_portal.admin.control_center.field.title")}
             value={title}

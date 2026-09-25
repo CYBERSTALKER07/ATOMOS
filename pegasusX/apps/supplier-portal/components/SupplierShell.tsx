@@ -505,6 +505,8 @@ function SupplierAppChrome({ children }: { children: React.ReactNode }) {
                 <div className="md-search-bar" style={{ borderRadius: '16px 16px 0 0', height: 56, borderBottom: '1px solid var(--desk-border)' }}>
                   <Icon name="search" />
                   <input
+                    id="searchquery-input-1"
+                    aria-label="Search query"
                     ref={searchRef}
                     type="text"
                     placeholder={t("supplier_portal.supplier_shell.text.search_pages")}

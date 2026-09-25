@@ -126,19 +126,28 @@ export default function LocalSKUsPage() {
             Quick add
           </p>
           <div className="flex flex-wrap gap-2">
+            <label htmlFor="quick-add-sku-name" className="sr-only">Product Name</label>
             <input
+              id="quick-add-sku-name"
+              aria-label="Product Name"
               className="portal-input flex-1 min-w-[140px]"
               placeholder={t("retailer_desktop.pos.text.name")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            <label htmlFor="quick-add-sku-barcode" className="sr-only">Barcode</label>
             <input
+              id="quick-add-sku-barcode"
+              aria-label="Barcode"
               className="portal-input w-32"
               placeholder={t("retailer_desktop.stock.local_skus.text.barcode")}
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
             />
+            <label htmlFor="quick-add-sku-price" className="sr-only">Price Minor Units</label>
             <input
+              id="quick-add-sku-price"
+              aria-label="Price Minor Units"
               className="portal-input w-28"
               placeholder={t("retailer_desktop.stock.local_skus.text.price_minor")}
               value={price}

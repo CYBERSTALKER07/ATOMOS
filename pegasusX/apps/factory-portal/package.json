@@ -35,7 +35,7 @@
     "@pegasusx/pulse-ui": "workspace:*",
     "@pegasusx/types": "workspace:*",
     "@pegasusx/ui-kit": "workspace:*",
-    "@pegasusx/ui-maps": "workspace:^",
+    "@pegasusx/ui-maps": "workspace:*",
     "@pegasusx/ws-refresh-contract": "workspace:*",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-deep-link": "^2.4.9",

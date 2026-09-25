@@ -74,6 +74,8 @@ export function ReturnsList({ tab, loading, list, selected, onToggleSelect }: Re
               {tab === 'inbound' && (
                 <td className="py-2 px-2">
                   <input
+                    id="returnslist-checkbox-1"
+                    aria-label="Select Returnslist option"
                     type="checkbox"
                     checked={selected.has(item.return_id)}
                     onChange={() => onToggleSelect(item.return_id)}

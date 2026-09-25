@@ -465,6 +465,8 @@ export function TopologyEditor({ initial, onSaved }: TopologyEditorProps) {
                     return (
                       <label key={factory.id} className="inline-flex items-center gap-2 text-sm">
                         <input
+                          id="topologyeditor-checkbox-3"
+                          aria-label="Select Topologyeditor option"
                           type="checkbox"
                           checked={checked}
                           onChange={() =>
@@ -821,6 +823,8 @@ function Field({
     <label className="block">
       <div className="md-typescale-label-medium text-[var(--color-md-outline)]">{label}</div>
       <input
+        id="value-input-2"
+        aria-label="Value"
         className="md-input-outlined mt-1 w-full px-3 py-2"
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -869,7 +873,7 @@ function ToggleRow({
 }) {
   return (
     <label className="flex items-center gap-2 md-typescale-body-medium">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input id="topologyeditor-checkbox-1" aria-label="Select Topologyeditor option" type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       {label}
     </label>
   );

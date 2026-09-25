@@ -164,6 +164,8 @@ export default function ReturnsPage() {
                     <option value="WRITE_OFF">{t("supplier_portal.returns.text.write_off")}</option>
                   </select>
                   <input
+                    id="notes-input-1"
+                    aria-label="Notes"
                     className="rounded-lg border border-[var(--color-md-outline-variant)] bg-transparent px-3 py-2 text-sm"
                     placeholder={t("supplier_portal.returns.text.notes_optional")}
                     value={notes}

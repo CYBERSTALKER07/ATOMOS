@@ -76,6 +76,8 @@ export default function NotificationPreferencesPage() {
             <span className="text-xs">{p.channel}</span>
             <label className="flex items-center gap-2 text-sm">
               <input
+                id="page-checkbox-3"
+                aria-label="Select Page option"
                 type="checkbox"
                 checked={p.enabled}
                 onChange={(e) => {
@@ -87,6 +89,8 @@ export default function NotificationPreferencesPage() {
               Enabled
             </label>
             <input
+              id="page-input-2"
+              aria-label="Page input field"
               className="md-input w-24 text-xs"
               placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_from")}
               value={p.quiet_from ?? ""}
@@ -97,6 +101,8 @@ export default function NotificationPreferencesPage() {
               }}
             />
             <input
+              id="page-input-1"
+              aria-label="Page input field"
               className="md-input w-24 text-xs"
               placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_to")}
               value={p.quiet_to ?? ""}

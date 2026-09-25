@@ -57,6 +57,8 @@ export default function ManifestExceptionsPage() {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <label className="flex items-center gap-2 md-typescale-body-medium">
           <input
+            id="page-checkbox-1"
+            aria-label="Select Page option"
             type="checkbox"
             checked={escalatedOnly}
             onChange={(event) => setEscalatedOnly(event.target.checked)}

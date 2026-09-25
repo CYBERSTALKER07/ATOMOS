@@ -182,9 +182,11 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
 
   return (
     <div className="space-y-2">
-      <label className="portal-label">{resolvedLabel}</label>
+      <label htmlFor="factory-location-address" className="portal-label">{resolvedLabel}</label>
       <div className="relative">
         <input
+          id="factory-location-address"
+          aria-label={resolvedLabel}
           className="portal-input w-full"
           placeholder={t("factory_portal.location_picker.text.start_typing_street_address")}
           value={query}

@@ -180,17 +180,21 @@ export default function LocationsPage() {
             Add branch
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
+            <label htmlFor="branch-name" className="text-sm">
               Name
               <input
+                id="branch-name"
+                aria-label="Name"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </label>
-            <label className="text-sm">
+            <label htmlFor="branch-address" className="text-sm">
               Address
               <input
+                id="branch-address"
+                aria-label="Address"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.delivery_address}
                 onChange={(e) =>
@@ -198,17 +202,21 @@ export default function LocationsPage() {
                 }
               />
             </label>
-            <label className="text-sm">
+            <label htmlFor="branch-lat" className="text-sm">
               Lat
               <input
+                id="branch-lat"
+                aria-label="Lat"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.lat}
                 onChange={(e) => setForm((f) => ({ ...f, lat: e.target.value }))}
               />
             </label>
-            <label className="text-sm">
+            <label htmlFor="branch-lng" className="text-sm">
               Lng
               <input
+                id="branch-lng"
+                aria-label="Lng"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.lng}
                 onChange={(e) => setForm((f) => ({ ...f, lng: e.target.value }))}

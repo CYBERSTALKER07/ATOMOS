@@ -63,9 +63,11 @@ export default function PartnerPanel({ token }: { token: string }) {
             <option value="RETAILER">RETAILER</option>
           </select>
         </label>
-        <label className="text-sm">
+        <label htmlFor="partner-tenant-id" className="text-sm">
           <span className="mb-1 block text-gray-600">Tenant ID</span>
           <input
+            id="partner-tenant-id"
+            aria-label="Tenant ID"
             value={tenantId}
             onChange={(e) => setTenantId(e.target.value)}
             placeholder="supplier_… / retailer_…"

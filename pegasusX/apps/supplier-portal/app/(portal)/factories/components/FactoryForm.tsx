@@ -51,7 +51,7 @@ export function FactoryForm({ onSave, onCancel }: FactoryFormProps) {
       {error && <div className="text-red-600 md-typescale-body-medium">{error}</div>}
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</span>
-        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.factories.components.factory_form.text.main_factory")} />
+        <input id="name-input-1" aria-label="Name" className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.factories.components.factory_form.text.main_factory")} />
       </label>
       <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.factory_address")} />
       <label className="block space-y-1">

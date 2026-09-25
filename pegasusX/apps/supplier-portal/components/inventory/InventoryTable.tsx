@@ -74,6 +74,8 @@ export function InventoryTable({
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <input
+                      id="inventorytable-number-1"
+                      aria-label="Inventorytable input field"
                       type="number"
                       className="md-input-outlined w-24 px-2 py-1 text-right"
                       placeholder={t("supplier_portal.inventory.inventory_table.text.qty")}

@@ -24,11 +24,26 @@ export function PayloadOverrideForm({
   const t = usePortalT();
   if (!rebalanceModal) return null;
 
+  const handleBackdropKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Escape') onClose();
+  };
+  const stopPropagation = (event: React.SyntheticEvent) => event.stopPropagation();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div
+      tabIndex={0}
+      aria-label="Close modal backdrop"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={onClose}
+      role="button"
+      onKeyDown={handleBackdropKeyDown}
+    >
       <div
+        tabIndex={-1}
         className="desk-card p-6 w-full max-w-md space-y-4"
-        onClick={(event) => event.stopPropagation()}
+        onClick={stopPropagation}
+        role="button"
+        onKeyDown={stopPropagation}
       >
         <h2 className="text-lg font-semibold">{t("factory_portal.payload_override.payload_override_form.text.move_transfer")}</h2>
         <p className="text-sm text-[var(--muted)]">

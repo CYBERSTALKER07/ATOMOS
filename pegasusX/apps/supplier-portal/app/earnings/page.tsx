@@ -217,12 +217,16 @@ export default function EarningsPage() {
               <form className="mt-5 grid gap-3" onSubmit={submitChargeback}>
                 <h3 className="md-typescale-title-medium">{t("supplier_portal.earnings.text.record_chargeback")}</h3>
                 <input
+                  id="order-id-input-5"
+                  aria-label="Order id"
                   className="md-input-outlined"
                   placeholder={t("supplier_portal.admin.control_center.field.order_id")}
                   value={chargebackForm.order_id}
                   onChange={(event) => setChargebackForm((current) => ({ ...current, order_id: event.target.value }))}
                 />
                 <input
+                  id="retailer-id-input-4"
+                  aria-label="Retailer id"
                   className="md-input-outlined"
                   placeholder={t("supplier_portal.chargebacks.text.retailer_id")}
                   value={chargebackForm.retailer_id}
@@ -241,6 +245,8 @@ export default function EarningsPage() {
                 </select>
                 <div className="grid gap-3 md:grid-cols-2">
                   <input
+                    id="page-input-3"
+                    aria-label="Page input field"
                     className="md-input-outlined"
                     placeholder={t("supplier_portal.chargebacks.text.amount_minor_units")}
                     inputMode="numeric"
@@ -253,6 +259,8 @@ export default function EarningsPage() {
                     }
                   />
                   <input
+                    id="page-input-2"
+                    aria-label="Page input field"
                     className="md-input-outlined"
                     placeholder={t("supplier_portal.chargebacks.text.currency")}
                     value={packCurrencyCode || chargebackForm.currency}
@@ -268,6 +276,8 @@ export default function EarningsPage() {
               <form className="mt-6 grid gap-3" onSubmit={submitReversal}>
                 <h3 className="md-typescale-title-medium">{t("supplier_portal.earnings.text.record_reversal")}</h3>
                 <input
+                  id="session-id-input-1"
+                  aria-label="Session id"
                   className="md-input-outlined"
                   placeholder={t("supplier_portal.admin.control_center.field.session_id")}
                   value={reversalForm.session_id}

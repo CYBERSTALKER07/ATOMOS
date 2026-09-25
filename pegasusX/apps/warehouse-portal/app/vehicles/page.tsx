@@ -79,22 +79,32 @@ export default function VehiclesPage() {
             <h2 className="text-sm font-semibold">{t("warehouse_portal.vehicles.text.new_truck")}</h2>
             {createError && <p className="text-sm" style={{ color: 'var(--danger)' }}>{createError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input
-                placeholder={t("warehouse_portal.vehicles.text.label_e_g_truck_01")}
-                value={form.label}
-                onChange={e => setForm({ ...form, label: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
-              <input
-                placeholder={t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}
-                value={form.license_plate}
-                onChange={e => setForm({ ...form, license_plate: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
+              <div>
+                <label htmlFor="vehicle-label-input" className="sr-only">{t("warehouse_portal.vehicles.text.label_e_g_truck_01")}</label>
+                <input
+                  id="vehicle-label-input"
+                  aria-label={t("warehouse_portal.vehicles.text.label_e_g_truck_01")}
+                  placeholder={t("warehouse_portal.vehicles.text.label_e_g_truck_01")}
+                  value={form.label}
+                  onChange={e => setForm({ ...form, label: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="vehicle-plate-input" className="sr-only">{t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}</label>
+                <input
+                  id="vehicle-plate-input"
+                  aria-label={t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}
+                  placeholder={t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}
+                  value={form.license_plate}
+                  onChange={e => setForm({ ...form, license_plate: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
               <select
                 value={form.vehicle_class}
                 onChange={e => setForm({ ...form, vehicle_class: e.target.value })}

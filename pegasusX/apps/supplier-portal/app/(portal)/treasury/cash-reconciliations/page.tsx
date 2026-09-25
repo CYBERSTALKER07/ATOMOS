@@ -78,6 +78,8 @@ export default function CashReconciliationsPage() {
       <div className="mb-4">
         <label className="block text-sm text-[var(--color-md-outline)] mb-1">{t("supplier_portal.treasury.cash_reconciliations.text.finance_note_optional")}</label>
         <input
+          id="note-input-1"
+          aria-label="Note"
           className="md-input w-full max-w-md"
           placeholder={t("supplier_portal.treasury.cash_reconciliations.text.verification_note_for_accept_write_off")}
           value={note}

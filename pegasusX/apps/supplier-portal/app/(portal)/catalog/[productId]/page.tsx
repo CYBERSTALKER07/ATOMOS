@@ -170,6 +170,8 @@ export default function CatalogProductDetailPage() {
             </Field>
             <Field label={t("supplier_portal.analytics.knowledge_graph.text.name")}>
               <input
+                id="name-input-4"
+                aria-label="Name"
                 className="md-input-outlined mt-1 w-full px-3 py-2"
                 value={draft.name}
                 onChange={(event) => setDraft((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
@@ -177,6 +179,8 @@ export default function CatalogProductDetailPage() {
             </Field>
             <Field label={t("supplier_portal.catalog.components.catalog_table.text.barcode")}>
               <input
+                id="barcode-input-3"
+                aria-label="Barcode"
                 className="md-input-outlined mt-1 w-full px-3 py-2 font-mono"
                 value={draft.barcode}
                 onChange={(event) => setDraft((prev) => (prev ? { ...prev, barcode: event.target.value } : prev))}
@@ -185,6 +189,8 @@ export default function CatalogProductDetailPage() {
             </Field>
             <Field label={`Price (${product.currency}, minor units)`}>
               <input
+                id="price-minor-input-2"
+                aria-label="Price minor"
                 type="number"
                 min="0"
                 step="1"
@@ -197,6 +203,8 @@ export default function CatalogProductDetailPage() {
             </Field>
             <Field label={t("supplier_portal.residual.text.unit_volume_vu")}>
               <input
+                id="unit-volume-vu-input-1"
+                aria-label="Unit volume vu"
                 type="number"
                 min="0.1"
                 step="0.1"

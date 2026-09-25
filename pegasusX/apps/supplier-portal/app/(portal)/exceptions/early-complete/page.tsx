@@ -68,6 +68,8 @@ export default function EarlyCompletePage() {
         <label className="block space-y-2">
           <span className="md-typescale-label-medium">{t("supplier_portal.exceptions.early_complete.text.driver_id")}</span>
           <input
+            id="driverid-input-1"
+            aria-label="Driver id"
             type="text"
             value={driverId}
             onChange={(event) => setDriverId(event.target.value)}

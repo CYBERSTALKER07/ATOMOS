@@ -165,16 +165,16 @@ export default function ProductPricingPage() {
         <div className="md-card p-6 space-y-6 max-w-xl">
           <label className="block space-y-1">
             <span className="md-typescale-label-medium">List price ({product.currency})</span>
-            <input className="md-input w-full" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} />
+            <input id="list-price-product-curren-input-3" aria-label="List price ({product.currency})" className="md-input w-full" value={priceMajor} onChange={(e) => setPriceMajor(e.target.value)} />
           </label>
           <label className="flex items-center gap-3">
-            <input type="checkbox" checked={saleEnabled} onChange={(e) => setSaleEnabled(e.target.checked)} />
+            <input id="page-checkbox-2" aria-label="Select Page option" type="checkbox" checked={saleEnabled} onChange={(e) => setSaleEnabled(e.target.checked)} />
             <span className="md-typescale-body-medium">{t("supplier_portal.pricing._product_id_.text.on_sale")}</span>
           </label>
           {saleEnabled ? (
             <label className="block space-y-1">
               <span className="md-typescale-label-medium">{t("supplier_portal.pricing._product_id_.text.discount_bps")}</span>
-              <input className="md-input w-full" value={saleDiscountBps} onChange={(e) => setSaleDiscountBps(e.target.value)} />
+              <input id="salediscountbps-input-1" aria-label="Sale discount bps" className="md-input w-full" value={saleDiscountBps} onChange={(e) => setSaleDiscountBps(e.target.value)} />
               <span className="text-sm text-[var(--color-md-outline)]">100 bps = 1% off list price.</span>
             </label>
           ) : null}

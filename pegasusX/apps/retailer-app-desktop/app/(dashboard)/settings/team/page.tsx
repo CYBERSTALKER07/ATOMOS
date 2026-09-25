@@ -156,26 +156,32 @@ export default function TeamPage() {
             Invite staff
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm">
+            <label htmlFor="invite-staff-name" className="text-sm">
               Name
               <input
+                id="invite-staff-name"
+                aria-label="Name"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               />
             </label>
-            <label className="text-sm">
+            <label htmlFor="invite-staff-phone" className="text-sm">
               Phone
               <input
+                id="invite-staff-phone"
+                aria-label="Phone"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 placeholder={t("retailer_desktop.settings.team.text.998")}
               />
             </label>
-            <label className="text-sm">
+            <label htmlFor="invite-staff-password" className="text-sm">
               Temporary password
               <input
+                id="invite-staff-password"
+                aria-label="Temporary password"
                 type="password"
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 value={form.password}

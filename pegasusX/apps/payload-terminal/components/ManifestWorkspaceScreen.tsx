@@ -25,7 +25,7 @@ import StatusBadge from './StatusBadge';
 import TruckSidebar from './TruckSidebar';
 import WorkflowSectionHeader from './WorkflowSectionHeader';
 
-// ─── Render: MANIFEST VIEW ────────────────────────────────────────────────────
+// --- Render: MANIFEST VIEW ----------------------------------------------------
 
 type ManifestWorkspaceScreenProps = {
   theme: AppTheme;
@@ -141,7 +141,7 @@ export default function ManifestWorkspaceScreen({
       {policyBanner}
       <View style={{ flex: 1, flexDirection: 'row' }}>
 
-      {/* ── Left pane: Shop list ─────────────────────────────────────────── */}
+      {/* -- Left pane: Shop list ------------------------------------------- */}
       <View style={{ width: 288, backgroundColor: T.colors.sidebarBackground, flexDirection: 'column' }}>
         {/* Header */}
         <View style={{ paddingHorizontal: 24, paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator, flexDirection: 'row', alignItems: 'center' }}>
@@ -337,7 +337,7 @@ export default function ManifestWorkspaceScreen({
         </ScrollView>
       </View>
 
-      {/* ── Right pane: Manifest detail ──────────────────────────────────── */}
+      {/* -- Right pane: Manifest detail ------------------------------------ */}
       <ManifestDetailPane
         selectedOrder={selectedOrder}
         selectedOrderId={selectedOrderId}
@@ -595,7 +595,7 @@ export default function ManifestWorkspaceScreen({
       </View>
       )}
 
-      {/* ── Inject Order Modal ────────────────────────────────────────── */}
+      {/* -- Inject Order Modal ------------------------------------------ */}
       <Modal visible={showInjectOrder} transparent animationType="fade" onRequestClose={() => setShowInjectOrder(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: 400, backgroundColor: T.colors.background, borderRadius: isIOS ? 14 : 16, overflow: 'hidden' }}>
@@ -626,7 +626,7 @@ export default function ManifestWorkspaceScreen({
                 <CameraView
                   style={{ height: 160, borderRadius: 12, overflow: 'hidden' }}
                   barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8', 'code128', 'qr'] }}
-                  onBarcodeScanned={({ data }) => {
+                  onBarcodeScanned={({ data }: { data: string }) => {
                     setInjectOrderId(data.trim());
                     setShowInjectScanner(false);
                   }}
@@ -694,7 +694,7 @@ export default function ManifestWorkspaceScreen({
             <CameraView
               style={{ height: 200, borderRadius: 12, overflow: 'hidden' }}
               barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
-              onBarcodeScanned={({ data }) => { void handleProductBarcodeScan(data); }}
+              onBarcodeScanned={({ data }: { data: string }) => { void handleProductBarcodeScan(data); }}
             />
             <Pressable onPress={() => setShowProductScanner(false)} style={{ paddingVertical: 12, alignItems: 'center' }}>
               <Text style={{ color: T.colors.secondaryLabel }}>{isIOS ? 'Close' : 'CLOSE'}</Text>
@@ -703,7 +703,7 @@ export default function ManifestWorkspaceScreen({
         </View>
       </Modal>
 
-      {/* ── Offline Queue Indicator ────────────────────────────────────── */}
+      {/* -- Offline Queue Indicator -------------------------------------- */}
       {offlineQueue.length > 0 && (
         <View style={{
           position: 'absolute', bottom: 12, left: 12,
@@ -718,7 +718,7 @@ export default function ManifestWorkspaceScreen({
         </View>
       )}
 
-      {/* ── Re-Dispatch Modal ────────────────────────────────────────── */}
+      {/* -- Re-Dispatch Modal ------------------------------------------ */}
       <Modal visible={showReDispatch} transparent animationType="fade" onRequestClose={() => { setShowReDispatch(false); setReDispatchOrderId(null); }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
           <View style={{ width: 520, maxHeight: '85%', backgroundColor: T.colors.background, borderRadius: isIOS ? 14 : 16, overflow: 'hidden' }}>
@@ -792,7 +792,7 @@ export default function ManifestWorkspaceScreen({
         </View>
       </Modal>
 
-      {/* ── Notification Panel Modal ─────────────────────────────────────── */}
+      {/* -- Notification Panel Modal --------------------------------------- */}
       <NotificationsSheet
         visible={showNotifPanel}
         onClose={() => setShowNotifPanel(false)}
@@ -803,7 +803,7 @@ export default function ManifestWorkspaceScreen({
         onMarkRead={markNotifRead}
       />
 
-      {/* ── Manifest Exceptions Panel Modal ──────────────────────────────── */}
+      {/* -- Manifest Exceptions Panel Modal -------------------------------- */}
       <ExceptionsSheet
         visible={showExceptionsPanel}
         onClose={() => setShowExceptionsPanel(false)}

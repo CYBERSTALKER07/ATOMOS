@@ -64,6 +64,8 @@ export function OrgMemberForm({
       </p>
       <form className="grid gap-3 mt-4" onSubmit={submitOrgMember}>
         <input
+          id="name-input-4"
+          aria-label="Name"
           className="md-input-outlined"
           placeholder={t("supplier_portal.org_fleet.components.org_member_form.text.full_name")}
           value={orgForm.name}
@@ -71,6 +73,8 @@ export function OrgMemberForm({
           disabled={orgSubmitting}
         />
         <input
+          id="email-input-3"
+          aria-label="Email"
           className="md-input-outlined"
           placeholder={t("supplier_portal.auth.login.email_label")}
           value={orgForm.email}
@@ -78,6 +82,8 @@ export function OrgMemberForm({
           disabled={orgSubmitting}
         />
         <input
+          id="phone-input-2"
+          aria-label="Phone"
           className="md-input-outlined"
           placeholder={t("common.field.phone")}
           value={orgForm.phone}
@@ -85,6 +91,8 @@ export function OrgMemberForm({
           disabled={orgSubmitting}
         />
         <input
+          id="password-input-1"
+          aria-label="Password"
           className="md-input-outlined"
           placeholder={t("supplier_portal.org_fleet.components.org_member_form.text.temporary_password")}
           type="password"

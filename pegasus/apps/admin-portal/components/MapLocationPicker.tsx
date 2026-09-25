@@ -107,6 +107,8 @@ export default function MapLocationPicker({ latitude, longitude, addressText, on
           Warehouse Address
         </label>
         <input
+          id="warehouse-address-input-1"
+          aria-label="Warehouse Address"
           type="text"
           value={addressText}
           onChange={handleAddressChange}

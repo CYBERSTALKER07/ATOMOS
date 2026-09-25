@@ -161,7 +161,10 @@ export default function Home() {
             }
           }}
         >
+          <label htmlFor="admin-mfa-code" className="sr-only">MFA Code</label>
           <input
+            id="admin-mfa-code"
+            aria-label="MFA Code"
             inputMode="numeric"
             autoComplete="one-time-code"
             maxLength={6}
@@ -283,7 +286,10 @@ function LoginForm({ onSubmit }: { onSubmit: (t: string) => void }) {
           }
         }}
       >
+        <label htmlFor="admin-subject" className="sr-only">Subject or email</label>
         <input
+          id="admin-subject"
+          aria-label="Subject or email"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Subject or email"
@@ -291,7 +297,10 @@ function LoginForm({ onSubmit }: { onSubmit: (t: string) => void }) {
           autoFocus
           autoComplete="username"
         />
+        <label htmlFor="admin-password" className="sr-only">Password</label>
         <input
+          id="admin-password"
+          aria-label="Password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -317,7 +326,10 @@ function LoginForm({ onSubmit }: { onSubmit: (t: string) => void }) {
           }}
         >
           <p className="text-xs text-gray-500">Dev break-glass: paste mint-dev-jwt token</p>
+          <label htmlFor="admin-paste-token" className="sr-only">PLATFORM_ADMIN token</label>
           <input
+            id="admin-paste-token"
+            aria-label="PLATFORM_ADMIN token"
             type="password"
             value={paste}
             onChange={(e) => setPaste(e.target.value)}

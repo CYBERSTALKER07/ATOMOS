@@ -117,6 +117,8 @@ export default function ManifestDetailPage() {
                   <label className="block">
                     <div className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.manifests._id_.text.inject_order_id")}</div>
                     <input
+                      id="injectorderid-input-1"
+                      aria-label="Inject order id"
                       className="md-input-outlined mt-1 px-3 py-2"
                       value={injectOrderId}
                       onChange={(event) => setInjectOrderId(event.target.value)}

@@ -70,10 +70,15 @@ val FACTORY_DRIVER_DUTY = listOf("ON_SHIFT", "OFF_SHIFT")
 
 fun canonicalizeOrderStatus(status: String): String {
     return when (status.trim().uppercase()) {
-        "DISPATCHED" -> "LOADED"
+        "DISPATCHED", "PACKED" -> "LOADED"
         "EN_ROUTE" -> "IN_TRANSIT"
         "ARRIVING" -> "ARRIVED"
         "SHOP_CLOSED_PENDING" -> "ARRIVED_SHOP_CLOSED"
+        "DELIVERED" -> "COMPLETED"
+        "DISPUTED" -> "RECONCILIATION_REQUIRED"
+        "CONFIRMED" -> "AUTO_ACCEPTED"
+        "PENDING_APPROVAL", "DRAFT", "PICKING" -> "PENDING"
+        "CANCEL_REQUESTED" -> "CANCELLED"
         else -> status.trim().uppercase()
     }
 }

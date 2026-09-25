@@ -202,6 +202,8 @@ export default function PromotionsPage() {
           <form className="space-y-3" onSubmit={handleSubmit}>
             <Field label={t("supplier_portal.analytics.knowledge_graph.text.name")}>
               <input
+                id="name-input-10"
+                aria-label="Name"
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -210,6 +212,8 @@ export default function PromotionsPage() {
             </Field>
             <Field label={t("supplier_portal.analytics.demand.signals.text.description")}>
               <input
+                id="page-input-9"
+                aria-label="Page input field"
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.description ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -217,6 +221,8 @@ export default function PromotionsPage() {
             </Field>
             <Field label={t("supplier_portal.residual.text.discount_bps_500_5")}>
               <input
+                id="discount-bps-input-8"
+                aria-label="Discount bps"
                 type="number"
                 min={1}
                 max={10000}
@@ -249,6 +255,8 @@ export default function PromotionsPage() {
             {form.scope_type === "PRODUCT" ? (
               <Field label={t("supplier_portal.analytics.demand.signals.text.product_id")}>
                 <input
+                  id="page-input-7"
+                  aria-label="Page input field"
                   className="md-input-outlined w-full px-3 py-2"
                   value={form.scope_product_id ?? ""}
                   onChange={(e) =>
@@ -261,6 +269,8 @@ export default function PromotionsPage() {
             {form.scope_type === "CATEGORY" ? (
               <Field label={t("supplier_portal.residual.text.category_id")}>
                 <input
+                  id="page-input-6"
+                  aria-label="Page input field"
                   className="md-input-outlined w-full px-3 py-2"
                   value={form.scope_category_id ?? ""}
                   onChange={(e) =>
@@ -297,6 +307,8 @@ export default function PromotionsPage() {
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("supplier_portal.residual.text.min_line_qty_packs")}>
                 <input
+                  id="page-number-5"
+                  aria-label="Page input field"
                   type="number"
                   min={0}
                   className="md-input-outlined w-full px-3 py-2"
@@ -308,6 +320,8 @@ export default function PromotionsPage() {
               </Field>
               <Field label={t("supplier_portal.residual.text.min_order_minor_units")}>
                 <input
+                  id="page-number-4"
+                  aria-label="Page input field"
                   type="number"
                   min={0}
                   className="md-input-outlined w-full px-3 py-2"
@@ -324,6 +338,8 @@ export default function PromotionsPage() {
             <div className="grid grid-cols-2 gap-3">
               <Field label={t("supplier_portal.residual.text.starts_at_rfc3339")}>
                 <input
+                  id="2026-06-11t00-00-00z-input-3"
+                  aria-label="2026-06-11T00:00:00Z"
                   className="md-input-outlined w-full px-3 py-2"
                   placeholder="2026-06-11T00:00:00Z"
                   value={form.starts_at ?? ""}
@@ -334,6 +350,8 @@ export default function PromotionsPage() {
               </Field>
               <Field label={t("supplier_portal.residual.text.ends_at_rfc3339")}>
                 <input
+                  id="2026-12-31t23-59-59z-input-2"
+                  aria-label="2026-12-31T23:59:59Z"
                   className="md-input-outlined w-full px-3 py-2"
                   placeholder="2026-12-31T23:59:59Z"
                   value={form.ends_at ?? ""}
@@ -345,6 +363,8 @@ export default function PromotionsPage() {
             </div>
             <Field label={t("supplier_portal.residual.text.priority_higher_wins_ties")}>
               <input
+                id="page-number-1"
+                aria-label="Page input field"
                 type="number"
                 className="md-input-outlined w-full px-3 py-2"
                 value={form.priority ?? 0}

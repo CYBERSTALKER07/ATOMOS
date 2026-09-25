@@ -113,6 +113,8 @@ export default function VehicleAvailabilityPanel({
           </select>
           {reason === 'OTHER' && (
             <input
+              id="note-input-1"
+              aria-label="Note"
               type="text"
               placeholder={t("warehouse_portal.vehicle_availability_panel.text.custom_reason_required")}
               value={note}

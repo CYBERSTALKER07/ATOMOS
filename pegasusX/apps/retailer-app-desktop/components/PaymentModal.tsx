@@ -23,7 +23,7 @@ import { displayPackCurrency, filterRetailerCardGateways } from "../lib/payment-
 import { useRetailerPaymentCatalog } from "../lib/use-payment-catalog";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
-/* ── Types ── */
+/* -- Types -- */
 
 type PaymentEvent = Omit<PaymentRequired, "available_card_gateways" | "amount"> & {
   available_card_gateways?: string[];
@@ -98,7 +98,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
   };
 }
 
-/* ── Component ── */
+/* -- Component -- */
 
 export default function PaymentModal() {
   const t = usePortalT();

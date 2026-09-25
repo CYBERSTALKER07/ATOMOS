@@ -361,6 +361,8 @@ export default function IntegrationsSettingsPage() {
             <h2 className="text-lg font-semibold">{t("supplier_portal.settings.integrations.text.webhooks")}</h2>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
+                id="hookurl-input-23"
+                aria-label="https://example.com/hooks/pegasus"
                 className="flex-1 rounded border px-3 py-2 text-sm"
                 placeholder="https://example.com/hooks/pegasus"
                 value={hookUrl}
@@ -379,6 +381,8 @@ export default function IntegrationsSettingsPage() {
               {EVENT_OPTIONS.map((ev) => (
                 <label key={ev} className="flex items-center gap-1">
                   <input
+                    id="page-checkbox-22"
+                    aria-label="Select Page option"
                     type="checkbox"
                     checked={hookEvents.includes(ev)}
                     onChange={(e) => {
@@ -478,6 +482,8 @@ export default function IntegrationsSettingsPage() {
               <label className="text-xs">
                 AR (receivable)
                 <input
+                  id="ar-receivable-input-21"
+                  aria-label="AR (receivable)"
                   className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
                   value={coaAr}
                   onChange={(e) => setCoaAr(e.target.value)}
@@ -486,6 +492,8 @@ export default function IntegrationsSettingsPage() {
               <label className="text-xs">
                 Revenue
                 <input
+                  id="revenue-input-20"
+                  aria-label="Revenue"
                   className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
                   value={coaRevenue}
                   onChange={(e) => setCoaRevenue(e.target.value)}
@@ -494,6 +502,8 @@ export default function IntegrationsSettingsPage() {
               <label className="text-xs">
                 Bank / cash
                 <input
+                  id="bank-cash-input-19"
+                  aria-label="Bank / cash"
                   className="mt-1 w-full rounded border px-3 py-2 text-sm font-mono"
                   value={coaBank}
                   onChange={(e) => setCoaBank(e.target.value)}
@@ -537,12 +547,16 @@ export default function IntegrationsSettingsPage() {
                 <option value="xml">{t("supplier_portal.settings.integrations.text.xml")}</option>
               </select>
               <input
+                id="from-input-18"
+                aria-label="From"
                 type="date"
                 className="rounded border px-2 py-2 text-sm"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
               />
               <input
+                id="to-input-17"
+                aria-label="To"
                 type="date"
                 className="rounded border px-2 py-2 text-sm"
                 value={to}
@@ -624,6 +638,8 @@ export default function IntegrationsSettingsPage() {
             </p>
             <label className="flex items-center gap-2 text-sm">
               <input
+                id="page-checkbox-16"
+                aria-label="Select Page option"
                 type="checkbox"
                 checked={ediEnabled}
                 onChange={(e) => setEdiEnabled(e.target.checked)}
@@ -632,48 +648,64 @@ export default function IntegrationsSettingsPage() {
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
               <input
+                id="sftphost-input-15"
+                aria-label="Sftp host"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.host_or_leave_blank_for_local_edi_root")}
                 value={sftpHost}
                 onChange={(e) => setSftpHost(e.target.value)}
               />
               <input
+                id="sftpport-input-14"
+                aria-label="Sftp port"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.port")}
                 value={sftpPort}
                 onChange={(e) => setSftpPort(e.target.value)}
               />
               <input
+                id="sftpuser-input-13"
+                aria-label="Sftp user"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.username")}
                 value={sftpUser}
                 onChange={(e) => setSftpUser(e.target.value)}
               />
               <input
+                id="sftpsecretref-input-12"
+                aria-label="Sftp secret ref"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.gsm_secret_name_secret_ref")}
                 value={sftpSecretRef}
                 onChange={(e) => setSftpSecretRef(e.target.value)}
               />
               <input
+                id="sftpdir-input-11"
+                aria-label="Sftp dir"
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
                 placeholder={t("supplier_portal.settings.integrations.text.remote_base_directory")}
                 value={sftpDir}
                 onChange={(e) => setSftpDir(e.target.value)}
               />
               <input
+                id="inbounddir-input-10"
+                aria-label="Inbound dir"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.inbound_dir")}
                 value={inboundDir}
                 onChange={(e) => setInboundDir(e.target.value)}
               />
               <input
+                id="outbounddir-input-9"
+                aria-label="Outbound dir"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder={t("supplier_portal.settings.integrations.text.outbound_dir")}
                 value={outboundDir}
                 onChange={(e) => setOutboundDir(e.target.value)}
               />
               <input
+                id="archivedir-input-8"
+                aria-label="Archive dir"
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
                 placeholder={t("supplier_portal.settings.integrations.text.archive_dir")}
                 value={archiveDir}
@@ -730,6 +762,8 @@ export default function IntegrationsSettingsPage() {
             </p>
             <label className="flex items-center gap-2 text-sm">
               <input
+                id="page-checkbox-7"
+                aria-label="Select Page option"
                 type="checkbox"
                 checked={as2Enabled}
                 onChange={(e) => setAs2Enabled(e.target.checked)}
@@ -738,36 +772,48 @@ export default function IntegrationsSettingsPage() {
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
               <input
+                id="ouras2id-input-6"
+                aria-label="Our AS2-ID"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder="Our AS2-ID"
                 value={ourAs2Id}
                 onChange={(e) => setOurAs2Id(e.target.value)}
               />
               <input
+                id="partneras2id-input-5"
+                aria-label="Partner AS2-ID"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder="Partner AS2-ID"
                 value={partnerAs2Id}
                 onChange={(e) => setPartnerAs2Id(e.target.value)}
               />
               <input
+                id="partneras2url-input-4"
+                aria-label="Partner AS2 URL (HTTPS)"
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
                 placeholder="Partner AS2 URL (HTTPS)"
                 value={partnerAs2Url}
                 onChange={(e) => setPartnerAs2Url(e.target.value)}
               />
               <input
+                id="ourcertref-input-3"
+                aria-label="Our cert secret ref"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder="Our cert secret ref"
                 value={ourCertRef}
                 onChange={(e) => setOurCertRef(e.target.value)}
               />
               <input
+                id="ourkeyref-input-2"
+                aria-label="Our key secret ref"
                 className="rounded border px-3 py-2 text-sm"
                 placeholder="Our key secret ref"
                 value={ourKeyRef}
                 onChange={(e) => setOurKeyRef(e.target.value)}
               />
               <input
+                id="partnercertref-input-1"
+                aria-label="Partner cert secret ref"
                 className="rounded border px-3 py-2 text-sm sm:col-span-2"
                 placeholder="Partner cert secret ref"
                 value={partnerCertRef}

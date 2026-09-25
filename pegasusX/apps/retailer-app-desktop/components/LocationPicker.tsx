@@ -99,9 +99,11 @@ export function LocationPicker({ value, onChange, label }: LocationPickerProps) 
 
   return (
     <div className="space-y-2">
-      <label className="portal-label">{resolvedLabel}</label>
+      <label htmlFor="retailer-location-picker-address" className="portal-label">{resolvedLabel}</label>
       <div className="relative">
         <input
+          id="retailer-location-picker-address"
+          aria-label={resolvedLabel}
           className="portal-input w-full"
           placeholder={t("retailer_desktop.location_picker.text.start_typing_street_address")}
           value={query}

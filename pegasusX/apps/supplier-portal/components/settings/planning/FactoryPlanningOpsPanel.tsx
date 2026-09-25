@@ -181,6 +181,8 @@ export default function FactoryPlanningOpsPanel() {
                 Kill-switch reason (ADMIN)
               </label>
               <input
+                id="kill-switch-reason-admin-input-1"
+                aria-label="Kill-switch reason (ADMIN)"
                 className="w-full rounded-lg border px-3 py-2 text-sm"
                 style={{ borderColor: "var(--color-md-outline-variant)" }}
                 value={killReason}

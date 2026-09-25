@@ -792,18 +792,23 @@ export default function DispatchPage() {
                           ))}
                         </select>
                         {(vehicleReasons[vehicle.vehicle_id] || 'MANUAL_HOLD') === 'OTHER' && (
-                          <input
-                            type="text"
-                            placeholder={t("warehouse_portal.dispatch.text.custom_reason")}
-                            value={vehicleNotes[vehicle.vehicle_id] || ''}
-                            onChange={event => setVehicleNotes(current => ({
-                              ...current,
-                              [vehicle.vehicle_id]: event.target.value,
-                            }))}
-                            disabled={mutatingVehicleId === vehicle.vehicle_id}
-                            className="rounded-lg border px-2 py-1 text-xs min-w-32"
-                            style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-                          />
+                          <>
+                            <label htmlFor={`vehicle-custom-reason-${vehicle.vehicle_id}`} className="sr-only">{t("warehouse_portal.dispatch.text.custom_reason")}</label>
+                            <input
+                              id={`vehicle-custom-reason-${vehicle.vehicle_id}`}
+                              aria-label={t("warehouse_portal.dispatch.text.custom_reason")}
+                              type="text"
+                              placeholder={t("warehouse_portal.dispatch.text.custom_reason")}
+                              value={vehicleNotes[vehicle.vehicle_id] || ''}
+                              onChange={event => setVehicleNotes(current => ({
+                                ...current,
+                                [vehicle.vehicle_id]: event.target.value,
+                              }))}
+                              disabled={mutatingVehicleId === vehicle.vehicle_id}
+                              className="rounded-lg border px-2 py-1 text-xs min-w-32"
+                              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                            />
+                          </>
                         )}
                       </>
                     )}
@@ -848,7 +853,10 @@ export default function DispatchPage() {
         >
           <div className="rounded-xl border p-5" style={{ borderColor: 'var(--border)', background: 'var(--background)' }}>
             <div className="flex gap-3 max-w-lg mb-4">
+              <label htmlFor="rescue-driver-id-input" className="sr-only">Driver ID (e.g. driver-123)</label>
               <input
+                id="rescue-driver-id-input"
+                aria-label="Driver ID (e.g. driver-123)"
                 type="text"
                 placeholder="Driver ID (e.g. driver-123)"
                 className="portal-input flex-1"
@@ -882,9 +890,11 @@ export default function DispatchPage() {
                     </select>
                   </label>
                   {rescueAction === 'RESCHEDULE' && (
-                    <label className="portal-field">
+                    <label htmlFor="rescue-proposed-date" className="portal-field">
                       <span className="portal-label">Proposed Date</span>
                       <input
+                        id="rescue-proposed-date"
+                        aria-label="Proposed Date"
                         type="date"
                         className="portal-input"
                         value={rescueNewDate}

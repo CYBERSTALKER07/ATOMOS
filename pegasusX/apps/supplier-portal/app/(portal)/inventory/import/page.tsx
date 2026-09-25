@@ -173,7 +173,7 @@ export default function InventoryImportPage() {
 
           <label className="md-btn md-btn-outlined md-typescale-label-large px-4 py-2 inline-block cursor-pointer mb-4">
             Choose CSV file
-            <input type="file" accept=".csv,.tsv,text/csv" className="hidden" onChange={onFileSelect} />
+            <input id="choose-csv-file-input-1" aria-label="Choose CSV file" type="file" accept=".csv,.tsv,text/csv" className="hidden" onChange={onFileSelect} />
           </label>
 
           <textarea

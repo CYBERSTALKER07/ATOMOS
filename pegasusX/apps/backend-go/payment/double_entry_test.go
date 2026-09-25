@@ -110,3 +110,71 @@ func TestDoubleEntry_SettlementRelease(t *testing.T) {
 		t.Fatal("expected error for fee > gross, got nil")
 	}
 }
+
+func TestDoubleEntry_DeterministicIdempotencyKeys(t *testing.T) {
+	tenders := []TenderSplit{
+		{Method: "CARD", Gateway: "PAYME", AmountMinor: 60000, ReferenceID: "payme_tx_123"},
+		{Method: "CASH", Gateway: "MANUAL", AmountMinor: 40000, ReferenceID: "cash_cod_123"},
+	}
+
+	// Repeated invocations for the exact same order must produce IDENTICAL EntryID and ReferenceID
+	je1, err := BuildSplitTenderJournalEntry("ord-repeat-99", "sup-1", "ret-1", "UZS", 100000, tenders, 0, "Test checkout")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	je2, err := BuildSplitTenderJournalEntry("ord-repeat-99", "sup-1", "ret-1", "UZS", 100000, tenders, 0, "Test checkout")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if je1.EntryID != je2.EntryID {
+		t.Fatalf("expected deterministic EntryID: got %s vs %s", je1.EntryID, je2.EntryID)
+	}
+	if je1.EntryID != "jentry_order_ord-repeat-99" {
+		t.Fatalf("expected EntryID 'jentry_order_ord-repeat-99', got %s", je1.EntryID)
+	}
+
+	recs1 := je1.ToLedgerEntryRecords()
+	recs2 := je2.ToLedgerEntryRecords()
+
+	if len(recs1) != len(recs2) {
+		t.Fatalf("record lengths differ: %d vs %d", len(recs1), len(recs2))
+	}
+
+	for i := range recs1 {
+		if recs1[i].LedgerEntryID != recs2[i].LedgerEntryID {
+			t.Errorf("posting %d LedgerEntryID mismatch: %s vs %s", i, recs1[i].LedgerEntryID, recs2[i].LedgerEntryID)
+		}
+		if recs1[i].ReferenceID != recs2[i].ReferenceID {
+			t.Errorf("posting %d ReferenceID mismatch: %s vs %s", i, recs1[i].ReferenceID, recs2[i].ReferenceID)
+		}
+		if recs1[i].ReferenceID != "jentry_order_ord-repeat-99" {
+			t.Errorf("posting %d ReferenceID unexpected: %s", i, recs1[i].ReferenceID)
+		}
+	}
+
+	// Also verify settlement journal entry determinism
+	s1, err := BuildSettlementJournalEntry("ord-settle-det-1", "sup-1", "UZS", 100000, 5000)
+	if err != nil {
+		t.Fatalf("unexpected settlement error: %v", err)
+	}
+	s2, err := BuildSettlementJournalEntry("ord-settle-det-1", "sup-1", "UZS", 100000, 5000)
+	if err != nil {
+		t.Fatalf("unexpected settlement error: %v", err)
+	}
+
+	if s1.EntryID != s2.EntryID || s1.EntryID != "jentry_settle_ord-settle-det-1" {
+		t.Fatalf("expected deterministic settlement EntryID: %s vs %s", s1.EntryID, s2.EntryID)
+	}
+
+	sRecs1 := s1.ToLedgerEntryRecords()
+	sRecs2 := s2.ToLedgerEntryRecords()
+	for i := range sRecs1 {
+		if sRecs1[i].LedgerEntryID != sRecs2[i].LedgerEntryID {
+			t.Errorf("settle posting %d LedgerEntryID mismatch", i)
+		}
+		if sRecs1[i].ReferenceID != sRecs2[i].ReferenceID || sRecs1[i].ReferenceID != "jentry_settle_ord-settle-det-1" {
+			t.Errorf("settle posting %d ReferenceID mismatch: %s", i, sRecs1[i].ReferenceID)
+		}
+	}
+}

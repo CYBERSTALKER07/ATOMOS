@@ -54,6 +54,8 @@ export default function ManifestsPage() {
         actions={
           <div className="flex gap-2 items-center">
             <input
+              id="date-input-1"
+              aria-label="Date"
               type="date"
               value={date}
               onChange={(e) => {

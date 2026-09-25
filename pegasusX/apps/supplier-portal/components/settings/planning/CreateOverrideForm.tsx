@@ -64,6 +64,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         Name (optional)
         <input
+          id="name-optional-input-4"
+          aria-label="Name (optional)"
           className="portal-input"
           value={form.name}
           onChange={(e) => onFormChange({ ...form, name: e.target.value })}
@@ -72,6 +74,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         Start date
         <input
+          id="start-date-input-3"
+          aria-label="Start date"
           type="date"
           className="portal-input"
           value={form.start_date}
@@ -81,6 +85,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         End date
         <input
+          id="end-date-input-2"
+          aria-label="End date"
           type="date"
           className="portal-input"
           value={form.end_date}
@@ -90,6 +96,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small sm:col-span-2">
         Multiplier (optional, 0.5–2.5)
         <input
+          id="multiplier-optional-0-5-2-input-1"
+          aria-label="Multiplier (optional, 0.5–2.5)"
           type="number"
           step="0.01"
           min={0.5}

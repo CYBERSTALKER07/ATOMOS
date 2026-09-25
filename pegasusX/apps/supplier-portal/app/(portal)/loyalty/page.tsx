@@ -72,11 +72,11 @@ export default function SupplierLoyaltyPage() {
         </p>
         <label className="block space-y-1">
           <span className="md-typescale-label-medium">Earn bps</span>
-          <input className="md-input w-full" value={earnBps} onChange={(e) => setEarnBps(e.target.value)} />
+          <input id="earn-bps-input-2" aria-label="Earn bps" className="md-input w-full" value={earnBps} onChange={(e) => setEarnBps(e.target.value)} />
         </label>
         <label className="block space-y-1">
           <span className="md-typescale-label-medium">Reason</span>
-          <input className="md-input w-full" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required for PATCH" />
+          <input id="reason-input-1" aria-label="Reason" className="md-input w-full" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Required for PATCH" />
         </label>
         <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={busy} onClick={() => void save()}>
           {busy ? "Saving…" : "Save program"}

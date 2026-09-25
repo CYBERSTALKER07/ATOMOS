@@ -132,7 +132,7 @@ func BuildSplitTenderJournalEntry(
 	}
 
 	je := &JournalEntry{
-		EntryID:    fmt.Sprintf("jentry_order_%s_%d", orderID, time.Now().UTC().UnixNano()),
+		EntryID:    fmt.Sprintf("jentry_order_%s", orderID),
 		OrderID:    orderID,
 		SupplierID: supplierID,
 		RetailerID: retailerID,
@@ -210,7 +210,7 @@ func BuildSettlementJournalEntry(
 	netSupplierMinor := grossOrderMinor - platformFeeMinor
 
 	je := &JournalEntry{
-		EntryID:    fmt.Sprintf("jentry_settle_%s_%d", orderID, time.Now().UTC().UnixNano()),
+		EntryID:    fmt.Sprintf("jentry_settle_%s", orderID),
 		OrderID:    orderID,
 		SupplierID: supplierID,
 		Currency:   strings.ToUpper(currency),
@@ -263,10 +263,23 @@ func BuildSettlementJournalEntry(
 // ToLedgerEntryRecords transforms a balanced JournalEntry into durable LedgerEntryRecords for persistence.
 func (je *JournalEntry) ToLedgerEntryRecords() []LedgerEntryRecord {
 	records := make([]LedgerEntryRecord, 0, len(je.Postings))
+	refID := je.EntryID
+	if refID == "" {
+		if je.OrderID != "" {
+			refID = fmt.Sprintf("jentry_order_%s", je.OrderID)
+		} else if je.SessionID != "" {
+			refID = fmt.Sprintf("jentry_session_%s", je.SessionID)
+		} else if je.TransactionID != "" {
+			refID = fmt.Sprintf("jentry_tx_%s", je.TransactionID)
+		} else {
+			refID = "jentry_default"
+		}
+		je.EntryID = refID
+	}
 	for idx, p := range je.Postings {
 		entryType := fmt.Sprintf("GL_%s_%s", p.Direction, strings.ReplaceAll(p.AccountCode, ":", "_"))
 		records = append(records, LedgerEntryRecord{
-			LedgerEntryID: fmt.Sprintf("%s_p%d", je.EntryID, idx),
+			LedgerEntryID: fmt.Sprintf("%s_p%d", refID, idx),
 			SessionID:     je.SessionID,
 			OrderID:       je.OrderID,
 			SupplierID:    je.SupplierID,
@@ -275,7 +288,7 @@ func (je *JournalEntry) ToLedgerEntryRecords() []LedgerEntryRecord {
 			EntryType:     entryType,
 			AmountMinor:   p.AmountMinor,
 			Currency:      p.Currency,
-			ReferenceID:   je.EntryID,
+			ReferenceID:   refID,
 			Source:        "ledger.double_entry",
 			OccurredAt:    je.OccurredAt,
 			CreatedAt:     je.OccurredAt,

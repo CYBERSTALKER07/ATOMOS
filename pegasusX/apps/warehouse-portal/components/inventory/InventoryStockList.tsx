@@ -125,6 +125,8 @@ export default function InventoryStockList({
                   {adjusting === item.product_id ? (
                     <div className="flex items-center gap-1 justify-end">
                       <input
+                        id="adjustval-input-1"
+                        aria-label="Adjust val"
                         type="number"
                         value={adjustVal}
                         onChange={e => onAdjustValChange(e.target.value)}

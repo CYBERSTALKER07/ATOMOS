@@ -111,6 +111,8 @@ export function ReturnPolicySettingsSection() {
           <label className="block text-sm">
             Reverse dock SLA (hours)
             <input
+              id="reverse-dock-sla-hours-input-3"
+              aria-label="Reverse dock SLA (hours)"
               type="number"
               min={1}
               max={168}
@@ -121,6 +123,8 @@ export function ReturnPolicySettingsSection() {
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input
+              id="returnpolicysettingssection-checkbox-2"
+              aria-label="Select Returnpolicysettingssection option"
               type="checkbox"
               checked={canOverride}
               onChange={(e) => setCanOverride(e.target.checked)}
@@ -131,6 +135,8 @@ export function ReturnPolicySettingsSection() {
             <label className="block text-sm">
               Retailer file window (hours)
               <input
+                id="retailer-file-window-hour-input-1"
+                aria-label="Retailer file window (hours)"
                 type="number"
                 min={1}
                 max={168}

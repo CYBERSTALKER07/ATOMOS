@@ -162,7 +162,9 @@ export default function PaydayCalendarPage() {
             <div className="p-6 space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">{t("supplier_portal.admin.control_center.field.title")}</label>
-                <input 
+                <input
+                  id="title-input-4"
+                  aria-label="Title"
                   type="text" 
                   value={form.title}
                   onChange={e => setForm({...form, title: e.target.value})}
@@ -174,7 +176,9 @@ export default function PaydayCalendarPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.start_time")}</label>
-                  <input 
+                  <input
+                    id="startat-input-3"
+                    aria-label="Start at"
                     type="datetime-local" 
                     value={form.startAt}
                     onChange={e => setForm({...form, startAt: e.target.value})}
@@ -183,7 +187,9 @@ export default function PaydayCalendarPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.end_time")}</label>
-                  <input 
+                  <input
+                    id="endat-input-2"
+                    aria-label="End at"
                     type="datetime-local" 
                     value={form.endAt}
                     onChange={e => setForm({...form, endAt: e.target.value})}
@@ -194,7 +200,9 @@ export default function PaydayCalendarPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.demand_multiplier_expected_lift")}</label>
-                <input 
+                <input
+                  id="multiplier-input-1"
+                  aria-label="Multiplier"
                   type="number" 
                   step="0.1"
                   min="1.0"

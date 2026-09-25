@@ -9,7 +9,7 @@ import { payloadMissingItemsKey } from '../utils/idempotency';
 import Pressable from './Pressable';
 import type { ShowToast } from '../hooks/useToast';
 
-// ─── Render: POST-SEAL DOUBLE-CHECK COUNTDOWN (Edge 33) ───────────────────────
+// --- Render: POST-SEAL DOUBLE-CHECK COUNTDOWN (Edge 33) -----------------------
 
 export default function PostSealCountdownScreen({
   theme: T,

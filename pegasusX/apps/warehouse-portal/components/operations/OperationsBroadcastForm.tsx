@@ -119,7 +119,7 @@ export function OperationsBroadcastForm({
           />
         </PortalField>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
+          <input id="operationsbroadcastform-checkbox-1" aria-label="Select Operationsbroadcastform option" type="checkbox" checked={saveAsTemplate} onChange={(e) => setSaveAsTemplate(e.target.checked)} />
           Save as custom template for this depot
         </label>
         <button

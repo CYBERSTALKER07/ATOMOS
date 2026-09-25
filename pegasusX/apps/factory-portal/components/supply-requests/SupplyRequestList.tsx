@@ -42,7 +42,10 @@ export function SupplyRequestList({
           <thead>
             <tr style={{ background: 'var(--color-md-surface-container)' }}>
               <th className="text-left px-4 py-3 font-medium w-10">
+                <label htmlFor="select-all-requests" className="sr-only">Select all requests</label>
                 <input 
+                  id="select-all-requests"
+                  aria-label="Select all requests"
                   type="checkbox" 
                   className="rounded border-(--color-md-outline) bg-transparent"
                   checked={pageItems.length > 0 && selectedIds.size === pageItems.length}
@@ -72,7 +75,10 @@ export function SupplyRequestList({
                 onClick={() => setExpandedRequestId(expandedRequestId === request.request_id ? null : request.request_id)}
               >
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <label htmlFor={`select-request-${request.request_id}`} className="sr-only">Select request {request.request_id}</label>
                   <input 
+                    id={`select-request-${request.request_id}`}
+                    aria-label={`Select request ${request.request_id}`}
                     type="checkbox" 
                     className="rounded border-(--color-md-outline) bg-transparent"
                     checked={selectedIds.has(request.request_id)}

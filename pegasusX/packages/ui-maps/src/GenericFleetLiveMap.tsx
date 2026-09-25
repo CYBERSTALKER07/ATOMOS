@@ -130,7 +130,7 @@ export function GenericFleetLiveMap({
   return (
     <div className={className}>
       <MapGL
-        ref={(ref) => {
+        ref={(ref: any) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={{

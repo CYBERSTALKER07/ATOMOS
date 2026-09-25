@@ -124,6 +124,8 @@ export default function ChargebacksPage() {
                 <div>
                   <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.admin.control_center.field.order_id")}</label>
                   <input
+                    id="orderid-input-5"
+                    aria-label="Order id"
                     type="text"
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
@@ -135,6 +137,8 @@ export default function ChargebacksPage() {
                 <div>
                   <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.retailer_id")}</label>
                   <input
+                    id="retailerid-input-4"
+                    aria-label="Retailer id"
                     type="text"
                     value={retailerId}
                     onChange={(e) => setRetailerId(e.target.value)}
@@ -157,6 +161,8 @@ export default function ChargebacksPage() {
                   <div>
                     <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.amount_minor_units")}</label>
                     <input
+                      id="amount-input-3"
+                      aria-label="Amount"
                       type="number"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
@@ -168,6 +174,8 @@ export default function ChargebacksPage() {
                   <div>
                     <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.chargebacks.text.currency")}</label>
                     <input
+                      id="currency-input-2"
+                      aria-label="pack currency"
                       type="text"
                       value={currency}
                       readOnly
@@ -204,6 +212,8 @@ export default function ChargebacksPage() {
                 <div>
                   <label className="block text-sm text-[var(--desk-text-secondary)] mb-1">{t("supplier_portal.admin.control_center.field.session_id")}</label>
                   <input
+                    id="sessionid-input-1"
+                    aria-label="Session id"
                     type="text"
                     value={sessionId}
                     onChange={(e) => setSessionId(e.target.value)}

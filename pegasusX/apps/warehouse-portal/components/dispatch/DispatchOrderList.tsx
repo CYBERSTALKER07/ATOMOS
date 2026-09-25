@@ -54,7 +54,7 @@ export default function DispatchOrderList({
       actions={
         orders.length > 0 ? (
           <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
-            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+            <input id="dispatchorderlist-checkbox-2" aria-label="Select Dispatchorderlist option" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
             Select all
           </label>
         ) : undefined
@@ -72,6 +72,8 @@ export default function DispatchOrderList({
             <div className="flex items-start gap-2 pb-3">
               <label className="flex items-center pt-4 shrink-0 cursor-pointer">
                 <input
+                  id="dispatchorderlist-checkbox-1"
+                  aria-label="Select Dispatchorderlist option"
                   type="checkbox"
                   checked={selectedOrderIds.has(order.order_id)}
                   onChange={() => toggleOrder(order.order_id)}

@@ -215,12 +215,16 @@ export default function CreditCollectionsPage() {
                       {editId === p.retailer_id ? (
                         <div className="mt-2 flex flex-wrap gap-2 items-center">
                           <input
+                            id="limitinput-input-2"
+                            aria-label="Limit input"
                             className="border border-[var(--border)] rounded px-2 py-1 text-xs w-28 font-mono"
                             value={limitInput}
                             onChange={(e) => setLimitInput(e.target.value)}
                             placeholder={t("supplier_portal.credit.collections.text.limit_minor")}
                           />
                           <input
+                            id="reason-input-1"
+                            aria-label="Reason"
                             className="border border-[var(--border)] rounded px-2 py-1 text-xs w-36"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}

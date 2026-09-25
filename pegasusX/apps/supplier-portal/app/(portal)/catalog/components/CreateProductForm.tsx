@@ -102,6 +102,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
       <label className="flex flex-col gap-1 md-typescale-body-medium">
         Product name
         <input
+          id="product-name-input-6"
+          aria-label="Product name"
           value={form.name}
           onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
           className="px-3 py-2 rounded border"
@@ -130,6 +132,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
       <label className="flex flex-col gap-1 md-typescale-body-medium">
         Price ({currency}, minor units)
         <input
+          id="price-currency-minor-unit-input-5"
+          aria-label="Price ({currency}, minor units)"
           type="number"
           min="0"
           step="1"
@@ -142,6 +146,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
       <label className="flex flex-col gap-1 md-typescale-body-medium">
         Unit volume (VU)
         <input
+          id="unit-volume-vu-input-4"
+          aria-label="Unit volume (VU)"
           type="number"
           min="0.1"
           step="0.1"
@@ -167,6 +173,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
         <label className="flex flex-col gap-1 md-typescale-body-medium">
           Units per case
           <input
+            id="units-per-case-input-3"
+            aria-label="Units per case"
             type="number"
             min="1"
             step="1"
@@ -180,6 +188,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
       <label className="flex flex-col gap-1 md-typescale-body-medium md:col-span-2">
         Product image (optional)
         <input
+          id="product-image-optional-input-2"
+          aria-label="Product image (optional)"
           ref={imageInputRef}
           type="file"
           accept={ALLOWED_IMAGE_TYPES.join(",")}
@@ -211,6 +221,8 @@ export function CreateProductForm({ categories, currency, initialCategory, onCan
       <label className="flex flex-col gap-1 md-typescale-body-medium">
         EAN / GTIN barcode (optional)
         <input
+          id="ean-gtin-barcode-optional-input-1"
+          aria-label="EAN / GTIN barcode (optional)"
           value={form.barcode}
           onChange={e => setForm(prev => ({ ...prev, barcode: e.target.value }))}
           placeholder={t("supplier_portal.catalog.components.create_product_form.text.8_14_digit_retail_barcode")}

@@ -189,6 +189,8 @@ export default function CreditPolicyPage() {
             <label className="text-sm">
               Terms days
               <input
+                id="terms-days-input-3"
+                aria-label="Terms days"
                 className="ml-2 border rounded px-2 py-1 w-20"
                 value={termsDays}
                 onChange={(e) => setTermsDays(e.target.value)}
@@ -197,6 +199,8 @@ export default function CreditPolicyPage() {
             <label className="text-sm">
               Default limit (minor)
               <input
+                id="default-limit-minor-input-2"
+                aria-label="Default limit (minor)"
                 className="ml-2 border rounded px-2 py-1 w-32"
                 value={limitMinor}
                 onChange={(e) => setLimitMinor(e.target.value)}
@@ -220,6 +224,8 @@ export default function CreditPolicyPage() {
           <label className="text-sm">
             Retailer ID
             <input
+              id="retailer-id-input-1"
+              aria-label="Retailer ID"
               className="ml-2 border rounded px-2 py-1 w-56"
               value={retailerId}
               onChange={(e) => setRetailerId(e.target.value)}

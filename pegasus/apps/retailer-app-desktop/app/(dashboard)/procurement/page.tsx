@@ -581,7 +581,10 @@ export default function ProcurementPage() {
                     className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)]"
                     size={18}
                   />
+                  <label htmlFor="procurement-search-input" className="sr-only">Search network nodes</label>
                   <input
+                    id="procurement-search-input"
+                    aria-label="Search network nodes"
                     type="text"
                     value={searchQuery}
                     onChange={(e) => void searchSuppliers(e.target.value)}

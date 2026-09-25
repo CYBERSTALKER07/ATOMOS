@@ -69,6 +69,8 @@ export function DriverForm({
       <h2 className="md-typescale-title-large">{t("portal.nav.drivers")}</h2>
       <form className="grid gap-3 mt-4" onSubmit={submitDriver}>
         <input
+          id="name-input-3"
+          aria-label="Name"
           className="md-input-outlined"
           placeholder={t("supplier_portal.org_fleet.components.driver_form.text.driver_name")}
           value={driverForm.name}
@@ -76,6 +78,8 @@ export function DriverForm({
           disabled={driverSubmitting}
         />
         <input
+          id="phone-input-2"
+          aria-label="Phone"
           className="md-input-outlined"
           placeholder={t("common.field.phone")}
           value={driverForm.phone}
@@ -83,6 +87,8 @@ export function DriverForm({
           disabled={driverSubmitting}
         />
         <input
+          id="pin-input-1"
+          aria-label="PIN"
           className="md-input-outlined"
           placeholder="PIN"
           type="password"

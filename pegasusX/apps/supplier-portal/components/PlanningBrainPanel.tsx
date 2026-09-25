@@ -208,6 +208,8 @@ export default function PlanningBrainPanel() {
           <label className="flex flex-col gap-1 md-typescale-body-small">
             Factory downtime (hours)
             <input
+              id="factory-downtime-hours-input-3"
+              aria-label="Factory downtime (hours)"
               type="number"
               min={0}
               max={168}
@@ -219,6 +221,8 @@ export default function PlanningBrainPanel() {
           <label className="flex flex-col gap-1 md-typescale-body-small">
             Demand delta (%)
             <input
+              id="demand-delta-input-2"
+              aria-label="Demand delta (%)"
               type="number"
               min={-50}
               max={200}
@@ -270,6 +274,8 @@ export default function PlanningBrainPanel() {
                     style={{ background: checked ? "var(--desk-surface)" : "transparent" }}
                   >
                     <input
+                      id="planningbrainpanel-checkbox-1"
+                      aria-label="Select Planningbrainpanel option"
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleSelect(row.scenario_id)}

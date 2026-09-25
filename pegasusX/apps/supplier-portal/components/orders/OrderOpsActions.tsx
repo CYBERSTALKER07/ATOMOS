@@ -36,6 +36,8 @@ export function OrderOpsActions({
         <label className="block text-sm">
           <span className="text-[var(--color-md-outline)]">{t("supplier_portal.orders.order_ops_actions.text.new_delivery_date")}</span>
           <input
+            id="proposeddate-input-1"
+            aria-label="Proposed date"
             type="date"
             value={proposedDate}
             onChange={(e) => setProposedDate(e.target.value)}

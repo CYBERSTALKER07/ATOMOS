@@ -41,11 +41,16 @@ export function CatalogFilters({
     <div className="mb-8 flex flex-col gap-6">
         <div className="flex flex-wrap items-center gap-4 p-2 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
           <div className="flex-1 min-w-[280px] relative group">
+            <label htmlFor="catalog-search-query" className="sr-only">
+              {t("retailer_desktop.catalog.catalog_filters.text.search_assets_and_suppliers")}
+            </label>
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors"
               size={18}
             />
             <input
+              id="catalog-search-query"
+              aria-label={t("retailer_desktop.catalog.catalog_filters.text.search_assets_and_suppliers")}
               type="text"
               placeholder={t("retailer_desktop.catalog.catalog_filters.text.search_assets_and_suppliers")}
               className="w-full h-11 pl-11 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium text-[var(--desk-text-primary)]"

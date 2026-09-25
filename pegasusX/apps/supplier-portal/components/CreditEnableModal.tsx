@@ -63,6 +63,8 @@ export function CreditEnableModal(props: {
         <p className="mt-2 text-sm text-[var(--muted)]">{t.body}</p>
         <label className="mt-4 flex items-start gap-2 text-sm">
           <input
+            id="creditenablemodal-checkbox-2"
+            aria-label="Select Creditenablemodal option"
             type="checkbox"
             checked={checked}
             onChange={(e) => setChecked(e.target.checked)}
@@ -72,6 +74,8 @@ export function CreditEnableModal(props: {
         <label className="mt-3 block text-sm">
           <span className="text-[var(--muted)]">{t.typeLabel}</span>
           <input
+            id="typed-input-1"
+            aria-label="Typed"
             className="mt-1 w-full rounded-lg border border-[var(--border)] px-3 py-2"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}

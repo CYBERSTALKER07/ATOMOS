@@ -496,14 +496,19 @@ export default function CheckoutModal({
                     <span className="block text-xs text-[var(--desk-text-tertiary)] mt-1">{t("retailer_desktop.checkout_modal.text.delivery_day_t_3_or_later")}</span>
                   </button>
                 </div>
+                <label htmlFor="checkout-delivery-date" className="sr-only">Delivery Date</label>
                 <input
+                  id="checkout-delivery-date"
+                  aria-label="Delivery Date"
                   type="date"
                   value={deliveryDate}
                   onChange={(e) => setDeliveryDate(e.target.value)}
                   className="w-full rounded-xl border border-[var(--desk-border)] px-4 py-3 bg-[var(--desk-canvas)]"
                 />
-                <label className="flex items-center gap-2 text-sm">
+                <label htmlFor="checkout-express-priority" className="flex items-center gap-2 text-sm">
                   <input
+                    id="checkout-express-priority"
+                    aria-label="Express priority (+fee)"
                     type="checkbox"
                     checked={expressPriority}
                     onChange={(e) => setExpressPriority(e.target.checked)}
@@ -605,7 +610,10 @@ export default function CheckoutModal({
                     </button>
                   ) : (
                     <div className="space-y-3">
+                      <label htmlFor="checkout-card-otp" className="sr-only">{t("retailer_desktop.settings.cards.text.otp_code")}</label>
                       <input
+                        id="checkout-card-otp"
+                        aria-label={t("retailer_desktop.settings.cards.text.otp_code")}
                         type="text"
                         inputMode="numeric"
                         placeholder={t("retailer_desktop.settings.cards.text.otp_code")}

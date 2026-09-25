@@ -322,7 +322,7 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
         <span className="md-typescale-label-small text-[var(--desk-text-tertiary)]">
           Photo proof
         </span>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--desk-border-strong)] bg-[var(--desk-surface)] px-4 py-3 text-sm">
+        <label htmlFor="file-claim-photo-proof" className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--desk-border-strong)] bg-[var(--desk-surface)] px-4 py-3 text-sm">
           {uploading ? (
             <>
               <Loader2 size={16} className="animate-spin" />
@@ -335,6 +335,8 @@ export function FileClaimPanel({ order, onFiled, initialSku }: Props) {
             </>
           )}
           <input
+            id="file-claim-photo-proof"
+            aria-label="Upload photo proof"
             type="file"
             accept="image/*"
             className="hidden"

@@ -34,9 +34,9 @@ export function HexagonalControlTowerMap({
         filled: true,
         extruded: view3D,
         elevationScale: view3D ? 20 : 0,
-        getHexagon: (d) => d.hex,
-        getFillColor: (d) => [255, (1 - d.count / 100) * 255, 0, 200],
-        getElevation: (d) => (view3D ? d.count : 0),
+        getHexagon: (d: { hex: string; count: number }) => d.hex,
+        getFillColor: (d: { hex: string; count: number }) => [255, (1 - d.count / 100) * 255, 0, 200],
+        getElevation: (d: { hex: string; count: number }) => (view3D ? d.count : 0),
       }),
     [data, view3D],
   );

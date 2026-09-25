@@ -12,7 +12,7 @@ import { useNotifications } from '@/lib/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/* ────────── Navigation Config ────────── */
+/* ---------- Navigation Config ---------- */
 
 type NavEntry = { href: string; icon: string; label: string; globalOnly?: boolean; factoryHidden?: boolean };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -96,7 +96,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-/* ── Breadcrumb helper ── */
+/* -- Breadcrumb helper -- */
 function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   if (pathname === '/') return [{ label: 'Overview', href: '/' }];
   const segs = pathname.split('/').filter(Boolean);
@@ -114,7 +114,7 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 const BARE_ROUTES = ['/login', '/signup', '/auth/'];
 const splashDurationMs = 1600;
 
-/* ── Splash Screen (Cinematic) ── */
+/* -- Splash Screen (Cinematic) -- */
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
   useEffect(() => {
     const timer = window.setTimeout(onComplete, splashDurationMs);
@@ -174,7 +174,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 }
 
 
-/* ── Static nav flat list for search ── */
+/* -- Static nav flat list for search -- */
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
 const COMMAND_ACTIONS: CommandAction[] = [
@@ -210,7 +210,7 @@ function ThemeToggle() {
   );
 }
 
-/* ── Memoized Drawer Content ── */
+/* -- Memoized Drawer Content -- */
 const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
@@ -374,7 +374,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const isBare = BARE_ROUTES.some(r => pathname === r || pathname.startsWith(r));
 
-  /* ── Splash screen ── */
+  /* -- Splash screen -- */
   const [splashDone, setSplashDone] = useState(false);
   const dismissSplash = useCallback(() => setSplashDone(true), []);
 
@@ -383,26 +383,26 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     if (isBare) setSplashDone(true);
   }, [isBare]);
 
-  /* ── Auth state ── */
+  /* -- Auth state -- */
   // Auth cookie check is read-only — use a ref to avoid re-render cycles
   const isAuthRef = useRef(true);
   const { isGlobalAdmin, isFactoryStaff, supplierRole } = useAuth();
 
-  /* ── Sidebar state ── */
+  /* -- Sidebar state -- */
   const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const toggleSidebar = useCallback(() => setCollapsed(c => !c), []);
 
-  /* ── Search bar ── */
+  /* -- Search bar -- */
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
-  /* ── Profile menu ── */
+  /* -- Profile menu -- */
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  /* ── Notifications ── */
+  /* -- Notifications -- */
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const { items: notifItems, unreadCount, markRead, markAllRead } = useNotifications();
@@ -414,7 +414,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  /* ── Close profile on outside click ── */
+  /* -- Close profile on outside click -- */
   useEffect(() => {
     if (!profileOpen) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -430,7 +430,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     }
   }, [profileOpen]);
 
-  /* ── Mobile menu outside click ── */
+  /* -- Mobile menu outside click -- */
   const mobileMenuRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!mobileOpen) return;
@@ -450,7 +450,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     }
   }, [mobileOpen]);
 
-  /* ── Keyboard shortcut: Cmd/Ctrl+K ── */
+  /* -- Keyboard shortcut: Cmd/Ctrl+K -- */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -477,7 +477,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
 
-  /* ── Filtered search results ── */
+  /* -- Filtered search results -- */
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
@@ -500,7 +500,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {!splashDone && <SplashScreen onComplete={dismissSplash} />}
       </AnimatePresence>
 
-      {/* ── Desktop: M3 Navigation Rail / Drawer ─────────────────────── */}
+      {/* -- Desktop: M3 Navigation Rail / Drawer ----------------------- */}
       <motion.aside
         animate={{ width: collapsed ? 72 : 264 }}
         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
@@ -514,7 +514,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <DrawerContent isMobile={false} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
       </motion.aside>
 
-      {/* ── Mobile: Scrim + Slide Drawer ─────────────────────────────── */}
+      {/* -- Mobile: Scrim + Slide Drawer ------------------------------- */}
       <AnimatePresence>
         {mobileOpen && (
           <>
@@ -545,9 +545,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         )}
       </AnimatePresence>
 
-      {/* ── Main Content Area ── */}
+      {/* -- Main Content Area -- */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* ── Top App Bar ── */}
+        {/* -- Top App Bar -- */}
         <header className="desk-topbar shrink-0">
           {/* Left section */}
           <div className="desk-topbar-left">
@@ -670,7 +670,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </header>
 
-        {/* ── Search overlay ── */}
+        {/* -- Search overlay -- */}
         <AnimatePresence>
           {searchOpen && (
             <motion.div
@@ -689,7 +689,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               >
                 <div className="md-search-bar" style={{ borderRadius: '16px 16px 0 0', height: 56, borderBottom: '1px solid var(--desk-border)' }}>
                   <Icon name="search" />
+                  <label htmlFor="admin-shell-search-input" className="sr-only">Search pages and actions</label>
                   <input
+                    id="admin-shell-search-input"
+                    aria-label="Search pages and actions"
                     ref={searchRef}
                     type="text"
                     placeholder="Search pages and actions..."
@@ -740,7 +743,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           )}
         </AnimatePresence>
 
-        {/* ── Page content ── */}
+        {/* -- Page content -- */}
         <main className="flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

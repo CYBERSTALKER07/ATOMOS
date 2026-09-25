@@ -55,9 +55,16 @@ export default function TomorrowBoardPage() {
   return (
     <PageChrome title={t("portal.nav.tomorrow_board")} description={t("warehouse_portal.residual.text.orders_and_manifests_grouped_by_delivery_date")} loading={loading}>
       <div className="flex flex-col gap-4">
-        <label className="text-sm">
+        <label htmlFor="tomorrow-board-date" className="text-sm">
           Date{' '}
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 border rounded px-2 py-1" />
+          <input
+            id="tomorrow-board-date"
+            aria-label="Date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="ml-2 border rounded px-2 py-1"
+          />
         </label>
         <div className="grid gap-3">
           {rows.length === 0 ? (

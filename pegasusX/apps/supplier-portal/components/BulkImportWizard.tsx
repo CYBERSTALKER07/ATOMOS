@@ -67,7 +67,7 @@ export function BulkImportWizard({
           {step === 'upload' && (
             <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed border-[var(--border)] rounded-lg">
               <p className="mb-4 text-sm text-[var(--muted)]">{t("supplier_portal.bulk_import_wizard.text.upload_a_csv_file_to_import_products")}</p>
-              <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+              <input id="bulkimportwizard-file-1" aria-label="Upload file" type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
               <button 
                 type="button" 
                 onClick={() => fileInputRef.current?.click()}

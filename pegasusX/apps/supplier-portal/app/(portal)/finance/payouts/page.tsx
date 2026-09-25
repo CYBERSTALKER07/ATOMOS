@@ -204,6 +204,8 @@ export default function SupplierPayoutsPage() {
           <label className="text-sm">
             Reason
             <input
+              id="reason-input-3"
+              aria-label="Reason"
               type="text"
               className="block mt-1 rounded-lg border px-3 py-2 text-sm min-w-[16rem]"
               style={{ borderColor: "var(--color-md-outline-variant)" }}
@@ -224,6 +226,8 @@ export default function SupplierPayoutsPage() {
           <label className="text-sm">
             Start
             <input
+              id="start-input-2"
+              aria-label="Start"
               type="date"
               className="block mt-1 rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-md-outline-variant)" }}
@@ -234,6 +238,8 @@ export default function SupplierPayoutsPage() {
           <label className="text-sm">
             End
             <input
+              id="end-input-1"
+              aria-label="End"
               type="date"
               className="block mt-1 rounded-lg border px-3 py-2 text-sm"
               style={{ borderColor: "var(--color-md-outline-variant)" }}

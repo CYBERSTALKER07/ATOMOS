@@ -34,9 +34,11 @@ export default function AccuracyPanel({ token }: { token: string }) {
   return (
     <section className="space-y-4" data-testid="gs-u-admin-accuracy">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
+        <label htmlFor="accuracy-supplier-id" className="text-sm">
           <span className="mb-1 block text-gray-600">Supplier ID</span>
           <input
+            id="accuracy-supplier-id"
+            aria-label="Supplier ID"
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
             placeholder="supplier_…"

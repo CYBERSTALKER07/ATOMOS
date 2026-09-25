@@ -114,6 +114,8 @@ export default function SupplierLoginPage() {
     <form className="mx-auto mt-6 max-w-md space-y-2 px-4" onSubmit={handleIdP}>
       <p className="text-center text-sm text-[var(--desk-text-secondary)]">Or sign in with your company IdP</p>
       <input
+        id="companyid-input-1"
+        aria-label="Company id"
         className="w-full rounded border px-3 py-2 text-sm"
         placeholder="Company id"
         value={companyId}

@@ -11,6 +11,7 @@ import {
   Loader2,
   History,
   ShoppingCart,
+  Check,
 } from "lucide-react";
 import { DemandSourceChips } from "@pegasusx/ui-kit/portal";
 import { AutoOrderRules } from "@/components/auto-order/AutoOrderRules";
@@ -436,7 +437,7 @@ export default function AutoOrderPage() {
                 onClick={() => void setExecutionMode(mode)}
               >
                 {label}
-                {mode === "shadow" ? " ✓" : ""}
+                {mode === "shadow" ? <Check className="inline-block w-3.5 h-3.5 ml-1" /> : null}
               </button>
             ))}
           </div>

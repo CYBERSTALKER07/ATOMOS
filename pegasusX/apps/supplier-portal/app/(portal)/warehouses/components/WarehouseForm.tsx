@@ -85,12 +85,12 @@ export function WarehouseForm({ onSave, onCancel, factoryOptions = [] }: Warehou
       {error && <div className="text-red-600 md-typescale-body-medium">{error}</div>}
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">{t("supplier_portal.analytics.knowledge_graph.text.name")}</span>
-        <input className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.warehouses.components.warehouse_form.text.main_warehouse")} />
+        <input id="name-input-3" aria-label="Name" className="md-input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("supplier_portal.warehouses.components.warehouse_form.text.main_warehouse")} />
       </label>
       <LocationPicker value={location} onChange={setLocation} label={t("supplier_portal.residual.text.warehouse_address")} />
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">Country</span>
-        <input className="md-input w-full max-w-xs" value={country} readOnly />
+        <input id="country-input-2" aria-label="Country" className="md-input w-full max-w-xs" value={country} readOnly />
         <p className="text-xs text-[var(--muted)]">Pack country is locked. Cross-market warehouses are rejected.</p>
       </label>
       <CoverageCityChips cities={cities} onChange={setCities} />
@@ -107,7 +107,7 @@ export function WarehouseForm({ onSave, onCancel, factoryOptions = [] }: Warehou
       ) : null}
       <label className="block space-y-1">
         <span className="md-typescale-label-medium">{t("supplier_portal.warehouses.components.warehouse_form.text.coverage_km")}</span>
-        <input className="md-input w-full max-w-xs" value={radius} onChange={(e) => setRadius(e.target.value)} />
+        <input id="radius-input-1" aria-label="Radius" className="md-input w-full max-w-xs" value={radius} onChange={(e) => setRadius(e.target.value)} />
       </label>
       <div className="flex gap-2">
         <button type="button" className="md-btn md-btn-filled px-4 py-2" disabled={saving} onClick={() => void handleSave()}>

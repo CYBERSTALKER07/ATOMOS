@@ -71,6 +71,8 @@ export function OIDCAttachCard() {
       {notice && <p className="text-sm text-emerald-700">{notice}</p>}
       <form className="space-y-2" onSubmit={save}>
         <input
+          id="issuer-input-3"
+          aria-label="Issuer (https://…)"
           className="w-full rounded border px-3 py-2 text-sm"
           placeholder="Issuer (https://…)"
           value={issuer}
@@ -78,6 +80,8 @@ export function OIDCAttachCard() {
           required
         />
         <input
+          id="clientid-input-2"
+          aria-label="Client ID"
           className="w-full rounded border px-3 py-2 text-sm"
           placeholder="Client ID"
           value={clientId}
@@ -85,6 +89,8 @@ export function OIDCAttachCard() {
           required
         />
         <input
+          id="audience-input-1"
+          aria-label="Audience (optional; defaults to client ID)"
           className="w-full rounded border px-3 py-2 text-sm"
           placeholder="Audience (optional; defaults to client ID)"
           value={audience}

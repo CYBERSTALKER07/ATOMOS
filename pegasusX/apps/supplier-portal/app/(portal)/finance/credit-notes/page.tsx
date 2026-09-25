@@ -103,7 +103,7 @@ export default function CreditNotesPage() {
     >
       <section className="mb-6 p-4 md-card space-y-3">
         <h2 className="md-typescale-title-medium">{t("supplier_portal.finance.credit_notes.text.create_manual_draft")}</h2>
-        <input className="md-input w-full" placeholder={t("supplier_portal.admin.control_center.field.order_id")} value={orderId} onChange={(e) => setOrderId(e.target.value)} />
+        <input id="orderid-input-4" aria-label="Order id" className="md-input w-full" placeholder={t("supplier_portal.admin.control_center.field.order_id")} value={orderId} onChange={(e) => setOrderId(e.target.value)} />
         <button type="button" className="md-btn md-btn-outlined" onClick={() => void loadOrderLines()}>{t("supplier_portal.finance.credit_notes.text.load_order_lines")}</button>
         {orderLines.length > 0 ? (
           <ul className="space-y-2 text-sm">
@@ -111,6 +111,8 @@ export default function CreditNotesPage() {
               <li key={ln.order_line_id} className="flex gap-2 items-center">
                 <span className="font-mono">{ln.sku}</span>
                 <input
+                  id="page-number-3"
+                  aria-label="Page input field"
                   className="md-input w-20"
                   type="number"
                   min={0}
@@ -128,8 +130,8 @@ export default function CreditNotesPage() {
             ))}
           </ul>
         ) : null}
-        <input className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_code")} value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
-        <input className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_text")} value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
+        <input id="reasoncode-input-2" aria-label="Reason code" className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_code")} value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} />
+        <input id="reasontext-input-1" aria-label="Reason text" className="md-input w-full" placeholder={t("supplier_portal.finance.credit_notes.text.reason_text")} value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
         <button type="button" className="md-btn md-btn-filled" onClick={() => void createManual()}>{t("supplier_portal.finance.credit_notes.text.create_draft")}</button>
       </section>
       <ul className="md-card divide-y divide-[var(--color-md-outline-variant)]">

@@ -48,7 +48,10 @@ export default function ProductsPage() {
         description={t("warehouse_portal.residual.text.read_only_view_of_supplier_product_catalog")}
         actions={
           <div className="flex gap-2 items-center">
+            <label htmlFor="search-products-catalog" className="sr-only">{t("warehouse_portal.inventory.text.search_products")}</label>
             <input
+              id="search-products-catalog"
+              aria-label={t("warehouse_portal.inventory.text.search_products")}
               placeholder={t("warehouse_portal.inventory.text.search_products")}
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}

@@ -75,23 +75,27 @@ export default function LiveOpsMapPage() {
     >
       <div className="flex flex-wrap gap-3 mb-4 px-1">
         <input
+          id="zoneh3-input-4"
+          aria-label="Zone h3"
           className="md-input min-w-[140px]"
           placeholder={t("supplier_portal.ops.map.text.zone_h3")}
           value={zoneH3}
           onChange={(e) => setZoneH3(e.target.value)}
         />
         <input
+          id="driverid-input-3"
+          aria-label="Driver id"
           className="md-input min-w-[140px]"
           placeholder={t("supplier_portal.exceptions.early_complete.text.driver_id")}
           value={driverId}
           onChange={(e) => setDriverId(e.target.value)}
         />
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} />
+          <input id="page-checkbox-2" aria-label="Select Page option" type="checkbox" checked={delayedOnly} onChange={(e) => setDelayedOnly(e.target.checked)} />
           Delayed only
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={shopClosedOnly} onChange={(e) => setShopClosedOnly(e.target.checked)} />
+          <input id="page-checkbox-1" aria-label="Select Page option" type="checkbox" checked={shopClosedOnly} onChange={(e) => setShopClosedOnly(e.target.checked)} />
           Shop-closed open
         </label>
         <button type="button" className="md-btn md-btn-outlined" onClick={() => void refresh()}>

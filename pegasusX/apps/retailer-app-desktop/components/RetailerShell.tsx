@@ -85,7 +85,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname.startsWith(href + "/");
 }
 
-/* ── Breadcrumb helper ── */
+/* -- Breadcrumb helper -- */
 function buildBreadcrumbs(
   pathname: string,
   t: (key: string) => string,
@@ -134,7 +134,7 @@ const ThemeToggle = memo(function ThemeToggle() {
   );
 });
 
-/* ── Memoized Drawer Content ── */
+/* -- Memoized Drawer Content -- */
 const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
@@ -399,7 +399,7 @@ const DrawerContent = memo(function DrawerContent({
   );
 });
 
-/* ── Shell ── */
+/* -- Shell -- */
 
 export default function RetailerShell({
   children,
@@ -506,7 +506,7 @@ export default function RetailerShell({
         color: "var(--desk-text-primary)",
       }}
     >
-      {/* ── Desktop Sidebar ── */}
+      {/* -- Desktop Sidebar -- */}
       <motion.div
         layout={!reduceMotion}
         initial={false}
@@ -529,7 +529,7 @@ export default function RetailerShell({
         />
       </motion.div>
 
-      {/* ── Mobile Drawer Overlay ── */}
+      {/* -- Mobile Drawer Overlay -- */}
       <AnimatePresence>
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
@@ -587,7 +587,7 @@ export default function RetailerShell({
         )}
       </AnimatePresence>
 
-      {/* ── Main Flow ── */}
+      {/* -- Main Flow -- */}
       <div className="flex-1 flex flex-col min-w-0 relative z-0">
         {/* Top App Bar */}
         <header

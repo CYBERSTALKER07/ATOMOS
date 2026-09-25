@@ -227,15 +227,25 @@ export default function InventoryPage() {
         error={loadError}
         actions={
           <div className="flex gap-2 items-center">
+            <label htmlFor="inventory-search-products" className="sr-only">{t("warehouse_portal.inventory.text.search_products")}</label>
             <input
+              id="inventory-search-products"
+              aria-label={t("warehouse_portal.inventory.text.search_products")}
               placeholder={t("warehouse_portal.inventory.text.search_products")}
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}
               className="px-3 py-1.5 rounded-lg border text-sm w-48 focus:ring-2 focus:ring-[var(--primary)] outline-none"
               style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
             />
-            <label className="flex items-center gap-1.5 text-sm text-[var(--muted)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
-              <input type="checkbox" checked={lowOnly} onChange={e => { setLowOnly(e.target.checked); setLoading(true); }} className="rounded accent-[var(--primary)]" />
+            <label htmlFor="inventory-low-stock-only" className="flex items-center gap-1.5 text-sm text-[var(--muted)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
+              <input
+                id="inventory-low-stock-only"
+                aria-label="Low stock only"
+                type="checkbox"
+                checked={lowOnly}
+                onChange={e => { setLowOnly(e.target.checked); setLoading(true); }}
+                className="rounded accent-[var(--primary)]"
+              />
               Low stock only
             </label>
             <motion.button
@@ -302,9 +312,11 @@ export default function InventoryPage() {
                 Change {confirmItem.sku || confirmItem.sku_id || confirmItem.product_id} from {confirmItem.quantity} to {confirmQty}?
                 This affects retailer availability immediately.
               </p>
-              <label className="block text-sm space-y-1">
+              <label htmlFor="inventory-adjust-reason" className="block text-sm space-y-1">
                 <span className="text-xs text-[var(--muted)]">{t("warehouse_portal.inventory.text.reason_optional")}</span>
                 <input
+                  id="inventory-adjust-reason"
+                  aria-label={t("warehouse_portal.inventory.text.reason_optional")}
                   type="text"
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}

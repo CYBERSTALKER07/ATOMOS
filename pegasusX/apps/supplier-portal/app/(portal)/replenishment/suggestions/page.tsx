@@ -147,12 +147,16 @@ export default function ReorderSuggestionsPage() {
     >
       <div className="flex flex-wrap gap-3 mb-4">
         <input
+          id="retailerfilter-input-4"
+          aria-label="Retailer filter"
           className="md-input min-w-[180px]"
           placeholder={t("supplier_portal.chargebacks.text.retailer_id")}
           value={retailerFilter}
           onChange={(e) => setRetailerFilter(e.target.value)}
         />
         <input
+          id="skusearch-input-3"
+          aria-label="Sku search"
           className="md-input min-w-[180px]"
           placeholder={t("supplier_portal.replenishment.suggestions.text.sku_search")}
           value={skuSearch}
@@ -193,10 +197,12 @@ export default function ReorderSuggestionsPage() {
               <tr>
                 <th className="px-3 py-2">
                   <input
+                    id="page-checkbox-2"
+                    aria-label={t("supplier_portal.replenishment.suggestions.text.select_all")}
                     type="checkbox"
                     checked={selected.size > 0 && selected.size === allKeys.length}
                     onChange={toggleAll}
-                    aria-label={t("supplier_portal.replenishment.suggestions.text.select_all")}
+                    
                   />
                 </th>
                 <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
@@ -221,10 +227,12 @@ export default function ReorderSuggestionsPage() {
                   <tr key={key} className="border-t" style={{ borderColor: "var(--desk-border)" }}>
                     <td className="px-3 py-2">
                       <input
+                        id="page-checkbox-1"
+                        aria-label={`Select ${key}
                         type="checkbox"
                         checked={selected.has(key)}
                         onChange={() => toggleRow(key)}
-                        aria-label={`Select ${key}`}
+                        `}
                       />
                     </td>
                     <td className="px-3 py-2">

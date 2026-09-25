@@ -141,8 +141,10 @@ export default function StaffPage() {
           <h2 className="text-sm font-semibold">{t("warehouse_portal.staff.text.create_new_staff_member")}</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">{t("warehouse_portal.drivers.text.name")}</label>
+              <label htmlFor="new-staff-name" className="block text-xs font-medium mb-1.5 text-(--muted)">{t("warehouse_portal.drivers.text.name")}</label>
               <input
+                id="new-staff-name"
+                aria-label={t("warehouse_portal.drivers.text.name")}
                 type="text"
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
@@ -152,8 +154,10 @@ export default function StaffPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">{t("common.field.phone")}</label>
+              <label htmlFor="new-staff-phone" className="block text-xs font-medium mb-1.5 text-(--muted)">{t("common.field.phone")}</label>
               <input
+                id="new-staff-phone"
+                aria-label={t("common.field.phone")}
                 type="tel"
                 value={formPhone}
                 onChange={e => setFormPhone(e.target.value)}

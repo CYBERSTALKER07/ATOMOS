@@ -54,17 +54,17 @@ export default function CreditAdminDisablePage() {
         </label>
         <label className="block">
           Supplier ID
-          <input className="mt-1 w-full border rounded px-2 py-1" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} />
+          <input id="supplier-id-input-3" aria-label="Supplier ID" className="mt-1 w-full border rounded px-2 py-1" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} />
         </label>
         {mode === "relationship" ? (
           <label className="block">
             Retailer ID
-            <input className="mt-1 w-full border rounded px-2 py-1" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
+            <input id="retailer-id-input-2" aria-label="Retailer ID" className="mt-1 w-full border rounded px-2 py-1" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
           </label>
         ) : null}
         <label className="block">
           Ticket ID
-          <input className="mt-1 w-full border rounded px-2 py-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} />
+          <input id="ticket-id-input-1" aria-label="Ticket ID" className="mt-1 w-full border rounded px-2 py-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} />
         </label>
         <label className="block">
           Reason

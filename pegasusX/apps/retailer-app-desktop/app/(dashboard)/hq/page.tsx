@@ -140,9 +140,11 @@ export default function HqPage() {
     >
       <div className="mx-auto flex max-w-4xl flex-col gap-6 p-4">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-sm">
+          <label htmlFor="hq-day-input" className="text-sm">
             Day (UTC)
             <input
+              id="hq-day-input"
+              aria-label="Day (UTC)"
               type="date"
               className="mt-1 block rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={day}

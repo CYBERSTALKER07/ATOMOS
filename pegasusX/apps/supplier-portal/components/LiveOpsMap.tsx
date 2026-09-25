@@ -105,14 +105,14 @@ export default function LiveOpsMap({
   return (
     <div className={className}>
       <MapGL
-        ref={(ref) => {
+        ref={(ref: any) => {
           mapRef.current = ref?.getMap() ?? null;
         }}
         initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 11)}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
         mapLib={maplibregl}
-        onClick={(evt) => {
+        onClick={(evt: any) => {
           if (!onSelectRoute) return;
           const feature = evt.features?.[0];
           const routeId = feature?.properties?.routeId as string | undefined;

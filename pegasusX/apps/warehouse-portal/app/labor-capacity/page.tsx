@@ -120,7 +120,7 @@ export default function LaborCapacityPage() {
         <section className="flex flex-wrap gap-3 items-end">
           <label className="flex flex-col gap-1 text-sm">
             Date
-            <input className="md-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <input id="date-input-4" aria-label="Date" className="md-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <button type="button" className="md-btn md-btn-filled" onClick={() => void loadZones()}>
             Refresh zones
@@ -160,7 +160,7 @@ export default function LaborCapacityPage() {
           <div className="flex flex-wrap gap-3 items-end">
             <label className="flex flex-col gap-1 text-sm">
               Driver ID
-              <input className="md-input min-w-[200px]" value={driverId} onChange={(e) => setDriverId(e.target.value)} />
+              <input id="driver-id-input-3" aria-label="Driver ID" className="md-input min-w-[200px]" value={driverId} onChange={(e) => setDriverId(e.target.value)} />
             </label>
             <button type="button" className="md-btn md-btn-tonal" onClick={() => void loadScore()}>
               Load score
@@ -177,7 +177,7 @@ export default function LaborCapacityPage() {
           <div className="flex flex-wrap gap-3 items-end">
             <label className="flex flex-col gap-1 text-sm">
               Hours
-              <input className="md-input w-24" value={availHours} onChange={(e) => setAvailHours(e.target.value)} />
+              <input id="hours-input-2" aria-label="Hours" className="md-input w-24" value={availHours} onChange={(e) => setAvailHours(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               Status
@@ -189,7 +189,7 @@ export default function LaborCapacityPage() {
             </label>
             <label className="flex flex-col gap-1 text-sm">
               Zone H3
-              <input className="md-input" value={zoneH3} onChange={(e) => setZoneH3(e.target.value)} placeholder="optional" />
+              <input id="zone-h3-input-1" aria-label="Zone H3" className="md-input" value={zoneH3} onChange={(e) => setZoneH3(e.target.value)} placeholder="optional" />
             </label>
             <button type="button" className="md-btn md-btn-filled" onClick={() => void setAvailability()} disabled={saving}>
               Save availability
