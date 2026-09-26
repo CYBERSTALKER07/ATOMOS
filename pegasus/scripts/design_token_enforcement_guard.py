@@ -25,6 +25,8 @@ TOKEN_SOURCE_ALLOWLIST = [
     "pegasus/apps/factory-portal/app/globals.css",
     "pegasus/apps/warehouse-portal/app/globals.css",
     "pegasus/apps/retailer-app-desktop/app/globals.css",
+    "pegasus/packages/ui-kit/styles/desktop-foundation.css",
+    "pegasus/packages/ui-kit/styles/void-theme.css",
     "pegasus/packages/ui-kit/**/tokens*.css",
     "pegasus/packages/ui-kit/**/tokens*.ts",
 ]

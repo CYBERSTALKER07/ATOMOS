@@ -77,7 +77,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-    /* Conceptzilla theme — orange accent on light cool surface */
+    /* Linear Style — Monochrome Black & White Palette */
     --background: var(--desk-canvas);
     --foreground: var(--desk-text-primary);
     --surface: var(--desk-surface);
@@ -85,7 +85,7 @@
     --overlay: var(--desk-surface);
     --overlay-foreground: var(--desk-text-primary);
 
-    /* Accent — vibrant orange primary action */
+    /* Accent — Crisp Monochrome Action */
     --accent: var(--desk-accent);
     --accent-foreground: var(--desk-accent-on);
     --accent-soft: var(--desk-accent-soft);
@@ -108,7 +108,7 @@
     --field-placeholder: var(--desk-text-tertiary);
     --field-border: var(--desk-border);
 
-    /* Semantic */
+    /* Semantic — Monochrome High-Contrast */
     --success: var(--desk-success);
     --success-foreground: #ffffff;
     --warning: var(--desk-warning);
@@ -145,12 +145,14 @@
     --field-placeholder: oklch(0.45 0 0);
     --field-border: oklch(0.25 0 0);
 
-    --success: oklch(0.68 0.18 145);
-    --success-foreground: oklch(0.2 0.06 145);
-    --warning: oklch(0.72 0.16 75);
-    --warning-foreground: oklch(0.2 0.06 75);
-    --danger: oklch(0.65 0.18 20);
-    --danger-foreground: oklch(0.2 0.08 20);
+    --desk-surface-raised: #18181b;
+
+    --success: oklch(1 0 0);
+    --success-foreground: oklch(0 0 0);
+    --warning: oklch(0.85 0 0);
+    --warning-foreground: oklch(0 0 0);
+    --danger: oklch(0.93 0 0);
+    --danger-foreground: oklch(0 0 0);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -175,39 +177,24 @@
     }
 
     .status-chip {
-        @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide;
+        @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border border-border;
     }
     .status-chip--draft {
         background: var(--default);
         color: var(--default-foreground);
     }
-    .status-chip--submitted {
-        background: var(--accent-soft);
-        color: var(--accent-soft-foreground);
-    }
+    .status-chip--submitted,
     .status-chip--acknowledged {
-        background: oklch(0.85 0.06 220);
-        color: oklch(0.3 0.06 220);
+        background: var(--accent-soft);
+        color: var(--foreground);
     }
-    .status-chip--in-production {
-        background: var(--warning);
-        color: var(--warning-foreground);
-    }
-    .status-chip--ready {
-        background: var(--success);
-        color: var(--success-foreground);
-    }
-    .status-chip--fulfilled {
-        background: oklch(0.5 0.15 145);
-        color: oklch(0.98 0 0);
-    }
-    .status-chip--cancelled {
-        background: var(--danger);
-        color: var(--danger-foreground);
-    }
+    .status-chip--in-production,
+    .status-chip--ready,
+    .status-chip--fulfilled,
+    .status-chip--cancelled,
     .status-chip--critical {
-        background: var(--danger);
-        color: var(--danger-foreground);
+        background: var(--foreground);
+        color: var(--background);
     }
 }
 

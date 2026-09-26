@@ -1,1 +1,0 @@
-/Users/shakhzod/Desktop/V.O.I.D/.agents/skills/graph-retrieval-memory/scripts/cursor_cli_session_hook.sh
