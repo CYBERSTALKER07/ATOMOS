@@ -8,16 +8,18 @@ import { apiFetch } from "../lib/auth";
 export default function NetworkPulsePanel({ className }: { className?: string }) {
   const [events, setEvents] = useState<PulseEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await apiFetch("/v1/retailer/pulse");
       if (!res.ok) throw new Error("pulse_failed");
       const data = (await res.json()) as { events: PulseEvent[] };
       setEvents(data.events ?? []);
     } catch {
-      setEvents([]);
+      setError("pulse_failed");
     } finally {
       setLoading(false);
     }
@@ -29,7 +31,7 @@ export default function NetworkPulsePanel({ className }: { className?: string })
 
   return (
     <div className={className}>
-      <PulseTimeline events={events} loading={loading} />
+      <PulseTimeline events={events} loading={loading} error={error} />
     </div>
   );
 }

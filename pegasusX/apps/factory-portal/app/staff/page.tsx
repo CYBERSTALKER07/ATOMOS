@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
@@ -17,6 +18,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function StaffPage() {
+  const t = usePortalT();
   const { toast } = useToast();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,13 +102,13 @@ export default function StaffPage() {
     <PageTransition>
       <PageChrome
         icon="staff"
-        title="Factory staff"
-        description="Operators and shift coverage registered for this factory node."
+        title={t("factory_portal.staff.text.factory_staff")}
+        description={t("factory_portal.residual.text.operators_and_shift_coverage_registered_for_this_factory_node")}
         loading={loading}
         skeletonVariant="table"
         error={error && staff.length === 0 ? error : null}
         empty={!loading && !error && staff.length === 0 && !showForm}
-        emptyMessage="There are no staff members registered for this factory."
+        emptyMessage={t("factory_portal.residual.text.there_are_no_staff_members_registered_for_this_factory")}
         actions={
           <div className="flex items-center gap-2">
             <button type="button" className="portal-btn portal-btn--ghost inline-flex items-center gap-1.5" onClick={() => void load()}>
@@ -129,18 +131,18 @@ export default function StaffPage() {
             className="mb-6 rounded-xl border border-[var(--border)] p-5 space-y-4"
             style={{ background: 'var(--surface)' }}
           >
-            <h2 className="text-sm font-semibold">Create staff member</h2>
+            <h2 className="text-sm font-semibold">{t("factory_portal.staff.text.create_staff_member")}</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <PortalField id="staff_name" label="Name">
+              <PortalField id="staff_name" label={t("supplier_portal.analytics.knowledge_graph.text.name")}>
                 <PortalInput
                   id="staff_name"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   required
-                  placeholder="Operator name"
+                  placeholder={t("factory_portal.staff.text.operator_name")}
                 />
               </PortalField>
-              <PortalField id="staff_role" label="Role">
+              <PortalField id="staff_role" label={t("supplier_portal.org_fleet.components.org_member_table.text.role")}>
                 <PortalSelect id="staff_role" value={formRole} onChange={(e) => setFormRole(e.target.value)}>
                   {ROLE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>

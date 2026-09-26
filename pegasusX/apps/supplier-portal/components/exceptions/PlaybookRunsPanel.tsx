@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useState } from "react";
 import type { ControlTowerPlaybookRun } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
@@ -7,6 +8,7 @@ import { createSupplierApi } from "@/lib/api";
 const api = createSupplierApi();
 
 export function PlaybookRunsPanel() {
+  const t = usePortalT();
   const [runs, setRuns] = useState<ControlTowerPlaybookRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export function PlaybookRunsPanel() {
     api
       .listPlaybookRuns("SUGGESTED")
       .then((resp) => setRuns(resp.runs ?? []))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_playbook_runs_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_playbook_runs_failed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -31,7 +33,7 @@ export function PlaybookRunsPanel() {
       await api.approvePlaybookRun(runId, `approve-${runId}`);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "approve_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.approve_failed"));
     } finally {
       setActing(null);
     }
@@ -43,14 +45,14 @@ export function PlaybookRunsPanel() {
       await api.skipPlaybookRun(runId, `skip-${runId}`);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "skip_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.skip_failed"));
     } finally {
       setActing(null);
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-[var(--color-md-outline)]">Loading playbook suggestions…</p>;
+    return <p className="text-sm text-[var(--color-md-outline)]">{t("supplier_portal.exceptions.playbook_runs_panel.text.loading_playbook_suggestions")}</p>;
   }
 
   if (error) {

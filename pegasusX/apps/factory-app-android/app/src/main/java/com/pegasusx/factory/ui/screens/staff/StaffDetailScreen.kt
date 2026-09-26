@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.staff
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -30,6 +34,7 @@ import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +46,9 @@ fun StaffDetailScreen(
     var staff by remember { mutableStateOf<StaffMember?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pin by remember { mutableStateOf("") }
+    var setMsg by remember { mutableStateOf<String?>(null) }
+    var setting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun load() {
@@ -78,7 +86,7 @@ fun StaffDetailScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading staff",
+                title = stringResource(R.string.mobile_factory_ui_loading_staff),
                 body = "Fetching operator profile.",
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
@@ -99,10 +107,42 @@ fun StaffDetailScreen(
             ) {
                 Text(staff!!.name, style = MaterialTheme.typography.headlineSmall)
                 Text(staff!!.role, style = MaterialTheme.typography.bodyLarge)
-                DetailRow(label = "Staff ID", value = staff!!.id)
-                DetailRow(label = "Phone", value = staff!!.phone.ifBlank { "—" })
-                DetailRow(label = "Status", value = staff!!.status.ifBlank { "ACTIVE" })
-                DetailRow(label = "Joined", value = staff!!.joinedAt.ifBlank { "—" })
+                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_staff_id), value = staff!!.id)
+                DetailRow(label = stringResource(R.string.common_field_phone), value = staff!!.phone.ifBlank { "—" })
+                DetailRow(label = stringResource(R.string.factory_portal_fleet_text_status), value = staff!!.status.ifBlank { "ACTIVE" })
+                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_joined), value = staff!!.joinedAt.ifBlank { "—" })
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = { pin = it },
+                    label = { Text("New PIN") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Button(
+                    onClick = {
+                        setting = true
+                        setMsg = null
+                        scope.launch {
+                            try {
+                                val resp = api.setStaffPassword(
+                                    staffId,
+                                    mapOf("pin" to pin),
+                                    "factory-staff-set-password:$staffId",
+                                )
+                                setMsg = if (resp.isSuccessful) "Password set" else "Failed (${resp.code()})"
+                                if (resp.isSuccessful) pin = ""
+                            } catch (e: Exception) {
+                                setMsg = e.message ?: "set_password_failed"
+                            } finally {
+                                setting = false
+                            }
+                        }
+                    },
+                    enabled = !setting && pin.trim().length >= 4,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (setting) "Saving…" else "Set login PIN") }
+                if (setMsg != null) {
+                    Text(setMsg!!, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }

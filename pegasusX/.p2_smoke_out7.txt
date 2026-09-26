@@ -1,0 +1,4 @@
+PX_E2E_MULTI_SUPPLIER_REGISTER_OK
+{"time":"2026-08-11T18:01:05.241608+05:00","level":"ERROR","msg":"ssmr smokecheck failed","check":"parent-order","err":"parent split checkout status 422 body={\"error\":\"multi_supplier_checkout_failed: supplier 3ebb0cff-0bae-4ff8-a2ef-c21a85df2363: inventory_exhausted\",\"supplier_errors\":[{\"supplier_id\":\"3ebb0cff-0bae-4ff8-a2ef-c21a85df2363\",\"error\":\"inventory_exhausted\"}]}\n (h3=8920a52d203ffff)"}
+exit status 1
+EXIT:1

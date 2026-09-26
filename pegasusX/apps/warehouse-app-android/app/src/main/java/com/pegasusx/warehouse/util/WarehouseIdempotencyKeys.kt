@@ -23,6 +23,18 @@ object WarehouseIdempotencyKeys {
 
     fun receiveTransfer(transferId: String): String = "warehouse-receive-transfer:$transferId"
 
+    fun putawayLot(productId: String, locationId: String): String =
+        "warehouse-putaway:${warehouseId()}:$productId:$locationId:${System.currentTimeMillis()}"
+
+    fun createPickWave(manifestId: String): String =
+        "warehouse-pick-wave:${warehouseId()}:$manifestId:${System.currentTimeMillis()}"
+
+    fun confirmPickTask(waveId: String, taskId: String): String =
+        "warehouse-pick-confirm:$waveId:$taskId:${System.currentTimeMillis()}"
+
+    fun createBin(zone: String): String =
+        "warehouse-bin-create:${warehouseId()}:${zone.trim()}:${System.currentTimeMillis()}"
+
     fun dispatchLockAcquire(entityType: String = "WAREHOUSE", entityId: String? = null): String {
         val wh = entityId?.takeIf { it.isNotBlank() } ?: warehouseId()
         return "warehouse-dispatch-lock-acquire:${warehouseId()}:$entityType:$wh"
@@ -71,6 +83,9 @@ object WarehouseIdempotencyKeys {
     }
 
     fun opsSettings(): String = "warehouse-ops-settings:${warehouseId()}"
+
+    fun returnPolicyPut(supplierId: String = ""): String =
+        "warehouse-return-policy:${warehouseId()}:${supplierId.ifBlank { "default" }}"
 
     fun opsLocation(lat: Double, lng: Double, placeId: String? = null): String {
         val fingerprint = stableHash("${"%.6f".format(lat)}:${"%.6f".format(lng)}:${placeId.orEmpty()}")

@@ -14,7 +14,7 @@ struct ReplenishmentList: View {
                         Text(insight.productName)
                             .font(.headline)
                         if insight.reasonCode == "PREDICTIVE_PUSH" {
-                            Text("AI PUSH")
+                            Text("mobile_warehouse.ui.ai_push")
                                 .font(.system(size: 10, weight: .bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -27,10 +27,10 @@ struct ReplenishmentList: View {
                         WarehouseStatusBadge(text: insight.urgency, tint: urgencyTint(insight.urgency))
                         WarehouseStatusBadge(text: insight.status)
                     }
-                    Text("Stock \(insight.currentStock) · Reorder \(insight.reorderQuantity)")
+                    Text(L10n.format("mobile_warehouse.ui.stock_currentstock_reorder_reorderquantity_2", "\(insight.currentStock)", "\(insight.reorderQuantity)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("Days until stockout: \(insight.daysUntilStockout)")
+                    Text(L10n.format("mobile_warehouse.ui.days_until_stockout_daysuntilstockout", "\(insight.daysUntilStockout)"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if let why = demandWhyText(insight) {
@@ -40,11 +40,11 @@ struct ReplenishmentList: View {
                     }
                     if insight.status.uppercased() == "OPEN" {
                         HStack {
-                            Button("Approve") {
+                            Button("mobile_warehouse.ui.approve") {
                                 onApprove(insight.id)
                             }
                             .disabled(actingId == insight.id)
-                            Button("Dismiss", role: .destructive) {
+                            Button("factory_portal.toast.text.dismiss", role: .destructive) {
                                 onDismiss(insight.id)
                             }
                             .disabled(actingId == insight.id)

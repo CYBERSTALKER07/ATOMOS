@@ -1,7 +1,8 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
-import { Map3DViewToggle, useLazyMapMount } from '@pegasusx/ui-kit/desktop';
+import { Map3DViewToggle, useLazyMapMount } from '@pegasusx/ui-maps';
 import FleetLiveMap from '@/components/FleetLiveMap';
 import { useFleetLiveMap } from '@/lib/use-fleet-live-map';
 
@@ -15,6 +16,7 @@ export default function FleetLiveMapPanel({
   className,
   show3DViewToggle = true,
 }: FleetLiveMapPanelProps) {
+  const t = usePortalT();
   const { routes, loading, error } = useFleetLiveMap();
   const { containerRef, mounted } = useLazyMapMount();
   const [view3D, setView3D] = useState(false);
@@ -22,7 +24,7 @@ export default function FleetLiveMapPanel({
   return (
     <div ref={containerRef} className={`relative min-h-[200px] ${className ?? ''}`.trim()}>
       {!mounted ? (
-        <p className="text-sm text-center px-4 py-8 text-[var(--muted)]">Preparing map…</p>
+        <p className="text-sm text-center px-4 py-8 text-[var(--muted)]">{t("supplier_portal.fleet_live_map_panel.text.preparing_map")}</p>
       ) : (
         <>
           {show3DViewToggle ? (

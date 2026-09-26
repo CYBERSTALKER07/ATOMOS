@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.auth
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,12 +21,14 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.LoginRequest
+import com.pegasusx.supplier.data.push.DeviceTokenRegistrar
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.TokenHolder
-import com.pegasus.design.PegasusRuntimeBanner
-import com.pegasus.design.PegasusRuntimeTone
+import com.pegasus.design.ui.PegasusRuntimeBanner
+import com.pegasus.design.ui.PegasusRuntimeTone
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,12 +55,12 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Pegasus Supplier",
+                text = stringResource(R.string.mobile_supplier_ui_pegasus_supplier),
                 style = MaterialTheme.typography.headlineLarge,
             )
             Spacer(Modifier.height(PegasusSpacing.sm))
             Text(
-                text = "Sign in to manage supplier operations",
+                text = stringResource(R.string.mobile_supplier_ui_sign_in_to_manage_supplier_operations),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -119,6 +123,7 @@ fun LoginScreen(
                                     TokenHolder.refreshToken = body.refreshToken
                                     TokenHolder.supplierId = body.supplierId
                                     TokenHolder.isConfigured = body.isConfigured
+                                    DeviceTokenRegistrar.uploadBestEffort(api)
                                     onLoginSuccess()
                                 }
                             } else {

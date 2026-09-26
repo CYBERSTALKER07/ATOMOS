@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
@@ -65,7 +66,8 @@ func (s *Service) OnDriverReturnComplete(ctx context.Context, returned manifest.
 	}
 	_, err := s.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		sql := `SELECT ReturnId FROM SupplierReturns
-		        WHERE PhysicalStatus = @pending
+		        WHERE SupplierId IS NOT NULL
+		          AND PhysicalStatus = @pending
 		          AND Status = @fin_pending`
 		params := map[string]any{
 			"pending":     PhysicalPending,
@@ -103,6 +105,18 @@ func (s *Service) OnDriverReturnComplete(ctx context.Context, returned manifest.
 		}
 		if len(mutations) == 0 {
 			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "SupplierReturns", manifestID, events.TopicExceptions, map[string]any{
+			"type":         "RETURNS_ON_TRUCK",
+			"manifest_id":  manifestID,
+			"driver_id":    driverID,
+			"warehouse_id": returned.WarehouseID,
+		}); err != nil {
+			return err
+		}
+		if err := buf.Flush(ctx); err != nil {
+			return err
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -149,8 +163,22 @@ func (s *Service) CheckWarehouseApproach(ctx context.Context, driverID, supplier
 				"on_truck":  PhysicalOnTruck,
 			},
 		}
-		_, err := txn.Update(ctx, stmt)
-		return err
+		if _, err := txn.Update(ctx, stmt); err != nil {
+			return err
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, "SupplierReturns", driverID, events.TopicExceptions, map[string]any{
+			"type":         events.EventDriverReturnApproaching,
+			"driver_id":    driverID,
+			"supplier_id":  strings.TrimSpace(supplierID),
+			"warehouse_id": warehouseID,
+			"manifest_id":  manifestID,
+			"return_count": count,
+			"distance_km":  dist,
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return err

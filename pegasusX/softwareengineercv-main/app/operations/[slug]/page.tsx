@@ -1,7 +1,7 @@
 import {
-  createTopicMetadata,
-  createTopicPage,
-  createTopicStaticParams,
+ createTopicMetadata,
+ createTopicPage,
+ createTopicStaticParams,
 } from '@/app/lib/explore/createTopicPage';
 
 const categoryId = 'operations' as const;

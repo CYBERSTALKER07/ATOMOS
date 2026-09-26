@@ -1,0 +1,26 @@
+{
+  "name": "@pegasusx/ui-charts",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "react": "19.0.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@pegasusx/types": "workspace:*",
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0",
+    "recharts": "^3.9.1"
+  }
+}

@@ -32,7 +32,7 @@ const LocationPicker = dynamic(
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// ─── All canonical categories — Walmart-scale shelf coverage ─────────────────
+// --- All canonical categories — Walmart-scale shelf coverage -----------------
 const CATEGORY_IDS = [
   'cat-water',
   'cat-sparkling-water',
@@ -258,17 +258,18 @@ const STEP_ICONS: Record<number, string> = {
   3: 'M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z',
 };
 
-// ─── Shared Input Component ───────────────────────────────────────────────────
-function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+// --- Shared Input Component ---------------------------------------------------
+function InputField({ label, id: explicitId, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   const { t } = useLocale();
   const [showPw, setShowPw] = useState(false);
   const isPassword = props.type === 'password';
+  const inputId = explicitId || props.name || `register-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
 
   return (
     <div>
-      <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>{label}</label>
+      <label htmlFor={inputId} className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>{label}</label>
       <div className="relative">
-        <input {...props} type={isPassword && showPw ? 'text' : props.type} className={`md-input-outlined w-full${isPassword ? ' pr-12' : ''}`} />
+        <input id={inputId} aria-label={label} {...props} type={isPassword && showPw ? 'text' : props.type} className={`md-input-outlined w-full${isPassword ? ' pr-12' : ''}`} />
         {isPassword && (
           <button
             type="button"
@@ -289,7 +290,7 @@ function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElem
   );
 }
 
-// ─── Step 1: Account ──────────────────────────────────────────────────────────
+// --- Step 1: Account ----------------------------------------------------------
 function Step1({
   data, onChange, country, onCountryChange,
 }: {
@@ -331,7 +332,10 @@ function Step1({
           {countryOpen && (
             <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto md-shape-md" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <div className="sticky top-0 p-2" style={{ background: 'var(--surface)' }}>
+                <label htmlFor="country-search-input" className="sr-only">{t('supplier_portal.auth.register.step1.search_countries')}</label>
                 <input
+                  id="country-search-input"
+                  aria-label={t('supplier_portal.auth.register.step1.search_countries')}
                   type="text"
                   value={countrySearch}
                   onChange={e => setCountrySearch(e.target.value)}
@@ -367,12 +371,12 @@ function Step1({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label={t('supplier_portal.auth.register.step1.email_label')} type="email" value={data.email} onChange={e => onChange('email', e.target.value)} placeholder={t('supplier_portal.auth.register.step1.email_placeholder')} required />
         <div>
-          <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>
+          <label htmlFor="register-phone-input" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>
             {t('supplier_portal.auth.register.step1.phone_label')}
           </label>
           <div className="md-input-outlined flex items-center !p-0 overflow-hidden w-full focus-within:!border-[var(--color-md-on-surface)]">
             <span className="flex items-center justify-center px-3 h-full shrink-0 md-typescale-body-small border-r" style={{ color: 'var(--muted)', borderColor: 'var(--border)', minWidth: '64px' }}>{prefix}</span>
-            <input type="tel" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder={t('supplier_portal.auth.register.step1.phone_placeholder')} required className="w-full h-full bg-transparent outline-none px-3 md-typescale-body-small" style={{ color: 'var(--foreground)' }} />
+            <input id="register-phone-input" aria-label={t('supplier_portal.auth.register.step1.phone_label')} type="tel" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder={t('supplier_portal.auth.register.step1.phone_placeholder')} required className="w-full h-full bg-transparent outline-none px-3 md-typescale-body-small" style={{ color: 'var(--foreground)' }} />
           </div>
         </div>
       </div>
@@ -382,7 +386,7 @@ function Step1({
   );
 }
 
-// ─── Step 2: Location ─────────────────────────────────────────────────────────
+// --- Step 2: Location ---------------------------------------------------------
 function Step2({
   data, onChange,
 }: {
@@ -414,7 +418,7 @@ function Step2({
   );
 }
 
-// ─── Step 3: Business Details ─────────────────────────────────────────────────
+// --- Step 3: Business Details -------------------------------------------------
 function Step3({
   data, onChange, coldChain, onColdChainToggle, palletization, onPalletization,
 }: {
@@ -480,7 +484,7 @@ function Step3({
   );
 }
 
-// ─── Step 4: Product Categories ───────────────────────────────────────────────
+// --- Step 4: Product Categories -----------------------------------------------
 function Step4Categories({
   selectedCats, toggleCat,
 }: {
@@ -507,11 +511,13 @@ function Step4Categories({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <label className="md-typescale-label-medium" style={{ color: 'var(--foreground)' }}>
+        <label htmlFor="register-category-search-input" className="md-typescale-label-medium" style={{ color: 'var(--foreground)' }}>
           {t('supplier_portal.auth.register.step4.label')} <span style={{ color: 'var(--accent)' }}>({selectedCats.length} {t('supplier_portal.auth.register.step4.selected_suffix')})</span>
         </label>
       </div>
       <input
+        id="register-category-search-input"
+        aria-label={t('supplier_portal.auth.register.step4.search_placeholder')}
         type="text"
         value={catSearch}
         onChange={e => setCatSearch(e.target.value)}
@@ -549,7 +555,7 @@ function Step4Categories({
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// --- Main Page ----------------------------------------------------------------
 export default function SupplierRegisterPage() {
   const router = useRouter();
   const { locale, t } = useLocale();

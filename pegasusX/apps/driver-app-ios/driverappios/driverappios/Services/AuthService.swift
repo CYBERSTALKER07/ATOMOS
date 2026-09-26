@@ -191,6 +191,7 @@ final class TokenStore {
 
     func save(response: AuthResponse) {
         token = response.token
+        CellTokenCache.token = response.token
         userId = response.userId
         driverName = response.name
         vehicleType = response.vehicleType

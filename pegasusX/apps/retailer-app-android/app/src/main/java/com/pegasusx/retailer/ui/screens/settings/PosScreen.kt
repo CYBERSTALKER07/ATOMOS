@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -45,12 +47,21 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
+import kotlinx.serialization.json.JsonElement
 
 data class PosCartLine(
     val sku: String,
     val name: String,
     val qty: Long,
     val unitPriceMinor: Long,
+)
+
+data class PosHoldLine(
+    val holdId: String,
+    val note: String,
+    val lines: List<PosCartLine>,
 )
 
 @HiltViewModel
@@ -75,6 +86,7 @@ fun PosScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var registerId by remember { mutableStateOf<String?>(null) }
+    var locationId by remember { mutableStateOf<String?>(null) }
     var sessionId by remember { mutableStateOf<String?>(null) }
     var banner by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -83,6 +95,9 @@ fun PosScreen(
     var qty by remember { mutableStateOf("1") }
     var lastSaleId by remember { mutableStateOf<String?>(null) }
     var pending by remember { mutableStateOf<List<PendingPosSaleEntity>>(emptyList()) }
+    var holdsEnabled by remember { mutableStateOf(false) }
+    var serverHolds by remember { mutableStateOf<List<PosHoldLine>>(emptyList()) }
+    var holdNote by remember { mutableStateOf("") }
     val cart = remember { mutableStateListOf<PosCartLine>() }
 
     val totalMinor = cart.sumOf { it.qty * it.unitPriceMinor }
@@ -94,20 +109,85 @@ fun PosScreen(
         }
     }
 
+    fun parseHoldCart(cartEl: JsonElement?): List<PosCartLine> {
+        val lines = mutableListOf<PosCartLine>()
+        if (cartEl == null || cartEl.isJsonNull) return lines
+        val arr = try {
+            cartEl.asJsonObject.getAsJsonArray("lines")
+        } catch (_: Exception) {
+            try {
+                cartEl.asJsonArray
+            } catch (_: Exception) {
+                null
+            }
+        }
+        arr?.forEach { el ->
+            try {
+                val o = el.asJsonObject
+                val lineSku = o["sku"]?.asString ?: return@forEach
+                val lineQty = o["qty"]?.asLong ?: 1L
+                val unit = o["unit_price_minor"]?.asLong ?: 0L
+                val name = o["name"]?.asString ?: lineSku
+                lines.add(PosCartLine(lineSku, name, lineQty, unit))
+            } catch (_: Exception) {
+                /* skip bad line */
+            }
+        }
+        return lines
+    }
+
+    fun loadServerHolds() {
+        if (!online) return
+        scope.launch {
+            try {
+                val res = viewModel.api.listPosHolds(locationId = locationId)
+                holdsEnabled = true
+                val items = res.asJsonObject.getAsJsonArray("items")
+                serverHolds = buildList {
+                    items?.forEach { el ->
+                        try {
+                            val o = el.asJsonObject
+                            val id = o["hold_id"]?.asString ?: return@forEach
+                            add(
+                                PosHoldLine(
+                                    holdId = id,
+                                    note = o["note"]?.asString.orEmpty(),
+                                    lines = parseHoldCart(o["cart"]),
+                                ),
+                            )
+                        } catch (_: Exception) {
+                            /* skip */
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                val msg = e.message.orEmpty()
+                if (msg.contains("404") || msg.contains("POS_HOLDS_DISABLED") || msg.contains("Not Found")) {
+                    holdsEnabled = false
+                    serverHolds = emptyList()
+                }
+            }
+        }
+    }
+
     fun ensureRegister() {
         scope.launch {
             try {
                 val regs = viewModel.api.getRegisters().asJsonObject.getAsJsonArray("items")
-                if (regs != null && regs.size() > 0) {
-                    registerId = regs[0].asJsonObject.get("register_id")?.asString
+                if (regs != null && regs.size > 0) {
+                    val first = regs[0].asJsonObject
+                    registerId = first.get("register_id")?.asString
+                    locationId = first.get("location_id")?.asString
                 } else {
                     val created = viewModel.api.createRegister(
                         body = mapOf("label" to "Register 1"),
                         idempotencyKey = "reg-${System.currentTimeMillis()}",
                     ).asJsonObject
                     registerId = created.get("register_id")?.asString
+                    locationId = created.get("location_id")?.asString
                     banner = "Register created"
                 }
+                loadServerHolds()
             } catch (e: Exception) {
                 banner = e.message
             }
@@ -131,7 +211,7 @@ fun PosScreen(
                 title = { Text("POS") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -178,7 +258,7 @@ fun PosScreen(
                                                 body = mapOf(
                                                     "register_id" to (registerId ?: ""),
                                                     "opening_float_minor" to 0L,
-                                                    "currency" to "UZS",
+                                                    "currency" to com.pegasusx.retailer.data.model.sessionPackCurrency(),
                                                 ),
                                                 idempotencyKey = "open-${System.currentTimeMillis()}",
                                             ).asJsonObject
@@ -235,7 +315,7 @@ fun PosScreen(
                                             }
                                         }
                                     },
-                                ) { Text("Sync ${pending.size} offline sale(s)") }
+                                ) { Text(stringResource(R.string.mobile_retailer_ui_sync_size_offline_sale_s, pending.size)) }
                             }
                         }
                     }
@@ -246,8 +326,7 @@ fun PosScreen(
                     Text("Offline queue", style = MaterialTheme.typography.titleSmall)
                 }
                 items(pending, key = { it.id }) { p ->
-                    Text(
-                        "${p.clientReceipt} · ${p.status}" +
+                    Text(stringResource(R.string.mobile_retailer_ui_clientreceipt_status, p.clientReceipt, p.status) +
                             (p.lastError?.let { " · $it" } ?: ""),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (p.status == "FAILED") {
@@ -266,7 +345,11 @@ fun PosScreen(
                             OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("Qty") }, modifier = Modifier.fillMaxWidth())
                             OutlinedTextField(value = priceMajor, onValueChange = { priceMajor = it }, label = { Text("Price (major)") }, modifier = Modifier.fillMaxWidth())
                             Button(onClick = {
-                                val unit = ((priceMajor.toDoubleOrNull() ?: 0.0) * 100).toLong()
+                                val clean = priceMajor.replace(',', '.')
+                                val parts = clean.split(".")
+                                val major = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+                                val minor = parts.getOrNull(1)?.padEnd(2, '0')?.substring(0, 2)?.toLongOrNull() ?: 0L
+                                val unit = (major * 100) + minor
                                 val q = qty.toLongOrNull() ?: 1L
                                 if (sku.isBlank()) return@Button
                                 val existing = cart.indexOfFirst { it.sku == sku.trim() }
@@ -284,13 +367,63 @@ fun PosScreen(
                 items(cart) { line ->
                     Card {
                         Row(Modifier.padding(14.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${line.sku} × ${line.qty}")
+                            Text(stringResource(R.string.mobile_retailer_ui_sku_qty, line.sku, line.qty))
                             Text("${line.qty * line.unitPriceMinor / 100.0}")
                         }
                     }
                 }
                 item {
-                    Text("Total: ${totalMinor / 100.0}", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.mobile_retailer_ui_total_n_0, totalMinor / 100.0), style = MaterialTheme.typography.titleLarge)
+                    if (holdsEnabled && online) {
+                        OutlinedTextField(
+                            value = holdNote,
+                            onValueChange = { holdNote = it },
+                            label = { Text("Hold note") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedButton(
+                            enabled = !busy && cart.isNotEmpty() && !locationId.isNullOrBlank(),
+                            onClick = {
+                                scope.launch {
+                                    busy = true
+                                    try {
+                                        val lines = cart.map {
+                                            mapOf(
+                                                "sku" to it.sku,
+                                                "name" to it.name,
+                                                "qty" to it.qty,
+                                                "unit_price_minor" to it.unitPriceMinor,
+                                            )
+                                        }
+                                        viewModel.api.parkPosHold(
+                                            body = buildMap {
+                                                put("location_id", locationId ?: "")
+                                                put("register_id", registerId ?: "")
+                                                put("cart", mapOf("lines" to lines))
+                                                if (holdNote.isNotBlank()) put("note", holdNote.trim())
+                                            },
+                                            idempotencyKey = "hold-park-${sessionId}-${System.currentTimeMillis()}",
+                                        )
+                                        cart.clear()
+                                        holdNote = ""
+                                        banner = "Cart parked on server (no stock held)"
+                                        loadServerHolds()
+                                    } catch (e: Exception) {
+                                        val msg = e.message.orEmpty()
+                                        if (msg.contains("404") || msg.contains("POS_HOLDS_DISABLED")) {
+                                            holdsEnabled = false
+                                            banner = "Server holds disabled"
+                                        } else {
+                                            banner = e.message
+                                        }
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Park hold") }
+                    }
                     Button(
                         enabled = !busy && cart.isNotEmpty(),
                         onClick = {
@@ -381,6 +514,67 @@ fun PosScreen(
                                 }
                             }
                         }) { Text("Void last sale") }
+                    }
+                }
+            }
+            if (holdsEnabled && serverHolds.isNotEmpty()) {
+                item {
+                    Text("Parked holds", style = MaterialTheme.typography.titleSmall)
+                }
+                items(serverHolds, key = { it.holdId }) { hold ->
+                    Card {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                buildString {
+                                    append(hold.holdId.take(8))
+                                    if (hold.note.isNotBlank()) append(" · ").append(hold.note)
+                                    append(" · ").append(hold.lines.size).append(" lines")
+                                },
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    enabled = !busy && online && sessionId != null && cart.isEmpty(),
+                                    onClick = {
+                                        scope.launch {
+                                            busy = true
+                                            try {
+                                                val resumed = viewModel.api.resumePosHold(
+                                                    holdId = hold.holdId,
+                                                    body = mapOf("location_id" to (locationId ?: "")),
+                                                ).asJsonObject
+                                                cart.clear()
+                                                cart.addAll(parseHoldCart(resumed["cart"]))
+                                                if (cart.isEmpty()) cart.addAll(hold.lines)
+                                                banner = "Resumed hold ${hold.holdId.take(8)}"
+                                                loadServerHolds()
+                                            } catch (e: Exception) {
+                                                banner = e.message
+                                            } finally {
+                                                busy = false
+                                            }
+                                        }
+                                    },
+                                ) { Text("Resume") }
+                                OutlinedButton(
+                                    enabled = !busy && online,
+                                    onClick = {
+                                        scope.launch {
+                                            busy = true
+                                            try {
+                                                viewModel.api.voidPosHold(holdId = hold.holdId)
+                                                banner = "Hold voided"
+                                                loadServerHolds()
+                                            } catch (e: Exception) {
+                                                banner = e.message
+                                            } finally {
+                                                busy = false
+                                            }
+                                        }
+                                    },
+                                ) { Text("Void") }
+                            }
+                        }
                     }
                 }
             }

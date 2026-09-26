@@ -125,7 +125,7 @@ struct MapMarkerDetailSheet: View {
 
     private var endpointCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("DELIVERY ENDPOINT")
+            Text("mobile_driver.ui.delivery_endpoint")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(LabTheme.fgTertiary)
 
@@ -191,7 +191,7 @@ struct MapMarkerDetailSheet: View {
                 HStack(spacing: 6) {
                     Image(systemName: "pencil.and.list.clipboard")
                         .font(.system(size: 12))
-                    Text("Delivery Correction")
+                    Text("mobile_driver.ui.delivery_correction")
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundStyle(LabTheme.fgSecondary)

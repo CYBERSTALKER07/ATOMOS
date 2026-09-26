@@ -7,9 +7,11 @@
  * 2. Open POS session (local)
  * 3. Offline count drafts
  * 4. In-memory assist context
+ * 5. Desktop SQLite / web KV API cache (cross-org leak)
  *
  * Listeners: window event `pegasusx:org-switched` so React providers reset.
  */
+import { cacheClearAll } from "@pegasusx/desktop-cache";
 import { clearParkedPosCart } from "./pending-pos-sales";
 
 export const ORG_SWITCHED_EVENT = "pegasusx:org-switched";
@@ -35,6 +37,7 @@ export type ClearOrgScopedStateResult = {
   clearedLocalKeys: string[];
   clearedSessionKeys: string[];
   parkedCartCleared: boolean;
+  kvCacheCleared: boolean;
 };
 
 export async function clearOrgScopedState(): Promise<ClearOrgScopedStateResult> {
@@ -86,13 +89,26 @@ export async function clearOrgScopedState(): Promise<ClearOrgScopedStateResult> 
     parkedCartCleared = false;
   }
 
+  let kvCacheCleared = false;
+  try {
+    await cacheClearAll();
+    kvCacheCleared = true;
+  } catch {
+    kvCacheCleared = false;
+  }
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent(ORG_SWITCHED_EVENT, {
-        detail: { at: Date.now(), clearedLocalKeys, clearedSessionKeys },
+        detail: {
+          at: Date.now(),
+          clearedLocalKeys,
+          clearedSessionKeys,
+          kvCacheCleared,
+        },
       }),
     );
   }
 
-  return { clearedLocalKeys, clearedSessionKeys, parkedCartCleared };
+  return { clearedLocalKeys, clearedSessionKeys, parkedCartCleared, kvCacheCleared };
 }

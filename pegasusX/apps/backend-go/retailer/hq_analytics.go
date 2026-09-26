@@ -91,10 +91,7 @@ func (s *Service) buildHqSalesMutationsFromSale(ctx context.Context, sale PosSal
 			day = hqDayUTC(t)
 		}
 	}
-	currency := sale.Currency
-	if currency == "" {
-		currency = "UZS"
-	}
+	currency := coalescePackCurrency(ctx, sale.Currency)
 	var muts []*spanner.Mutation
 	for _, l := range sale.Lines {
 		sku := strings.TrimSpace(l.Sku)
@@ -122,10 +119,7 @@ func (s *Service) buildHqSalesMutationsFromVoid(ctx context.Context, sale PosSal
 			day = hqDayUTC(t)
 		}
 	}
-	currency := sale.Currency
-	if currency == "" {
-		currency = "UZS"
-	}
+	currency := coalescePackCurrency(ctx, sale.Currency)
 	var muts []*spanner.Mutation
 	for _, l := range sale.Lines {
 		sku := strings.TrimSpace(l.Sku)
@@ -216,10 +210,7 @@ func (s *Service) applyHqFromSaleMemory(sale PosSaleDTO) {
 			day = hqDayUTC(t)
 		}
 	}
-	cur := sale.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
+	cur := coalescePackCurrency(context.Background(), sale.Currency)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, l := range sale.Lines {
@@ -236,10 +227,7 @@ func (s *Service) applyHqFromVoidMemory(sale PosSaleDTO) {
 			day = hqDayUTC(t)
 		}
 	}
-	cur := sale.Currency
-	if cur == "" {
-		cur = "UZS"
-	}
+	cur := coalescePackCurrency(context.Background(), sale.Currency)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, l := range sale.Lines {

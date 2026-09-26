@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +31,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import com.pegasusx.supplier.R
 
 data class AddressLocationValue(
     val address: String = "",
@@ -120,7 +123,7 @@ fun AddressLocationField(
         ) { Text("Share my location") }
         if (value.address.isNotBlank()) {
             Text(
-                text = "Saved for dispatch routing",
+                text = stringResource(R.string.mobile_supplier_ui_saved_for_dispatch_routing),
                 style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
             )
         }

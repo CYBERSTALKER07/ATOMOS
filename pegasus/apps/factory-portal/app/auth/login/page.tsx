@@ -70,8 +70,10 @@ export default function FactoryLoginPage() {
           {error && <FactoryRuntimeBanner tone="error" message={error} />}
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">Phone</label>
+            <label htmlFor="factory-login-phone" className="block text-sm font-medium mb-1.5">Phone</label>
             <input
+              id="factory-login-phone"
+              aria-label="Phone"
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
@@ -82,8 +84,10 @@ export default function FactoryLoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">Password</label>
+            <label htmlFor="factory-login-password" className="block text-sm font-medium mb-1.5">Password</label>
             <input
+              id="factory-login-password"
+              aria-label="Password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}

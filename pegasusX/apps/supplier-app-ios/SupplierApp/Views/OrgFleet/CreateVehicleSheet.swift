@@ -15,23 +15,23 @@ struct CreateVehicleSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Label", text: $label)
-                TextField("License plate", text: $plate)
+                TextField("mobile_supplier.ui.label", text: $label)
+                TextField("warehouse_portal.vehicles._vehicle_id_.text.license_plate", text: $plate)
                     .textInputAutocapitalization(.characters)
                 Picker("Node type", selection: $nodeType) {
-                    Text("Warehouse").tag("WAREHOUSE")
-                    Text("Factory").tag("FACTORY")
+                    Text("factory_portal.insights.text.warehouse").tag("WAREHOUSE")
+                    Text("factory_portal.setup.factory.text.factory").tag("FACTORY")
                 }
                 .onChange(of: nodeType) { _, _ in nodeId = "" }
                 Picker("Home node", selection: $nodeId) {
-                    Text("Select node").tag("")
+                    Text("supplier_portal.org_fleet.components.org_member_form.text.select_node").tag("")
                     ForEach(nodeOptions, id: \.0) { id, name in Text(name).tag(id) }
                 }
                 if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("Create vehicle")
+            .navigationTitle("mobile_supplier.ui.create_vehicle")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Create") { Task { await create() } }
                         .disabled(busy || plate.isEmpty || nodeId.isEmpty)

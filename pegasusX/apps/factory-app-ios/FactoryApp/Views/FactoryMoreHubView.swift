@@ -21,6 +21,6 @@ struct FactoryMoreHubView: View {
                 }
             }
         }
-        .navigationTitle("More")
+        .navigationTitle("mobile_factory.ui.more")
     }
 }

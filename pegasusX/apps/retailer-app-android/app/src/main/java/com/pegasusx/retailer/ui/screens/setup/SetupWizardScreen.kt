@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.setup
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pegasusx.retailer.R
 
 @Composable
 fun SetupWizardScreen(
@@ -65,7 +68,7 @@ fun SetupWizardScreen(
             Spacer(modifier = Modifier.height(32.dp))
             
             Text(
-                text = "Retailer Setup",
+                text = stringResource(R.string.mobile_retailer_ui_retailer_setup),
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )

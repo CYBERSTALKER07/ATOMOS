@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, HandHelping } from "lucide-react";
 import { PageChrome } from "@/components/PageChrome";
@@ -16,6 +17,7 @@ type Ticket = {
 };
 
 export default function AssistPage() {
+  const t = usePortalT();
   const [sections, setSections] = useState<Section[]>([]);
   const [sectionId, setSectionId] = useState("");
   const [note, setNote] = useState("");
@@ -66,7 +68,7 @@ export default function AssistPage() {
       setBanner("Ticket opened (CUSTOMER_ASSIST pack auto-enabled if deps met)");
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Create failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.create_failed"));
     } finally {
       setBusy(false);
     }
@@ -85,7 +87,7 @@ export default function AssistPage() {
       setBanner(`Ticket ${action}ed`);
       await load();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Action failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.action_failed"));
     } finally {
       setBusy(false);
     }
@@ -93,8 +95,8 @@ export default function AssistPage() {
 
   return (
     <PageChrome
-      title="Floor assist"
-      description="Customer help queue by section. Claim and complete as section lead."
+      title={t("retailer_desktop.assist.text.floor_assist")}
+      description={t("retailer_desktop.residual.text.customer_help_queue_by_section_claim_and_complete_as_section_lea")}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
         {banner && (
@@ -105,14 +107,14 @@ export default function AssistPage() {
         <section className="rounded-xl border border-border bg-card p-4">
           <div className="mb-3 flex items-center gap-2">
             <HandHelping className="h-5 w-5 text-muted-foreground" />
-            <h2 className="font-semibold">New ticket</h2>
+            <h2 className="font-semibold">{t("retailer_desktop.assist.text.new_ticket")}</h2>
           </div>
           <select
             className="mb-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             value={sectionId}
             onChange={(e) => setSectionId(e.target.value)}
           >
-            {sections.length === 0 && <option value="">Create a section first</option>}
+            {sections.length === 0 && <option value="">{t("retailer_desktop.assist.text.create_a_section_first")}</option>}
             {sections.map((s) => (
               <option key={s.section_id} value={s.section_id}>
                 {s.name}
@@ -122,7 +124,7 @@ export default function AssistPage() {
           <textarea
             className="mb-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             rows={2}
-            placeholder="What help is needed?"
+            placeholder={t("retailer_desktop.assist.text.what_help_is_needed")}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
@@ -138,9 +140,9 @@ export default function AssistPage() {
         </section>
 
         <section className="rounded-xl border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold">Queue</h2>
+          <h2 className="mb-3 font-semibold">{t("retailer_desktop.assist.text.queue")}</h2>
           {tickets.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tickets.</p>
+            <p className="text-sm text-muted-foreground">{t("retailer_desktop.assist.text.no_tickets")}</p>
           ) : (
             <ul className="space-y-3">
               {tickets.map((t) => (

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 import { PoDPhotoReport } from "@pegasusx/types";
 
@@ -12,9 +13,10 @@ export const CargoPhotoCarousel: React.FC<CargoPhotoCarouselProps> = ({
   photos = [],
   onRequestPhoto,
 }) => {
+  const t = usePortalT();
   return (
     <div className="bg-[#121417] border border-gray-800 rounded-2xl p-5 select-none shadow-lg">
-      <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase mb-4">Cargo Photo Reports</h3>
+      <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase mb-4">{t("supplier_portal.dispatch.cargo_photo_carousel.text.cargo_photo_reports")}</h3>
 
       <div className="flex items-center gap-4 overflow-x-auto pb-2 custom-scrollbar">
         {photos.length === 0 ? (
@@ -47,7 +49,7 @@ export const CargoPhotoCarousel: React.FC<CargoPhotoCarouselProps> = ({
           <div className="w-8 h-8 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center mb-1 text-sm">
             +
           </div>
-          <span className="font-semibold text-[11px]">Request Photo</span>
+          <span className="font-semibold text-[11px]">{t("supplier_portal.dispatch.cargo_photo_carousel.text.request_photo")}</span>
         </button>
       </div>
     </div>

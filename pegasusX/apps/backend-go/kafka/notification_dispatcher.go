@@ -105,7 +105,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleVehicleAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventWarehouseCreated:
 		return d.handleWarehouseCreated(ctx, msg.Value, traceID)
-	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged:
+	case events.EventWarehouseSupplyRequestOpened, events.EventWarehouseDispatchLockChanged,
+		events.EventWarehouseBroadcast, events.EventSupplierBroadcast:
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	case events.EventPaymentRequired, events.EventPaymentCleared, events.EventSettlementRequired, events.EventDeliveryDisputed,
 		events.EventFiscalReceiptRequested, events.EventFiscalReceiptSucceeded, events.EventFiscalReceiptFailed,
@@ -132,19 +133,35 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleNegotiationEvent(ctx, msg.Value, traceID)
 	case events.EventRouteReordered, events.EventRouteCreated:
 		return d.handleRouteEvent(ctx, msg.Value, traceID)
+	case events.EventDispatchRequested, events.EventDispatchPlanned:
+		return d.handleDispatchEvent(ctx, msg.Value, traceID)
 	case events.EventMissingItemsReported, events.EventSplitPaymentCreated:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
-	case events.EventClaimFiled, events.EventClaimResolved,
+	case events.EventClaimFiled, events.EventClaimUnderReview, events.EventClaimResolved,
 		events.EventLogisticsExceptionReported, events.EventReverseLogisticsRequired,
 		events.EventLogisticsTelemetry:
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
+	// B1 M-P1-1 + B6: AR open/pay/settle/dun/aging fanout to supplier/retailer rooms.
+	case events.EventARInvoiceOpened, events.EventARInvoicePayment,
+		events.EventARInvoiceSettled, events.EventARInvoiceDunned,
+		events.EventARInvoiceAgingUpdated:
+		return d.handleARInvoiceEvent(ctx, msg.Value, traceID)
+	case events.EventPayoutBatchGenerated, events.EventPayoutBatchExported,
+		events.EventPayoutBatchDispatched, events.EventPayoutBatchPaid:
+		return d.handlePayoutBatchEvent(ctx, msg.Value, traceID)
+	// B6: refund + buyer-acceptance were orphaned (outbox only).
+	case events.EventRefundRequested, events.EventRefundSucceeded, events.EventRefundFailed:
+		return d.handleRefundEvent(ctx, msg.Value, traceID)
+	case events.EventBuyerAcceptancePending, events.EventBuyerAcceptanceAccepted,
+		events.EventBuyerAcceptanceRejected, events.EventBuyerAcceptanceExpired:
+		return d.handleBuyerAcceptanceEvent(ctx, msg.Value, traceID)
 	case events.EventDriverAvailabilityChanged:
 		return d.handleDriverAvailabilityChanged(ctx, msg.Value, traceID)
 	case events.EventAIRecommendationCreated, events.EventAIRecommendationDecided:
 		return d.handleAIRecommendationEvent(ctx, msg.Value, traceID)
 	case events.EventDeliverySessionUpdated:
 		return d.handleDeliverySessionEvent(ctx, msg.Value, traceID)
-	case events.EventFactoryCreated:
+	case events.EventFactoryCreated, events.EventFactoryStaffCreated, events.EventFactoryStaffPasswordSet:
 		return d.handleFactoryCreated(ctx, msg.Value, traceID)
 	case events.EventSupplierCreated:
 		return d.handleSupplierCreated(ctx, msg.Value, traceID)
@@ -158,23 +175,38 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleCommandEvent(ctx, msg.Value, traceID)
 	case events.EventSystemAppOutdated:
 		return d.handlePlatformOutdated(ctx, msg.Value, traceID)
-	case events.EventOrderValidationFailed:
+	case events.EventOrderValidationFailed, events.EventReassignHandshakeCompleted:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
 	case events.EventDriverLocationUpdated:
 		return d.handleTelemetryLocation(ctx, msg.Value, traceID)
 	case events.EventOrderAmended:
 		return d.handleOrderEvent(ctx, msg.Value, traceID)
 	case events.EventSupplierReturnCreated, events.EventSupplierReturnResolved,
-		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse:
+		events.EventDriverReturnApproaching, events.EventReturnReceivedAtWarehouse,
+		// B7 WH-P0-5: inbound scan progress shares return-gate fanout.
+		events.EventReturnScanReceived:
 		return d.handleReturnGateEvent(ctx, msg.Value, traceID)
 	case events.EventDispatchZoneOverride, events.EventPlanningMEIORecommendation, events.EventDemandBaselineUpdated,
 		events.EventReplenishmentAutoApproved, events.EventPlanningAgentBroadcast,
-		events.EventPlanningForecastUpdated, events.EventPlanningPromoSimulationReady, events.EventPlanningConfidenceDowngraded:
+		events.EventPlanningForecastUpdated, events.EventPlanningPromoSimulationReady, events.EventPlanningConfidenceDowngraded,
+		// B4 M-P1-14: scenario publish was outbox-only orphan (local WS); multi-pod via handlePlanningEvent.
+		events.EventPlanningScenarioPublished:
 		return d.handlePlanningEvent(ctx, msg.Value, traceID)
+	// S-P1-2: supplier replenishment policy PATCH (also covered by REPLENISHMENT_ parity prefix).
+	case events.EventReplenishmentPolicyUpdated:
+		return d.handleReplenishmentEvent(ctx, msg.Value, traceID)
 	case events.EventOrderConditionReported:
 		return d.handleConditionReported(ctx, msg.Value, traceID)
 	case events.EventRetailerCreditProfileChanged, events.EventRetailerCreditLimitBreached:
 		return d.handleCreditEvent(ctx, msg.Value, traceID)
+	// B4 M-P1-5: org credit program + relationship terms.
+	case events.EventSupplierCreditProgramChanged:
+		return d.handleSupplierCreditProgramEvent(ctx, msg.Value, traceID)
+	case events.EventSupplierCreditTermsChanged:
+		return d.handleSupplierCreditTermsEvent(ctx, msg.Value, traceID)
+	// B4 M-P1-4: control tower playbook/run lifecycle.
+	case events.EventControlTowerPlaybookChanged, events.EventControlTowerRunCreated, events.EventControlTowerRunUpdated:
+		return d.handleControlTowerEvent(ctx, msg.Value, traceID)
 	case events.EventProductHandlingUpdated:
 		return d.handleProductHandlingUpdated(ctx, msg.Value, traceID)
 	case events.EventWarehouseLocationUpdated:
@@ -186,8 +218,24 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		// Supply-request family (warehouse + factory) — multi-pod fanout.
 		return d.handleSupplyRequestEvent(ctx, msg.Value, traceID)
 	case events.EventWarehouseTransferCreated, events.EventWarehouseTransferReceived,
-		events.EventSupplyTransferApproaching:
+		events.EventSupplyTransferApproaching, events.EventSupplyTransferArrived,
+		events.EventFactoryTransferCreated:
 		return d.handleTransferEvent(ctx, msg.Value, traceID)
+	// B2 M-P0-3: WMS stock mutations fan to warehouse + supplier rooms.
+	case events.EventInventoryQuantityUpdated, events.EventInventoryPolicyUpdated,
+		events.EventWMSPutaway, events.EventWMSPickConfirmed,
+		events.EventWMSCycleApproved, events.EventWMSTemperatureBreach:
+		return d.handleWMSStockEvent(ctx, msg.Value, traceID)
+	// B3 M-P0-6: multi-supplier parent rollup → retailer room.
+	case events.EventParentOrderCreated, events.EventParentOrderUpdated:
+		return d.handleParentOrderEvent(ctx, msg.Value, traceID)
+	// B3 M-P1-3: POS + store-stock → retailer room (producers already outbox).
+	case events.EventPosSessionOpened, events.EventPosSessionClosed,
+		events.EventPosSaleCompleted, events.EventPosSaleVoided,
+		events.EventStoreStockReceived, events.EventReceivingVarianceReported, events.EventStoreStockAdjusted,
+		events.EventStoreStockTransferred, events.EventStoreStockCounted,
+		events.EventStoreStockClaimHold:
+		return d.handleRetailerOpsEvent(ctx, msg.Value, traceID)
 	case events.EventSplitShipmentCreated, events.EventOrderCapacityOverflow:
 		return d.handleWarehouseOperationalEvent(ctx, msg.Value, traceID)
 	default:
@@ -293,6 +341,191 @@ func (d *NotificationDispatcher) handleCreditEvent(ctx context.Context, payload 
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	return nil
+}
+
+// handleRefundEvent fans refund lifecycle to supplier + retailer rooms (B6).
+func (d *NotificationDispatcher) handleRefundEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.FinanceEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode refund event: %w", err)
+	}
+	agg := strings.TrimSpace(e.TransactionID)
+	if agg == "" {
+		agg = e.OrderID
+	}
+	if d.dropFanout(e.Type, traceID, agg) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out refund event", "event_type", e.Type, "order_id", e.OrderID)
+	return nil
+}
+
+// handleBuyerAcceptanceEvent fans EHF buyer clearance to order parties (B6).
+func (d *NotificationDispatcher) handleBuyerAcceptanceEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.BuyerAcceptanceEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode buyer acceptance event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.OrderID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out buyer acceptance event", "event_type", e.Type, "order_id", e.OrderID)
+	return nil
+}
+
+// handleARInvoiceEvent fans AR open/pay/settle/dun to supplier + retailer rooms.
+func (d *NotificationDispatcher) handleARInvoiceEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.ARInvoiceEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode AR invoice event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.InvoiceID)
+	if aggregateID == "" {
+		aggregateID = e.OrderID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out AR invoice event", "event_type", e.Type, "invoice_id", e.InvoiceID)
+	return nil
+}
+
+// handlePayoutBatchEvent fans payout lifecycle to the supplier room only.
+func (d *NotificationDispatcher) handlePayoutBatchEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.PayoutBatchEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode payout batch event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.BatchID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	slog.DebugContext(ctx, "fanned out payout batch event", "event_type", e.Type, "batch_id", e.BatchID)
+	return nil
+}
+
+// handleSupplierCreditProgramEvent fans org program lifecycle to supplier room (B4 M-P1-5).
+func (d *NotificationDispatcher) handleSupplierCreditProgramEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.SupplierCreditProgramEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode supplier credit program event: %w", err)
+	}
+	if d.dropFanout(e.Type, traceID, e.SupplierID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	slog.DebugContext(ctx, "fanned out supplier credit program event", "event_type", e.Type, "supplier_id", e.SupplierID)
+	return nil
+}
+
+// handleSupplierCreditTermsEvent fans relationship terms to supplier + retailer rooms (B4 M-P1-5).
+func (d *NotificationDispatcher) handleSupplierCreditTermsEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.SupplierCreditTermsEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode supplier credit terms event: %w", err)
+	}
+	agg := e.RetailerID + ":" + e.SupplierID
+	if d.dropFanout(e.Type, traceID, agg) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out supplier credit terms event", "event_type", e.Type, "supplier_id", e.SupplierID, "retailer_id", e.RetailerID)
+	return nil
+}
+
+// handleControlTowerEvent fans playbook/run lifecycle to supplier room (B4 M-P1-4).
+func (d *NotificationDispatcher) handleControlTowerEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.ControlTowerEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode control tower event: %w", err)
+	}
+	agg := strings.TrimSpace(e.RunID)
+	if agg == "" {
+		agg = strings.TrimSpace(e.PlaybookID)
+	}
+	if agg == "" {
+		agg = e.SupplierID
+	}
+	if d.dropFanout(e.Type, traceID, agg) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	slog.DebugContext(ctx, "fanned out control tower event", "event_type", e.Type, "supplier_id", e.SupplierID, "run_id", e.RunID)
+	return nil
+}
+
+// handleParentOrderEvent fans ParentOrders lifecycle to the retailer org room (B3 M-P0-6).
+func (d *NotificationDispatcher) handleParentOrderEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e events.ParentOrderEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode parent order event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.ParentOrderID)
+	if aggregateID == "" {
+		aggregateID = e.RetailerID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastRetailer(ctx, e.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out parent order event", "event_type", e.Type, "parent_order_id", e.ParentOrderID)
+	return nil
+}
+
+// handleRetailerOpsEvent fans POS / store-stock outbox payloads to RetailerHub (B3 M-P1-3).
+func (d *NotificationDispatcher) handleRetailerOpsEvent(ctx context.Context, payload []byte, traceID string) error {
+	var env struct {
+		Type       string `json:"type"`
+		RetailerID string `json:"retailer_id"`
+		SaleID     string `json:"sale_id"`
+		SessionID  string `json:"session_id"`
+	}
+	if err := json.Unmarshal(payload, &env); err != nil {
+		return fmt.Errorf("decode retailer ops event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(env.SaleID)
+	if aggregateID == "" {
+		aggregateID = strings.TrimSpace(env.SessionID)
+	}
+	if aggregateID == "" {
+		aggregateID = strings.TrimSpace(env.RetailerID)
+	}
+	if d.dropFanout(env.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastRetailer(ctx, env.RetailerID, payload)
+	slog.DebugContext(ctx, "fanned out retailer ops event", "event_type", env.Type, "retailer_id", env.RetailerID)
+	return nil
+}
+
+// handleWMSStockEvent fans WMS stock mutations to warehouse + supplier rooms.
+func (d *NotificationDispatcher) handleWMSStockEvent(ctx context.Context, payload []byte, traceID string) error {
+	var env struct {
+		Type        string `json:"type"`
+		WarehouseID string `json:"warehouse_id"`
+		SupplierID  string `json:"supplier_id"`
+	}
+	if err := json.Unmarshal(payload, &env); err != nil {
+		return fmt.Errorf("decode WMS stock event: %w", err)
+	}
+	agg := strings.TrimSpace(env.WarehouseID)
+	if agg == "" {
+		agg = env.SupplierID
+	}
+	if d.dropFanout(env.Type, traceID, agg) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, env.SupplierID, payload)
+	d.broadcastWarehouse(ctx, env.WarehouseID, payload)
+	slog.DebugContext(ctx, "fanned out WMS stock event", "event_type", env.Type, "warehouse_id", env.WarehouseID)
 	return nil
 }
 
@@ -535,6 +768,27 @@ func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload [
 	return nil
 }
 
+func (d *NotificationDispatcher) handleDispatchEvent(ctx context.Context, payload []byte, traceID string) error {
+	var e struct {
+		Type       string `json:"type"`
+		SupplierID string `json:"supplier_id"`
+		EventID    string `json:"event_id"`
+	}
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode dispatch event: %w", err)
+	}
+	aggregateID := strings.TrimSpace(e.EventID)
+	if aggregateID == "" {
+		aggregateID = e.SupplierID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	slog.DebugContext(ctx, "fanned out dispatch event", "event_type", e.Type, "supplier_id", e.SupplierID)
+	return nil
+}
+
 func (d *NotificationDispatcher) handleDriverEdgeEvent(ctx context.Context, payload []byte, traceID string) error {
 	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
@@ -599,7 +853,15 @@ func (d *NotificationDispatcher) handleFactoryCreated(ctx context.Context, paylo
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode factory created event: %w", err)
 	}
-	if d.dropFanout(events.EventFactoryCreated, traceID, e.FactoryID) {
+	eventType := strings.TrimSpace(e.Type)
+	if eventType == "" {
+		eventType = events.EventFactoryCreated
+	}
+	aggregateID := strings.TrimSpace(e.UserID)
+	if aggregateID == "" {
+		aggregateID = e.FactoryID
+	}
+	if d.dropFanout(eventType, traceID, aggregateID) {
 		return nil
 	}
 	d.broadcastSupplier(ctx, e.SupplierID, payload)

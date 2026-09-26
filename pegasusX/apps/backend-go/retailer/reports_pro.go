@@ -3,6 +3,7 @@ package retailer
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -32,9 +33,21 @@ func (s *Service) HandleReportsSummary(w http.ResponseWriter, r *http.Request) {
 	from, to := s.reportWindow(r)
 	locID := strings.TrimSpace(r.URL.Query().Get("location_id"))
 
-	salesMinor, saleCount, topSKUs := s.aggregateSales(orgID, locID, from, to)
-	onHandSKUs, lowStock := s.aggregateInventory(r.Context(), orgID, locID)
-	openVariances := s.countClosedShiftVariances(r.Context(), orgID, locID)
+	salesMinor, saleCount, topSKUs, err := s.aggregateSales(r.Context(), orgID, locID, from, to)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
+	onHandSKUs, lowStock, err := s.aggregateInventory(r.Context(), orgID, locID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
+	openVariances, err := s.countClosedShiftVariances(r.Context(), orgID, locID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"from":              from.UTC().Format(time.RFC3339),
@@ -68,13 +81,15 @@ func (s *Service) HandleReportsSales(w http.ResponseWriter, r *http.Request) {
 		groupBy = "sku"
 	}
 
+	sales, err := s.reportsPosSales(r.Context(), orgID, locID, from, to)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
+
 	buckets := map[string]*salesBucket{}
-	s.mu.RLock()
-	for _, sale := range s.posSales {
-		if sale.RetailerID != orgID || sale.Status != "COMPLETED" {
-			continue
-		}
-		if locID != "" && sale.LocationID != locID {
+	for _, sale := range sales {
+		if sale.Status != PosSaleCompleted {
 			continue
 		}
 		t, okT := parseReportTime(sale.CreatedAt)
@@ -111,7 +126,6 @@ func (s *Service) HandleReportsSales(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	s.mu.RUnlock()
 
 	items := make([]salesBucket, 0, len(buckets))
 	for _, b := range buckets {
@@ -142,8 +156,16 @@ func (s *Service) HandleReportsInventory(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	locID := strings.TrimSpace(r.URL.Query().Get("location_id"))
-	balances, _ := s.listStockBalances(r.Context(), orgID, locID)
-	movements, _ := s.listStockMovements(r.Context(), orgID, locID, "", 500)
+	balances, err := s.reportsStockBalances(r.Context(), orgID, locID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
+	movements, err := s.reportsStockMovements(r.Context(), orgID, locID, "", 500)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
 
 	var totalOnHand int64
 	type skuRow struct {
@@ -196,7 +218,11 @@ func (s *Service) HandleReportsShifts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	locID := strings.TrimSpace(r.URL.Query().Get("location_id"))
-	items, _ := s.listShifts(r.Context(), orgID, locID, 100)
+	items, err := s.reportsShifts(r.Context(), orgID, locID, 100)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return
+	}
 	type row struct {
 		ShiftID       string `json:"shift_id"`
 		Status        string `json:"status"`
@@ -263,9 +289,16 @@ func (s *Service) reportsAuth(w http.ResponseWriter, r *http.Request) (auth.Clai
 		writeRetailerIdentityError(w, err)
 		return auth.Claims{}, "", false
 	}
-	enabled, _ := s.LoadEnabledPacks(r.Context(), orgID)
+	enabled, err := s.LoadEnabledPacks(r.Context(), orgID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+		return auth.Claims{}, "", false
+	}
 	if !enabled.Has(PackREPORTSPRO) {
-		_ = s.SetPackEnabled(r.Context(), orgID, PackREPORTSPRO, auth.ResolveRetailerUserID(claims), true, map[string]any{})
+		if err := s.SetPackEnabled(r.Context(), orgID, PackREPORTSPRO, auth.ResolveRetailerUserID(claims), true, map[string]any{}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reports_failed"})
+			return auth.Claims{}, "", false
+		}
 	}
 	return claims, orgID, true
 }
@@ -330,18 +363,18 @@ func writeSalesCSV(w http.ResponseWriter, items []salesBucket) {
 	cw.Flush()
 }
 
-func (s *Service) aggregateSales(orgID, locID string, from, to time.Time) (salesMinor int64, saleCount int, top []map[string]any) {
+func (s *Service) aggregateSales(ctx context.Context, orgID, locID string, from, to time.Time) (salesMinor int64, saleCount int, top []map[string]any, err error) {
+	sales, err := s.reportsPosSales(ctx, orgID, locID, from, to)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("reports sales: %w", err)
+	}
 	type skuAgg struct {
 		minor int64
 		units int64
 	}
 	bySku := map[string]*skuAgg{}
-	s.mu.RLock()
-	for _, sale := range s.posSales {
-		if sale.RetailerID != orgID || sale.Status != "COMPLETED" {
-			continue
-		}
-		if locID != "" && sale.LocationID != locID {
+	for _, sale := range sales {
+		if sale.Status != PosSaleCompleted {
 			continue
 		}
 		t, okT := parseReportTime(sale.CreatedAt)
@@ -364,7 +397,6 @@ func (s *Service) aggregateSales(orgID, locID string, from, to time.Time) (sales
 			a.units += line.Qty
 		}
 	}
-	s.mu.RUnlock()
 	type pair struct {
 		sku string
 		a   *skuAgg
@@ -380,11 +412,14 @@ func (s *Service) aggregateSales(orgID, locID string, from, to time.Time) (sales
 		}
 		top = append(top, map[string]any{"sku": p.sku, "sales_minor": p.a.minor, "units": p.a.units})
 	}
-	return salesMinor, saleCount, top
+	return salesMinor, saleCount, top, nil
 }
 
-func (s *Service) aggregateInventory(ctx context.Context, orgID, locID string) (skuCount int, lowStock int) {
-	balances, _ := s.listStockBalances(ctx, orgID, locID)
+func (s *Service) aggregateInventory(ctx context.Context, orgID, locID string) (skuCount int, lowStock int, err error) {
+	balances, err := s.reportsStockBalances(ctx, orgID, locID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("reports inventory: %w", err)
+	}
 	seen := map[string]bool{}
 	for _, b := range balances {
 		if !seen[b.Sku] {
@@ -395,16 +430,47 @@ func (s *Service) aggregateInventory(ctx context.Context, orgID, locID string) (
 			lowStock++
 		}
 	}
-	return skuCount, lowStock
+	return skuCount, lowStock, nil
 }
 
-func (s *Service) countClosedShiftVariances(ctx context.Context, orgID, locID string) int {
-	items, _ := s.listShifts(ctx, orgID, locID, 100)
+func (s *Service) countClosedShiftVariances(ctx context.Context, orgID, locID string) (int, error) {
+	items, err := s.reportsShifts(ctx, orgID, locID, 100)
+	if err != nil {
+		return 0, fmt.Errorf("reports shifts: %w", err)
+	}
 	n := 0
 	for _, sh := range items {
 		if sh.Status == ShiftClosed && sh.VarianceMinor != nil && abs64(*sh.VarianceMinor) > 0 {
 			n++
 		}
 	}
-	return n
+	return n, nil
+}
+
+func (s *Service) reportsPosSales(ctx context.Context, orgID, locID string, from, to time.Time) ([]PosSaleDTO, error) {
+	if s != nil && s.posSalesQuery != nil {
+		return s.posSalesQuery(ctx, orgID, locID, from, to)
+	}
+	return s.listRetailerPosSales(ctx, orgID, locID, from, to, retailerPosSalesReportLimit)
+}
+
+func (s *Service) reportsStockBalances(ctx context.Context, orgID, locID string) ([]StockBalanceDTO, error) {
+	if s != nil && s.stockBalancesQuery != nil {
+		return s.stockBalancesQuery(ctx, orgID, locID)
+	}
+	return s.listStockBalances(ctx, orgID, locID)
+}
+
+func (s *Service) reportsShifts(ctx context.Context, orgID, locID string, limit int) ([]ShiftDTO, error) {
+	if s != nil && s.shiftsQuery != nil {
+		return s.shiftsQuery(ctx, orgID, locID, limit)
+	}
+	return s.listShifts(ctx, orgID, locID, limit)
+}
+
+func (s *Service) reportsStockMovements(ctx context.Context, orgID, locID, sku string, limit int) ([]StockMovementDTO, error) {
+	if s != nil && s.stockMovementsQuery != nil {
+		return s.stockMovementsQuery(ctx, orgID, locID, sku, limit)
+	}
+	return s.listStockMovements(ctx, orgID, locID, sku, limit)
 }

@@ -1,1 +1,1 @@
-export { default } from './SmartDispatchArcade';
+export { default } from './HandheldControlSection';

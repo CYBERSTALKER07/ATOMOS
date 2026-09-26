@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import {
   X,
   ShoppingBag,
@@ -11,6 +12,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { packCurrency, readCachedAuthSession } from "@pegasusx/api-core";
 import { useCart } from "../lib/cart";
 import { effectiveCartMaxQuantity } from "../lib/stock-policy";
 
@@ -25,6 +27,7 @@ export default function CartDrawer({
   onClose,
   onCheckout,
 }: CartDrawerProps) {
+  const t = usePortalT();
   const { items, updateQuantity, removeFromCart, total, previewOrderableQuantities, previewShowStockCounts, previewStockPolicyReject } = useCart();
 
   return (
@@ -154,7 +157,7 @@ export default function CartDrawer({
                     className="py-20 text-center opacity-40"
                   >
                     <ShoppingBag size={48} className="mx-auto mb-4" />
-                    <p className="md-typescale-body-large">Cart is empty</p>
+                    <p className="md-typescale-body-large">{t("retailer_desktop.cart_drawer.text.cart_is_empty")}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -164,7 +167,7 @@ export default function CartDrawer({
             <div className="p-8 border-t border-[var(--desk-border)] bg-[var(--desk-surface-subtle)]">
               <div className="space-y-2 mb-8">
                 <div className="flex justify-between md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase font-light tracking-widest">
-                  <span>Operational Subtotal</span>
+                  <span>{t("retailer_desktop.cart_drawer.text.operational_subtotal")}</span>
                   <span className="text-[var(--desk-text-secondary)]">
                     {total.toLocaleString()}
                   </span>
@@ -175,7 +178,7 @@ export default function CartDrawer({
                   </span>
                   <span className="md-typescale-display-small font-light text-[var(--desk-text-primary)] tabular-nums">
                     {total.toLocaleString()}{" "}
-                    <small className="text-xs opacity-40 ml-0.5">UZS</small>
+                    <small className="text-xs opacity-40 ml-0.5">{packCurrency(readCachedAuthSession()?.pack)}</small>
                   </span>
                 </div>
               </div>

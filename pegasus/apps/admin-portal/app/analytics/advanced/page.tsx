@@ -24,7 +24,7 @@ export default function AdvancedAnalyticsPage() {
 
   const isFactory = auth.isFactoryStaff;
 
-  // ── Loading State ─────────────────────────────────────────────────────────
+  // -- Loading State ---------------------------------------------------------
   if (analytics.loading) {
     return (
       <div className="p-6 flex flex-col gap-6">
@@ -47,7 +47,7 @@ export default function AdvancedAnalyticsPage() {
     );
   }
 
-  // ── Error State ───────────────────────────────────────────────────────────
+  // -- Error State -----------------------------------------------------------
   if (analytics.error) {
     return (
       <div className="p-6 flex flex-col gap-6">
@@ -66,7 +66,7 @@ export default function AdvancedAnalyticsPage() {
     );
   }
 
-  // ── Factory View ──────────────────────────────────────────────────────────
+  // -- Factory View ----------------------------------------------------------
   if (isFactory) {
     const fo = analytics.factoryOverview;
     return (
@@ -130,7 +130,7 @@ export default function AdvancedAnalyticsPage() {
     );
   }
 
-  // ── Supplier View (Global Admin / Node Admin) ─────────────────────────────
+  // -- Supplier View (Global Admin / Node Admin) -----------------------------
   // Compute aggregate KPIs
   const totalRevenue = analytics.revenue?.time_series?.reduce((s, d) => s + d.total, 0) ?? 0;
   const slaTotal = analytics.slaHealth?.reduce((s, d) => s + d.total_orders, 0) ?? 0;

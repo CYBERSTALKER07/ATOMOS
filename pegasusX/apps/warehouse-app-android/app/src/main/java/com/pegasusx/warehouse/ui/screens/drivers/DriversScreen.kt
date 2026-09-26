@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.drivers
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,13 +23,14 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 
 
@@ -105,7 +108,7 @@ fun DriversScreen(
     ) { innerPadding ->
         when {
             loading && drivers.isEmpty() -> PegasusLoadingState(
-                title = "Loading drivers…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_drivers),
                 body = "Fleet driver roster",
                 modifier = Modifier.padding(innerPadding),
             )

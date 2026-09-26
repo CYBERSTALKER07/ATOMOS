@@ -1,557 +1,617 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { gsap } from 'gsap';
 
 import GigaMenuDropdown from './GigaMenuDropdown';
 import MegaMenuOverlay from './MegaMenuOverlay';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTheme } from '../context/ThemeContext';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
 
 export type PillNavItem = {
-  label: string;
-  href: string;
-  ariaLabel?: string;
+ label: string;
+ href: string;
+ ariaLabel?: string;
 };
 
 export interface PillNavProps {
-  logo: string;
-  logoAlt?: string;
-  items: PillNavItem[];
-  activeHref?: string;
-  className?: string;
-  ease?: string;
-  baseColor?: string;
-  pillColor?: string;
-  hoveredPillTextColor?: string;
-  pillTextColor?: string;
-  onMobileMenuClick?: () => void;
-  initialLoadAnimation?: boolean;
-  showMenuButton?: boolean;
-  categories?: MegaNavCategory[];
+ logo: string;
+ logoAlt?: string;
+ items: PillNavItem[];
+ activeHref?: string;
+ className?: string;
+ ease?: string;
+ baseColor?: string;
+ pillColor?: string;
+ hoverCircleColor?: string;
+ hoveredPillTextColor?: string;
+ pillTextColor?: string;
+ onMobileMenuClick?: () => void;
+ initialLoadAnimation?: boolean;
+ showMenuButton?: boolean;
+ categories?: MegaNavCategory[];
 }
 
 const PillNav: React.FC<PillNavProps> = ({
-  logo,
-  logoAlt = 'Logo',
-  items,
-  activeHref,
-  className = '',
-  ease = 'power3.easeOut',
-  baseColor = '#000000',
-  pillColor = '#ffffff',
-  hoveredPillTextColor = '#000000',
-  pillTextColor,
-  onMobileMenuClick,
-  initialLoadAnimation = true,
-  showMenuButton = false,
-  categories,
+ logo,
+ logoAlt = 'Logo',
+ items,
+ activeHref,
+ className = '',
+ ease = 'power3.easeOut',
+ baseColor = '#000000',
+ pillColor = '#000000',
+ hoverCircleColor,
+ hoveredPillTextColor = '#000000',
+ pillTextColor = '#ffffff',
+ onMobileMenuClick,
+ initialLoadAnimation = true,
+ showMenuButton = false,
+ categories,
 }) => {
-  const resolvedPillTextColor = pillTextColor ?? baseColor;
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
+ const { resolvedTheme } = useTheme();
+ const isLight = resolvedTheme === 'light';
 
-  const displayItems = categories ? categories.map(c => ({ label: c.label, href: c.viewAllHref || '#', id: c.id })) : items;
+  const effectiveBaseColor = baseColor ?? 'transparent';
+  const effectivePillColor = pillColor ?? '#ffffff';
+  const isWhitePill = effectivePillColor === '#ffffff' || effectivePillColor === '#fff';
+  const effectiveHoverCircleBg = hoverCircleColor ?? (isWhitePill ? '#000000' : '#ffffff');
+  const effectiveHoveredPillTextColor = hoveredPillTextColor ?? (isWhitePill ? '#ffffff' : '#000000');
+  const effectivePillTextColor = pillTextColor ?? (isWhitePill ? '#000000' : '#ffffff');
+ const resolvedPillTextColor = effectivePillTextColor;
+ const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+ const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+ const [activeCategory, setActiveCategory] = useState<MegaNavCategory | null>(null);
 
-  const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
-  const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
-  const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
-  const logoImgRef = useRef<HTMLImageElement | null>(null);
-  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
-  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
-  const navItemsRef = useRef<HTMLDivElement | null>(null);
-  const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
+ const displayItems = useMemo(
+ () =>
+ categories
+ ? categories.map((c) => ({ label: c.label, href: c.viewAllHref || '#', id: c.id }))
+ : items,
+ [categories, items],
+ );
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
-        setActiveCategory(null);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+ // Content signature — ignore array identity so form re-renders don't restart GSAP.
+ const navLayoutKey = useMemo(
+ () =>
+ categories
+ ? categories.map((c) => `${c.id}:${c.label}`).join('|')
+ : items.map((i) => `${i.href}:${i.label}`).join('|'),
+ [categories, items],
+ );
 
-  useEffect(() => {
-    const hamburger = hamburgerRef.current;
-    if (hamburger) {
-      const lines = hamburger.querySelectorAll('.hamburger-line');
-      const isOpen = showMenuButton ? megaMenuOpen : isMobileMenuOpen;
-      if (isOpen) {
-        gsap.to(lines[0], { rotation: 45, y: 6, duration: 0.3, ease });
-        gsap.to(lines[1], { opacity: 0, duration: 0.3, ease });
-        if (lines[2]) gsap.to(lines[2], { rotation: -45, y: -6, duration: 0.3, ease });
-      } else {
-        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { opacity: 1, duration: 0.3, ease });
-        if (lines[2]) gsap.to(lines[2], { rotation: 0, y: 0, duration: 0.3, ease });
-      }
-    }
-  }, [megaMenuOpen, isMobileMenuOpen, showMenuButton, ease]);
+ const circleRefs = useRef<Array<HTMLSpanElement | null>>([]);
+ const tlRefs = useRef<Array<gsap.core.Timeline | null>>([]);
+ const activeTweenRefs = useRef<Array<gsap.core.Tween | null>>([]);
+ const logoImgRef = useRef<HTMLImageElement | null>(null);
+ const hamburgerRef = useRef<HTMLButtonElement | null>(null);
+ const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+ const navItemsRef = useRef<HTMLDivElement | null>(null);
+ const logoRef = useRef<HTMLAnchorElement | HTMLElement | null>(null);
+ const wrapperRef = useRef<HTMLDivElement | null>(null);
+ const introPlayedRef = useRef(false);
+ const [isScrolled, setIsScrolled] = useState(false);
 
-  useEffect(() => {
-    const layout = () => {
-      circleRefs.current.forEach(circle => {
-        if (!circle?.parentElement) return;
+ useEffect(() => {
+  const handleScroll = () => {
+   setIsScrolled(window.scrollY > 20);
+  };
+  handleScroll();
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  return () => window.removeEventListener('scroll', handleScroll);
+ }, []);
 
-        const pill = circle.parentElement as HTMLElement;
-        const rect = pill.getBoundingClientRect();
-        const { width: w, height: h } = rect;
-        const R = ((w * w) / 4 + h * h) / (2 * h);
-        const D = Math.ceil(2 * R) + 2;
-        const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (w * w) / 4))) + 1;
-        const originY = D - delta;
+ useEffect(() => {
+ function handleClickOutside(event: MouseEvent) {
+ if (
+ wrapperRef.current &&
+ !wrapperRef.current.contains(event.target as Node)
+ ) {
+ setActiveCategory(null);
+ }
+ }
+ document.addEventListener('mousedown', handleClickOutside);
+ return () => document.removeEventListener('mousedown', handleClickOutside);
+ }, []);
 
-        circle.style.width = `${D}px`;
-        circle.style.height = `${D}px`;
-        circle.style.bottom = `-${delta}px`;
+ useEffect(() => {
+ const hamburger = hamburgerRef.current;
+ if (hamburger) {
+ const lines = hamburger.querySelectorAll('.hamburger-line');
+ const isOpen = showMenuButton ? megaMenuOpen : isMobileMenuOpen;
+ if (isOpen) {
+ gsap.to(lines[0], { rotation: 45, y: 6, duration: 0.3, ease });
+ gsap.to(lines[1], { opacity: 0, duration: 0.3, ease });
+ if (lines[2]) gsap.to(lines[2], { rotation: -45, y: -6, duration: 0.3, ease });
+ } else {
+ gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
+ gsap.to(lines[1], { opacity: 1, duration: 0.3, ease });
+ if (lines[2]) gsap.to(lines[2], { rotation: 0, y: 0, duration: 0.3, ease });
+ }
+ }
+ }, [megaMenuOpen, isMobileMenuOpen, showMenuButton, ease]);
 
-        gsap.set(circle, {
-          xPercent: -50,
-          scale: 0,
-          transformOrigin: `50% ${originY}px`
-        });
+ useEffect(() => {
+ const layout = () => {
+ circleRefs.current.forEach(circle => {
+ if (!circle?.parentElement) return;
 
-        const label = pill.querySelector<HTMLElement>('.pill-label');
-        const white = pill.querySelector<HTMLElement>('.pill-label-hover');
+ const pill = circle.parentElement as HTMLElement;
+ const rect = pill.getBoundingClientRect();
+ const { width: w, height: h } = rect;
+ const R = ((w * w) / 4 + h * h) / (2 * h);
+ const D = Math.ceil(2 * R) + 2;
+ const delta = Math.ceil(R - Math.sqrt(Math.max(0, R * R - (w * w) / 4))) + 1;
+ const originY = D - delta;
 
-        if (label) gsap.set(label, { y: 0 });
-        if (white) gsap.set(white, { y: h + 12, opacity: 0 });
+ circle.style.width = `${D}px`;
+ circle.style.height = `${D}px`;
+ circle.style.bottom = `-${delta}px`;
 
-        const index = circleRefs.current.indexOf(circle);
-        if (index === -1) return;
+ gsap.set(circle, {
+ xPercent: -50,
+ scale: 0,
+ transformOrigin: `50% ${originY}px`
+ });
 
-        tlRefs.current[index]?.kill();
-        const tl = gsap.timeline({ paused: true });
+ const label = pill.querySelector<HTMLElement>('.pill-label');
+ const white = pill.querySelector<HTMLElement>('.pill-label-hover');
 
-        tl.to(circle, { scale: 1.2, xPercent: -50, duration: 2, ease, overwrite: 'auto' }, 0);
+ if (label) gsap.set(label, { y: 0 });
+ if (white) gsap.set(white, { y: h + 12, opacity: 0 });
 
-        if (label) {
-          tl.to(label, { y: -(h + 8), duration: 2, ease, overwrite: 'auto' }, 0);
-        }
+ const index = circleRefs.current.indexOf(circle);
+ if (index === -1) return;
 
-        if (white) {
-          gsap.set(white, { y: Math.ceil(h + 100), opacity: 0 });
-          tl.to(white, { y: 0, opacity: 1, duration: 2, ease, overwrite: 'auto' }, 0);
-        }
+ tlRefs.current[index]?.kill();
+ const tl = gsap.timeline({ paused: true });
 
-        tlRefs.current[index] = tl;
-      });
-    };
+ tl.to(circle, { scale: 1.2, xPercent: -50, duration: 2, ease, overwrite: 'auto' }, 0);
 
-    layout();
+ if (label) {
+ tl.to(label, { y: -(h + 8), duration: 2, ease, overwrite: 'auto' }, 0);
+ }
 
-    const onResize = () => layout();
-    window.addEventListener('resize', onResize);
+ if (white) {
+ gsap.set(white, { y: Math.ceil(h + 100), opacity: 0 });
+ tl.to(white, { y: 0, opacity: 1, duration: 2, ease, overwrite: 'auto' }, 0);
+ }
 
-    if (document.fonts) {
-      document.fonts.ready.then(layout).catch(() => { });
-    }
+ tlRefs.current[index] = tl;
+ });
+ };
 
-    const menu = mobileMenuRef.current;
-    if (menu) {
-      gsap.set(menu, { visibility: 'hidden', opacity: 0, scaleY: 1, y: 0 });
-    }
+ layout();
 
-    if (initialLoadAnimation) {
-      const logo = logoRef.current;
-      const navItems = navItemsRef.current;
+ const onResize = () => layout();
+ window.addEventListener('resize', onResize);
 
-      if (logo) {
-        gsap.set(logo, { scale: 0 });
-        gsap.to(logo, {
-          scale: 1,
-          duration: 0.6,
-          ease
-        });
-      }
+ if (document.fonts) {
+ document.fonts.ready.then(layout).catch(() => { });
+ }
 
-      if (navItems) {
-        gsap.set(navItems, { opacity: 0, x: -8 });
-        gsap.to(navItems, {
-          opacity: 1,
-          x: 0,
-          duration: 0.6,
-          ease
-        });
-      }
-    }
+ const menu = mobileMenuRef.current;
+ if (menu) {
+ gsap.set(menu, { visibility: 'hidden', opacity: 0, scaleY: 1, y: 0 });
+ }
 
-    return () => window.removeEventListener('resize', onResize);
-  }, [items, ease, initialLoadAnimation, showMenuButton]);
+ // Play the entrance animation once per mount — never on form focus/typing re-renders.
+ if (initialLoadAnimation && !introPlayedRef.current) {
+ introPlayedRef.current = true;
+ const navItems = navItemsRef.current;
 
-  useEffect(() => {
-    const navItems = navItemsRef.current;
-    if (!navItems) return;
-    if (megaMenuOpen) {
-      gsap.to(navItems, { opacity: 0, pointerEvents: 'none', duration: 0.3, ease: 'power2.out' });
-    } else {
-      gsap.to(navItems, { opacity: 1, pointerEvents: 'auto', duration: 0.3, ease: 'power2.out', delay: 0.2 });
-    }
-  }, [megaMenuOpen]);
+ if (navItems) {
+ gsap.set(navItems, { opacity: 0, x: -8 });
+ gsap.to(navItems, {
+ opacity: 1,
+ x: 0,
+ duration: 0.6,
+ ease,
+ });
+ }
+ }
 
-  const handleEnter = (i: number) => {
-    const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(tl.duration(), {
-      duration: 0.3,
-      ease,
-      overwrite: 'auto'
-    });
+ return () => window.removeEventListener('resize', onResize);
+ }, [navLayoutKey, ease, initialLoadAnimation, showMenuButton]);
+
+ useEffect(() => {
+ const navItems = navItemsRef.current;
+ if (!navItems) return;
+ if (megaMenuOpen) {
+ gsap.to(navItems, { opacity: 0, pointerEvents: 'none', duration: 0.3, ease: 'power2.out' });
+ } else {
+ gsap.to(navItems, { opacity: 1, pointerEvents: 'auto', duration: 0.3, ease: 'power2.out', delay: 0.2 });
+ }
+ }, [megaMenuOpen]);
+
+ const handleEnter = (i: number) => {
+ const tl = tlRefs.current[i];
+ if (!tl) return;
+ activeTweenRefs.current[i]?.kill();
+ activeTweenRefs.current[i] = tl.tweenTo(tl.duration(), {
+ duration: 0.3,
+ ease,
+ overwrite: 'auto'
+ });
+ };
+
+ const handleLeave = (i: number) => {
+ const tl = tlRefs.current[i];
+ if (!tl) return;
+ activeTweenRefs.current[i]?.kill();
+ activeTweenRefs.current[i] = tl.tweenTo(0, {
+ duration: 0.2,
+ ease,
+ overwrite: 'auto'
+ });
+ };
+
+
+
+ const openMegaMenu = () => {
+ setMegaMenuOpen(true);
+ onMobileMenuClick?.();
+ };
+
+ const toggleMobileMenu = () => {
+ if (showMenuButton) {
+ setMegaMenuOpen(!megaMenuOpen);
+ if (!megaMenuOpen) onMobileMenuClick?.();
+ return;
+ }
+
+ const newState = !isMobileMenuOpen;
+ setIsMobileMenuOpen(newState);
+
+ const menu = mobileMenuRef.current;
+
+ if (menu) {
+ if (newState) {
+ gsap.set(menu, { visibility: 'visible' });
+ gsap.fromTo(
+ menu,
+ { opacity: 0, y: 10, scaleY: 1 },
+ {
+ opacity: 1,
+ y: 0,
+ scaleY: 1,
+ duration: 0.3,
+ ease,
+ transformOrigin: 'top center'
+ }
+ );
+ } else {
+ gsap.to(menu, {
+ opacity: 0,
+ y: 10,
+ scaleY: 1,
+ duration: 0.2,
+ ease,
+ transformOrigin: 'top center',
+ onComplete: () => {
+ gsap.set(menu, { visibility: 'hidden' });
+ }
+ });
+ }
+ }
+
+ onMobileMenuClick?.();
+ };
+
+ const isExternalLink = (href: string) =>
+ href.startsWith('http://') ||
+ href.startsWith('https://') ||
+ href.startsWith('//') ||
+ href.startsWith('mailto:') ||
+ href.startsWith('tel:') ||
+ href.startsWith('#');
+
+ const cssVars = {
+  ['--base']: effectiveBaseColor,
+  ['--pill-bg']: effectivePillColor,
+  ['--hover-circle-bg']: effectiveHoverCircleBg,
+  ['--hover-text']: effectiveHoveredPillTextColor,
+  ['--pill-text']: resolvedPillTextColor,
+  ['--nav-h']: '40px',
+  ['--logo']: '36px',
+  ['--pill-pad-x']: '10px',
+  ['--pill-gap']: '2px'
+ } as React.CSSProperties;
+
+ const basePillClasses =
+  'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-none box-border font-semibold text-[11px] xl:text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 outline-none';
+
+ const pillStyleBase: React.CSSProperties = {
+  background: 'var(--pill-bg, #ffffff)',
+  color: 'var(--pill-text, #000000)',
+  paddingLeft: 'var(--pill-pad-x)',
+  paddingRight: 'var(--pill-pad-x)',
+ };
+
+ return (
+ <div
+ ref={wrapperRef}
+ className={`fixed top-0 left-0 right-0 z-[10002] transition-all duration-300 ${
+   isLight
+    ? isScrolled
+     ? 'bg-white/95 backdrop-blur-md border-b border-black/10 shadow-sm'
+     : 'bg-white/80 backdrop-blur-md'
+    : isScrolled
+     ? 'bg-black/95 backdrop-blur-md border-b border-white/[0.08] shadow-sm'
+     : 'bg-black/75 backdrop-blur-md'
+  }`}
+ onBlur={(e) => {
+ if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+ setActiveCategory(null);
+ }
+ }}
+ >
+ <div className="relative pointer-events-none px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+0.625rem)] pb-2.5">
+ <nav
+ className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-[1600px] mx-auto ${className}`}
+ aria-label="Primary"
+ style={cssVars}
+ >
+ <Link prefetch={true}
+ href="/"
+ aria-label="Home"
+ ref={el => {
+ logoRef.current = el;
+ }}
+ className={`shrink-0 inline-flex items-center justify-center overflow-hidden outline-none rounded-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+ isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
+ }`}
+ style={{
+ width: '46px',
+ height: 'var(--nav-h, 40px)',
+ background: 'transparent'
+ }}
+ >
+ <img
+ src={logo || "/pegasus-nav.png"}
+ alt={logoAlt}
+ ref={logoImgRef}
+ className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-transform duration-200 hover:scale-105"
+ />
+ </Link>
+
+ <div
+ ref={navItemsRef}
+ className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
+ style={{
+ height: 'var(--nav-h)',
+ background: 'transparent'
+ }}
+ >
+ <ul
+ role="menubar"
+ className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+ style={{ gap: 'var(--pill-gap)' }}
+ >
+  {displayItems.map((item, i) => {
+  const isCategoryActive = Boolean(activeCategory && categories && activeCategory.id === categories[i]?.id);
+  const isHrefActive = Boolean(
+   activeHref && (
+    activeHref === item.href ||
+    (item.href !== '/' && item.href !== '#' && activeHref.startsWith(item.href))
+   )
+  );
+  const isActive = isHrefActive || isCategoryActive;
+
+  const pillStyle: React.CSSProperties = {
+   ...pillStyleBase,
+   background: isActive ? (effectivePillColor === '#ffffff' ? '#000000' : '#ffffff') : 'var(--pill-bg, #ffffff)',
+   color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : 'var(--pill-text, #000000)',
   };
 
-  const handleLeave = (i: number) => {
-    const tl = tlRefs.current[i];
-    if (!tl) return;
-    activeTweenRefs.current[i]?.kill();
-    activeTweenRefs.current[i] = tl.tweenTo(0, {
-      duration: 0.2,
-      ease,
-      overwrite: 'auto'
-    });
-  };
-
-
-
-  const openMegaMenu = () => {
-    setMegaMenuOpen(true);
-    onMobileMenuClick?.();
-  };
-
-  const toggleMobileMenu = () => {
-    if (showMenuButton) {
-      setMegaMenuOpen(!megaMenuOpen);
-      if (!megaMenuOpen) onMobileMenuClick?.();
-      return;
-    }
-
-    const newState = !isMobileMenuOpen;
-    setIsMobileMenuOpen(newState);
-
-    const menu = mobileMenuRef.current;
-
-    if (menu) {
-      if (newState) {
-        gsap.set(menu, { visibility: 'visible' });
-        gsap.fromTo(
-          menu,
-          { opacity: 0, y: 10, scaleY: 1 },
-          {
-            opacity: 1,
-            y: 0,
-            scaleY: 1,
-            duration: 0.3,
-            ease,
-            transformOrigin: 'top center'
-          }
-        );
-      } else {
-        gsap.to(menu, {
-          opacity: 0,
-          y: 10,
-          scaleY: 1,
-          duration: 0.2,
-          ease,
-          transformOrigin: 'top center',
-          onComplete: () => {
-            gsap.set(menu, { visibility: 'hidden' });
-          }
-        });
-      }
-    }
-
-    onMobileMenuClick?.();
-  };
-
-  const isExternalLink = (href: string) =>
-    href.startsWith('http://') ||
-    href.startsWith('https://') ||
-    href.startsWith('//') ||
-    href.startsWith('mailto:') ||
-    href.startsWith('tel:') ||
-    href.startsWith('#');
-
-  const cssVars = {
-    ['--base']: baseColor,
-    ['--pill-bg']: pillColor,
-    ['--hover-text']: hoveredPillTextColor,
-    ['--pill-text']: resolvedPillTextColor,
-    ['--nav-h']: '42px',
-    ['--logo']: '36px',
-    ['--pill-pad-x']: '12px',
-    ['--pill-gap']: '2px'
-  } as React.CSSProperties;
-
-  const basePillClasses =
-    'relative overflow-hidden inline-flex items-center justify-center h-full no-underline rounded-full box-border font-semibold text-[12px] leading-[0] uppercase tracking-[0.2px] whitespace-nowrap cursor-pointer px-0 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
-
-  const pillStyleBase: React.CSSProperties = {
-    background: 'var(--pill-bg, #fff)',
-    color: 'var(--pill-text, var(--base, #000))',
-    paddingLeft: 'var(--pill-pad-x)',
-    paddingRight: 'var(--pill-pad-x)',
-  };
+  const PillContent = (
+  <>
+  <span
+  className="hover-circle absolute left-1/2 bottom-0 rounded-full z-[1] block pointer-events-none"
+  style={{
+  background: 'var(--hover-circle-bg, #ffffff)',
+  willChange: 'transform'
+  }}
+  aria-hidden="true"
+  ref={el => {
+  circleRefs.current[i] = el;
+  }}
+  />
+  <span className="label-stack relative inline-block leading-[1] z-[2]">
+  <span
+  className="pill-label relative z-[2] inline-block leading-[1]"
+  style={{
+  color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : undefined,
+  willChange: 'transform'
+  }}
+  >
+  {item.label}
+  </span>
+  <span
+  className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
+  style={{
+  color: isActive ? (effectivePillColor === '#ffffff' ? '#ffffff' : '#000000') : 'var(--hover-text, #ffffff)',
+  willChange: 'transform, opacity'
+  }}
+  aria-hidden="true"
+  >
+  {item.label}
+  </span>
+  </span>
+  </>
+  );
 
   return (
-    <div
-      ref={wrapperRef}
-      className={`fixed top-0 left-0 right-0 z-[10002] transition-colors duration-300 bg-black border-b border-white/10`}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          setActiveCategory(null);
-        }
-      }}
-    >
-      <div className="relative pointer-events-none px-4 py-3">
-        <nav
-          className={`pill-nav pointer-events-auto w-full flex items-center gap-2 min-w-0 max-w-7xl mx-auto ${className}`}
-          aria-label="Primary"
-          style={cssVars}
-        >
-          <Link
-            href="/"
-            aria-label="Home"
-            ref={el => {
-              logoRef.current = el;
-            }}
-            className="shrink-0 inline-flex items-center justify-center overflow-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none"
-            style={{
-              width: '64px',
-              height: '64px',
-              background: 'var(--base, #000)'
-            }}
-          >
-            <img
-              src="/pegasus.jpg"
-              alt={logoAlt}
-              ref={logoImgRef}
-              className="w-full h-full object-contain"
-            />
-          </Link>
-
-          <div
-            ref={navItemsRef}
-            className="relative hidden md:flex min-w-0 flex-1 items-center rounded-full overflow-hidden"
-            style={{
-              height: 'var(--nav-h)',
-              background: 'var(--base, #000)'
-            }}
-          >
-            <ul
-              role="menubar"
-              className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              style={{ gap: 'var(--pill-gap)' }}
-            >
-              {displayItems.map((item, i) => {
-                const isActive = activeHref === item.href;
-
-                const pillStyle: React.CSSProperties = { ...pillStyleBase };
-
-                const PillContent = (
-                  <>
-                    <span
-                      className="hover-circle absolute left-1/2 bottom-0 rounded- z-[1] block pointer-events-none"
-                      style={{
-                        background: 'var(--base, #000)',
-                        willChange: 'transform'
-                      }}
-                      aria-hidden="true"
-                      ref={el => {
-                        circleRefs.current[i] = el;
-                      }}
-                    />
-                    <span className="label-stack relative inline-block leading-[1] z-[2]">
-                      <span
-                        className="pill-label relative z-[2] inline-block leading-[1]"
-                        style={{ willChange: 'transform' }}
-                      >
-                        {item.label}
-                      </span>
-                      <span
-                        className="pill-label-hover absolute left-0 top-0 z-[3] inline-block"
-                        style={{
-                          color: 'var(--hover-text, #fff)',
-                          willChange: 'transform, opacity'
-                        }}
-                        aria-hidden="true"
-                      >
-                        {item.label}
-                      </span>
-                    </span>
-                    {isActive && (
-                      <span
-                        className="absolute left-1/2 -bottom-[6px] -translate-x-1/2 w-3 h-3 rounded-full z-[4]"
-                        style={{ background: 'var(--base, #000)' }}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </>
-                );
-
-                return (
-                  <li key={item.href} role="none" className="flex h-full">
-                    {isExternalLink(item.href) ? (
-                      <a
-                        role="menuitem"
-                        href={item.href}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={basePillClasses}
-                        style={pillStyle}
-                        onMouseEnter={() => handleEnter(i)}
-                        onMouseLeave={() => handleLeave(i)}
-                        onFocus={() => handleEnter(i)}
-                        onBlur={() => handleLeave(i)}
-                        onClick={(e) => {
-                          if (categories) {
-                            e.preventDefault();
-                            setActiveCategory(activeCategory === categories[i] ? null : categories[i]);
-                          }
-                        }}
-                      >
-                        {PillContent}
-                      </a>
-                    ) : (
-                      <Link
-                        role="menuitem"
-                        href={item.href}
-                        aria-current={isActive ? 'page' : undefined}
-                        className={basePillClasses}
-                        style={pillStyle}
-                        onMouseEnter={() => handleEnter(i)}
-                        onMouseLeave={() => handleLeave(i)}
-                        onFocus={() => handleEnter(i)}
-                        onBlur={() => handleLeave(i)}
-                      >
-                        {PillContent}
-                      </Link>
-                    )}
-                  </li>
-                );
-              })}
-              {/* Text menu button removed in favor of hamburger */}
-            </ul>
-          </div>
-
-          <div className="shrink-0 ml-auto flex items-center gap-0 pointer-events-auto">
-            <button
-              ref={hamburgerRef}
-              onClick={toggleMobileMenu}
-              aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
-              aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
-              className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 border border-white text-white hover:bg-white hover:text-black transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white`}
-            >
-              <span className="text-sm font-medium tracking-wider">MENU</span>
-              <div className="flex flex-col items-center justify-center gap-[4px] w-5">
-                <span
-                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'rotate-45 translate-y-[6px]' : ''}`}
-                  style={{ background: 'currentColor' }}
-                />
-                <span
-                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'opacity-0' : ''}`}
-                  style={{ background: 'currentColor' }}
-                />
-                <span
-                  className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? '-rotate-45 -translate-y-[6px]' : ''}`}
-                  style={{ background: 'currentColor' }}
-                />
-              </div>
-            </button>
-            <Link
-              href="/contact"
-              className="hidden sm:block px-4 py-2 bg-white text-black border border-white text-sm font-medium tracking-wider hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white"
-            >
-              REQUEST DEMO
-            </Link>
-          </div>
-        </nav>
-
-        {categories && (
-          <GigaMenuDropdown
-            activeCategory={activeCategory}
-            onMouseEnter={() => { }}
-            onMouseLeave={() => { }}
-          />
-        )}
-
-        {showMenuButton ? (
-          <MegaMenuOverlay
-            open={megaMenuOpen}
-            onClose={() => setMegaMenuOpen(false)}
-            categories={categories || MEGA_NAV_CATEGORIES}
-          />
-        ) : null}
-
-        {(!showMenuButton && !categories) ? (
-          <div
-            ref={mobileMenuRef}
-            className="md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-[27px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] z-[998] origin-top max-h-[70vh] overflow-y-auto"
-            style={{
-              ...cssVars,
-              background: 'var(--base, #000)'
-            }}
-          >
-            <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
-              {displayItems.map(item => {
-                const defaultStyle: React.CSSProperties = {
-                  background: 'var(--pill-bg, #fff)',
-                  color: 'var(--pill-text, #000)'
-                };
-                const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
-                  e.currentTarget.style.background = 'var(--base)';
-                  e.currentTarget.style.color = 'var(--hover-text, #fff)';
-                };
-                const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
-                  e.currentTarget.style.background = 'var(--pill-bg, #fff)';
-                  e.currentTarget.style.color = 'var(--pill-text, #000)';
-                };
-
-                const linkClasses =
-                  'block py-3 px-4 text-[16px] font-medium rounded-[50px] transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
-
-                return (
-                  <li key={item.href}>
-                    {isExternalLink(item.href) ? (
-                      <a
-                        href={item.href}
-                        className={linkClasses}
-                        style={defaultStyle}
-                        onMouseEnter={hoverIn}
-                        onMouseLeave={hoverOut}
-                        onFocus={hoverIn}
-                        onBlur={hoverOut}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        {item.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={item.href}
-                        className={linkClasses}
-                        style={defaultStyle}
-                        onMouseEnter={hoverIn}
-                        onMouseLeave={hoverOut}
-                        onFocus={hoverIn}
-                        onBlur={hoverOut}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        {item.label}
-                      </Link>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-    </div>
+  <li key={item.href} role="none" className="flex h-full">
+  {isExternalLink(item.href) ? (
+  <a
+  role="menuitem"
+  href={item.href}
+  aria-current={isActive ? 'page' : undefined}
+  className={basePillClasses}
+  style={pillStyle}
+  onMouseEnter={() => handleEnter(i)}
+  onMouseLeave={() => handleLeave(i)}
+  onFocus={() => handleEnter(i)}
+  onBlur={() => handleLeave(i)}
+  onClick={() => {
+    setActiveCategory(null);
+  }}
+  >
+  {PillContent}
+  </a>
+  ) : (
+  <Link prefetch={true}
+  role="menuitem"
+  href={item.href}
+  aria-current={isActive ? 'page' : undefined}
+  className={basePillClasses}
+  style={pillStyle}
+  onMouseEnter={() => handleEnter(i)}
+  onMouseLeave={() => handleLeave(i)}
+  onFocus={() => handleEnter(i)}
+  onBlur={() => handleLeave(i)}
+  onClick={() => {
+    setActiveCategory(null);
+  }}
+  >
+  {PillContent}
+  </Link>
+  )}
+  </li>
   );
+  })}
+ {/* Text menu button removed in favor of hamburger */}
+ </ul>
+ </div>
+
+ <div className="shrink-0 ml-auto flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+ 
+ <LanguageSwitcher className="mr-1 sm:mr-2" />
+ <button
+ ref={hamburgerRef}
+ onClick={toggleMobileMenu}
+ aria-label={showMenuButton ? 'Toggle site menu' : 'Toggle navigation menu'}
+ aria-expanded={showMenuButton ? megaMenuOpen : isMobileMenuOpen}
+ className={`${showMenuButton ? '' : 'md:hidden'} flex items-center gap-3 px-4 py-2 transition-colors group outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+  isLight
+   ? 'text-black hover:bg-black/10 focus-visible:ring-black'
+   : 'text-white hover:bg-white/10 focus-visible:ring-white'
+ }`}>
+ <span className="text-sm font-medium tracking-wider">MENU</span>
+ <div className="flex flex-col items-center justify-center gap-[4px] w-5">
+ <span
+ className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'rotate-45 translate-y-[6px]' : ''}`}
+ style={{ background: 'currentColor' }}
+ />
+ <span
+ className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? 'opacity-0' : ''}`}
+ style={{ background: 'currentColor' }}
+ />
+ <span
+ className={`hamburger-line w-5 h-[2px] origin-center transition-all duration-300 ${(showMenuButton ? megaMenuOpen : isMobileMenuOpen) ? '-rotate-45 -translate-y-[6px]' : ''}`}
+ style={{ background: 'currentColor' }}
+ />
+ </div>
+ </button>
+ <Link prefetch={true}
+ href="/contact"
+ className={`hidden sm:block px-4 py-2 text-sm font-medium tracking-wider transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+  isLight
+   ? 'bg-black text-white hover:bg-zinc-800 focus-visible:ring-black'
+   : 'bg-white text-black hover:bg-gray-200 focus-visible:ring-white'
+ }`}
+ >
+ REQUEST DEMO
+ </Link>
+ </div>
+ </nav>
+
+ {categories && (
+ <GigaMenuDropdown
+ activeCategory={activeCategory}
+ onMouseEnter={() => { }}
+ onMouseLeave={() => { }}
+ />
+ )}
+
+ {showMenuButton ? (
+ <MegaMenuOverlay
+ open={megaMenuOpen}
+ onClose={() => setMegaMenuOpen(false)}
+ categories={categories || MEGA_NAV_CATEGORIES}
+ />
+ ) : null}
+
+ {(!showMenuButton && !categories) ? (
+ <div
+ ref={mobileMenuRef}
+ className={`md:hidden pointer-events-auto absolute top-[calc(var(--nav-h)+0.75rem)] left-0 right-0 rounded-none z-[998] origin-top max-h-[70vh] overflow-y-auto ${
+   'bg-black/80 backdrop-blur-2xl'
+ }`}
+ style={{
+ ...cssVars,
+ background: 'transparent'
+ }}
+ >
+ <ul className="list-none m-0 p-[3px] flex flex-col gap-[3px]">
+ {displayItems.map(item => {
+  const defaultStyle: React.CSSProperties = {
+  background: 'var(--pill-bg, #ffffff)',
+  color: 'var(--pill-text, #ffffff)'
+  };
+  const hoverIn = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+  e.currentTarget.style.background = 'var(--hover-circle-bg, #ffffff)';
+  e.currentTarget.style.color = 'var(--hover-text, #000000)';
+  };
+  const hoverOut = (e: React.MouseEvent<HTMLAnchorElement> | React.FocusEvent<HTMLAnchorElement>) => {
+  e.currentTarget.style.background = 'var(--pill-bg, #000000)';
+  e.currentTarget.style.color = 'var(--pill-text, #ffffff)';
+  };
+
+ const linkClasses =
+ 'block py-3 px-4 text-[16px] font-medium rounded-none transition-all duration-200 ease-[cubic-bezier(0.25,0.1,0.25,1)] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white outline-none';
+
+ return (
+ <li key={item.href}>
+ {isExternalLink(item.href) ? (
+ <a
+ href={item.href}
+ className={linkClasses}
+ style={defaultStyle}
+ onMouseEnter={hoverIn}
+ onMouseLeave={hoverOut}
+ onFocus={hoverIn}
+ onBlur={hoverOut}
+ onClick={() => setIsMobileMenuOpen(false)}
+ >
+ {item.label}
+ </a>
+ ) : (
+ <Link prefetch={true}
+ href={item.href}
+ className={linkClasses}
+ style={defaultStyle}
+ onMouseEnter={hoverIn}
+ onMouseLeave={hoverOut}
+ onFocus={hoverIn}
+ onBlur={hoverOut}
+ onClick={() => setIsMobileMenuOpen(false)}
+ >
+ {item.label}
+ </Link>
+ )}
+ </li>
+ );
+ })}
+ </ul>
+ </div>
+ ) : null}
+ </div>
+ </div>
+ );
 };
 
 export default PillNav;

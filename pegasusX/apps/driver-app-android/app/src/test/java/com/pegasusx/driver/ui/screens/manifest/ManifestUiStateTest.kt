@@ -144,6 +144,7 @@ class ManifestUiStateTest {
         val expected = setOf(
             "PENDING", "PENDING_REVIEW", "SCHEDULED", "LOADED", "DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED",
             "ARRIVED_SHOP_CLOSED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION",
+            "FISCALIZING", "FISCAL_FAILED",
             "CANCEL_REQUESTED", "NO_CAPACITY", "COMPLETED", "CANCELLED",
             "QUARANTINE", "DELIVERED_ON_CREDIT"
         )

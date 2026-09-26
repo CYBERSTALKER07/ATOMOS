@@ -296,8 +296,23 @@ func (d *NotificationDispatcher) handleTransferEvent(ctx context.Context, payloa
 	if err != nil {
 		return err
 	}
-	// Typed WarehouseEvent / nested transfer payloads.
+	// Typed WarehouseEvent / WarehouseTransferEvent / nested transfer payloads.
 	if e.warehouseID() == "" && e.supplierID() == "" {
+		var xfer events.WarehouseTransferEvent
+		if json.Unmarshal(payload, &xfer) == nil {
+			if e.Type == "" {
+				e.Type = xfer.Type
+			}
+			if e.SupplierID == "" {
+				e.SupplierID = xfer.SupplierID
+			}
+			if e.FactoryID == "" {
+				e.FactoryID = xfer.FactoryID
+			}
+			if e.TransferID == "" {
+				e.TransferID = xfer.TransferID
+			}
+		}
 		var wh events.WarehouseEvent
 		if json.Unmarshal(payload, &wh) == nil {
 			if e.Type == "" {

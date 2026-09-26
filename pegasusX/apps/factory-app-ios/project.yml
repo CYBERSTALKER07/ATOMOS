@@ -29,6 +29,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     sources:
       - path: FactoryApp
         excludes:
@@ -36,6 +38,10 @@ targets:
           - "Views/Components/LoadingBay/PayloadOverrideView.swift"
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: FactoryApp/Assets.xcassets
       - path: FactoryApp/Preview Assets.xcassets
       - path: FactoryApp/GoogleService-Info.plist
@@ -44,10 +50,13 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.factory-app
         INFOPLIST_FILE: FactoryApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: FactoryApp/FactoryApp.entitlements
   FactoryAppTests:
     type: bundle.unit-test
     platform: iOS

@@ -1,6 +1,7 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
+import { usePortalT } from "@/lib/i18n";
 
 interface OrderFiltersProps {
   activeTab: "ALL" | "ACTIVE" | "COMPLETED";
@@ -15,6 +16,13 @@ export function OrderFilters({
   isOrdersRefreshing,
   refreshAll,
 }: OrderFiltersProps) {
+  const t = usePortalT();
+  const tabLabels = {
+    ALL: t("portal.page.orders.filter.all"),
+    ACTIVE: t("portal.page.orders.filter.active_short"),
+    COMPLETED: t("portal.page.orders.filter.completed_short"),
+  } as const;
+
   return (
     <div className="flex items-center gap-3 mb-6 border-b border-[var(--desk-border)] pb-3">
       {(["ALL", "ACTIVE", "COMPLETED"] as const).map((tab) => (
@@ -27,7 +35,7 @@ export function OrderFilters({
               : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
           }`}
         >
-          {tab}
+          {tabLabels[tab]}
         </button>
       ))}
       <div className="flex-1" />
@@ -36,7 +44,7 @@ export function OrderFilters({
         disabled={isOrdersRefreshing}
         onClick={refreshAll}
         className="portal-btn portal-btn--ghost desk-icon-btn text-[var(--desk-text-tertiary)]"
-        aria-label="Refresh orders"
+        aria-label={t("portal.page.orders.action.refresh")}
       >
         <RefreshCw size={16} className={isOrdersRefreshing ? "animate-spin" : ""} />
       </button>

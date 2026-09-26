@@ -30,6 +30,9 @@ fail=0
 
 if [[ "$SKIP_DESKTOP" != "1" ]]; then
   echo "=== Desktop (static + Tauri host target) ==="
+  if [[ -z "${TAURI_UPDATER_PUBKEY:-}" && -z "${TAURI_UPDATER_PUBKEY_PATH:-}" ]]; then
+    export ALLOW_DEV_UPDATER_PUBKEY="${ALLOW_DEV_UPDATER_PUBKEY:-1}"
+  fi
   bash scripts/apply_desktop_updater_pubkey.sh
   pnpm install --frozen-lockfile 2>/dev/null || pnpm install
   for app in "${DESKTOP_APPS[@]}"; do
@@ -60,7 +63,7 @@ fi
 if [[ "$SKIP_IOS" != "1" ]]; then
   echo "=== iOS (simulator) ==="
   declare -a IOS_BUILDS=(
-    "apps/retailer-app-ios/retailerapp/reatilerapp.xcodeproj|reatilerapp"
+    "apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj|retailerapp"
     "apps/supplier-app-ios/SupplierAppIOS.xcodeproj|SupplierAppIOS"
     "apps/driver-app-ios/driverappios/driverappios.xcodeproj|driverappios"
     "apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj|WarehouseAppIOS"

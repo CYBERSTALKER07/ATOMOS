@@ -22,10 +22,12 @@ final class TokenStore {
         token = readKeychain(account: "pegasus_factory_jwt")
         refreshToken = readKeychain(account: "factory_refresh_token")
         factoryId = readKeychain(account: "factory_id")
+        CellTokenCache.token = token ?? ""
     }
 
     func store(auth: AuthResponse) {
         token = auth.token
+        CellTokenCache.token = auth.token
         refreshToken = auth.refreshToken
         factoryId = auth.factoryId
         writeKeychain(account: "pegasus_factory_jwt", value: auth.token)

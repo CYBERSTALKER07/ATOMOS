@@ -1,7 +1,5 @@
-// Package auth provides Firebase ID token verification and middleware.
-//
-// This implementation uses Google Secure Token x509 certs with in-process
-// key caching. It is additive to cookie JWT auth and can be enabled per-route.
+// Package auth provides Firebase ID token verification for login/register
+// `id_token` bodies. HTTP/WS session is pegasus JWT (SessionAuth), not Firebase.
 package auth
 
 import (
@@ -32,7 +30,12 @@ var (
 	ErrFirebaseTokenInvalid = errors.New("firebase token invalid")
 )
 
-// FirebaseVerifier verifies a Firebase bearer token and maps it to Claims.
+// FirebaseLoginUnavailable is the JSON error when the client sent id_token but
+// no verifier was wired (flag off or empty FIREBASE_PROJECT_ID).
+const FirebaseLoginUnavailable = "firebase_login_unavailable"
+
+// FirebaseVerifier verifies a Firebase ID token from login/register JSON `id_token`.
+// It is not used as HTTP Authorization.
 type FirebaseVerifier interface {
 	VerifyIDToken(ctx context.Context, token string) (Claims, error)
 }
@@ -186,22 +189,14 @@ func (v *FirebaseTokenVerifier) VerifyIDToken(ctx context.Context, token string)
 	return claims, nil
 }
 
-// FirebaseAuth attaches verified Firebase claims from Authorization bearer
-// token to request context. It is permissive: invalid/missing token passes
-// through; RequireRole remains the enforcement gate.
+// FirebaseAuth does not attach session claims. HTTP/WS SoT is pegasus JWT
+// via SessionAuth. Firebase ID tokens are accepted only as login/register
+// JSON `id_token`. Kept as an explicit pass-through so a remount cannot mint
+// a second session from Authorization.
 func FirebaseAuth(verifier FirebaseVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if verifier == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-			token := BearerToken(r)
-			if token != "" {
-				if claims, err := verifier.VerifyIDToken(r.Context(), token); err == nil {
-					r = r.WithContext(WithClaims(r.Context(), claims))
-				}
-			}
+			_ = verifier
 			next.ServeHTTP(w, r)
 		})
 	}

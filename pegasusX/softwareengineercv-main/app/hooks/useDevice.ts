@@ -3,38 +3,121 @@
 import { useState, useEffect } from 'react';
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
+ const [isMobile, setIsMobile] = useState(false);
+ const [isTablet, setIsTablet] = useState(false);
 
-  useEffect(() => {
-    const checkDevice = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-    };
+ useEffect(() => {
+ const checkDevice = () => {
+ const width = window.innerWidth;
+ setIsMobile(width < 768);
+ setIsTablet(width >= 768 && width < 1024);
+ };
 
-    checkDevice();
-    window.addEventListener('resize', checkDevice);
-    return () => window.removeEventListener('resize', checkDevice);
-  }, []);
+ checkDevice();
+ window.addEventListener('resize', checkDevice);
+ return () => window.removeEventListener('resize', checkDevice);
+ }, []);
 
-  return { isMobile, isTablet, isDesktop: !isMobile && !isTablet };
+ return { isMobile, isTablet, isDesktop: !isMobile && !isTablet };
 }
 
 export function useReducedMotion() {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+ const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
+ useEffect(() => {
+ const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+ setPrefersReducedMotion(mediaQuery.matches);
 
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
+ const handleChange = (e: MediaQueryListEvent) => {
+ setPrefersReducedMotion(e.matches);
+ };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+ mediaQuery.addEventListener('change', handleChange);
+ return () => mediaQuery.removeEventListener('change', handleChange);
+ }, []);
 
-  return prefersReducedMotion;
+ return prefersReducedMotion;
+}
+
+function detectLowEnd(): boolean {
+ if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+
+ const nav = navigator as Navigator & {
+ deviceMemory?: number;
+ connection?: { saveData?: boolean; effectiveType?: string };
+ };
+
+ const cores = navigator.hardwareConcurrency ?? 8;
+ const memory = nav.deviceMemory; // Chrome/Edge/Android
+ const saveData = !!nav.connection?.saveData;
+ const slowNet =
+ nav.connection?.effectiveType === 'slow-2g' ||
+ nav.connection?.effectiveType === '2g' ||
+ nav.connection?.effectiveType === '3g';
+
+ const isSmallScreen = window.innerWidth <= 768;
+ const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0;
+
+ // Low-end conditions: few cores, low RAM, data-saver / slow network, or budget mobile
+ if (cores <= 4) return true;
+ if (typeof memory === 'number' && memory <= 4) return true;
+ if (saveData || slowNet) return true;
+ if (isTouch && isSmallScreen && cores <= 6) return true;
+
+ return false;
+}
+
+export type PerfProfile = {
+ isMobile: boolean;
+ isTablet: boolean;
+ isDesktop: boolean;
+ isTouch: boolean;
+ prefersReducedMotion: boolean;
+ isLowEnd: boolean;
+ /** Continuous canvas FX (desktop capable only) */
+ allowHeavyFx: boolean;
+ /** Hover canvas FX (pointer devices, not phones) */
+ allowHoverFx: boolean;
+ /** Suggested glyph cell size */
+ cellSize: number;
+ /** Maximum Device Pixel Ratio to prevent GPU fill-rate throttling */
+ maxDpr: number;
+ /** Target frame rate */
+ targetFps: number;
+};
+
+/**
+ * Central gate for heavy digital / 3D / glitch effects.
+ * Mobile, tablet, reduced-motion, and low-end desktops get the light path.
+ */
+export function usePerfProfile(): PerfProfile {
+ const { isMobile, isTablet, isDesktop } = useIsMobile();
+ const prefersReducedMotion = useReducedMotion();
+ const [isLowEnd, setIsLowEnd] = useState(false);
+ const [isTouch, setIsTouch] = useState(false);
+
+ useEffect(() => {
+ setIsLowEnd(detectLowEnd());
+ setIsTouch('ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0);
+ }, []);
+
+ const allowHeavyFx = isDesktop && !prefersReducedMotion && !isLowEnd;
+ const allowHoverFx = !isMobile && !isTouch && !prefersReducedMotion && !isLowEnd;
+ const cellSize = isMobile ? 14 : isTablet ? 12 : isLowEnd ? 13 : 9;
+ const maxDpr = isLowEnd || isMobile ? 1.0 : isTablet ? 1.5 : 2.0;
+ const targetFps = isLowEnd || isMobile ? 30 : 60;
+
+ return {
+ isMobile,
+ isTablet,
+ isDesktop,
+ isTouch,
+ prefersReducedMotion,
+ isLowEnd,
+ allowHeavyFx,
+ allowHoverFx,
+ cellSize,
+ maxDpr,
+ targetFps,
+ };
 }

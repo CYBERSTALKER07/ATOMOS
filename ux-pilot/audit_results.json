@@ -1,0 +1,1317 @@
+{
+  "summary": {
+    "total_apps": 16,
+    "files_scanned": 1592,
+    "total_findings": 49,
+    "health_score": 50,
+    "critical": 5,
+    "high": 40,
+    "medium": 4,
+    "low": 0
+  },
+  "app_breakdown": {
+    "pegasus.x/supplier-desktop": {
+      "app_info": {
+        "id": "pegasus.x/supplier-desktop",
+        "path": "pegasus.x/apps/supplier-desktop",
+        "system": "pegasus.x",
+        "role": "Supplier Operations",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 254,
+      "total_findings": 5,
+      "critical": 1,
+      "high": 4,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/supplier-desktop",
+          "file": "pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx:85",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportTreasuryCsv} className=\"md-btn md-btn-outlined flex items-cente",
+          "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+          "app": "pegasus.x/supplier-desktop",
+          "file": "pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx:165",
+          "title": "Non-Semantic Clickable `<span>` Element",
+          "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+          "code_snippet": "<span className=\"block\" onClick={(e) => e.stopPropagation()} role=\"presentation\">",
+          "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx at line 165, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/supplier-desktop",
+          "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:199",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx at line 199, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "critical",
+          "category": "Visual Hierarchy & Auth Isolation",
+          "rule": "signup-auth: Unauthenticated Route Shell Leak",
+          "app": "pegasus.x/supplier-desktop",
+          "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:19",
+          "title": "Operational Shell Lacks Auth Route Bypass Check",
+          "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+          "code_snippet": "export default function Shell({ children }) without pathname auth check",
+          "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/supplier-desktop",
+          "file": "pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx:443",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasus.x/warehouse-desktop": {
+      "app_info": {
+        "id": "pegasus.x/warehouse-desktop",
+        "path": "pegasus.x/apps/warehouse-desktop",
+        "system": "pegasus.x",
+        "role": "Warehouse Management",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 173,
+      "total_findings": 9,
+      "critical": 0,
+      "high": 9,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx:397",
+          "title": "Non-Semantic Clickable `<span>` Element",
+          "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+          "code_snippet": "<span",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx at line 397, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:170",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportCsv} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 170, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:174",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportPdf} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 174, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx:317",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx at line 317, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx:281",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx at line 281, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx:273",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx at line 273, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx:167",
+          "title": "Non-Semantic Clickable `<span>` Element",
+          "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+          "code_snippet": "<span",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx at line 167, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx:89",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx at line 89, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/warehouse-desktop",
+          "file": "pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx:443",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasus.x/retailer-desktop": {
+      "app_info": {
+        "id": "pegasus.x/retailer-desktop",
+        "path": "pegasus.x/apps/retailer-desktop",
+        "system": "pegasus.x",
+        "role": "Retailer Ordering",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 135,
+      "total_findings": 8,
+      "critical": 1,
+      "high": 7,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx:334",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx at line 334, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx:435",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx at line 435, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx:67",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:199",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx at line 199, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "critical",
+          "category": "Visual Hierarchy & Auth Isolation",
+          "rule": "signup-auth: Unauthenticated Route Shell Leak",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:19",
+          "title": "Operational Shell Lacks Auth Route Bypass Check",
+          "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+          "code_snippet": "export default function Shell({ children }) without pathname auth check",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx:506",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx at line 506, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx:85",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/retailer-desktop",
+          "file": "pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx:443",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasus.x/payloader-tablet": {
+      "app_info": {
+        "id": "pegasus.x/payloader-tablet",
+        "path": "pegasus.x/apps/payloader-tablet",
+        "system": "pegasus.x",
+        "role": "Dock Dispatch Tablet",
+        "stack": "React Native \u2022 Expo SDK 52 \u2022 React Native Web"
+      },
+      "files_scanned": 8,
+      "total_findings": 1,
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "Visual Hierarchy & Aesthetics",
+          "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+          "app": "pegasus.x/payloader-tablet",
+          "file": "pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx:108",
+          "title": "Raw Unicode Emoji Icon Glyph (\u2714)",
+          "description": "Found raw unicode glyphs (\u2714) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+          "code_snippet": "<Text style={styles.certBadge}>\u2714 MANIFEST DIGITALLY SEALED & LOCKED</Text>",
+          "fix_prompt": "In pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx at line 108, replace raw emoji glyphs (\u2714) with semantic Lucide SVG icons from `lucide-react`."
+        }
+      ]
+    },
+    "pegasus.x/telegram-miniapp": {
+      "app_info": {
+        "id": "pegasus.x/telegram-miniapp",
+        "path": "pegasus.x/apps/telegram-miniapp",
+        "system": "pegasus.x",
+        "role": "Telegram Mini-App",
+        "stack": "Vite \u2022 React 19 \u2022 Tailwind CSS"
+      },
+      "files_scanned": 21,
+      "total_findings": 3,
+      "critical": 0,
+      "high": 3,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/telegram-miniapp",
+          "file": "pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx:75",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx at line 75, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/telegram-miniapp",
+          "file": "pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx:106",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx at line 106, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus.x/telegram-miniapp",
+          "file": "pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx:68",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx at line 68, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasusX/admin-portal": {
+      "app_info": {
+        "id": "pegasusX/admin-portal",
+        "path": "pegasusX/apps/admin-portal",
+        "system": "pegasusX",
+        "role": "Superadmin & Billing",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 17,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/retailer-app-desktop": {
+      "app_info": {
+        "id": "pegasusX/retailer-app-desktop",
+        "path": "pegasusX/apps/retailer-app-desktop",
+        "system": "pegasusX",
+        "role": "Retailer Commerce",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 128,
+      "total_findings": 5,
+      "critical": 1,
+      "high": 4,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/retailer-app-desktop",
+          "file": "pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx:436",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 436, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/retailer-app-desktop",
+          "file": "pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx:67",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "critical",
+          "category": "Visual Hierarchy & Auth Isolation",
+          "rule": "signup-auth: Unauthenticated Route Shell Leak",
+          "app": "pegasusX/retailer-app-desktop",
+          "file": "pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx:19",
+          "title": "Operational Shell Lacks Auth Route Bypass Check",
+          "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+          "code_snippet": "export default function Shell({ children }) without pathname auth check",
+          "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/retailer-app-desktop",
+          "file": "pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx:502",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx at line 502, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/retailer-app-desktop",
+          "file": "pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:85",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasusX/supplier-portal": {
+      "app_info": {
+        "id": "pegasusX/supplier-portal",
+        "path": "pegasusX/apps/supplier-portal",
+        "system": "pegasusX",
+        "role": "Supplier Global Enterprise",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 252,
+      "total_findings": 1,
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/supplier-portal",
+          "file": "pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx:85",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportTreasuryCsv} className=\"md-btn md-btn-outlined flex items-cente",
+          "fix_prompt": "In pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasusX/warehouse-portal": {
+      "app_info": {
+        "id": "pegasusX/warehouse-portal",
+        "path": "pegasusX/apps/warehouse-portal",
+        "system": "pegasusX",
+        "role": "Global Fulfillment Node",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 149,
+      "total_findings": 2,
+      "critical": 0,
+      "high": 2,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/warehouse-portal",
+          "file": "pegasusX/apps/warehouse-portal/app/treasury/page.tsx:170",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportCsv} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+          "fix_prompt": "In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 170, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasusX/warehouse-portal",
+          "file": "pegasusX/apps/warehouse-portal/app/treasury/page.tsx:174",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button type=\"button\" onClick={exportPdf} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+          "fix_prompt": "In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 174, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasusX/factory-portal": {
+      "app_info": {
+        "id": "pegasusX/factory-portal",
+        "path": "pegasusX/apps/factory-portal",
+        "system": "pegasusX",
+        "role": "Factory Floor Production",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 99,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasusX/payload-terminal": {
+      "app_info": {
+        "id": "pegasusX/payload-terminal",
+        "path": "pegasusX/apps/payload-terminal",
+        "system": "pegasusX",
+        "role": "Airfreight Payload Station",
+        "stack": "React Native \u2022 Expo SDK 52 \u2022 React Native Web"
+      },
+      "files_scanned": 51,
+      "total_findings": 2,
+      "critical": 0,
+      "high": 0,
+      "medium": 2,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "Visual Hierarchy & Aesthetics",
+          "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+          "app": "pegasusX/payload-terminal",
+          "file": "pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:79",
+          "title": "Raw Unicode Emoji Icon Glyph (\u2713)",
+          "description": "Found raw unicode glyphs (\u2713) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+          "code_snippet": "<Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>\u2713</Text>",
+          "fix_prompt": "In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 79, replace raw emoji glyphs (\u2713) with semantic Lucide SVG icons from `lucide-react`."
+        },
+        {
+          "severity": "medium",
+          "category": "Visual Hierarchy & Aesthetics",
+          "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+          "app": "pegasusX/payload-terminal",
+          "file": "pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:82",
+          "title": "Raw Unicode Emoji Icon Glyph (\ud83d\udd12)",
+          "description": "Found raw unicode glyphs (\ud83d\udd12) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+          "code_snippet": "<Text style={{ color: '#9CA3AF', fontSize: 10 }}>\ud83d\udd12</Text>",
+          "fix_prompt": "In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 82, replace raw emoji glyphs (\ud83d\udd12) with semantic Lucide SVG icons from `lucide-react`."
+        }
+      ]
+    },
+    "pegasus/admin-portal": {
+      "app_info": {
+        "id": "pegasus/admin-portal",
+        "path": "pegasus/apps/admin-portal",
+        "system": "pegasus",
+        "role": "Sovereign Admin Console",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 195,
+      "total_findings": 4,
+      "critical": 0,
+      "high": 4,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/admin-portal",
+          "file": "pegasus/apps/admin-portal/components/MapLocationPicker.tsx:78",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/admin-portal/components/MapLocationPicker.tsx at line 78, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/admin-portal",
+          "file": "pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx:253",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx at line 253, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/admin-portal",
+          "file": "pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx:227",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx at line 227, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/admin-portal",
+          "file": "pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx:322",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx at line 322, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasus/warehouse-portal": {
+      "app_info": {
+        "id": "pegasus/warehouse-portal",
+        "path": "pegasus/apps/warehouse-portal",
+        "system": "pegasus",
+        "role": "Depot Fulfillment",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 36,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/factory-portal": {
+      "app_info": {
+        "id": "pegasus/factory-portal",
+        "path": "pegasus/apps/factory-portal",
+        "system": "pegasus",
+        "role": "Plant Line Operations",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 29,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    },
+    "pegasus/retailer-app-desktop": {
+      "app_info": {
+        "id": "pegasus/retailer-app-desktop",
+        "path": "pegasus/apps/retailer-app-desktop",
+        "system": "pegasus",
+        "role": "Storefront Desktop",
+        "stack": "Next.js 15 (App Router) \u2022 React 19 \u2022 Tauri v2"
+      },
+      "files_scanned": 34,
+      "total_findings": 5,
+      "critical": 1,
+      "high": 4,
+      "medium": 0,
+      "low": 0,
+      "findings": [
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/retailer-app-desktop",
+          "file": "pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx:212",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 212, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/retailer-app-desktop",
+          "file": "pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx:64",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx at line 64, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "critical",
+          "category": "Visual Hierarchy & Auth Isolation",
+          "rule": "signup-auth: Unauthenticated Route Shell Leak",
+          "app": "pegasus/retailer-app-desktop",
+          "file": "pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx:19",
+          "title": "Operational Shell Lacks Auth Route Bypass Check",
+          "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+          "code_snippet": "export default function Shell({ children }) without pathname auth check",
+          "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/retailer-app-desktop",
+          "file": "pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx:321",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx at line 321, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        },
+        {
+          "severity": "high",
+          "category": "Accessibility (WCAG 2.1 AA)",
+          "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+          "app": "pegasus/retailer-app-desktop",
+          "file": "pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:77",
+          "title": "Icon Button Missing Accessible Name (`aria-label`)",
+          "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+          "code_snippet": "<button",
+          "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 77, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+        }
+      ]
+    },
+    "pegasus/payload-terminal": {
+      "app_info": {
+        "id": "pegasus/payload-terminal",
+        "path": "pegasus/apps/payload-terminal",
+        "system": "pegasus",
+        "role": "Payload Scanner Terminal",
+        "stack": "React Native \u2022 Expo SDK 52 \u2022 React Native Web"
+      },
+      "files_scanned": 11,
+      "total_findings": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "findings": []
+    }
+  },
+  "findings": [
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx:85",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportTreasuryCsv} className=\"md-btn md-btn-outlined flex items-cente",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx:165",
+      "title": "Non-Semantic Clickable `<span>` Element",
+      "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+      "code_snippet": "<span className=\"block\" onClick={(e) => e.stopPropagation()} role=\"presentation\">",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx at line 165, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:199",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx at line 199, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "critical",
+      "category": "Visual Hierarchy & Auth Isolation",
+      "rule": "signup-auth: Unauthenticated Route Shell Leak",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:19",
+      "title": "Operational Shell Lacks Auth Route Bypass Check",
+      "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+      "code_snippet": "export default function Shell({ children }) without pathname auth check",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx:443",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx:397",
+      "title": "Non-Semantic Clickable `<span>` Element",
+      "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+      "code_snippet": "<span",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx at line 397, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:170",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportCsv} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 170, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:174",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportPdf} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 174, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx:317",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx at line 317, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx:281",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx at line 281, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx:273",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx at line 273, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx:167",
+      "title": "Non-Semantic Clickable `<span>` Element",
+      "description": "A `<span>` element has an `onClick` handler but lacks `role=\"button\"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.",
+      "code_snippet": "<span",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx at line 167, convert the clickable `<span>` into a semantic `<button>` element or add `role=\"button\" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx:89",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx at line 89, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/warehouse-desktop",
+      "file": "pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx:443",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx:334",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx at line 334, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx:435",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx at line 435, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx:67",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:199",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx at line 199, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "critical",
+      "category": "Visual Hierarchy & Auth Isolation",
+      "rule": "signup-auth: Unauthenticated Route Shell Leak",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:19",
+      "title": "Operational Shell Lacks Auth Route Bypass Check",
+      "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+      "code_snippet": "export default function Shell({ children }) without pathname auth check",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx:506",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx at line 506, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx:85",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/retailer-desktop",
+      "file": "pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx:443",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "medium",
+      "category": "Visual Hierarchy & Aesthetics",
+      "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+      "app": "pegasus.x/payloader-tablet",
+      "file": "pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx:108",
+      "title": "Raw Unicode Emoji Icon Glyph (\u2714)",
+      "description": "Found raw unicode glyphs (\u2714) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+      "code_snippet": "<Text style={styles.certBadge}>\u2714 MANIFEST DIGITALLY SEALED & LOCKED</Text>",
+      "fix_prompt": "In pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx at line 108, replace raw emoji glyphs (\u2714) with semantic Lucide SVG icons from `lucide-react`."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/telegram-miniapp",
+      "file": "pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx:75",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx at line 75, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/telegram-miniapp",
+      "file": "pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx:106",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx at line 106, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus.x/telegram-miniapp",
+      "file": "pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx:68",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx at line 68, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/retailer-app-desktop",
+      "file": "pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx:436",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 436, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/retailer-app-desktop",
+      "file": "pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx:67",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "critical",
+      "category": "Visual Hierarchy & Auth Isolation",
+      "rule": "signup-auth: Unauthenticated Route Shell Leak",
+      "app": "pegasusX/retailer-app-desktop",
+      "file": "pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx:19",
+      "title": "Operational Shell Lacks Auth Route Bypass Check",
+      "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+      "code_snippet": "export default function Shell({ children }) without pathname auth check",
+      "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/retailer-app-desktop",
+      "file": "pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx:502",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx at line 502, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/retailer-app-desktop",
+      "file": "pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:85",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/supplier-portal",
+      "file": "pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx:85",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportTreasuryCsv} className=\"md-btn md-btn-outlined flex items-cente",
+      "fix_prompt": "In pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/warehouse-portal",
+      "file": "pegasusX/apps/warehouse-portal/app/treasury/page.tsx:170",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportCsv} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+      "fix_prompt": "In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 170, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasusX/warehouse-portal",
+      "file": "pegasusX/apps/warehouse-portal/app/treasury/page.tsx:174",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button type=\"button\" onClick={exportPdf} className=\"md-btn md-btn-outlined text-sm px-3 py-1.5 flex",
+      "fix_prompt": "In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 174, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "medium",
+      "category": "Visual Hierarchy & Aesthetics",
+      "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+      "app": "pegasusX/payload-terminal",
+      "file": "pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:79",
+      "title": "Raw Unicode Emoji Icon Glyph (\u2713)",
+      "description": "Found raw unicode glyphs (\u2713) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+      "code_snippet": "<Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>\u2713</Text>",
+      "fix_prompt": "In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 79, replace raw emoji glyphs (\u2713) with semantic Lucide SVG icons from `lucide-react`."
+    },
+    {
+      "severity": "medium",
+      "category": "Visual Hierarchy & Aesthetics",
+      "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise UI",
+      "app": "pegasusX/payload-terminal",
+      "file": "pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:82",
+      "title": "Raw Unicode Emoji Icon Glyph (\ud83d\udd12)",
+      "description": "Found raw unicode glyphs (\ud83d\udd12) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.",
+      "code_snippet": "<Text style={{ color: '#9CA3AF', fontSize: 10 }}>\ud83d\udd12</Text>",
+      "fix_prompt": "In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 82, replace raw emoji glyphs (\ud83d\udd12) with semantic Lucide SVG icons from `lucide-react`."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/admin-portal",
+      "file": "pegasus/apps/admin-portal/components/MapLocationPicker.tsx:78",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/admin-portal/components/MapLocationPicker.tsx at line 78, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/admin-portal",
+      "file": "pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx:253",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx at line 253, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/admin-portal",
+      "file": "pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx:227",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx at line 227, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/admin-portal",
+      "file": "pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx:322",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx at line 322, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/retailer-app-desktop",
+      "file": "pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx:212",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 212, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/retailer-app-desktop",
+      "file": "pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx:64",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx at line 64, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "critical",
+      "category": "Visual Hierarchy & Auth Isolation",
+      "rule": "signup-auth: Unauthenticated Route Shell Leak",
+      "app": "pegasus/retailer-app-desktop",
+      "file": "pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx:19",
+      "title": "Operational Shell Lacks Auth Route Bypass Check",
+      "description": "Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.",
+      "code_snippet": "export default function Shell({ children }) without pathname auth check",
+      "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/retailer-app-desktop",
+      "file": "pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx:321",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx at line 321, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "high",
+      "category": "Accessibility (WCAG 2.1 AA)",
+      "rule": "WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name",
+      "app": "pegasus/retailer-app-desktop",
+      "file": "pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:77",
+      "title": "Icon Button Missing Accessible Name (`aria-label`)",
+      "description": "Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.",
+      "code_snippet": "<button",
+      "fix_prompt": "In pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 77, add a descriptive `aria-label=\"...\"` to the `<button>` element describing the action it triggers."
+    },
+    {
+      "severity": "critical",
+      "category": "Visual Hierarchy & Auth Isolation",
+      "rule": "signup-auth / cognitive-load: Navigation Shell Leak",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/app/layout.tsx:18",
+      "title": "Dual Navigation Shell Leaking Into Public Login View",
+      "description": "Visual Playwright capture (desktop_1280.png, tablet_768.png) confirms the root layout wraps public `/auth/login` with `SupplierShell`. Guest users see authenticated operator telemetry ('SP VP Operations', 'Depot Shipments 4 Dispatches') while trying to log in.",
+      "code_snippet": "SupplierShell wraps all children at root app/layout.tsx",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/layout.tsx, isolate public auth pages into `app/(auth)/layout.tsx` and move `SupplierShell` into `app/(portal)/layout.tsx` so unauthenticated guests never render internal operational navigation bars."
+    },
+    {
+      "severity": "high",
+      "category": "Responsive Layout & Viewports",
+      "rule": "layout-responsive: 768px Tablet Sidebar Collision",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:57",
+      "title": "Unresponsive Fixed 260px Sidebar Squashing Tablet Viewport",
+      "description": "Playwright tablet capture (tablet_768.png) reveals the 260px desktop rail remains rigid on 768px portrait viewports, reducing the main auth canvas to 508px and truncating enterprise branding elements.",
+      "code_snippet": "aside className=\"w-64 border-r border-zinc-800 ...\"",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, change the sidebar to be hidden by default on mobile/tablet (`hidden lg:flex flex-col w-64`) and introduce a sheet/drawer toggle for smaller screens."
+    },
+    {
+      "severity": "high",
+      "category": "Forms, Feedback & Error Handling",
+      "rule": "forms-feedback: High-Glare Contrast Collision & Borderless CTA",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:88",
+      "title": "Unstyled Form Input Whiteout and Borderless CTA Action",
+      "description": "Visual inspection of Playwright captures (desktop_1280.png, mobile_375.png) shows Country and Phone inputs rendering as stark solid white blocks (#FFFFFF) without borders on an ultra-dark background (#000000), while the primary CTA 'Continue' renders as unbordered white text with zero background container.",
+      "code_snippet": "<button type=\"submit\">Continue</button>",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, style form inputs with `bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500` and give the submit button standard primary styling `w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-lg shadow-lg`."
+    },
+    {
+      "severity": "medium",
+      "category": "Visual Hierarchy & Aesthetics",
+      "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise Theme Switcher",
+      "app": "pegasus.x/supplier-desktop",
+      "file": "pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:45",
+      "title": "Raw Unicode Moon Emoji in Theme Switcher",
+      "description": "Playwright mobile (mobile_375.png) and desktop captures clearly display a raw unicode crescent moon character (\ud83c\udf19) used as an unstyled theme toggle button without aria-label or vector geometry.",
+      "code_snippet": "<button onClick={toggleTheme}>\ud83c\udf19</button>",
+      "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, replace the raw emoji `\ud83c\udf19` with `import { Moon } from 'lucide-react'` and render `<Moon className=\"w-4 h-4 text-zinc-400\" aria-hidden=\"true\" />`."
+    }
+  ]
+}

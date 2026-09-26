@@ -31,6 +31,8 @@ type PublicReceiptView struct {
 	PartyCopy     string        `json:"party_copy,omitempty"`
 	CompanyName   string        `json:"company_name,omitempty"`
 	LineItems     []ReceiptLine `json:"line_items,omitempty"`
+	MarketCode    string        `json:"market_code,omitempty"`
+	FiscalAdapter string        `json:"fiscal_adapter,omitempty"`
 }
 
 func resolveReceiptFormat(r *http.Request) string {
@@ -70,7 +72,7 @@ func (s *Service) orderForReceipt(r *http.Request, orderID string) (*Order, erro
 	if s == nil || s.repo == nil || strings.TrimSpace(orderID) == "" {
 		return nil, nil
 	}
-	o, ok, err := s.repo.GetOrder(r.Context(), orderID)
+	o, ok, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil || !ok {
 		return nil, err
 	}
@@ -121,6 +123,8 @@ func writeReceiptResponse(w http.ResponseWriter, r *http.Request, doc ReceiptDoc
 			PartyCopy:     string(doc.PartyCopy),
 			CompanyName:   doc.CompanyName,
 			LineItems:     doc.LineItems,
+			MarketCode:    doc.MarketCode,
+			FiscalAdapter: doc.FiscalAdapter,
 		}
 		writeJSON(w, http.StatusOK, view)
 	}
@@ -226,7 +230,9 @@ func authorizeReceiptParty(claims auth.Claims, o Order, party ReceiptPartyCopy) 
 	switch party {
 	case PartyCopyRetailer:
 		if claims.Role == auth.RoleRetailer {
-			return claims.Subject != "" && claims.Subject == o.RetailerID
+			// B3 M-P0-4: receipt party scoped to org, not staff Subject.
+			orgID := auth.ResolveRetailerOrgID(claims)
+			return orgID != "" && orgID == o.RetailerID
 		}
 		// Admin may inspect retailer copy within supplier tenant.
 		if claims.Role == auth.RoleAdmin {

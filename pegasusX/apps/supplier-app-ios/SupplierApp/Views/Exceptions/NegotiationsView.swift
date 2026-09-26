@@ -9,6 +9,6 @@ struct NegotiationsView: View {
             title: "Negotiations disabled",
             message: "Quantity negotiation is not available. Use shop-closed, claims, or missing-items for delivery exceptions."
         )
-        .navigationTitle("Negotiations")
+        .navigationTitle("mobile_supplier.ui.negotiations")
     }
 }

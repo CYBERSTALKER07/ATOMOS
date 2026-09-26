@@ -182,7 +182,7 @@ export default function Home() {
             </AnimatePresence>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+              <label htmlFor="retailer-login-phone" className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
                 Protocol Handle
               </label>
               <div className="relative group">
@@ -191,6 +191,8 @@ export default function Home() {
                   size={18}
                 />
                 <input
+                  id="retailer-login-phone"
+                  aria-label="Protocol Handle"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -202,7 +204,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
+              <label htmlFor="retailer-login-password" className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-1">
                 Access Cipher
               </label>
               <div className="relative group">
@@ -211,6 +213,8 @@ export default function Home() {
                   size={18}
                 />
                 <input
+                  id="retailer-login-password"
+                  aria-label="Access Cipher"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}

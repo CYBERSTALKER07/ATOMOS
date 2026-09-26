@@ -1,9 +1,7 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
-import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 import { authFetch } from './authSession';
+import { fcmRegistrationFromNativePush } from './fcmDeviceToken';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -28,13 +26,8 @@ async function postDeviceToken(token: string, platform: string): Promise<void> {
   }
 }
 
-/** Register Expo push + any firebase_token returned at login (server-side FCM routing). */
+/** Register an FCM registration token. Expo push tokens are not FCM — do not POST them. */
 export async function registerPayloadPushTokens(): Promise<void> {
-  const firebaseToken = await SecureStore.getItemAsync('payloader_firebase_token');
-  if (firebaseToken) {
-    await postDeviceToken(firebaseToken, Platform.OS === 'ios' ? 'IOS' : 'ANDROID');
-  }
-
   if (!Device.isDevice) return;
 
   const { status: existing } = await Notifications.getPermissionsAsync();
@@ -45,11 +38,12 @@ export async function registerPayloadPushTokens(): Promise<void> {
   }
   if (finalStatus !== 'granted') return;
 
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    Constants.easConfig?.projectId;
-  const pushToken = await Notifications.getExpoPushTokenAsync(
-    projectId ? { projectId } : undefined,
-  );
-  await postDeviceToken(pushToken.data, 'EXPO');
+  try {
+    const native = await Notifications.getDevicePushTokenAsync();
+    const fcm = fcmRegistrationFromNativePush(native);
+    if (!fcm) return;
+    await postDeviceToken(fcm.token, fcm.platform);
+  } catch {
+    // Simulator / iOS APNs / missing google-services: no FCM token to store.
+  }
 }

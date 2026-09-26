@@ -1,7 +1,8 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from 'react';
-import { warehouseCreateVehicleKey } from '@pegasusx/api-client';
+import { warehouseCreateVehicleKey } from '@pegasusx/api-core';
 import { apiFetch } from '@/lib/auth';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useWarehouseVehiclesLive } from '@/lib/use-warehouse-vehicles-live';
@@ -12,6 +13,7 @@ import { useWarehouseSessionReconcile } from '@/lib/use-warehouse-session-reconc
 import { VehiclesList } from '../../components/vehicles/VehiclesList';
 
 export default function VehiclesPage() {
+  const t = usePortalT();
   const { vehicles, loading, error, liveMessage, reload } = useWarehouseVehiclesLive();
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ label: '', license_plate: '', vehicle_class: 'CLASS_A' });
@@ -52,8 +54,8 @@ export default function VehiclesPage() {
     <PageTransition>
       <PageChrome
         icon="fleet"
-        title="Trucks"
-        description="Fleet trucks with capacity, driver assignment, and live availability."
+        title={t("portal.nav.trucks")}
+        description={t("warehouse_portal.residual.text.fleet_trucks_with_capacity_driver_assignment_and_live_availabili")}
         loading={loading}
         skeletonVariant="table"
         error={error}
@@ -74,34 +76,44 @@ export default function VehiclesPage() {
 
         {showCreate && (
           <form onSubmit={handleCreate} className="p-4 rounded-xl border border-(--border) space-y-3 mb-4" style={{ background: 'var(--surface)' }}>
-            <h2 className="text-sm font-semibold">New truck</h2>
+            <h2 className="text-sm font-semibold">{t("warehouse_portal.vehicles.text.new_truck")}</h2>
             {createError && <p className="text-sm" style={{ color: 'var(--danger)' }}>{createError}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input
-                placeholder="Label (e.g. Truck-01)"
-                value={form.label}
-                onChange={e => setForm({ ...form, label: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
-              <input
-                placeholder="License plate"
-                value={form.license_plate}
-                onChange={e => setForm({ ...form, license_plate: e.target.value })}
-                required
-                className="px-3 py-2 rounded-lg border text-sm"
-                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-              />
+              <div>
+                <label htmlFor="vehicle-label-input" className="sr-only">{t("warehouse_portal.vehicles.text.label_e_g_truck_01")}</label>
+                <input
+                  id="vehicle-label-input"
+                  aria-label={t("warehouse_portal.vehicles.text.label_e_g_truck_01")}
+                  placeholder={t("warehouse_portal.vehicles.text.label_e_g_truck_01")}
+                  value={form.label}
+                  onChange={e => setForm({ ...form, label: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="vehicle-plate-input" className="sr-only">{t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}</label>
+                <input
+                  id="vehicle-plate-input"
+                  aria-label={t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}
+                  placeholder={t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}
+                  value={form.license_plate}
+                  onChange={e => setForm({ ...form, license_plate: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border text-sm"
+                  style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                />
+              </div>
               <select
                 value={form.vehicle_class}
                 onChange={e => setForm({ ...form, vehicle_class: e.target.value })}
                 className="px-3 py-2 rounded-lg border text-sm"
                 style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
               >
-                <option value="CLASS_A">Class A (50 VU)</option>
-                <option value="CLASS_B">Class B (150 VU)</option>
-                <option value="CLASS_C">Class C (400 VU)</option>
+                <option value="CLASS_A">{t("warehouse_portal.vehicles.text.class_a_50_vu")}</option>
+                <option value="CLASS_B">{t("warehouse_portal.vehicles.text.class_b_150_vu")}</option>
+                <option value="CLASS_C">{t("warehouse_portal.vehicles.text.class_c_400_vu")}</option>
               </select>
             </div>
             <button type="submit" disabled={creating} className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50">

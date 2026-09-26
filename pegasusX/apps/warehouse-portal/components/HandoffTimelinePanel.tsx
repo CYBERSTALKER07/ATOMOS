@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PulseTimeline } from '@pegasusx/pulse-ui';
 import type { PulseEvent } from '@pegasusx/types';
@@ -31,11 +32,14 @@ export default function HandoffTimelinePanel({
   className?: string;
   source?: HandoffSource;
 }) {
+  const t = usePortalT();
   const [events, setEvents] = useState<PulseEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       if (source === 'factory') {
         const res = await apiFetch('/v1/factory/pulse');
@@ -47,7 +51,7 @@ export default function HandoffTimelinePanel({
         setEvents((data.events ?? []).filter(isHandoffEvent));
       }
     } catch {
-      setEvents([]);
+      setError('pulse_failed');
     } finally {
       setLoading(false);
     }
@@ -72,10 +76,11 @@ export default function HandoffTimelinePanel({
   }, [load, source]);
 
   const subtitle = useMemo(() => {
+    if (error) return error;
     if (loading) return 'Loading handoff chain…';
     if (events.length === 0) return 'No preorder → dispatch → seal events in the recent pulse window.';
     return `${events.length} handoff event(s) in recent pulse.`;
-  }, [events.length, loading]);
+  }, [error, events.length, loading]);
 
   const refreshClass = source === 'factory' ? 'desk-btn-ghost text-xs px-2 py-1' : 'portal-btn portal-btn--ghost text-xs';
 
@@ -83,14 +88,14 @@ export default function HandoffTimelinePanel({
     <div className={className}>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide opacity-70">Handoff timeline</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide opacity-70">{t("warehouse_portal.dispatch.text.handoff_timeline")}</h3>
           <p className="text-xs opacity-60 mt-1">{subtitle}</p>
         </div>
         <button type="button" className={refreshClass} onClick={() => void load()}>
           Refresh
         </button>
       </div>
-      <PulseTimeline events={events} loading={loading} />
+      <PulseTimeline events={events} loading={loading} error={error} />
     </div>
   );
 }

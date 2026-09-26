@@ -6,25 +6,45 @@ struct ResponsiveGridView<Data: RandomAccessCollection, Content: View>: View whe
     @ViewBuilder let content: (Data.Element) -> Content
 
     var body: some View {
-        if horizontalSizeClass == .regular {
+        GeometryReader { proxy in
+            let width = proxy.size.width
             ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 16)], spacing: 16) {
-                    ForEach(data) { item in
-                        content(item)
-                            .padding()
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
-                            .cornerRadius(10)
+                if width < 520 {
+                    LazyVStack(spacing: 12) {
+                        ForEach(data) { item in
+                            content(item)
+                        }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                } else if width < 860 {
+                    LazyVGrid(
+                        columns: [
+                            GridItem(.flexible(minimum: 240), spacing: 14),
+                            GridItem(.flexible(minimum: 240), spacing: 14)
+                        ],
+                        spacing: 14
+                    ) {
+                        ForEach(data) { item in
+                            content(item)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                } else {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 300, maximum: 420), spacing: 16)],
+                        spacing: 16
+                    ) {
+                        ForEach(data) { item in
+                            content(item)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
                 }
-                .padding()
             }
-            .background(Color(UIColor.systemGroupedBackground))
-        } else {
-            ResponsiveGridContentWrapper {
-                ForEach(data) { item in
-                    content(item)
-                }
-            }
+            .background(TacticalTheme.canvas)
         }
     }
 }

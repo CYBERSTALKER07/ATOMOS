@@ -285,3 +285,25 @@ data class ReassignOrderRequest(
 data class StatusResponse(
     val status: String = "",
 )
+
+@Serializable
+data class ScoredException(
+    @SerialName("exception_id") val exceptionId: String = "",
+    val type: String = "",
+    val severity: String = "",
+    @SerialName("order_id") val orderId: String = "",
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("amount_minor") val amountMinor: Long = 0,
+    val score: Long = 0,
+    @SerialName("severity_rank") val severityRank: Long = 0,
+    @SerialName("age_minutes") val ageMinutes: Long = 0,
+    @SerialName("retailer_segment") val retailerSegment: String = "",
+    @SerialName("recommended_playbook_ids") val recommendedPlaybookIds: List<String> = emptyList(),
+    @SerialName("top_playbook_name") val topPlaybookName: String = "",
+    @SerialName("created_at") val createdAt: String = "",
+)
+
+@Serializable
+data class ScoredExceptionsResponse(
+    val exceptions: List<ScoredException> = emptyList(),
+)

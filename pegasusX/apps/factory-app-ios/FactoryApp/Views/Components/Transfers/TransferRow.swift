@@ -9,7 +9,7 @@ struct TransferRow: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
                         .font(.subheadline.bold())
-                    Text("Transfer \(transfer.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.transfer_prefix", "\(transfer.id.prefix(8))"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

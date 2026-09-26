@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.dashboard.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun ServiceGrid(
@@ -54,7 +57,7 @@ fun ServiceGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ServiceTile(
-                title = "Buy workspace",
+                title = stringResource(R.string.mobile_retailer_ui_buy_workspace),
                 subtitle = "Browse products and restock",
                 icon = Icons.Rounded.ShoppingCart,
                 onClick = onOpenCatalog,
@@ -63,7 +66,7 @@ fun ServiceGrid(
                     .height(152.dp),
             )
             ServiceTile(
-                title = "Orders",
+                title = stringResource(R.string.portal_nav_orders),
                 subtitle = "$activeOrderCount active now",
                 icon = Icons.Rounded.Inventory2,
                 onClick = onOpenOrders,
@@ -78,7 +81,7 @@ fun ServiceGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ServiceTile(
-                title = "Deliveries",
+                title = stringResource(R.string.mobile_retailer_ui_deliveries),
                 subtitle = "Track inbound on map",
                 icon = Icons.Rounded.Map,
                 onClick = onOpenDeliveries,
@@ -93,19 +96,19 @@ fun ServiceGrid(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     DashboardQuickAction(
                         icon = Icons.Outlined.Insights,
-                        label = "Analytics",
+                        label = stringResource(R.string.portal_nav_analytics),
                         onClick = onOpenInsights,
                         modifier = Modifier.weight(1f),
                     )
                     DashboardQuickAction(
                         icon = Icons.Outlined.DeviceHub,
-                        label = "Control Tower",
+                        label = stringResource(R.string.portal_nav_control_tower),
                         onClick = onOpenControlTower,
                         modifier = Modifier.weight(1f),
                     )
                 }
                 ServiceTileCompact(
-                    title = "Suppliers",
+                    title = stringResource(R.string.retailer_desktop_residual_text_suppliers),
                     icon = Icons.Rounded.Storefront,
                     onClick = onOpenSuppliers,
                     modifier = Modifier.fillMaxWidth(),
@@ -118,19 +121,19 @@ fun ServiceGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ServiceTileCompact(
-                title = "Procurement",
+                title = stringResource(R.string.portal_nav_procurement),
                 icon = Icons.AutoMirrored.Rounded.TrendingUp,
                 onClick = onOpenProcurement,
                 modifier = Modifier.weight(1f),
             )
             ServiceTileCompact(
-                title = "History",
+                title = stringResource(R.string.warehouse_portal_returns_text_history),
                 icon = Icons.Rounded.History,
                 onClick = onOpenOrders,
                 modifier = Modifier.weight(1f),
             )
             ServiceTileCompact(
-                title = "Search",
+                title = stringResource(R.string.supplier_portal_supplier_shell_text_search),
                 icon = Icons.Rounded.Search,
                 onClick = onOpenCatalog,
                 modifier = Modifier.weight(1f),

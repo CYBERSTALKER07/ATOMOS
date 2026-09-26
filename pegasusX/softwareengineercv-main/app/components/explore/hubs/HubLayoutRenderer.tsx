@@ -1,0 +1,96 @@
+'use client';
+
+import type { CategoryHub } from '@/app/data/topicPages';
+import { HubTopicGrid } from '@/app/components/page-sections';
+import type { HubLayoutConfig } from '@/app/lib/explore/hubLayouts';
+import { O9FleekPageLayout } from '@/app/components/fleek/o9';
+import FleekPageShell from '@/app/components/fleek/FleekPageShell';
+import { EDITORIAL_IMAGES } from '@/app/components/ContentCard';
+import { useLanguage } from '@/app/context/LanguageContext';
+import { getBusinessValueTabs } from '@/app/data/o9FleekDefaults';
+
+type HubLayoutRendererProps = {
+  hub: CategoryHub;
+  config: HubLayoutConfig;
+};
+
+export default function HubLayoutRenderer({ hub, config }: HubLayoutRendererProps) {
+  const { language, t } = useLanguage();
+  const categoryLabel = t(`nav_${hub.id}`, hub.label);
+
+  // Capabilities: forward config.capabilities or map from hub topics
+  const defaultCapabilities = hub.topics.map((item, i) => {
+    const content = item.content[language] || item.content.en;
+    return {
+      id: item.slug,
+      title: content.title,
+      description: content.summary,
+      href: `/${hub.id}/${item.slug}`,
+      image: EDITORIAL_IMAGES[i % EDITORIAL_IMAGES.length],
+      tag: categoryLabel,
+    };
+  });
+  const resolvedCapabilities = config.capabilities ?? defaultCapabilities;
+
+  // Differentiators: forward config.differentiators or map from hub topics
+  const defaultDifferentiators = hub.topics.slice(0, 4).map((item) => {
+    const content = item.content[language] || item.content.en;
+    return {
+      title: content.title,
+      description: content.summary,
+    };
+  });
+  const resolvedDifferentiators = config.differentiators ?? defaultDifferentiators;
+
+  // Business Value: forward config.businessValue or use localized defaults for this hub
+  const resolvedBusinessValue =
+    config.businessValue ?? getBusinessValueTabs(hub.id, undefined, language);
+
+  // Enterprise FAQ: forward config.faq or fallback to default enterprise FAQ
+  const resolvedFaq = config.faq ?? true;
+
+  return (
+    <FleekPageShell activeHref={`/${hub.id}`}>
+      <O9FleekPageLayout
+        categoryLabel={categoryLabel}
+        categoryHref={`/${hub.id}`}
+        title={config.intro?.title ? t(`hub_${hub.id}_title`, config.intro.title) : categoryLabel}
+        summary={config.intro?.body ? t(`hub_${hub.id}_body`, config.intro.body) : `${categoryLabel}`}
+        heroImageSrc={EDITORIAL_IMAGES[hub.topics.length % EDITORIAL_IMAGES.length]}
+        showProofStrip={false}
+        hubId={hub.id}
+        differentiators={resolvedDifferentiators}
+        differentiatorsTitle={t(`hub_${hub.id}_diff_title`, `Why leaders choose Pegasus ${categoryLabel}`)}
+        businessValue={resolvedBusinessValue}
+        capabilities={resolvedCapabilities}
+        capabilitiesTitle={`${categoryLabel}`}
+        faq={resolvedFaq}
+        cta={config.cta}
+        showTourCta
+        details={
+          <>
+            {config.intro ? (
+              <section className="docs-section">
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500 dark:text-white/45">
+                  {config.intro.eyebrow}
+                </p>
+                <h2 className="mt-3 max-w-3xl text-3xl font-semibold tracking-tight md:text-4xl text-zinc-900 dark:text-white">
+                  {t(`hub_${hub.id}_title`, config.intro.title)}
+                </h2>
+                <p className="mt-4 max-w-3xl text-base leading-relaxed text-zinc-600 dark:text-white/70">
+                  {t(`hub_${hub.id}_body`, config.intro.body)}
+                </p>
+              </section>
+            ) : null}
+            <HubTopicGrid
+              hubId={hub.id}
+              hubLabel={categoryLabel}
+              topics={hub.topics}
+              layout={config.topicGridLayout}
+            />
+          </>
+        }
+      />
+    </FleekPageShell>
+  );
+}

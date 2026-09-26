@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type {
   WarehouseFleetDriver,
   WarehouseFleetVehicle,
@@ -32,6 +35,7 @@ export function DriversList({
   assigningDriverId,
   handleAssignVehicle,
 }: DriversListProps) {
+  const t = usePortalT();
   function assignedVehicleLabel(driver: WarehouseFleetDriver) {
     if (!driver.vehicle_id) {
       return 'Unassigned';
@@ -79,7 +83,7 @@ export function DriversList({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-(--muted)">
         <Icon name="fleet" size={48} className="mb-3 opacity-40" />
-        <p className="text-sm">No drivers registered</p>
+        <p className="text-sm">{t("warehouse_portal.drivers.drivers_list.text.no_drivers_registered")}</p>
       </div>
     );
   }
@@ -89,11 +93,11 @@ export function DriversList({
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="border-b border-(--border)">
-            <th className="text-left py-2 px-3 font-medium">Name</th>
-            <th className="text-left py-2 px-3 font-medium">Phone</th>
-            <th className="text-left py-2 px-3 font-medium">Assigned Vehicle</th>
-            <th className="text-left py-2 px-3 font-medium">Status</th>
-            <th className="text-left py-2 px-3 font-medium">Active</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.drivers.text.name")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("common.field.phone")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.drivers.drivers_list.text.assigned_vehicle")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.bins.text.status")}</th>
+            <th className="text-left py-2 px-3 font-medium">{t("warehouse_portal.bins.text.active")}</th>
           </tr>
         </thead>
         <tbody>
@@ -113,7 +117,7 @@ export function DriversList({
                   className="w-full rounded-lg border px-3 py-2 text-sm"
                   style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
                 >
-                  <option value="">Unassigned</option>
+                  <option value="">{t("warehouse_portal.drivers.drivers_list.text.unassigned")}</option>
                   {vehicles
                     .filter(vehicle => vehicle.is_active || vehicle.vehicle_id === d.vehicle_id)
                     .map(vehicle => (

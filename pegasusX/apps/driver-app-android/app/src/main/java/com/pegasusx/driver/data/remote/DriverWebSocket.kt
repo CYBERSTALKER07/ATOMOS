@@ -65,7 +65,6 @@ class DriverWebSocket @Inject constructor(
         private const val WS_SCHEMA_VERSION = 2
         private const val BASE_RECONNECT_DELAY_MS = 2_000L
         private const val MAX_RECONNECT_DELAY_MS = 60_000L
-        private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
     private var socket: WebSocket? = null
@@ -102,6 +101,22 @@ class DriverWebSocket @Inject constructor(
         currentToken = token
 
         connectInternal(baseUrl, token)
+    }
+
+    /**
+     * Network regained: zero attempt counter and reconnect immediately if still
+     * authenticated and not intentionally closed (§8.8).
+     */
+    fun resetAndReconnect() {
+        if (intentionalClose.get()) return
+        val url = currentBaseUrl ?: return
+        val token = currentToken ?: return
+        reconnectTask?.cancel(false)
+        reconnectTask = null
+        reconnectAttempt.set(0)
+        _connectionState.value = ConnectionState.RECONNECTING
+        Log.d(TAG, "resetAndReconnect — network regained")
+        connectInternal(url, token)
     }
 
     private fun connectInternal(baseUrl: String, token: String) {
@@ -164,11 +179,7 @@ class DriverWebSocket @Inject constructor(
     private fun scheduleReconnect() {
         if (intentionalClose.get()) return
         val attempt = reconnectAttempt.getAndIncrement()
-        if (attempt >= MAX_RECONNECT_ATTEMPTS) {
-            Log.e(TAG, "Max reconnect attempts reached ($MAX_RECONNECT_ATTEMPTS)")
-            _connectionState.value = ConnectionState.DISCONNECTED
-            return
-        }
+        // Hold at max delay forever — never give up mid-shift (§8.8).
         _connectionState.value = ConnectionState.RECONNECTING
         val delay = ReconnectBackoff.delayMs(
             attempt,

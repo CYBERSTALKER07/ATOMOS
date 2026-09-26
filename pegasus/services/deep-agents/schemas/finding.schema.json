@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pegasusx.local/schemas/audit-finding.json",
+  "title": "PegasusXEcosystemAuditFinding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "panel",
+    "severity",
+    "title",
+    "evidence",
+    "recommendation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable finding id within this audit run (e.g. money_fiscal-001)"
+    },
+    "panel": {
+      "type": "string",
+      "enum": [
+        "data_flow",
+        "business_logic",
+        "role_parity",
+        "money_fiscal",
+        "kafka_outbox",
+        "redis_cache",
+        "code_quality",
+        "architecture",
+        "security_tenancy",
+        "cloud_infra",
+        "client_contracts",
+        "gap_register_sync"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["P0", "P1", "P2", "P3"]
+    },
+    "class": {
+      "type": "string",
+      "enum": ["A", "B", "C", "D", "n/a"],
+      "description": "Coverage class when applicable; n/a for pure docs/security notes"
+    },
+    "title": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "path:line, package, or file anchors — never invent"
+    },
+    "gap_id": {
+      "type": ["string", "null"],
+      "description": "ECOSYSTEM_GAP_REGISTER id if known (e.g. P1-18)"
+    },
+    "surfaces": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "surfaces.yaml keys touched"
+    },
+    "recommendation": {
+      "type": "string"
+    },
+    "reopen_forbidden_if_resolved": {
+      "type": "boolean",
+      "default": true,
+      "description": "If gap_id is in surfaces.yaml resolved_gap_ids, do not reopen without re-verification"
+    }
+  }
+}

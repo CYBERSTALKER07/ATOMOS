@@ -42,6 +42,16 @@ fun formatDate(value: String?): String {
 fun trimDecimal(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
 
+fun slaBadgeVisible(status: String?): Boolean {
+    val normalized = status.orEmpty().uppercase()
+    return normalized.isNotBlank() && normalized != "N/A" && normalized != "MET"
+}
+
+fun slaHoursLabel(hours: Double?): String? {
+    if (hours == null) return null
+    return if (hours > 0) "${hours.toInt()}h left" else "${kotlin.math.abs(hours).toInt()}h overdue"
+}
+
 fun formatSyncTime(value: Long?): String {
     if (value == null) return "waiting"
     return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))

@@ -146,6 +146,7 @@ func (s *Service) ingestWeather(ctx context.Context, cfg WeatherConfig) error {
 				SignalId:   id,
 				Type:       "WEATHER",
 				Scope:      loc.Scope,
+				SupplierId: PlatformSupplierID,
 				StartAt:    date,
 				EndAt:      date.Add(24 * time.Hour).Add(-time.Nanosecond), // EOD
 				Multiplier: multiplier,
@@ -214,6 +215,7 @@ func (s *Service) UpsertSignals(ctx context.Context, signals []DemandSignal) err
 			"Meta":       meta,
 			"CreatedAt":  sig.CreatedAt,
 			"CreatedBy":  sig.CreatedBy,
+			"SupplierId": ResolveSupplierID(sig.SupplierId),
 		}))
 	}
 

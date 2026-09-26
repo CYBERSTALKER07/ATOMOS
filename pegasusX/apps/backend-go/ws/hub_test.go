@@ -92,6 +92,8 @@ func (b *publishFailBackend) Set(_ context.Context, _ string, _ []byte, _ time.D
 	return nil
 }
 func (b *publishFailBackend) Delete(_ context.Context, _ ...string) error { return nil }
+func (b *publishFailBackend) IncrBy(_ context.Context, _ string, _ int64) (int64, error) { return 0, nil }
+func (b *publishFailBackend) DecrBy(_ context.Context, _ string, _ int64) (int64, error) { return 0, nil }
 func (b *publishFailBackend) Publish(_ context.Context, _ string, _ []byte) error {
 	return errors.New("relay publish failure")
 }

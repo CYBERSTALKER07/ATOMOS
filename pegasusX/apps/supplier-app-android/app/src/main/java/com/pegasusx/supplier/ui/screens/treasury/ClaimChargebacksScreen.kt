@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,13 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.PaymentLedgerEntry
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +61,7 @@ fun ClaimChargebacksScreen(
                 title = { Text("Claim chargebacks") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -81,7 +84,7 @@ fun ClaimChargebacksScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { load() }) { Text("Refresh") }
                 Text(
-                    "${items.size} rows · total $total minor",
+                    stringResource(R.string.mobile_supplier_ui_size_rows_total_total_minor, items.size, total),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 12.dp),
                 )
@@ -108,12 +111,11 @@ fun ClaimChargebacksScreen(
                         Card(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    "${row.amountMinor} ${row.currency.ifBlank { "UZS" }}",
+                                    "${row.amountMinor} ${com.pegasus.design.network.moneyCurrency(row.currency)}",
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                Text("Order ${row.orderId ?: "—"}", style = MaterialTheme.typography.bodySmall)
-                                Text(
-                                    "Ref ${row.referenceId ?: "—"}",
+                                Text(stringResource(R.string.mobile_supplier_ui_order_orderid_2, row.orderId ?: "—"), style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(R.string.mobile_supplier_ui_ref_referenceid, row.referenceId ?: "—"),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                                 Text(

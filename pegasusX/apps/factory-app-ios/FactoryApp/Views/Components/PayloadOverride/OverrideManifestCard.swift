@@ -14,12 +14,12 @@ struct OverrideManifestCard: View {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                     Text(manifest.truckPlate.isEmpty ? String(manifest.truckId.prefix(8)) : manifest.truckPlate)
                         .font(.headline)
-                    Text("Manifest \(manifest.id.prefix(8))")
+                    Text(L10n.format("mobile_factory.ui.manifest_prefix", "\(manifest.id.prefix(8))"))
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel Manifest", role: .destructive, action: onCancelManifest)
+                Button("mobile_factory.ui.cancel_manifest_2", role: .destructive, action: onCancelManifest)
                 .buttonStyle(.bordered)
                 .disabled(isProcessing)
             }
@@ -37,7 +37,7 @@ struct OverrideManifestCard: View {
             }
             
             if manifest.transfers.isEmpty {
-                Text("No transfers are assigned to this manifest.")
+                Text("mobile_factory.ui.no_transfers_are_assigned_to_this_manifest")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding()

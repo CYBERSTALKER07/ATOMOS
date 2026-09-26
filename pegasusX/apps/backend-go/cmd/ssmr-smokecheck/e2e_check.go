@@ -20,7 +20,9 @@ func e2eTimeout() time.Duration {
 			return time.Duration(secs) * time.Second
 		}
 	}
-	return 3 * time.Minute
+	// The full ecosystem chain (orders, claims, refunds, partner export polling)
+	// no longer fits in 3 minutes even on a healthy stack.
+	return 8 * time.Minute
 }
 
 // runE2ECheck exercises supplier topology, retailer registration, order create,
@@ -107,6 +109,17 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err != nil {
 		return fmt.Errorf("order create (checkout path): %w", err)
 	}
+	// Gate 5 tenant markers early — later role paths (payload/payloader) must not
+	// starve Phase 1 proof when an unrelated step times out.
+	if err := runTenantE2E(ctx, client, base, cfg, supplierID, cookie, orderID); err != nil {
+		return fmt.Errorf("tenant e2e: %w", err)
+	}
+	if err := runParentOrderE2E(ctx, client, base, cfg); err != nil {
+		return fmt.Errorf("parent-order e2e: %w", err)
+	}
+	if err := runSandboxLayerBProofs(ctx, client, base, cfg); err != nil {
+		return fmt.Errorf("sandbox layer-b proofs: %w", err)
+	}
 
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
@@ -120,7 +133,19 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseStockPolicyE2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse stock policy: %w", err)
 	}
-	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken); err != nil {
+	if err := runWMSLotsE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms lots: %w", err)
+	}
+	if err := runWMSPickWavesE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms pick waves: %w", err)
+	}
+	if err := runWMSCycleCountsE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms cycle counts: %w", err)
+	}
+	if err := runWMSColdChainE2E(ctx, client, base, cookie, cfg); err != nil {
+		return fmt.Errorf("wms cold chain: %w", err)
+	}
+	if err := runWarehouseOpsPolicyE2E(ctx, client, base, cookie, retailerToken, cfg); err != nil {
 		return fmt.Errorf("warehouse ops policy: %w", err)
 	}
 	if err := runWarehouseReplenishmentInsightE2E(ctx, client, base, cookie, cfg); err != nil {
@@ -159,6 +184,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runPlan90E2E(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("plan90: %w", err)
 	}
+	if err := runSeasonalOverrideE2E(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("seasonal override: %w", err)
+	}
 	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch fleet: %w", err)
 	}
@@ -177,6 +205,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	}
 	if err := runWarehouseOptimizerSourceE2E(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse optimizer preview: %w", err)
+	}
+	if err := runOptimizerConstraintE2E(ctx, cfg); err != nil {
+		return fmt.Errorf("optimizer constraint: %w", err)
 	}
 	capacityOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
 	if err != nil {
@@ -251,7 +282,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := assertSupplierPortalAPIs(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("supplier portal apis: %w", err)
 	}
-	if err := runRetailerPricingOverrideE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken); err != nil {
+	if err := runRetailerPricingOverrideE2E(ctx, client, base, cookie, supplierID, retailerID, retailerToken, cfg); err != nil {
 		return fmt.Errorf("retailer pricing override: %w", err)
 	}
 	if err := runSupplierIntelligenceE2E(ctx, client, base, cookie); err != nil {
@@ -299,6 +330,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runAutoOrderDraftE2E(ctx, client, base, retailerToken); err != nil {
 		return fmt.Errorf("auto-order draft: %w", err)
 	}
+	if err := runAutoOrderShadowE2E(ctx, client, base, retailerToken); err != nil {
+		return fmt.Errorf("auto-order shadow: %w", err)
+	}
 	if err := runClaimStoreQuarantineE2E(ctx, client, base, cfg, supplierID, retailerToken, cookie); err != nil {
 		return fmt.Errorf("claim store quarantine: %w", err)
 	}
@@ -306,7 +340,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runClaimsE2E(ctx, cfg); err != nil {
 		return fmt.Errorf("claims e2e: %w", err)
 	}
-	if err := runSoliqSandboxE2E(ctx, client, base); err != nil {
+	if err := runSoliqSandboxE2E(ctx, client, base, cfg); err != nil {
 		return fmt.Errorf("soliq sandbox: %w", err)
 	}
 
@@ -357,6 +391,33 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 
 	if err := runGapClosureE2E(ctx, client, base, cookie, supplierID, retailerToken, cfg, orderID); err != nil {
 		return fmt.Errorf("gap closure: %w", err)
+	}
+	if err := runPartnerIntegrationE2E(ctx, client, base, cookie, supplierID, retailerToken, retailerID, h3Cell, cfg); err != nil {
+		return fmt.Errorf("partner integration: %w", err)
+	}
+	if err := runFxRatesE2E(ctx, client, base, cookie, supplierID, retailerToken, h3Cell, cfg); err != nil {
+		return fmt.Errorf("fx rates: %w", err)
+	}
+	if err := runFxSettlementConvertE2E(ctx, client, base, cookie, supplierID, cfg); err != nil {
+		return fmt.Errorf("fx settlement convert: %w", err)
+	}
+	if err := runOrderCurrencyPickerE2E(ctx, client, base, retailerToken, cfg); err != nil {
+		return fmt.Errorf("order currency picker: %w", err)
+	}
+	if err := runCollectionsDunningE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("collections dunning: %w", err)
+	}
+	if err := runForecastAccuracyE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("forecast accuracy: %w", err)
+	}
+	if err := runForecastAlgoE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("forecast algo: %w", err)
+	}
+	if err := runSafetyStockE2E(ctx, client, base, cookie, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("safety stock: %w", err)
+	}
+	if err := runSafetyStockReplayE2E(ctx, client, base, supplierID, retailerID, cfg); err != nil {
+		return fmt.Errorf("safety stock replay: %w", err)
 	}
 
 	fmt.Println("PX_E2E_ORDER_OK")

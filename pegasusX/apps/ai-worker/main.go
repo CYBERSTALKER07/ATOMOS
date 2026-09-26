@@ -332,7 +332,8 @@ func main() {
 			metrics.observe(aiWorkerConsumerName, m)
 			msg := m
 
-			g.Go(func() error {
+			// Process synchronously to maintain offset commit ordering per partition
+			func() {
 				defer func() {
 					if r := recover(); r != nil {
 						slog.Error("panic in event handler", "panic", r, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
@@ -342,15 +343,19 @@ func main() {
 				if err := processMessage(gCtx, msg, spannerClient, frozen); err != nil {
 					slog.Error("failed to process message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 					cb.RecordFailure()
-				} else {
-					cb.RecordSuccess()
+					
+					// Do not commit on failure to avoid data loss from implicit offset commits
+					if gCtx.Err() == nil {
+						time.Sleep(2 * time.Second)
+					}
+					return
 				}
+				cb.RecordSuccess()
 
-				if err := reader.CommitMessages(context.Background(), msg); err != nil {
+				if err := reader.CommitMessages(gCtx, msg); err != nil {
 					slog.Error("failed to commit message", "err", err, "topic", msg.Topic, "partition", msg.Partition, "offset", msg.Offset)
 				}
-				return nil
-			})
+			}()
 		}
 	})
 

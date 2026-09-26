@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 data class CatalogEntity(
     @PrimaryKey val id: String,
     val name: String,
-    val price: Double,
+    val price: Long,
     val category: String,
     val stock: Int,
     val imageUrl: String?

@@ -10,14 +10,15 @@ import {
   validateCatalogs,
   writeFile,
 } from "./shared.mjs";
+import { namedToPositional } from "./lib/placeholders.mjs";
 
 function buildAndroidStrings(catalog) {
   const lines = Object.entries(catalog)
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(
-      ([key, value]) =>
-        `    <string name="${toAndroidName(key)}">${escapeXml(value)}</string>`,
-    );
+    .map(([key, value]) => {
+      const positional = namedToPositional(value, "android");
+      return `    <string name="${toAndroidName(key)}">${escapeXml(positional)}</string>`;
+    });
 
   return `<resources>\n${lines.join("\n")}\n</resources>\n`;
 }
@@ -25,7 +26,10 @@ function buildAndroidStrings(catalog) {
 function buildIosStrings(catalog) {
   return Object.entries(catalog)
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `"${key}" = "${escapeIos(value)}";`)
+    .map(([key, value]) => {
+      const positional = namedToPositional(value, "ios");
+      return `"${key}" = "${escapeIos(positional)}";`;
+    })
     .join("\n")
     .concat("\n");
 }

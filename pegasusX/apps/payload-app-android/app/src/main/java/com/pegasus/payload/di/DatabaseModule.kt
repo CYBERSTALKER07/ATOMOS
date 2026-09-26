@@ -2,6 +2,7 @@ package com.pegasus.payload.di
 
 import android.content.Context
 import androidx.room.Room
+import com.pegasus.payload.data.local.MIGRATION_1_2
 import com.pegasus.payload.data.local.PayloadDatabase
 import com.pegasus.payload.data.local.QueuedActionDao
 import dagger.Module
@@ -21,7 +22,9 @@ object DatabaseModule {
             context,
             PayloadDatabase::class.java,
             "payload_db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
     }
 
     @Provides

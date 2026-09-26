@@ -13,7 +13,7 @@ struct SyncQueueView: View {
             List {
                 Section {
                     HStack {
-                        Text("\(pending.count) pending · \(dead.count) dead-letter")
+                        Text(L10n.format("mobile_driver.ui.count_pending_count_2_dead_letter", "\(pending.count)", "\(dead.count)"))
                             .font(.subheadline)
                         Spacer()
                         Button(flushing ? "Flushing…" : "Flush now") {
@@ -27,7 +27,7 @@ struct SyncQueueView: View {
                 }
                 Section("Pending") {
                     if pending.isEmpty {
-                        Text("No pending offline actions.").foregroundStyle(.secondary)
+                        Text("mobile_driver.ui.no_pending_offline_actions").foregroundStyle(.secondary)
                     } else {
                         ForEach(pending, id: \.id) { row in
                             actionRow(row)
@@ -36,7 +36,7 @@ struct SyncQueueView: View {
                 }
                 Section {
                     if dead.isEmpty {
-                        Text("No dead-lettered actions.").foregroundStyle(.secondary)
+                        Text("mobile_driver.ui.no_dead_lettered_actions").foregroundStyle(.secondary)
                     } else {
                         ForEach(dead, id: \.id) { row in
                             actionRow(row, dead: true)
@@ -44,10 +44,10 @@ struct SyncQueueView: View {
                     }
                 } header: {
                     HStack {
-                        Text("Dead letter")
+                        Text("supplier_portal.settings.integrations.text.dead_letter")
                         Spacer()
                         if !dead.isEmpty {
-                            Button("Dismiss all") {
+                            Button("mobile_driver.ui.dismiss_all") {
                                 DriverOfflineQueue.shared.clearDead()
                                 reload()
                             }
@@ -56,10 +56,10 @@ struct SyncQueueView: View {
                     }
                 }
             }
-            .navigationTitle("Sync Queue")
+            .navigationTitle("mobile_driver.ui.sync_queue")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { reload() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { reload() }
                 }
             }
             .onAppear {
@@ -73,11 +73,11 @@ struct SyncQueueView: View {
     private func actionRow(_ row: QueuedDriverAction, dead: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(row.endpoint).font(.headline)
-            Text("Order \(row.orderId.isEmpty ? "—" : row.orderId) · attempts \(row.attemptCount)")
+            Text(L10n.format("mobile_driver.ui.order_orderid_attempts_attemptcount", "\(row.orderId.isEmpty ? "—" : row.orderId)", "\(row.attemptCount)"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if !row.clientTimestampIso.isEmpty {
-                Text("client_ts \(row.clientTimestampIso)")
+                Text(L10n.format("mobile_driver.ui.client_ts_clienttimestampiso", "\(row.clientTimestampIso)"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

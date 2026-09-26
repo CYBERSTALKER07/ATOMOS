@@ -16,7 +16,8 @@ func inboxRecipientID(r *http.Request) string {
 	return notifications.RecipientIDFromClaims(claims)
 }
 
-// HandleUserNotifications serves GET /v1/user/notifications for PAYLOAD role clients.
+// HandleUserNotifications is not mounted. Live GET is notifications.InboxHandlers.HandleList
+// (main.go last registration). Kept fail-closed so a remount cannot return empty [] as success.
 func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -29,17 +30,22 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	}
 	limit, offset := notifications.ParseInboxPagination(r)
 	if s.notifSvc == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notifications.InboxItemWire{}, "unread_count": 0, "total": 0, "limit": limit, "offset": offset})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
 		return
 	}
 	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), recipientID, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "payload list notifications failed", "err", listErr, "recipient_id", recipientID)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notifications.InboxItemWire{}, "unread_count": 0, "total": 0, "limit": limit, "offset": offset})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_list_failed"})
 		return
 	}
 	wire := notifications.ToInboxWireList(notifs)
-	unread, _ := s.notifSvc.UnreadCount(r.Context(), recipientID)
+	unread, unreadErr := s.notifSvc.UnreadCount(r.Context(), recipientID)
+	if unreadErr != nil {
+		s.log.ErrorContext(r.Context(), "payload unread count failed", "err", unreadErr, "recipient_id", recipientID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "inbox_unread_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"notifications": wire,
 		"unread_count":  unread,
@@ -50,7 +56,7 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 	})
 }
 
-// HandleMarkNotificationsRead serves POST /v1/user/notifications/read.
+// HandleMarkNotificationsRead is not mounted. Live POST is notifications.InboxHandlers.HandleMarkRead.
 func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -66,18 +72,14 @@ func (s *Service) HandleMarkNotificationsRead(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
+	if s.notifSvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inbox_unavailable"})
+		return
+	}
 	if markErr := notifications.ApplyMarkRead(r.Context(), s.notifSvc, recipientID, req); markErr != nil {
 		s.log.ErrorContext(r.Context(), "payload mark notifications read failed", "err", markErr, "recipient_id", recipientID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "mark_read_failed"})
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-// HandleDeviceTokenNoop accepts FCM registration from payload clients when push is not wired.
-func (s *Service) HandleDeviceTokenNoop(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost, http.MethodDelete:
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-	default:
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-	}
 }

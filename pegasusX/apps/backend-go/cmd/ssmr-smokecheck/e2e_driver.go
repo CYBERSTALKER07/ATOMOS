@@ -226,7 +226,8 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	}
 
 	shopBody, _ := json.Marshal(map[string]any{
-		"reason": "CLOSED",
+		"reason":    "CLOSED",
+		"photo_url": fmt.Sprintf("ssmr://evidence/shop-closed/%s/%d", orderID, time.Now().UnixNano()),
 		"location": map[string]any{
 			"lat":            cfg.DeliveryZoneCenterLat,
 			"lng":            cfg.DeliveryZoneCenterLng,

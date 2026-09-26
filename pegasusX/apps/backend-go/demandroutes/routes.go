@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 )
 
@@ -14,19 +15,27 @@ type Deps struct {
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
-	r.Get("/v1/demand/signals", handleListSignals(d.Service))
-	r.Post("/v1/demand/signals", handleCreateSignal(d.Service))
+	guard := auth.RequireRole(
+		auth.RoleAdmin,
+		auth.RolePlatformAdmin,
+		auth.RoleWarehouseAdmin,
+		auth.RoleWarehouse,
+		auth.RoleFactoryAdmin,
+		auth.RoleFactory,
+	)
+	r.With(guard).Get("/v1/demand/signals", handleListSignals(d.Service))
+	r.With(guard).Post("/v1/demand/signals", handleCreateSignal(d.Service))
 	r.Route("/v1/demand", func(r chi.Router) {
-		r.Get("/adjustments", handleGetAdjustments(d.Service))
+		r.With(guard).Get("/adjustments", handleGetAdjustments(d.Service))
 
 		r.Route("/signals", func(r chi.Router) {
-			r.Get("/", handleListSignals(d.Service))
-			r.Post("/", handleCreateSignal(d.Service))
+			r.With(guard).Get("/", handleListSignals(d.Service))
+			r.With(guard).Post("/", handleCreateSignal(d.Service))
 
 			r.Route("/{id}", func(r chi.Router) {
-				r.Get("/", handleGetSignal(d.Service))
-				r.Patch("/", handleUpdateSignal(d.Service))
-				r.Post("/deactivate", handleDeactivateSignal(d.Service))
+				r.With(guard).Get("/", handleGetSignal(d.Service))
+				r.With(guard).Patch("/", handleUpdateSignal(d.Service))
+				r.With(guard).Post("/deactivate", handleDeactivateSignal(d.Service))
 			})
 		})
 	})

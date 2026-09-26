@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { RetailerOrderLifecycleResponse } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError } from '@pegasusx/api-core';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseOps } from '@/lib/warehouse-ops';
 import { downloadCsv } from '@/lib/csv';
@@ -19,6 +19,7 @@ import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
 import { OrdersList, type OrderRow, type OrdersTab } from './components/OrdersList';
 import { PreordersList } from '@/components/preorders/PreordersList';
+import { usePortalT } from '@/lib/i18n';
 
 function isoDeliveryDate(dateInput: string): string {
   const dateOnly = dateInput.slice(0, 10);
@@ -26,6 +27,7 @@ function isoDeliveryDate(dateInput: string): string {
 }
 
 export default function OrdersPage() {
+  const t = usePortalT();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -34,7 +36,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [preorders, setPreorders] = useState<RetailerOrderLifecycleResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(searchParams.get('state') ?? '');
   const [actingId, setActingId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{
     orderId: string;
@@ -242,8 +244,8 @@ export default function OrdersPage() {
     <PageTransition>
       <PageChrome
         icon="orders"
-        title="Orders"
-        description="Active fulfillment queue and scheduled pre-orders. Click a card to open detail."
+        title={t('portal.page.orders.warehouse.title')}
+        description={t('portal.page.orders.warehouse.description')}
         actions={
           <div className="flex gap-2 items-center flex-wrap">
             {tab === 'active' ? (
@@ -260,7 +262,7 @@ export default function OrdersPage() {
                   color: 'var(--field-foreground)',
                 }}
               >
-                <option value="">All States</option>
+                <option value="">{t('portal.page.orders.filter.all_states')}</option>
                 {['PENDING', 'LOADED', 'IN_TRANSIT', 'DELAYED', 'ARRIVED', 'COMPLETED', 'CANCELLED'].map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -275,12 +277,12 @@ export default function OrdersPage() {
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary active-press"
             >
-              <Icon name="refresh" size={16} /> Refresh
+              <Icon name="refresh" size={16} /> {t('portal.page.orders.action.refresh')}
             </motion.button>
           </div>
         }
       >
-        <div className="wh-tab-bar mb-5" role="tablist" aria-label="Order views">
+        <div className="wh-tab-bar mb-5" role="tablist" aria-label={t("warehouse_portal.orders.text.order_views")}>
           <button
             type="button"
             role="tab"
@@ -288,7 +290,7 @@ export default function OrdersPage() {
             className={`wh-tab${tab === 'active' ? ' wh-tab--active' : ''}`}
             onClick={() => setTab('active')}
           >
-            Active orders
+            {t('portal.page.orders.filter.active_tab')}
           </button>
           <button
             type="button"
@@ -297,7 +299,7 @@ export default function OrdersPage() {
             className={`wh-tab${tab === 'preorders' ? ' wh-tab--active' : ''}`}
             onClick={() => setTab('preorders')}
           >
-            Pre-orders
+            {t('portal.page.orders.filter.preorders_tab')}
           </button>
         </div>
 

@@ -45,14 +45,14 @@ struct SupplyRequestsHubView: View {
                     }
                 }
             }
-            .navigationTitle("Supply Requests")
+            .navigationTitle("portal.nav.supply_requests")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Close", systemImage: "xmark") { dismiss() }
+                    Button("common.action.close", systemImage: "xmark") { dismiss() }
                         .labelStyle(.iconOnly)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
@@ -62,7 +62,7 @@ struct SupplyRequestsHubView: View {
             if let selectedRequestID {
                 SupplyRequestDetailView(requestId: selectedRequestID)
             } else {
-                ContentUnavailableView("Select a Request", systemImage: "tray.full", description: Text("Choose a supply request to review and transition."))
+                ContentUnavailableView("Select a Request", systemImage: "tray.full", description: Text("mobile_factory.ui.choose_a_supply_request_to_review_and_transition"))
             }
         }
         .task { await load() }

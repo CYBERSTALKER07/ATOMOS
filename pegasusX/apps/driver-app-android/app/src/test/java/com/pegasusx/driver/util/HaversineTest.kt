@@ -30,7 +30,7 @@ class HaversineTest {
 
     @Test
     fun geofence_matchesDriverGeofenceConstant() {
-        assertEquals(500.0, DriverGeofence.APPROACH_METERS, 0.001)
+        assertEquals(150.0, DriverGeofence.APPROACH_METERS, 0.001)
     }
 
     @Test

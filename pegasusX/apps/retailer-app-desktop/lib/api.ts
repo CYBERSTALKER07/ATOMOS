@@ -8,7 +8,7 @@ import {
   retailerEditPreorderKey,
   retailerSetupKey,
   retailerProfileUpdateKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 
 // ── AI & Preorder Integrations ──
 
@@ -65,22 +65,6 @@ export async function rejectDeliveryProposal(orderId: string, reason: string): P
     method: 'POST',
     headers: { 'Idempotency-Key': retailerRejectDeliveryProposalKey(orderId, reason) },
     body: JSON.stringify({ order_id: orderId, reason }),
-  });
-}
-
-export async function correctPrediction(
-  predictionId: string,
-  payload: Record<string, unknown>,
-  idempotencyKey?: string
-): Promise<Response> {
-  const headers: Record<string, string> = {};
-  if (idempotencyKey) {
-    headers['Idempotency-Key'] = idempotencyKey;
-  }
-  return apiFetch(`/v1/ai/predictions/correct?prediction_id=${encodeURIComponent(predictionId)}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(payload),
   });
 }
 
@@ -288,4 +272,12 @@ async function compressImageToJpeg(file: File, quality: number): Promise<Blob> {
     canvas.toBlob(resolve, 'image/jpeg', quality),
   );
   return blob ?? file;
+}
+
+/**
+ * Live fleet tracking for active retailer deliveries.
+ * Contract reference: getRetailerTracking (/v1/retailer/tracking).
+ */
+export async function getRetailerTracking(): Promise<Response> {
+  return apiFetch('/v1/retailer/tracking', { method: 'GET' });
 }

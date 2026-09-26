@@ -54,6 +54,16 @@ func (s *Service) HandleCreateWarehouse(w http.ResponseWriter, r *http.Request) 
 	if req.DefaultOutOfStockPolicy == "" {
 		req.DefaultOutOfStockPolicy = "REJECT"
 	}
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{
@@ -82,9 +92,21 @@ func (s *Service) HandleGetWarehouse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, ok := auth.FromContext(r.Context()); !ok {
+		web.JSONError(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	wh, err := s.repo.GetWarehouse(r.Context(), warehouseID)
 	if err != nil {
 		web.JSONError(w, "failed to get warehouse: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	allowed := auth.EntitySupplierAllowed(r.Context(), wh.SupplierID) ||
+		auth.HomeNodeMatches(r.Context(), warehouseID, auth.HomeNodeWarehouse)
+	if !allowed {
+		web.JSONError(w, "warehouse_not_found", http.StatusNotFound)
 		return
 	}
 
@@ -121,6 +143,16 @@ func (s *Service) HandleUpdateWarehouse(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	req.SupplierID = supplierID
+	if err := stampWarehouseEntity(r.Context(), &req); err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		web.JSONError(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if s.rejectUnknownSupplierRegion(w, r.Context(), req.SupplierID, req.RegionID) {
+		return
+	}
 
 	emit := func(buf outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, req.WarehouseID, events.TopicMain, events.WarehouseEvent{

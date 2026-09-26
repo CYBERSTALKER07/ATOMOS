@@ -115,6 +115,50 @@ func haversineMeters(lat1, lon1, lat2, lon2 float64) float64 {
 	return earthRadius * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 }
 
+// HaversineDistanceMatrixM builds an NxN meter matrix from haversine distances.
+func HaversineDistanceMatrixM(points []LatLng) [][]int {
+	n := len(points)
+	out := make([][]int, n)
+	for i := 0; i < n; i++ {
+		out[i] = make([]int, n)
+		for j := 0; j < n; j++ {
+			if i == j {
+				continue
+			}
+			m := int(haversineMeters(points[i].Lat, points[i].Lng, points[j].Lat, points[j].Lng))
+			if m < 1 {
+				m = 1
+			}
+			out[i][j] = m
+		}
+	}
+	return out
+}
+
+// MergeDistanceMatrix fills zero off-diagonal cells in primary from fallback.
+func MergeDistanceMatrix(primary, fallback [][]int) [][]int {
+	if len(primary) == 0 {
+		return fallback
+	}
+	if len(fallback) != len(primary) {
+		return primary
+	}
+	out := make([][]int, len(primary))
+	for i := range primary {
+		out[i] = make([]int, len(primary[i]))
+		copy(out[i], primary[i])
+		if len(fallback[i]) != len(primary[i]) {
+			continue
+		}
+		for j := range primary[i] {
+			if i != j && out[i][j] <= 0 {
+				out[i][j] = fallback[i][j]
+			}
+		}
+	}
+	return out
+}
+
 func degreesToRadians(v float64) float64 {
 	return v * math.Pi / 180
 }

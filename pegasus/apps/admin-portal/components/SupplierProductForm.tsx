@@ -293,8 +293,10 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Product Name</label>
+            <label htmlFor="product-form-name" className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Product Name</label>
             <input
+              id="product-form-name"
+              aria-label="Product Name"
               required
               value={formData.name}
               className="w-full p-3 md-shape-xs text-[13px] transition-colors focus:outline-none"
@@ -303,8 +305,10 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
             />
           </div>
           <div>
-            <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Base Price (Amount)</label>
+            <label htmlFor="product-form-base-price" className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Base Price (Amount)</label>
             <input
+              id="product-form-base-price"
+              aria-label="Base Price (Amount)"
               required
               type="number"
               min="1"
@@ -387,6 +391,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
                     <div key={axis}>
                       <label className="block text-[10px] mb-1" style={{ color: 'var(--muted)' }}>{axis} (cm)</label>
                       <input
+                        id="val-input-7"
+                        aria-label="0"
                         type="number" min="0.1" step="0.1"
                         value={val}
                         className="w-full p-2 md-shape-xs text-[12px] focus:outline-none"
@@ -412,6 +418,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
           <div>
             <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Custom VU</label>
             <input
+              id="custom-vu-input-6"
+              aria-label="Custom VU"
               type="number"
               step="0.01"
               min="0.01"
@@ -438,6 +446,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
         <div className="p-4 md-shape-md" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <label className="flex items-center space-x-3 cursor-pointer mb-4">
             <input
+              id="supplierproductform-checkbox-5"
+              aria-label="Select Supplierproductform option"
               type="checkbox"
               className="w-5 h-5"
               style={{ accentColor: 'var(--accent)' }}
@@ -450,6 +460,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
           <div className={`${formData.sell_by_block ? 'opacity-100' : 'opacity-60'} transition-opacity`}>
             <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Units Per Block</label>
             <input
+              id="units-per-block-input-4"
+              aria-label="Units Per Block"
               type="number"
               min="1"
               value={formData.units_per_block}
@@ -475,6 +487,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
             <div>
               <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Step Size (units/case)</label>
               <input
+                id="step-size-units-case-input-3"
+                aria-label="Step Size (units/case)"
                 type="number"
                 min="1"
                 value={formData.step_size}
@@ -494,6 +508,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
             <div>
               <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Min Order Qty (MOQ)</label>
               <input
+                id="min-order-qty-moq-input-2"
+                aria-label="Min Order Qty (MOQ)"
                 type="number"
                 min={formData.step_size}
                 step={formData.step_size}
@@ -524,6 +540,8 @@ export default function SupplierProductForm({ onProductCreated }: { onProductCre
             </div>
           )}
           <input
+            id="supplierproductform-file-1"
+            aria-label="Upload file"
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"

@@ -31,15 +31,16 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 	switch envelope.Type {
 	case events.EventPaymentCleared:
 		var payload struct {
-			OrderID string `json:"order_id"`
-			Gateway string `json:"gateway"`
+			OrderID     string `json:"order_id"`
+			Gateway     string `json:"gateway"`
+			AmountMinor int64  `json:"amount_minor"`
 		}
 		if err := json.Unmarshal(msg.Value, &payload); err != nil {
 			c.log.ErrorContext(ctx, "failed to unmarshal payment cleared payload", "err", err)
 			return nil
 		}
 		if payload.OrderID != "" {
-			return c.service.SettleExternalPayment(ctx, payload.OrderID, payload.Gateway)
+			return c.service.SettleExternalPayment(ctx, payload.OrderID, payload.Gateway, payload.AmountMinor)
 		}
 	case events.EventFiscalReceiptRequested:
 		var payload events.FiscalReceiptEvent

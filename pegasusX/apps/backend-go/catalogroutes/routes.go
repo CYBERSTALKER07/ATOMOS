@@ -10,10 +10,8 @@ import (
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service             *catalog.Service
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Service         *catalog.Service
+	AllowAuthBypass bool
 }
 
 // RegisterRoutes mounts catalog read/write endpoints. Reads are public catalog
@@ -32,9 +30,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/v1/catalog/products/{productID}", d.Service.HandleGetProduct)
 
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/catalog/categories", d.Service.HandleCreateCategory)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Post("/v1/catalog/products", d.Service.HandleCreateProduct)

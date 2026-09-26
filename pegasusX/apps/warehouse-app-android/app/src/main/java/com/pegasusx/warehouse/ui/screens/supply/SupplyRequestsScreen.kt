@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -16,12 +18,13 @@ import com.pegasusx.warehouse.data.model.CreateWarehouseSupplyRequestRequest
 import com.pegasusx.warehouse.data.model.WarehouseSupplyRequest
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +90,7 @@ fun SupplyRequestsScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Supply requests") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     var expanded by remember { mutableStateOf(false) }
                     Box {
@@ -105,10 +108,10 @@ fun SupplyRequestsScreen(
                         }
                     }
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                     IconButton(onClick = { showCreate = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "New request")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_warehouse_ui_new_request))
                     }
                 },
             )
@@ -116,7 +119,7 @@ fun SupplyRequestsScreen(
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading supply requests…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_supply_requests),
                 body = "Factory supply queue",
                 modifier = Modifier.padding(padding),
             )

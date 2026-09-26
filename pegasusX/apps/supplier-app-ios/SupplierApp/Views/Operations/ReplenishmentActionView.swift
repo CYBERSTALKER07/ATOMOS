@@ -14,7 +14,7 @@ struct ReplenishmentActionView: View {
             }
             Section {
                 NavigationLink { ReplenishmentPoliciesView() } label: {
-                    Label("View replenishment policies", systemImage: "doc.text")
+                    Label("mobile_supplier.ui.view_replenishment_policies", systemImage: "doc.text")
                 }
                 Button(replenishing ? "Triggering…" : "Trigger replenishment") {
                     runReplenishment()

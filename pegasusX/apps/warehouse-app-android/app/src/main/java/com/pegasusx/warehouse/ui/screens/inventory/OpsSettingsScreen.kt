@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.inventory
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -27,6 +29,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +48,7 @@ fun OpsSettingsScreen(
     var expressEnabled by remember { mutableStateOf(false) }
     var expressStockFloor by remember { mutableStateOf("0") }
     var feeBaseMinor by remember { mutableStateOf("0") }
-    var feeCurrency by remember { mutableStateOf("UZS") }
+    var feeCurrency by remember { mutableStateOf("") }
     var feeTiers by remember { mutableStateOf(listOf(FeeTierDraft(maxKm = "5", feeMinor = "0"))) }
     var clearFeeRules by remember { mutableStateOf(true) }
     var scheduleJSON by remember { mutableStateOf("{\n  \"is_24h\": true\n}") }
@@ -131,7 +134,7 @@ fun OpsSettingsScreen(
                     expressStockFloor = body.expressStockFloor.toString()
                     body.deliveryFeeRules?.let { rules ->
                         feeBaseMinor = rules.baseFeeMinor.toString()
-                        feeCurrency = rules.currency.ifBlank { "UZS" }
+                        feeCurrency = rules.currency
                         feeTiers = rules.tiers.map {
                             FeeTierDraft(
                                 maxKm = it.maxKm?.toString() ?: "",
@@ -141,7 +144,7 @@ fun OpsSettingsScreen(
                         clearFeeRules = false
                     } ?: run {
                         feeBaseMinor = "0"
-                        feeCurrency = "UZS"
+                        feeCurrency = ""
                         feeTiers = listOf(FeeTierDraft(maxKm = "5", feeMinor = "0"))
                         clearFeeRules = true
                     }
@@ -149,6 +152,9 @@ fun OpsSettingsScreen(
                         scheduleJSON = Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), it)
                         applyScheduleFields(it)
                     }
+                    runCatching { api.getPaymentConfig() }.getOrNull()?.body()?.currencyCode
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { feeCurrency = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -197,7 +203,7 @@ fun OpsSettingsScreen(
                 } else {
                     DeliveryFeeRules(
                         baseFeeMinor = feeBaseMinor.toLongOrNull() ?: 0L,
-                        currency = feeCurrency.trim().ifBlank { "UZS" },
+                        currency = feeCurrency.trim(),
                         tiers = feeTiers.map { draft ->
                             DeliveryFeeTier(
                                 maxKm = draft.maxKm.trim().takeIf { it.isNotEmpty() }?.toDoubleOrNull(),
@@ -233,7 +239,7 @@ fun OpsSettingsScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -301,7 +307,7 @@ fun OpsSettingsScreen(
                     feeBaseMinor = feeBaseMinor,
                     onFeeBaseMinorChange = { feeBaseMinor = it },
                     feeCurrency = feeCurrency,
-                    onFeeCurrencyChange = { feeCurrency = it },
+                    onFeeCurrencyChange = {},
                     feeTiers = feeTiers,
                     onFeeTiersChange = { feeTiers = it },
                     enforceOrderAcceptance = enforceOrderAcceptance,

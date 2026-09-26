@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -12,13 +15,15 @@ import (
 
 // NetworkSnapshot is a read-only supplier network state for scenario projection.
 type NetworkSnapshot struct {
-	SupplierID     string
-	WarehouseCount int
-	Inventory      map[string]int64 // sku -> available qty (summed across warehouses)
-	OpenDemand     map[string]int64 // sku -> open order qty
-	OpenOrderCount int64
-	ActiveRoutes   int64
-	CapturedAt     time.Time
+	SupplierID      string
+	WarehouseCount  int
+	Inventory       map[string]int64 // sku -> available qty (summed across warehouses)
+	OpenDemand      map[string]int64 // sku -> open order qty
+	UnitValueMinor  map[string]int64 // sku -> Products.PriceMinor
+	OpenOrderCount  int64
+	ActiveRoutes    int64
+	CapturedAt      time.Time
+	UnitValueSource string // products | fallback | mixed (set during projection)
 }
 
 const snapshotMaxSKUs = 5000
@@ -26,10 +31,11 @@ const snapshotMaxSKUs = 5000
 // LoadNetworkSnapshot reads live Spanner state without mutating it.
 func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID string) (NetworkSnapshot, error) {
 	snap := NetworkSnapshot{
-		SupplierID: supplierID,
-		Inventory:  make(map[string]int64),
-		OpenDemand: make(map[string]int64),
-		CapturedAt: time.Now().UTC(),
+		SupplierID:     supplierID,
+		Inventory:      make(map[string]int64),
+		OpenDemand:     make(map[string]int64),
+		UnitValueMinor: make(map[string]int64),
+		CapturedAt:     time.Now().UTC(),
 	}
 	if client == nil || supplierID == "" {
 		return snap, fmt.Errorf("snapshot unavailable")
@@ -115,9 +121,91 @@ func LoadNetworkSnapshot(ctx context.Context, client *spanner.Client, supplierID
 		_ = row.Column(0, &snap.ActiveRoutes)
 	}
 
+	skuSet := make(map[string]struct{}, len(snap.Inventory)+len(snap.OpenDemand))
+	for sku := range snap.Inventory {
+		skuSet[sku] = struct{}{}
+	}
+	for sku := range snap.OpenDemand {
+		skuSet[sku] = struct{}{}
+	}
+	values, err := loadProductUnitValues(ctx, client, supplierID, skuSet)
+	if err != nil {
+		return snap, err
+	}
+	snap.UnitValueMinor = values
+
 	return snap, nil
 }
 
 func (s NetworkSnapshot) TooLarge() bool {
 	return len(s.Inventory) > snapshotMaxSKUs || len(s.OpenDemand) > snapshotMaxSKUs
+}
+
+func loadProductUnitValues(ctx context.Context, client *spanner.Client, supplierID string, skus map[string]struct{}) (map[string]int64, error) {
+	out := make(map[string]int64)
+	if client == nil || strings.TrimSpace(supplierID) == "" || len(skus) == 0 {
+		return out, nil
+	}
+	iter := client.Single().Query(ctx, spanner.Statement{
+		SQL:    `SELECT ProductId, PriceMinor FROM Products WHERE SupplierId = @sid AND IsActive = true`,
+		Params: map[string]any{"sid": supplierID},
+	})
+	defer iter.Stop()
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return out, err
+		}
+		var pid string
+		var price int64
+		if err := row.Columns(&pid, &price); err != nil {
+			return out, err
+		}
+		if _, ok := skus[pid]; !ok || price <= 0 {
+			continue
+		}
+		out[pid] = price
+	}
+	return out, nil
+}
+
+func scenarioUnitValueFallbackMinor() int64 {
+	v := strings.TrimSpace(os.Getenv("SCENARIO_UNIT_VALUE_MINOR"))
+	if v == "" {
+		v = strings.TrimSpace(os.Getenv("MEIO_UNIT_VALUE_MINOR"))
+	}
+	if v == "" {
+		return 10000
+	}
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return 10000
+	}
+	return n
+}
+
+func unitValueForSKU(values map[string]int64, sku string, fallback int64) (int64, bool) {
+	if values != nil {
+		if v := values[sku]; v > 0 {
+			return v, true
+		}
+	}
+	if fallback <= 0 {
+		fallback = 10000
+	}
+	return fallback, false
+}
+
+func classifyUnitValueSource(usedProduct, usedFallback bool) string {
+	switch {
+	case usedProduct && usedFallback:
+		return "mixed"
+	case usedProduct:
+		return "products"
+	default:
+		return "fallback"
+	}
 }

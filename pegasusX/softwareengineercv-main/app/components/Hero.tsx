@@ -1,272 +1,280 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
-import { gsap } from 'gsap';
-import CurvedLoop from './CurvedLoop';
+import { useEffect, useRef, useState } from 'react';
+import { gsap, smoothScrollTo } from '@/app/lib/gsap';
+import ParticleText from './ParticleText';
 import TextType from './TextType';
-import ChamferButton from './ChamferButton';
-import { useIsMobile, useReducedMotion } from '../hooks/useDevice';
-import { HERO_VIDEO_POSTER } from '@/app/lib/siteAssets';
+import { usePerfProfile } from '../hooks/useDevice';
+import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
-const HERO_VIDEO_PAUSE_AT = 5;
+const HERO_VIDEOS = [
+ {
+  id: 'fpv-drone',
+  src: '/videos/hero-drone.mp4',
+  label: '01',
+  name: 'Terminal Entry',
+  nameRu: 'Вход в терминал',
+ },
+ {
+  id: 'fleet-dock',
+  src: '/videos/hero-fleet.mp4',
+  label: '02',
+  name: 'Robotic Loading',
+  nameRu: 'Роботизированная погрузка',
+ },
+ {
+  id: 'command-aerial',
+  src: '/videos/command-facility.mp4',
+  label: '03',
+  name: 'Command Facility 4K',
+  nameRu: 'Командный центр 4K',
+ },
+];
 
 export default function Hero() {
-  const { isMobile } = useIsMobile();
-  const prefersReducedMotion = useReducedMotion();
+ const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
+ const { t, language } = useLanguage();
+ const { resolvedTheme } = useTheme();
+ const isLight = resolvedTheme === 'light';
 
-  const textRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
-  const descRef = useRef<HTMLParagraphElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
-  const visualRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+ const textRef = useRef<HTMLDivElement>(null);
+ const titleRef = useRef<HTMLDivElement>(null);
+ const subtitleRef = useRef<HTMLHeadingElement>(null);
+ const descRef = useRef<HTMLParagraphElement>(null);
+ const ctaRef = useRef<HTMLDivElement>(null);
+ const [activeVideoIdx, setActiveVideoIdx] = useState(0);
+ const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+ const isIntersectingRef = useRef(true);
 
-  const clampAndPauseAtMark = useCallback((video: HTMLVideoElement) => {
-    if (video.currentTime >= HERO_VIDEO_PAUSE_AT) {
-      video.pause();
-      video.currentTime = HERO_VIDEO_PAUSE_AT;
+ const typedPhrases = [
+  t('hero_type_1'),
+  t('hero_type_2'),
+  t('hero_type_3'),
+  t('hero_type_4'),
+ ];
+
+ useEffect(() => {
+  const ctx = gsap.context(() => {
+   if (isMobile || isLowEnd || prefersReducedMotion) {
+    gsap.set(
+     [titleRef.current, subtitleRef.current, descRef.current, ctaRef.current],
+     { opacity: 1, x: 0, y: 0 }
+    );
+    return;
+   }
+
+   const timeline = gsap.timeline({ defaults: { ease: 'pegasus' } });
+
+   timeline
+    .fromTo(
+     titleRef.current,
+     { opacity: 0, y: 16 },
+     { opacity: 1, y: 0, duration: 0.55 },
+     0
+    )
+    .fromTo(
+     subtitleRef.current,
+     { opacity: 0, y: 16 },
+     { opacity: 1, y: 0, duration: 0.45 },
+     0.08
+    )
+    .fromTo(
+     descRef.current,
+     { opacity: 0, y: 12 },
+     { opacity: 1, y: 0, duration: 0.45 },
+     0.18
+    )
+    .fromTo(
+     ctaRef.current,
+     { opacity: 0, y: 12 },
+     { opacity: 1, y: 0, duration: 0.45 },
+     0.28
+    );
+  });
+
+  return () => ctx.revert();
+ }, [isMobile, isLowEnd, prefersReducedMotion]);
+
+ // Play active video and loop to next video on end
+ const handleVideoEnded = (idx: number) => {
+  if (idx === activeVideoIdx) {
+   setActiveVideoIdx((prev) => (prev + 1) % HERO_VIDEOS.length);
+  }
+ };
+
+ // Play active video when activeVideoIdx changes or when section becomes visible
+ useEffect(() => {
+  const currentVideo = videoRefs.current[activeVideoIdx];
+  if (currentVideo && isIntersectingRef.current) {
+   currentVideo.currentTime = 0;
+   currentVideo.play().catch(() => {});
+  }
+  // Allow 1s crossfade to complete before pausing previous video
+  const timeout = setTimeout(() => {
+   videoRefs.current.forEach((vid, i) => {
+    if (vid && i !== activeVideoIdx) {
+     vid.pause();
     }
-  }, []);
+   });
+  }, 1000);
 
-  const playIntro = useCallback(async (video: HTMLVideoElement) => {
-    video.currentTime = 0;
-    try {
-      await video.play();
-    } catch {
-      video.pause();
-      video.currentTime = 0;
-    }
-  }, []);
+  return () => clearTimeout(timeout);
+ }, [activeVideoIdx]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+ // Autoplay video and pause when scrolled out of view to eliminate GPU/CPU decode lag
+ useEffect(() => {
+  const section = document.getElementById('hero');
+  if (!section) return;
 
-    if (prefersReducedMotion) {
-      video.pause();
-      video.currentTime = 0;
-      return;
-    }
-
-    video.muted = true;
-
-    const onTimeUpdate = () => clampAndPauseAtMark(video);
-    const startIntro = () => {
-      void playIntro(video);
-    };
-
-    video.addEventListener('timeupdate', onTimeUpdate);
-
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      startIntro();
+  const observer = new IntersectionObserver(
+   ([entry]) => {
+    isIntersectingRef.current = !!entry?.isIntersecting;
+    const currentVideo = videoRefs.current[activeVideoIdx];
+    if (entry?.isIntersecting) {
+     currentVideo?.play().catch(() => {});
     } else {
-      video.addEventListener('loadeddata', startIntro, { once: true });
-      video.addEventListener('canplay', startIntro, { once: true });
+     videoRefs.current.forEach((v) => v?.pause());
     }
-
-    return () => {
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadeddata', startIntro);
-      video.removeEventListener('canplay', startIntro);
-    };
-  }, [prefersReducedMotion, clampAndPauseAtMark, playIntro]);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // Skip GSAP animations on mobile - just use simple fade-in
-      if (isMobile || prefersReducedMotion) {
-        gsap.set([titleRef.current, subtitleRef.current, descRef.current, ctaRef.current, visualRef.current], {
-          opacity: 1,
-          x: 0,
-          y: 0
-        });
-        return;
-      }
-
-      // Desktop animations only
-      const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-      timeline
-        .fromTo(visualRef.current,
-          { opacity: 0, x: 100 },
-          { opacity: 1, x: 0, duration: 1.2 }
-        )
-        .fromTo(titleRef.current,
-          { opacity: 0, y: 50 },
-          { opacity: 1, y: 0, duration: 1 },
-          '-=0.8'
-        )
-        .fromTo(subtitleRef.current,
-          { opacity: 0, y: 30 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.6'
-        )
-        .fromTo(descRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.5'
-        )
-        .fromTo(ctaRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 0.8 },
-          '-=0.3'
-        );
-    });
-
-    return () => ctx.revert();
-  }, [isMobile, prefersReducedMotion]);
-
-  const scrollToNext = () => {
-    const nextSection = document.querySelector('#about');
-    if (nextSection) {
-      nextSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  return (
-    <section id="hero" className="min-h-screen relative flex items-center bg-black overflow-hidden pt-[4.5rem] md:pt-20">
-      {/* Corner Loops - Hidden on mobile */}
-      {!isMobile && (
-        <>
-          <div className="absolute top-0 left-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={900}
-              direction="right"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-
-          <div className="absolute top-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={500}
-              direction="left"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-
-          <div className="absolute bottom-0 right-0 w-64 md:w-80 h-20 md:h-24 pointer-events-none opacity-30 z-10 rotate-180 scale-x-[-1]">
-            <CurvedLoop
-              marqueeText="PEGASUS  "
-              speed={1.5}
-              curveAmount={200}
-              direction="right"
-              interactive={false}
-              className="fill-white"
-            />
-          </div>
-        </>
-      )}
-
-      <div className="page-shell py-20 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Content Side - Left */}
-          <div ref={textRef} className="space-y-8 order-2 lg:order-1">
-            <div>
-              <h1
-                ref={titleRef}
-                className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light mb-4 text-white"
-              >
-                Pegasus
-              </h1>
-
-              <div ref={subtitleRef} className="mb-6">
-                <TextType
-                  text={["Logistics Platform", "Dispatch System", "Fleet Tracking", "Payment Confidence"]}
-                  typingSpeed={isMobile ? 100 : 75}
-                  pauseDuration={1500}
-                  deletingSpeed={isMobile ? 70 : 50}
-                  showCursor={true}
-                  cursorCharacter="|"
-                  loop={true}
-                  textColors={['#FFFFFF', '#C0C0C0']}
-                  className="text-2xl md:text-3xl lg:text-4xl font-light text-white"
-                  cursorClassName="text-white font-light"
-                />
-              </div>
-
-              <div className="w-90 h-[0.5px] bg-white mb-6" />
-
-              <p
-                ref={descRef}
-                className="text-base md:text-lg font-extralight lg:text-xl text-white leading-relaxed max-w-xl"
-              >
-                Run supplier-led logistics from one platform — dispatch, tracking, payments,
-                and coordination across every team in your network.
-              </p>
-            </div>
-
-            {/* CTA Buttons */}
-            <div ref={ctaRef} className="flex flex-col sm:flex-row gap-3">
-              <ChamferButton onClick={scrollToNext} variant="fill">
-                Explore Platform
-              </ChamferButton>
-              <ChamferButton href="/join" variant="ghost">
-                Request Demo
-              </ChamferButton>
-            </div>
-          </div>
-
-          {/* Visual Side - Mobile: atom.jpeg, Desktop: LaserFlow */}
-          <div ref={visualRef} className="relative order-1 lg:order-2">
-            <div className="relative h-[400px] md:h-[500px] lg:h-[600px]  overflow-hidden shadow-2xl bg-black rounded-tl-[200px]  rounded-br-[100px] border-none">
-              {/* Video replacing Atom image and LaserFlow */}
-              <div className="absolute inset-0">
-                <video
-                  ref={videoRef}
-                  src="https://www.dropbox.com/scl/fi/ngrk0vg3lslfx7ca9d69y/DURATION_Exactly_seconds.mp4?rlkey=kdv4tlmsg67jhzzn1ucw642lh&st=eaw7cpxw&raw=1"
-                  autoPlay
-                  muted
-                  playsInline
-                  preload="auto"
-                  poster={HERO_VIDEO_POSTER}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-
-              {/* Decorative border overlay - show on mobile only */}
-              {isMobile && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 left-0 w-20 h-20 border-t-2 border-l-2 border-white" />
-                  <div className="absolute top-0 right-0 w-20 h-20 border-t-2 border-r-2 border-white" />
-                  <div className="absolute bottom-0 left-0 w-20 h-20 border-b-2 border-l-2 border-white" />
-                  <div className="absolute bottom-0 right-0 w-20 h-20 border-b-2 border-r-2 border-white" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Scroll Indicator */}
-      <button
-        className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer z-10 hidden md:block group focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black outline-none rounded-lg p-2"
-        onClick={scrollToNext}
-        aria-label="Scroll to next section"
-      >
-        <div className="flex flex-col items-center gap-2 text-white group-hover:text-[#FBFF63] transition-colors duration-300">
-          <span className="text-sm font-light tracking-widest">SCROLL</span>
-          <svg
-            className="w-6 h-6 animate-bounce"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
-          </svg>
-        </div>
-      </button>
-    </section>
+   },
+   { threshold: 0.05 }
   );
+
+  observer.observe(section);
+
+  return () => {
+   observer.disconnect();
+  };
+ }, [activeVideoIdx]);
+
+ const scrollToNext = () => {
+  smoothScrollTo('#about', { offsetY: 64, duration: 1.1, ease: 'pegasus' });
+ };
+
+ return (
+  <section
+   id="hero"
+   className="min-h-screen relative flex flex-col justify-end bg-[#000000] overflow-hidden"
+  >
+   {/* ── Video Background ── */}
+   <div className="absolute inset-0 z-0 bg-black">
+   {HERO_VIDEOS.map((vid, idx) => (
+    <video
+     key={vid.id}
+     ref={(el) => {
+      videoRefs.current[idx] = el;
+     }}
+     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+      idx === activeVideoIdx ? 'opacity-90 z-[1]' : 'opacity-0 z-0 pointer-events-none'
+     }`}
+     src={vid.src}
+     autoPlay={idx === 0}
+     muted
+     playsInline
+     preload="auto"
+     onEnded={() => handleVideoEnded(idx)}
+     poster="/images/topics/control_plane.jpg"
+    />
+   ))}
+   {/* Cinematic overlays for text readability */}
+   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-[2]" />
+   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-[2]" />
+   </div>
+
+   {/* ── Content Overlay ── */}
+   <div className="w-full relative z-10">
+   <div
+    ref={textRef}
+    className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 min-h-[80vh] lg:min-h-[85vh]"
+   >
+    <div className="space-y-4 max-w-3xl">
+    {/* Primary Headline with Interactive ParticleText */}
+    <div className="space-y-2">
+     <div ref={titleRef} className="w-full h-16 sm:h-20 md:h-24 lg:h-28 max-w-3xl">
+      <span className="sr-only">{t('hero_title')}</span>
+      <ParticleText
+       useBrandmark={true}
+       particleSize={2.1}
+       density={2.2}
+       color="#10b981"
+       highlightColor="#34d399"
+       scatter={120}
+       gatherDuration={1200}
+       stagger={260}
+       pointerRepel={38}
+       repelRadius={95}
+       idleDrift={0.25}
+       trigger="none"
+       textAlign="left"
+       glow
+      />
+     </div>
+
+     <h1
+      ref={subtitleRef}
+      className="block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light min-h-[1.25em] tracking-tight leading-[1.12] text-white"
+     >
+      <TextType
+       key={`${language}-hero-video`}
+       text={typedPhrases}
+       startFull={true}
+       typingSpeed={isMobile ? 90 : 70}
+       pauseDuration={2400}
+       deletingSpeed={isMobile ? 60 : 45}
+       showCursor={true}
+       cursorCharacter="|"
+       loop={true}
+       textColors={['#FFFFFF', '#C0C0C0']}
+       className="font-light"
+       cursorClassName="text-white font-light"
+      />
+     </h1>
+    </div>
+
+    {/* Subtitle Description */}
+    <p
+     ref={descRef}
+     className="text-sm sm:text-base md:text-lg font-light leading-relaxed max-w-lg pt-1 text-white/60"
+    >
+     {t('hero_desc')}
+    </p>
+    </div>
+
+    {/* Action Buttons */}
+    <div ref={ctaRef} className="pt-6 sm:pt-8 flex flex-wrap items-center gap-4">
+    <button
+     onClick={scrollToNext}
+     className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white text-black hover:bg-white/90"
+    >
+     <span>{t('hero_explore')}</span>
+     <span className="text-lg leading-none mt-[-2px]">›</span>
+    </button>
+
+    <a
+     href="/join"
+     className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+    >
+     <span>{t('hero_demo')}</span>
+     <span className="text-lg leading-none mt-[-2px]">›</span>
+    </a>
+    </div>
+   </div>
+   </div>
+
+
+   {/* ── Bottom scroll indicator ── */}
+   <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-60">
+   <div className="w-[1px] h-8 bg-gradient-to-b from-transparent to-white/60" />
+   <button
+    onClick={scrollToNext}
+    className="text-white/50 hover:text-white transition-colors"
+    aria-label="Scroll down"
+   >
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+    </svg>
+   </button>
+   </div>
+  </section>
+ );
 }

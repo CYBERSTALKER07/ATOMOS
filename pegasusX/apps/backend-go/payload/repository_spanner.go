@@ -2,6 +2,7 @@ package payload
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -23,6 +24,14 @@ func NewSpannerRepository(client *spanner.Client, supplierID, warehouseID string
 		supplierID:  supplierID,
 		warehouseID: strings.TrimSpace(warehouseID),
 	}
+}
+
+// SpannerClient exposes the underlying client for GS1 ship-unit helpers.
+func (r *SpannerRepository) SpannerClient() *spanner.Client {
+	if r == nil {
+		return nil
+	}
+	return r.client
 }
 
 // spannerTxnBuffer buffers outbox events during a Spanner transaction.
@@ -53,23 +62,7 @@ func (r *SpannerRepository) RunTx(ctx context.Context, fn func(ctx context.Conte
 			}
 			muts := make([]*spanner.Mutation, 0, len(buf.events))
 			for _, e := range buf.events {
-				createdAt := e.CreatedAt.UTC()
-				if createdAt.IsZero() {
-					createdAt = time.Now().UTC()
-				}
-				row := map[string]any{
-					"EventId":       e.EventID,
-					"AggregateType": e.AggregateType,
-					"AggregateId":   e.AggregateID,
-					"TopicName":     e.TopicName,
-					"Payload":       e.Payload,
-					"CreatedAt":     createdAt,
-					"PublishedAt":   nil,
-				}
-				if e.PublishedAt != nil {
-					row["PublishedAt"] = e.PublishedAt.UTC()
-				}
-				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 			}
 			if len(muts) > 0 {
 				if err := txn.BufferWrite(muts); err != nil {
@@ -128,12 +121,17 @@ type spannerPayloadTx struct {
 }
 
 func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT ManifestId, State, StopCount, TotalVolumeVU, MaxVolumeVU,
-			  DriverId, TruckId, CreatedAt, UpdatedAt, LoadingStartedAt, SealedAt
-			  FROM SupplierTruckManifests WHERE SupplierId = @sid`,
-		Params: map[string]interface{}{"sid": tx.supplierID},
+	// B7 PL-P0-6: when repo is warehouse-scoped, filter SQL; empty/NULL WarehouseId
+	// rows remain visible (historical) — mutate path enforces non-empty mismatch.
+	sql := `SELECT ManifestId, State, StopCount, TotalVolumeVU, MaxVolumeVU,
+			  DriverId, TruckId, CreatedAt, UpdatedAt, LoadingStartedAt, SealedAt, WarehouseId
+			  FROM SupplierTruckManifests WHERE SupplierId = @sid`
+	params := map[string]interface{}{"sid": tx.supplierID}
+	if tx.warehouseID != "" {
+		sql += ` AND (WarehouseId IS NULL OR WarehouseId = '' OR WarehouseId = @wh)`
+		params["wh"] = tx.warehouseID
 	}
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := tx.txn.Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -152,10 +150,11 @@ func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 		var driverID, truckID string
 		var createdAt, updatedAt time.Time
 		var loadingAt, sealedAt spanner.NullTime
+		var warehouseID spanner.NullString
 
 		if err := row.Columns(&m.ManifestID, &m.State, &stopCount, &totalVolume, &maxVolume,
 			&driverID, &truckID, &createdAt, &updatedAt,
-			&loadingAt, &sealedAt); err != nil {
+			&loadingAt, &sealedAt, &warehouseID); err != nil {
 			return nil, err
 		}
 		m.StopCount = int(stopCount)
@@ -170,6 +169,13 @@ func (tx *spannerPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, e
 		}
 		if sealedAt.Valid {
 			m.SealedAt = sealedAt.Time.Format(time.RFC3339Nano)
+		}
+		if warehouseID.Valid {
+			m.WarehouseID = strings.TrimSpace(warehouseID.StringVal)
+		}
+		// Defense in depth: filter foreign warehouse even if SQL lacked param (runtime scope).
+		if tx.warehouseID != "" && m.WarehouseID != "" && m.WarehouseID != tx.warehouseID {
+			continue
 		}
 		manifests = append(manifests, m)
 	}
@@ -292,14 +298,14 @@ func (tx *spannerPayloadTx) ListExceptions(ctx context.Context) ([]ManifestExcep
 
 func (tx *spannerPayloadTx) SaveException(ctx context.Context, e ManifestException) error {
 	row := map[string]interface{}{
-		"ExceptionId": e.ExceptionID,
-		"ManifestId": e.ManifestID,
-		"OrderId": e.OrderID,
-		"SupplierId": tx.supplierID,
-		"Reason": e.Reason,
-		"Metadata": spanner.NullString{StringVal: e.Metadata, Valid: e.Metadata != ""},
+		"ExceptionId":  e.ExceptionID,
+		"ManifestId":   e.ManifestID,
+		"OrderId":      e.OrderID,
+		"SupplierId":   tx.supplierID,
+		"Reason":       e.Reason,
+		"Metadata":     spanner.NullString{StringVal: e.Metadata, Valid: e.Metadata != ""},
 		"AttemptCount": e.AttemptCount,
-		"CreatedAt": parseTime(e.CreatedAt),
+		"CreatedAt":    parseTime(e.CreatedAt),
 	}
 	if e.Escalated {
 		row["EscalatedAt"] = parseTime(e.CreatedAt) // Assuming escalated at creation for simplicity
@@ -308,6 +314,38 @@ func (tx *spannerPayloadTx) SaveException(ctx context.Context, e ManifestExcepti
 	}
 	mut := spanner.InsertOrUpdateMap("ManifestExceptions", row)
 	return tx.txn.BufferWrite([]*spanner.Mutation{mut})
+}
+
+func (tx *spannerPayloadTx) UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error {
+	orderID = strings.TrimSpace(orderID)
+	routeID = strings.TrimSpace(routeID)
+	driverID = strings.TrimSpace(driverID)
+	if orderID == "" {
+		return fmt.Errorf("order_id_required")
+	}
+	if tx.txn == nil {
+		return fmt.Errorf("order assignment: missing transaction")
+	}
+	row, err := tx.txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"SupplierId"})
+	if err != nil {
+		return fmt.Errorf("order assignment read: %w", err)
+	}
+	var supplierID string
+	if err := row.Columns(&supplierID); err != nil {
+		return fmt.Errorf("order assignment scan: %w", err)
+	}
+	if tx.supplierID != "" && supplierID != tx.supplierID {
+		return fmt.Errorf("order_supplier_mismatch")
+	}
+	cols := map[string]interface{}{
+		"OrderId":   orderID,
+		"RouteId":   spanner.NullString{StringVal: routeID, Valid: routeID != ""},
+		"UpdatedAt": spanner.CommitTimestamp,
+	}
+	if driverID != "" {
+		cols["DriverId"] = driverID
+	}
+	return tx.txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("Orders", cols)})
 }
 
 func parseTime(s string) time.Time {
@@ -327,4 +365,34 @@ func parseNullTime(s string) spanner.NullTime {
 		return spanner.NullTime{}
 	}
 	return spanner.NullTime{Time: t, Valid: true}
+}
+
+func (tx *spannerPayloadTx) DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error {
+	if tx.txn == nil {
+		return fmt.Errorf("delete manifest order: missing transaction")
+	}
+	m := spanner.Delete("ManifestOrders", spanner.Key{manifestID, orderID})
+	return tx.txn.BufferWrite([]*spanner.Mutation{m})
+}
+
+func (tx *spannerPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit) error {
+	if tx.txn == nil {
+		return fmt.Errorf("missing transaction")
+	}
+	var muts []*spanner.Mutation
+	for _, u := range units {
+		muts = append(muts, spanner.InsertMap("ManifestShipUnits", map[string]any{
+			"ManifestId": u.ManifestID,
+			"ShipUnitId": u.ShipUnitID,
+			"Sscc":       u.SSCC,
+			"OrderId":    u.OrderID,
+			"Sequence":   u.Sequence,
+			"Gtin":       nullableStr(u.GTIN),
+			"CreatedAt":  spanner.CommitTimestamp,
+		}))
+	}
+	if len(muts) > 0 {
+		return tx.txn.BufferWrite(muts)
+	}
+	return nil
 }

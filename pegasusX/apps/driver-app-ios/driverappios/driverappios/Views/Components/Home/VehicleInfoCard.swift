@@ -23,7 +23,7 @@ struct VehicleInfoCard: View {
                     if vm.vehicleClass != "—" {
                         Text("•")
                             .foregroundStyle(LabTheme.fgTertiary)
-                        Text("\(vm.vehicleClass) · \(Int(vm.maxVolumeVU)) VU")
+                        Text(L10n.format("mobile_driver.ui.vehicleclass_maxvolumevu_vu", "\(vm.vehicleClass)", "\(Int(vm.maxVolumeVU))"))
                             .font(.system(size: 12, weight: .medium, design: .monospaced))
                             .foregroundStyle(LabTheme.fgTertiary)
                     }

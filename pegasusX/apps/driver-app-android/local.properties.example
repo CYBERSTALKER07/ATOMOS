@@ -6,6 +6,6 @@
 #   Physical device over Wi-Fi:   dev.host=192.168.1.42   (the Mac's LAN IP)
 # Production endpoint override:
 #   prod.api.base.url         -> Pegasus primary host (default)
-prod.api.base.url=https://api.pegasus.uz
+prod.api.base.url=https://api.pegasusx.app
 dev.host=10.0.2.2
 MAPS_API_KEY=

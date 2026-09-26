@@ -27,7 +27,7 @@ import { useRetailerNotifications } from "../lib/notifications";
 import { clearStoredToken } from "../lib/bridge";
 import { useTheme, type ThemeMode } from "./ThemeProvider";
 
-/* ────────── Navigation Config ────────── */
+/* ---------- Navigation Config ---------- */
 
 type NavEntry = { href: string; icon: React.ElementType; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -62,7 +62,7 @@ function isActiveRoute(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/* ── Breadcrumb helper ── */
+/* -- Breadcrumb helper -- */
 function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   if (pathname === "/") return [{ label: "Hub", href: "/" }];
   const segs = pathname.split("/").filter(Boolean);
@@ -100,7 +100,7 @@ const ThemeToggle = memo(function ThemeToggle() {
   );
 });
 
-/* ── Memoized Drawer Content ── */
+/* -- Memoized Drawer Content -- */
 const DrawerContent = memo(function DrawerContent({
   isMobile,
   collapsed,
@@ -356,7 +356,7 @@ const DrawerContent = memo(function DrawerContent({
   );
 });
 
-/* ── Shell ── */
+/* -- Shell -- */
 
 export default function RetailerShell({
   children,
@@ -416,7 +416,7 @@ export default function RetailerShell({
         color: "var(--desk-text-primary)",
       }}
     >
-      {/* ── Desktop Sidebar ── */}
+      {/* -- Desktop Sidebar -- */}
       <motion.div
         layout
         initial={false}
@@ -437,7 +437,7 @@ export default function RetailerShell({
         />
       </motion.div>
 
-      {/* ── Mobile Drawer Overlay ── */}
+      {/* -- Mobile Drawer Overlay -- */}
       <AnimatePresence>
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
@@ -493,7 +493,7 @@ export default function RetailerShell({
         )}
       </AnimatePresence>
 
-      {/* ── Main Flow ── */}
+      {/* -- Main Flow -- */}
       <div className="flex-1 flex flex-col min-w-0 relative z-0">
         {/* Top App Bar */}
         <header

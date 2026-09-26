@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.offload
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -43,6 +45,7 @@ import com.pegasusx.driver.ui.theme.MotionTokens
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusRed
 import com.pegasusx.driver.ui.theme.formattedAmount
+import com.pegasusx.driver.R
 
 @Composable
 fun PaymentWaitingScreen(
@@ -64,7 +67,7 @@ fun PaymentWaitingScreen(
         return
     }
 
-    val pulseTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseTransition = rememberInfiniteTransition(label = stringResource(R.string.mobile_driver_ui_pulse))
     val pulseAlpha by pulseTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 1f,
@@ -145,7 +148,7 @@ fun PaymentWaitingScreen(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "Card / terminal",
+            text = stringResource(R.string.mobile_driver_ui_card_terminal),
             fontSize = 13.sp,
             color = lab.fgTertiary
         )
@@ -183,7 +186,7 @@ fun PaymentWaitingScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
             ) {
-                Text(text = "Retry Fiscal", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(text = stringResource(R.string.mobile_driver_ui_retry_fiscal), fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         } else if (state.error != null && state.paymentSettled && !state.fiscalizing) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -196,7 +199,7 @@ fun PaymentWaitingScreen(
                 shape = MaterialTheme.shapes.medium,
                 colors = ButtonDefaults.buttonColors(containerColor = StatusGreen),
             ) {
-                Text(text = "Retry Capture", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(text = stringResource(R.string.mobile_driver_ui_retry_capture), fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }

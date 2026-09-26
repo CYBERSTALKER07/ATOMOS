@@ -192,23 +192,7 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 		mutations := make([]*spanner.Mutation, 0, 2+len(buf.events))
 		mutations = append(mutations, base, ledgerMutation(buildWebhookLedgerEntry(w)))
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			rowMap := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				rowMap["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", rowMap))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -381,11 +365,14 @@ func (r *SpannerRepository) ListLedgerEntries(ctx context.Context, q LedgerQuery
 		params["occurred_to"] = q.OccurredTo.UTC()
 	}
 
-	sql := `SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries`
+	whereClause := "SupplierId IS NOT NULL"
 	if len(where) > 0 {
-		sql += " WHERE " + strings.Join(where, " AND ")
+		whereClause = strings.Join(where, " AND ")
 	}
-	sql += " ORDER BY OccurredAt DESC LIMIT @limit"
+	sql := fmt.Sprintf(
+		"SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries WHERE %s ORDER BY OccurredAt DESC LIMIT @limit",
+		whereClause,
+	)
 
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
@@ -482,11 +469,14 @@ func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q Settle
 		params["occurred_to"] = q.OccurredTo.UTC()
 	}
 
-	sql := `SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries`
+	whereClause := "SupplierId IS NOT NULL"
 	if len(where) > 0 {
-		sql += " WHERE " + strings.Join(where, " AND ")
+		whereClause = strings.Join(where, " AND ")
 	}
-	sql += " GROUP BY Gateway, EntryType, Currency ORDER BY Gateway ASC, EntryType ASC, Currency ASC LIMIT @group_limit"
+	sql := fmt.Sprintf(
+		"SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries WHERE %s GROUP BY Gateway, EntryType, Currency ORDER BY Gateway ASC, EntryType ASC, Currency ASC LIMIT @group_limit",
+		whereClause,
+	)
 
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
 		SQL:    sql,
@@ -534,24 +524,7 @@ func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbo
 		mutations := make([]*spanner.Mutation, 0, len(bases)+len(buf.events))
 		mutations = append(mutations, bases...)
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))

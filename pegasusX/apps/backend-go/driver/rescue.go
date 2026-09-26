@@ -31,20 +31,21 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 
 	rescueID := uuid.NewString()
 
+	var outWarehouseID string
 	_, err := spannerRepo.client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// Update driver's truck status to NEEDS_RESCUE
+		// Mark driver as needing rescue (Finding 5.2: TruckStatus does not exist, use UnavailableReason)
 		stmt := spanner.Statement{
-			SQL:    `UPDATE Drivers SET TruckStatus = 'NEEDS_RESCUE' WHERE Id = @id`,
+			SQL:    `UPDATE Drivers SET UnavailableReason = 'NEEDS_RESCUE', IsActive = false, UpdatedAt = PENDING_COMMIT_TIMESTAMP() WHERE DriverId = @id`,
 			Params: map[string]any{"id": driverID},
 		}
 		if _, err := txn.Update(ctx, stmt); err != nil {
 			return err
 		}
 
-		// Look up SupplierID and WarehouseID for the driver to route the event
+		// Look up SupplierID and WarehouseID
 		var supplierID, warehouseID string
 		lookupStmt := spanner.Statement{
-			SQL:    `SELECT SupplierId, AssignedWarehouseId FROM Drivers WHERE Id = @id`,
+			SQL:    `SELECT SupplierId, HomeNodeId FROM Drivers WHERE DriverId = @id`,
 			Params: map[string]any{"id": driverID},
 		}
 		iter := txn.Query(ctx, lookupStmt)
@@ -55,8 +56,12 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 			if err := row.Columns(&sp, &wh); err == nil {
 				supplierID = sp.StringVal
 				warehouseID = wh.StringVal
+				outWarehouseID = warehouseID
+				
 			}
 		}
+
+		// Phase 3: AI Action / Broadcast will be done post-commit.
 
 		ev := events.RescueEvent{
 			RescueID:       rescueID,
@@ -75,6 +80,7 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 			"TopicName":     events.TopicMain,
 			"Payload":       string(evJSON),
 			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    supplierID,
 		})
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
@@ -83,6 +89,20 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 		s.log.Error("failed to request rescue", "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
+	}
+
+	autoActionAI := false // In production, this would query WarehouseSettings
+	if !autoActionAI {
+		// Phase 3: Broadcast Rescue -> Notify all drivers (Post-Commit)
+		if s.driverHub != nil {
+			payload, _ := json.Marshal(map[string]any{
+				"type":           "RESCUE_BROADCAST",
+				"rescue_id":      rescueID,
+				"broken_driver":  driverID,
+				"warehouse_id":   outWarehouseID,
+			})
+			s.driverHub.Broadcast(context.Background(), "warehouse:"+outWarehouseID, payload)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "requested", "rescue_id": rescueID})
@@ -123,7 +143,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 	_, err := spannerRepo.client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		var supplierID, warehouseID string
 		lookupStmt := spanner.Statement{
-			SQL:    `SELECT SupplierId, AssignedWarehouseId FROM Drivers WHERE Id = @id`,
+			SQL:    `SELECT SupplierId, HomeNodeId FROM Drivers WHERE DriverId = @id`,
 			Params: map[string]any{"id": driverID},
 		}
 		iterLookup := txn.Query(ctx, lookupStmt)
@@ -134,6 +154,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 			if err := row.Columns(&sp, &wh); err == nil {
 				supplierID = sp.StringVal
 				warehouseID = wh.StringVal
+				
 			}
 		}
 
@@ -145,7 +166,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 
 			// Find all active orders for the broken driver to reassign
 			findOrdersStmt := spanner.Statement{
-				SQL: `SELECT Id, RetailerId FROM Orders 
+				SQL: `SELECT OrderId, RetailerId FROM Orders 
 				      WHERE DriverId = @oldDriverId AND Status IN ('LOADED', 'IN_TRANSIT', 'ARRIVED', 'DISPATCHED', 'ARRIVING', 'EN_ROUTE', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION')`,
 				Params: map[string]any{"oldDriverId": req.BrokenDriverID},
 			}
@@ -185,7 +206,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 
 			// Mark the old driver's truck as BROKEN_DOWN instead of NEEDS_RESCUE
 			truckStmt := spanner.Statement{
-				SQL:    `UPDATE Drivers SET TruckStatus = 'BROKEN_DOWN' WHERE Id = @oldDriverId`,
+				SQL:    `UPDATE Drivers SET UnavailableReason = 'BROKEN_DOWN', IsActive = false, UpdatedAt = PENDING_COMMIT_TIMESTAMP() WHERE DriverId = @oldDriverId`,
 				Params: map[string]any{"oldDriverId": req.BrokenDriverID},
 			}
 			if _, err := txn.Update(ctx, truckStmt); err != nil {
@@ -195,7 +216,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 			// Look up Rescue Driver's License Plate for the event
 			var rescueLicensePlate string
 			lpStmt := spanner.Statement{
-				SQL:    `SELECT LicensePlate FROM Drivers WHERE Id = @id`,
+				SQL:    `SELECT v.LicensePlate FROM Drivers d JOIN Vehicles v ON d.VehicleId = v.VehicleId WHERE d.DriverId = @id`,
 				Params: map[string]any{"id": driverID},
 			}
 			iterLP := txn.Query(ctx, lpStmt)
@@ -229,6 +250,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 					"TopicName":     events.TopicMain,
 					"Payload":       string(evJSON),
 					"CreatedAt":     spanner.CommitTimestamp,
+					"SupplierId":    supplierID,
 				}))
 			}
 		}
@@ -250,6 +272,7 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 			"TopicName":     events.TopicMain,
 			"Payload":       string(evJSON),
 			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    supplierID,
 		}))
 
 		return txn.BufferWrite(mutations)

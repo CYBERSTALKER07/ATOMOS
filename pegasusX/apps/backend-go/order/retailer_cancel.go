@@ -51,11 +51,17 @@ func (s *Service) HandleRetailerCancel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
+	// B3 M-P0-4: cancel ownership is org-scoped; body retailer_id must match org.
+	orgID := auth.ResolveRetailerOrgID(claims)
+	if orgID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
 	retailerID := strings.TrimSpace(req.RetailerID)
 	if retailerID == "" {
-		retailerID = strings.TrimSpace(claims.Subject)
+		retailerID = orgID
 	}
-	if retailerID == "" || retailerID != strings.TrimSpace(claims.Subject) {
+	if retailerID != orgID {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}

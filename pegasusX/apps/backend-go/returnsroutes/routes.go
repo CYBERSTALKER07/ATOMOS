@@ -11,9 +11,7 @@ import (
 
 // Deps is the narrow dependency contract for returns gate routes.
 type Deps struct {
-	Service             *returns.Service
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
+	Service *returns.Service
 }
 
 // RegisterRoutes mounts inbound return scanning endpoints.
@@ -30,14 +28,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/catalog/barcode/{ean}", d.Service.HandleBarcodeLookup)
 	}
 	allowed := []auth.Role{auth.RolePayload, auth.RoleWarehouse, auth.RoleWarehouseAdmin, auth.RoleAdmin}
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(allowed...))
-			mount(gr)
-		})
-		return
-	}
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.RequireRole(allowed...))
 		mount(gr)
@@ -51,14 +41,6 @@ func RegisterDriverRoutes(r chi.Router, d Deps) {
 	}
 	mount := func(rr chi.Router) {
 		rr.Get("/v1/driver/return-goods", d.Service.HandleDriverReturnGoods)
-	}
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(auth.RoleDriver))
-			mount(gr)
-		})
-		return
 	}
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.RequireRole(auth.RoleDriver))
@@ -75,14 +57,6 @@ func RegisterSupplierHistory(r chi.Router, d Deps) {
 		d.Service.HandleReturnsHistory(w, req)
 	}
 	allowed := []auth.Role{auth.RoleAdmin}
-	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
-		r.Group(func(gr chi.Router) {
-			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(allowed...))
-			gr.Get("/v1/supplier/returns/history", handler)
-		})
-		return
-	}
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.RequireRole(allowed...))
 		gr.Get("/v1/supplier/returns/history", handler)

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.cart
 
+import androidx.compose.ui.res.stringResource
+
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -77,8 +79,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.CartItem
 import com.pegasusx.retailer.ui.components.CheckoutSheet
 import com.pegasusx.retailer.ui.components.DefaultCheckoutPaymentOptions
+import com.pegasusx.retailer.ui.components.checkoutPaymentLabel
 import com.pegasusx.retailer.ui.theme.StatusGreen
 import com.pegasusx.retailer.ui.theme.StatusRed
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,7 +164,7 @@ fun CartScreen(
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "${uiState.totalItems} items in your cart",
+                            stringResource(R.string.mobile_retailer_ui_totalitems_items_in_your_cart, uiState.totalItems),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         )
@@ -212,7 +216,7 @@ fun CartScreen(
                 discount = uiState.displayDiscount,
                 total = uiState.displayTotal,
                 selectedPaymentGateway = uiState.selectedPaymentGateway,
-                paymentLabel = uiState.selectedPaymentLabel,
+                paymentLabel = checkoutPaymentLabel(uiState.selectedPaymentGateway, uiState.paymentOptions),
                 paymentOptions = uiState.paymentOptions.ifEmpty { DefaultCheckoutPaymentOptions },
                 stockWarnings = uiState.stockWarnings,
                 oosItems = uiState.oosItems,
@@ -224,9 +228,14 @@ fun CartScreen(
                 deliveryFeeLabel = uiState.displayDeliveryFee,
                 deliveryDistanceKm = uiState.deliveryDistanceKm,
                 expressPriority = uiState.expressPriority,
+                currencyPickerEnabled = uiState.currencyPickerEnabled,
+                currencyAllowlist = uiState.currencyAllowlist,
+                operatingCurrency = uiState.operatingCurrency,
+                orderCurrency = uiState.orderCurrency,
                 onDeliveryModeChange = viewModel::setDeliveryMode,
                 onDeliveryDateChange = viewModel::setDeliveryDate,
                 onExpressPriorityChange = viewModel::setExpressPriority,
+                onOrderCurrencyChange = viewModel::setOrderCurrency,
                 onBuy = viewModel::processPayment,
                 onSelectPayment = viewModel::setSelectedPaymentGateway,
                 onDismiss = viewModel::dismissCheckout,
@@ -239,7 +248,7 @@ fun CartScreen(
                 title = { Text("Partial backorder") },
                 text = {
                     Text(
-                        "Some items will be backordered (${uiState.stockWarnings.size} line(s)). Delivery may be delayed. Proceed?",
+                        stringResource(R.string.mobile_retailer_ui_some_items_will_be_backordered_size_line_s_delivery_may_be_delayed_proce, uiState.stockWarnings.size),
                     )
                 },
                 confirmButton = {
@@ -395,7 +404,7 @@ private fun CartItemCard(
             // Price + stepper column
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "%,.0f".format(item.totalPrice),
+                    "%,d".format(item.totalPrice),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 )
                 Spacer(modifier = Modifier.height(6.dp))

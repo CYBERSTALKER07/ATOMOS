@@ -52,7 +52,7 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // ── Location handlers ───────────────────────────────────────────────────
+  // -- Location handlers ---------------------------------------------------
 
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     setGeocoding(true);
@@ -96,7 +96,7 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
   const resolvedAddress = addressOverride || geocoded?.display_name || '';
   const resolvedStreet = geocoded ? `${geocoded.street} ${geocoded.house_number}`.trim() : '';
 
-  // ── Navigation ──────────────────────────────────────────────────────────
+  // -- Navigation ----------------------------------------------------------
 
   const canProceedStep0 = markerPlaced;
   const canProceedStep1 = name.trim().length > 0;
@@ -108,7 +108,7 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
     if (step > 0) setStep(step - 1);
   };
 
-  // ── Submit ──────────────────────────────────────────────────────────────
+  // -- Submit --------------------------------------------------------------
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -144,7 +144,7 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // -- Render --------------------------------------------------------------
 
   return (
     <div className="flex flex-col h-full">
@@ -283,6 +283,8 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
                     Address (auto-detected, or type to override)
                   </label>
                   <input
+                    id="address-auto-detected-or-input-2"
+                    aria-label="Address (auto-detected, or type to override)"
                     type="text"
                     value={addressOverride || geocoded?.display_name || ''}
                     onChange={e => setAddressOverride(e.target.value)}
@@ -401,7 +403,7 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
   );
 }
 
-// ── Field Input helper ──────────────────────────────────────────────────────
+// -- Field Input helper ------------------------------------------------------
 
 function FieldInput({
   label,
@@ -426,6 +428,8 @@ function FieldInput({
         {label} {required && <span style={{ color: 'var(--danger)' }}>*</span>}
       </label>
       <input
+        id="value-input-1"
+        aria-label="Value"
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}

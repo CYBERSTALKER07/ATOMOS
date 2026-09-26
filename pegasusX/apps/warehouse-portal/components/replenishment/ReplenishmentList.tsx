@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { WarehouseReplenishmentInsight } from '@pegasusx/types';
 import { parseForecastConfidence } from '@/lib/forecast-confidence';
 import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
@@ -10,6 +13,7 @@ interface ReplenishmentListProps {
 }
 
 export function ReplenishmentList({ insights, actingId, onApprove, onDismiss }: ReplenishmentListProps) {
+  const t = usePortalT();
   const urgencyClass = (urgency: string) => {
     if (urgency === 'PROACTIVE') return 'status-chip--proactive';
     if (urgency === 'CRITICAL') return 'status-chip--critical';
@@ -22,15 +26,15 @@ export function ReplenishmentList({ insights, actingId, onApprove, onDismiss }: 
       <table className="desk-table w-full text-sm">
       <thead>
         <tr className="border-b border-(--border)">
-          <th className="px-4 py-3 text-left font-medium">Product</th>
-          <th className="px-4 py-3 text-left font-medium">Confidence</th>
-          <th className="px-4 py-3 text-left font-medium">Why</th>
-          <th className="px-4 py-3 text-left font-medium">Urgency</th>
-          <th className="px-4 py-3 text-right font-medium">Stock</th>
-          <th className="px-4 py-3 text-right font-medium">Days Left</th>
-          <th className="px-4 py-3 text-right font-medium">Reorder Qty</th>
-          <th className="px-4 py-3 text-left font-medium">Status</th>
-          <th className="px-4 py-3 text-right font-medium">Actions</th>
+          <th className="px-4 py-3 text-left font-medium">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+          <th className="px-4 py-3 text-left font-medium">{t("warehouse_portal.forecast.forecast_sku_table.text.confidence")}</th>
+          <th className="px-4 py-3 text-left font-medium">{t("warehouse_portal.replenishment.replenishment_list.text.why")}</th>
+          <th className="px-4 py-3 text-left font-medium">{t("warehouse_portal.replenishment.replenishment_list.text.urgency")}</th>
+          <th className="px-4 py-3 text-right font-medium">{t("portal.nav.stock")}</th>
+          <th className="px-4 py-3 text-right font-medium">{t("warehouse_portal.replenishment.replenishment_list.text.days_left")}</th>
+          <th className="px-4 py-3 text-right font-medium">{t("warehouse_portal.replenishment.replenishment_list.text.reorder_qty")}</th>
+          <th className="px-4 py-3 text-left font-medium">{t("warehouse_portal.bins.text.status")}</th>
+          <th className="px-4 py-3 text-right font-medium">{t("warehouse_portal.dispatch_locks.text.actions")}</th>
         </tr>
       </thead>
       <tbody>

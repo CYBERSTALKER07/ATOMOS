@@ -1,5 +1,8 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -50,18 +53,36 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pegasusx.retailer.R
 
 enum class CheckoutPhase { REVIEW, PROCESSING, COMPLETE }
 
 data class CheckoutPaymentOption(
     val gateway: String,
     val label: String,
+    @param:StringRes val labelRes: Int? = null,
 )
 
 val DefaultCheckoutPaymentOptions = listOf(
-    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
-    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay"),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery", labelRes = R.string.supplier_portal_billing_setup_gateway_cash_label),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay", labelRes = R.string.mobile_retailer_ui_globalpay),
 )
+
+/** Localized label for a payment option: known gateways resolve via [labelRes], dynamic cards use [label]. */
+@Composable
+fun CheckoutPaymentOption.displayLabel(): String =
+    labelRes?.let { stringResource(it) } ?: label
+
+/** Localized label for the selected gateway — composable counterpart of the former ViewModel helper. */
+@Composable
+fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
+    return options.find { it.gateway == gateway }?.displayLabel() ?: when (gateway.trim().uppercase()) {
+        "GLOBAL_PAY" -> stringResource(R.string.mobile_retailer_ui_globalpay)
+        "ADYEN" -> stringResource(R.string.supplier_portal_residual_text_adyen)
+        "CASH" -> stringResource(R.string.supplier_portal_billing_setup_gateway_cash_label)
+        else -> gateway
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,9 +107,14 @@ fun CheckoutSheet(
     deliveryFeeLabel: String = "Free",
     deliveryDistanceKm: Double = 0.0,
     expressPriority: Boolean = false,
+    currencyPickerEnabled: Boolean = false,
+    currencyAllowlist: List<String> = emptyList(),
+    operatingCurrency: String = "",
+    orderCurrency: String = "",
     onDeliveryModeChange: (String) -> Unit = {},
     onDeliveryDateChange: (String?) -> Unit = {},
     onExpressPriorityChange: (Boolean) -> Unit = {},
+    onOrderCurrencyChange: (String) -> Unit = {},
     onBuy: () -> Unit,
     onSelectPayment: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -174,7 +200,7 @@ fun CheckoutSheet(
                         )
                         stockWarnings.forEach { warning ->
                             Text(
-                                "${warning.sku}: ${warning.backorderQty} of ${warning.requested} backordered",
+                                stringResource(R.string.mobile_retailer_ui_sku_backorderqty_of_requested_backordered, warning.sku, warning.backorderQty, warning.requested),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                             )
@@ -260,13 +286,13 @@ private fun DeliveryIntentSection(
             Text("Delivery", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DeliveryModeChip(
-                    label = "Standard",
+                    label = stringResource(R.string.mobile_retailer_ui_standard),
                     selected = deliveryMode != "SCHEDULED",
                     onClick = { onDeliveryModeChange("STANDARD") },
                     modifier = Modifier.weight(1f),
                 )
                 DeliveryModeChip(
-                    label = "Scheduled",
+                    label = stringResource(R.string.supplier_portal_demand_signals_text_scheduled),
                     subtitle = "T+${preorderMinLeadDays}${if (preorderMaxLeadDays > 0) "–T+$preorderMaxLeadDays" else "+"}",
                     selected = deliveryMode == "SCHEDULED",
                     onClick = { onDeliveryModeChange("SCHEDULED") },
@@ -421,7 +447,7 @@ private fun ReviewContent(
     Spacer(modifier = Modifier.height(20.dp))
 
     Text(
-        text = "Payment Method",
+        text = stringResource(R.string.mobile_retailer_ui_payment_method),
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
     )
@@ -477,7 +503,7 @@ private fun ReviewContent(
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "Payment options",
+                        contentDescription = stringResource(R.string.mobile_retailer_ui_payment_options),
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -490,7 +516,7 @@ private fun ReviewContent(
             ) {
                 paymentOptions.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(option.label) },
+                        text = { Text(option.displayLabel()) },
                         onClick = {
                             paymentMenuExpanded = false
                             onSelectPayment(option.gateway)

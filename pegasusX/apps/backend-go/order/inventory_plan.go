@@ -51,6 +51,7 @@ type InventoryPlan struct {
 	Backorder        []LineItem
 	BackorderCount   int
 	Warnings         []StockWarning
+	AvailableStock   map[string]int64
 }
 
 // StockWarning is surfaced to retailers when backorder policy allows checkout.
@@ -168,7 +169,7 @@ func PlanInventoryCheckoutWithCredit(
 
 // buildInventoryPlan splits lines using pre-resolved per-SKU availability and policy (unit-test seam).
 func buildInventoryPlan(warehouseDefault string, items []LineItem, states map[string]skuPlanState) (InventoryPlan, error) {
-	plan := InventoryPlan{}
+	plan := InventoryPlan{AvailableStock: make(map[string]int64)}
 	rejected := make([]string, 0)
 	shortfall := make(map[string]int64)
 	oosAll := make([]string, 0)
@@ -184,6 +185,7 @@ func buildInventoryPlan(warehouseDefault string, items []LineItem, states map[st
 		}
 		available := st.available
 		requested := item.Quantity
+		plan.AvailableStock[sku] = available
 
 		if available >= requested {
 			plan.Fulfillable = append(plan.Fulfillable, item)

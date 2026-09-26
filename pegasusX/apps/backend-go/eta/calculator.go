@@ -1,9 +1,76 @@
 package eta
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"math"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 )
+
+const defaultOSRMTimeout = 2 * time.Second
+
+// OSRMTableResponse models the response from OSRM /table/v1/driving/
+type OSRMTableResponse struct {
+	Code      string      `json:"code"`
+	Durations [][]float64 `json:"durations"` // seconds
+	Distances [][]float64 `json:"distances"` // meters
+}
+
+// FetchOSRMTable calls OSRM table service for driving durations and distances.
+// Expected coordinates format in OSRM URL: {lng1},{lat1};{lng2},{lat2};...
+func FetchOSRMTable(ctx context.Context, osrmURL string, coords [][2]float64) (*OSRMTableResponse, error) {
+	osrmURL = strings.TrimRight(strings.TrimSpace(osrmURL), "/")
+	if osrmURL == "" || len(coords) < 2 {
+		return nil, fmt.Errorf("osrm table: invalid url or insufficient coords")
+	}
+
+	var sb strings.Builder
+	for i, c := range coords {
+		if i > 0 {
+			sb.WriteByte(';')
+		}
+		sb.WriteString(strconv.FormatFloat(c[1], 'f', 6, 64)) // lng
+		sb.WriteByte(',')
+		sb.WriteString(strconv.FormatFloat(c[0], 'f', 6, 64)) // lat
+	}
+
+	url := osrmURL + "/table/v1/driving/" + sb.String() + "?annotations=distance,duration"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &http.Client{Timeout: defaultOSRMTimeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("osrm table status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	var table OSRMTableResponse
+	if err := json.Unmarshal(body, &table); err != nil {
+		return nil, err
+	}
+	if !strings.EqualFold(table.Code, "Ok") || len(table.Durations) == 0 {
+		return nil, fmt.Errorf("osrm table code %q", table.Code)
+	}
+	return &table, nil
+}
 
 // haversineKm computes the distance between two points on Earth in kilometers.
 func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
@@ -17,8 +84,14 @@ func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
 	return R * c
 }
 
-// CalculateETAs is a pure function that calculates predicted arrival windows for a sequence of stops.
+// CalculateETAs is a pure function that calculates predicted arrival windows for a sequence of stops,
+// utilizing live OSRM /table/v1/driving/ matrices when available, falling back to Haversine.
 func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverProfile, stops []StopInput, shopClosedRates map[string]float64) []RouteETA {
+	return CalculateETAsWithContext(context.Background(), now, driverLat, driverLng, profile, stops, shopClosedRates, os.Getenv("ROUTING_OSRM_URL"))
+}
+
+// CalculateETAsWithContext executes ETA calculation with explicit context and OSRM endpoint.
+func CalculateETAsWithContext(ctx context.Context, now time.Time, driverLat, driverLng float64, profile DriverProfile, stops []StopInput, shopClosedRates map[string]float64, osrmURL string) []RouteETA {
 	var etas []RouteETA
 
 	speed := profile.HistoricalSpeedKmH
@@ -31,13 +104,7 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 		stopDuration = 8.0 // Default 8 minutes per stop
 	}
 
-	confidence := float64(profile.RecentStopCount) / 15.0
-	if confidence > 1.0 {
-		confidence = 1.0
-	}
-	if confidence < 0 {
-		confidence = 0
-	}
+	confidence := math.Min(1.0, math.Max(0.0, float64(profile.RecentStopCount)/15.0))
 	
 	// Rule: If historical data is thin (< 10 samples) -> widen the window and lower confidence.
 	isThinData := profile.RecentStopCount < 10
@@ -45,17 +112,50 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 		confidence = 0.5
 	}
 
+	// Filter active stops
+	var activeStops []StopInput
+	for _, s := range stops {
+		if !s.IsCompleted {
+			activeStops = append(activeStops, s)
+		}
+	}
+	if len(activeStops) == 0 {
+		return etas
+	}
+
+	// Build waypoints for OSRM: [driver, stop_1, stop_2, ..., stop_k]
+	coords := make([][2]float64, 0, len(activeStops)+1)
+	coords = append(coords, [2]float64{driverLat, driverLng})
+	for _, s := range activeStops {
+		coords = append(coords, [2]float64{s.Lat, s.Lng})
+	}
+
+	var osrmTable *OSRMTableResponse
+	if osrmURL != "" {
+		if tbl, err := FetchOSRMTable(ctx, osrmURL, coords); err == nil {
+			osrmTable = tbl
+		}
+	}
+
 	currentTime := now
 	currentLat := driverLat
 	currentLng := driverLng
 
-	for _, stop := range stops {
-		if stop.IsCompleted {
-			continue
-		}
+	for idx, stop := range activeStops {
+		var travelMinutes float64
+		var distKm float64
 
-		distKm := haversineKm(currentLat, currentLng, stop.Lat, stop.Lng)
-		travelMinutes := (distKm / speed) * 60.0
+		// Use OSRM durations and distances if table is valid
+		if osrmTable != nil && len(osrmTable.Durations) > idx+1 && len(osrmTable.Durations[idx]) > idx+1 {
+			durationSec := osrmTable.Durations[idx][idx+1]
+			travelMinutes = durationSec / 60.0
+			if len(osrmTable.Distances) > idx+1 && len(osrmTable.Distances[idx]) > idx+1 {
+				distKm = osrmTable.Distances[idx][idx+1] / 1000.0
+			}
+		} else {
+			distKm = haversineKm(currentLat, currentLng, stop.Lat, stop.Lng)
+			travelMinutes = (distKm / speed) * 60.0
+		}
 		
 		congestionFactor := 1.0 // Phase 1 placeholder
 
@@ -94,6 +194,7 @@ func CalculateETAs(now time.Time, driverLat, driverLng float64, profile DriverPr
 			"historical_speed_km_h":            speed,
 			"avg_stop_duration_minutes":        stopDuration,
 			"is_thin_data":                     thinDataVal,
+			"distance_km":                      distKm,
 		}
 
 		eta := RouteETA{

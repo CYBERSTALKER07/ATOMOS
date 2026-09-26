@@ -36,10 +36,10 @@ struct OperationsView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Operations")
+            .navigationTitle("portal.nav.operations")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await loadEmpathy() }
                     }
                     .labelStyle(.iconOnly)
@@ -52,12 +52,12 @@ struct OperationsView: View {
                 isPresented: $showBypassConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Issue token", role: .destructive) {
+                Button("mobile_supplier.ui.issue_token", role: .destructive) {
                     Task { await issueBypass() }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button("common.action.cancel", role: .cancel) {}
             } message: {
-                Text("Order must be AWAITING_PAYMENT. Driver receives a one-time bypass token.")
+                Text("mobile_supplier.ui.order_must_be_awaiting_payment_driver_receives_a_one_time_bypass")
             }
         }
     }
