@@ -1,7 +1,7 @@
 import sys
 import re
 
-file_path = "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/softwareengineercv-main/app/components/SiteAssistant.tsx"
+file_path = "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/antimater/app/components/SiteAssistant.tsx"
 with open(file_path, "r") as f:
     content = f.read()
 

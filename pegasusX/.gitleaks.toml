@@ -12,7 +12,7 @@ paths = [
   '''(?i)\.env\.ssmr\.example$''',
   '''(?i)docs/CLOUD_CREDENTIALS_CHECKLIST\.md$''',
   '''(?i)artifacts/''',
-  '''(?i)softwareengineercv-main/''',
+  '''(?i)antimater/''',
   '''(?i)\.gradle/''',
   '''(?i)node_modules/''',
   '''(?i)pnpm-lock\.yaml$''',

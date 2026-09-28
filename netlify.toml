@@ -1,9 +1,9 @@
-# Marketing site (Next.js) — pegasusX/softwareengineercv-main
+# Marketing site (Next.js) — pegasusX/antimater
 # Force npm in the app folder so pnpm does not hoist the pegasusX workspace install
 # (which does not include this package and leaves `next` missing).
 
 [build]
-  base = "pegasusX/softwareengineercv-main"
+  base = "pegasusX/antimater"
   command = "npm ci --legacy-peer-deps && npm run build"
   publish = ".next"
 
