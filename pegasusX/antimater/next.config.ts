@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   images: {
     // Netlify IPX requires native `sharp`; without it `/_ipx/*` returns 500 and next/image breaks.
     // Public assets are served directly when unoptimized (still fine for this marketing site).
@@ -9,7 +10,7 @@ const nextConfig: NextConfig = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 2592000,
   },
   compress: true,
   compiler: {
@@ -38,6 +39,15 @@ const nextConfig: NextConfig = {
       '@react-three/drei',
       '@react-three/fiber',
       '@react-three/rapier',
+      '@hugeicons/react',
+      '@hugeicons/core-free-icons',
+      'framer-motion',
+      'motion',
+      'recharts',
+      'radix-ui',
+      'tailwind-merge',
+      'clsx',
+      'lenis',
     ],
     webpackMemoryOptimizations: true,
   },

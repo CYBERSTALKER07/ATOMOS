@@ -1,93 +1,82 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { gsap } from '@/app/lib/gsap';
 import PageSection from '../layout/PageSection';
 import { usePerfProfile } from '../../hooks/useDevice';
 import { useInView } from '../../hooks/useInView';
-import { PEGASUS_ASK_PROMPTS, getAskPromptContent } from '@/app/data/askPromptCards';
+import { getAskPromptContent } from '@/app/data/askPromptCards';
 import type { AskPromptSectionContent } from './types';
-import AskPromptTitle from './AskPromptTitle';
-import AskPromptMetricsFlow from './AskPromptMetricsFlow';
+import TerminalCodeUI from './TerminalCodeUI';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 export type AskPromptSectionProps = {
- content?: AskPromptSectionContent;
- id?: string;
- className?: string;
+	content?: AskPromptSectionContent;
+	id?: string;
+	className?: string;
 };
 
 export default function AskPromptSection({
- content: contentProp,
- id = 'ask-prompt',
- className,
+	content: contentProp,
+	id = 'ask-prompt',
+	className,
 }: AskPromptSectionProps) {
- const { language } = useLanguage();
- const content = contentProp ?? getAskPromptContent(language);
- const { isMobile, isTablet, prefersReducedMotion, isLowEnd } = usePerfProfile();
- const { ref: sectionRef, isInView } = useInView<HTMLElement>({ rootMargin: '80px' });
- const headerRef = useRef<HTMLDivElement>(null);
- const flowRef = useRef<HTMLDivElement>(null);
- const [chartsAnimated, setChartsAnimated] = useState(false);
- const compact = isMobile || isTablet;
+	const { language } = useLanguage();
+	const content = contentProp ?? getAskPromptContent(language);
+	const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
+	const { ref: sectionRef } = useInView<HTMLElement>({ rootMargin: '80px' });
+	const headerRef = useRef<HTMLDivElement>(null);
+	const flowRef = useRef<HTMLDivElement>(null);
 
- const metric = content.metric ?? getAskPromptContent(language).metric!;
+	useEffect(() => {
+		const section = sectionRef.current;
+		if (!section || !headerRef.current || !flowRef.current) return;
+		if (prefersReducedMotion || isMobile || isLowEnd) return;
 
- useEffect(() => {
- if (isInView && !chartsAnimated && !prefersReducedMotion && !isLowEnd) {
-  setChartsAnimated(true);
- }
- }, [isInView, chartsAnimated, prefersReducedMotion, isLowEnd]);
+		const ctx = gsap.context(() => {
+			gsap.from(headerRef.current, {
+				opacity: 0,
+				y: 22,
+				duration: 0.6,
+				ease: 'pegasus',
+				scrollTrigger: { trigger: section, start: 'top 85%', once: true },
+			});
+			gsap.from(flowRef.current, {
+				opacity: 0,
+				y: 28,
+				duration: 0.6,
+				ease: 'pegasus',
+				scrollTrigger: { trigger: section, start: 'top 80%', once: true },
+				delay: 0.15,
+			});
+		}, section);
 
- useEffect(() => {
- const section = sectionRef.current;
- if (!section || !headerRef.current || !flowRef.current) return;
+		return () => ctx.revert();
+	}, [prefersReducedMotion, isMobile, isLowEnd, sectionRef]);
 
- if (prefersReducedMotion || isMobile || isLowEnd) return;
+	return (
+		<PageSection
+			ref={sectionRef}
+			id={id}
+			className={cn('overflow-hidden bg-black text-white !py-16 sm:!py-24', className)}
+		>
+			<div className="max-w-[1500px] mx-auto px-6 md:px-12 flex flex-col lg:flex-row gap-12 lg:gap-20 items-center">
+				{/* Left Column: Text Content */}
+				<div ref={headerRef} className="w-full lg:w-1/2 flex flex-col items-start text-left">
+					<h2 className="text-4xl sm:text-5xl lg:text-[54px] font-medium leading-[1.1] tracking-tight text-white mb-6">
+						{content.title}
+					</h2>
+					<p className="text-lg sm:text-xl text-zinc-400 leading-relaxed">
+						{content.subtitle}
+					</p>
+				</div>
 
- const panels = flowRef.current.querySelectorAll('.ask-metrics-card');
-
- const ctx = gsap.context(() => {
- gsap.from(headerRef.current, {
- opacity: 0,
- y: 22,
- duration: 0.6,
- ease: 'pegasus',
- scrollTrigger: { trigger: section, start: 'top 85%', once: true },
- });
- gsap.from(panels, {
- opacity: 0,
- y: 28,
- duration: 0.55,
- stagger: 0.12,
- ease: 'pegasus',
- scrollTrigger: { trigger: section, start: 'top 80%', once: true },
- delay: 0.15,
- });
- }, section);
-
- return () => ctx.revert();
- }, [prefersReducedMotion, isMobile, isLowEnd, sectionRef]);
-
- return (
- <PageSection
- ref={sectionRef}
- id={id}
- className={cn('overflow-hidden border-t border-white/5 !py-10 sm:!py-14 md:!py-20', className)}
- >
- <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-10 lg:px-[70px]">
- <div ref={headerRef} className="text-center mb-10 sm:mb-12 md:mb-14">
- <AskPromptTitle title={content.title} compact={compact} />
- <p className="mt-4 sm:mt-5 text-sm sm:text-base text-white/50 max-w-xl mx-auto leading-relaxed font-light px-1">
- {content.subtitle}
- </p>
- </div>
-
- <div ref={flowRef}>
- <AskPromptMetricsFlow metric={metric} animate={chartsAnimated} />
- </div>
- </div>
- </PageSection>
- );
+				{/* Right Column: Terminal UI */}
+				<div ref={flowRef} className="w-full lg:w-1/2 relative">
+					<TerminalCodeUI />
+				</div>
+			</div>
+		</PageSection>
+	);
 }

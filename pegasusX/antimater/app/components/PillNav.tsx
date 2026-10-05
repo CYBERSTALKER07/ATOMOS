@@ -9,6 +9,7 @@ import MegaMenuOverlay from './MegaMenuOverlay';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useTheme } from '../context/ThemeContext';
 import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
+import PegasusSciFiLogo from './visuals/PegasusSciFiLogo';
 
 export type PillNavItem = {
  label: string;
@@ -364,22 +365,20 @@ const PillNav: React.FC<PillNavProps> = ({
  isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
  }`}
  style={{
- width: '46px',
+ 
  height: 'var(--nav-h, 40px)',
  background: 'transparent'
  }}
  >
- <img
- src={logo || "/pegasus-nav.png"}
- alt={logoAlt}
- ref={logoImgRef}
- className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-transform duration-200 hover:scale-105"
- />
+ <div className="transition-transform duration-200 hover:scale-[1.02] flex items-center">
+   <PegasusSciFiLogo variant="solid" color={isLight ? "#000000" : "#ffffff"} height="0.8rem" />
+ </div>
+
  </Link>
 
  <div
  ref={navItemsRef}
- className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
+ className="relative hidden md:flex min-w-0 flex-1 items-center justify-center rounded-none overflow-hidden"
  style={{
  height: 'var(--nav-h)',
  background: 'transparent'
@@ -387,7 +386,7 @@ const PillNav: React.FC<PillNavProps> = ({
  >
  <ul
  role="menubar"
- className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+ className="list-none flex items-stretch justify-center m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
  style={{ gap: 'var(--pill-gap)' }}
  >
   {displayItems.map((item, i) => {

@@ -9,6 +9,15 @@ const config: Config = {
   ],
   theme: {
     extend: {
+
+      fontFamily: {
+        libre: ['var(--font-libre-baskerville)', 'serif'],
+        'libre-sans': ['var(--font-libre-franklin)', 'sans-serif'],
+        caveat: ['var(--font-caveat)', 'cursive'],
+        signature: ['var(--font-great-vibes)', 'cursive'],
+        'herr-von': ['var(--font-herr-von)', 'cursive'],
+        'mrs-saint': ['var(--font-mrs-saint)', 'cursive'],
+      },
       keyframes: {
         glitch: {
           "0%": { "clip-path": "inset(20% 0 50% 0)" },

@@ -1,0 +1,15 @@
+--- app/components/TargetCursor.tsx
++++ app/components/TargetCursor.tsx
+@@ -300,7 +300,9 @@
+       <div
+         ref={dotRef}
+-        className="target-cursor-dot"
+-        style={{ willChange: 'transform', backgroundColor: cursorColor }}
+-      />
++        className="target-cursor-dot flex items-center justify-center !bg-transparent"
++        style={{ willChange: 'transform' }}
++      >
++        <Atom size={24} color={cursorColor} strokeWidth={1.5} />
++      </div>
+       <div
+         className="target-cursor-corner corner-tl"

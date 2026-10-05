@@ -225,14 +225,14 @@ function PromptOverlay({
  className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 will-change-transform"
  aria-hidden
  >
- <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(124,58,237,0.18)_25%,rgba(167,139,250,0.32)_50%,rgba(124,58,237,0.18)_75%,transparent_100%)] blur-sm" />
- <div className="absolute top-1/2 inset-x-[12%] h-px -translate-y-1/2 bg-violet-300/40" />
+ <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(16,185,129,0.18)_25%,rgba(52,211,153,0.32)_50%,rgba(16,185,129,0.18)_75%,transparent_100%)] blur-sm" />
+ <div className="absolute top-1/2 inset-x-[12%] h-px -translate-y-1/2 bg-emerald-300/40" />
  </div>
  )}
  <div
  className={cn(
- 'relative rounded-none border border-violet-400/30 px-5 py-3 sm:px-6 sm:py-3.5',
- 'bg-[linear-gradient(180deg,rgba(88,28,180,0.88),rgba(49,16,98,0.94))]',
+ 'relative rounded-none border border-emerald-400/30 px-5 py-3 sm:px-6 sm:py-3.5',
+ 'bg-[linear-gradient(180deg,rgba(4,120,87,0.88),rgba(6,78,59,0.94))]',
  '',
  showFx && 'prompt-dash-prompt-glow'
  )}

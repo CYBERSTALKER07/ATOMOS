@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Maximize2, Copy, Check, RotateCcw, X } from 'lucide-react';
+import { Maximize2, Copy, Check, RotateCcw, X, ChevronLeft, MoreHorizontal, Send } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 type ChatRole = 'user' | 'assistant';
@@ -158,7 +158,7 @@ function FormattedContent({ text }: { text: string }) {
 
  if (para.startsWith('### ')) {
  return (
- <h4 key={pIdx} className="font-mono font-bold text-white text-xs mt-2 mb-1 tracking-wider uppercase">
+ <h4 key={pIdx} className="font-mono font-bold text-xs mt-2 mb-1 tracking-wider uppercase">
  {para.replace('### ', '')}
  </h4>
  );
@@ -166,7 +166,7 @@ function FormattedContent({ text }: { text: string }) {
 
  if (para.startsWith('## ')) {
  return (
- <h3 key={pIdx} className="font-mono font-bold text-white text-sm mt-2 mb-1 tracking-wide uppercase">
+ <h3 key={pIdx} className="font-mono font-bold text-sm mt-2 mb-1 tracking-wide uppercase">
  {para.replace('## ', '')}
  </h3>
  );
@@ -178,7 +178,7 @@ function FormattedContent({ text }: { text: string }) {
 
  return (
  <div key={lIdx} className={isBullet ? 'flex items-start gap-1.5 pl-2' : ''}>
- {isBullet && <span className="text-white/60 font-mono select-none">•</span>}
+ {isBullet && <span className="opacity-60 font-mono select-none">•</span>}
  <span>{cleanLine}</span>
  </div>
  );
@@ -394,223 +394,224 @@ export default function SiteAssistant() {
  window.open('/assistant', '_blank');
  };
 
- return (
- <div className="site-assistant" data-open={open ? 'true' : 'false'}>
- {open ? (
- <aside
- id={panelId}
- ref={containerRef}
- className="site-assistant__panel site-assistant__panel--chat fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] right-4 sm:bottom-[88px] sm:right-6 z-[10004] outline-none"
- role="dialog"
- aria-label="Pegasus assistant"
- >
- <div className="site-assistant__chat-card rounded-3xl border border-white/20 bg-black text-white overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] sm:max-h-[calc(100vh-7.5rem)] keep-dark" data-keep-dark data-keep-white>
- {/* Header Bar */}
- <header className="site-assistant__chat-head flex items-center justify-between p-3.5 bg-black border-b border-white/10 shrink-0">
- <div className="flex items-center gap-2.5 min-w-0">
- <div className="w-8 h-8 rounded-xl border border-white/20 bg-black flex items-center justify-center shrink-0 p-1.5 overflow-hidden">
- <img src="/pegasus.jpg" alt="Pegasus" className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-110" />
- </div>
- <div className="min-w-0">
- <div className="flex items-center gap-1.5">
- <span className="text-xs font-mono font-bold tracking-wider text-white uppercase truncate">
- PEGASUS OS
- </span>
- <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full border border-white/20 bg-white/10 text-white uppercase">
- CORNER
- </span>
- </div>
- <p className="text-[10px] font-mono text-white/50 truncate">
- Autonomous Operations & Architecture AI
- </p>
- </div>
- </div>
+	return (
+		<div className="site-assistant" data-open={open ? 'true' : 'false'}>
+			{open ? (
+				<aside
+					id={panelId}
+					ref={containerRef}
+					className="site-assistant__panel fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 sm:bottom-[24px] sm:right-6 z-[10004] outline-none shadow-2xl"
+					role="dialog"
+					aria-label="Pegasus assistant"
+				>
+					<div
+						className="rounded-[2.5rem] bg-white text-black overflow-hidden flex flex-col w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[620px] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] shadow-[0_8px_30px_rgb(0,0,0,0.12)]"
+					>
+						{/* Header Bar */}
+						<header className="flex items-center justify-between p-4 bg-white shrink-0">
+							<div className="flex items-center gap-3">
+								<button
+									type="button"
+									onClick={() => setOpen(false)}
+									className="text-gray-400 hover:text-black transition-colors cursor-pointer"
+								>
+									<ChevronLeft className="w-5 h-5" />
+								</button>
+								<div className="w-9 h-9 rounded-xl bg-black flex items-center justify-center shrink-0 overflow-hidden">
+									<img
+										src="/pegasus.jpg"
+										alt="Pegasus"
+										className="w-full h-full object-contain invert scale-[1.2]"
+									/>
+								</div>
+								<div className="flex flex-col">
+									<span className="text-[15px] font-semibold text-gray-900 leading-tight">
+										Pegasus bot
+									</span>
+									<span className="text-[12px] text-gray-500 leading-tight">
+										The team can also help
+									</span>
+								</div>
+							</div>
 
- <div className="flex items-center gap-1.5 shrink-0">
- {/* Clear History */}
- <button
- type="button"
- onClick={clearHistory}
- title={language === 'ru' ? 'Очистить историю' : 'Clear History'}
- className="p-1.5 text-white/50 hover:text-white border border-transparent hover:border-white/20 transition-colors cursor-pointer"
- >
- <RotateCcw className="w-3.5 h-3.5" />
- </button>
+							<div className="flex items-center gap-2 shrink-0 text-gray-400">
+								<button
+									type="button"
+									onClick={clearHistory}
+									title={language === 'ru' ? 'Очистить историю' : 'Clear History'}
+									className="p-1 hover:text-black transition-colors cursor-pointer"
+								>
+									<MoreHorizontal className="w-5 h-5" />
+								</button>
+								<button
+									type="button"
+									className="p-1 hover:text-black transition-colors cursor-pointer"
+									title={language === 'ru' ? 'Закрыть (Esc)' : 'Close (Esc)'}
+									onClick={() => setOpen(false)}
+								>
+									<X className="w-5 h-5" />
+								</button>
+							</div>
+						</header>
 
- {/* Open in Separate Window Fullscreen */}
- <button
- type="button"
- className="site-assistant__toggle-fullscreen inline-flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold text-white bg-black border border-white/30 hover:border-white hover:bg-white hover:text-black transition-all cursor-pointer uppercase tracking-wider rounded-full"
- title={language === 'ru' ? 'Открыть в отдельном окне на весь экран' : 'Open in separate window fullscreen'}
- onClick={handleExpandToSeparateWindow}
- >
- <Maximize2 className="w-3 h-3" />
- <span>{language === 'ru' ? 'ОКНО' : 'EXPAND'} ↗</span>
- </button>
+						{/* Messages Stream */}
+						<div
+							ref={listRef}
+							className="flex-1 overflow-y-auto p-4 space-y-4 bg-white"
+							aria-live="polite"
+						>
+							{messages.length <= 1 && (
+								<div className="text-center mb-6 mt-2">
+									<p className="text-[13px] text-gray-500 max-w-[280px] mx-auto leading-relaxed">
+										Empower digital transformation of Supply Chain, Revenue and IBP.
+									</p>
+								</div>
+							)}
 
- {/* Close Button */}
- <button
- type="button"
- className="site-assistant__close-btn text-white/60 hover:text-white text-lg leading-none p-1 cursor-pointer transition-colors"
- title={language === 'ru' ? 'Закрыть (Esc)' : 'Close (Esc)'}
- onClick={() => setOpen(false)}
- >
- ×
- </button>
- </div>
- </header>
+							{messages.map((msg) => (
+								<div
+									key={msg.id}
+									className={`flex flex-col ${
+										msg.role === 'assistant'
+											? 'items-start max-w-[88%]'
+											: 'items-end ml-auto max-w-[85%]'
+									}`}
+								>
+									<div
+										className={`p-4 text-[14px] leading-relaxed ${
+											msg.role === 'assistant'
+												? 'bg-gray-100 text-gray-800 rounded-3xl rounded-tl-sm'
+												: 'bg-black text-white rounded-3xl rounded-tr-sm shadow-sm'
+										}`}
+									>
+										<div className="">
+											<FormattedContent text={msg.content} />
+										</div>
+									</div>
+									{msg.role === 'assistant' && (
+										<div className="mt-1.5 ml-2 text-[11px] text-gray-400 flex items-center gap-1">
+											Pegasus bot &bull; AI Agent &bull; 5d
+										</div>
+									)}
+								</div>
+							))}
 
- {/* Messages Stream */}
- <div ref={listRef} className="site-assistant__messages flex-1 overflow-y-auto p-3.5 space-y-3 bg-black" aria-live="polite">
- {messages.map((msg) => (
- <div
- key={msg.id}
- className={`site-assistant__msg ${
- msg.role === 'assistant'
- ? 'site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/20 text-white p-3.5 text-xs leading-relaxed rounded-2xl rounded-tl-sm'
- : 'site-assistant__msg--user self-end max-w-[85%] bg-white text-black p-3.5 text-xs font-medium rounded-2xl rounded-tr-sm shadow-sm'
- }`}
- >
- <div className="flex items-center justify-between gap-2 mb-1.5 pb-1 border-b border-white/5">
- <span className="text-[10px] font-mono font-bold uppercase tracking-wider opacity-60">
- {msg.role === 'assistant' ? 'PEGASUS INTELLIGENCE' : t('asst_you', 'YOU')}
- </span>
+							{loading && (
+								<div className="items-start max-w-[88%] flex flex-col">
+									<div className="bg-gray-100 text-gray-800 p-4 text-[14px] rounded-3xl rounded-tl-sm">
+										<div className="flex items-center gap-2 opacity-60">
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse delay-75" />
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse delay-150" />
+										</div>
+									</div>
+								</div>
+							)}
+						</div>
 
- {msg.role === 'assistant' && msg.content && (
- <button
- type="button"
- className="inline-flex items-center gap-1 text-[10px] font-mono text-white/50 hover:text-white transition-colors cursor-pointer"
- onClick={() => copyToClipboard(msg.id, msg.content)}
- >
- {copiedId === msg.id ? (
- <>
- <Check className="w-3 h-3 text-white" />
- <span>COPIED</span>
- </>
- ) : (
- <>
- <Copy className="w-3 h-3" />
- <span>COPY</span>
- </>
- )}
- </button>
- )}
- </div>
+						{error && (
+							<p className="text-[12px] text-red-500 px-4 py-2 bg-red-50 text-center">
+								{error}
+							</p>
+						)}
 
- <div className="site-assistant__msg-body">
- <FormattedContent text={msg.content} />
- </div>
- </div>
- ))}
+						{/* Action Pills */}
+						<div className="flex flex-col items-end gap-2 p-4 bg-white max-h-[220px] overflow-y-auto border-t border-gray-50 shrink-0">
+							{currentQuickActions.map((action) => (
+								<div key={action.id} className="max-w-[95%]">
+									{action.dismiss ? (
+										<button
+											type="button"
+											className="flex items-center justify-start px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 transition-colors cursor-pointer text-[13px] rounded-full shadow-sm text-left"
+											onClick={() => {
+												setOpen(false);
+												setDismissed(true);
+											}}
+										>
+											<span className="mr-2">👋</span>
+											<span className="truncate">{action.label}</span>
+										</button>
+									) : action.prompt ? (
+										<button
+											type="button"
+											className="flex items-center justify-start px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 transition-colors cursor-pointer text-[13px] rounded-full shadow-sm text-left"
+											disabled={loading}
+											onClick={() => void sendPrompt(action.prompt!)}
+										>
+											<span className="mr-2">💬</span>
+											<span className="truncate">{action.label}</span>
+										</button>
+									) : (
+										<Link
+											href={action.href!}
+											className="flex items-center justify-start px-4 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 transition-colors cursor-pointer text-[13px] rounded-full shadow-sm text-left"
+											onClick={() => setOpen(false)}
+										>
+											<span className="mr-2">↗️</span>
+											<span className="truncate">{action.label}</span>
+										</Link>
+									)}
+								</div>
+							))}
+						</div>
 
- {loading && (
- <div className="site-assistant__msg site-assistant__msg--assistant self-start max-w-[92%] bg-black border border-white/10 text-white p-3 text-xs rounded-full">
- <div className="flex items-center gap-1.5 mb-1 opacity-60">
- <span className="text-[10px] font-mono font-bold uppercase tracking-wider">PEGASUS INTELLIGENCE</span>
- </div>
- <div className="flex items-center gap-2 text-xs font-mono text-white/70 py-1">
- <span className="w-2 h-2 rounded-full bg-white" />
- <span>{language === 'ru' ? 'Генерация ответа...' : 'Synthesizing telemetry...'}</span>
- </div>
- </div>
- )}
- </div>
+						{/* Message Composer */}
+						<form className="flex items-center gap-2 p-3 bg-white border-t border-gray-100 shrink-0" onSubmit={onSubmit}>
+							<input
+								ref={inputRef}
+								type="text"
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								placeholder={language === 'ru' ? 'Написать сообщение...' : 'Reply to Pegasus bot...'}
+								maxLength={2000}
+								disabled={loading}
+								className="flex-1 bg-gray-100 text-gray-800 placeholder-gray-500 border border-transparent focus:border-gray-200 px-4 py-2 text-[13px] rounded-full outline-none"
+								aria-label="Message"
+							/>
+							<button
+								type="submit"
+								disabled={loading || !input.trim()}
+								className="w-9 h-9 bg-black text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer rounded-full shrink-0 flex items-center justify-center"
+							>
+								<Send className="w-4 h-4" />
+							</button>
+						</form>
+					</div>
+				</aside>
+			) : null}
 
- {error && <p className="text-[11px] font-mono text-zinc-400 px-3.5 py-1 bg-black">{error}</p>}
-
- {/* Action Pills */}
- <ul className="site-assistant__actions site-assistant__actions--inline flex flex-col gap-1.5 p-2.5 bg-black border-t border-white/10 max-h-[140px] overflow-y-auto">
- {currentQuickActions.map((action) => (
- <li key={action.id} className="w-full">
- {action.dismiss ? (
- <button
- type="button"
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
- onClick={() => {
- setOpen(false);
- setDismissed(true);
- }}
- >
- <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase">
- {action.badge}
- </span>
- <span className="text-white/70 truncate flex-1 ml-2">{action.label}</span>
- </button>
- ) : action.prompt ? (
- <button
- type="button"
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
- disabled={loading}
- onClick={() => void sendPrompt(action.prompt!)}
- >
- <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase shrink-0">
- {action.badge}
- </span>
- <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
- <span className="text-white/40 text-[10px] ml-1">↵</span>
- </button>
- ) : (
- <Link
- href={action.href!}
- className="w-full flex items-center justify-between p-1.5 bg-black hover:bg-black border border-white/10 hover:border-white/30 text-white text-left transition-colors cursor-pointer text-xs font-mono rounded-full"
- onClick={() => setOpen(false)}
- >
- <span className="px-2 py-0.5 rounded-md bg-white text-black font-bold text-[10px] uppercase shrink-0">
- {action.badge}
- </span>
- <span className="text-white/80 truncate flex-1 ml-2">{action.label}</span>
- <span className="text-white/40 text-[10px] ml-1">↗</span>
- </Link>
- )}
- </li>
- ))}
- </ul>
-
- {/* Message Composer */}
- <form className="site-assistant__composer flex items-center gap-2 p-2.5 bg-black border-t border-white/10 shrink-0" onSubmit={onSubmit}>
- <input
- ref={inputRef}
- type="text"
- value={input}
- onChange={(e) => setInput(e.target.value)}
- placeholder={language === 'ru' ? 'Спросите о платформе, ролях, решениях...' : 'Ask about the platform, roles, solutions...'}
- maxLength={2000}
- disabled={loading}
- className="flex-1 bg-black text-white placeholder-white/40 border border-white/20 focus:border-white px-3 py-2 text-xs font-mono rounded-full outline-none"
- aria-label={language === 'ru' ? 'Сообщение' : 'Message'}
- />
- <button
- type="submit"
- disabled={loading || !input.trim()}
- className="px-3.5 py-2 bg-white text-black hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer rounded-full shrink-0"
- >
- {language === 'ru' ? 'Ввод' : 'Send'}
- </button>
- </form>
- </div>
- </aside>
- ) : null}
-
- {/* Floating Action Launcher in Corner - Always Visible */}
- <aside aria-label="Pegasus AI Assistant" className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 sm:bottom-6 sm:right-6 z-[10005] keep-dark" data-keep-dark data-keep-white>
- <button
- ref={launcherRef}
- type="button"
- className={`glowing-squircle-launcher group focus:outline-none rounded-2xl ${open ? 'border-white/90 bg-black' : ''}`}
- title={open ? (language === 'ru' ? 'Закрыть Pegasus AI (Esc)' : 'Close Pegasus AI Assistant (Esc)') : (language === 'ru' ? 'Открыть Pegasus AI (⌘K)' : 'Open Pegasus AI Assistant (⌘K)')}
- aria-label={open ? 'Close Pegasus AI Assistant' : 'Open Pegasus AI Assistant'}
- onClick={() => setOpen((prev) => !prev)}
- >
- {open ? (
- <X className="w-5 h-5 sm:w-6 sm:h-6 text-white transition-transform duration-200 group-hover:scale-110" />
- ) : (
- <img src="/pegasus.jpg" alt="Pegasus" className="w-5 h-5 sm:w-6 sm:h-6 object-contain transition-transform duration-200 group-hover:scale-110" />
- )}
- <span className="site-assistant__badge rounded-full" aria-hidden="true">
- {open ? 'ESC' : '⌘K'}
- </span>
- </button>
- </aside>
- </div>
- );
+			{/* Floating Action Launcher in Corner - Always Visible */}
+			<aside
+				aria-label="Pegasus AI Assistant"
+				className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-4 sm:bottom-6 sm:right-6 z-[10005]"
+			>
+				<button
+					ref={launcherRef}
+					type="button"
+					onClick={() => {
+						setDismissed(false);
+						setOpen((o) => !o);
+					}}
+					className="group relative flex items-center justify-center w-[52px] h-[52px] bg-black hover:bg-zinc-800 text-white rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
+					aria-expanded={open}
+					aria-haspopup="dialog"
+				>
+					<span className="sr-only">
+						{open ? 'Close Assistant' : 'Open Assistant'}
+					</span>
+					{open ? (
+						<ChevronLeft className="w-6 h-6 transition-transform rotate-90" />
+					) : (
+						<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+							<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+						</svg>
+					)}
+					{/* Notification Dot */}
+					{!open && messages.length > 0 && (
+						<span className="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+					)}
+				</button>
+			</aside>
+		</div>
+	);
 }

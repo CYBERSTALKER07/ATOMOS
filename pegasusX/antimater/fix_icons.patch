@@ -1,0 +1,10 @@
+--- app/components/OurApproach.tsx
++++ app/components/OurApproach.tsx
+@@ -1,7 +1,7 @@
+ 'use client';
+ 
+ import React from 'react';
+-import { Timer, Radar, Rocket } from '@/components/icons';
++import { Timer, Radar, Rocket } from 'lucide-react';
+ import Digit369 from './Digit369';
+ import { useLanguage } from '../context/LanguageContext';

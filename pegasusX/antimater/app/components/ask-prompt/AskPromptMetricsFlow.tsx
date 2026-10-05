@@ -6,7 +6,7 @@ import AnimatedDitherField from './AnimatedDitherField';
 
 function QueryBlock({ tokens }: { tokens: AskPromptMetric['queryLines'] }) {
  const colorMap = {
- keyword: 'text-violet-400',
+ keyword: 'text-emerald-400',
  function: 'text-sky-400',
  string: 'text-emerald-400/90',
  identifier: 'text-white/85',
@@ -95,12 +95,12 @@ function MetricsPromptBridge({ prompt }: { prompt: string }) {
  />
  <defs>
  <linearGradient id="chev1" x1="0" y1="0" x2="1" y2="1">
- <stop stopColor="rgba(124,58,237,0.9)" />
- <stop offset="1" stopColor="rgba(76,29,149,0.4)" />
+ <stop stopColor="rgba(16,185,129,0.9)" />
+ <stop offset="1" stopColor="rgba(6,78,59,0.4)" />
  </linearGradient>
  <linearGradient id="chev2" x1="0" y1="0" x2="1" y2="1">
- <stop stopColor="rgba(167,139,250,0.7)" />
- <stop offset="1" stopColor="rgba(49,16,98,0.3)" />
+ <stop stopColor="rgba(52,211,153,0.7)" />
+ <stop offset="1" stopColor="rgba(4,120,87,0.3)" />
  </linearGradient>
  </defs>
  </svg>
@@ -109,8 +109,8 @@ function MetricsPromptBridge({ prompt }: { prompt: string }) {
 
  {/* Prompt pill */}
  <div className="relative z-10 w-full max-w-[15rem] sm:max-w-[17rem] mx-auto px-2 group">
- <div className="rounded-none border border-violet-400/40 bg-[linear-gradient(180deg,#581cb4,#311062)] px-4 py-2.5 sm:px-5 sm:py-3 shadow-xl transition-all duration-300 group-hover:scale-[1.02]">
- <p className="text-center text-[0.72rem] sm:text-xs text-violet-100/95 font-light leading-snug">
+ <div className="rounded-none border border-emerald-400/40 bg-[linear-gradient(180deg,#047857,#064e3b)] px-4 py-2.5 sm:px-5 sm:py-3 shadow-xl transition-all duration-300 group-hover:scale-[1.02]">
+ <p className="text-center text-[0.72rem] sm:text-xs text-emerald-100/95 font-light leading-snug">
  {prompt}
  </p>
  </div>

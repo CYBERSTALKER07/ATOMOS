@@ -35,7 +35,7 @@ export default function AskPromptCollage({
  question={card.question}
  featured={card.featured}
  interactive={interactive}
- className={cn(card.featured && 'ring-1 ring-violet-400/35')}
+ className={cn(card.featured && 'ring-1 ring-emerald-400/35')}
  />
  ))}
  </div>

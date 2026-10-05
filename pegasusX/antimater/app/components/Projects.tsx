@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
-import { gsap } from '@/app/lib/gsap';
+import { useMemo, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import ContentCard, { EDITORIAL_IMAGES } from './ContentCard';
-import { usePerfProfile } from '../hooks/useDevice';
+import { EDITORIAL_IMAGES } from './ContentCard';
 import PageSection from './layout/PageSection';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -13,20 +12,15 @@ type HomeProjectCard = {
 	description: string;
 	tag: string;
 	href: string;
-	variant: 'featured' | 'vertical' | 'split';
-	bento: string;
-	tone?: 'light' | 'dark';
 };
 
 const HOME_PROJECTS_EN: HomeProjectCard[] = [
 	{
 		title: 'Dispatch Engine',
 		description:
-			'Visual warehouse dispatch with smart truck-and-order matching, gate seals, and live board updates for peak morning loads.',
+			'Visual warehouse dispatching with smart truck-to-order matching, gate seals, and a live board for morning load-outs.',
 		tag: 'Operations',
 		href: '/projects/dispatch-engine',
-		variant: 'featured',
-		bento: 'editorial-bento__4-2',
 	},
 	{
 		title: 'Supplier Control Plane',
@@ -34,8 +28,6 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
 			'Network oversight for suppliers — order vetting, dispatch preview, topology, and treasury across warehouses and retailers.',
 		tag: 'Platform',
 		href: '/projects/supplier-control-plane',
-		variant: 'vertical',
-		bento: 'editorial-bento__2-2',
 	},
 	{
 		title: 'Driver Execution App',
@@ -43,8 +35,6 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
 			'Native route execution with sealed manifests, stop-by-stop delivery, cash collection, and live progress reporting.',
 		tag: 'Mobile',
 		href: '/projects/driver-execution-app',
-		variant: 'vertical',
-		bento: 'editorial-bento__2-2',
 	},
 	{
 		title: 'Retailer Commerce',
@@ -52,8 +42,6 @@ const HOME_PROJECTS_EN: HomeProjectCard[] = [
 			'Catalog, checkout, scheduling, and live order tracking — desktop and mobile parity for retailer teams.',
 		tag: 'Commerce',
 		href: '/projects/retailer-commerce',
-		variant: 'split',
-		bento: 'editorial-bento__4-2',
 	},
 ];
 
@@ -64,8 +52,6 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
 			'Визуальная диспетчеризация склада с умным подбором грузовиков и заказов, пломбами на воротах и живой доской для пиковых утренних загрузок.',
 		tag: 'Операции',
 		href: '/projects/dispatch-engine',
-		variant: 'featured',
-		bento: 'editorial-bento__4-2',
 	},
 	{
 		title: 'Панель управления поставщика',
@@ -73,8 +59,6 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
 			'Контроль сети для поставщиков — проверка заказов, превью диспетчеризации, топология и казначейство по складам и ритейлерам.',
 		tag: 'Платформа',
 		href: '/projects/supplier-control-plane',
-		variant: 'vertical',
-		bento: 'editorial-bento__2-2',
 	},
 	{
 		title: 'Приложение водителя',
@@ -82,8 +66,6 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
 			'Нативное исполнение маршрута с пломбированными манифестами, доставкой по остановкам, сбором наличных и живым отчётом о прогрессе.',
 		tag: 'Мобильные',
 		href: '/projects/driver-execution-app',
-		variant: 'vertical',
-		bento: 'editorial-bento__2-2',
 	},
 	{
 		title: 'Коммерция для ритейлера',
@@ -91,75 +73,111 @@ const HOME_PROJECTS_RU: HomeProjectCard[] = [
 			'Каталог, оформление, планирование и живое отслеживание заказов — паритет desktop и mobile для команд ритейлера.',
 		tag: 'Коммерция',
 		href: '/projects/retailer-commerce',
-		variant: 'split',
-		bento: 'editorial-bento__4-2',
 	},
 ];
 
 export default function Projects() {
-	const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
-	const { t, language } = useLanguage();
-	const sectionRef = useRef<HTMLElement>(null);
-	const gridRef = useRef<HTMLDivElement>(null);
+	const { language } = useLanguage();
 	const projects = useMemo(
 		() => (language === 'ru' ? HOME_PROJECTS_RU : HOME_PROJECTS_EN),
 		[language]
 	);
+	const scrollRef = useRef<HTMLDivElement>(null);
 
-	useEffect(() => {
-		if (!sectionRef.current) return;
-
-		if (isMobile || isLowEnd || prefersReducedMotion) {
-			if (gridRef.current) gsap.set(gridRef.current, { opacity: 1, y: 0 });
-			return;
+	const scrollLeft = () => {
+		if (scrollRef.current) {
+			// Get width of one card + the gap (24px for gap-6)
+			// Actually we can just get the first child's clientWidth
+			const firstChild = scrollRef.current.children[1] as HTMLElement; // children[0] is the style tag
+			const cardWidth = firstChild?.clientWidth || 0;
+			scrollRef.current.scrollBy({ left: -(cardWidth + 24), behavior: 'smooth' });
 		}
+	};
 
-		const ctx = gsap.context(() => {
-			const timeline = gsap.timeline({
-				scrollTrigger: {
-					trigger: sectionRef.current,
-					start: 'top 80%',
-					end: 'bottom 20%',
-					toggleActions: 'play none none reverse',
-					fastScrollEnd: true,
-				},
-			});
-
-			timeline.fromTo(
-				gridRef.current?.children ? Array.from(gridRef.current.children) : [],
-				{ opacity: 0, y: 40 },
-				{ opacity: 1, y: 0, duration: 0.55, stagger: 0.08, ease: 'pegasus' }
-			);
-		}, sectionRef);
-
-		return () => ctx.revert();
-	}, [isMobile, isLowEnd, prefersReducedMotion]);
+	const scrollRight = () => {
+		if (scrollRef.current) {
+			const firstChild = scrollRef.current.children[1] as HTMLElement;
+			const cardWidth = firstChild?.clientWidth || 0;
+			scrollRef.current.scrollBy({ left: cardWidth + 24, behavior: 'smooth' });
+		}
+	};
 
 	return (
-		<PageSection ref={sectionRef} id="projects">
-			<div ref={gridRef} className="editorial-bento">
-				{projects.map((project, index) => (
-					<ContentCard
-						key={project.href}
-						variant={project.variant}
-						tone={project.tone ?? 'dark'}
-						tag={project.tag}
-						title={project.title}
-						description={project.description}
-						image={EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
-						href={project.href}
-						ctaLabel={t('btn_read_more', 'READ MORE')}
-						ctaStyle="link"
-						className={project.bento}
-						imagePriority={index === 0}
-					/>
-				))}
-			</div>
+		<PageSection id="projects" className="py-24 bg-black" bleed={true}>
+			<div className="relative w-full group">
+				{/* Scroll Navigation Buttons */}
+				<button
+					onClick={scrollLeft}
+					className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/80 border border-white/10 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0"
+					aria-label="Scroll left"
+				>
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+						<path d="M15 18l-6-6 6-6" />
+					</svg>
+				</button>
+				
+				<button
+					onClick={scrollRight}
+					className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 hover:bg-black/80 border border-white/10 text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 disabled:opacity-0"
+					aria-label="Scroll right"
+				>
+					<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+						<path d="M9 18l6-6-6-6" />
+					</svg>
+				</button>
 
-			<div className="text-center mt-12">
-				<Link href="/projects" className="editorial-btn">
-					{t('btn_view_all_modules', 'VIEW ALL MODULES')}
-				</Link>
+				{/* Scrollable Container */}
+				<div 
+					ref={scrollRef}
+					className="flex flex-row overflow-x-auto scroll-smooth overscroll-x-contain snap-x snap-proximity gap-4 md:gap-6 pl-6 pr-12 md:pl-[100px] md:pr-24 w-full h-[650px] md:h-[750px] lg:h-[800px]"
+					style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+				>
+					{/* Style to hide webkit scrollbar */}
+					<style dangerouslySetInnerHTML={{__html: `
+						div::-webkit-scrollbar { display: none; }
+					`}} />
+
+					{projects.map((project, index) => (
+						<div
+							key={project.href}
+							className="relative rounded-[32px] overflow-hidden flex-shrink-0 snap-center group/card bg-zinc-900 
+										w-[90vw] md:w-[80vw] lg:w-[960px]"
+						>
+							{/* Blurred Image Background with Hover Reveal */}
+							<Image
+								src={EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
+								alt={project.title}
+								fill
+								className="object-cover transition-all duration-[800ms] ease-out blur-xl scale-110 group-hover/card:blur-0 group-hover/card:scale-100"
+							/>
+							{/* Overlay gradient for text readability */}
+							<div className="absolute inset-0 bg-black/40 group-hover/card:bg-black/20 transition-colors duration-[800ms]" />
+
+							{/* Content */}
+							<div className="absolute inset-0 p-8 md:p-16 lg:p-20 flex flex-col justify-between pointer-events-none">
+								<div>
+									<p className="text-white/80 font-mono text-xs md:text-sm uppercase tracking-[0.2em] mb-6">
+										{project.tag}
+									</p>
+									<h3 className="text-white text-4xl md:text-5xl lg:text-[56px] font-medium leading-[1.1] max-w-2xl mb-8 tracking-tight">
+										{project.title}
+									</h3>
+									<p className="text-white/90 text-lg md:text-[22px] max-w-2xl leading-[1.4]">
+										{project.description}
+									</p>
+								</div>
+								<div className="flex justify-center pointer-events-auto pb-4 md:pb-8">
+									<Link
+										href={project.href}
+										className="bg-[#f0f0f0] text-black px-12 py-4 text-xs font-bold tracking-[0.15em] uppercase hover:bg-white transition-colors rounded-md"
+									>
+										MORE
+									</Link>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
 			</div>
 		</PageSection>
 	);

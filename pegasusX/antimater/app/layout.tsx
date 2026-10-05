@@ -1,5 +1,47 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+import { Libre_Baskerville, Libre_Franklin, Caveat, Great_Vibes, Herr_Von_Muellerhoff, Mrs_Saint_Delafield } from 'next/font/google';
+
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-caveat',
+});
+
+const greatVibes = Great_Vibes({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-great-vibes',
+});
+
+
+const herrVon = Herr_Von_Muellerhoff({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-herr-von',
+});
+
+const mrsSaint = Mrs_Saint_Delafield({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-mrs-saint',
+});
+
+const libreBaskerville = Libre_Baskerville({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-libre-baskerville',
+});
+
+const libreFranklin = Libre_Franklin({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-libre-franklin',
+});
+
 import ClientLayout from "@/components/ClientLayout";
 import { BRAND_LOGO } from "@/app/lib/siteAssets";
 import { absoluteUrl, languageAlternates, SITE_NAME, SITE_URL } from "@/app/lib/seo";
@@ -185,7 +227,7 @@ export default async function RootLayout({
  />
  </head>
  <body
- className="font-sans antialiased relative bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white transition-colors duration-200"
+ className={`font-sans antialiased relative bg-[#F8FAFC] text-zinc-900 dark:bg-black dark:text-white transition-colors duration-200 ${libreBaskerville.variable} ${libreFranklin.variable} ${caveat.variable} ${greatVibes.variable} ${herrVon.variable} ${mrsSaint.variable}`}
  >
  <div
  id="app-splash-screen"

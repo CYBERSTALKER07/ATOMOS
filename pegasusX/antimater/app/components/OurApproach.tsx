@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Star, Eye, Zap } from '@/components/icons';
-import Digit369 from './Digit369';
+import { Timer, Radar, Rocket } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function OurApproach() {
@@ -10,23 +9,23 @@ export default function OurApproach() {
 
  return (
  <section className="w-full flex flex-col lg:flex-row min-h-0 lg:min-h-[640px] xl:min-h-[800px] border-t border-white/10 overflow-hidden">
- <div className="flex-1 relative bg-black min-h-[280px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full">
- <div className="absolute inset-0">
- <Digit369 color="#e8e4e3" backgroundColor="#000000" />
+ <div className="flex-1 relative bg-white min-h-[280px] sm:min-h-[300px] md:min-h-[360px] lg:min-h-full">
+ <div className="absolute inset-0 flex items-center justify-center p-8 lg:p-12">
+ <img src="/blob-anim.svg" alt="Animated Logo" className="w-full h-full object-contain" />
  </div>
  </div>
 
- <div className="flex-1 flex flex-col bg-[#e6e6e6] text-black relative">
- <div className="absolute inset-0 bg-[linear-gradient(to_right,#0000000a_1px,transparent_1px),linear-gradient(to_bottom,#0000000a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+ <div className="flex-1 flex flex-col bg-black text-white relative border-l border-white/10">
+ <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff0a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
  <div className="relative z-10 flex flex-col h-full w-full max-w-[800px]">
- <div className="p-6 sm:p-8 md:p-12 lg:p-16 border-b border-black/10">
+ <div className="p-6 sm:p-8 md:p-12 lg:p-16 border-b border-white/10">
  <div className="flex items-center gap-4 mb-6 sm:mb-8">
- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 93.865 16.562" className="h-3 sm:h-4 w-auto fill-black">
+ <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 93.865 16.562" className="h-3 sm:h-4 w-auto fill-white">
  <path d="M 7.998 4 L 80.998 4 L 80.998 13 L 7.998 13 Z" fill="transparent" />
  <path d="M 56.561 14.72 L 40.21 0 L 38.553 1.84 L 54.903 16.561 Z M 64.021 14.72 L 47.672 0 L 46.014 1.84 L 62.364 16.561 Z M 71.482 14.72 L 55.133 0 L 53.475 1.84 L 69.825 16.561 Z M 78.943 14.72 L 62.594 0 L 60.936 1.84 L 77.286 16.561 Z M 86.404 14.72 L 70.055 0 L 68.397 1.84 L 84.747 16.561 Z M 93.865 14.72 L 77.516 0 L 75.858 1.84 L 92.208 16.561 Z M 48.85 14.72 L 32.5 0 L 30.842 1.84 L 47.192 16.561 Z M 41.138 14.72 L 24.79 0 L 23.131 1.84 L 39.481 16.561 Z M 33.428 14.72 L 17.078 0 L 15.421 1.84 L 31.771 16.561 Z M 25.717 14.72 L 9.367 0 L 7.711 1.84 L 24.058 16.562 Z M 18.006 14.72 L 1.656 0 L 0 1.84 L 16.348 16.562 Z" />
  </svg>
- <span className="text-xs tracking-widest font-mono text-black/60 uppercase">
+ <span className="text-xs tracking-widest font-mono text-white/60 uppercase">
  {t('approach_eyebrow', 'OUR APPROACH')}
  </span>
  </div>
@@ -35,7 +34,7 @@ export default function OurApproach() {
  {t('approach_title', 'Built for the long term')}
  </h2>
 
- <p className="text-base sm:text-lg text-black/70 max-w-xl leading-relaxed">
+ <p className="text-base sm:text-lg text-white/70 max-w-xl leading-relaxed">
  {t(
  'approach_desc',
  "We don't just ship software; we build operations infrastructure. Our approach combines field-tested logistics workflows with real-time coordination across six roles."
@@ -44,15 +43,15 @@ export default function OurApproach() {
  </div>
 
  <div className="flex-1 grid grid-cols-1 md:grid-cols-2">
- <div className="p-6 sm:p-8 md:p-10 border-b md:border-r border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
- <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
- <Star size={36} className="text-black" />
+ <div className="p-6 sm:p-8 md:p-10 border-b md:border-r border-white/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-white/[0.04]">
+ <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center ">
+ <Timer size={36} className="text-white transition-all duration-300 custom-timer-icon" />
  </div>
  <div>
  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
  {t('approach_prime_title', 'SLA-First Dispatch')}
  </h3>
- <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
+ <p className="text-white/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-white/85">
  {t(
  'approach_prime_desc',
  'We prioritize on-time delivery SLAs to ensure your dispatch engine delivers consistent, measurable results every shift.'
@@ -61,15 +60,15 @@ export default function OurApproach() {
  </div>
  </div>
 
- <div className="p-6 sm:p-8 md:p-10 border-b border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
- <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
- <Eye size={36} className="text-black" />
+ <div className="p-6 sm:p-8 md:p-10 border-b border-white/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-white/[0.04]">
+ <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center ">
+ <Radar size={36} className="text-white transition-all duration-300 custom-radar-icon" />
  </div>
  <div>
  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
  {t('approach_clarity_title', 'Total Clarity')}
  </h3>
- <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
+ <p className="text-white/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-white/85">
  {t(
  'approach_clarity_desc',
  'Full visibility from warehouse dock to retailer doorstep — every order, vehicle, and payment in one live dashboard.'
@@ -78,15 +77,15 @@ export default function OurApproach() {
  </div>
  </div>
 
- <div className="p-6 sm:p-8 md:p-10 md:border-r border-black/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-black/[0.04]">
- <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center md:group-hover:scale-110 transition-transform duration-300">
- <Zap size={36} className="text-black" />
+ <div className="p-6 sm:p-8 md:p-10 md:border-r border-white/10 flex flex-col gap-4 sm:gap-6 group transition-colors duration-300 hover:bg-white/[0.04]">
+ <div className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center ">
+ <Rocket size={36} className="text-white transition-all duration-300 custom-rocket-icon" />
  </div>
  <div>
  <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3 font-mono tracking-tight">
  {t('approach_cycles_title', 'Fast Onboarding')}
  </h3>
- <p className="text-black/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-black/85">
+ <p className="text-white/60 text-sm leading-relaxed transition-colors duration-300 group-hover:text-white/85">
  {t(
  'approach_cycles_desc',
  'Onboard a new warehouse or expand to a new region in weeks, not months, with pre-built role templates and proven workflows.'

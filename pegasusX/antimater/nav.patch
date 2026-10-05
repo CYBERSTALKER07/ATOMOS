@@ -1,0 +1,38 @@
+--- app/components/PillNav.tsx
++++ app/components/PillNav.tsx
+@@ -364,26 +364,19 @@
+ 	 className={`shrink-0 inline-flex items-center justify-center overflow-hidden outline-none rounded-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+ 	 isLight ? 'focus-visible:ring-black' : 'focus-visible:ring-white'
+ 	 }`}
+ 	 style={{
+-	 width: '46px',
+ 	 height: 'var(--nav-h, 40px)',
+ 	 background: 'transparent'
+ 	 }}
+ 	 >
+-	 <img
+-	 src={logo || "/pegasus-nav.png"}
+-	 alt={logoAlt}
+-	 ref={logoImgRef}
+-	 className="w-full h-full object-contain filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-transform duration-200 hover:scale-105"
+-	 />
++	 <span className={`text-[15px] font-bold tracking-widest uppercase transition-transform duration-200 hover:scale-[1.02] ${isLight ? 'text-black' : 'text-white'}`}>
++	   PEGASUS
++	 </span>
+ 	 </Link>
+ 	
+ 	 <div
+ 	 ref={navItemsRef}
+-	 className="relative hidden md:flex min-w-0 flex-1 items-center rounded-none overflow-hidden"
++	 className="relative hidden md:flex min-w-0 flex-1 items-center justify-center rounded-none overflow-hidden"
+ 	 style={{
+ 	 height: 'var(--nav-h)',
+ 	 background: 'transparent'
+ 	 }}
+ 	 >
+ 	 <ul
+ 	 role="menubar"
+-	 className="list-none flex items-stretch m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
++	 className="list-none flex items-stretch justify-center m-0 p-[3px] h-full w-full min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+ 	 style={{ gap: 'var(--pill-gap)' }}
+ 	 >

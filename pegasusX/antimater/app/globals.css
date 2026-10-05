@@ -7312,3 +7312,49 @@ html.hide-default-cursor select {
   border-right: none;
   border-top: none;
 }
+
+
+
+@keyframes timer-tick {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  50% { transform: rotate(0deg); }
+  75% { transform: rotate(-15deg); }
+}
+
+@keyframes radar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes rocket-fly {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4px, -4px) scale(1.15); }
+  66% { transform: translate(-2px, 2px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0) scale(1.15); }
+  50% { transform: translateY(-5px) scale(1.15); }
+}
+
+/* Bypass Tailwind completely and animate on group hover using standard CSS */
+@media (min-width: 768px) {
+  .group:hover .custom-timer-icon {
+    animation: timer-tick 1.2s ease-in-out infinite;
+  }
+  .group:hover .custom-radar-icon {
+    animation: radar-spin 2s linear infinite;
+  }
+  .group:hover .custom-rocket-icon {
+    animation: rocket-fly 1.2s ease-in-out infinite;
+  }
+}
+
+.group:hover .custom-float-icon {
+  animation: float-icon 2s ease-in-out infinite;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #6ee7b7; /* emerald-300 */
+}

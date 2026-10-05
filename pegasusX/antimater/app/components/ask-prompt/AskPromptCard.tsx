@@ -25,11 +25,11 @@ const AskPromptCard = forwardRef<HTMLElement, AskPromptCardProps>(function AskPr
  'backdrop-blur-md transition-[transform,border-color,box-shadow] duration-300',
  featured
  ? cn(
- 'min-h-[9.5rem] border-violet-400/55',
- 'bg-[linear-gradient(145deg,rgba(88,28,180,0.95),rgba(49,16,98,0.98))]',
+ 'min-h-[9.5rem] border-emerald-400/55',
+ 'bg-[linear-gradient(145deg,rgba(4,120,87,0.95),rgba(6,78,59,0.98))]',
  '',
  interactive &&
- 'md:hover:border-violet-300/80 md:hover: md:hover:-translate-y-1'
+ 'md:hover:border-emerald-300/80 md:hover: md:hover:-translate-y-1'
  )
  : cn(
  'min-h-[8.25rem] border-white/[0.12]',
@@ -45,11 +45,11 @@ const AskPromptCard = forwardRef<HTMLElement, AskPromptCardProps>(function AskPr
  {featured && (
  <>
  <div
- className="pointer-events-none absolute -inset-16 -z-10 rounded-none bg-violet-600/25 blur-3xl"
+ className="pointer-events-none absolute -inset-16 -z-10 rounded-none bg-emerald-600/25 blur-3xl"
  aria-hidden
  />
  <div
- className="pointer-events-none absolute inset-0 rounded-none ring-1 ring-inset ring-violet-300/20"
+ className="pointer-events-none absolute inset-0 rounded-none ring-1 ring-inset ring-emerald-300/20"
  aria-hidden
  />
  </>
@@ -58,7 +58,7 @@ const AskPromptCard = forwardRef<HTMLElement, AskPromptCardProps>(function AskPr
  <p
  className={cn(
  'font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.14em] mb-3 sm:mb-4',
- featured ? 'text-violet-100/75' : 'text-white/38'
+ featured ? 'text-emerald-100/75' : 'text-white/38'
  )}
  >
  {category}

@@ -9,7 +9,6 @@ import type { Language } from '@/app/lib/i18n/translations';
 import { ReactLenis } from 'lenis/react';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 
-import TargetCursor from '@/app/components/TargetCursor';
 import SplashCursor from '@/app/components/SplashCursor';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
@@ -98,14 +97,6 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               }}
             >
               {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
-              <TargetCursor
-                spinDuration={2}
-                hideDefaultCursor
-                parallaxOn
-                hoverDuration={0.2}
-                cursorColor="#10B981"
-                cursorColorOnTarget="#B497CF"
-              />
               {children}
               <SiteAssistant />
             </ReactLenis>

@@ -1,0 +1,24 @@
+--- app/components/PillNav.tsx
++++ app/components/PillNav.tsx
+@@ -9,6 +9,7 @@
+ import LanguageSwitcher from './LanguageSwitcher';
+ import { useTheme } from '../context/ThemeContext';
+ import { MEGA_NAV_CATEGORIES, MEGA_NAV_FOOTER_LINKS, type MegaNavCategory } from '../data/megaNavigation';
++import PegasusSciFiLogo from './visuals/PegasusSciFiLogo';
+ 
+ export type PillNavItem = {
+  label: string;
+@@ -370,9 +371,9 @@
+ 	 height: 'var(--nav-h, 40px)',
+ 	 background: 'transparent'
+ 	 }}
+ 	 >
+-	 <span className={`text-[15px] font-bold tracking-[0.2em] transition-transform duration-200 hover:scale-[1.02] ${isLight ? "text-black" : "text-white"}`}>
+-	   PEGASUS
+-	 </span>
++	 <div className="transition-transform duration-200 hover:scale-[1.02]">
++	   <PegasusSciFiLogo variant="solid" color={isLight ? '#000000' : '#ffffff'} height="0.9rem" />
++	 </div>
+ 	 </Link>
+ 	
+ 	 <div

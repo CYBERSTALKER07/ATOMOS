@@ -1,5 +1,7 @@
 'use client';
 
+import { Atom } from "lucide-react";
+
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
@@ -27,6 +29,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
   const cornersRef = useRef<NodeListOf<HTMLDivElement> | null>(null);
   const spinTl = useRef<gsap.core.Timeline | null>(null);
   const dotRef = useRef<HTMLDivElement>(null);
+  const xToRef = useRef<((value: number) => void) | null>(null);
+  const yToRef = useRef<((value: number) => void) | null>(null);
 
   const isActiveRef = useRef(false);
   const targetCornerPositionsRef = useRef<{ x: number; y: number }[] | null>(null);
@@ -53,14 +57,12 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
   const constants = useMemo(() => ({ borderWidth: 3, cornerSize: 12 }), []);
 
   const moveCursor = useCallback((x: number, y: number) => {
-    if (!cursorRef.current) return;
-    gsap.to(cursorRef.current, {
-      x,
-      y,
-      duration: 0.08,
-      ease: 'power3.out',
-      overwrite: 'auto'
-    });
+    if (xToRef.current && yToRef.current) {
+      xToRef.current(x);
+      yToRef.current(y);
+    } else if (cursorRef.current) {
+      gsap.set(cursorRef.current, { x, y });
+    }
   }, []);
 
   useEffect(() => {
@@ -96,13 +98,14 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
       y: window.innerHeight / 2
     });
 
+    xToRef.current = gsap.quickTo(cursor, 'x', { duration: 0.08, ease: 'power3.out' });
+    yToRef.current = gsap.quickTo(cursor, 'y', { duration: 0.08, ease: 'power3.out' });
+
     const createSpinTimeline = () => {
       if (spinTl.current) {
         spinTl.current.kill();
       }
-      spinTl.current = gsap
-        .timeline({ repeat: -1 })
-        .to(cursor, { rotation: '+=360', duration: spinDuration, ease: 'none' });
+      spinTl.current = null;
     };
 
     createSpinTimeline();
@@ -241,7 +244,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
         });
         if (dotRef.current) {
           gsap.to(dotRef.current, {
-            backgroundColor: cursorColorOnTarget,
+            color: cursorColorOnTarget,
             duration: 0.15,
             ease: 'power2.out'
           });
@@ -289,7 +292,7 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
           });
           if (dotRef.current) {
             gsap.to(dotRef.current, {
-              backgroundColor: cursorColor,
+              color: cursorColor,
               duration: 0.15,
               ease: 'power2.out'
             });
@@ -314,20 +317,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
 
         resumeTimeout = setTimeout(() => {
           if (!activeTarget && cursorRef.current && spinTl.current) {
-            const currentRotation = gsap.getProperty(cursorRef.current, 'rotation') as number;
-            const normalizedRotation = currentRotation % 360;
-            spinTl.current.kill();
-            spinTl.current = gsap
-              .timeline({ repeat: -1 })
-              .to(cursorRef.current, { rotation: '+=360', duration: spinDuration, ease: 'none' });
-            gsap.to(cursorRef.current, {
-              rotation: normalizedRotation + 360,
-              duration: spinDuration * (1 - normalizedRotation / 360),
-              ease: 'none',
-              onComplete: () => {
-                spinTl.current?.restart();
-              }
-            });
+            spinTl.current?.kill();
+            spinTl.current = null;
           }
           resumeTimeout = null;
         }, 50);
@@ -358,6 +349,8 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
         cleanupTarget(activeTarget);
       }
       spinTl.current?.kill();
+      xToRef.current = null;
+      yToRef.current = null;
       document.body.style.cursor = originalCursor;
       document.documentElement.classList.remove('hide-default-cursor');
     };
@@ -388,9 +381,11 @@ const TargetCursor: React.FC<TargetCursorProps> = ({
     >
       <div
         ref={dotRef}
-        className="target-cursor-dot"
-        style={{ willChange: 'transform', backgroundColor: cursorColor }}
-      />
+        className="target-cursor-dot flex items-center justify-center !bg-transparent !w-6 !h-6 !rounded-none"
+        style={{ willChange: 'transform', color: cursorColor }}
+      >
+        <Atom size={24} color="currentColor" strokeWidth={1.5} />
+      </div>
       <div
         className="target-cursor-corner corner-tl"
         style={{ willChange: 'transform', borderColor: cursorColor }}

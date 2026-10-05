@@ -4,12 +4,10 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { gsap, ScrollTrigger } from '@/app/lib/gsap';
 import TextType from './TextType';
-import DigitalizedImage from './DigitalizedImage';
+import Dither from './visuals/Dither';
 import { usePerfProfile } from '../hooks/useDevice';
 import PageSection from './layout/PageSection';
 import { useLanguage } from '../context/LanguageContext';
-
-const PEGASUS_LOGO = '/pegasus.jpg';
 
 export default function About() {
  const { isMobile, isLowEnd, prefersReducedMotion } = usePerfProfile();
@@ -52,14 +50,28 @@ export default function About() {
  <PageSection id="about" ref={aboutRef}>
  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 lg:gap-12 items-center">
  <div ref={imageRef} className="relative">
- <div className="relative h-[240px] sm:h-[320px] md:h-[400px] lg:h-[500px] overflow-hidden bg-black">
- <DigitalizedImage
- src={PEGASUS_LOGO}
- alt="Pegasus"
- color="#e8e4e3"
- backgroundColor="#000000"
- threshold={0.2}
- />
+ <div className="relative h-[240px] sm:h-[320px] md:h-[400px] lg:h-[500px] overflow-hidden bg-black rounded-lg" style={{ 
+   width: '100%',
+   WebkitMaskImage: 'url(/productionlogo-mask.png?v=2)',
+   WebkitMaskSize: 'contain',
+   WebkitMaskRepeat: 'no-repeat',
+   WebkitMaskPosition: 'center',
+   maskImage: 'url(/productionlogo-mask.png?v=2)',
+   maskSize: 'contain',
+   maskRepeat: 'no-repeat',
+   maskPosition: 'center'
+}}>
+   <Dither
+     waveColor={[0.06274509803921569,0.7254901960784313,0.5058823529411764]}
+     disableAnimation={false}
+     enableMouseInteraction={true}
+     mouseRadius={0.3}
+     colorNum={4}
+     waveAmplitude={0.3}
+     waveFrequency={3}
+     waveSpeed={0.05}
+     backgroundColor={[0,0,0]}
+   />
  </div>
  </div>
 

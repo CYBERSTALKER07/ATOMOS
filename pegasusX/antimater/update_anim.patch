@@ -1,0 +1,32 @@
+--- app/components/TargetCursor.tsx
++++ app/components/TargetCursor.tsx
+@@ -102,7 +102,7 @@
+         });
+         if (dotRef.current) {
+           gsap.to(dotRef.current, {
+-            backgroundColor: cursorColorOnTarget,
++            color: cursorColorOnTarget,
+             duration: 0.15,
+             ease: 'power2.out'
+           });
+@@ -134,7 +134,7 @@
+           });
+           if (dotRef.current) {
+             gsap.to(dotRef.current, {
+-              backgroundColor: cursorColor,
++              color: cursorColor,
+               duration: 0.15,
+               ease: 'power2.out'
+             });
+@@ -300,9 +300,9 @@
+       <div
+         ref={dotRef}
+         className="target-cursor-dot flex items-center justify-center !bg-transparent !w-6 !h-6 !rounded-none"
+-        style={{ willChange: 'transform' }}
++        style={{ willChange: 'transform', color: cursorColor }}
+       >
+-        <Atom size={24} color={cursorColor} strokeWidth={1.5} />
++        <Atom size={24} color="currentColor" strokeWidth={1.5} />
+       </div>
+       <div
+         className="target-cursor-corner corner-tl"
