@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { gsap, SplitText } from '@/app/lib/gsap';
 import { usePerfProfile } from '../hooks/useDevice';
 import { useLanguage } from '../context/LanguageContext';
 import { SITE_IMAGES } from '@/app/lib/siteAssets';
@@ -25,21 +25,66 @@ export default function LastMileSection() {
         return;
       }
 
-      gsap
-        .timeline({
+      const imgTarget = imageRef.current?.querySelector('img');
+      if (imgTarget) {
+        gsap.set(imgTarget, { scale: 1.15, transformOrigin: 'center center' });
+        gsap.to(imgTarget, {
+          yPercent: 10,
+          ease: 'none',
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: 'top 78%',
-            once: true,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 0.5,
           },
-        })
-        .fromTo(imageRef.current, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.9, ease: 'pegasus' })
-        .fromTo(
-          contentRef.current,
-          { opacity: 0, y: 28 },
-          { opacity: 1, y: 0, duration: 0.9, ease: 'pegasus' },
-          '-=0.55',
+        });
+      }
+
+      const heading = contentRef.current?.querySelector('h2');
+      let splitHeading: SplitText | null = null;
+      if (heading) {
+        splitHeading = new SplitText(heading, { type: 'lines,words' });
+      }
+
+      const elementsToAnimate = contentRef.current?.children ? Array.from(contentRef.current.children) : [];
+
+      gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 80%',
+          once: true,
+        },
+      })
+      .fromTo(imageRef.current, 
+        { opacity: 0, y: 40, clipPath: 'inset(10% 10% 10% 10%)' }, 
+        { opacity: 1, y: 0, clipPath: 'inset(0% 0% 0% 0%)', duration: 1.2, ease: 'power3.out' }
+      )
+      .fromTo(
+        elementsToAnimate.filter(el => el !== heading), // Filter out heading to animate its parts instead
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' },
+        '-=0.8'
+      );
+
+      if (splitHeading && splitHeading.words) {
+        gsap.fromTo(
+          splitHeading.words,
+          { opacity: 0, y: 20, rotateX: -30 },
+          {
+            opacity: 1,
+            y: 0,
+            rotateX: 0,
+            duration: 0.8,
+            stagger: 0.04,
+            ease: 'back.out(1.4)',
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: 'top 75%',
+              once: true,
+            },
+          }
         );
+      }
     }, sectionRef);
 
     return () => ctx.revert();

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { gsap, ScrollTrigger } from '@/app/lib/gsap';
+import { gsap, SplitText } from '@/app/lib/gsap';
 import TextType from './TextType';
 import Dither from './visuals/Dither';
 import { usePerfProfile } from '../hooks/useDevice';
@@ -29,8 +29,13 @@ export default function About() {
  return;
  }
 
- gsap.timeline({
- defaults: { ease: 'pegasus' },
+ const heading = contentRef.current?.querySelector('h2');
+ let splitHeading: SplitText | null = null;
+ if (heading) {
+   splitHeading = new SplitText(heading, { type: 'lines' });
+ }
+
+ const tl = gsap.timeline({
  scrollTrigger: {
  trigger: aboutRef.current,
  start: 'top 80%',
@@ -38,9 +43,39 @@ export default function About() {
  toggleActions: 'play none none reverse',
  fastScrollEnd: true,
  },
- })
- .fromTo(imageRef.current, { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 1 })
- .fromTo(contentRef.current, { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 1 }, '-=0.7');
+ });
+
+ tl.fromTo(imageRef.current, 
+  { opacity: 0, scale: 0.8, filter: 'blur(10px)' }, 
+  { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: 'power3.out' }
+ );
+
+ const textElements = contentRef.current ? Array.from(contentRef.current.children) : [];
+ 
+ if (splitHeading && splitHeading.lines) {
+   tl.fromTo(splitHeading.lines, 
+     { opacity: 0, y: 30 }, 
+     { opacity: 1, y: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' },
+     '-=0.8'
+   );
+ }
+
+ tl.fromTo(textElements.filter(el => el !== heading?.parentElement), 
+   { opacity: 0, x: 30 }, 
+   { opacity: 1, x: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out' },
+   '-=0.6'
+ );
+
+ gsap.to(imageRef.current, {
+   yPercent: 15,
+   ease: 'none',
+   scrollTrigger: {
+     trigger: aboutRef.current,
+     start: 'top bottom',
+     end: 'bottom top',
+     scrub: 1,
+   }
+ });
  }, aboutRef);
 
  return () => ctx.revert();

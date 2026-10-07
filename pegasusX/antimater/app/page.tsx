@@ -3,7 +3,6 @@ import Hero from './components/Hero';
 import About from './components/About';
 import Skills from './components/Skills';
 import SiteNav from './components/explore/SiteNav';
-import GlobalSectionTracker from './components/GlobalSectionTracker';
 
 import type { Metadata } from 'next';
 import {
@@ -17,26 +16,17 @@ import {
 import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
-
-const SignalFeatureCards = dynamic(() => import('./components/SignalFeatureCards'));
 const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
 const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const LastMileSection = dynamic(() => import('./components/LastMileSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
 const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPromptSection'));
-const EcosystemStats = dynamic(() => import('./components/EcosystemStats'));
-const EcosystemDitherSection = dynamic(() => import('./components/EcosystemDitherSection'));
-const LogisticsWorkflow = dynamic(() => import('./components/LogisticsWorkflow'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
 
-const CloudEcosystemSection = dynamic(() => import('./components/CloudEcosystemSection'));
-const ShowcaseWall = dynamic(() => import('./components/ShowcaseWall'));
 const Projects = dynamic(() => import('./components/Projects'));
-const Companies = dynamic(() => import('./components/Companies'));
 const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
-const UserStoriesSection = dynamic(() => import('./components/UserStoriesSection'));
 const SpurIntelligenceSection = dynamic(() => import('./components/SpurIntelligenceSection'));
 const Licensing = dynamic(() => import('./components/Licensing'));
 const Footer = dynamic(() => import('./components/Footer'));
@@ -128,19 +118,13 @@ export default async function Home() {
  </section>
 
  <section id="section-workflow">
- {/* <EcosystemStats /> - hidden: Optimized for the entire chain */}
- {/* <EcosystemDitherSection /> - hidden for now */}
- {/* <LogisticsWorkflow /> - hidden for now */}
  <OurApproach />
  <Skills />
  <DevelopmentTools />
- {/* <CloudEcosystemSection /> - hidden for now */}
  </section>
 
  <section id="section-showcase">
- {/* <ShowcaseWall /> - hidden for now */}
  <PegasusTestimonialsSection />
- {/* <UserStoriesSection /> - hidden for now */}
  <Projects />
  <OrderCycleVisualSection />
  </section>
