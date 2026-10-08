@@ -7,6 +7,10 @@ from ortools.constraint_solver import pywrapcp
 
 app = FastAPI(title="PegasusX Optimizer Sidecar")
 
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
 class Location(BaseModel):
     id: str
     x: float

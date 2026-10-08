@@ -11,12 +11,33 @@ services:
     volumes:
       - memgraph-data:/var/lib/memgraph
       - memgraph-log:/var/log/memgraph
+    networks:
+      - pegasusx-codegraph-net
     healthcheck:
       test: ["CMD-SHELL", "echo 'RETURN 1;' | mgconsole || exit 0"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "0.2"
+          memory: 512M
     restart: unless-stopped
+
+networks:
+  pegasusx-codegraph-net:
+    name: pegasusx-codegraph-network
+    driver: bridge
 
 volumes:
   memgraph-data:
