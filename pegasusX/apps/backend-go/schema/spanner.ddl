@@ -195,6 +195,15 @@ CREATE TABLE Orders (
   ReceivingWindowOpen  STRING(10),
   ReceivingWindowClose STRING(10),
   Timezone              STRING(64),
+  DeliverBefore         TIMESTAMP,
+  DeliveryPriority      STRING(16) NOT NULL DEFAULT ('STANDARD'),
+  WarehouseNotes        STRING(MAX),
+  PreorderReminderSentAt TIMESTAMP,
+  NudgeNotifiedAt       TIMESTAMP,
+  ConfirmationNotifiedAt TIMESTAMP,
+  CancelLockedAt        TIMESTAMP,
+  CancelLockReason      STRING(MAX),
+  DeliveryFeeMinor      INT64 NOT NULL DEFAULT (0),
 
   ProposedDeliveryDate TIMESTAMP,
   DeliveryProposalAt TIMESTAMP,
@@ -214,6 +223,7 @@ CREATE INDEX Idx_Orders_BySupplierUpdated ON Orders(SupplierId, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_BySupplierStatusUpdated ON Orders(SupplierId, Status, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByWarehouseCreated ON Orders(WarehouseId, CreatedAt DESC);
 CREATE INDEX Idx_Orders_ByWarehouseRequestedDelivery ON Orders(WarehouseId, RequestedDeliveryDate DESC, UpdatedAt DESC);
+CREATE INDEX Idx_Orders_ByWarehouseStatusDelivery ON Orders(WarehouseId, Status, RequestedDeliveryDate DESC);
 CREATE INDEX Idx_Orders_ByConfirmationAutoConfirm ON Orders(ConfirmationStatus, AutoConfirmAt, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByDerivedSource ON Orders(DerivedFromOrderId, OrderSource, UpdatedAt DESC);
 CREATE INDEX Idx_Orders_ByDriverCreated ON Orders(DriverId, CreatedAt DESC);

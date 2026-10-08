@@ -1657,6 +1657,27 @@ func (r *SpannerRepository) UpdateOrderWithTxn(ctx context.Context, o Order, pro
 			spanner.UpdateMap("Orders", orderMap),
 		}
 
+		if string(o.Status) != prevStatus {
+			metaRaw, _ := json.Marshal(o.TransitionMetadata)
+			eventKind := strings.TrimSpace(o.TransitionEventKind)
+			if eventKind == "" {
+				eventKind = DefaultTransitionEventKind(o.Status)
+			}
+			transitionID := uuid.NewString()
+			mutations = append(mutations, spanner.InsertMap("OrderStatusTransitions", map[string]any{
+				"OrderId":        o.OrderID,
+				"TransitionId":   transitionID,
+				"PreviousStatus": prevStatus,
+				"NewStatus":      string(o.Status),
+				"Reason":         strings.TrimSpace(o.TransitionReason),
+				"ActorRole":      strings.TrimSpace(o.TransitionActorRole),
+				"ActorId":        strings.TrimSpace(o.TransitionActorID),
+				"EventKind":      eventKind,
+				"MetadataJson":   metaRaw,
+				"CreatedAt":      o.UpdatedAt,
+			}))
+		}
+
 		for _, fr := range o.PendingFiscalReceipts {
 			if strings.TrimSpace(fr.AttemptID) == "" || strings.TrimSpace(fr.OrderID) == "" {
 				continue

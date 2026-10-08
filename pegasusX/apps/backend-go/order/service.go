@@ -2482,6 +2482,15 @@ func canAssignOrders(role auth.Role) bool {
 
 func (s *Service) persistDriverTransition(ctx context.Context, claims auth.Claims, req driverTransitionRequest, current Order, previousStatus Status) error {
 	actorID := claims.Subject
+	if strings.TrimSpace(current.TransitionReason) == "" {
+		current.TransitionReason = req.Reason
+	}
+	if strings.TrimSpace(current.TransitionActorRole) == "" {
+		current.TransitionActorRole = string(claims.Role)
+	}
+	if strings.TrimSpace(current.TransitionActorID) == "" {
+		current.TransitionActorID = actorID
+	}
 	var proofs []DeliveryProofArtifact
 	if req.BuildProofs != nil {
 		proofs = req.BuildProofs(current)

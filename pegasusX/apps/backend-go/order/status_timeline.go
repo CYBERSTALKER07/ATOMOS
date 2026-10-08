@@ -74,23 +74,24 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 			return nil, err
 		}
 		var (
-			transitionID, oid, prev, next, reason, actorRole, actorID, kind string
-			metaRaw                                                       []byte
-			createdAt                                                     time.Time
+			transitionID, oid, next string
+			prev, reason, actorRole, actorID, kind spanner.NullString
+			metaRaw                                []byte
+			createdAt                              time.Time
 		)
 		if err := row.Columns(&transitionID, &oid, &prev, &next, &reason, &actorRole, &actorID, &kind, &metaRaw, &createdAt); err != nil {
 			continue
 		}
 		entry := OrderStatusTransition{
-			TransitionID: transitionID,
-			OrderID:      oid,
-			PreviousStatus: prev,
-			NewStatus:    next,
-			Reason:       reason,
-			ActorRole:    actorRole,
-			ActorID:      actorID,
-			EventKind:    kind,
-			CreatedAt:    createdAt,
+			TransitionID:   transitionID,
+			OrderID:        oid,
+			PreviousStatus: prev.StringVal,
+			NewStatus:      next,
+			Reason:         reason.StringVal,
+			ActorRole:      actorRole.StringVal,
+			ActorID:        actorID.StringVal,
+			EventKind:      kind.StringVal,
+			CreatedAt:      createdAt,
 		}
 		if len(metaRaw) > 0 {
 			_ = json.Unmarshal(metaRaw, &entry.Metadata)
