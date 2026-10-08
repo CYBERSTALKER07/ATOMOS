@@ -31,7 +31,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
 
 ### Wave 1: Core OpenTelemetry & W3C TraceContext Propagation
 
-- [ ] **Task 1: Standard W3C TraceContext Middleware & Context Bridge**
+- [x] **Task 1: Standard W3C TraceContext Middleware & Context Bridge**
   - **What to do**: Upgrade `apps/backend-go/bootstrap/trace_middleware.go` to support W3C `traceparent`:
     - Parse incoming `traceparent` header (`00-{trace_id}-{span_id}-{flags}`).
     - Fall back to incoming `X-Trace-Id` or `X-Request-Id`, or generate a cryptographically random 16-byte hex trace ID and 8-byte span ID.
@@ -62,7 +62,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
     - Files: `apps/backend-go/bootstrap/trace_middleware.go`, `apps/backend-go/bootstrap/trace_middleware_test.go`
     - Reason: Distributed trace correlation.
 
-- [ ] **Task 2: Outbound Service-to-Service Trace Propagation in Optimizer Client**
+- [x] **Task 2: Outbound Service-to-Service Trace Propagation in Optimizer Client**
   - **What to do**: Update `apps/backend-go/dispatch/optimizerclient/client.go` to inject trace context into the outgoing HTTP request:
     - Inject `X-Trace-Id: in.TraceID`.
     - If `in.TraceID` is empty, extract from `outbox.TraceIDFromContext(ctx)`.
@@ -96,7 +96,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
 
 ### Wave 2: Microservice & Worker Observability
 
-- [ ] **Task 3: Python Optimizer Core Trace Extraction & Prometheus Metrics**
+- [x] **Task 3: Python Optimizer Core Trace Extraction & Prometheus Metrics**
   - **What to do**: Update `services/optimizer-core/server/http_main.py`:
     - Add `/metrics` handler exporting Prometheus text format:
       - `pegasusx_optimizer_up 1`
@@ -129,7 +129,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
     - Files: `services/optimizer-core/server/http_main.py`, `services/optimizer-core/server/test_observability.py`
     - Reason: Solver observability and trace correlation.
 
-- [ ] **Task 4: Kubernetes PodMonitoring & NetworkPolicy Alignment**
+- [x] **Task 4: Kubernetes PodMonitoring & NetworkPolicy Alignment**
   - **What to do**:
     - Add `PodMonitoring` resource for `optimizer-core` to `infra/k8s/monitoring/podmonitoring.yaml` (port: 8082, path: `/metrics`, interval: 30s).
     - Update `infra/k8s/network-policies/optimizer-core-policy.yaml` to allow ingress from `monitoring` and `gke-gmp-system` namespaces on port 8082.
@@ -162,7 +162,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
 
 ### Wave 3: SRE Prometheus Alerting Rules & SLO Compliance
 
-- [ ] **Task 5: Prometheus Alerting Rules for Platform SLIs/SLOs**
+- [x] **Task 5: Prometheus Alerting Rules for Platform SLIs/SLOs**
   - **What to do**:
     - Create `infra/k8s/monitoring/prometheus-rules.yaml` containing mission-critical PrometheusRule alerts:
       - `PegasusXBackendHighErrorRate`: HTTP 5xx rate > 1% over 5m.
@@ -194,6 +194,7 @@ Enable seamless trace correlation and full infrastructure monitoring across all 
     - Message: `feat(monitoring): define Prometheus alerting rules for SLI/SLO golden signals`
     - Files: `infra/k8s/monitoring/prometheus-rules.yaml`, `infra/k8s/base/kustomization.yaml`
     - Reason: Proactive production incident detection.
+
 
 ---
 
@@ -231,16 +232,16 @@ Task 1 -> Task 2 -> Task 3 -> Task 4 -> Task 5 -> Final Verification Wave
 
 ## Final Verification Wave
 
-- [ ] **1. K8s Manifest & Overlay Lint**:
+- [x] **1. K8s Manifest & Overlay Lint**:
   - Run YAML validator across all files in `infra/k8s/`.
   - Verify all overlays (`dev`, `staging`, `prod`, `sandbox`) build cleanly via `kubectl kustomize`.
-- [ ] **2. Automated Backend Test Pass**:
+- [x] **2. Automated Backend Test Pass**:
   - `cd apps/backend-go && go test -race ./bootstrap/... ./dispatch/optimizerclient/...` (0 failures, 0 races).
-- [ ] **3. Optimizer Observability Test Pass**:
+- [x] **3. Optimizer Observability Test Pass**:
   - Execute `python3 services/optimizer-core/server/test_observability.py` (0 failures).
-- [ ] **4. End-to-End Trace Round-Trip Check**:
+- [x] **4. End-to-End Trace Round-Trip Check**:
   - Verify that a request entering `TraceMiddleware` propagates its W3C traceparent into `optimizerclient` and is reflected back from `optimizer-core`.
-- [ ] **5. Clean Git Working Tree**:
+- [x] **5. Clean Git Working Tree**:
   - `git status` verifies clean atomic commits with zero uncommitted artifacts.
 
 ---
