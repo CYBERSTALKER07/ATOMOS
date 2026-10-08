@@ -86,6 +86,25 @@ resource "google_container_cluster" "primary" {
   remove_default_node_pool = var.enable_autopilot ? null : true
   initial_node_count       = var.enable_autopilot ? null : 1
 
+  # Enterprise Network & Datapath Configuration (Cilium eBPF Datapath V2)
+  datapath_provider = var.enable_autopilot ? null : "ADVANCED_DATAPATH"
+
+  # Enterprise Security Posture & Vulnerability Scanning
+  security_posture_config {
+    mode               = "BASIC"
+    vulnerability_mode = "VULNERABILITY_BASIC"
+  }
+
+  # FinOps GKE Cost Allocation Tracking (Namespace and Label Breakdown)
+  cost_management_config {
+    enabled = true
+  }
+
+  # Binary Authorization Policy Enforcement
+  binary_authorization {
+    evaluation_mode = "PROJECT_SINGLETON_POLICY_ENFORCE"
+  }
+
   # Resource labels
   resource_labels = var.labels
 

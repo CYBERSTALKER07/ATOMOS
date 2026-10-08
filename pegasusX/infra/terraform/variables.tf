@@ -210,3 +210,15 @@ variable "labels" {
     environment = "production"
   }
 }
+
+variable "billing_account_id" {
+  description = "Google Cloud Billing Account ID for budget alerts. If empty, budget resource is skipped."
+  type        = string
+  default     = ""
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly spend cap in USD for FinOps budget enforcement."
+  type        = number
+  default     = 0
+}

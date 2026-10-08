@@ -27,7 +27,7 @@ resource "google_storage_bucket" "media" {
 
   lifecycle_rule {
     condition {
-      age = 365 # Retain active evidence for 1 year before nearline transition
+      age = 60 # Transition to Nearline after 60 days (active dispute window is <=24h)
     }
     action {
       type          = "SetStorageClass"
@@ -35,7 +35,32 @@ resource "google_storage_bucket" "media" {
     }
   }
 
+  lifecycle_rule {
+    condition {
+      age = 365 # Transition regulatory compliance archives to Coldline after 1 year (70% savings)
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"
+    }
+  }
+
+  # Enterprise CMEK Encryption (Customer-Managed Encryption Key)
+  encryption {
+    default_kms_key_name = google_kms_crypto_key.storage_key.id
+  }
+
+  # Regulatory Audit Retention Lock (30-day immutability)
+  retention_policy {
+    is_locked        = false
+    retention_period = 2592000
+  }
+
   labels = var.labels
+
+  depends_on = [
+    google_kms_crypto_key_iam_member.gcs_kms_user
+  ]
 }
 
 # 1.2 App Updates & Distribution Bucket (OTA Mobile APKs, Tauri Desktop Installers)
@@ -361,4 +386,31 @@ resource "google_project_iam_member" "sa_project_roles" {
   project  = var.project_id
   role     = each.value.role
   member   = "serviceAccount:${google_service_account.workload_sa[each.value.sa_name].email}"
+}
+
+# 5. Customer-Managed Encryption Keys (CMEK) via Google Cloud KMS
+resource "google_kms_key_ring" "keyring" {
+  name     = "${var.environment}-pegasusx-keyring"
+  location = var.region
+  project  = var.project_id
+}
+
+resource "google_kms_crypto_key" "storage_key" {
+  name            = "pegasusx-storage-key"
+  key_ring        = google_kms_key_ring.keyring.id
+  rotation_period = "7776000s" # 90-day automatic key rotation
+
+  lifecycle {
+    prevent_destroy = false
+  }
+}
+
+data "google_storage_project_service_account" "gcs_account" {
+  project = var.project_id
+}
+
+resource "google_kms_crypto_key_iam_member" "gcs_kms_user" {
+  crypto_key_id = google_kms_crypto_key.storage_key.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
 }

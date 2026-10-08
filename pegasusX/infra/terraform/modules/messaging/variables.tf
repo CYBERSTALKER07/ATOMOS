@@ -98,7 +98,7 @@ variable "topics" {
       replication_factor = 3
       configs = {
         "cleanup.policy" = "delete"
-        "retention.ms"   = "604800000" # 7 days
+        "retention.ms"   = "86400000" # 1 day (Optimized for FinOps disk savings)
       }
     }
     "pegasusx-freeze-locks" = {

@@ -76,6 +76,7 @@ resource "google_compute_router_nat" "nat_gateway" {
   min_ports_per_vm                    = 64
   max_ports_per_vm                    = 2048
   enable_endpoint_independent_mapping = true
+  enable_dynamic_port_allocation      = true
 
   log_config {
     enable = true

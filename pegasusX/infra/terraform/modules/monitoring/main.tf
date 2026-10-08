@@ -521,3 +521,60 @@ resource "google_monitoring_dashboard" "platform_overview" {
   })
   project = var.project_id
 }
+
+# 5. FinOps & Cloud Billing Budget Alerts
+locals {
+  budget_enabled = trimspace(var.billing_account_id) != "" && var.monthly_budget_usd > 0
+}
+
+resource "google_billing_budget" "platform_budget" {
+  count           = local.budget_enabled ? 1 : 0
+  billing_account = var.billing_account_id
+  display_name    = "PegasusX Monthly Spend Cap (${var.environment})"
+
+  budget_filter {
+    projects = ["projects/${var.project_id}"]
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = tostring(floor(var.monthly_budget_usd))
+    }
+  }
+
+  # 50% Early Warning Alert
+  threshold_rules {
+    threshold_percent = 0.5
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  # 80% Soft Cap Warning
+  threshold_rules {
+    threshold_percent = 0.8
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  # 90% Critical Escalation
+  threshold_rules {
+    threshold_percent = 0.9
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  # 100% Budget Breach Alert
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  # 100% Forecasted Breach Alert (Predictive FinOps)
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "FORECASTED_SPEND"
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = local.notification_channels
+    disable_default_iam_recipients   = false
+  }
+}

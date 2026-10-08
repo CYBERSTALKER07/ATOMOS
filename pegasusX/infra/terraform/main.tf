@@ -104,5 +104,7 @@ module "monitoring" {
   alert_email_endpoints = var.alert_email_endpoints
   slack_webhook_url     = var.slack_webhook_url
   api_hostname          = var.api_hostname
+  billing_account_id    = var.billing_account_id
+  monthly_budget_usd    = var.monthly_budget_usd
   labels                = var.labels
 }

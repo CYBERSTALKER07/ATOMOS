@@ -42,7 +42,7 @@ variable "spanner_autoscaling_config" {
   })
   default = {
     min_processing_units                  = 100
-    max_processing_units                  = 1000
+    max_processing_units                  = 400
     high_priority_cpu_utilization_percent = 65
     storage_utilization_percent           = 80
   }

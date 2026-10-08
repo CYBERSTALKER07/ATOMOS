@@ -95,6 +95,12 @@ resource "google_redis_instance" "cache" {
     }
   }
 
+  # Enterprise Disaster Recovery & Snapshot Persistence
+  persistence_config {
+    persistence_mode    = "RDB"
+    rdb_snapshot_period = "ONE_HOUR"
+  }
+
   labels = var.labels
 
   # Explicit dependency on PSA connection so peering is active before Redis creation
