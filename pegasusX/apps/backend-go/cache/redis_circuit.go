@@ -267,3 +267,270 @@ func (c *CircuitBreakerBackend) DecrBy(ctx context.Context, key string, amount i
 	}
 	return res, innerErr
 }
+
+// ── Hash Support ─────────────────────────────────────────────────────────────
+
+func (c *CircuitBreakerBackend) HGet(ctx context.Context, key, field string) ([]byte, bool, error) {
+	var val []byte
+	var ok bool
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if hb, can := c.primary.(HashBackend); can {
+			val, ok, innerErr = hb.HGet(ctx, key, field)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(HashBackend); can {
+			return fb.HGet(ctx, key, field)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, false, err
+	}
+	return val, ok, err
+}
+
+func (c *CircuitBreakerBackend) HSet(ctx context.Context, key, field string, value []byte) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if hb, can := c.primary.(HashBackend); can {
+			innerErr = hb.HSet(ctx, key, field, value)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(HashBackend); can {
+			return fb.HSet(ctx, key, field, value)
+		}
+	}
+	return err
+}
+
+func (c *CircuitBreakerBackend) HGetAll(ctx context.Context, key string) (map[string][]byte, error) {
+	var res map[string][]byte
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if hb, can := c.primary.(HashBackend); can {
+			res, innerErr = hb.HGetAll(ctx, key)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(HashBackend); can {
+			return fb.HGetAll(ctx, key)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, err
+	}
+	return res, err
+}
+
+func (c *CircuitBreakerBackend) HDel(ctx context.Context, key string, fields ...string) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if hb, can := c.primary.(HashBackend); can {
+			innerErr = hb.HDel(ctx, key, fields...)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(HashBackend); can {
+			return fb.HDel(ctx, key, fields...)
+		}
+	}
+	return err
+}
+
+// ── Set Support ──────────────────────────────────────────────────────────────
+
+func (c *CircuitBreakerBackend) SAdd(ctx context.Context, key string, members ...string) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if sb, can := c.primary.(SetBackend); can {
+			innerErr = sb.SAdd(ctx, key, members...)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SetBackend); can {
+			return fb.SAdd(ctx, key, members...)
+		}
+	}
+	return err
+}
+
+func (c *CircuitBreakerBackend) SMembers(ctx context.Context, key string) ([]string, error) {
+	var res []string
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if sb, can := c.primary.(SetBackend); can {
+			res, innerErr = sb.SMembers(ctx, key)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SetBackend); can {
+			return fb.SMembers(ctx, key)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, err
+	}
+	return res, err
+}
+
+func (c *CircuitBreakerBackend) SRem(ctx context.Context, key string, members ...string) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if sb, can := c.primary.(SetBackend); can {
+			innerErr = sb.SRem(ctx, key, members...)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SetBackend); can {
+			return fb.SRem(ctx, key, members...)
+		}
+	}
+	return err
+}
+
+// ── Sorted Set Support ───────────────────────────────────────────────────────
+
+func (c *CircuitBreakerBackend) ZAdd(ctx context.Context, key string, score float64, member string) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if zb, can := c.primary.(SortedSetBackend); can {
+			innerErr = zb.ZAdd(ctx, key, score, member)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SortedSetBackend); can {
+			return fb.ZAdd(ctx, key, score, member)
+		}
+	}
+	return err
+}
+
+func (c *CircuitBreakerBackend) ZRangeByScore(ctx context.Context, key string, min, max float64, offset, count int64) ([]string, error) {
+	var res []string
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if zb, can := c.primary.(SortedSetBackend); can {
+			res, innerErr = zb.ZRangeByScore(ctx, key, min, max, offset, count)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SortedSetBackend); can {
+			return fb.ZRangeByScore(ctx, key, min, max, offset, count)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, err
+	}
+	return res, err
+}
+
+func (c *CircuitBreakerBackend) ZRemRangeByScore(ctx context.Context, key string, min, max float64) (int64, error) {
+	var removed int64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if zb, can := c.primary.(SortedSetBackend); can {
+			removed, innerErr = zb.ZRemRangeByScore(ctx, key, min, max)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SortedSetBackend); can {
+			return fb.ZRemRangeByScore(ctx, key, min, max)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return 0, err
+	}
+	return removed, err
+}
+
+func (c *CircuitBreakerBackend) ZCard(ctx context.Context, key string) (int64, error) {
+	var count int64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if zb, can := c.primary.(SortedSetBackend); can {
+			count, innerErr = zb.ZCard(ctx, key)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(SortedSetBackend); can {
+			return fb.ZCard(ctx, key)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return 0, err
+	}
+	return count, err
+}
+
+// ── Scan Support ─────────────────────────────────────────────────────────────
+
+func (c *CircuitBreakerBackend) Scan(ctx context.Context, cursor uint64, match string, count int64) ([]string, uint64, error) {
+	var keys []string
+	var nextCursor uint64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if sc, can := c.primary.(ScanBackend); can {
+			keys, nextCursor, innerErr = sc.Scan(ctx, cursor, match, count)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(ScanBackend); can {
+			return fb.Scan(ctx, cursor, match, count)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, 0, err
+	}
+	return keys, nextCursor, err
+}
+
+func (c *CircuitBreakerBackend) HScan(ctx context.Context, key string, cursor uint64, match string, count int64) ([]string, uint64, error) {
+	var pairs []string
+	var nextCursor uint64
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if sc, can := c.primary.(ScanBackend); can {
+			pairs, nextCursor, innerErr = sc.HScan(ctx, key, cursor, match, count)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(ScanBackend); can {
+			return fb.HScan(ctx, key, cursor, match, count)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, 0, err
+	}
+	return pairs, nextCursor, err
+}
+
+var _ EnterpriseBackend = (*CircuitBreakerBackend)(nil)
+
