@@ -1,0 +1,65 @@
+# Google Managed Prometheus / Prometheus Alerting Rules for PegasusX SLIs/SLOs
+apiVersion: monitoring.googleapis.com/v1
+kind: Rules
+metadata:
+  name: pegasusx-platform-rules
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  groups:
+    - name: pegasusx.platform.alerts
+      rules:
+        # 1. API Availability SLI: HTTP 5xx error rate > 1%
+        - alert: PegasusXBackendHighErrorRate
+          expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.01
+          for: 5m
+          labels:
+            severity: critical
+            team: platform-sre
+          annotations:
+            summary: "Backend HTTP 5xx error rate exceeds 1%"
+            description: "HTTP 5xx server error rate is currently {{ $value | humanizePercentage }}."
+
+        # 2. API Latency SLI: P95 request latency > 1000ms
+        - alert: PegasusXBackendHighP95Latency
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1.0
+          for: 5m
+          labels:
+            severity: warning
+            team: platform-sre
+          annotations:
+            summary: "Backend P95 HTTP request latency exceeds 1s"
+            description: "P95 latency is {{ $value }}s over the last 5 minutes."
+
+        # 3. Optimizer Availability: Solver timeout rate spike
+        - alert: PegasusXOptimizerSolverTimeouts
+          expr: rate(pegasusx_optimizer_timeouts_total[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: critical
+            team: dispatch-routing
+          annotations:
+            summary: "Optimizer-core VRP solver timeouts detected"
+            description: "Optimizer solver has experienced elevated timeouts (rate: {{ $value }} / sec)."
+
+        # 4. Asynchronous Pipeline Saturation: Kafka Consumer Lag > 1000 messages
+        - alert: PegasusXKafkaConsumerHighLag
+          expr: sum(kafka_consumer_lag_records) by (consumergroup, topic) > 1000
+          for: 5m
+          labels:
+            severity: warning
+            team: data-infra
+          annotations:
+            summary: "Kafka consumer group has high message lag"
+            description: "Consumer group {{ $labels.consumergroup }} on topic {{ $labels.topic }} is lagging by {{ $value }} records."
+
+        # 5. Core Consistency Engine: Outbox Relay Watchdog Stalled > 60s
+        - alert: PegasusXOutboxRelayStuck
+          expr: (time() - outbox_relay_last_publish_timestamp_seconds) > 60
+          for: 2m
+          labels:
+            severity: critical
+            team: platform-sre
+          annotations:
+            summary: "Transactional Outbox relay loop is stuck"
+            description: "Outbox relay has not published an event or completed a loop in over 60 seconds."
