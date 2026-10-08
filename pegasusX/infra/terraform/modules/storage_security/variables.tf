@@ -86,6 +86,12 @@ variable "allowed_ip_ranges" {
   default     = []
 }
 
+variable "enable_cmek_iam_binding" {
+  description = "Whether to create the GCS service account IAM binding on the KMS key. Default false for bootstrap/dry-run planning."
+  type        = bool
+  default     = false
+}
+
 variable "labels" {
   description = "Resource labels applied to storage and security resources."
   type        = map(string)

@@ -69,9 +69,10 @@ module "storage_security" {
   media_bucket_name    = var.media_bucket_name
   updates_bucket_name  = var.updates_bucket_name
   imports_bucket_name  = var.imports_bucket_name
-  tf_state_bucket_name = var.tf_state_bucket_name
-  k8s_namespace        = var.k8s_namespace
-  labels               = var.labels
+  tf_state_bucket_name    = var.tf_state_bucket_name
+  k8s_namespace           = var.k8s_namespace
+  enable_cmek_iam_binding = var.enable_cmek_iam_binding
+  labels                  = var.labels
 }
 
 # 5. Phase 3: Compute Module (GKE Autopilot / Standard Regional Cluster)

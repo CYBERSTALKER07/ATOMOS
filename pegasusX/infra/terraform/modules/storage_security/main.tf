@@ -406,11 +406,13 @@ resource "google_kms_crypto_key" "storage_key" {
 }
 
 data "google_storage_project_service_account" "gcs_account" {
+  count   = var.enable_cmek_iam_binding ? 1 : 0
   project = var.project_id
 }
 
 resource "google_kms_crypto_key_iam_member" "gcs_kms_user" {
+  count         = var.enable_cmek_iam_binding ? 1 : 0
   crypto_key_id = google_kms_crypto_key.storage_key.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:${data.google_storage_project_service_account.gcs_account.email_address}"
+  member        = "serviceAccount:${data.google_storage_project_service_account.gcs_account[0].email_address}"
 }

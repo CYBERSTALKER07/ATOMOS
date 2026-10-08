@@ -222,3 +222,9 @@ variable "monthly_budget_usd" {
   type        = number
   default     = 0
 }
+
+variable "enable_cmek_iam_binding" {
+  description = "Whether to create the GCS service account IAM binding on the KMS key. Default false for bootstrap/dry-run planning."
+  type        = bool
+  default     = false
+}
