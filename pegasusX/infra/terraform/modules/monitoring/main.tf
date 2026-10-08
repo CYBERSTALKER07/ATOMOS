@@ -156,6 +156,34 @@ resource "google_monitoring_alert_policy" "redis_memory_utilization" {
   user_labels           = var.labels
 }
 
+# 2.4.1 Cloud Memorystore Redis Rejected Connections (Maxclients / Pool Exhaustion)
+resource "google_monitoring_alert_policy" "redis_rejected_connections" {
+  display_name = "[P1] Redis Rejected Connections (>0) - ${var.environment}"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Redis rejected connections > 0 for 60s"
+    condition_threshold {
+      filter          = "resource.type = \"redis_instance\" AND metric.type = \"redis.googleapis.com/server/rejected_connections\""
+      duration        = "60s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      trigger {
+        count = 1
+      }
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+}
+
 # 2.5 Cloud NAT Dropped Sent Packets (Port Exhaustion)
 resource "google_monitoring_alert_policy" "nat_dropped_packets" {
   display_name = "[P1] Cloud NAT Dropped Packets (Port Exhaustion) - ${var.environment}"

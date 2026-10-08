@@ -83,6 +83,13 @@ resource "google_redis_instance" "cache" {
   transit_encryption_mode = "SERVER_AUTHENTICATION"
   auth_enabled            = true
 
+  redis_configs = {
+    "maxmemory-policy"        = "volatile-lru"
+    "activedefrag"            = "yes"
+    "slowlog-log-slower-than" = "10000"
+    "slowlog-max-len"         = "128"
+  }
+
   maintenance_policy {
     weekly_maintenance_window {
       day = "SUNDAY"
