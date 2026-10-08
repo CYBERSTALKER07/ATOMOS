@@ -23,10 +23,11 @@ func NewEventConsumer(service *Service, log *slog.Logger) *EventConsumer {
 }
 
 func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) error {
-	envelope, err := pegasuskafka.ParseEnvelope(msg.Value)
+	ctx = pegasuskafka.WithTraceFromMessage(ctx, msg)
+	envelope, err := pegasuskafka.EnvelopeFromMessage(msg)
 	if err != nil {
-		c.log.ErrorContext(ctx, "failed to parse event envelope", "err", err)
-		return nil // poison pill
+		c.log.ErrorContext(ctx, "failed to parse event envelope", "err", err, "topic", msg.Topic, "offset", msg.Offset)
+		return err
 	}
 	switch envelope.Type {
 	case events.EventPaymentCleared:
@@ -37,7 +38,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		}
 		if err := json.Unmarshal(msg.Value, &payload); err != nil {
 			c.log.ErrorContext(ctx, "failed to unmarshal payment cleared payload", "err", err)
-			return nil
+			return err
 		}
 		if payload.OrderID != "" {
 			return c.service.SettleExternalPayment(ctx, payload.OrderID, payload.Gateway, payload.AmountMinor)
@@ -46,7 +47,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		var payload events.FiscalReceiptEvent
 		if err := json.Unmarshal(msg.Value, &payload); err != nil {
 			c.log.ErrorContext(ctx, "failed to unmarshal fiscal receipt requested payload", "err", err)
-			return nil
+			return err
 		}
 		if payload.OrderID != "" && payload.AttemptID != "" {
 			return c.service.ApplyFiscalWorkerResult(ctx, payload.OrderID, payload.AttemptID)
@@ -55,7 +56,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		var fin events.FinanceEvent
 		if err := json.Unmarshal(msg.Value, &fin); err != nil {
 			c.log.ErrorContext(ctx, "failed to unmarshal payment failed payload", "err", err)
-			return nil
+			return err
 		}
 		if fin.OrderID != "" {
 			return c.service.HandleExternalPaymentFailed(ctx, fin.OrderID, fin.Gateway, fin.Source)
@@ -64,7 +65,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 		var disputed events.OrderEvent
 		if err := json.Unmarshal(msg.Value, &disputed); err != nil {
 			c.log.ErrorContext(ctx, "failed to unmarshal delivery disputed payload", "err", err)
-			return nil
+			return err
 		}
 		if disputed.OrderID != "" {
 			return c.service.HandleDeliveryDisputed(ctx, disputed.OrderID, disputed.Reason, disputed.Action)

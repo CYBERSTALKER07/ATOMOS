@@ -1,5 +1,6 @@
 # Legacy path — canonical inventory lives in infra/k8s/kafka/kafka-topics.yaml.
 # Kept for older apply scripts; HA: RF=3 / min.isr=2.
+---
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
 metadata:
@@ -12,6 +13,23 @@ spec:
   replicas: 3
   config:
     min.insync.replicas: "2"
+    cleanup.policy: delete
+    retention.ms: "604800000"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-main-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+    cleanup.policy: delete
+    retention.ms: "1209600000"
 ---
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
@@ -90,3 +108,43 @@ spec:
   replicas: 3
   config:
     min.insync.replicas: "2"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-freeze-locks
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-inventory-import
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+---
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: pegasusx-demand
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: pegasusx
+spec:
+  partitions: 3
+  replicas: 3
+  config:
+    min.insync.replicas: "2"
+

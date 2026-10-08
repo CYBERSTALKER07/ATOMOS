@@ -44,10 +44,11 @@ func NewEventConsumer(service *Service, log *slog.Logger) *EventConsumer {
 }
 
 func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) error {
-	envelope, err := pegasuskafka.ParseEnvelope(msg.Value)
+	ctx = pegasuskafka.WithTraceFromMessage(ctx, msg)
+	envelope, err := pegasuskafka.EnvelopeFromMessage(msg)
 	if err != nil {
-		c.log.ErrorContext(ctx, "failed to parse event envelope", "err", err)
-		return nil
+		c.log.ErrorContext(ctx, "failed to parse event envelope", "err", err, "topic", msg.Topic, "offset", msg.Offset)
+		return err
 	}
 
 	start := time.Now()

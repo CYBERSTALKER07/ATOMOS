@@ -81,3 +81,41 @@ var stuckEventsDetected = promauto.NewCounter(prometheus.CounterOpts{
 func IncStuckEventsDetected() {
 	stuckEventsDetected.Inc()
 }
+
+var (
+	producerMessagesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "producer_messages_total",
+		Help:      "Total Kafka messages published by outbox publisher",
+	}, []string{"topic", "status"})
+
+	producerBytesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "producer_bytes_total",
+		Help:      "Total bytes published to Kafka by outbox publisher",
+	}, []string{"topic"})
+
+	producerDurationSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "producer_publish_duration_seconds",
+		Help:      "Duration of Kafka message publication in seconds",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"topic"})
+)
+
+// RecordProducerPublish records message count, bytes, and publish duration for the producer.
+func RecordProducerPublish(topic string, bytes int, duration float64, err error) {
+	status := "success"
+	if err != nil {
+		status = "error"
+	}
+	producerMessagesTotal.WithLabelValues(topic, status).Inc()
+	if err == nil {
+		producerBytesTotal.WithLabelValues(topic).Add(float64(bytes))
+		producerDurationSeconds.WithLabelValues(topic).Observe(duration)
+	}
+}
+

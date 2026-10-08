@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -277,10 +278,29 @@ func backoffWithJitter(base, maxBackoff time.Duration, attempt int) time.Duratio
 }
 
 func publishOutboxEvent(ctx context.Context, pub Publisher, topic string, key []byte, e Event) error {
-	headers := map[string][]byte{"event_id": []byte(e.EventID)}
+	headers := map[string][]byte{
+		"event_id":       []byte(e.EventID),
+		"aggregate_type": []byte(e.AggregateType),
+		"aggregate_id":   []byte(e.AggregateID),
+	}
+	if !e.CreatedAt.IsZero() {
+		headers["timestamp"] = []byte(e.CreatedAt.UTC().Format(time.RFC3339Nano))
+	}
+	if sid := strings.TrimSpace(e.SupplierID); sid != "" {
+		headers["supplier_id"] = []byte(sid)
+	}
+	if eventType := events.ExtractEventTypeFromPayload(e.Payload); eventType != "" {
+		headers["type"] = []byte(eventType)
+	} else if e.AggregateType != "" {
+		headers["type"] = []byte(e.AggregateType)
+	}
+	if traceID := TraceIDFromContext(ctx); traceID != "" {
+		headers["trace_id"] = []byte(traceID)
+	}
 	if hp, ok := pub.(HeaderPublisher); ok {
 		return hp.PublishWithHeaders(ctx, topic, key, e.Payload, headers)
 	}
 	return pub.Publish(ctx, topic, key, e.Payload)
 }
+
 

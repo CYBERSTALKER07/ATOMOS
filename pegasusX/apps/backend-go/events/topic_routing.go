@@ -165,7 +165,8 @@ func RelayPublishTopics(storedTopic string, payload []byte) []string {
 	return []string{storedTopic, domain}
 }
 
-func extractEventTypeFromPayload(payload []byte) string {
+// ExtractEventTypeFromPayload extracts the event type string from an opaque JSON payload.
+func ExtractEventTypeFromPayload(payload []byte) string {
 	if len(payload) == 0 || payload[0] != '{' {
 		return ""
 	}
@@ -177,3 +178,8 @@ func extractEventTypeFromPayload(payload []byte) string {
 	}
 	return envelope.Type
 }
+
+func extractEventTypeFromPayload(payload []byte) string {
+	return ExtractEventTypeFromPayload(payload)
+}
+

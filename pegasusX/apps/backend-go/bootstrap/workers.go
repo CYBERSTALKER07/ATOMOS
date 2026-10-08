@@ -84,6 +84,11 @@ func setupKafkaConsumers(
 			kafkaEventDedup = kafka.NewRedisEventDedup(rc, 7*24*time.Hour)
 		}
 	}
+	var dlqHook kafka.DLQHook
+	if spannerClient != nil {
+		dlqHook = kafka.NewSpannerDLQUpdater(spannerClient, log).Hook()
+	}
+
 	const notificationConsumerGroup = "void-notification-dispatcher"
 	const orderConsumerGroup = "void-order-mutator"
 	const warehouseConsumerGroup = "void-warehouse-mutator"
@@ -108,6 +113,7 @@ func setupKafkaConsumers(
 		Topics:    dispatcherTopics,
 		Handler:   dispatcher.HandleEvent,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 	orderHandler := kafka.WithEventDedup(kafkaEventDedup, orderConsumerGroup, order.NewEventConsumer(orderSvc, log).HandleEvent)
@@ -120,6 +126,7 @@ func setupKafkaConsumers(
 		Topic:     events.OrderConsumerTopic(),
 		Handler:   orderHandler,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 	warehouseEventConsumer := kafka.NewConsumer(kafka.ConsumerDeps{
@@ -128,6 +135,7 @@ func setupKafkaConsumers(
 		Topic:     events.DispatchConsumerTopic(),
 		Handler:   warehouseHandler,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 	returnsEventConsumer := kafka.NewConsumer(kafka.ConsumerDeps{
@@ -136,6 +144,7 @@ func setupKafkaConsumers(
 		Topic:     events.TopicExceptions,
 		Handler:   returnsHandler,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 
@@ -147,6 +156,7 @@ func setupKafkaConsumers(
 		Topic:     events.TopicMain,
 		Handler:   claimsHandler,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 
@@ -162,6 +172,7 @@ func setupKafkaConsumers(
 			Topic:     events.OrderConsumerTopic(),
 			Handler:   billingHandler,
 			DLQWriter: dlqWriter,
+			OnDLQ:     dlqHook,
 			Auth:      kafkaAuth,
 		})
 	}
@@ -173,6 +184,7 @@ func setupKafkaConsumers(
 		Topics:    []string{events.OrderConsumerTopic(), events.TopicExceptions},
 		Handler:   partnerHandler,
 		DLQWriter: dlqWriter,
+		OnDLQ:     dlqHook,
 		Auth:      kafkaAuth,
 	})
 
@@ -190,6 +202,7 @@ func setupKafkaConsumers(
 			Topics:    events.TwinConsumerTopics(),
 			Handler:   twinHandler,
 			DLQWriter: dlqWriter,
+			OnDLQ:     dlqHook,
 			Auth:      kafkaAuth,
 		})
 	}

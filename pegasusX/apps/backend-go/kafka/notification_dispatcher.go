@@ -76,7 +76,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		}
 	}
 
-	envelope, err := ParseEnvelope(msg.Value)
+	envelope, err := EnvelopeFromMessage(msg)
 	if err != nil {
 		return err
 	}
