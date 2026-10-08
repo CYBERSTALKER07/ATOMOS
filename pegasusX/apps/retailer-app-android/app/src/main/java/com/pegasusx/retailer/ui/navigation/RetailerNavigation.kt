@@ -762,12 +762,12 @@ fun RetailerNavigation(
                 alert = shopClosedAlert,
                 isSubmitting = shopClosedSubmitting,
                 errorMessage = shopClosedError,
-                onRespond = { option ->
+                onRespond = { option, photoUrl ->
                     if (shopClosedSubmitting) return@ShopClosedSheet
                     shopClosedSubmitting = true
                     shopClosedError = null
                     coroutineScope.launch {
-                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option)
+                        val result = navigationViewModel.respondToShopClosed(shopClosedAlert.orderId, option, photoUrl)
                         shopClosedSubmitting = false
                         if (result.isFailure) {
                             shopClosedError = result.exceptionOrNull()?.message ?: "Could not submit response"

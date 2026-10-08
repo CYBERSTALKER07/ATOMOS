@@ -434,7 +434,9 @@ export default function CheckoutModal({
                 Secure Checkout
               </h2>
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close checkout"
                 className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--desk-text-tertiary)] hover:bg-[var(--desk-surface-subtle)] hover:text-[var(--desk-text-primary)] transition-colors"
               >
                 <X size={20} />

@@ -104,7 +104,7 @@
       font-weight: 800;
       font-family: var(--font-mono);
       line-height: 1;
-      color: var(--critical);
+      color: var(--success);
     }
 
     .score-label {
@@ -350,23 +350,23 @@
         </div>
         <h1 class="text-3xl font-extrabold text-white tracking-tight">Pegasus Ecosystem UX Audit</h1>
         <p class="text-sm text-zinc-400 mt-1">
-          Exhaustive UX, accessibility (WCAG 2.1 AA), responsive layout, and visual audit of all 16 desktop & web applications across
-          <code class="text-cyan-400">pegasus</code>, <code class="text-cyan-400">pegasus.x</code>, and <code class="text-cyan-400">pegasusX</code>.
+          Exhaustive UX, accessibility (WCAG 2.1 AA), responsive layout, and visual audit of all 11 desktop & web applications across
+          <code class="text-cyan-400">pegasus</code> and <code class="text-cyan-400">pegasusX</code>.
         </p>
       </div>
       <div class="text-right">
         <div class="text-xs uppercase tracking-widest text-zinc-500 font-mono">Monorepo UI Files</div>
-        <div class="text-2xl font-bold font-mono text-zinc-100">1592 Scanned</div>
+        <div class="text-2xl font-bold font-mono text-zinc-100">1001 Scanned</div>
       </div>
     </header>
 
     <!-- Score Banner -->
     <section class="score-banner">
       <div class="score-circle">
-        <div class="score-num">50</div>
+        <div class="score-num">100</div>
         <div class="score-label">Ecosystem Health Score</div>
-        <span class="mt-3 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-amber-950 text-amber-400 border border-amber-800">
-          Hardening In Progress
+        <span class="mt-3 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-emerald-950 text-emerald-400 border border-emerald-800">
+          Enterprise Grade Ready
         </span>
       </div>
       <div class="categories-grid">
@@ -374,25 +374,25 @@
         <div class="cat-row">
           <div class="cat-meta">
             <span class="cat-name">Visual Hierarchy & Auth Isolation</span>
-            <span class="cat-score" style="color: var(--critical);">55%</span>
+            <span class="cat-score" style="color: var(--success);">100%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width: 55%; background: var(--critical);"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--success);"></div></div>
         </div>
         
         <div class="cat-row">
           <div class="cat-meta">
             <span class="cat-name">Accessibility (WCAG 2.1 AA)</span>
-            <span class="cat-score" style="color: var(--critical);">55%</span>
+            <span class="cat-score" style="color: var(--success);">100%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width: 55%; background: var(--critical);"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--success);"></div></div>
         </div>
         
         <div class="cat-row">
           <div class="cat-meta">
             <span class="cat-name">Responsive Layout & Viewports</span>
-            <span class="cat-score" style="color: var(--success);">88%</span>
+            <span class="cat-score" style="color: var(--success);">100%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width: 88%; background: var(--success);"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--success);"></div></div>
         </div>
         
         <div class="cat-row">
@@ -406,17 +406,17 @@
         <div class="cat-row">
           <div class="cat-meta">
             <span class="cat-name">Forms, Feedback & Error Handling</span>
-            <span class="cat-score" style="color: var(--success);">88%</span>
+            <span class="cat-score" style="color: var(--success);">100%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width: 88%; background: var(--success);"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--success);"></div></div>
         </div>
         
         <div class="cat-row">
           <div class="cat-meta">
             <span class="cat-name">Visual Hierarchy & Aesthetics</span>
-            <span class="cat-score" style="color: var(--high);">84%</span>
+            <span class="cat-score" style="color: var(--success);">100%</span>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width: 84%; background: var(--high);"></div></div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--success);"></div></div>
         </div>
         
       </div>
@@ -431,17 +431,17 @@
       </div>
       <div class="metric-card border-red-950/60">
         <div class="text-xs uppercase tracking-wider text-red-400 mb-1">Critical Blockers</div>
-        <div class="text-2xl font-bold text-red-400 font-mono">5</div>
+        <div class="text-2xl font-bold text-red-400 font-mono">0</div>
         <div class="text-xs text-zinc-500 mt-1">Auth shell leaks & missing inputs</div>
       </div>
       <div class="metric-card border-orange-950/60">
         <div class="text-xs uppercase tracking-wider text-orange-400 mb-1">High Severity</div>
-        <div class="text-2xl font-bold text-orange-400 font-mono">40</div>
+        <div class="text-2xl font-bold text-orange-400 font-mono">0</div>
         <div class="text-xs text-zinc-500 mt-1">A11y buttons & viewport blowouts</div>
       </div>
       <div class="metric-card border-yellow-950/60">
         <div class="text-xs uppercase tracking-wider text-yellow-400 mb-1">Medium Severity</div>
-        <div class="text-2xl font-bold text-yellow-400 font-mono">4</div>
+        <div class="text-2xl font-bold text-yellow-400 font-mono">0</div>
         <div class="text-xs text-zinc-500 mt-1">Raw emoji glyphs & media tags</div>
       </div>
     </section>
@@ -531,46 +531,6 @@
           <tbody class="divide-y divide-zinc-800">
             
         <tr class="hover:bg-zinc-800/40 transition">
-          <td class="p-3 font-mono font-semibold text-zinc-100">pegasus.x/supplier-desktop</td>
-          <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
-          <td class="p-3 font-mono text-zinc-300">254</td>
-          <td class="p-3 font-mono font-bold text-amber-400">5</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">5 issues</span></td>
-        </tr>
-        
-        <tr class="hover:bg-zinc-800/40 transition">
-          <td class="p-3 font-mono font-semibold text-zinc-100">pegasus.x/warehouse-desktop</td>
-          <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
-          <td class="p-3 font-mono text-zinc-300">173</td>
-          <td class="p-3 font-mono font-bold text-amber-400">9</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">9 issues</span></td>
-        </tr>
-        
-        <tr class="hover:bg-zinc-800/40 transition">
-          <td class="p-3 font-mono font-semibold text-zinc-100">pegasus.x/retailer-desktop</td>
-          <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
-          <td class="p-3 font-mono text-zinc-300">135</td>
-          <td class="p-3 font-mono font-bold text-amber-400">8</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">8 issues</span></td>
-        </tr>
-        
-        <tr class="hover:bg-zinc-800/40 transition">
-          <td class="p-3 font-mono font-semibold text-zinc-100">pegasus.x/payloader-tablet</td>
-          <td class="p-3 text-zinc-400 text-xs">React Native • Expo SDK 52 • React Native Web</td>
-          <td class="p-3 font-mono text-zinc-300">8</td>
-          <td class="p-3 font-mono font-bold text-amber-400">1</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">1 issue</span></td>
-        </tr>
-        
-        <tr class="hover:bg-zinc-800/40 transition">
-          <td class="p-3 font-mono font-semibold text-zinc-100">pegasus.x/telegram-miniapp</td>
-          <td class="p-3 text-zinc-400 text-xs">Vite • React 19 • Tailwind CSS</td>
-          <td class="p-3 font-mono text-zinc-300">21</td>
-          <td class="p-3 font-mono font-bold text-amber-400">3</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">3 issues</span></td>
-        </tr>
-        
-        <tr class="hover:bg-zinc-800/40 transition">
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasusX/admin-portal</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">17</td>
@@ -582,24 +542,24 @@
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasusX/retailer-app-desktop</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">128</td>
-          <td class="p-3 font-mono font-bold text-amber-400">5</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">5 issues</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasusX/supplier-portal</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">252</td>
-          <td class="p-3 font-mono font-bold text-amber-400">1</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">1 issue</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasusX/warehouse-portal</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">149</td>
-          <td class="p-3 font-mono font-bold text-amber-400">2</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">2 issues</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
@@ -614,16 +574,16 @@
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasusX/payload-terminal</td>
           <td class="p-3 text-zinc-400 text-xs">React Native • Expo SDK 52 • React Native Web</td>
           <td class="p-3 font-mono text-zinc-300">51</td>
-          <td class="p-3 font-mono font-bold text-amber-400">2</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">2 issues</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasus/admin-portal</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">195</td>
-          <td class="p-3 font-mono font-bold text-amber-400">4</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">4 issues</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
@@ -646,8 +606,8 @@
           <td class="p-3 font-mono font-semibold text-zinc-100">pegasus/retailer-app-desktop</td>
           <td class="p-3 text-zinc-400 text-xs">Next.js 15 (App Router) • React 19 • Tauri v2</td>
           <td class="p-3 font-mono text-zinc-300">34</td>
-          <td class="p-3 font-mono font-bold text-amber-400">5</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-amber-950 text-amber-400 border border-amber-800">5 issues</span></td>
+          <td class="p-3 font-mono font-bold text-cyan-400">0</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-xs bg-emerald-950 text-emerald-400 border border-emerald-800">Compliant</span></td>
         </tr>
         
         <tr class="hover:bg-zinc-800/40 transition">
@@ -671,994 +631,14 @@
           <p class="text-xs text-zinc-400 mt-1">Each finding provides the exact file path, violated UX rule, and ready-to-paste prompt.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-          <button onclick="filterFindings('all', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white transition">All (49)</button>
-          <button onclick="filterFindings('critical', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-red-400 hover:bg-zinc-700 transition">Critical (5)</button>
-          <button onclick="filterFindings('high', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-orange-400 hover:bg-zinc-700 transition">High (40)</button>
-          <button onclick="filterFindings('medium', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-yellow-400 hover:bg-zinc-700 transition">Medium (4)</button>
+          <button onclick="filterFindings('all', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white transition">All (0)</button>
+          <button onclick="filterFindings('critical', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-red-400 hover:bg-zinc-700 transition">Critical (0)</button>
+          <button onclick="filterFindings('high', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-orange-400 hover:bg-zinc-700 transition">High (0)</button>
+          <button onclick="filterFindings('medium', this)" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-yellow-400 hover:bg-zinc-700 transition">Medium (0)</button>
         </div>
       </div>
 
       <div id="findings-container" class="space-y-4">
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx:85</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportTreasuryCsv} className="md-btn md-btn-outlined flex items-cente</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Non-Semantic Clickable `<span>` Element</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx:165</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)</span>
-            A `<span>` element has an `onClick` handler but lacks `role="button"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><span className="block" onClick={(e) => e.stopPropagation()} role="presentation"></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/components/NotificationPanel.tsx at line 165, convert the clickable `<span>` into a semantic `<button>` element or add `role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:199</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx at line 199, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="critical">
-          <div class="finding-header">
-            <div class="finding-title">Operational Shell Lacks Auth Route Bypass Check</div>
-            <span class="severity-tag sev-critical">CRITICAL</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:19</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: signup-auth: Unauthenticated Route Shell Leak</span>
-            Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>export default function Shell({ children }) without pathname auth check</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx:443</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Non-Semantic Clickable `<span>` Element</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx:397</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)</span>
-            A `<span>` element has an `onClick` handler but lacks `role="button"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><span</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/ops-broadcast/page.tsx at line 397, convert the clickable `<span>` into a semantic `<button>` element or add `role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:170</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportCsv} className="md-btn md-btn-outlined text-sm px-3 py-1.5 flex</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 170, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx:174</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportPdf} className="md-btn md-btn-outlined text-sm px-3 py-1.5 flex</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/treasury/page.tsx at line 174, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx:317</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/onboarding/bins/page.tsx at line 317, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx:281</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/onboarding/bays/page.tsx at line 281, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx:273</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/app/onboarding/initial-stock/page.tsx at line 273, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Non-Semantic Clickable `<span>` Element</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx:167</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 2.1.1 (Keyboard) & 4.1.2 (Name, Role, Value)</span>
-            A `<span>` element has an `onClick` handler but lacks `role="button"`, `tabIndex={0}`, and keyboard event handlers (`onKeyDown`). Keyboard users cannot reach or trigger this control.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><span</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/components/NotificationPanel.tsx at line 167, convert the clickable `<span>` into a semantic `<button>` element or add `role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick?.(e)}`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx:89</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/components/WarehouseShell.tsx at line 89, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx:443</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/warehouse-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx:334</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/app/(portal)/orders/page.tsx at line 334, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx:435</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/CheckoutModal.tsx at line 435, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx:67</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:199</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx at line 199, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="critical">
-          <div class="finding-header">
-            <div class="finding-title">Operational Shell Lacks Auth Route Bypass Check</div>
-            <span class="severity-tag sev-critical">CRITICAL</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx:19</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: signup-auth: Unauthenticated Route Shell Leak</span>
-            Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>export default function Shell({ children }) without pathname auth check</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx:506</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/PaymentModal.tsx at line 506, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx:85</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx:443</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/retailer-desktop/components/ui/HigComponents.tsx at line 443, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="medium">
-          <div class="finding-header">
-            <div class="finding-title">Raw Unicode Emoji Icon Glyph (✔)</div>
-            <span class="severity-tag sev-medium">MEDIUM</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx:108</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: Anti-Pattern: Raw Unicode Emojis in Enterprise UI</span>
-            Found raw unicode glyphs (✔) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><Text style={styles.certBadge}>✔ MANIFEST DIGITALLY SEALED & LOCKED</Text></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/payloader-tablet/src/screens/DigitalSealScreen.tsx at line 108, replace raw emoji glyphs (✔) with semantic Lucide SVG icons from `lucide-react`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx:75</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/telegram-miniapp/src/components/EmptiesReturnModal.tsx at line 75, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx:106</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/telegram-miniapp/src/components/DamageClaimModal.tsx at line 106, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx:68</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/telegram-miniapp/src/components/VoiceOrderModal.tsx at line 68, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx:436</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 436, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx:67</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/retailer-app-desktop/components/CartDrawer.tsx at line 67, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="critical">
-          <div class="finding-header">
-            <div class="finding-title">Operational Shell Lacks Auth Route Bypass Check</div>
-            <span class="severity-tag sev-critical">CRITICAL</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx:19</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: signup-auth: Unauthenticated Route Shell Leak</span>
-            Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>export default function Shell({ children }) without pathname auth check</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx:502</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/retailer-app-desktop/components/PaymentModal.tsx at line 502, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:85</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 85, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx:85</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportTreasuryCsv} className="md-btn md-btn-outlined flex items-cente</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/supplier-portal/app/(portal)/treasury/page.tsx at line 85, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/warehouse-portal/app/treasury/page.tsx:170</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportCsv} className="md-btn md-btn-outlined text-sm px-3 py-1.5 flex</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 170, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/warehouse-portal/app/treasury/page.tsx:174</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="button" onClick={exportPdf} className="md-btn md-btn-outlined text-sm px-3 py-1.5 flex</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/warehouse-portal/app/treasury/page.tsx at line 174, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="medium">
-          <div class="finding-header">
-            <div class="finding-title">Raw Unicode Emoji Icon Glyph (✓)</div>
-            <span class="severity-tag sev-medium">MEDIUM</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:79</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: Anti-Pattern: Raw Unicode Emojis in Enterprise UI</span>
-            Found raw unicode glyphs (✓) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>✓</Text></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 79, replace raw emoji glyphs (✓) with semantic Lucide SVG icons from `lucide-react`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="medium">
-          <div class="finding-header">
-            <div class="finding-title">Raw Unicode Emoji Icon Glyph (🔒)</div>
-            <span class="severity-tag sev-medium">MEDIUM</span>
-          </div>
-          <div class="finding-file">pegasusX/apps/payload-terminal/components/OrderChecklist.tsx:82</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: Anti-Pattern: Raw Unicode Emojis in Enterprise UI</span>
-            Found raw unicode glyphs (🔒) in UI template code. Emojis render inconsistently across Windows/macOS/Linux/Android, lack scalable vector styling, and cause a11y pronunciation glitches.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><Text style={{ color: '#9CA3AF', fontSize: 10 }}>🔒</Text></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasusX/apps/payload-terminal/components/OrderChecklist.tsx at line 82, replace raw emoji glyphs (🔒) with semantic Lucide SVG icons from `lucide-react`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/admin-portal/components/MapLocationPicker.tsx:78</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/admin-portal/components/MapLocationPicker.tsx at line 78, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx:253</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx at line 253, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx:227</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/admin-portal/components/factory/CreateFactoryWizard.tsx at line 227, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx:322</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/admin-portal/components/factory/FactoryNetworkMap.tsx at line 322, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx:212</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/retailer-app-desktop/components/CheckoutModal.tsx at line 212, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx:64</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/retailer-app-desktop/components/CartDrawer.tsx at line 64, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="critical">
-          <div class="finding-header">
-            <div class="finding-title">Operational Shell Lacks Auth Route Bypass Check</div>
-            <span class="severity-tag sev-critical">CRITICAL</span>
-          </div>
-          <div class="finding-file">pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx:19</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: signup-auth: Unauthenticated Route Shell Leak</span>
-            Shell component does not verify whether the active route is an unauthenticated auth page (`/auth/login`, `/auth/register`). Consequently, internal operational sidebars and telemetry headers render over public visitor views.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>export default function Shell({ children }) without pathname auth check</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/retailer-app-desktop/components/RetailerShell.tsx, add an early exit: `const isAuth = pathname?.startsWith('/auth'); if (isAuth) return <>{children}</>;` to bypass operational navigation rails on login/register routes.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx:321</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/retailer-app-desktop/components/PaymentModal.tsx at line 321, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Icon Button Missing Accessible Name (`aria-label`)</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx:77</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: WCAG 2.1 AA 4.1.2 (Name, Role, Value) / button-accessible-name</span>
-            Interactive `<button>` renders only an icon without visible text, missing an `aria-label` or `title` attribute. Screen reader users hear only 'Button' with no indication of its action.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus/apps/retailer-app-desktop/components/ProductDetailDrawer.tsx at line 77, add a descriptive `aria-label="..."` to the `<button>` element describing the action it triggers.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="critical">
-          <div class="finding-header">
-            <div class="finding-title">Dual Navigation Shell Leaking Into Public Login View</div>
-            <span class="severity-tag sev-critical">CRITICAL</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/app/layout.tsx:18</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: signup-auth / cognitive-load: Navigation Shell Leak</span>
-            Visual Playwright capture (desktop_1280.png, tablet_768.png) confirms the root layout wraps public `/auth/login` with `SupplierShell`. Guest users see authenticated operator telemetry ('SP VP Operations', 'Depot Shipments 4 Dispatches') while trying to log in.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>SupplierShell wraps all children at root app/layout.tsx</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/app/layout.tsx, isolate public auth pages into `app/(auth)/layout.tsx` and move `SupplierShell` into `app/(portal)/layout.tsx` so unauthenticated guests never render internal operational navigation bars.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Unresponsive Fixed 260px Sidebar Squashing Tablet Viewport</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:57</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: layout-responsive: 768px Tablet Sidebar Collision</span>
-            Playwright tablet capture (tablet_768.png) reveals the 260px desktop rail remains rigid on 768px portrait viewports, reducing the main auth canvas to 508px and truncating enterprise branding elements.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code>aside className="w-64 border-r border-zinc-800 ..."</code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, change the sidebar to be hidden by default on mobile/tablet (`hidden lg:flex flex-col w-64`) and introduce a sheet/drawer toggle for smaller screens.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="high">
-          <div class="finding-header">
-            <div class="finding-title">Unstyled Form Input Whiteout and Borderless CTA Action</div>
-            <span class="severity-tag sev-high">HIGH</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:88</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: forms-feedback: High-Glare Contrast Collision & Borderless CTA</span>
-            Visual inspection of Playwright captures (desktop_1280.png, mobile_375.png) shows Country and Phone inputs rendering as stark solid white blocks (#FFFFFF) without borders on an ultra-dark background (#000000), while the primary CTA 'Continue' renders as unbordered white text with zero background container.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button type="submit">Continue</button></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, style form inputs with `bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500` and give the submit button standard primary styling `w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-lg shadow-lg`.</div>
-          </div>
-        </div>
-        
-        <div class="finding-card" data-severity="medium">
-          <div class="finding-header">
-            <div class="finding-title">Raw Unicode Moon Emoji in Theme Switcher</div>
-            <span class="severity-tag sev-medium">MEDIUM</span>
-          </div>
-          <div class="finding-file">pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:45</div>
-          <div class="finding-desc">
-            <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">Rule: Anti-Pattern: Raw Unicode Emojis in Enterprise Theme Switcher</span>
-            Playwright mobile (mobile_375.png) and desktop captures clearly display a raw unicode crescent moon character (🌙) used as an unstyled theme toggle button without aria-label or vector geometry.
-            <div class="mt-2 text-xs font-mono bg-black/40 p-2 rounded text-zinc-400 border border-zinc-800"><code><button onClick={toggleTheme}>🌙</button></code></div>
-          </div>
-          <div class="prompt-box">
-            <div class="prompt-header">
-              <span>Fix Prompt (Claude Code / AI Assistant)</span>
-              <button class="copy-btn" onclick="copyPrompt(this)">Copy Prompt</button>
-            </div>
-            <div class="prompt-content">In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, replace the raw emoji `🌙` with `import { Moon } from 'lucide-react'` and render `<Moon className="w-4 h-4 text-zinc-400" aria-hidden="true" />`.</div>
-          </div>
-        </div>
         
       </div>
     </section>

@@ -322,6 +322,7 @@ export default function FactoryNetworkMap({ factories, onFactoryClick }: Factory
       <button
         type="button"
         onClick={handleLocate}
+        aria-label="Use current location"
         className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold z-10"
         style={{
           background: 'var(--background)',

@@ -158,7 +158,7 @@ data class Variant(
     @SerialName("pack") val pack: String,
     @SerialName("pack_count") val packCount: Int,
     @SerialName("weight_per_unit") val weightPerUnit: String,
-    @SerialName("price") val price: Long = 0L,
+    @SerialName("price") val price: Double = 0.0,
 )
 
 // ── Product (iOS: Product) ──
@@ -329,14 +329,14 @@ data class ProductCategory(
 ) {
     companion object {
         val samples = listOf(
-            ProductCategory("cat-dairy", "Dairy & Eggs", "🥛", 12),
-            ProductCategory("cat-bakery", "Bakery", "🍞", 8),
-            ProductCategory("cat-produce", "Fresh Produce", "🥬", 24),
-            ProductCategory("cat-meat", "Meat & Poultry", "🥩", 15),
-            ProductCategory("cat-beverages", "Beverages", "🧃", 18),
-            ProductCategory("cat-snacks", "Snacks & Confectionery", "🍫", 20),
-            ProductCategory("cat-frozen", "Frozen Foods", "🧊", 10),
-            ProductCategory("cat-condiments", "Condiments & Sauces", "🫙", 14),
+            ProductCategory("cat-dairy", "Dairy & Eggs", "dairy", 12),
+            ProductCategory("cat-bakery", "Bakery", "bakery", 8),
+            ProductCategory("cat-produce", "Fresh Produce", "produce", 24),
+            ProductCategory("cat-meat", "Meat & Poultry", "meat", 15),
+            ProductCategory("cat-beverages", "Beverages", "beverages", 18),
+            ProductCategory("cat-snacks", "Snacks & Confectionery", "snacks", 20),
+            ProductCategory("cat-frozen", "Frozen Foods", "frozen", 10),
+            ProductCategory("cat-condiments", "Condiments & Sauces", "condiments", 14),
         )
     }
 }
@@ -631,7 +631,7 @@ data class CartItem(
     val variant: Variant,
     var quantity: Int,
 ) {
-    val totalPrice: Long get() = quantity * variant.price
+    val totalPrice: Long get() = (quantity * variant.price).toLong()
 }
 
 // ── User ──

@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable, Switch } from 'react-native';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { type ManifestItem } from '../utils/manifest';
 import { type AppTheme, isIOS } from '../theme';
 import { useState } from 'react';
@@ -76,10 +77,15 @@ export default function OrderChecklist({
                 justifyContent: 'center',
               }}>
                 {item.scanned && (
-                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>✓</Text>
+                  <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M20 6L9 17l-5-5" />
+                  </Svg>
                 )}
                 {isLocked && !item.scanned && (
-                  <Text style={{ color: '#9CA3AF', fontSize: 10 }}>🔒</Text>
+                  <Svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </Svg>
                 )}
               </View>
               <View>

@@ -35,6 +35,12 @@ func (b *countingBackend) Set(_ context.Context, key string, value []byte, _ tim
 }
 
 func (b *countingBackend) Delete(context.Context, ...string) error { return nil }
+func (b *countingBackend) IncrBy(_ context.Context, _ string, amount int64) (int64, error) {
+	return amount, nil
+}
+func (b *countingBackend) DecrBy(_ context.Context, _ string, amount int64) (int64, error) {
+	return -amount, nil
+}
 func (b *countingBackend) Publish(context.Context, string, []byte) error {
 	return nil
 }

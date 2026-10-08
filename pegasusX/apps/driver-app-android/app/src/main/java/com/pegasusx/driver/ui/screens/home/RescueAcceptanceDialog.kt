@@ -1,10 +1,12 @@
 package com.pegasusx.driver.ui.screens.home
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -33,12 +35,23 @@ fun RescueAcceptanceDialog(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "🚨 FLEET RESCUE BROADCAST",
-                    color = Color.Red,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "FLEET RESCUE BROADCAST",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
                 Text(
                     text = "A nearby driver ($brokenDriverId) has requested a vehicle rescue. Do you want to accept their payload and re-route?",
@@ -48,7 +61,7 @@ fun RescueAcceptanceDialog(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text("IGNORE")
@@ -56,7 +69,10 @@ fun RescueAcceptanceDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = onAccept,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
                     ) {
                         Text("ACCEPT RESCUE")
                     }

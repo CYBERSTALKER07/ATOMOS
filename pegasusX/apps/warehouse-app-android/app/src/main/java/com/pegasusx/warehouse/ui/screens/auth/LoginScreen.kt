@@ -207,7 +207,7 @@ fun LoginScreen(
                         IconButton(onClick = { pinVisible = !pinVisible }) {
                             Icon(
                                 if (pinVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = null,
+                                contentDescription = if (pinVisible) "Hide PIN" else "Show PIN",
                             )
                         }
                     },

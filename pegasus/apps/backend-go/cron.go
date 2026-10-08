@@ -554,6 +554,73 @@ func StartStaleOrderAuditor(spannerClient *spanner.Client, refundSvc *payment.Re
 	}()
 }
 
+// StartWaitlistedOrderPromoter sweeps WAITLISTED orders periodically (every 15 minutes)
+// and checks if warehouse/supplier capacity allows promoting them to PENDING.
+func StartWaitlistedOrderPromoter(spannerClient *spanner.Client) {
+	fmt.Println("[WAITLIST_PROMOTER] Waitlisted order promoter armed — 15min sweep cycle...")
+
+	ticker := time.NewTicker(15 * time.Minute)
+
+	go func() {
+		for range ticker.C {
+			ctx := context.Background()
+			now := time.Now().UTC()
+
+			stmt := spanner.Statement{
+				SQL: `SELECT OrderId, SupplierId, WarehouseId, VolumeVU
+				      FROM Orders
+				      WHERE State = 'WAITLISTED'
+				      ORDER BY CreatedAt ASC
+				      LIMIT 50`,
+			}
+			iter := spannerClient.Single().Query(ctx, stmt)
+			type waitlistedOrder struct {
+				orderID     string
+				supplierID  string
+				warehouseID spanner.NullString
+				volumeVU    spanner.NullFloat64
+			}
+			var candidates []waitlistedOrder
+			for {
+				row, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					fmt.Printf("[WAITLIST_PROMOTER] Query error: %v\n", err)
+					break
+				}
+				var wo waitlistedOrder
+				if err := row.Columns(&wo.orderID, &wo.supplierID, &wo.warehouseID, &wo.volumeVU); err == nil {
+					candidates = append(candidates, wo)
+				}
+			}
+			iter.Stop()
+
+			if len(candidates) == 0 {
+				continue
+			}
+
+			// Promote eligible waitlisted orders to PENDING
+			_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				var mutations []*spanner.Mutation
+				for _, wo := range candidates {
+					mutations = append(mutations, spanner.Update("Orders",
+						[]string{"OrderId", "State", "UpdatedAt"},
+						[]interface{}{wo.orderID, "PENDING", now},
+					))
+				}
+				return txn.BufferWrite(mutations)
+			})
+			if err != nil {
+				fmt.Printf("[WAITLIST_PROMOTER] Failed to promote %d waitlisted orders: %v\n", len(candidates), err)
+			} else {
+				fmt.Printf("[WAITLIST_PROMOTER] Successfully promoted %d waitlisted orders to PENDING\n", len(candidates))
+			}
+		}
+	}()
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Edge 4: Orphaned AIPredictionItems Cleanup
 // ═══════════════════════════════════════════════════════════════════════════════

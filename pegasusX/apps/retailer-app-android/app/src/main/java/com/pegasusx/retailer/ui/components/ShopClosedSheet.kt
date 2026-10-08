@@ -63,7 +63,7 @@ fun ShopClosedSheet(
     alert: ShopClosedAlert,
     isSubmitting: Boolean,
     errorMessage: String?,
-    mediaUpload: MediaUploadService,
+    mediaUpload: MediaUploadService? = null,
     onRespond: (option: String, photoUrl: String?) -> Unit,
 ) {
     var bypassPending by remember(alert.orderId) { mutableStateOf(false) }
@@ -76,6 +76,10 @@ fun ShopClosedSheet(
         contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
+        if (mediaUpload == null) {
+            localError = "Media upload service unavailable"
+            return@rememberLauncherForActivityResult
+        }
         scope.launch {
             uploading = true
             localError = null

@@ -123,7 +123,7 @@ struct CartView: View {
                             .foregroundStyle(AppTheme.textTertiary)
                             .background(Color.white.opacity(0.001)) // reliable tap target
                     }
-                    .accessibilityLabel("Remove from cart")
+                    .accessibilityLabel("Remove item")
                 }
 
                 QuantityStepper(

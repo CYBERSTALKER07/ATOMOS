@@ -71,6 +71,9 @@ func (m *mockRepo) UpdateExceptionStatus(ctx context.Context, exceptionID, newSt
 func (m *mockRepo) UpdateExceptionAssignee(ctx context.Context, exceptionID, role string) error {
 	return nil
 }
+func (m *mockRepo) RecordIntervention(ctx context.Context, manifestID, supplierID, operatorID, commandType, reasonCode, notes string) error {
+	return nil
+}
 
 type mockExecutor struct {
 	calls int

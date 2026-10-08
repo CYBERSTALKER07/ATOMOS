@@ -208,7 +208,7 @@ init {
 
             val existing = existingBySku[skuId]
             if (existing != null) {
-                val variant = existing.variant.copy(price = unitPrice)
+                val variant = existing.variant.copy(price = unitPrice.toDouble())
                 val product = existing.product.copy(
                     variants = listOf(variant),
                     supplierId = existing.product.supplierId ?: supplierId,
@@ -228,7 +228,7 @@ init {
                 pack = "Per unit",
                 packCount = 1,
                 weightPerUnit = "1 unit",
-                price = unitPrice,
+                price = unitPrice.toDouble(),
             )
             val fallbackProduct = Product(
                 id = skuId,

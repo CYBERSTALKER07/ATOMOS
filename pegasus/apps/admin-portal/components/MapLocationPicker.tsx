@@ -78,6 +78,7 @@ export default function MapLocationPicker({ latitude, longitude, addressText, on
         <button
           type="button"
           onClick={handleShareLocation}
+          aria-label="Use current location"
           disabled={locating}
           className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold transition-all"
           style={{

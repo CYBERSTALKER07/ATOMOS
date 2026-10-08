@@ -317,7 +317,7 @@ private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement:
         IconButton(onClick = onDecrement, modifier = Modifier.size(28.dp)) {
             Icon(
                 if (quantity <= 1) Icons.Outlined.Delete else Icons.Outlined.Remove,
-                contentDescription = null,
+                contentDescription = if (quantity <= 1) "Remove item" else "Decrease quantity",
                 modifier = Modifier.size(14.dp),
                 tint = if (quantity <= 1) StatusRed else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             )
@@ -329,7 +329,7 @@ private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement:
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         IconButton(onClick = onIncrement, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+            Icon(Icons.Outlined.Add, contentDescription = "Increase quantity", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         }
     }
 }

@@ -83,7 +83,9 @@ export default function ProductDetailDrawer({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close product details"
                 className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
               >
                 <X size={20} />

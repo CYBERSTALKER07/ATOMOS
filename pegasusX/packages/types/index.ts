@@ -14,3 +14,4 @@ export * from "./src/auto-order";
 export * from "./src/partner";
 export * from "./src/market";
 export * from "./src/admin";
+export * from "./src/order-lifecycle-graph";

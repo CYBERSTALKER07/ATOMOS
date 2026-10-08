@@ -1,11 +1,49 @@
 package com.pegasusx.driver.ui.screens.map.components
 
-import androidx.compose.ui.res.stringResource
-
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.pegasus.design.ui.PegasusSpacing
+import com.pegasusx.driver.R
+import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.ui.screens.map.MapPhase
+import com.pegasusx.driver.ui.screens.map.resolveMapPhase
+import com.pegasusx.driver.ui.theme.Neutral40
+import com.pegasusx.driver.ui.theme.StatusBlue
+import com.pegasusx.driver.ui.theme.StatusGreen
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun OrderInfoCard(
@@ -19,10 +57,10 @@ fun OrderInfoCard(
     val context = LocalContext.current
     val phaseForCard = resolveMapPhase(activeOrder ?: order)
 
-    // High contrast colors
-    val blueColor = Color(0xFF0A66C2)
-    val greenColor = Color(0xFF198754)
-    val greyColor = Color(0xFF6C757D)
+    // Design system tokens
+    val blueColor = StatusBlue
+    val greenColor = StatusGreen
+    val greyColor = Neutral40
 
     Column(
         modifier = modifier
@@ -152,8 +190,8 @@ fun OrderInfoCard(
 }
 
 private fun formatAmount(amount: Long): String {
-    val formatted = String.format("%,d", amount).replace(',', ' ')
-    return "$formatted"
+    val formatted = String.format(Locale.US, "%,d", amount).replace(',', ' ')
+    return formatted
 }
 
 private fun formatETA(order: Order): String? {

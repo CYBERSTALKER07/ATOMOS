@@ -319,7 +319,9 @@ export default function PaymentModal() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={dismiss}
+                  aria-label="Dismiss payment modal"
                   className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
                 >
                   <X size={20} />

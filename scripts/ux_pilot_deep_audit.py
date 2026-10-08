@@ -2,7 +2,7 @@
 """
 UX Pilot Autonomous Ecosystem Auditor & Report Generator
 Monorepo: Pegasus Enterprise Ecosystem (/Users/shakhzod/Desktop/V.O.I.D)
-Apps: 16 Desktop and Web Applications (pegasus, pegasus.x, pegasusX)
+Apps: 11 Desktop and Web Applications (pegasus, pegasusX)
 """
 
 import os
@@ -13,12 +13,6 @@ from collections import defaultdict
 WORKSPACE_ROOT = "/Users/shakhzod/Desktop/V.O.I.D"
 
 APPLICATIONS = [
-    # pegasus.x
-    {"id": "pegasus.x/supplier-desktop", "path": "pegasus.x/apps/supplier-desktop", "system": "pegasus.x", "role": "Supplier Operations", "stack": "Next.js 15 (App Router) • React 19 • Tauri v2"},
-    {"id": "pegasus.x/warehouse-desktop", "path": "pegasus.x/apps/warehouse-desktop", "system": "pegasus.x", "role": "Warehouse Management", "stack": "Next.js 15 (App Router) • React 19 • Tauri v2"},
-    {"id": "pegasus.x/retailer-desktop", "path": "pegasus.x/apps/retailer-desktop", "system": "pegasus.x", "role": "Retailer Ordering", "stack": "Next.js 15 (App Router) • React 19 • Tauri v2"},
-    {"id": "pegasus.x/payloader-tablet", "path": "pegasus.x/apps/payloader-tablet", "system": "pegasus.x", "role": "Dock Dispatch Tablet", "stack": "React Native • Expo SDK 52 • React Native Web"},
-    {"id": "pegasus.x/telegram-miniapp", "path": "pegasus.x/apps/telegram-miniapp", "system": "pegasus.x", "role": "Telegram Mini-App", "stack": "Vite • React 19 • Tailwind CSS"},
     # pegasusX
     {"id": "pegasusX/admin-portal", "path": "pegasusX/apps/admin-portal", "system": "pegasusX", "role": "Superadmin & Billing", "stack": "Next.js 15 (App Router) • React 19 • Tauri v2"},
     {"id": "pegasusX/retailer-app-desktop", "path": "pegasusX/apps/retailer-app-desktop", "system": "pegasusX", "role": "Retailer Commerce", "stack": "Next.js 15 (App Router) • React 19 • Tauri v2"},
@@ -609,8 +603,8 @@ def build_html_report(findings, app_stats, visual_findings, total_files, score):
         </div>
         <h1 class="text-3xl font-extrabold text-white tracking-tight">Pegasus Ecosystem UX Audit</h1>
         <p class="text-sm text-zinc-400 mt-1">
-          Exhaustive UX, accessibility (WCAG 2.1 AA), responsive layout, and visual audit of all 16 desktop & web applications across
-          <code class="text-cyan-400">pegasus</code>, <code class="text-cyan-400">pegasus.x</code>, and <code class="text-cyan-400">pegasusX</code>.
+          Exhaustive UX, accessibility (WCAG 2.1 AA), responsive layout, and visual audit of all 11 desktop & web applications across
+          <code class="text-cyan-400">pegasus</code> and <code class="text-cyan-400">pegasusX</code>.
         </p>
       </div>
       <div class="text-right">
@@ -808,7 +802,7 @@ def build_html_report(findings, app_stats, visual_findings, total_files, score):
 
 def main():
     print("=======================================================")
-    print("UX PILOT: RUNNING DEEP ECOSYSTEM SCAN (16 APPLICATIONS)")
+    print("UX PILOT: RUNNING DEEP ECOSYSTEM SCAN (11 APPLICATIONS)")
     print("=======================================================")
     
     total_files_scanned = 0
@@ -859,52 +853,7 @@ def main():
         print(f"Audited {app_id:34} | Files: {app_files:4} | Issues: {len(app_findings):3} (Crit: {sev_counts['critical']}, High: {sev_counts['high']}, Med: {sev_counts['medium']})")
 
     # Add Visual Audit Findings observed in Playwright captures
-    visual_findings = [
-        {
-            "severity": "critical",
-            "category": "Visual Hierarchy & Auth Isolation",
-            "rule": "signup-auth / cognitive-load: Navigation Shell Leak",
-            "app": "pegasus.x/supplier-desktop",
-            "file": "pegasus.x/apps/supplier-desktop/app/layout.tsx:18",
-            "title": "Dual Navigation Shell Leaking Into Public Login View",
-            "description": "Visual Playwright capture (desktop_1280.png, tablet_768.png) confirms the root layout wraps public `/auth/login` with `SupplierShell`. Guest users see authenticated operator telemetry ('SP VP Operations', 'Depot Shipments 4 Dispatches') while trying to log in.",
-            "code_snippet": "SupplierShell wraps all children at root app/layout.tsx",
-            "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/layout.tsx, isolate public auth pages into `app/(auth)/layout.tsx` and move `SupplierShell` into `app/(portal)/layout.tsx` so unauthenticated guests never render internal operational navigation bars."
-        },
-        {
-            "severity": "high",
-            "category": "Responsive Layout & Viewports",
-            "rule": "layout-responsive: 768px Tablet Sidebar Collision",
-            "app": "pegasus.x/supplier-desktop",
-            "file": "pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx:57",
-            "title": "Unresponsive Fixed 260px Sidebar Squashing Tablet Viewport",
-            "description": "Playwright tablet capture (tablet_768.png) reveals the 260px desktop rail remains rigid on 768px portrait viewports, reducing the main auth canvas to 508px and truncating enterprise branding elements.",
-            "code_snippet": "aside className=\"w-64 border-r border-zinc-800 ...\"",
-            "fix_prompt": "In pegasus.x/apps/supplier-desktop/components/SupplierShell.tsx, change the sidebar to be hidden by default on mobile/tablet (`hidden lg:flex flex-col w-64`) and introduce a sheet/drawer toggle for smaller screens."
-        },
-        {
-            "severity": "high",
-            "category": "Forms, Feedback & Error Handling",
-            "rule": "forms-feedback: High-Glare Contrast Collision & Borderless CTA",
-            "app": "pegasus.x/supplier-desktop",
-            "file": "pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:88",
-            "title": "Unstyled Form Input Whiteout and Borderless CTA Action",
-            "description": "Visual inspection of Playwright captures (desktop_1280.png, mobile_375.png) shows Country and Phone inputs rendering as stark solid white blocks (#FFFFFF) without borders on an ultra-dark background (#000000), while the primary CTA 'Continue' renders as unbordered white text with zero background container.",
-            "code_snippet": "<button type=\"submit\">Continue</button>",
-            "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, style form inputs with `bg-zinc-900 border border-zinc-700 text-zinc-100 rounded-lg px-3 py-2 focus:ring-2 focus:ring-cyan-500` and give the submit button standard primary styling `w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2.5 rounded-lg shadow-lg`."
-        },
-        {
-            "severity": "medium",
-            "category": "Visual Hierarchy & Aesthetics",
-            "rule": "Anti-Pattern: Raw Unicode Emojis in Enterprise Theme Switcher",
-            "app": "pegasus.x/supplier-desktop",
-            "file": "pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx:45",
-            "title": "Raw Unicode Moon Emoji in Theme Switcher",
-            "description": "Playwright mobile (mobile_375.png) and desktop captures clearly display a raw unicode crescent moon character (🌙) used as an unstyled theme toggle button without aria-label or vector geometry.",
-            "code_snippet": "<button onClick={toggleTheme}>🌙</button>",
-            "fix_prompt": "In pegasus.x/apps/supplier-desktop/app/auth/login/page.tsx, replace the raw emoji `🌙` with `import { Moon } from 'lucide-react'` and render `<Moon className=\"w-4 h-4 text-zinc-400\" aria-hidden=\"true\" />`."
-        }
-    ]
+    visual_findings = []
 
     all_findings.extend(visual_findings)
 
@@ -951,7 +900,7 @@ def main():
 
     print(f"\n=======================================================")
     print(f"AUDIT COMPLETE: HEALTH SCORE = {health_score}/100")
-    print(f"Scanned {total_files_scanned} files across 16 desktop/web apps.")
+    print(f"Scanned {total_files_scanned} files across 11 desktop/web apps.")
     print(f"Total findings: {len(all_findings)} (Critical: {audit_data['summary']['critical']}, High: {audit_data['summary']['high']}, Medium: {audit_data['summary']['medium']})")
     print(f"Interactive HTML Report written to: {out_html}")
     print(f"JSON Ledger written to: {out_json}")

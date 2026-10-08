@@ -127,7 +127,7 @@ fun ProductDetailScreen(
                                 pack = "Single",
                                 packCount = 1,
                                 weightPerUnit = "",
-                                price = (product.price ?: 0).toLong(),
+                                price = (product.price ?: 0).toDouble(),
                             )
                             onAddToCart(product, variant)
                             scope.launch { snackbarHostState.showSnackbar("${product.name} added to cart") }

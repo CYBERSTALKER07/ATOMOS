@@ -38,6 +38,20 @@ func (f *flakyBackend) Delete(_ context.Context, _ ...string) error {
 	return nil
 }
 
+func (f *flakyBackend) IncrBy(_ context.Context, _ string, amount int64) (int64, error) {
+	if f.fail {
+		return 0, errors.New("redis down")
+	}
+	return amount, nil
+}
+
+func (f *flakyBackend) DecrBy(_ context.Context, _ string, amount int64) (int64, error) {
+	if f.fail {
+		return 0, errors.New("redis down")
+	}
+	return -amount, nil
+}
+
 func (f *flakyBackend) Publish(context.Context, string, []byte) error { return nil }
 func (f *flakyBackend) Subscribe(context.Context, string) (<-chan []byte, func(), error) {
 	ch := make(chan []byte)

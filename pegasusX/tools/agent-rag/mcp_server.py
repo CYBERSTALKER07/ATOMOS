@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Crucial for MCP stdio: prevent any 3rd-party library from writing to stdout
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["TQDM_DISABLE"] = "1"
+
 import chromadb
 from chromadb.utils import embedding_functions
 from mcp.server.fastmcp import FastMCP
@@ -6,11 +14,17 @@ from mcp.server.fastmcp import FastMCP
 # Initialize FastMCP Server
 mcp = FastMCP("PegasusX-Agent-RAG")
 
-# Initialize ChromaDB client
 MEMORY_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".agents", "memory")
-client = chromadb.PersistentClient(path=MEMORY_DIR)
-emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-collection = client.get_or_create_collection(name="pegasusx_codebase", embedding_function=emb_fn)
+
+_collection = None
+
+def get_collection():
+    global _collection
+    if _collection is None:
+        client = chromadb.PersistentClient(path=MEMORY_DIR)
+        emb_fn = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+        _collection = client.get_or_create_collection(name="pegasusx_codebase", embedding_function=emb_fn)
+    return _collection
 
 @mcp.tool()
 def semantic_code_search(query: str, layer: str = None, limit: int = 5) -> str:
@@ -23,8 +37,9 @@ def semantic_code_search(query: str, layer: str = None, limit: int = 5) -> str:
         limit: Number of code chunks to return (default: 5).
     """
     where_filter = {"layer": layer} if layer else None
+    coll = get_collection()
     
-    results = collection.query(
+    results = coll.query(
         query_texts=[query],
         n_results=limit,
         where=where_filter
@@ -53,6 +68,4 @@ def semantic_code_search(query: str, layer: str = None, limit: int = 5) -> str:
     return "\n---\n".join(formatted_results)
 
 if __name__ == "__main__":
-    import sys
-    print("Starting PegasusX Agent RAG MCP Server on stdio...", file=sys.stderr, flush=True)
     mcp.run()

@@ -364,6 +364,11 @@ export default function RetailerShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const isAuthOrOnboarding = pathname?.startsWith('/auth') || pathname === '/login' || pathname === '/register';
+  if (isAuthOrOnboarding) {
+    return <>{children}</>;
+  }
+
   const router = useRouter();
   const { isConnected } = useWebSocket();
   const { unreadCount } = useRetailerNotifications();

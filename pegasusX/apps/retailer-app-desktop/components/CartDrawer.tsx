@@ -65,7 +65,9 @@ export default function CartDrawer({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close cart"
                 className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
               >
                 <X size={20} />

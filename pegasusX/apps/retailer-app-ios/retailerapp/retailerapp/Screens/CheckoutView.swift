@@ -85,6 +85,7 @@ struct CheckoutView: View {
                             .background(AppTheme.surfaceElevated)
                             .clipShape(.circle)
                     }
+                    .accessibilityLabel("Close")
                 }
             }
             .task {

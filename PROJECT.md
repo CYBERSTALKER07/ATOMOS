@@ -1,10 +1,9 @@
-# Project: Pegasus, PegasusX, and Pegasus.x Codebase Documentation & AI Instructions
+# Project: Pegasus and PegasusX Codebase Documentation & AI Instructions
 
 ## Architecture Overview
-The project workspace contains three distinct logistics and commerce distributions:
+The project workspace contains two distinct logistics and commerce distributions:
 1. `pegasus/`: Multi-supplier logistics execution engine and marketplace platform (Go 1.25, Chi, Spanner 94 tables, Kafka 8 topics, Rust/Go/LangGraph OR solvers, 18 apps, 2 services, 8 packages).
 2. `pegasusX/`: Enterprise Single-Supplier Multi-Retailer (SSMR) distribution stack (Go 1.25, 411+ endpoints, 28 route modules, 24 runtime workers, Spanner 220+ tables, 125 migrations, 100+ Kafka events, 8 Redis-backed WebSocket hubs, 22 apps across 6 role-rows, Rust & Python OR-Tools solvers, cell isolation).
-3. `pegasus.x/`: Sovereign Uzbekistan B2B FMCG distribution operating system (Go 1.26, 83 packages, 125 API modules, 4 HTTP 428 gates, 52 living loop steps in smokecheck, Python S&OP Croston SBA + MEIO + CVRP 2-Opt with 95% Tetris buffer, TimescaleDB pg16 with 78 migrations, 17 apps including Telegram bot/miniapp and mobile/desktop clients).
 
 ## Feature Inventory
 | # | Feature / Component | Description | Ecosystem | Milestone | Source |
@@ -19,21 +18,15 @@ The project workspace contains three distinct logistics and commerce distributio
 | 8 | PegasusX Backend Services Docs | 411+ endpoints, 28 routes, 24 workers, 8 WS hubs, ai-worker, Rust/Python solvers | pegasusX | M2 | `pegasusX/docs/BACKEND_SERVICES.md` |
 | 9 | PegasusX Features & Role-Rows Docs | 6 role-rows, 22 apps (Web/Desktop/Android/iOS/Expo), ParentOrders saga, money path | pegasusX | M2 | `pegasusX/docs/FEATURES_AND_ROLE_ROWS.md` |
 | 10 | PegasusX Infrastructure Docs | Terraform 6 modules & cells, K8s 7 overlays & 5 CronJobs, CI anti-theatre gates | pegasusX | M2 | `pegasusX/docs/INFRASTRUCTURE.md` |
-| 11 | Pegasus.x `agents.md` | Uzbekistan FMCG sovereign doctrine, 52-step living loop, honesty rules, MXIK/Soliq | pegasus.x | M3 | `pegasus.x/agents.md` |
-| 12 | Pegasus.x Architecture Docs | Turborepo+pnpm monorepo layout, Go 1.26 backend, TimescaleDB pg16 (78 migrations) | pegasus.x | M3 | `pegasus.x/docs/ARCHITECTURE.md` |
-| 13 | Pegasus.x Backend & Planning Docs | 83 packages, 125 API modules, 4 HTTP 428 gates, Python S&OP (Croston, MEIO, CVRP) | pegasus.x | M3 | `pegasus.x/docs/BACKEND_AND_PLANNING.md` |
-| 14 | Pegasus.x Features & Apps Docs | 17 apps (3 desktop, 5 Android, 5 iOS, 2 Telegram, 2 Expo), E-Imzo PKI, Asl Belgisi | pegasus.x | M3 | `pegasus.x/docs/FEATURES_AND_APPS.md` |
-| 15 | Pegasus.x Infrastructure Docs | Docker Compose prod (Caddy 2, Timescale, Redis), K8s Kustomize fleet, Terraform | pegasus.x | M3 | `pegasus.x/docs/INFRASTRUCTURE.md` |
-| 16 | Cross-Grounding & Link Verification | Audit 100% of generated links (`file:///...`) for real existence and line accuracy | All | M4 | Reviewers 1 & 2 (509/509 valid, 0 broken) |
+| 11 | Cross-Grounding & Link Verification | Audit 100% of generated links (`file:///...`) for real existence and line accuracy | All | M3 | Verified dual-ecosystem link parity |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status | Key Deliverables |
 |---|------|-------|-------------|--------|------------------|
-| M0 | Ecosystem Survey | Deep inspection of pegasus, pegasusX, pegasus.x codebases | None | DONE | 3 survey reports & handoffs |
+| M0 | Ecosystem Survey | Deep inspection of pegasus and pegasusX codebases | None | DONE | Survey reports & architectural baseline |
 | M1 | Pegasus Documentation & agents.md | `pegasus/agents.md` and `pegasus/docs/*.md` | M0 | DONE | `pegasus/agents.md`, `pegasus/docs/{ARCHITECTURE,BACKEND_SERVICES,FEATURES_AND_PORTALS,INFRASTRUCTURE}.md` |
 | M2 | PegasusX Documentation & agents.md | `pegasusX/agents.md` and `pegasusX/docs/*.md` | M0 | DONE | `pegasusX/agents.md`, `pegasusX/docs/{ARCHITECTURE,BACKEND_SERVICES,FEATURES_AND_ROLE_ROWS,INFRASTRUCTURE}.md` |
-| M3 | Pegasus.x Documentation & agents.md | `pegasus.x/agents.md` and `pegasus.x/docs/*.md` | M0 | DONE | `pegasus.x/agents.md`, `pegasus.x/docs/{ARCHITECTURE,BACKEND_AND_PLANNING,FEATURES_AND_APPS,INFRASTRUCTURE}.md` |
-| M4 | Grounding & Link Verification | Audit all generated docs for direct `file:///` links and zero theatre | M1, M2, M3 | DONE | Independent Reviewers 1 & 2 APPROVE; 509/509 valid links (100.00% resolution, 0 broken) |
+| M3 | Grounding & Link Verification | Audit all generated docs for direct `file:///` links and zero theatre | M1, M2 | DONE | 100% resolution across active codebases |
 
 ## Final Documentation Catalog
 - **Pegasus Ecosystem**:
@@ -48,12 +41,6 @@ The project workspace contains three distinct logistics and commerce distributio
   - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/docs/BACKEND_SERVICES.md`
   - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/docs/FEATURES_AND_ROLE_ROWS.md`
   - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/docs/INFRASTRUCTURE.md`
-- **Pegasus.x Ecosystem**:
-  - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasus.x/agents.md`
-  - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasus.x/docs/ARCHITECTURE.md`
-  - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasus.x/docs/BACKEND_AND_PLANNING.md`
-  - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasus.x/docs/FEATURES_AND_APPS.md`
-  - `file:///Users/shakhzod/Desktop/V.O.I.D/pegasus.x/docs/INFRASTRUCTURE.md`
 
 ## Interface Contracts & Documentation Standards
 - **AI Agent Instructions (`agents.md`)**:
