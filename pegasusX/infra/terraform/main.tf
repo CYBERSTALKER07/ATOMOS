@@ -63,12 +63,12 @@ module "messaging" {
 module "storage_security" {
   source = "./modules/storage_security"
 
-  project_id           = var.project_id
-  region               = var.region
-  environment          = var.environment
-  media_bucket_name    = var.media_bucket_name
-  updates_bucket_name  = var.updates_bucket_name
-  imports_bucket_name  = var.imports_bucket_name
+  project_id              = var.project_id
+  region                  = var.region
+  environment             = var.environment
+  media_bucket_name       = var.media_bucket_name
+  updates_bucket_name     = var.updates_bucket_name
+  imports_bucket_name     = var.imports_bucket_name
   tf_state_bucket_name    = var.tf_state_bucket_name
   k8s_namespace           = var.k8s_namespace
   enable_cmek_iam_binding = var.enable_cmek_iam_binding
