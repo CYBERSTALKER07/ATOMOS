@@ -21,7 +21,7 @@ func (s *Service) UpdatePickerLocation(ctx context.Context, warehouseID string, 
 		return nil
 	}
 
-	key := fmt.Sprintf("warehouse:%s:heatmap", warehouseID)
+	key := fmt.Sprintf("{warehouse:%s}:heatmap", warehouseID)
 	data, err := json.Marshal(loc)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (s *Service) GetLiveHeatmap(ctx context.Context, warehouseID string) ([]Pic
 		return []PickerLocation{}, nil
 	}
 
-	key := fmt.Sprintf("warehouse:%s:heatmap", warehouseID)
+	key := fmt.Sprintf("{warehouse:%s}:heatmap", warehouseID)
 	res, err := s.redisClient.HGetAll(ctx, key).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get live heatmap: %w", err)

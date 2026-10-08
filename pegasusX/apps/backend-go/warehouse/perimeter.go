@@ -17,7 +17,7 @@ func (s *Service) PublishSupplierPerimeter(ctx context.Context, supplierID strin
 	
 	cells := proximity.PerimeterCells(warehouses)
 	
-	key := fmt.Sprintf("perimeter:supplier:%s", supplierID)
+	key := fmt.Sprintf("{perimeter:supplier:%s}", supplierID)
 	
 	pipe := s.redisClient.TxPipeline()
 	pipe.Del(ctx, key)
@@ -39,7 +39,7 @@ func (s *Service) PublishSupplierPerimeter(ctx context.Context, supplierID strin
 }
 
 func (s *Service) CheckSupplierPerimeter(ctx context.Context, supplierID string, cell string) (bool, error) {
-	key := fmt.Sprintf("perimeter:supplier:%s", supplierID)
+	key := fmt.Sprintf("{perimeter:supplier:%s}", supplierID)
 	exists, err := s.redisClient.Exists(ctx, key).Result()
 	if err != nil {
 		return false, err

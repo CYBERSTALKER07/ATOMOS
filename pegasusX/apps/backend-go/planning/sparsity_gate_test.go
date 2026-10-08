@@ -30,7 +30,7 @@ func TestApplyConfidenceCap(t *testing.T) {
 
 func TestScenarioCacheKey(t *testing.T) {
 	key := ScenarioCacheKey("sup-1", "8:10.0:7")
-	if key != "planning:scenario:sup-1:8:10.0:7" {
+	if key != "{planning:sup-1}:scenario:8:10.0:7" {
 		t.Fatalf("unexpected key %s", key)
 	}
 }

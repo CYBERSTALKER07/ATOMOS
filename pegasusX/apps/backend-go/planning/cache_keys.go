@@ -10,22 +10,22 @@ const (
 
 // ScenarioCacheKey returns the Redis key for a scenario sandbox result.
 func ScenarioCacheKey(supplierID, cacheKey string) string {
-	return fmt.Sprintf("planning:scenario:%s:%s", supplierID, cacheKey)
+	return fmt.Sprintf("{planning:%s}:scenario:%s", supplierID, cacheKey)
 }
 
 // SeasonalCacheKey returns the Redis key for an active seasonal template.
 func SeasonalCacheKey(supplierID, templateID string) string {
-	return fmt.Sprintf("planning:seasonal:%s:%s", supplierID, templateID)
+	return fmt.Sprintf("{planning:%s}:seasonal:%s", supplierID, templateID)
 }
 
 // ForecastAggCacheKey returns the Redis key for aggregated forecast reads.
 func ForecastAggCacheKey(supplierID, granularity, window string) string {
-	return fmt.Sprintf("planning:forecast:agg:%s:%s:%s", supplierID, granularity, window)
+	return fmt.Sprintf("{planning:%s}:forecast:agg:%s:%s", supplierID, granularity, window)
 }
 
 // ForecastAggInvalidationPrefix returns keys to invalidate after baseline write.
 func ForecastAggInvalidationPrefixes(supplierID string) []string {
 	return []string{
-		fmt.Sprintf("planning:forecast:agg:%s:", supplierID),
+		fmt.Sprintf("{planning:%s}:forecast:agg:", supplierID),
 	}
 }

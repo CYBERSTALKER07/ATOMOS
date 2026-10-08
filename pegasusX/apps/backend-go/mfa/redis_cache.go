@@ -20,12 +20,12 @@ func NewRedisReplayCache(client *redis.Client) *RedisReplayCache {
 }
 
 func (c *RedisReplayCache) MarkUsed(ctx context.Context, subject string, step uint64) error {
-	key := fmt.Sprintf("mfa:used:%s:%d", subject, step)
+	key := fmt.Sprintf("{mfa:used:%s}:%d", subject, step)
 	return c.client.Set(ctx, key, "1", 90*time.Second).Err()
 }
 
 func (c *RedisReplayCache) IsUsed(ctx context.Context, subject string, step uint64) (bool, error) {
-	key := fmt.Sprintf("mfa:used:%s:%d", subject, step)
+	key := fmt.Sprintf("{mfa:used:%s}:%d", subject, step)
 	res, err := c.client.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return false, nil

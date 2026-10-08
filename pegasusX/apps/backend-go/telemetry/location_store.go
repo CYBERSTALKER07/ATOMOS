@@ -160,7 +160,7 @@ func normalizeDriverLocation(location DriverLocation) DriverLocation {
 }
 
 func lastDriverLocationKey(driverID string) string {
-	return lastDriverLocationKeyPrefix + strings.TrimSpace(driverID)
+	return fmt.Sprintf("{driver:%s}:last_location", strings.TrimSpace(driverID))
 }
 
 func shouldKeepExistingLocation(existing, incoming DriverLocation) bool {

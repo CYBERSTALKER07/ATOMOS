@@ -57,7 +57,7 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	}
 
 	if r.redis != nil {
-		key := fmt.Sprintf("perimeter:supplier:%s", supplierID)
+		key := fmt.Sprintf("{perimeter:supplier:%s}", supplierID)
 		exists, err := r.redis.Exists(ctx, key).Result()
 		if err == nil && exists > 0 {
 			isMem, err := r.redis.SIsMember(ctx, key, store.H3Cell).Result()

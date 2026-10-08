@@ -24,7 +24,7 @@ import (
 
 const (
 	// workerHeartbeatKey is the Redis key the worker tier refreshes.
-	workerHeartbeatKey = "pegasusx:runtime:worker:heartbeat"
+	workerHeartbeatKey = "{pegasusx:runtime:worker}:heartbeat"
 	// WorkerHeartbeatTTL is how long a heartbeat stays valid after the worker
 	// dies. Slightly more than two refresh intervals so one missed tick does
 	// not flap the api-tier consumer.

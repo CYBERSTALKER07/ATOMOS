@@ -30,7 +30,7 @@ func TestCheckSupplierPerimeter(t *testing.T) {
 	}
 
 	supplierID := "sup-123"
-	key := "perimeter:supplier:" + supplierID
+	key := "{perimeter:supplier:" + supplierID + "}"
 	targetCell := "8720a52d2ffffff"
 	missingCell := "8720a52d3ffffff"
 

@@ -3,6 +3,7 @@ package payload
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -38,12 +39,11 @@ func (s *Service) HandleScanProgress(w http.ResponseWriter, r *http.Request) {
 	
 	var newVolume int64
 	if s.cache != nil {
-		// Deferred until cache package supports IncrBy
-		// redisKey := "manifest:" + manifestID + ":loaded_vu"
-		// res, err := s.cache.Client.IncrBy(ctx, redisKey, req.ItemVU).Result()
-		// if err == nil {
-		// 	newVolume = res
-		// }
+		redisKey := fmt.Sprintf("{manifest:%s}:loaded_vu", manifestID)
+		res, err := s.cache.IncrBy(r.Context(), redisKey, req.ItemVU)
+		if err == nil {
+			newVolume = res
+		}
 	}
 
 	// Fire WS update to warehouse

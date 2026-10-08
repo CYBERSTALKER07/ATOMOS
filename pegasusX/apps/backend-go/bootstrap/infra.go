@@ -73,6 +73,7 @@ func setupRedisCache(ctx context.Context, cfg *Config, log *slog.Logger) (cache.
 		cbBackend := cache.NewCircuitBreakerBackendWithMode(redisBackend, cacheBackend, failClosedCache)
 		cacheBackend = cbBackend
 		redisEnabled = true
+		cache.StartPoolMetricsCollector(ctx, cbBackend, 15*time.Second)
 		log.Info("redis cache backend enabled",
 			"addr", cfg.RedisAddr,
 			"pool_size", cfg.RedisPoolSize,

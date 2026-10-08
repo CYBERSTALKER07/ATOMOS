@@ -367,36 +367,64 @@ func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) 
 
 // StartRelaySubscriber consumes one hub-scoped fanout channel and relays
 // decoded room payloads to local subscribers. Messages from the same instance
-// are ignored to avoid self-echo duplication.
+// are ignored to avoid self-echo duplication. It features an exponential backoff
+// reconnection loop so temporary Redis disconnects do not terminate relay fanout permanently.
 func (h *Hub) StartRelaySubscriber(ctx context.Context) {
 	if h == nil || h.relay == nil {
 		return
 	}
 	channel := h.relayChannel()
-	msgs, cancel, err := h.relay.Subscribe(ctx, channel)
-	if err != nil {
-		h.log.Error("ws relay subscribe failed", "hub", h.name, "channel", channel, "err", err)
-		return
-	}
-	defer cancel()
+	backoff := 50 * time.Millisecond
+	const maxBackoff = 5 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case raw, ok := <-msgs:
-			if !ok {
-				return
-			}
-			var envelope relayEnvelope
-			if err := json.Unmarshal(raw, &envelope); err != nil {
-				h.log.Warn("ws relay envelope decode failed", "hub", h.name, "err", err)
-				continue
-			}
-			if envelope.Source == h.instance || envelope.Room == "" || len(envelope.Payload) == 0 {
-				continue
-			}
-			h.fanoutLocal(ctx, envelope.Room, envelope.Payload)
+		default:
 		}
+
+		msgs, cancel, err := h.relay.Subscribe(ctx, channel)
+		if err != nil {
+			h.log.Warn("ws relay subscribe failed, retrying", "hub", h.name, "channel", channel, "err", err, "backoff", backoff)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+		}
+
+		// Reset backoff on successful subscription
+		backoff = 50 * time.Millisecond
+
+		active := true
+		for active {
+			select {
+			case <-ctx.Done():
+				cancel()
+				return
+			case raw, ok := <-msgs:
+				if !ok {
+					active = false
+					break
+				}
+				var envelope relayEnvelope
+				if err := json.Unmarshal(raw, &envelope); err != nil {
+					h.log.Warn("ws relay envelope decode failed", "hub", h.name, "err", err)
+					continue
+				}
+				if envelope.Source == h.instance || envelope.Room == "" || len(envelope.Payload) == 0 {
+					continue
+				}
+				h.fanoutLocal(ctx, envelope.Room, envelope.Payload)
+			}
+		}
+		cancel()
 	}
 }
 
@@ -452,7 +480,7 @@ func (h *Hub) TouchPresence(ctx context.Context, conn Connection) {
 	if identity.Subject == "" {
 		return
 	}
-	key := "presence:" + string(identity.Role) + ":" + identity.Subject
+	key := fmt.Sprintf("{presence:%s}:%s", identity.Role, identity.Subject)
 	// 3x ping interval for TTL
 	_ = h.relay.Set(ctx, key, []byte("ONLINE"), 45*time.Second)
 }
@@ -465,6 +493,6 @@ func (h *Hub) ClearPresence(ctx context.Context, conn Connection) {
 	if identity.Subject == "" {
 		return
 	}
-	key := "presence:" + string(identity.Role) + ":" + identity.Subject
+	key := fmt.Sprintf("{presence:%s}:%s", identity.Role, identity.Subject)
 	_ = h.relay.Delete(ctx, key)
 }
