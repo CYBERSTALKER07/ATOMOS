@@ -148,8 +148,8 @@ class ModelComputedPropsTest {
     @Test
     fun order_itemCount_sumsQuantities() {
         val items = listOf(
-            OrderLineItem("l1", "p1", "A", "v1", "1L", 3, 10.0, 30.0),
-            OrderLineItem("l2", "p2", "B", "v2", "2L", 2, 5.0, 10.0),
+            OrderLineItem("l1", "p1", "A", "v1", "1L", 3, 10L, 30L),
+            OrderLineItem("l2", "p2", "B", "v2", "2L", 2, 5L, 10L),
         )
         val o = Order(id = "o1", items = items, totalAmount = 40)
         assertEquals(5, o.itemCount)
@@ -174,7 +174,7 @@ class ModelComputedPropsTest {
         val v = Variant("v1", "1L", "Single", 1, "1000ml", 10_000.0)
         val p = Product(id = "p1", name = "Milk", variants = listOf(v))
         val item = CartItem(id = "p1_v1", product = p, variant = v, quantity = 3)
-        assertEquals(30_000.0, item.totalPrice, 0.01)
+        assertEquals(30_000L, item.totalPrice)
     }
 
     // ── DemandForecast ──

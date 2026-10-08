@@ -15,6 +15,12 @@ type relayTestStore struct {
 	markIDs   []string
 	markAt    time.Time
 	markCalls int
+
+	recordFailuresCalls      int
+	recordFailureIDs         []string
+	recordFailureLastErr     string
+	recordFailureMaxAttempts int64
+	mockDeadLettered         []string
 }
 
 func (s *relayTestStore) Fetch(_ context.Context, limit int) ([]Event, error) {
@@ -38,8 +44,12 @@ func (s *relayTestStore) CountUnpublished(_ context.Context) (int64, error) {
 	return int64(len(s.events) - len(s.markIDs)), nil
 }
 
-func (s *relayTestStore) RecordPublishFailures(_ context.Context, eventIDs []string, _ string, _ int64) ([]string, error) {
-	return nil, nil
+func (s *relayTestStore) RecordPublishFailures(_ context.Context, eventIDs []string, lastErr string, maxAttempts int64) ([]string, error) {
+	s.recordFailuresCalls++
+	s.recordFailureIDs = append([]string(nil), eventIDs...)
+	s.recordFailureLastErr = lastErr
+	s.recordFailureMaxAttempts = maxAttempts
+	return s.mockDeadLettered, nil
 }
 
 type relayTestPublisher struct {
@@ -165,3 +175,39 @@ func TestRelayDrainOnceBoundsWedgedPublisher(t *testing.T) {
 		t.Fatalf("no event should be marked published, got %d mark calls", store.markCalls)
 	}
 }
+
+func TestRelayDrainOnce_RecordsPublishFailuresAndDeadLetters(t *testing.T) {
+	t.Parallel()
+
+	store := &relayTestStore{
+		events: []Event{
+			{EventID: "fail-1", AggregateID: "a-fail", TopicName: "t-fail", Payload: []byte("p")},
+		},
+		mockDeadLettered: []string{"fail-1"},
+	}
+	pub := &relayTestPublisher{
+		errorsByCall: []error{errors.New("pub-err-1"), errors.New("pub-err-2")},
+	}
+	relay := NewRelay(store, pub, RelayConfig{
+		MaxPublishTries:  2,
+		BaseBackoff:      time.Millisecond,
+		MaxBackoff:       2 * time.Millisecond,
+		MaxTotalAttempts: 5,
+	}, nil)
+
+	relay.drainOnce(context.Background())
+
+	if store.recordFailuresCalls != 1 {
+		t.Fatalf("recordFailuresCalls = %d, want 1", store.recordFailuresCalls)
+	}
+	if !reflect.DeepEqual(store.recordFailureIDs, []string{"fail-1"}) {
+		t.Fatalf("recordFailureIDs = %v, want [fail-1]", store.recordFailureIDs)
+	}
+	if store.recordFailureMaxAttempts != 5 {
+		t.Fatalf("recordFailureMaxAttempts = %d, want 5", store.recordFailureMaxAttempts)
+	}
+	if store.recordFailureLastErr != "pub-err-2" {
+		t.Fatalf("recordFailureLastErr = %q, want 'pub-err-2'", store.recordFailureLastErr)
+	}
+}
+

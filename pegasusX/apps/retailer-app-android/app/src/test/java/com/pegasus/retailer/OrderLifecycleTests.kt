@@ -27,8 +27,8 @@ class OrderLifecycleTests {
                         "sku_id": "sku_1",
                         "sku_name": "Product A",
                         "quantity": 5,
-                        "unit_price": 300000.0,
-                        "total_price": 1500000.0
+                        "unit_price": 300000,
+                        "total_price": 1500000
                     }
                 ]
             }

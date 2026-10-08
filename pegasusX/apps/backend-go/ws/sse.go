@@ -67,6 +67,12 @@ func (c *sseConn) Done() <-chan struct{} {
 }
 
 func (c *sseConn) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.closeLocked()
+}
+
+func (c *sseConn) closeLocked() {
 	c.closeOnce.Do(func() {
 		close(c.closed)
 	})
@@ -88,7 +94,7 @@ func (c *sseConn) Ping() error {
 	}
 
 	if _, err := fmt.Fprintf(c.w, ": ping\n\n"); err != nil {
-		c.Close()
+		c.closeLocked()
 		return err
 	}
 	if c.flusher != nil {
@@ -129,7 +135,7 @@ func (c *sseConn) Send(ctx context.Context, payload []byte) error {
 	buf.WriteString("\n")
 
 	if _, err := c.w.Write(buf.Bytes()); err != nil {
-		c.Close()
+		c.closeLocked()
 		return err
 	}
 	if c.flusher != nil {

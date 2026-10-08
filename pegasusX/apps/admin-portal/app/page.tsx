@@ -13,8 +13,10 @@ import OpsPanel from "@/components/OpsPanel";
 import BillingPanel from "@/components/BillingPanel";
 import CommandBoard from "@/components/CommandBoard";
 import AccuracyPanel from "@/components/AccuracyPanel";
+import OrderStateMachineGraph from "@/components/OrderStateMachineGraph";
+import type { OrderStatus } from "@pegasusx/types";
 
-type Tab = "command" | "tenants" | "flags" | "audit" | "match" | "partner" | "ops" | "billing" | "accuracy";
+type Tab = "command" | "tenants" | "flags" | "audit" | "match" | "partner" | "ops" | "billing" | "accuracy" | "lifecycle";
 
 type MfaGate =
   | { kind: "ok" }
@@ -196,6 +198,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
   const [tab, setTab] = useState<Tab>("command");
   const [refreshKey, setRefreshKey] = useState(0);
   const [live, setLive] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("PENDING");
 
   useAdminWsRefresh(
     token,
@@ -220,7 +223,7 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
         </button>
       </header>
       <nav className="mb-4 flex flex-wrap gap-2 border-b">
-        {(["command", "tenants", "flags", "ops", "billing", "accuracy", "match", "partner", "audit"] as Tab[]).map((t) => (
+        {(["command", "tenants", "flags", "ops", "billing", "accuracy", "match", "partner", "audit", "lifecycle"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -238,7 +241,9 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
                     ? "Outbox"
                     : t === "accuracy"
                       ? "Accuracy"
-                      : t}
+                      : t === "lifecycle"
+                        ? "Order DAG"
+                        : t}
           </button>
         ))}
       </nav>
@@ -253,6 +258,14 @@ function AdminConsole({ token, onSignOut }: { token: string; onSignOut: () => vo
       {tab === "ops" && <OpsPanel token={token} />}
       {tab === "billing" && <BillingPanel token={token} />}
       {tab === "accuracy" && <AccuracyPanel token={token} />}
+      {tab === "lifecycle" && (
+        <section className="space-y-4" data-testid="admin-order-dag">
+          <OrderStateMachineGraph
+            currentStatus={selectedStatus}
+            onSelectTargetStatus={setSelectedStatus}
+          />
+        </section>
+      )}
     </main>
   );
 }

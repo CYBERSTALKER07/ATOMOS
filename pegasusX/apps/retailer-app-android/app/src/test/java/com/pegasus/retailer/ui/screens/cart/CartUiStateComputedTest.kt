@@ -17,10 +17,10 @@ class CartUiStateComputedTest {
         val state = CartUiState()
         assertTrue(state.isEmpty)
         assertEquals(0, state.totalItems)
-        assertEquals(0.0, state.subtotal, 0.001)
-        assertEquals(15_000.0, state.shipping, 0.001) // under 50k threshold
-        assertEquals(0.0, state.discount, 0.001)
-        assertEquals(15_000.0, state.total, 0.001)
+        assertEquals(0L, state.subtotal)
+        assertEquals(15_000L, state.shipping) // under 50k threshold
+        assertEquals(0L, state.discount)
+        assertEquals(15_000L, state.total)
         assertEquals("0", state.displaySubtotal)
     }
 
@@ -44,14 +44,14 @@ class CartUiStateComputedTest {
             quotedSubtotalMinor = 600_000L,
             quotedDiscountMinor = 30_000L,
         )
-        assertEquals(600_000.0, state.subtotal, 0.001)
-        assertEquals(30_000.0, state.discount, 0.001)
+        assertEquals(600_000L, state.subtotal)
+        assertEquals(30_000L, state.discount)
     }
 
     @Test
     fun `no discount when server quote absent`() {
         val state = CartUiState()
-        assertEquals(0.0, state.discount, 0.001)
+        assertEquals(0L, state.discount)
     }
 
     @Test
@@ -60,7 +60,7 @@ class CartUiStateComputedTest {
             quotedSubtotalMinor = 700_000L,
             quotedDiscountMinor = 35_000L,
         )
-        assertEquals(665_000.0, state.total, 0.001)
+        assertEquals(665_000L, state.total)
     }
 
     @Test

@@ -56,4 +56,10 @@ describe("GS-U8 admin command bind", () => {
     expect(accuracy).toMatch(/no invented mape28 line/);
     expect(accuracy).not.toMatch(/recharts/i);
   });
+
+  it("wires Canonical Order DAG visualizer into AdminConsole navigation", () => {
+    expect(page).toMatch(/OrderStateMachineGraph/);
+    expect(page).toMatch(/data-testid="admin-order-dag"/);
+    expect(page).toMatch(/Order DAG/);
+  });
 });
