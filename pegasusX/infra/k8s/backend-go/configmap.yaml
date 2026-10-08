@@ -39,6 +39,8 @@ data:
   REQUIRE_INFRA_ADAPTERS: "true"
   RELIABILITY_MIDDLEWARE_ENABLED: "true"
   FIREBASE_AUTH_ENABLED: "true"
+  # Cryptographic proof-of-delivery handoff: enforce strict SHA-256 tokens in cloud (no order_id UUID fallback)
+  HANDOFF_LEGACY_ORDER_ID_FALLBACK: "false"
   # G19 / G3 claim window defaults (supplier/WH policies override at COMPLETED snapshot)
   CLAIM_WINDOW_HOURS: "48"
   CLAIM_AUTO_APPROVE_MAX_MINOR: "0"

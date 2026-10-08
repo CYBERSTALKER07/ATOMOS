@@ -18,6 +18,10 @@ resources:
   - ../ingress/backendconfig.yaml
   - ../ingress/ingress.yaml
   - ../monitoring/podmonitoring.yaml
+  - ../network-policies/default-deny.yaml
+  - ../network-policies/backend-go-policy.yaml
+  - ../network-policies/optimizer-core-policy.yaml
+  - ../network-policies/ai-worker-policy.yaml
 
 labels:
   - pairs:

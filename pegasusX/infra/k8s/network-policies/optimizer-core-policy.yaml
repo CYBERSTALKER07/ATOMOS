@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: optimizer-core-network-policy
+  namespace: pegasusx
+  labels:
+    app: optimizer-core
+    app.kubernetes.io/part-of: pegasusx
+    security.pegasusx.io/tier: zero-trust
+spec:
+  podSelector:
+    matchLabels:
+      app: optimizer-core
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Strictly allow requests ONLY from backend-go and ai-worker pods on port 8082
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend-go
+        - podSelector:
+            matchLabels:
+              app: ai-worker
+      ports:
+        - protocol: TCP
+          port: 8082
+  egress:
+    # 1. DNS Resolution (kube-system)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

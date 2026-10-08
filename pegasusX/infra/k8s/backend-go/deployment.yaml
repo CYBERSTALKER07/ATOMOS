@@ -25,10 +25,44 @@ spec:
     spec:
       serviceAccountName: backend-go
       terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - backend-go
+                topologyKey: "topology.kubernetes.io/zone"
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - backend-go
+                topologyKey: "kubernetes.io/hostname"
       containers:
         - name: backend-go
           image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: http
               containerPort: 8080
@@ -143,9 +177,18 @@ spec:
             - name: FIREBASE_CREDENTIALS_PATH
               value: /var/secrets/firebase/service-account.json
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: firebase-credentials
               mountPath: /var/secrets/firebase
               readOnly: true
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /healthz
@@ -168,7 +211,10 @@ spec:
               cpu: "1000m"
               memory: 512Mi
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: firebase-credentials
           secret:
             secretName: backend-go-firebase
             optional: true
+

@@ -26,10 +26,23 @@ spec:
     spec:
       serviceAccountName: backend-go
       terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: backend-go-worker
           image: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - name: health
               containerPort: 8081
@@ -140,6 +153,15 @@ spec:
             - name: firebase-credentials
               mountPath: /var/secrets/firebase
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /healthz
@@ -166,3 +188,5 @@ spec:
           secret:
             secretName: backend-go-firebase
             optional: true
+        - name: tmp
+          emptyDir: {}

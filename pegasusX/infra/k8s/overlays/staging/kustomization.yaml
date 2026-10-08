@@ -5,7 +5,6 @@ namespace: pegasusx-staging
 
 resources:
   - ../prod
-  - ../../external-secrets/backend-go-externalsecret.yaml
 
 patches:
   - target:
