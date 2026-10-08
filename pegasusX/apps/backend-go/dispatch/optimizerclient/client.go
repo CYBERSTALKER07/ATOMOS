@@ -12,15 +12,20 @@ package optimizerclient
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
@@ -125,6 +130,22 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set(contract.AuthHeader, c.apiKey)
+
+	traceID := strings.TrimSpace(in.TraceID)
+	if traceID == "" {
+		traceID = outbox.TraceIDFromContext(ctx)
+	}
+	if traceID != "" {
+		httpReq.Header.Set("X-Trace-Id", traceID)
+	}
+
+	tp := outbox.TraceParentFromContext(ctx)
+	if tp == "" && traceID != "" {
+		tp = buildW3CTraceParent(traceID)
+	}
+	if tp != "" {
+		httpReq.Header.Set("traceparent", tp)
+	}
 
 	httpResp, err := c.httpClient.Do(httpReq)
 	if err != nil {
@@ -296,4 +317,27 @@ func mapResponse(resp contract.SolveResponse, original []dispatch.GeoOrder) *dis
 		fmt.Sprintf("source=%s elapsed_ms=%d util_avg=%.1f%%",
 			resp.Source, resp.Stats.ElapsedMs, resp.Stats.AvgUtilisationPct))
 	return out
+}
+
+func buildW3CTraceParent(traceID string) string {
+	tid := strings.TrimSpace(traceID)
+	if len(tid) != 32 || !isHex(tid) || tid == "00000000000000000000000000000000" {
+		sum := sha256.Sum256([]byte(tid))
+		tid = hex.EncodeToString(sum[:16])
+	}
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		return fmt.Sprintf("00-%s-1000000000000001-01", tid)
+	}
+	return fmt.Sprintf("00-%s-%s-01", tid, hex.EncodeToString(buf))
+}
+
+func isHex(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			return false
+		}
+	}
+	return true
 }

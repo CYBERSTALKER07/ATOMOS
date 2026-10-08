@@ -106,6 +106,30 @@ func TraceIDFromContext(ctx context.Context) string {
 	return v
 }
 
+type traceParentContextKey struct{}
+
+// WithTraceParent attaches a standard W3C traceparent string to context.
+func WithTraceParent(ctx context.Context, tp string) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	trimmed := strings.TrimSpace(tp)
+	if trimmed == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, traceParentContextKey{}, trimmed)
+}
+
+// TraceParentFromContext returns the W3C traceparent previously attached via
+// WithTraceParent.
+func TraceParentFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	v, _ := ctx.Value(traceParentContextKey{}).(string)
+	return v
+}
+
 // EmitJSON marshals payload as JSON and buffers an Event onto the active
 // transaction. Callers MUST pass the same trace_id that flows through their
 // request context so cross-system correlation remains intact.
