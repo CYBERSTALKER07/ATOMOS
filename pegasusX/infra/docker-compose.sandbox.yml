@@ -10,6 +10,18 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --activedefrag yes
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --tcp-keepalive 60
+      --timeout 300
+      --hz 10
     ports:
       - "6389:6379"
     healthcheck:

@@ -13,7 +13,10 @@ services:
       --appendonly yes
       --appendfsync everysec
       --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy volatile-lru
+      --activedefrag yes
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
       --tcp-keepalive 60
       --timeout 300
       --hz 10
