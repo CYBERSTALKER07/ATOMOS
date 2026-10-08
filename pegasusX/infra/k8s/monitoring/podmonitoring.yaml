@@ -43,3 +43,18 @@ spec:
     - port: health
       path: /metrics
       interval: 30s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: optimizer-core
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  selector:
+    matchLabels:
+      app: optimizer-core
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s

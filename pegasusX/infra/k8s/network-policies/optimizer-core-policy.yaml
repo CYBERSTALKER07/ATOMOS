@@ -15,7 +15,7 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Strictly allow requests ONLY from backend-go and ai-worker pods on port 8082
+    # 1. Strictly allow requests from backend-go and ai-worker pods on port 8082
     - from:
         - podSelector:
             matchLabels:
@@ -23,6 +23,17 @@ spec:
         - podSelector:
             matchLabels:
               app: ai-worker
+      ports:
+        - protocol: TCP
+          port: 8082
+    # 2. Allow Prometheus scraper on port 8082
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: gke-gmp-system
       ports:
         - protocol: TCP
           port: 8082
