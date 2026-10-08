@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
+|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-all-k8s validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
 
 help:
 	@echo "pegasusX make targets"
@@ -58,6 +58,7 @@ help:
 	@echo "  p1-pilot-weekly        P1 weeks 1–8 weekly gate (see docs/P1_PILOT_CHECKLIST.md)"
 	@echo "  wire-ready             Full automated gate before GCP staging wire (see docs/WIRE_READY_STAGING_RUNBOOK.md)"
 	@echo "  qa-gate                compile + unit tests (fails if integration tests would be skipped)"
+	@echo "  validate-all-k8s      universal Kubernetes validator across all manifests and overlays"
 	@echo "  validate-ai-worker-k8s validate ai-worker Kubernetes manifests"
 	@echo "  validate-backend-k8s  validate backend-go Kubernetes manifests"
 	@echo "  validate-desktop-clients  PX-DESK typecheck + vitest + static export for all Tauri portals"
@@ -286,6 +287,9 @@ validate-production-profile:
 qa-gate: backend-build
 	@echo "==> qa-gate: unit tests (PARITY_REQUIRE_SPANNER=1 — integration tests must not skip)"
 	cd apps/backend-go && PARITY_REQUIRE_SPANNER=1 go test ./... -count=1 -short
+
+validate-all-k8s:
+	bash scripts/validate_all_k8s.sh
 
 validate-ai-worker-k8s:
 	bash scripts/validate_ai_worker_k8s.sh

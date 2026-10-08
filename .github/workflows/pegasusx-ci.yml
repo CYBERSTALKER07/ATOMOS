@@ -2,9 +2,18 @@ name: pegasusX CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop, "cursor/**"]
+    paths:
+      - 'pegasusX/**'
+      - '.github/workflows/pegasusx-ci.yml'
+      - '.github/workflows/ci-unit-tests-go.yml'
   pull_request:
-    branches: [main, master]
+    branches: [main, master, develop]
+    paths:
+      - 'pegasusX/**'
+      - '.github/workflows/pegasusx-ci.yml'
+      - '.github/workflows/ci-unit-tests-go.yml'
+  workflow_dispatch:
 
 defaults:
   run:
