@@ -6,6 +6,13 @@ TF="$ROOT/infra/terraform"
 EU="$TF/cells/eu"
 OUT="$ROOT/artifacts/GS_C4_ISOLATION_PROOF.md"
 fail=0
+
+GKE_TF="$TF/gke.tf"
+[[ ! -f "$GKE_TF" && -f "$TF/legacy/gke.tf" ]] && GKE_TF="$TF/legacy/gke.tf"
+
+CELL_TF="$TF/cell.tf"
+[[ ! -f "$CELL_TF" && -f "$TF/legacy/cell.tf" ]] && CELL_TF="$TF/legacy/cell.tf"
+
 pass() { echo "PASS: $*"; }
 die() { echo "FAIL: $*" >&2; fail=1; }
 
@@ -20,17 +27,17 @@ if ! grep -E '^[[:space:]]*cell_scoped_iam[[:space:]]*=[[:space:]]*true' "$EU/ce
 else
   pass "EU cell_scoped_iam=true (Spanner DB + per-secret GSM only)"
 fi
-if ! grep -E 'google_spanner_database_iam_member' "$TF/gke.tf" >/dev/null; then
+if ! grep -E 'google_spanner_database_iam_member' "$GKE_TF" >/dev/null; then
   die "gke.tf missing database-level Spanner IAM"
 else
   pass "Spanner IAM is database-scoped (EU GSA cannot be a UZ project databaseUser via this root)"
 fi
-if ! grep -E 'google_secret_manager_secret_iam_member' "$TF/gke.tf" >/dev/null; then
+if ! grep -E 'google_secret_manager_secret_iam_member' "$GKE_TF" >/dev/null; then
   die "gke.tf missing per-secret GSM IAM"
 else
   pass "GSM IAM is per-secret in the cell project"
 fi
-if ! grep -E 'non_uz_requires_cell_scoped_iam' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'non_uz_requires_cell_scoped_iam' "$CELL_TF" >/dev/null; then
   die "cell.tf missing C4 cell_scoped_iam check"
 else
   pass "terraform check non_uz_requires_cell_scoped_iam"
@@ -72,7 +79,7 @@ if ! grep -E '^[[:space:]]*region[[:space:]]*=[[:space:]]*"europe-west1"' "$EU/c
 else
   pass "EU region europe-west1"
 fi
-if ! grep -E 'europe_west1_gsm_must_be_regional' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'europe_west1_gsm_must_be_regional' "$CELL_TF" >/dev/null; then
   die "missing europe_west1 GSM check"
 else
   pass "terraform check europe_west1_gsm_must_be_regional"

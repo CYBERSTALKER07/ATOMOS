@@ -6,12 +6,21 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TF="$ROOT/infra/terraform"
 fail=0
 
+BACKEND_GCS_TF="$TF/backend.gcs.tf"
+[[ ! -f "$BACKEND_GCS_TF" && -f "$TF/legacy/backend.gcs.tf" ]] && BACKEND_GCS_TF="$TF/legacy/backend.gcs.tf"
+
+CELL_TF="$TF/cell.tf"
+[[ ! -f "$CELL_TF" && -f "$TF/legacy/cell.tf" ]] && CELL_TF="$TF/legacy/cell.tf"
+
+GKE_TF="$TF/gke.tf"
+[[ ! -f "$GKE_TF" && -f "$TF/legacy/gke.tf" ]] && GKE_TF="$TF/legacy/gke.tf"
+
 die() {
   echo "FAIL: $*" >&2
   fail=1
 }
 
-if grep -E '^[[:space:]]*prefix[[:space:]]*=' "$TF/backend.gcs.tf" >/dev/null; then
+if grep -E '^[[:space:]]*prefix[[:space:]]*=' "$BACKEND_GCS_TF" >/dev/null; then
   die "backend.gcs.tf must not set a state prefix (use backend-*.hcl)"
 fi
 
@@ -27,27 +36,27 @@ if ! grep -E '^[[:space:]]*prefix[[:space:]]*=[[:space:]]*"pegasusx/cell-eu"' "$
   die "backend-cell.example.hcl must declare a different prefix (pegasusx/cell-eu)"
 fi
 
-if ! grep -E 'variable "cell_id"' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'variable "cell_id"' "$CELL_TF" >/dev/null; then
   die "cell.tf must declare variable cell_id"
 fi
 
-if ! grep -E 'variable "api_hostname"' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'variable "api_hostname"' "$CELL_TF" >/dev/null; then
   die "cell.tf must declare variable api_hostname"
 fi
 
-if ! grep -E 'variable "k8s_namespace"' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'variable "k8s_namespace"' "$CELL_TF" >/dev/null; then
   die "cell.tf must declare variable k8s_namespace"
 fi
 
-if ! grep -E 'europe_west1_cannot_use_ssmr_state' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'europe_west1_cannot_use_ssmr_state' "$CELL_TF" >/dev/null; then
   die "cell.tf must assert europe-west1 cannot use pegasusx/ssmr"
 fi
 
-if grep -F 'svc.id.goog[pegasusx/backend-go]' "$TF/gke.tf" >/dev/null; then
+if grep -F 'svc.id.goog[pegasusx/backend-go]' "$GKE_TF" >/dev/null; then
   die "gke.tf Workload Identity must read k8s_namespace, not hardcode pegasusx/backend-go"
 fi
 
-if ! grep -F 'local.k8s_namespace' "$TF/gke.tf" >/dev/null; then
+if ! grep -F 'local.k8s_namespace' "$GKE_TF" >/dev/null; then
   die "gke.tf Workload Identity must use local.k8s_namespace"
 fi
 
@@ -87,7 +96,7 @@ if grep -E '^[[:space:]]*project_id[[:space:]]*=[[:space:]]*"pegasus-503013"' "$
   die "cells/eu/cell.tfvars must not use project pegasus-503013"
 fi
 
-if ! grep -E 'non_uz_cell_not_in_live_project' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'non_uz_cell_not_in_live_project' "$CELL_TF" >/dev/null; then
   die "cell.tf must reject a non-uz cell in pegasus-503013"
 fi
 
@@ -118,7 +127,7 @@ fi
 if grep -E '^[[:space:]]*prefix[[:space:]]*=[[:space:]]*"pegasusx/ssmr"' "$TF/cells/eu/project/backend.hcl" >/dev/null; then
   die "project-factory must not use pegasusx/ssmr"
 fi
-if ! grep -E 'non_uz_forbids_uz_restore' "$TF/cell.tf" >/dev/null; then
+if ! grep -E 'non_uz_forbids_uz_restore' "$CELL_TF" >/dev/null; then
   die "cell.tf must forbid UZ backup restore on a non-uz cell"
 fi
 if ! grep -F 'cell-project-plan' "$ROOT/Makefile" >/dev/null; then
