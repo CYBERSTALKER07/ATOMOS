@@ -780,7 +780,7 @@ func (r *SpannerRepository) ListRetailerOrders(ctx context.Context, retailerID s
 			"limit":       int64(limit),
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	return collectOrders(iter)
 }
@@ -808,7 +808,7 @@ func (r *SpannerRepository) ListWarehouseOrdersByDeliveryWindow(ctx context.Cont
 			"limit":        int64(limit),
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	return collectOrders(iter)
 }
@@ -1319,7 +1319,25 @@ func (r *SpannerRepository) ListOrdersByStatus(ctx context.Context, supplierID, 
 			Params: map[string]any{"st": status, "lim": limit},
 		}
 	}
-	return r.queryOrders(ctx, stmt)
+	var iter *spanner.RowIterator
+	if txn := spannerutils.ReadOnlyTxnFromContext(ctx); txn != nil {
+		iter = txn.Query(ctx, stmt)
+	} else {
+		iter = r.client.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
+	}
+	var res []Order
+	err := iter.Do(func(row *spanner.Row) error {
+		o, err := scanOrderRowRow(row)
+		if err != nil {
+			return err
+		}
+		res = append(res, o)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // CreateConditionReport persists a structured condition report and optional outbox event atomically.

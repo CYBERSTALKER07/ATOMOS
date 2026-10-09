@@ -62,7 +62,7 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 		      LIMIT @lim`,
 		Params: map[string]any{"oid": orderID, "lim": limit},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OrderStatusTransition, 0, limit)
 	for {

@@ -706,7 +706,9 @@ CREATE TABLE OutboxEvents (
   SupplierId       STRING(64)    NOT NULL,
 ) PRIMARY KEY (EventId);
 
-CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(PublishedAt, CreatedAt);
+CREATE INDEX Idx_OutboxEvents_Unpublished
+  ON OutboxEvents(PublishedAt, CreatedAt)
+  STORING (ClaimedUntil, AggregateType, AggregateId, TopicName, SupplierId);
 CREATE NULL_FILTERED INDEX Idx_OutboxEvents_Unpublished_BySupplier
   ON OutboxEvents(SupplierId, PublishedAt, CreatedAt);
 
@@ -1267,13 +1269,15 @@ CREATE TABLE StockLots (
 ) PRIMARY KEY (LotId);
 
 CREATE INDEX Idx_StockLots_ByWarehouseProductExpiry
-  ON StockLots(WarehouseId, ProductId, ExpiryDate);
+  ON StockLots(WarehouseId, ProductId, ExpiryDate)
+  STORING (QuantityOnHand, QuantityReserved, Status, LocationId);
 
 CREATE INDEX Idx_StockLots_ByWarehouseLocation
   ON StockLots(WarehouseId, LocationId);
 
 CREATE INDEX Idx_StockLots_BySupplierWarehouseProduct
-  ON StockLots(SupplierId, WarehouseId, ProductId, Status);
+  ON StockLots(SupplierId, WarehouseId, ProductId, Status)
+  STORING (QuantityOnHand, QuantityReserved, ExpiryDate, ReceivedAt);
 
 CREATE TABLE OrderLotReservations (
   OrderId    STRING(36)    NOT NULL,
@@ -1479,7 +1483,9 @@ CREATE TABLE OrderStatusTransitions (
   CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (OrderId, CreatedAt DESC, TransitionId);
 
-CREATE INDEX Idx_OrderStatusTransitions_ByOrder ON OrderStatusTransitions(OrderId, CreatedAt DESC);
+CREATE INDEX Idx_OrderStatusTransitions_ByCreatedAt
+  ON OrderStatusTransitions(CreatedAt DESC, OrderId)
+  STORING (NewStatus, Reason, EventKind, PreviousStatus, ActorRole, ActorId);
 
 CREATE TABLE WarehouseBroadcastTemplates (
   WarehouseId   STRING(36)  NOT NULL,
@@ -1669,8 +1675,9 @@ CREATE TABLE OrderFiscalReceipts (
 CREATE INDEX Idx_OrderFiscalReceipts_ByStatusCreated
   ON OrderFiscalReceipts(Status, CreatedAt DESC);
 
-CREATE INDEX Idx_OrderFiscalReceipts_ByReceiptId
-  ON OrderFiscalReceipts(FiscalReceiptId);
+CREATE NULL_FILTERED INDEX Idx_OrderFiscalReceipts_ByReceiptId
+  ON OrderFiscalReceipts(FiscalReceiptId)
+  STORING (Status, Provider, AmountMinor, Currency);
 
 CREATE INDEX Idx_OrderFiscalReceipts_BySupplier
   ON OrderFiscalReceipts(SupplierId, CreatedAt DESC);
@@ -2244,7 +2251,9 @@ CREATE TABLE RetailerStockBalances (
   UpdatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (LocationId, StockBin, Sku);
 
-CREATE INDEX Idx_RetailerStockBalances_ByRetailerSku ON RetailerStockBalances(RetailerId, Sku, LocationId);
+CREATE INDEX Idx_RetailerStockBalances_ByRetailerSku
+  ON RetailerStockBalances(RetailerId, Sku, LocationId)
+  STORING (OnHand, Reserved);
 
 CREATE TABLE RetailerStockMovements (
   MovementId   STRING(36)  NOT NULL,

@@ -206,14 +206,12 @@ order/refunds.go:412
 order/refunds.go:520
 order/repository_spanner.go:680
 order/repository_spanner.go:748
-order/repository_spanner.go:783
-order/repository_spanner.go:811
 order/repository_spanner.go:839
 order/repository_spanner.go:1123
 order/repository_spanner.go:1185
-order/repository_spanner.go:1388
-order/repository_spanner.go:1441
-order/repository_spanner.go:1470
+order/repository_spanner.go:1406
+order/repository_spanner.go:1459
+order/repository_spanner.go:1488
 order/saga.go:148
 order/saga.go:225
 order/settlement_hardening.go:146
@@ -221,7 +219,6 @@ order/settlement_hardening.go:206
 order/settlement_hardening.go:315
 order/shop_closed_list.go:79
 order/shop_closed_list.go:161
-order/status_timeline.go:65
 order/supplier_ops.go:98
 order/supplier_ops.go:609
 order/volume.go:83
@@ -323,7 +320,6 @@ proximity/coverage_spanner.go:80
 proximity/coverage_spanner.go:117
 proximity/coverage_spanner.go:213
 proximity/coverage_spanner.go:241
-pulse/service.go:186
 replenishment/echelon_targets.go:182
 replenishment/engine.go:197
 replenishment/engine.go:422

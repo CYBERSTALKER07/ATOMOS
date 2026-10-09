@@ -151,7 +151,7 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions t
+			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt} t
 			      JOIN Orders o ON o.OrderId = t.OrderId
 			      WHERE o.RetailerId = @scope
 			        AND t.CreatedAt >= @since
@@ -165,7 +165,7 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions t
+			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt} t
 			      JOIN Orders o ON o.OrderId = t.OrderId
 			      WHERE o.WarehouseId = @scope
 			        AND t.CreatedAt >= @since
@@ -176,14 +176,14 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 	default:
 		stmt = spanner.Statement{
 			SQL: `SELECT TransitionId, OrderId, NewStatus, Reason, EventKind, CreatedAt
-			      FROM OrderStatusTransitions
+			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt}
 			      WHERE CreatedAt >= @since
 			      ORDER BY CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"since": since, "lim": int64(limit)},
 		}
 	}
-	iter := s.spanner.Single().Query(ctx, stmt)
+	iter := s.spanner.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]Event, 0, limit)
 	for {
