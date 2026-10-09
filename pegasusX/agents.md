@@ -64,6 +64,21 @@ All autonomous agents and human engineers contributing to PegasusX are bound by 
   3. TypeScript types: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/types/src/events.ts`
 - **Enforcement**: CI target `make gen-contracts-gate` validates contract parity.
 
+### Commandment 8: Full-Ecosystem & Cross-Platform Tri-Synchronicity (The 360° Matrix Invariant)
+- **Rule**: PegasusX is a unified, multi-platform, multi-role distributed operating system. Never treat any code edit as an isolated backend change or a single-platform patch.
+- **Tri-Platform Lockstep**: Any domain feature, protocol change, payload adjustment, or bug fix affecting a role MUST be synchronized across all three client platform surfaces:
+  1. **Android**: Kotlin + Jetpack Compose (`apps/retailer-app-android`, `apps/driver-app-android`)
+  2. **iOS**: Swift + SwiftUI (`apps/retailer-app-ios`, `apps/driver-app-ios`, `apps/supplier-app-ios`)
+  3. **Web & Desktop**: React/Next.js/Tauri (`apps/retailer-app-desktop`, `apps/supplier-portal`, `apps/admin-portal`)
+- **6-Role Blast-Radius Audit**: Every domain mutation impacts multiple peer roles in the physical custody and financial chain. Any edit to a feature must explicitly trace and verify its impact across all 6 roles:
+  1. **Retailer**: Cart ordering, stock balances, debt credit lines, returns, and dispute claims.
+  2. **Driver**: Manifest assignment, truck axle load limits, turn-by-turn routing, doorstep EPOD, cash collection.
+  3. **Warehouse Operator**: Stock lot allocation (FEFO), picking waves, tamper seals, return inspection.
+  4. **Supplier / Manufacturer**: Factory replenishment, wholesale master pricing, AR settlement, payout batches.
+  5. **Factory Manager**: Production line batches, palletization, inter-warehouse transit lanes.
+  6. **Platform Admin**: Control tower live telemetry, fiscal Soliq audit, fraud anomaly detection.
+- **Proactive Engineering Mandate**: Autonomous agents must NEVER act as passive ticket-closers waiting for user instructions. The agent is expected to think 3 steps ahead, challenge design oversights, proactively identify unhandled technical/non-technical edge cases, flag forgotten platform surfaces, and bring high-level architectural solutions to the table unprompted.
+
 ---
 
 ## 3. Core Architectural Constraints

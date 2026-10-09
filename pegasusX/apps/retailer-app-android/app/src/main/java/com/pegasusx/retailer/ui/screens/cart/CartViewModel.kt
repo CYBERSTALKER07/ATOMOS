@@ -156,6 +156,13 @@ class CartViewModel @Inject constructor(
     private var quoteDebounceJob: Job? = null
     private var previewDebounceJob: Job? = null
     private var lastCartSignature: String = ""
+    private var currentCheckoutSessionId: String? = null
+
+    private fun getOrCreateCheckoutSessionId(): String {
+        return currentCheckoutSessionId ?: java.util.UUID.randomUUID().toString().also {
+            currentCheckoutSessionId = it
+        }
+    }
 
 init { 
         flushPendingOrders()
@@ -609,6 +616,9 @@ init {
     }
 
     fun showCheckout() {
+        if (currentCheckoutSessionId == null) {
+            currentCheckoutSessionId = java.util.UUID.randomUUID().toString()
+        }
         _uiState.update { it.copy(showCheckout = true, checkoutPhase = CheckoutPhase.REVIEW) }
         scheduleQuoteRefresh()
         refreshCheckoutPreview()
@@ -722,6 +732,7 @@ init {
     }
 
     fun dismissCheckout() {
+        currentCheckoutSessionId = null
         _uiState.update { it.copy(showCheckout = false, checkoutPhase = CheckoutPhase.REVIEW) }
     }
 
@@ -794,7 +805,9 @@ init {
 
                 val request = buildCheckoutRequest(refreshedState, retailerId, finalGateway)
                 checkoutRequest = request
-                val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
+                val sessionId = getOrCreateCheckoutSessionId()
+                val idempotencyKey = checkoutIdempotencyKey(request, sessionId)
+                val response = api.unifiedCheckout(request, idempotencyKey)
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update {
                     it.copy(
@@ -804,6 +817,7 @@ init {
                         checkoutPhase = CheckoutPhase.COMPLETE,
                     )
                 }
+                currentCheckoutSessionId = null
                 delay(1800)
                 _uiState.update {
                     it.copy(
@@ -849,7 +863,8 @@ init {
             } catch (e: Exception) {
                 val request = checkoutRequest
                 if (e is IOException && request != null) {
-                    queuePendingCheckout(request, checkoutIdempotencyKey(request))
+                    val sessionId = getOrCreateCheckoutSessionId()
+                    queuePendingCheckout(request, checkoutIdempotencyKey(request, sessionId))
                 }
                 _uiState.update {
                     it.copy(
@@ -884,11 +899,12 @@ init {
         return if (cap > 0) "Only $cap left" else null
     }
 
-    private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {
+    private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest, sessionId: String? = null): String {
         val itemKey = request.items
             .sortedBy { it.skuId }
             .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}" }
-        return "retailer-checkout:${request.paymentGateway}:$itemKey"
+        val sid = sessionId ?: getOrCreateCheckoutSessionId()
+        return "retailer-checkout:${request.paymentGateway}:$sid:$itemKey"
     }
 
     private suspend fun queuePendingCheckout(request: UnifiedCheckoutRequest, idempotencyKey: String) {

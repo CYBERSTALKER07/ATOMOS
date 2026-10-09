@@ -2,11 +2,16 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 )
 
 func TestUnifiedCheckout_CreatesSingleSupplierOrder(t *testing.T) {
@@ -238,3 +243,169 @@ func TestUnifiedCheckout_CurrencyMismatch(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestHandleUnifiedCheckout_StrictIdempotency(t *testing.T) {
+	t.Setenv("MULTI_SUPPLIER_CHECKOUT_ENABLED", "false")
+	t.Setenv("PEGASUSX_ENV", "test")
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+
+	repo := &testRepo{}
+	warehouse := &testWarehouseResolver{warehouseID: "wh-1"}
+	idemStore := idempotency.NewInMemoryStore()
+	svc := NewService(ServiceConfig{
+		Repo:         repo,
+		Warehouse:    warehouse,
+		SupplierID:   "sup-1",
+		SupplierName: "Test Supplier",
+		Currency:     "UZS",
+		Log:          slog.Default(),
+		Idem:         idemStore,
+	})
+
+	cartBody := `{"retailer_id":"ret-1","payment_gateway":"CASH","latitude":41.31,"longitude":69.24,"items":[{"sku_id":"sku-1","quantity":2,"unit_price":15000}]}`
+
+	// 1. Missing Idempotency-Key must fail with 400 Bad Request
+	{
+		req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(cartBody))
+		ctx := auth.WithClaims(req.Context(), auth.Claims{
+			Subject:    "ret-1",
+			MarketCode: "UZ",
+			Role:       auth.RoleRetailer,
+		})
+		req = req.WithContext(ctx)
+		rec := httptest.NewRecorder()
+
+		svc.HandleUnifiedCheckout(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400 Bad Request for missing idempotency key, got %d, body: %s", rec.Code, rec.Body.String())
+		}
+		var errResp map[string]string
+		if err := json.Unmarshal(rec.Body.Bytes(), &errResp); err != nil || errResp["error"] != "idempotency_key_required" {
+			t.Fatalf("expected error 'idempotency_key_required', got: %v", errResp)
+		}
+		if repo.createCalls != 0 {
+			t.Fatalf("createCalls = %d, want 0", repo.createCalls)
+		}
+	}
+
+	// 2. First checkout with Session 1 -> succeeds with 201 Created
+	var firstOrderID string
+	var firstInvoiceID string
+	keySess1 := "retailer-checkout:CASH:sess-1:sku-1:2:15000"
+	{
+		req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(cartBody))
+		ctx := auth.WithClaims(req.Context(), auth.Claims{
+			Subject:    "ret-1",
+			MarketCode: "UZ",
+			Role:       auth.RoleRetailer,
+		})
+		req = req.WithContext(ctx)
+		req.Header.Set("Idempotency-Key", keySess1)
+		rec := httptest.NewRecorder()
+
+		svc.HandleUnifiedCheckout(rec, req)
+
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201 Created for first checkout, got %d, body: %s", rec.Code, rec.Body.String())
+		}
+		var resp UnifiedCheckoutResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal response: %v", err)
+		}
+		if len(resp.SupplierOrders) == 0 {
+			t.Fatalf("expected supplier orders, got none")
+		}
+		firstOrderID = resp.SupplierOrders[0].OrderID
+		firstInvoiceID = resp.InvoiceID
+		if firstOrderID == "" || firstInvoiceID == "" {
+			t.Fatalf("expected order and invoice ids, got order=%q invoice=%q", firstOrderID, firstInvoiceID)
+		}
+		if repo.createCalls != 1 {
+			t.Fatalf("createCalls = %d, want 1", repo.createCalls)
+		}
+	}
+
+	// 3. Replay with identical body and same Session 1 key -> returns 201 Replay without calling CreateOrder again
+	{
+		req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(cartBody))
+		ctx := auth.WithClaims(req.Context(), auth.Claims{
+			Subject:    "ret-1",
+			MarketCode: "UZ",
+			Role:       auth.RoleRetailer,
+		})
+		req = req.WithContext(ctx)
+		req.Header.Set("Idempotency-Key", keySess1)
+		rec := httptest.NewRecorder()
+
+		svc.HandleUnifiedCheckout(rec, req)
+
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201 Created on replay, got %d, body: %s", rec.Code, rec.Body.String())
+		}
+		var resp UnifiedCheckoutResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal response: %v", err)
+		}
+		if resp.SupplierOrders[0].OrderID != firstOrderID || resp.InvoiceID != firstInvoiceID {
+			t.Fatalf("expected replayed IDs to match (%s, %s), got (%s, %s)",
+				firstOrderID, firstInvoiceID, resp.SupplierOrders[0].OrderID, resp.InvoiceID)
+		}
+		// createCalls MUST STILL BE 1 (deduplicated)
+		if repo.createCalls != 1 {
+			t.Fatalf("createCalls on replay = %d, want 1", repo.createCalls)
+		}
+	}
+
+	// 4. Distinct checkout session with identical items -> creates a fresh, distinct order!
+	keySess2 := "retailer-checkout:CASH:sess-2:sku-1:2:15000"
+	{
+		req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(cartBody))
+		ctx := auth.WithClaims(req.Context(), auth.Claims{
+			Subject:    "ret-1",
+			MarketCode: "UZ",
+			Role:       auth.RoleRetailer,
+		})
+		req = req.WithContext(ctx)
+		req.Header.Set("Idempotency-Key", keySess2)
+		rec := httptest.NewRecorder()
+
+		svc.HandleUnifiedCheckout(rec, req)
+
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201 Created for new session checkout, got %d, body: %s", rec.Code, rec.Body.String())
+		}
+		var resp UnifiedCheckoutResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal response: %v", err)
+		}
+		secondOrderID := resp.SupplierOrders[0].OrderID
+		if secondOrderID == firstOrderID {
+			t.Fatalf("expected new distinct order ID for new session, but got duplicate %s", secondOrderID)
+		}
+		if repo.createCalls != 2 {
+			t.Fatalf("createCalls = %d, want 2", repo.createCalls)
+		}
+	}
+
+	// 5. Payload mismatch with same key returns 409 Conflict
+	{
+		differentBody := `{"retailer_id":"ret-1","payment_gateway":"CASH","latitude":41.31,"longitude":69.24,"items":[{"sku_id":"sku-1","quantity":5,"unit_price":15000}]}`
+		req := httptest.NewRequest(http.MethodPost, "/v1/checkout/unified", strings.NewReader(differentBody))
+		ctx := auth.WithClaims(req.Context(), auth.Claims{
+			Subject:    "ret-1",
+			MarketCode: "UZ",
+			Role:       auth.RoleRetailer,
+		})
+		req = req.WithContext(ctx)
+		req.Header.Set("Idempotency-Key", keySess2)
+		rec := httptest.NewRecorder()
+
+		svc.HandleUnifiedCheckout(rec, req)
+
+		if rec.Code != http.StatusConflict {
+			t.Fatalf("expected 409 Conflict on payload mismatch, got %d, body: %s", rec.Code, rec.Body.String())
+		}
+	}
+}
+

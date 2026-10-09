@@ -21,6 +21,7 @@ struct CheckoutView: View {
         CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false)
     ]
     @State private var showPaymentPicker = false
+    @State private var checkoutSessionId = UUID().uuidString
     @State private var isSubmitting = false
     @State private var showSuccess = false
     @State private var showError = false
@@ -712,6 +713,7 @@ struct CheckoutView: View {
             )
             stockWarnings = response.stockWarnings ?? []
             cart.clear()
+            checkoutSessionId = UUID().uuidString
             Haptics.success()
             withAnimation(AnimationConstants.fluid) { showSuccess = true }
         } catch let previewError as CheckoutPreviewError {
@@ -790,12 +792,13 @@ struct CheckoutView: View {
         isSubmitting = false
     }
 
-    private func checkoutIdempotencyKey(payload: UnifiedCheckoutPayload, gateway: String) -> String {
+    private func checkoutIdempotencyKey(payload: UnifiedCheckoutPayload, gateway: String, sessionId: String? = nil) -> String {
         let itemKey = payload.items
             .map { "\($0.skuId):\($0.quantity):\($0.unitPriceUzs)" }
             .sorted()
             .joined(separator: "|")
-        return "retailer-checkout:\(gateway):\(itemKey)"
+        let sid = sessionId ?? checkoutSessionId
+        return "retailer-checkout:\(gateway):\(sid):\(itemKey)"
     }
 }
 

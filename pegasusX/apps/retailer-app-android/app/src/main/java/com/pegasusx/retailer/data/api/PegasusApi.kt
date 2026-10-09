@@ -519,7 +519,7 @@ interface PegasusApi {
     @POST("/v1/checkout/unified")
     suspend fun unifiedCheckout(
         @Body body: UnifiedCheckoutRequest,
-        @Header("Idempotency-Key") idempotencyKey: String? = null,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): UnifiedCheckoutResponse
 
     // ── Post-Offload Payment ──

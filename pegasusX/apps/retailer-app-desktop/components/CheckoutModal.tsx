@@ -1,7 +1,7 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   X,
   Ticket,
@@ -73,9 +73,18 @@ export default function CheckoutModal({
   const [cardSetupError, setCardSetupError] = useState("");
   const router = useRouter();
   const { subscribe, reconnectEpoch } = useWebSocket();
+  const checkoutSessionIdRef = useRef<string>(
+    typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+  );
 
   useEffect(() => {
     if (isOpen) {
+      checkoutSessionIdRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       apiFetch("/v1/retailer/cards")
         .then((res) => res.json())
         .then((data) => {
@@ -291,7 +300,11 @@ export default function CheckoutModal({
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
         .join("|");
-      const idempotencyKey = retailerUnifiedCheckoutKey(method, cartKey);
+      const idempotencyKey = retailerUnifiedCheckoutKey(
+        method,
+        cartKey,
+        checkoutSessionIdRef.current,
+      );
 
       const checkoutPayload: Record<string, unknown> = {
         retailer_id: profile.id,
@@ -369,6 +382,10 @@ export default function CheckoutModal({
       }
 
       clearCart();
+      checkoutSessionIdRef.current =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       onClose();
       router.push("/orders");
     } catch (err: unknown) {
@@ -397,7 +414,11 @@ export default function CheckoutModal({
                 longitude: 0,
                 items: lineItems,
               },
-              retailerUnifiedCheckoutKey(method, cartKey),
+              retailerUnifiedCheckoutKey(
+                method,
+                cartKey,
+                checkoutSessionIdRef.current,
+              ),
             ).catch(() => undefined);
           }
         } catch {

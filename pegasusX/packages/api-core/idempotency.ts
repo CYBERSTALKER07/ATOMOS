@@ -117,8 +117,15 @@ export function retailerCheckoutKey(retailerId: string, cartFingerprint: string)
   return `retailer-checkout:${retailerId}:${stableHash(cartFingerprint)}`;
 }
 
-/** Unified checkout cart session — gateway + sorted line-item fingerprint (mobile + desktop). */
-export function retailerUnifiedCheckoutKey(gateway: string, cartFingerprint: string): string {
+/** Unified checkout cart session — gateway + sorted line-item fingerprint (mobile + desktop), with optional session token. */
+export function retailerUnifiedCheckoutKey(
+  gateway: string,
+  cartFingerprint: string,
+  sessionId?: string,
+): string {
+  if (sessionId && sessionId.trim().length > 0) {
+    return `retailer-checkout:${gateway}:${sessionId.trim()}:${cartFingerprint}`;
+  }
   return `retailer-checkout:${gateway}:${cartFingerprint}`;
 }
 
