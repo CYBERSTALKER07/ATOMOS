@@ -11,6 +11,8 @@ type OutboundCircuits struct {
 	Telegram     *circuit.Breaker
 	OSRM         *circuit.Breaker
 	GoogleRoutes *circuit.Breaker
+	Optimizer    *circuit.Breaker
+	Soliq        *circuit.Breaker
 }
 
 // NewOutboundCircuits constructs default outbound breakers.
@@ -22,5 +24,7 @@ func NewOutboundCircuits() *OutboundCircuits {
 		Telegram:     circuit.New("telegram", cfg),
 		OSRM:         circuit.New("osrm", cfg),
 		GoogleRoutes: circuit.New("google_routes", cfg),
+		Optimizer:    circuit.New("optimizer", cfg),
+		Soliq:        circuit.New("soliq", cfg),
 	}
 }

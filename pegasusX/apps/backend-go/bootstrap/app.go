@@ -630,7 +630,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
-		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey).WithOSRM(osrmClient)
+		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey).WithOSRM(osrmClient).WithBreaker(outboundCircuits.Optimizer)
 		log.Info("dispatch optimiser client enabled", "base_url", cfg.OptimizerBaseURL, "osrm_matrix", osrmClient != nil)
 	}
 	dispatchCounters := &plan.SourceCounters{}
@@ -835,6 +835,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	// OFD adapter: cell default from env. GS-M2 fail-closes planned/PEPPOL packs at fiscalize.
 	fiscalProvider := order.ProviderFromEnv()
+	if msp, ok := fiscalProvider.(*order.MySoliqProvider); ok {
+		msp.WithBreaker(outboundCircuits.Soliq)
+	}
 	orderSvc.SetFiscalProvider(fiscalProvider)
 	var buyerAcceptancePoller *order.BuyerAcceptancePoller
 	if auth.BuyerAcceptancePollerAllowed() {

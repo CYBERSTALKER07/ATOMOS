@@ -1,4 +1,4 @@
-|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-all-k8s validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
+|.PHONY: help infra-up infra-down sandbox-infra-up sandbox-infra-down test-sandbox-infra test-sandbox-lifecycle test-sandbox-fiscal sandbox-ecosystem-marker-gate ssmr-infra-up ssmr-infra-down test-ssmr-infra test-ssmr-lifecycle test-ssmr-fiscal ssmr-ecosystem-marker-gate money-path-gate kafka-ha-gate chaos-resilience-gate repo-hygiene-gate phase1-gate phase2-gate phase3-gate phase4-gate phase5-gate phase5b-gate phase5c-gate analytics-tenancy-gate ci-enterprise-gates admin-portal-ci planning-training-export planning-export-validate planning-export-local-cron planning-export-audit-gate planning-export-audit-bootstrap fire-drill-ssmr phase0-preflight phase0-plan phase0-apply phase0-sync-secrets phase0-migrate load-cert load-cert-ssmr load-cert-cloud cloud-smoke-ssmr parity-contract parity-contract-full gap-hunter-gate gen-contracts-gate partner-openapi-gate jwt-openapi-gate schema-drift-gate apply-shop-closed-ddl apply-parent-orders-ddl apply-global-products-ddl px12-preflight p0-preflight p1-pilot-weekly wire-ready qa-gate validate-all-k8s validate-ai-worker-k8s validate-backend-k8s validate-desktop-clients validate-launch-readiness validate-production-profile docker-build docker-build-backend docker-build-ai-worker backend-run backend-build supplier-portal-dev marketing-site-dev cell-backend-guard cell-plan cell-project-plan cell-migrate cell-isolation-proof global-plan cell-api-proof
 
 help:
 	@echo "pegasusX make targets"
@@ -29,6 +29,7 @@ help:
 	@echo "  schema-drift-gate         EH0.3 fail if shop-closed Spanner columns/tables missing"
 	@echo "  money-path-gate           Phase-0 money-path + hygiene greps + gitleaks"
 	@echo "  kafka-ha-gate             Phase-0 Kafka HA contracts (Strimzi RF=3, Managed Kafka RF=3, DLQ)"
+	@echo "  chaos-resilience-gate     Validate circuit breakers, Redis degradation & outbox poison pill isolation"
 	@echo "  repo-hygiene-gate         Phase-0 repo hygiene (no tracked tfstate/secrets/binaries)"
 	@echo "  phase1-gate               Phase-1 exit gate: AR/refund/payout/billing proofs + Soliq + GP simulator"
 	@echo "  phase2-gate               Phase-2 exit gate: partner master-data/EDI ACKs/DataMatrix/OpenAPI"
@@ -171,6 +172,9 @@ money-path-gate:
 
 kafka-ha-gate:
 	bash scripts/ci_kafka_ha_gate.sh
+
+chaos-resilience-gate:
+	bash scripts/ci_chaos_resilience.sh
 
 repo-hygiene-gate:
 	bash scripts/ci_repo_hygiene_gate.sh

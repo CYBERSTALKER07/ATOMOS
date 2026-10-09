@@ -34,12 +34,17 @@ else
   echo "OK  Strimzi KafkaTopics RF!=1"
 fi
 
+KAFKA_TF="infra/terraform/kafka.tf"
+if [[ ! -f "$KAFKA_TF" && -f "infra/terraform/legacy/kafka.tf" ]]; then
+  KAFKA_TF="infra/terraform/legacy/kafka.tf"
+fi
+
 check "Managed Kafka terraform replication_factor = 3" \
-  rg -q 'replication_factor\s*=\s*3' infra/terraform/kafka.tf
+  rg -q 'replication_factor\s*=\s*3' "$KAFKA_TF"
 check "Managed Kafka terraform min.insync.replicas = 2" \
-  rg -q 'min\.insync\.replicas"\s*=\s*"2"' infra/terraform/kafka.tf
+  rg -q 'min\.insync\.replicas"\s*=\s*"2"' "$KAFKA_TF"
 check "Managed Kafka provisions DLQ topic" \
-  rg -q 'kafka_topic_main_dlq|main_dlq' infra/terraform/kafka.tf
+  rg -q 'kafka_topic_main_dlq|main_dlq' "$KAFKA_TF"
 check "Staging overlay uses GCP_MANAGED_OAUTH" \
   rg -q 'KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH' infra/k8s/overlays/staging/kustomization.yaml
 check "OutboxDeadLetters DDL present" \

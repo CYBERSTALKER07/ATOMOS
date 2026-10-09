@@ -2,11 +2,15 @@ package soliq
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
 func TestClient_Submit_SuccessDirect(t *testing.T) {
@@ -246,5 +250,86 @@ func TestClient_CheckStatus_ServerError(t *testing.T) {
 	_, err := c.CheckStatus(context.Background(), "EHF-ERR")
 	if err == nil {
 		t.Fatal("expected error on 504 Gateway Timeout")
+	}
+}
+
+func TestClient_Submit_CircuitBreaker_TripsAndRecovers(t *testing.T) {
+	var failMode atomic.Bool
+	failMode.Store(true)
+	var requestCount atomic.Int64
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		if failMode.Load() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"success":false,"error":{"code":"SERVICE_UNAVAILABLE","message":"government gateway down"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"success":true,"data":{"ehf_id":"EHF-RECOVERED-123"}}`))
+	}))
+	defer ts.Close()
+
+	breaker := circuit.New("test-soliq-breaker", circuit.Config{
+		FailureThreshold: 3,
+		FailureWindow:    5 * time.Second,
+		OpenDuration:     50 * time.Millisecond,
+	})
+
+	c := NewClientWithBreaker(SoliqConfig{
+		BaseURL: ts.URL,
+		Timeout: 2 * time.Second,
+	}, breaker)
+
+	ctx := context.Background()
+
+	// 1. Initial 3 calls fail with 503 -> trips breaker
+	for i := 1; i <= 3; i++ {
+		resp, err := c.Submit(ctx, []byte(`{"test":true}`), "idem-key")
+		if err == nil && (resp != nil && resp.Success) {
+			t.Fatalf("call %d: expected failure", i)
+		}
+	}
+
+	if breaker.State() != circuit.StateOpen {
+		t.Fatalf("expected breaker StateOpen, got %v", breaker.State())
+	}
+
+	// 2. 4th call: breaker is OPEN -> fail fast without hitting upstream
+	reqBefore := requestCount.Load()
+	start := time.Now()
+	resp, err := c.Submit(ctx, []byte(`{"test":true}`), "idem-key")
+	duration := time.Since(start)
+
+	if !errors.Is(err, circuit.ErrUpstreamUnavailable) {
+		t.Fatalf("expected ErrUpstreamUnavailable when open, got %v", err)
+	}
+	if resp == nil || resp.ErrorCode != "SOLIQ_CIRCUIT_OPEN" {
+		t.Fatalf("expected SOLIQ_CIRCUIT_OPEN, got %+v", resp)
+	}
+	if duration > 10*time.Millisecond {
+		t.Fatalf("fail-fast took too long: %v", duration)
+	}
+	if requestCount.Load() != reqBefore {
+		t.Fatalf("open circuit must not hit upstream Soliq endpoint")
+	}
+
+	// 3. Wait for OpenDuration (50ms) to elapse -> half-open
+	time.Sleep(60 * time.Millisecond)
+
+	// 4. Recover upstream
+	failMode.Store(false)
+
+	// 5. Probe request succeeds -> breaker resets to StateClosed
+	resp, err = c.Submit(ctx, []byte(`{"test":true}`), "idem-key")
+	if err != nil {
+		t.Fatalf("expected success on recovery, got: %v", err)
+	}
+	if !resp.Success || resp.EhfID != "EHF-RECOVERED-123" {
+		t.Fatalf("expected recovery success, got %+v", resp)
+	}
+	if breaker.State() != circuit.StateClosed {
+		t.Fatalf("expected StateClosed, got %v", breaker.State())
 	}
 }

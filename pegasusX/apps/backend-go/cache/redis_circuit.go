@@ -42,6 +42,24 @@ func NewCircuitBreakerBackendWithMode(primary, fallback Backend, failClosed bool
 	}
 }
 
+// NewCircuitBreakerBackendWithBreaker constructs a backend with an explicit circuit breaker.
+func NewCircuitBreakerBackendWithBreaker(primary, fallback Backend, breaker *circuit.Breaker, failClosed bool) *CircuitBreakerBackend {
+	return &CircuitBreakerBackend{
+		primary:    primary,
+		fallback:   fallback,
+		breaker:    breaker,
+		FailClosed: failClosed,
+	}
+}
+
+// Breaker exposes the internal circuit breaker.
+func (c *CircuitBreakerBackend) Breaker() *circuit.Breaker {
+	if c == nil {
+		return nil
+	}
+	return c.breaker
+}
+
 func (c *CircuitBreakerBackend) useFallback(err error) bool {
 	if c == nil || c.FailClosed || c.fallback == nil {
 		return false

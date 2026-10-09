@@ -26,6 +26,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 )
 
@@ -49,6 +50,7 @@ type Client struct {
 	endpoint   string
 	apiKey     string
 	osrm       *routing.OSRMClient
+	breaker    *circuit.Breaker
 }
 
 // New returns a Client. endpoint must include the scheme + host, e.g.
@@ -65,6 +67,14 @@ func New(endpoint, apiKey string) *Client {
 func (c *Client) WithOSRM(osrm *routing.OSRMClient) *Client {
 	if c != nil {
 		c.osrm = osrm
+	}
+	return c
+}
+
+// WithBreaker attaches an optional outbound circuit breaker to the client.
+func (c *Client) WithBreaker(b *circuit.Breaker) *Client {
+	if c != nil {
+		c.breaker = b
 	}
 	return c
 }
@@ -147,33 +157,46 @@ func (c *Client) Solve(ctx context.Context, in SolveInput) (*dispatch.Assignment
 		httpReq.Header.Set("traceparent", tp)
 	}
 
-	httpResp, err := c.httpClient.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("optimizerclient: do request: %w", err)
-	}
-	defer httpResp.Body.Close()
-
-	// 5xx and 504 (timeout-from-server-side) are fallback triggers.
-	if httpResp.StatusCode >= 500 {
-		var errResp contract.ErrorResponse
-		_ = json.NewDecoder(httpResp.Body).Decode(&errResp)
-		return nil, fmt.Errorf("optimizerclient: server status %d code=%s msg=%s",
-			httpResp.StatusCode, errResp.Code, errResp.Message)
-	}
-	// 4xx is non-retryable but we still surface it so the caller logs once.
-	if httpResp.StatusCode >= 400 {
-		var errResp contract.ErrorResponse
-		_ = json.NewDecoder(httpResp.Body).Decode(&errResp)
-		return nil, fmt.Errorf("optimizerclient: client status %d code=%s msg=%s",
-			httpResp.StatusCode, errResp.Code, errResp.Message)
-	}
-
 	var resp contract.SolveResponse
-	if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
-		return nil, fmt.Errorf("optimizerclient: decode response: %w", err)
+	solveOp := func(ctx context.Context) error {
+		httpResp, err := c.httpClient.Do(httpReq)
+		if err != nil {
+			return fmt.Errorf("optimizerclient: do request: %w", err)
+		}
+		defer httpResp.Body.Close()
+
+		// 5xx and 504 (timeout-from-server-side) are fallback triggers.
+		if httpResp.StatusCode >= 500 {
+			var errResp contract.ErrorResponse
+			_ = json.NewDecoder(httpResp.Body).Decode(&errResp)
+			return fmt.Errorf("optimizerclient: server status %d code=%s msg=%s",
+				httpResp.StatusCode, errResp.Code, errResp.Message)
+		}
+		// 4xx is non-retryable but we still surface it so the caller logs once.
+		if httpResp.StatusCode >= 400 {
+			var errResp contract.ErrorResponse
+			_ = json.NewDecoder(httpResp.Body).Decode(&errResp)
+			return fmt.Errorf("optimizerclient: client status %d code=%s msg=%s",
+				httpResp.StatusCode, errResp.Code, errResp.Message)
+		}
+
+		if err := json.NewDecoder(httpResp.Body).Decode(&resp); err != nil {
+			return fmt.Errorf("optimizerclient: decode response: %w", err)
+		}
+		if resp.V != contract.V {
+			return fmt.Errorf("optimizerclient: response version %q != %q", resp.V, contract.V)
+		}
+		return nil
 	}
-	if resp.V != contract.V {
-		return nil, fmt.Errorf("optimizerclient: response version %q != %q", resp.V, contract.V)
+
+	if c.breaker != nil {
+		if err := c.breaker.Do(ctx, solveOp); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := solveOp(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return mapResponse(resp, in.Orders), nil
 }

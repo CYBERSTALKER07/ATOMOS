@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/fiscal"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/soliq"
 )
 
@@ -172,6 +173,7 @@ type MySoliqProvider struct {
 	TIN         string
 	soliqClient soliq.SoliqClient
 	signer      fiscal.EDSSigner
+	cfg         soliq.SoliqConfig
 }
 
 // NewMySoliqProvider builds a MY_SOLIQ adapter with an explicit signer and Soliq client.
@@ -187,14 +189,16 @@ func NewMySoliqProvider(baseURL, apiKey, tin string, signer fiscal.EDSSigner) (*
 	if signer == nil {
 		return nil, fmt.Errorf("mysoliq: EDSSigner required")
 	}
+	cfg := soliq.SoliqConfig{
+		BaseURL: baseURL,
+		APIKey:  apiKey,
+		TIN:     tin,
+	}
 	return &MySoliqProvider{
-		TIN: tin,
-		soliqClient: soliq.NewClient(soliq.SoliqConfig{
-			BaseURL: baseURL,
-			APIKey:  apiKey,
-			TIN:     tin,
-		}),
-		signer: signer,
+		TIN:         tin,
+		soliqClient: soliq.NewClient(cfg),
+		signer:      signer,
+		cfg:         cfg,
 	}, nil
 }
 
@@ -243,7 +247,17 @@ func NewMySoliqProviderFromEnv() (*MySoliqProvider, error) {
 		TIN:         tin,
 		soliqClient: soliq.NewClient(cfg),
 		signer:      signer,
+		cfg:         cfg,
 	}, nil
+}
+
+// WithBreaker equips the underlying Soliq client with an outbound circuit breaker.
+func (p *MySoliqProvider) WithBreaker(b *circuit.Breaker) *MySoliqProvider {
+	if p != nil && b != nil {
+		p.cfg.Breaker = b
+		p.soliqClient = soliq.NewClient(p.cfg)
+	}
+	return p
 }
 
 // SetSigner injects the EDS signer (contract tests wire the dev-hmac signer here).
