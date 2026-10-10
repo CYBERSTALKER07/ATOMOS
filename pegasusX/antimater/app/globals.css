@@ -1134,7 +1134,15 @@ html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover *,
 }
 
 .editorial-card__image {
- transform: translateZ(0);
+ transform: translateZ(0) scale(1);
+ transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+ will-change: transform, filter;
+}
+
+.editorial-card--interactive:hover .editorial-card__image,
+.editorial-card:hover .editorial-card__image {
+ transform: scale(1.05) translateZ(0);
+ filter: contrast(104%) brightness(1.02);
 }
 
 .card-hover-action {
@@ -7358,3 +7366,72 @@ html.hide-default-cursor select {
   border-color: rgba(255, 255, 255, 0.2);
   color: #6ee7b7; /* emerald-300 */
 }
+
+/* ==========================================================================
+   Module Cards Hover Reveal (Platform Modules Carousel)
+   ========================================================================== */
+.module-card {
+  position: relative;
+  border-radius: 32px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #121214;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+
+.module-card:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.85);
+}
+
+.module-card__image {
+  object-fit: cover;
+  filter: blur(24px);
+  transform: scale(1.1);
+  transition: all 800ms ease-out;
+  will-change: filter, transform;
+}
+
+.module-card:hover .module-card__image {
+  filter: blur(0px);
+  transform: scale(1.0);
+}
+
+.module-card__overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  transition: background-color 800ms ease-out;
+  pointer-events: none;
+}
+
+.module-card:hover .module-card__overlay {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.module-card__btn {
+  background-color: #f0f0f0;
+  color: #000000;
+  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.module-card:hover .module-card__btn {
+  background-color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .module-card,
+  .module-card__image,
+  .module-card__overlay,
+  .module-card__btn,
+  .editorial-card__image {
+    transition: none !important;
+  }
+}
+

@@ -71,7 +71,7 @@ export function O9CapabilitiesGrid({
           >
             <div className="md:col-span-1">
               <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">
-                {String(i + 1).padStart(2, '0')} //
+                {`${String(i + 1).padStart(2, '0')} //`}
               </span>
             </div>
             <div className="md:col-span-4">
@@ -179,7 +179,7 @@ export function O9EdgeCaseGrid({ items }: { items?: TopicCard[] }) {
       </motion.h2>
 
       <motion.div variants={STAGGER_CONTAINER} className="flex flex-col">
-        {items.map((item, i) => (
+        {items.map((item) => (
           <motion.div key={item.title} variants={FADE_UP} className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 py-12 border-t border-white/10">
             <div className="md:col-span-1">
               <div className="mt-2 h-2 w-2 rounded-full bg-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.6)]" />
@@ -213,7 +213,7 @@ export function O9AiDataPanel({ items }: { items?: TopicCard[] }) {
       </motion.h2>
 
       <motion.div variants={STAGGER_CONTAINER} className="flex flex-col">
-        {items.map((item, i) => (
+        {items.map((item) => (
           <motion.div key={item.title} variants={FADE_UP} className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 py-12 border-t border-white/10">
             <div className="md:col-span-1">
                <div className="mt-2 h-4 w-4 rounded-none border border-white/20 bg-white/5 flex items-center justify-center">
@@ -262,7 +262,7 @@ export function O9WhyItMatters({
           <motion.div key={i} variants={FADE_UP} className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 py-12 border-t border-white/10">
             <div className="md:col-span-1">
               <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">
-                {String(i + 1).padStart(2, '0')} //
+                {`${String(i + 1).padStart(2, '0')} //`}
               </span>
             </div>
             <div className="md:col-span-11">

@@ -86,18 +86,16 @@ export default function Projects() {
 
 	const scrollLeft = () => {
 		if (scrollRef.current) {
-			// Get width of one card + the gap (24px for gap-6)
-			// Actually we can just get the first child's clientWidth
-			const firstChild = scrollRef.current.children[1] as HTMLElement; // children[0] is the style tag
-			const cardWidth = firstChild?.clientWidth || 0;
+			const card = scrollRef.current.querySelector('.module-card') as HTMLElement;
+			const cardWidth = card?.clientWidth || 0;
 			scrollRef.current.scrollBy({ left: -(cardWidth + 24), behavior: 'smooth' });
 		}
 	};
 
 	const scrollRight = () => {
 		if (scrollRef.current) {
-			const firstChild = scrollRef.current.children[1] as HTMLElement;
-			const cardWidth = firstChild?.clientWidth || 0;
+			const card = scrollRef.current.querySelector('.module-card') as HTMLElement;
+			const cardWidth = card?.clientWidth || 0;
 			scrollRef.current.scrollBy({ left: cardWidth + 24, behavior: 'smooth' });
 		}
 	};
@@ -129,32 +127,28 @@ export default function Projects() {
 				{/* Scrollable Container */}
 				<div 
 					ref={scrollRef}
-					className="flex flex-row overflow-x-auto scroll-smooth overscroll-x-contain snap-x snap-proximity gap-4 md:gap-6 pl-6 pr-12 md:pl-[100px] md:pr-24 w-full h-[650px] md:h-[750px] lg:h-[800px]"
-					style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+					className="flex flex-row overflow-x-auto scroll-smooth overscroll-x-contain snap-x snap-proximity gap-4 md:gap-6 pl-6 pr-12 md:pl-[100px] md:pr-24 w-full h-[650px] md:h-[750px] lg:h-[800px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
 				>
-					{/* Style to hide webkit scrollbar */}
-					<style dangerouslySetInnerHTML={{__html: `
-						div::-webkit-scrollbar { display: none; }
-					`}} />
-
 					{projects.map((project, index) => (
-						<div
+						<Link
 							key={project.href}
-							className="relative rounded-[32px] overflow-hidden flex-shrink-0 snap-center group/card bg-zinc-900 
-										w-[90vw] md:w-[80vw] lg:w-[960px]"
+							href={project.href}
+							className="module-card relative rounded-[32px] overflow-hidden flex-shrink-0 snap-center bg-zinc-900 
+										w-[90vw] md:w-[80vw] lg:w-[960px] block text-left"
 						>
 							{/* Blurred Image Background with Hover Reveal */}
 							<Image
 								src={EDITORIAL_IMAGES[index % EDITORIAL_IMAGES.length]}
 								alt={project.title}
 								fill
-								className="object-cover transition-all duration-[800ms] ease-out blur-xl scale-110 group-hover/card:blur-0 group-hover/card:scale-100"
+								className="module-card__image"
+								sizes="(max-width: 768px) 90vw, (max-width: 1024px) 80vw, 960px"
 							/>
 							{/* Overlay gradient for text readability */}
-							<div className="absolute inset-0 bg-black/40 group-hover/card:bg-black/20 transition-colors duration-[800ms]" />
+							<div className="module-card__overlay" />
 
 							{/* Content */}
-							<div className="absolute inset-0 p-8 md:p-16 lg:p-20 flex flex-col justify-between pointer-events-none">
+							<div className="absolute inset-0 p-8 md:p-16 lg:p-20 flex flex-col justify-between">
 								<div>
 									<p className="text-white/80 font-mono text-xs md:text-sm uppercase tracking-[0.2em] mb-6">
 										{project.tag}
@@ -166,16 +160,15 @@ export default function Projects() {
 										{project.description}
 									</p>
 								</div>
-								<div className="flex justify-center pointer-events-auto pb-4 md:pb-8">
-									<Link
-										href={project.href}
-										className="bg-[#f0f0f0] text-black px-12 py-4 text-xs font-bold tracking-[0.15em] uppercase hover:bg-white transition-colors rounded-md"
+								<div className="flex justify-center pb-4 md:pb-8">
+									<span
+										className="module-card__btn px-12 py-4 text-xs font-bold tracking-[0.15em] uppercase rounded-md inline-block"
 									>
 										MORE
-									</Link>
+									</span>
 								</div>
 							</div>
-						</div>
+						</Link>
 					))}
 				</div>
 			</div>

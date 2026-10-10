@@ -1,18 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
- Globe2,
  ShieldCheck,
- Zap,
- ArrowRight,
- Server,
- ChevronRight,
  CheckCircle2,
  AlertCircle,
- BarChart3,
- Cpu,
- Lock,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
 import SubpageHero from '@/app/components/SubpageHero';

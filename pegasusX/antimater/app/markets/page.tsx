@@ -2,13 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
  Globe2,
- ArrowRight,
- ShieldCheck,
- Server,
- Zap,
- MapPin,
  ChevronRight,
- CheckCircle2,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
 import SubpageHero from '@/app/components/SubpageHero';

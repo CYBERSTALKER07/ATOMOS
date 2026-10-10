@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import SiteNav from '@/app/components/explore/SiteNav';
 import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
@@ -98,7 +97,7 @@ export default async function CookiePolicyPage() {
  <strong>United Kingdom Data Protection Act 2018 & PECR</strong>: Regulatory guidance on consent verification and non-essential cookie gating.
  </li>
  <li>
- <strong>Law of the Republic of Uzbekistan No. ZRU-547</strong>: Dated July 2, 2019 "On Personal Data" regulating the collection, systematization, and cross-border processing of digital identifiers.
+ <strong>Law of the Republic of Uzbekistan No. ZRU-547</strong>: Dated July 2, 2019 &quot;On Personal Data&quot; regulating the collection, systematization, and cross-border processing of digital identifiers.
  </li>
  </ul>
  </section>

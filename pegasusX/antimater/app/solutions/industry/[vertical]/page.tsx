@@ -6,7 +6,7 @@ import SiteNav from '@/app/components/explore/SiteNav';
 import Footer from '@/app/components/Footer';
 import { breadcrumbJsonLd, faqPageJsonLd, jsonLdScript, pageMetadata } from '@/app/lib/seo';
 import { getServerLanguage } from '@/app/lib/i18n/server';
-import { Check, ArrowRight, Shield, TrendingUp, HelpCircle, Layers, Building2 } from 'lucide-react';
+import { HelpCircle, Building2 } from 'lucide-react';
 
 export function generateStaticParams() {
   return INDUSTRIES_DATA.map((ind) => ({ vertical: ind.slug }));

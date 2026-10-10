@@ -120,7 +120,7 @@ function ShadcnIcon() {
 function TailwindIcon() {
  return (
  <span className="font-mono font-bold text-xs text-white">
- //
+ {'//'}
  </span>
  );
 }

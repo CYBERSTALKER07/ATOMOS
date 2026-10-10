@@ -23,7 +23,7 @@ type RoleMatrixProps = {
   variant?: 'tabs' | 'table';
 };
 
-export default function RoleMatrix({ crossRole, variant = 'tabs' }: RoleMatrixProps) {
+export default function RoleMatrix({ crossRole }: RoleMatrixProps) {
   const [active, setActive] = useState(0);
   const { t } = useLanguage();
   const current = crossRole[active];
@@ -79,7 +79,7 @@ export default function RoleMatrix({ crossRole, variant = 'tabs' }: RoleMatrixPr
                     transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] as const }}
                   >
                     <p className="font-mono text-xs uppercase tracking-[0.2em] text-white/30 mb-6">
-                      // {current.role} Touchpoint
+                      {`// ${current.role} Touchpoint`}
                     </p>
                     <p className="text-2xl sm:text-3xl lg:text-4xl font-light text-white leading-[1.3]">
                       {current.touchpoint}

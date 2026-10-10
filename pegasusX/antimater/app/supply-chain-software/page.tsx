@@ -1,19 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
- Boxes,
- Network,
- ShieldCheck,
- Zap,
- ArrowRight,
  ChevronRight,
  Database,
- BarChart2,
  Workflow,
- CheckCircle2,
- Building2,
- Cpu,
- Layers,
  FileCheck2,
 } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';

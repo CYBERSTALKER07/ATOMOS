@@ -1,21 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import {
- Globe2,
- ShieldCheck,
- Zap,
- ArrowRight,
- Server,
- Layers,
- CheckCircle2,
- ChevronRight,
- BarChart3,
- Truck,
- RefreshCw,
- Radio,
- Building2,
- Sparkles,
-} from 'lucide-react';
+import { ShieldCheck, Server, Radio } from 'lucide-react';
 import SiteNav from '@/app/components/explore/SiteNav';
 import SubpageHero from '@/app/components/SubpageHero';
 import Footer from '@/app/components/Footer';
