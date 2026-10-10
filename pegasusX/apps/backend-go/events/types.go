@@ -13,6 +13,76 @@ type BaseEvent struct {
 	Timestamp string `json:"timestamp,omitempty"`
 }
 
+// ARInvoiceEvent is emitted on AR open-item lifecycle changes (open / payment /
+// settled / dunned). Fields are omitempty because each event type populates the
+// subset relevant to it (e.g. principal_minor only on open, dunning fields only
+// on dunned).
+type ARInvoiceEvent struct {
+	BaseEvent
+	InvoiceID      string `json:"invoice_id"`
+	SupplierID     string `json:"supplier_id"`
+	RetailerID     string `json:"retailer_id"`
+	OrderID        string `json:"order_id,omitempty"`
+	PrincipalMinor int64  `json:"principal_minor,omitempty"`
+	AmountMinor    int64  `json:"amount_minor,omitempty"`
+	BalanceMinor   int64  `json:"balance_minor,omitempty"`
+	Status         string `json:"status,omitempty"`
+	DunningStep    int64  `json:"dunning_step,omitempty"`
+	AgingBucket    string `json:"aging_bucket,omitempty"`
+	DueAt          string `json:"due_at,omitempty"`
+	LastDunnedAt   string `json:"last_dunned_at,omitempty"`
+}
+
+// PayoutBatchEvent is emitted on the supplier payout lifecycle (generated /
+// exported / dispatched / paid).
+type PayoutBatchEvent struct {
+	BaseEvent
+	BatchID        string `json:"batch_id"`
+	SupplierID     string `json:"supplier_id"`
+	Status         string `json:"status"`
+	NetPayoutMinor int64  `json:"net_payout_minor"`
+	Currency       string `json:"currency"`
+	RailReference  string `json:"rail_reference,omitempty"`
+}
+
+// SupplierServicePromiseEvent handles supplier promise snapshots and breach alerts.
+type SupplierServicePromiseEvent struct {
+	BaseEvent
+	OrderID                string `json:"order_id"`
+	SupplierID             string `json:"supplier_id"`
+	RetailerID             string `json:"retailer_id"`
+	WarehouseID            string `json:"warehouse_id,omitempty"`
+	PromiseType            string `json:"promise_type"`
+	GuaranteedDeliveryDate string `json:"guaranteed_delivery_date"`
+	CutoffAppliedAt        string `json:"cutoff_applied_at,omitempty"`
+	FillRateTargetBps      int64  `json:"fill_rate_target_bps"`
+	MinOrderMinor          int64  `json:"min_order_minor"`
+	Currency               string `json:"currency"`
+	SLAHours               int64  `json:"sla_hours"`
+	Status                 string `json:"status"`
+	BreachedAt             string `json:"breached_at,omitempty"`
+	BreachReason           string `json:"breach_reason,omitempty"`
+}
+
+// LotRecallEvent handles lot recall campaign lifecycle and quarantine actions.
+type LotRecallEvent struct {
+	BaseEvent
+	CampaignID         string `json:"campaign_id,omitempty"`
+	SupplierID         string `json:"supplier_id"`
+	ProductID          string `json:"product_id"`
+	LotCode            string `json:"lot_code,omitempty"`
+	LotID              string `json:"lot_id,omitempty"`
+	WarehouseID        string `json:"warehouse_id,omitempty"`
+	RecallReason       string `json:"recall_reason,omitempty"`
+	Severity           string `json:"severity,omitempty"`
+	Status             string `json:"status,omitempty"`
+	ImpactedLotCount   int64  `json:"impacted_lot_count,omitempty"`
+	ImpactedUnitsCount int64  `json:"impacted_units_count,omitempty"`
+	ImpactedOrderCount int64  `json:"impacted_order_count,omitempty"`
+	Action             string `json:"action,omitempty"`
+	Actor              string `json:"actor,omitempty"`
+}
+
 // SupplierEvent handles generic supplier operations.
 type SupplierEvent struct {
 	BaseEvent
@@ -183,12 +253,71 @@ type OrderEvent struct {
 	EscalatedTo           string  `json:"escalated_to,omitempty"`
 	GPSLat                float64 `json:"gps_lat,omitempty"`
 	GPSLng                float64 `json:"gps_lng,omitempty"`
+	Message               string  `json:"message,omitempty"`
 }
 
+// ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6 & HARDEN-02).
+type ParentOrderEvent struct {
+	BaseEvent
+	ParentOrderID string   `json:"parent_order_id"`
+	RetailerID    string   `json:"retailer_id"`
+	Status        string   `json:"status,omitempty"`
+	Currency      string   `json:"currency,omitempty"`
+	TotalMinor    int64    `json:"total_minor,omitempty"`
+	ChildCount    int      `json:"child_count,omitempty"`
+	SagaState     string   `json:"saga_state,omitempty"`
+	ChildOrderIDs []string `json:"child_order_ids,omitempty"`
+}
+
+// SupplierCreditProgramEvent is org-level credit program enable/patch/disable (B4 M-P1-5).
+type SupplierCreditProgramEvent struct {
+	BaseEvent
+	SupplierID     string `json:"supplier_id"`
+	ProgramEnabled bool   `json:"program_enabled"`
+	Version        int64  `json:"version,omitempty"`
+	Action         string `json:"action,omitempty"` // ENABLE | PATCH | DISABLE
+	ActorID        string `json:"actor_id,omitempty"`
+}
+
+// SupplierCreditTermsEvent is per-retailer payment terms lifecycle (B4 M-P1-5).
+type SupplierCreditTermsEvent struct {
+	BaseEvent
+	SupplierID    string `json:"supplier_id"`
+	RetailerID    string `json:"retailer_id"`
+	CreditEnabled bool   `json:"credit_enabled"`
+	Version       int64  `json:"version,omitempty"`
+	Action        string `json:"action,omitempty"` // ENABLE | PATCH | HOLD | UNHOLD | DISABLE
+	ActorID       string `json:"actor_id,omitempty"`
+}
+
+// ControlTowerEvent is playbook/run lifecycle for supplier control tower (B4 M-P1-4).
+type ControlTowerEvent struct {
+	BaseEvent
+	SupplierID  string `json:"supplier_id"`
+	PlaybookID  string `json:"playbook_id,omitempty"`
+	RunID       string `json:"run_id,omitempty"`
+	ExceptionID string `json:"exception_id,omitempty"`
+	Status      string `json:"status,omitempty"`
+	Mode        string `json:"mode,omitempty"`
+	Action      string `json:"action,omitempty"`
+	ActorID     string `json:"actor_id,omitempty"`
+}
+
+// Manifest domain plane (G2.D Option B). Dual tables stay intentional:
+// FACTORY = FactoryTruckManifests transfer bay; SUPPLIER = SupplierTruckManifests delivery truck.
+const (
+	ManifestDomainFactory  = "FACTORY"
+	ManifestDomainSupplier = "SUPPLIER"
+)
+
 // ManifestEvent handles manifest lifecycle events.
+// ManifestDomain disambiguates shared event type names across the dual plane.
 type ManifestEvent struct {
 	BaseEvent
-	ManifestID     string `json:"manifest_id"`
+	ManifestID string `json:"manifest_id"`
+	// ManifestDomain is FACTORY | SUPPLIER (G2.D). Omitempty keeps older producers valid;
+	// new emits always set it.
+	ManifestDomain string `json:"manifest_domain,omitempty"`
 	SupplierID     string `json:"supplier_id"`
 	FactoryID      string `json:"factory_id,omitempty"`
 	WarehouseID    string `json:"warehouse_id,omitempty"`
@@ -238,8 +367,6 @@ type SplitShipmentEvent struct {
 	TruckCount int `json:"truck_count"`
 }
 
-
-
 // RouteEvent handles route events.
 type RouteEvent struct {
 	BaseEvent
@@ -278,9 +405,12 @@ type FinanceEvent struct {
 	PolicySource      string `json:"policy_source,omitempty"`
 	ProviderReference string `json:"provider_reference,omitempty"`
 	AmountMinor       int64  `json:"amount_minor,omitempty"`
+	CashMinor         int64  `json:"cash_minor,omitempty"`
+	CardMinor         int64  `json:"card_minor,omitempty"`
 	Currency          string `json:"currency,omitempty"`
 	TransactionID     string `json:"transaction_id,omitempty"`
 	Source            string `json:"source,omitempty"`
+	DriverID          string `json:"driver_id,omitempty"`
 }
 
 // AIRecommendationEvent handles AI decisions.
@@ -411,6 +541,9 @@ type WarehouseTransferEvent struct {
 	FromWarehouse string `json:"from_warehouse,omitempty"`
 	ToWarehouse   string `json:"to_warehouse,omitempty"`
 	Status        string `json:"status,omitempty"`
+	FactoryID     string `json:"factory_id,omitempty"`
+	SupplierID    string `json:"supplier_id,omitempty"`
+	State         string `json:"state,omitempty"`
 }
 
 // DeliverySessionEvent handles driver delivery sessions.
@@ -466,6 +599,10 @@ type CreditDeliveryEvent struct {
 	SupplierID string `json:"supplier_id"`
 	RetailerID string `json:"retailer_id"`
 	Status     string `json:"status,omitempty"`
+	// PhotoProofURL is required evidence for credit leave (PoD).
+	PhotoProofURL string `json:"photo_proof_url,omitempty"`
+	// SignatureURL is optional handwritten acknowledgment captured at handoff.
+	SignatureURL string `json:"signature_url,omitempty"`
 }
 
 // PreOrderEvent handles pre-order lifecycle.
@@ -500,6 +637,9 @@ type PlanningEvent struct {
 	Transfers      int     `json:"transfer_recommendations,omitempty"`
 	SignalID       string  `json:"signal_id,omitempty"`
 	SimulationID   string  `json:"simulation_id,omitempty"`
+	ScenarioID     string  `json:"scenario_id,omitempty"`
+	Version        int64   `json:"version,omitempty"`
+	PublishedBy    string  `json:"published_by,omitempty"`
 }
 
 // @Sync(ProductEvent)
@@ -522,6 +662,8 @@ type ConditionEvent struct {
 	BaseEvent
 	ReportID      string   `json:"report_id"`
 	OrderID       string   `json:"order_id"`
+	SupplierID    string   `json:"supplier_id,omitempty"`
+	RetailerID    string   `json:"retailer_id,omitempty"`
 	ReporterID    string   `json:"reporter_id"`
 	ReporterRole  string   `json:"reporter_role"`
 	ConditionType string   `json:"condition_type"`
@@ -620,18 +762,31 @@ type OrderForceCompletedEvent struct {
 	TraceID    string `json:"trace_id,omitempty"`
 }
 
+// BuyerAcceptanceEvent tracks Soliq EHF buyer clearance. ADR-009 still marks the
+// order COMPLETED on OFD submit success; this parallel track gates final ledger
+// close / reverse-settlement (credit note on REJECT).
+type BuyerAcceptanceEvent struct {
+	BaseEvent
+	OrderID    string `json:"order_id"`
+	SupplierID string `json:"supplier_id"`
+	RetailerID string `json:"retailer_id,omitempty"`
+	EhfID      string `json:"ehf_id,omitempty"`
+	Status     string `json:"status"` // PENDING | ACCEPTED | REJECTED | EXPIRED
+	Deadline   string `json:"deadline,omitempty"`
+}
+
 // CashVarianceEvent records cash shortfall or overage at collection (integer Tiyin).
 type CashVarianceEvent struct {
 	BaseEvent
-	OrderID             string `json:"order_id"`
-	SupplierID          string `json:"supplier_id"`
-	RetailerID          string `json:"retailer_id,omitempty"`
-	DriverID            string `json:"driver_id,omitempty"`
-	ExpectedMinor       int64  `json:"expected_minor"`
-	ReceivedMinor       int64  `json:"received_minor"`
-	ShortfallMinor      int64  `json:"shortfall_minor,omitempty"`
-	OverageMinor        int64  `json:"overage_minor,omitempty"`
-	Currency            string `json:"currency"`
-	Note                string `json:"note,omitempty"`
-	TraceID             string `json:"trace_id,omitempty"`
+	OrderID        string `json:"order_id"`
+	SupplierID     string `json:"supplier_id"`
+	RetailerID     string `json:"retailer_id,omitempty"`
+	DriverID       string `json:"driver_id,omitempty"`
+	ExpectedMinor  int64  `json:"expected_minor"`
+	ReceivedMinor  int64  `json:"received_minor"`
+	ShortfallMinor int64  `json:"shortfall_minor,omitempty"`
+	OverageMinor   int64  `json:"overage_minor,omitempty"`
+	Currency       string `json:"currency"`
+	Note           string `json:"note,omitempty"`
+	TraceID        string `json:"trace_id,omitempty"`
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React from "react";
 
 interface RouteTelemetryMapProps {
@@ -18,6 +19,7 @@ export const RouteTelemetryMap: React.FC<RouteTelemetryMapProps> = ({
   onChangeRoute,
   hasLiveRoute,
 }) => {
+  const t = usePortalT();
   const live =
     hasLiveRoute === true ||
     (hasLiveRoute !== false && etaSeconds != null && Number.isFinite(etaSeconds));
@@ -32,12 +34,12 @@ export const RouteTelemetryMap: React.FC<RouteTelemetryMapProps> = ({
   return (
     <div className="bg-[#121417] border border-gray-800 rounded-2xl p-5 mb-5 select-none shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase">Route</h3>
+        <h3 className="text-sm font-semibold text-gray-300 tracking-wide uppercase">{t("supplier_portal.analytics.route_performance.text.route")}</h3>
         <div className="flex items-center gap-4">
           {live && etaSeconds != null ? (
             <span className="text-sm font-bold text-white">{formatTime(etaSeconds)}</span>
           ) : (
-            <span className="text-xs text-gray-500">No live ETA</span>
+            <span className="text-xs text-gray-500">{t("supplier_portal.dispatch.route_telemetry_map.text.no_live_eta")}</span>
           )}
           {live && distanceMilesLeft != null ? (
             <span className="text-xs text-gray-400 font-medium">{distanceMilesLeft} mi. left</span>

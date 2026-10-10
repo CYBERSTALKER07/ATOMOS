@@ -44,6 +44,10 @@ func (m *mockRepo) ListBySupplier(ctx context.Context, supplierID string, status
 	return nil, nil
 }
 
+func (m *mockRepo) ResolveDriverSupplierID(ctx context.Context, driverID string) (string, error) {
+	return "sup-1", nil
+}
+
 type mockCash struct {
 	expected int64
 }
@@ -70,6 +74,7 @@ func TestSubmitReconciliation_HappyPath_Match(t *testing.T) {
 
 	cr, err := svc.SubmitReconciliation(context.Background(), req)
 	assert.NoError(t, err)
+	assert.Equal(t, "sup-1", cr.SupplierId)
 	assert.Equal(t, int64(1000), cr.ExpectedCashMinor)
 	assert.Equal(t, int64(0), cr.DifferenceMinor)
 	assert.Equal(t, ReconciliationStatusAccepted, cr.Status)

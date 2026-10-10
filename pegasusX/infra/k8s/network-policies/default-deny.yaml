@@ -1,0 +1,12 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    security.pegasusx.io/tier: zero-trust
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

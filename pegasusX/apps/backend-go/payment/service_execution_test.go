@@ -307,7 +307,6 @@ func (r *paymentRepoStub) HasChargebackForOrder(ctx context.Context, orderID str
 	return r.hasChargeback, nil
 }
 
-
 func (r *paymentRepoStub) FindStuckSessions(ctx context.Context, cutoff time.Time, limit int) ([]SessionRecord, error) {
 	return nil, nil
 }

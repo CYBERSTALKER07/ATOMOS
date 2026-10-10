@@ -47,7 +47,7 @@ struct PreordersView: View {
                 )
             }
         }
-        .navigationTitle("Pre-orders")
+        .navigationTitle("portal.nav.preorders")
         .onAppear {
             Task { await load() }
         }
@@ -58,18 +58,18 @@ struct PreordersView: View {
                     Form {
                         DatePicker("Proposed delivery date", selection: $proposeDate, displayedComponents: .date)
                         Section("Reason for date change") {
-                            TextField("Reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
-                    .navigationTitle("Propose date")
+                    .navigationTitle("mobile_warehouse.ui.propose_date")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { activeSheet = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Send") { submitPropose(row) }
+                            Button("mobile_warehouse.ui.send") { submitPropose(row) }
                                 .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
@@ -79,18 +79,18 @@ struct PreordersView: View {
                 NavigationStack {
                     Form {
                         Section("Rejection reason") {
-                            TextField("Reason", text: $reasonInput, axis: .vertical)
+                            TextField("supplier_portal.admin.control_center.field.reason", text: $reasonInput, axis: .vertical)
                                 .lineLimit(2...4)
                         }
                     }
-                    .navigationTitle("Reject pre-order")
+                    .navigationTitle("mobile_warehouse.ui.reject_pre_order")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { activeSheet = nil }
+                            Button("common.action.cancel") { activeSheet = nil }
                         }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("Reject", role: .destructive) { submitReject(row) }
+                            Button("mobile_warehouse.ui.reject", role: .destructive) { submitReject(row) }
                                 .disabled(acting || reasonInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }

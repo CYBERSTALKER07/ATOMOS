@@ -13,8 +13,8 @@ struct FleetView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("Fleet", selection: $segment) {
-                    Text("Drivers").tag(0)
-                    Text("Vehicles").tag(1)
+                    Text("portal.nav.drivers").tag(0)
+                    Text("supplier_portal.org_fleet.components.vehicle_form.text.vehicles").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding()
@@ -49,17 +49,17 @@ struct FleetView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Fleet")
+            .navigationTitle("portal.nav.fleet")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
                         FleetLiveMapView()
                     } label: {
-                        Label("Live map", systemImage: "map")
+                        Label("retailer_desktop.tracking.tracking_map.text.live_map", systemImage: "map")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load(silent: true) }
                     }
                     .labelStyle(.iconOnly)
@@ -126,7 +126,7 @@ private struct DriverRow: View {
             Text(driver.phone)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("\(driver.homeNodeType) · \(driver.homeNodeId)")
+            Text(L10n.format("mobile_supplier.ui.homenodetype_homenodeid", "\(driver.homeNodeType)", "\(driver.homeNodeId)"))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -146,7 +146,7 @@ private struct VehicleRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            Text("\(vehicle.homeNodeType) · \(vehicle.homeNodeId)")
+            Text(L10n.format("mobile_supplier.ui.homenodetype_homenodeid", "\(vehicle.homeNodeType)", "\(vehicle.homeNodeId)"))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

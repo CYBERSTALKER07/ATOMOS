@@ -10,7 +10,7 @@ import {
   ArrowRightLeft,
 } from 'lucide-react';
 
-// ── Quick Actions Cell — The Control (2×1) ──────────────────────────────────
+// -- Quick Actions Cell — The Control (2×1) ----------------------------------
 // High-consequence operational buttons. Each triggers a backend action with
 // a confirmation step to prevent misfire.
 

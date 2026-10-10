@@ -28,57 +28,10 @@ type OrderStatusTransition struct {
 	CreatedAt        time.Time      `json:"created_at"`
 }
 
-// StatusTransitionInput is written when an order status changes.
-type StatusTransitionInput struct {
-	OrderID        string
-	PreviousStatus Status
-	NewStatus      Status
-	Reason         string
-	ActorRole      string
-	ActorID        string
-	EventKind      string
-	Metadata       map[string]any
-	OccurredAt     time.Time
-}
 
-// persistStatusTransition appends an audit row (best-effort; logs on failure).
-func (s *Service) persistStatusTransition(ctx context.Context, in StatusTransitionInput) {
-	if s == nil || s.spannerClient == nil || strings.TrimSpace(in.OrderID) == "" {
-		return
-	}
-	if in.PreviousStatus == in.NewStatus && in.EventKind == "" {
-		return
-	}
-	when := in.OccurredAt
-	if when.IsZero() {
-		when = s.now()
-	}
-	transitionID := s.newID()
-	metaRaw, _ := json.Marshal(in.Metadata)
-	eventKind := strings.TrimSpace(in.EventKind)
-	if eventKind == "" {
-		eventKind = defaultTransitionEventKind(in.NewStatus)
-	}
-	_, err := s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("OrderStatusTransitions", map[string]any{
-			"OrderId":        in.OrderID,
-			"TransitionId":   transitionID,
-			"PreviousStatus": string(in.PreviousStatus),
-			"NewStatus":      string(in.NewStatus),
-			"Reason":         strings.TrimSpace(in.Reason),
-			"ActorRole":      strings.TrimSpace(in.ActorRole),
-			"ActorId":        strings.TrimSpace(in.ActorID),
-			"EventKind":      eventKind,
-			"MetadataJson":   metaRaw,
-			"CreatedAt":      when,
-		}),
-	})
-	if err != nil {
-		s.log.Warn("persist status transition failed", "order_id", in.OrderID, "err", err)
-	}
-}
 
-func defaultTransitionEventKind(status Status) string {
+// DefaultTransitionEventKind gives a default event kind for a status.
+func DefaultTransitionEventKind(status Status) string {
 	switch status {
 	case StatusDelayed:
 		return "DELAY"
@@ -109,7 +62,7 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 		      LIMIT @lim`,
 		Params: map[string]any{"oid": orderID, "lim": limit},
 	}
-	iter := s.spannerClient.Single().Query(ctx, stmt)
+	iter := s.spannerClient.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	out := make([]OrderStatusTransition, 0, limit)
 	for {
@@ -121,23 +74,24 @@ func (s *Service) ListOrderTimeline(ctx context.Context, orderID string, limit i
 			return nil, err
 		}
 		var (
-			transitionID, oid, prev, next, reason, actorRole, actorID, kind string
-			metaRaw                                                       []byte
-			createdAt                                                     time.Time
+			transitionID, oid, next string
+			prev, reason, actorRole, actorID, kind spanner.NullString
+			metaRaw                                []byte
+			createdAt                              time.Time
 		)
 		if err := row.Columns(&transitionID, &oid, &prev, &next, &reason, &actorRole, &actorID, &kind, &metaRaw, &createdAt); err != nil {
 			continue
 		}
 		entry := OrderStatusTransition{
-			TransitionID: transitionID,
-			OrderID:      oid,
-			PreviousStatus: prev,
-			NewStatus:    next,
-			Reason:       reason,
-			ActorRole:    actorRole,
-			ActorID:      actorID,
-			EventKind:    kind,
-			CreatedAt:    createdAt,
+			TransitionID:   transitionID,
+			OrderID:        oid,
+			PreviousStatus: prev.StringVal,
+			NewStatus:      next,
+			Reason:         reason.StringVal,
+			ActorRole:      actorRole.StringVal,
+			ActorID:        actorID.StringVal,
+			EventKind:      kind.StringVal,
+			CreatedAt:      createdAt,
 		}
 		if len(metaRaw) > 0 {
 			_ = json.Unmarshal(metaRaw, &entry.Metadata)
@@ -163,7 +117,7 @@ func (s *Service) HandleGetOrderTimeline(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	o, found, err := s.repo.GetOrder(r.Context(), orderID)
+	o, found, err := s.loadOrderForRequest(r.Context(), orderID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
@@ -198,7 +152,8 @@ func assertTimelineAccess(claims auth.Claims, o Order) error {
 			return nil
 		}
 	case auth.RoleRetailer:
-		if claims.Subject != "" && claims.Subject == o.RetailerID {
+		retID := auth.ResolveRetailerOrgID(claims)
+		if retID != "" && retID == o.RetailerID {
 			return nil
 		}
 	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
@@ -210,20 +165,6 @@ func assertTimelineAccess(claims auth.Claims, o Order) error {
 	return ErrOrderForbidden
 }
 
-// recordStatusTransitionFromOrder is a convenience wrapper after mutations.
-func (s *Service) recordStatusTransitionFromOrder(o Order, prev Status, reason, actorRole, actorID, eventKind string, metadata map[string]any) {
-	s.persistStatusTransition(context.Background(), StatusTransitionInput{
-		OrderID:        o.OrderID,
-		PreviousStatus: prev,
-		NewStatus:      o.Status,
-		Reason:         reason,
-		ActorRole:      actorRole,
-		ActorID:        actorID,
-		EventKind:      eventKind,
-		Metadata:       metadata,
-		OccurredAt:     o.UpdatedAt,
-	})
-}
 
 // delayTransitionMetadata builds audit metadata for warehouse delay actions.
 func delayTransitionMetadata(proposedDelivery *time.Time, reason string) map[string]any {

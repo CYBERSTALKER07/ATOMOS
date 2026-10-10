@@ -26,21 +26,23 @@ import com.pegasusx.driver.BuildConfig
 import com.pegasusx.driver.R
 import com.pegasusx.driver.data.local.OrderDao
 import com.pegasusx.driver.data.model.OrderState
+import com.pegasusx.driver.data.model.TelemetryLocationEntity
 import com.pegasusx.driver.data.model.TelemetryPayload
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.TelemetrySocket
-import com.pegasusx.driver.data.telemetry.LocationTrail
 import com.pegasusx.driver.data.remote.TokenHolder
+import com.pegasusx.driver.data.telemetry.LocationTrail
 import com.pegasusx.driver.util.DriverGeofence
 import com.pegasusx.driver.util.DriverIdempotencyKeys
 import com.pegasusx.driver.util.Haversine
 import dagger.hilt.android.AndroidEntryPoint
+import java.util.UUID
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class TelemetryService : Service() {
@@ -67,7 +69,9 @@ class TelemetryService : Service() {
     private var lastSentLocation: android.location.Location? = null
     private var lastSentTimeMs: Long = 0
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Replaceable job so START_STICKY restart can launch again after stop (§8.8). */
+    private var serviceJob = SupervisorJob()
+    private val serviceScope get() = CoroutineScope(serviceJob + Dispatchers.IO)
     private val arrivedIds = mutableSetOf<String>()
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -81,11 +85,13 @@ class TelemetryService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                TelemetryTrackingPrefs.setActive(this, false)
                 stopTracking()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
             else -> {
+                TelemetryTrackingPrefs.setActive(this, true)
                 val notification = buildNotification()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
@@ -99,15 +105,26 @@ class TelemetryService : Service() {
     }
 
     override fun onDestroy() {
-        stopTracking()
+        // Do not clear tracking_active here — sticky/boot may restart; only ACTION_STOP clears it.
+        stopTracking(clearTrackingFlag = false)
         super.onDestroy()
     }
 
+    private fun ensureServiceScope() {
+        if (serviceJob.isCancelled) {
+            serviceJob = SupervisorJob()
+        }
+    }
+
     private fun startTracking() {
+        ensureServiceScope()
+
         // Acquire partial wakelock
         val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
-            acquire() // Released explicitly in stopTracking()
+        if (wakeLock?.isHeld != true) {
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
+                acquire()
+            }
         }
 
         // Connect WebSocket
@@ -117,6 +134,10 @@ class TelemetryService : Service() {
         } else {
             Log.w(TAG, "No auth token — WebSocket skipped")
         }
+
+        // Avoid duplicate location callbacks on sticky restart
+        locationCallback?.let { fusedClient.removeLocationUpdates(it) }
+        locationCallback = null
 
         // Start location updates — check foreground + background permissions
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -156,59 +177,57 @@ class TelemetryService : Service() {
                 var shouldTransmit = false
 
                 if (timeSinceLastMs > 15000) {
-                    // Heartbeat: Always send if it's been more than 15 seconds
                     shouldTransmit = true
                 } else if (lastSentLocation != null) {
-                    // Dead Reckoning: Check deviation
                     val distanceDeviation = location.distanceTo(lastSentLocation!!)
                     val bearingDeviation = Math.abs(location.bearing - lastSentLocation!!.bearing)
-
-                    // Thresholds: Deviated by > 20 meters OR turned > 15 degrees
                     if (distanceDeviation > 20f || bearingDeviation > 15f) {
                         shouldTransmit = true
                     }
                 } else {
-                    // Send first point immediately
                     shouldTransmit = true
                 }
 
                 if (shouldTransmit) {
-                    val payload = TelemetryPayload(
-                        driverId = driverId,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        timestamp = System.currentTimeMillis(),
-                        speed = location.speed,
-                        bearing = location.bearing
-                    )
-
-                    val sent = telemetrySocket.send(payload)
-                    if (!sent) {
-                        Log.w(TAG, "Telemetry send failed — socket may be disconnected, caching offline")
-                        serviceScope.launch {
-                            try {
-                                telemetryDao.insert(
-                                    com.pegasusx.driver.data.model.TelemetryLocationEntity(
-                                        id = java.util.UUID.randomUUID().toString(),
-                                        latitude = location.latitude,
-                                        longitude = location.longitude,
-                                        timestamp = System.currentTimeMillis(),
-                                        speed = location.speed,
-                                        bearing = location.bearing
-                                    )
+                    val rowId = UUID.randomUUID().toString()
+                    val ts = System.currentTimeMillis()
+                    serviceScope.launch {
+                        try {
+                            // Room-before-send (§8.8): durable first, then attempt WS.
+                            telemetryDao.insert(
+                                TelemetryLocationEntity(
+                                    id = rowId,
+                                    latitude = location.latitude,
+                                    longitude = location.longitude,
+                                    timestamp = ts,
+                                    speed = location.speed,
+                                    bearing = location.bearing,
                                 )
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Failed to cache offline telemetry", e)
+                            )
+                            val payload = TelemetryPayload(
+                                driverId = driverId,
+                                latitude = location.latitude,
+                                longitude = location.longitude,
+                                timestamp = ts,
+                                speed = location.speed,
+                                bearing = location.bearing,
+                            )
+                            val sent = telemetrySocket.isConnected() && telemetrySocket.send(payload)
+                            if (sent) {
+                                telemetryDao.deleteByIds(listOf(rowId))
+                                lastSentLocation = location
+                                lastSentTimeMs = ts
+                                LocationTrail.record(location.latitude, location.longitude)
+                            } else {
+                                Log.w(TAG, "Telemetry send deferred — kept in Room for sync")
+                                TelemetrySyncScheduler.enqueue(this@TelemetryService)
                             }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to persist/send telemetry", e)
                         }
-                    } else {
-                        lastSentLocation = location
-                        lastSentTimeMs = System.currentTimeMillis()
-                        LocationTrail.record(location.latitude, location.longitude)
                     }
                 }
 
-                // Auto-ARRIVED: check proximity to IN_TRANSIT order destinations
                 checkAutoArrive(location.latitude, location.longitude)
             }
         }
@@ -247,8 +266,12 @@ class TelemetryService : Service() {
         }
     }
 
-    private fun stopTracking() {
-        serviceScope.cancel()
+    private fun stopTracking(clearTrackingFlag: Boolean = true) {
+        if (clearTrackingFlag) {
+            TelemetryTrackingPrefs.setActive(this, false)
+        }
+        serviceJob.cancelChildren()
+        serviceJob.cancel()
         locationCallback?.let { fusedClient.removeLocationUpdates(it) }
         locationCallback = null
         telemetrySocket.disconnect()

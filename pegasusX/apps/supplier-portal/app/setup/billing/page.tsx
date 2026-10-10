@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { usePortalT } from "@/lib/i18n";
+import { useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import {
   SelectionOption,
@@ -11,40 +12,15 @@ import {
   SetupPageHeader,
   SetupSection,
 } from "@/components/setup/SetupPrimitives";
+import { useSupplierPaymentCatalog } from "@/lib/use-payment-catalog";
+import { gatewayLabel } from "@/lib/coverage";
 
 // /setup/billing — bank + payment-gateway configuration.
 // Decoupled from the 4-step registration wizard to reduce friction.
 // Hard product invariant: this page must remain a post-registration step
 // that suppliers reach AFTER /auth/register. Do not merge into the wizard.
 
-const GATEWAYS = [
-  {
-    id: "GLOBAL_PAY",
-    label: "Global Pay",
-    description: "Card payments via the pegasusX global rail.",
-    icon: "global",
-  },
-  {
-    id: "ADYEN",
-    label: "Adyen",
-    description: "Enterprise card acquiring with local payment methods.",
-    icon: "payment",
-  },
-  {
-    id: "AIRWALLEX",
-    label: "Airwallex",
-    description: "Cross-border payouts and multi-currency settlement.",
-    icon: "treasury",
-  },
-  {
-    id: "CASH",
-    label: "Cash on delivery",
-    description: "Retailers collect cash; reconcile manually.",
-    icon: "pricing",
-  },
-] as const;
-
-type GatewayId = (typeof GATEWAYS)[number]["id"];
+type GatewayId = string;
 
 type BillingState = {
   bankName: string;
@@ -82,7 +58,19 @@ const ACCEPTOR_OPTIONS = [
 ];
 
 export default function BillingSetupPage() {
+  const t = usePortalT();
+  const { catalog, currency, gateways } = useSupplierPaymentCatalog();
   const [state, setState] = useState<BillingState>(INITIAL);
+
+  useEffect(() => {
+    if (gateways.length === 0) return;
+    setState((s) => ({
+      ...s,
+      selectedGateways: s.selectedGateways.filter((id) => gateways.includes(id)).length
+        ? s.selectedGateways.filter((id) => gateways.includes(id))
+        : gateways.slice(0, 2),
+    }));
+  }, [gateways.join("|")]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -149,8 +137,8 @@ export default function BillingSetupPage() {
     <>
       <SetupPageHeader
         icon="treasury"
-        title="Billing & payment gateways"
-        subtitle="Configure where payouts land and which checkout rails retailers can use."
+        title={t("supplier_portal.setup.billing.text.billing_and_payment_gateways")}
+        subtitle={t("supplier_portal.residual.text.configure_where_payouts_land_and_which_checkout_rails_retailers_")}
       />
 
       <SetupCallout>
@@ -159,20 +147,20 @@ export default function BillingSetupPage() {
 
       <SetupSection
         icon="treasury"
-        title="Payout bank account"
-        description="Where supplier earnings are deposited after settlement."
+        title={t("supplier_portal.setup.billing.text.payout_bank_account")}
+        description={t("supplier_portal.residual.text.where_supplier_earnings_are_deposited_after_settlement")}
       >
-        <SetupField id="bankName" label="Bank name" error={errors.bankName}>
+        <SetupField id="bankName" label={t("supplier_portal.residual.text.bank_name")} error={errors.bankName}>
           <SetupInput
             id="bankName"
             error={errors.bankName}
             value={state.bankName}
             autoComplete="organization"
-            placeholder="e.g. HSBC, Chase"
+            placeholder={t("supplier_portal.setup.billing.text.e_g_hsbc_chase")}
             onChange={(e) => setState((s) => ({ ...s, bankName: e.target.value }))}
           />
         </SetupField>
-        <SetupField id="accountHolder" label="Account holder name" error={errors.accountHolder}>
+        <SetupField id="accountHolder" label={t("supplier_portal.residual.text.account_holder_name")} error={errors.accountHolder}>
           <SetupInput
             id="accountHolder"
             error={errors.accountHolder}
@@ -182,7 +170,7 @@ export default function BillingSetupPage() {
           />
         </SetupField>
         <div className="setup-grid-2">
-          <SetupField id="accountNumber" label="Account number" error={errors.accountNumber}>
+          <SetupField id="accountNumber" label={t("supplier_portal.residual.text.account_number")} error={errors.accountNumber}>
             <SetupInput
               id="accountNumber"
               error={errors.accountNumber}
@@ -192,13 +180,13 @@ export default function BillingSetupPage() {
               onChange={(e) => setState((s) => ({ ...s, accountNumber: e.target.value }))}
             />
           </SetupField>
-          <SetupField id="swiftBic" label="SWIFT / BIC" error={errors.swiftBic}>
+          <SetupField id="swiftBic" label={t("supplier_portal.residual.text.swift_bic")} error={errors.swiftBic}>
             <SetupInput
               id="swiftBic"
               error={errors.swiftBic}
               value={state.swiftBic}
               autoComplete="off"
-              placeholder="e.g. CHASUS33"
+              placeholder={t("supplier_portal.setup.billing.text.e_g_chasus33")}
               onChange={(e) => setState((s) => ({ ...s, swiftBic: e.target.value }))}
             />
           </SetupField>
@@ -215,10 +203,10 @@ export default function BillingSetupPage() {
 
       <SetupSection
         icon="payment"
-        title="Payment acceptor"
-        description="Who receives card revenue when an order is fulfilled."
+        title={t("supplier_portal.setup.billing.text.payment_acceptor")}
+        description={t("supplier_portal.residual.text.who_receives_card_revenue_when_an_order_is_fulfilled")}
       >
-        <div className="setup-selection-grid setup-selection-grid--2" role="radiogroup" aria-label="Payment acceptor">
+        <div className="setup-selection-grid setup-selection-grid--2" role="radiogroup" aria-label={t("supplier_portal.setup.billing.text.payment_acceptor")}>
           {ACCEPTOR_OPTIONS.map((option) => (
             <SelectionOption
               key={option.id}
@@ -235,19 +223,25 @@ export default function BillingSetupPage() {
 
       <SetupSection
         icon="global"
-        title="Payment gateways"
-        description="Retailers see these options at checkout. Select all that apply."
+        title={t("supplier_portal.setup.billing.text.payment_gateways")}
+        description={t("supplier_portal.residual.text.retailers_see_these_options_at_checkout_select_all_that_apply")}
       >
-        <div className="setup-selection-grid setup-selection-grid--2" role="group" aria-label="Payment gateways">
-          {GATEWAYS.map((gateway) => (
+        <p className="setup-helper">
+          Operating currency is pack-owned and read-only: {currency || "unset"}.
+        </p>
+        <div className="setup-selection-grid setup-selection-grid--2" role="group" aria-label={t("supplier_portal.setup.billing.text.payment_gateways")}>
+          {catalog.map((gateway) => (
             <SelectionOption
-              key={gateway.id}
-              selected={state.selectedGateways.includes(gateway.id)}
-              title={gateway.label}
-              description={gateway.description}
-              icon={gateway.icon}
+              key={gateway.code}
+              selected={state.selectedGateways.includes(gateway.code)}
+              title={gatewayLabel(gateway.code)}
+              description={gateway.selectable ? gateway.status : `${gateway.status} — not selectable`}
+              icon={gateway.code === "CASH" ? "pricing" : "payment"}
               checkType="multi"
-              onClick={() => toggleGateway(gateway.id)}
+              onClick={() => {
+                if (!gateway.selectable) return;
+                toggleGateway(gateway.code);
+              }}
             />
           ))}
         </div>
@@ -261,8 +255,8 @@ export default function BillingSetupPage() {
       {submitError ? <SetupCallout variant="error">{submitError}</SetupCallout> : null}
 
       <SetupFooter
-        back={{ label: "Back", onClick: goBack, disabled: submitting }}
-        primary={{ label: "Complete setup", onClick: submit, disabled: submitting, loading: submitting }}
+        back={{ label: t("common.action.back"), onClick: goBack, disabled: submitting }}
+        primary={{ label: t("supplier_portal.residual.text.complete_setup"), onClick: submit, disabled: submitting, loading: submitting }}
       />
 
       <div style={{ marginTop: "var(--space-4)", textAlign: "center" }}>

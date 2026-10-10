@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.override.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +23,7 @@ import com.pegasus.design.PegasusRuntimeTone
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun OverrideSummaryCard(
@@ -40,11 +43,11 @@ fun OverrideSummaryCard(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
         ) {
             Text(
-                text = "Live manifest override",
+                text = stringResource(R.string.mobile_factory_ui_live_manifest_override),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "${manifests.size} loading manifests, $transferCount transfers available for rebalance or release.",
+                text = stringResource(R.string.mobile_factory_ui_size_loading_manifests_transfercount_transfers_available_for_rebalance_o, manifests.size, transferCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -84,7 +87,7 @@ fun OverrideManifestCard(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Manifest ${manifest.id.take(8)}",
+                        text = stringResource(R.string.mobile_payload_ui_manifest_take, manifest.id.take(8)),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -122,7 +125,7 @@ fun OverrideManifestCard(
                     color = MaterialTheme.colorScheme.surfaceContainerLowest,
                 ) {
                     Text(
-                        text = "No transfers are assigned to this manifest.",
+                        text = stringResource(R.string.mobile_factory_ui_no_transfers_are_assigned_to_this_manifest),
                         modifier = Modifier.padding(PegasusSpacing.lg),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

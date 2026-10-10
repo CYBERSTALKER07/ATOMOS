@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { warehouseApi } from '@/lib/warehouse-api';
@@ -11,6 +12,7 @@ import EmptyState from '@/components/EmptyState';
 import type { WarehouseDispatchDriver } from '@pegasusx/types';
 
 export default function RescuesPage() {
+  const t = usePortalT();
   const router = useRouter();
   const { toast } = useToast();
   
@@ -82,15 +84,15 @@ export default function RescuesPage() {
 
   return (
     <PageChrome
-      title="Fleet Rescues"
-      description="Manage truck breakdowns and propose rescue operations"
+      title={t("warehouse_portal.dispatch.rescues.text.fleet_rescues")}
+      description={t("warehouse_portal.residual.text.manage_truck_breakdowns_and_propose_rescue_operations")}
       icon="dispatch"
       loading={loading}
       error={error}
     >
-      <PageSection title="Needs Rescue">
+      <PageSection title={t("warehouse_portal.dispatch.rescues.text.needs_rescue")}>
         {brokenDrivers.length === 0 ? (
-          <EmptyState headline="All Good" body="No trucks currently require a rescue." icon="check" />
+          <EmptyState headline={t("warehouse_portal.residual.text.all_good")} body={t("warehouse_portal.residual.text.no_trucks_currently_require_a_rescue")} icon="check" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {brokenDrivers.map(d => (
@@ -114,9 +116,9 @@ export default function RescuesPage() {
       {selectedBrokenDriver && (
         <PageSection title={`Rescue Options for ${selectedBrokenDriver.name}`}>
           {previewLoading ? (
-            <div>Finding available trucks...</div>
+            <div>{t("warehouse_portal.dispatch.rescues.text.finding_available_trucks")}</div>
           ) : rescueOptions.length === 0 ? (
-            <EmptyState headline="No Rescuers Available" body="There are no active drivers with enough capacity." />
+            <EmptyState headline={t("warehouse_portal.residual.text.no_rescuers_available")} body={t("warehouse_portal.residual.text.there_are_no_active_drivers_with_enough_capacity")} />
           ) : (
             <div className="space-y-4">
               {rescueOptions.map(opt => (
@@ -125,7 +127,7 @@ export default function RescuesPage() {
                     <div className="font-semibold">{opt.name}</div>
                     <div className="text-sm text-muted-foreground">
                       {opt.license_plate} · Capacity: {opt.effective_capacity_vu.toFixed(1)} VU
-                      {opt.is_capacity_exceeded && <span className="text-destructive ml-2 font-medium">Insufficient Capacity</span>}
+                      {opt.is_capacity_exceeded && <span className="text-destructive ml-2 font-medium">{t("warehouse_portal.dispatch.rescues.text.insufficient_capacity")}</span>}
                     </div>
                   </div>
                   <button

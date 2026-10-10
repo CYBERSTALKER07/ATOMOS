@@ -45,7 +45,7 @@ struct PricingView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Pricing")
+        .navigationTitle("portal.nav.pricing")
         .searchable(text: $query, prompt: "Product name")
         .task { await load() }
         .refreshable { await load(silent: true) }

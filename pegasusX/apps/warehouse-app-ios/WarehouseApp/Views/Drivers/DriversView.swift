@@ -18,14 +18,14 @@ struct DriversView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error, drivers.isEmpty {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if drivers.isEmpty {
-                    ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("Add a driver to get started"))
+                    ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("mobile_warehouse.ui.add_a_driver_to_get_started"))
                 } else {
                     DriversList(
                         drivers: drivers,
@@ -38,13 +38,13 @@ struct DriversView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Drivers")
+            .navigationTitle("portal.nav.drivers")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Driver", systemImage: "plus") { showCreate = true }
+                    Button("mobile_warehouse.ui.add_driver", systemImage: "plus") { showCreate = true }
                 }
             }
             .task { load() }
@@ -68,9 +68,9 @@ struct DriversView: View {
                 get: { createdPin != nil },
                 set: { if !$0 { createdPin = nil } }
             )) {
-                Button("Done") { createdPin = nil }
+                Button("warehouse_portal.kpi_stat_card.text.done") { createdPin = nil }
             } message: {
-                Text("One-time PIN: \(createdPin ?? "")\nSave it now.")
+                Text(L10n.format("mobile_warehouse.ui.one_time_pin_createdpin_nsave_it_now", "\(createdPin ?? "")"))
             }
         }
     }
@@ -120,21 +120,21 @@ private struct CreateDriverSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                 if let error {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Driver")
+            .navigationTitle("mobile_warehouse.ui.add_driver")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button("mobile_warehouse.ui.create") { create() }
                         .disabled(submitting || name.isEmpty || phone.isEmpty)
                 }
             }

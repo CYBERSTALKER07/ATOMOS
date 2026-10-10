@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { reconnectDelayMs } from '@pegasusx/api-client';
+import { reconnectDelayMs } from '@pegasusx/api-core';
 import { readTokenFromCookie, resolveSupplierToken, supplierFetch } from './auth';
 import { runSupplierSessionReconcile } from './session-reconcile';
 import type { HandoffCardMetadata } from '@pegasusx/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws';
+const SUPPLIER_NOTIFICATIONS_SSE_PATH = '/v1/supplier/events';
 
 interface BackendNotification {
   notification_id: string;
@@ -85,7 +85,7 @@ export function useNotifications() {
     unreadCount: 0,
     loading: true,
   });
-  const wsRef = useRef<WebSocket | null>(null);
+  const esRef = useRef<EventSource | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectAttempt = useRef(0);
   const hasConnectedOnce = useRef(false);
@@ -169,20 +169,24 @@ export function useNotifications() {
     }
   }, []);
 
-  // ── WebSocket for real-time notifications ──
-  const connectWS = useCallback(() => {
+  // ── SSE for real-time notifications ──
+  const connectSSE = useCallback(() => {
     if (disposedRef.current) return;
-    const token = readTokenFromCookie();
-    if (!token) return;
-
     clearTimeout(reconnectTimer.current);
-    const wsBase = API.replace(/^http/, 'ws');
-    const url = new URL(SUPPLIER_NOTIFICATIONS_WS_PATH, wsBase);
-    url.searchParams.set('token', token);
-    const ws = new WebSocket(url.toString());
-    wsRef.current = ws;
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
+    }
 
-    ws.onopen = () => {
+    const token = readTokenFromCookie();
+    const sseUrl = new URL(SUPPLIER_NOTIFICATIONS_SSE_PATH, API);
+    if (token) {
+      sseUrl.searchParams.set('token', token);
+    }
+    const es = new EventSource(sseUrl.toString(), { withCredentials: true });
+    esRef.current = es;
+
+    es.onopen = () => {
       if (disposedRef.current) return;
       const wasReconnect = hasConnectedOnce.current;
       hasConnectedOnce.current = true;
@@ -193,7 +197,7 @@ export function useNotifications() {
       }
     };
 
-    ws.onmessage = (event) => {
+    es.onmessage = (event) => {
       if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data) as RealtimeNotificationFrame;
@@ -219,7 +223,7 @@ export function useNotifications() {
             title: msg.title,
             body: msg.body || '',
             payload: msg.payload || '',
-            channel: msg.channel || 'WS',
+            channel: msg.channel || 'SSE',
             read_at: null,
             created_at: msg.created_at || new Date().toISOString(),
           };
@@ -235,17 +239,14 @@ export function useNotifications() {
       } catch { /* ignore malformed */ }
     };
 
-    ws.onclose = () => {
-      if (wsRef.current === ws) {
-        wsRef.current = null;
+    es.onerror = () => {
+      // EventSource reconnects natively. If closed, retry.
+      if (es.readyState === EventSource.CLOSED && !disposedRef.current) {
+        const delay = reconnectDelayMs(reconnectAttempt.current, { baseMs: 3_000, maxMs: 30_000 });
+        reconnectAttempt.current += 1;
+        reconnectTimer.current = setTimeout(connectSSE, delay);
       }
-      if (disposedRef.current) return;
-      const delay = reconnectDelayMs(reconnectAttempt.current, { baseMs: 5_000, maxMs: 60_000 });
-      reconnectAttempt.current += 1;
-      reconnectTimer.current = setTimeout(connectWS, delay);
     };
-
-    ws.onerror = () => ws.close();
   }, [fetchInbox]);
 
   // ── Lifecycle ──
@@ -261,14 +262,14 @@ export function useNotifications() {
         return;
       }
       void fetchInbox(ac.signal);
-      connectWS();
+      connectSSE();
     })();
 
     const reconnectIfNeeded = () => {
-      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+      if (esRef.current && (esRef.current.readyState === EventSource.OPEN || esRef.current.readyState === EventSource.CONNECTING)) {
         return;
       }
-      connectWS();
+      connectSSE();
     };
 
     const handleWake = () => {
@@ -297,10 +298,10 @@ export function useNotifications() {
       window.removeEventListener('pageshow', handleWake);
       document.removeEventListener('visibilitychange', handleVisible);
       clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
-      wsRef.current = null;
+      esRef.current?.close();
+      esRef.current = null;
     };
-  }, [fetchInbox, connectWS]);
+  }, [fetchInbox, connectSSE]);
 
   return { ...state, fetchInbox, markRead, markAllRead };
 }

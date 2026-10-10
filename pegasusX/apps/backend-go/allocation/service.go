@@ -3,6 +3,7 @@ package allocation
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"cloud.google.com/go/spanner"
@@ -11,8 +12,10 @@ import (
 )
 
 const (
-	ConstraintReasonOK     = "OK"
-	ConstraintReasonLegacy = "LEGACY"
+	ConstraintReasonOK      = "OK"
+	ConstraintReasonLegacy  = "LEGACY"
+	ConstraintReasonPartial = "PARTIAL"
+	ConstraintReasonNone    = "NO_STOCK"
 )
 
 type AllocationRequest struct {
@@ -57,6 +60,7 @@ type AllocationService struct {
 	client             *spanner.Client
 	segment            *segment.Service
 	constrainedEnabled bool
+	partialEnabled     bool
 }
 
 func NewAllocationService(client *spanner.Client) *AllocationService {
@@ -75,6 +79,17 @@ func (s *AllocationService) SetConstrainedAllocationEnabled(enabled bool) {
 	}
 }
 
+func (s *AllocationService) SetPartialAllocationEnabled(enabled bool) {
+	if s != nil {
+		s.partialEnabled = enabled
+	}
+}
+
+func PartialAllocationEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("PARTIAL_ALLOCATION_ENABLED")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
 // AllocateOrder returns a mapping of which WarehouseId fulfills which products.
 func (s *AllocationService) AllocateOrder(ctx context.Context, req *AllocationRequest) (*AllocationResult, error) {
 	if s == nil || s.client == nil {
@@ -83,7 +98,10 @@ func (s *AllocationService) AllocateOrder(ctx context.Context, req *AllocationRe
 	if len(req.Items) == 0 {
 		return &AllocationResult{Fulfillments: make(map[string]string), Mode: segment.AllocationModeFirstFit}, nil
 	}
-	return s.allocateFromInventory(ctx, req, s.client.Single().Query)
+	// Single() is one-shot; allocateFirstFit issues warehouse + inventory queries.
+	txn := s.client.ReadOnlyTransaction()
+	defer txn.Close()
+	return s.allocateFromInventory(ctx, req, txn.Query)
 }
 
 // AllocateOrderTxn runs allocation reads inside an existing Spanner RW transaction.
@@ -127,31 +145,68 @@ func (s *AllocationService) allocateFirstFit(ctx context.Context, req *Allocatio
 
 	fulfillments := make(map[string]string)
 	decisions := make([]LineDecision, 0, len(qtyReqs))
+	allowPartial := s.partialEnabled || PartialAllocationEnabled()
 	for pid, reqQty := range qtyReqs {
 		stocks, ok := inventory[pid]
 		if !ok {
+			if allowPartial {
+				decisions = append(decisions, LineDecision{
+					Sku:              pid,
+					AllocationMode:   segment.AllocationModeFirstFit,
+					ConstraintReason: ConstraintReasonNone,
+					RequestedQty:     reqQty,
+					AllocatedQty:     0,
+				})
+				continue
+			}
 			return nil, fmt.Errorf("product %s not found in any warehouse", pid)
 		}
 
-		allocated := false
-		for _, st := range stocks {
+		var best *stockInfo
+		for i := range stocks {
+			st := &stocks[i]
+			if st.Available <= 0 {
+				continue
+			}
 			if st.Available >= reqQty {
-				fulfillments[pid] = st.WarehouseId
-				decisions = append(decisions, LineDecision{
-					Sku:              pid,
-					WarehouseId:      st.WarehouseId,
-					AllocationMode:   segment.AllocationModeFirstFit,
-					ConstraintReason: ConstraintReasonLegacy,
-					RequestedQty:     reqQty,
-					AllocatedQty:     reqQty,
-				})
-				allocated = true
+				best = st
 				break
 			}
+			if best == nil || st.Available > best.Available {
+				best = st
+			}
 		}
-		if !allocated {
+		if best == nil || best.Available <= 0 {
+			if allowPartial {
+				decisions = append(decisions, LineDecision{
+					Sku:              pid,
+					AllocationMode:   segment.AllocationModeFirstFit,
+					ConstraintReason: ConstraintReasonNone,
+					RequestedQty:     reqQty,
+					AllocatedQty:     0,
+				})
+				continue
+			}
 			return nil, fmt.Errorf("insufficient stock for product %s (required: %d)", pid, reqQty)
 		}
+		allocQty := reqQty
+		reason := ConstraintReasonLegacy
+		if best.Available < reqQty {
+			if !allowPartial {
+				return nil, fmt.Errorf("insufficient stock for product %s (required: %d)", pid, reqQty)
+			}
+			allocQty = best.Available
+			reason = ConstraintReasonPartial
+		}
+		fulfillments[pid] = best.WarehouseId
+		decisions = append(decisions, LineDecision{
+			Sku:              pid,
+			WarehouseId:      best.WarehouseId,
+			AllocationMode:   segment.AllocationModeFirstFit,
+			ConstraintReason: reason,
+			RequestedQty:     reqQty,
+			AllocatedQty:     allocQty,
+		})
 	}
 
 	return &AllocationResult{

@@ -12,7 +12,7 @@ echo "1. Confirm gap flags OFF in backend config:"
 echo "   CASH_RECONCILIATION_REQUIRED=false"
 echo "   CREDIT_NOTE_AUTO_FROM_BUYER_REJECT=false"
 echo "   CREDIT_NOTE_AUTO_FROM_CLAIM=false"
-echo "   CREDIT_SCORE_ENFORCEMENT_ENABLED=false"
+echo "   (do not set CREDIT_SCORE_ENFORCEMENT_ENABLED — dead flag)"
 
 echo "2. Build and push images (example):"
 echo "   make docker-build-backend"

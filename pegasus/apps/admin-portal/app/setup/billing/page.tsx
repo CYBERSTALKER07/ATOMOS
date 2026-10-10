@@ -59,11 +59,12 @@ function buildBillingSetupIdempotencyKey(
   ].join(':');
 }
 
-function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function InputField({ label, id: explicitId, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  const inputId = explicitId || props.name || `billing-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
   return (
     <div>
-      <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>{label}</label>
-      <input {...props} className="md-input-outlined w-full" />
+      <label htmlFor={inputId} className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>{label}</label>
+      <input id={inputId} aria-label={label} {...props} className="md-input-outlined w-full" />
     </div>
   );
 }

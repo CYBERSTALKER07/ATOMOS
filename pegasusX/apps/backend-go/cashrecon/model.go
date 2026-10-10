@@ -15,6 +15,7 @@ const (
 
 type CashReconciliation struct {
 	ReconciliationId  string
+	SupplierId        string
 	DriverId          string
 	RouteId           *string
 	ShiftDate         time.Time // stored as DATE in Spanner
@@ -30,6 +31,7 @@ type CashReconciliation struct {
 }
 
 type SubmitReconciliationRequest struct {
+	SupplierId        string
 	DriverId          string
 	RouteId           *string
 	ShiftDate         time.Time
@@ -37,3 +39,4 @@ type SubmitReconciliationRequest struct {
 	DeclaredCashMinor int64
 	DriverNote        *string
 }
+

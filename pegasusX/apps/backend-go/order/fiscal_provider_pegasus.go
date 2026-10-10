@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // PegasusReceiptProvider issues platform commercial receipts owned by PegasusX.
@@ -21,7 +23,7 @@ type PegasusReceiptProvider struct {
 }
 
 // CreateReceipt builds a durable platform receipt payload stored on OrderFiscalReceipts.
-func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
+func (p PegasusReceiptProvider) CreateReceipt(ctx context.Context, req FiscalCreateRequest) (FiscalCreateResult, error) {
 	// Optional SSMR fail hooks (only when explicitly enabled) so fiscal smoke
 	// can still exercise FISCAL_FAILED without switching back to FAKE.
 	if pegasusSSMRHooksEnabled() {
@@ -54,11 +56,14 @@ func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreat
 	// QR opens the branded HTML document (JSON remains the default Accept/API form).
 	qr := base + "/v1/platform/receipts/" + receiptID + "?format=html"
 
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
-	country := countryFromCurrency(currency)
+	country, err := auth.CountryFromContext(ctx, req.SupplierID)
+	if err != nil {
+		return FiscalCreateResult{}, err
+	}
 	layout := receiptLayoutForCountry(country)
 	company := pegasusCompanyName()
 	tin := pegasusIssuerTIN()
@@ -117,11 +122,61 @@ func (p PegasusReceiptProvider) CreateReceipt(_ context.Context, req FiscalCreat
 	}, nil
 }
 
+// CreateCorrectiveReceipt issues a platform credit receipt referencing the
+// original platform receipt. Not a tax document — the tax corrective chain is
+// MY_SOLIQ's job once EDS credentials land; this keeps the refund audit trail
+// honest in the interim.
+func (p PegasusReceiptProvider) CreateCorrectiveReceipt(ctx context.Context, req FiscalCorrectiveRequest) (FiscalCreateResult, error) {
+	if strings.TrimSpace(req.AttemptID) == "" {
+		return FiscalCreateResult{}, fmt.Errorf("pegasus corrective: attempt_id required")
+	}
+	if strings.TrimSpace(req.OriginalReceiptID) == "" {
+		return FiscalCreateResult{}, fmt.Errorf("pegasus corrective: original receipt id required")
+	}
+	receiptID := "PX-CN-" + req.AttemptID
+	if len(receiptID) > 128 {
+		receiptID = receiptID[:128]
+	}
+	base := strings.TrimRight(strings.TrimSpace(p.PublicBaseURL), "/")
+	if base == "" {
+		base = strings.TrimRight(strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL")), "/")
+	}
+	if base == "" {
+		base = "https://api-ssmr.pegasusx.app"
+	}
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
+	}
+	payload := map[string]any{
+		"provider":            FiscalProviderPegasus,
+		"legal_class":         "platform_credit_receipt",
+		"tax_ofd":             false,
+		"tax_ofd_note":        "platform credit note; tax corrective EHF deferred until Soliq EDS credentials arrive",
+		"receipt_id":          receiptID,
+		"attempt_id":          req.AttemptID,
+		"order_id":            req.OrderID,
+		"supplier_id":         req.SupplierID,
+		"retailer_id":         req.RetailerID,
+		"corrects_receipt_id": req.OriginalReceiptID,
+		"correct_reason":      req.ReasonCode,
+		"amount_minor":        req.AmountMinor,
+		"currency":            currency,
+		"issued_at":           time.Now().UTC().Format(time.RFC3339),
+		"qr_url":              base + "/v1/platform/receipts/" + receiptID + "?format=html",
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return FiscalCreateResult{}, fmt.Errorf("pegasus corrective marshal: %w", err)
+	}
+	return FiscalCreateResult{FiscalReceiptID: receiptID, RawPayload: raw}, nil
+}
+
 func pegasusSSMRHooksEnabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("FISCAL_PEGASUS_SSMR_HOOKS")))
 	if v == "1" || v == "true" || v == "yes" {
 		return true
 	}
-	// SSMR tenant default: keep fiscal e2e fail hooks without FAKE.
-	return strings.EqualFold(strings.TrimSpace(os.Getenv("PEGASUSX_ENV")), "ssmr")
+	// Sandbox tenant default: keep fiscal e2e fail hooks without FAKE.
+	return auth.IsSandbox()
 }

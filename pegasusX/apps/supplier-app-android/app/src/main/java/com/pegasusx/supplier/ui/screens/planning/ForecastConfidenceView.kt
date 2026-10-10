@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.planning
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import com.pegasusx.supplier.data.model.ForecastConfidence
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.formatBaselineSourceLabel
+import com.pegasusx.supplier.R
 
 @Composable
 fun ForecastConfidenceView(
@@ -41,7 +44,7 @@ fun ForecastConfidenceView(
             }
             if (blocked) {
                 Text(
-                    "Insufficient history — predictive forecast blocked",
+                    confidence.blockedReason ?: "insufficient_history",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary,
                 )
@@ -53,7 +56,7 @@ fun ForecastConfidenceView(
             }
             if (pct != null && !blocked) {
                 Text(
-                    "$pct% confidence",
+                    stringResource(R.string.mobile_supplier_ui_pct_confidence_2, pct),
                     style = MaterialTheme.typography.bodySmall,
                     color = confidenceColor(pct),
                 )

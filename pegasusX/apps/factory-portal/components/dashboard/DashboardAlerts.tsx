@@ -1,9 +1,13 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Icon from '@/components/Icon';
 import { FactoryStats } from './types';
 
 export function DashboardAlerts({ stats }: { stats: FactoryStats }) {
+  const t = usePortalT();
   const s = stats;
   const secondaryKpis = [
     { label: 'Vehicles Total', value: s.vehicles_total, icon: 'fleet', href: '/fleet', detail: `${s.vehicles_available} available now` },
@@ -16,10 +20,10 @@ export function DashboardAlerts({ stats }: { stats: FactoryStats }) {
       <div className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Operational health</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Shift support signals</h2>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.dashboard.dashboard_alerts.text.operational_health")}</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">{t("factory_portal.dashboard.dashboard_alerts.text.shift_support_signals")}</h2>
           </div>
-          {s.critical_insights > 0 && <span className="status-chip status-chip--critical">Attention needed</span>}
+          {s.critical_insights > 0 && <span className="status-chip status-chip--critical">{t("factory_portal.dashboard.dashboard_alerts.text.attention_needed")}</span>}
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-3">
@@ -31,7 +35,7 @@ export function DashboardAlerts({ stats }: { stats: FactoryStats }) {
               >
                 <div className="flex items-center justify-between">
                   <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
-                  {kpi.danger && <span className="status-chip status-chip--critical">Alert</span>}
+                  {kpi.danger && <span className="status-chip status-chip--critical">{t("factory_portal.dashboard.dashboard_alerts.text.alert")}</span>}
                 </div>
                 <div className="mt-4 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{kpi.value}</div>
                 <div className="mt-1 text-sm font-medium text-[var(--foreground)]">{kpi.label}</div>
@@ -43,8 +47,8 @@ export function DashboardAlerts({ stats }: { stats: FactoryStats }) {
       </div>
 
       <div className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Recommended next steps</p>
-        <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">Operator actions for this shift</h2>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{t("factory_portal.dashboard.dashboard_alerts.text.recommended_next_steps")}</p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--foreground)]">{t("factory_portal.dashboard.dashboard_alerts.text.operator_actions_for_this_shift")}</h2>
 
         <div className="mt-5 space-y-3">
           {[

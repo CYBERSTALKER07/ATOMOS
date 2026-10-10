@@ -6,7 +6,7 @@
     "fps": 24,
     "audio": "silent"
   },
-  "outputRoot": "../softwareengineercv-main/public/media",
+  "outputRoot": "../antimater/public/media",
   "categories": [
     {
       "id": "platform",

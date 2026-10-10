@@ -13,21 +13,21 @@ struct StaffList: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error, staff.isEmpty {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { onRetry() }
+                    Button("common.action.retry") { onRetry() }
                 }
             } else if staff.isEmpty {
-                ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("Add staff members"))
+                ContentUnavailableView("No Staff", systemImage: "person.2", description: Text("mobile_warehouse.ui.add_staff_members"))
             } else {
                 ResponsiveGridView(data: staff) { member in
                     HStack {
                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                             Text(member.name)
                                 .font(.headline)
-                            Text("\(member.role) · \(member.phone)")
+                            Text(L10n.format("mobile_warehouse.ui.role_phone", "\(member.role)", "\(member.phone)"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

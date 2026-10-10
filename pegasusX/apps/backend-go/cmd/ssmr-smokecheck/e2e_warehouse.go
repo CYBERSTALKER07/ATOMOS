@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/gorilla/websocket"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 )
@@ -67,22 +66,25 @@ func runWarehouseDispatchSettingsE2E(ctx context.Context, client *http.Client, b
 	return nil
 }
 
-func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, cookie, retailerToken string) error {
+func runWarehouseOpsPolicyE2E(ctx context.Context, client *http.Client, base, cookie, retailerToken string, cfg *bootstrap.Config) error {
 	whID := demoWarehouseID()
 	settingsURL := base + "/v1/warehouse/ops/settings?warehouse_id=" + whID
-	patchBody, _ := json.Marshal(map[string]any{
+	patch := map[string]any{
 		"preorder_min_lead_days":  int64(5),
 		"preorder_max_lead_days":  int64(60),
 		"order_line_max_quantity": int64(50),
-		"delivery_fee_rules": map[string]any{
-			"currency":       "UZS",
+	}
+	if op := smokeOperatingCurrency(ctx, cfg.SeedSupplierCurrency); op != "" {
+		patch["delivery_fee_rules"] = map[string]any{
+			"currency":       op,
 			"base_fee_minor": int64(0),
 			"tiers": []map[string]any{
 				{"max_km": 5.0, "fee_minor": int64(0)},
 				{"max_km": nil, "fee_minor": int64(100000)},
 			},
-		},
-	})
+		}
+	}
+	patchBody, _ := json.Marshal(patch)
 	opsKey := fmt.Sprintf("ssmr-wh-ops-policy-%d", time.Now().UnixNano())
 	status, respBody, _, err := clientDo(ctx, client, http.MethodPatch, settingsURL, patchBody, cookie, opsKey)
 	if err != nil {
@@ -735,8 +737,8 @@ func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base,
 	var reqBody []byte
 	if strings.TrimSpace(orderID) != "" && strings.TrimSpace(driverID) != "" {
 		route := map[string]any{
-			"driver_id":  driverID,
-			"order_ids":  []string{orderID},
+			"driver_id": driverID,
+			"order_ids": []string{orderID},
 		}
 		if strings.TrimSpace(vehicleID) != "" {
 			route["vehicle_id"] = vehicleID
@@ -811,6 +813,9 @@ func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base,
 		}
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK")
+	if err := runWarehousePickWaveForManifest(ctx, client, base, supplierCookie, picked.ManifestID); err != nil {
+		return picked, err
+	}
 	return picked, nil
 }
 
@@ -923,7 +928,7 @@ func runWarehouseDispatchExecuteWithWS(ctx context.Context, client *http.Client,
 	if err != nil {
 		return nil, fmt.Errorf("issue warehouse admin jwt: %w", err)
 	}
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL(base, whToken), nil)
+	conn, _, err := dialWS(ctx, base, whToken)
 	if err != nil {
 		return nil, fmt.Errorf("warehouse ws dial: %w", err)
 	}

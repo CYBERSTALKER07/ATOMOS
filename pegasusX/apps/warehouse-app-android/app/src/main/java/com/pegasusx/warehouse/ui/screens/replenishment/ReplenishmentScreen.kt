@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.replenishment
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -19,15 +21,16 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.realtime.WAREHOUSE_RECONNECT_RECOVERY_HINT
 import com.pegasusx.warehouse.ui.realtime.WarehouseReconnectRecoveryEffect
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +104,10 @@ fun ReplenishmentScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Replenishment") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -120,7 +123,7 @@ fun ReplenishmentScreen(
     ) { padding ->
         when {
             loading && insights.isEmpty() -> PegasusLoadingState(
-                title = "Loading replenishment…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_replenishment),
                 body = "Stock insights and reorder signals",
                 modifier = Modifier.fillMaxSize().padding(padding),
             )

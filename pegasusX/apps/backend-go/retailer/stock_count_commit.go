@@ -3,12 +3,16 @@ package retailer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+
 	"net/http"
 	"os"
 	"strings"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // Wave C3.3 offline count commit with base_version conflict protocol.
@@ -295,16 +299,50 @@ func (s *Service) HandleStockCountCommit(w http.ResponseWriter, r *http.Request)
 	}
 	countID := s.newID()
 	actor := auth.ResolveRetailerUserID(claims)
-	for _, l := range lines {
-		if l.Variance == 0 {
-			continue
+	if s.spannerClient == nil {
+		for _, l := range lines {
+			if l.Variance == 0 {
+				continue
+			}
+			if err := s.applyAdjust(r.Context(), orgID, locID, bin, l.Sku, l.Variance, actor, "cycle_count:"+countID); err != nil {
+				writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "sku": l.Sku})
+				return
+			}
 		}
-		if err := s.applyAdjust(r.Context(), orgID, locID, bin, l.Sku, l.Variance, actor, "cycle_count:"+countID); err != nil {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error(), "sku": l.Sku})
+	} else {
+		_, err := s.spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			for _, l := range lines {
+				if l.Variance == 0 {
+					continue
+				}
+				if err := s.applyDeltaInTxn(ctx, txn, orgID, locID, bin, l.Sku, l.Variance, MoveCountVariance, "ADJUST", "", actor, "cycle_count:"+countID); err != nil {
+					return fmt.Errorf("sku %s: %w", l.Sku, err)
+				}
+			}
+			if err := outbox.EmitJSON(ctx, buf, "RetailerStockCount", countID, events.TopicOrders, map[string]any{
+				"type":        "RETAILER_STOCK_COUNT_COMMITTED",
+				"retailer_id": orgID,
+				"location_id": locID,
+				"stock_bin":   bin,
+				"count_id":    countID,
+			}); err != nil {
+				return err
+			}
+			return buf.Flush(ctx)
+		})
+		if err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
 			return
 		}
-		_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
 	}
+
+	for _, l := range lines {
+		if l.Variance != 0 {
+			_ = s.syncReorderCurrentStock(r.Context(), orgID, l.Sku)
+		}
+	}
+
 	// applyAdjust already bumps version via applyDelta; force audit if forced
 	linesJSON, _ := json.Marshal(lines)
 	if err := s.saveStockCount(r.Context(), countID, orgID, locID, "COMMITTED", string(linesJSON), actor, true); err != nil {

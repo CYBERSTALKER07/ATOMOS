@@ -137,6 +137,13 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	if repo.applyCalls != 1 {
 		t.Fatalf("expected 1 repo apply call, got %d", repo.applyCalls)
 	}
+	if len(repo.assignments) != 1 {
+		t.Fatalf("expected 1 Orders assignment persist, got %#v", repo.assignments)
+	}
+	gotAssign := repo.assignments[0]
+	if gotAssign.orderID != "ord_payload_1" || gotAssign.routeID != "route_veh_payload_2" || gotAssign.driverID != "drv_payload_2" {
+		t.Fatalf("unexpected assignment %#v", gotAssign)
+	}
 
 	types := payloadOutboxEventTypes(repo.events)
 	if len(types) != 1 || types[0] != events.EventManifestRebalanced {
@@ -172,6 +179,26 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 
 	assertPayloadWSMessageContainsType(t, supplierConn.messages, events.EventManifestRebalanced)
 	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestRebalanced)
+}
+
+func TestHandleApplyReassign_MissingOrderNoPersist(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
+	repo.svc = svc
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_missing","to_manifest_id":"mf_payload_2"}`))
+	rr := httptest.NewRecorder()
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if len(repo.assignments) != 0 {
+		t.Fatalf("expected no persist on missing order, got %#v", repo.assignments)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox on missing order, got %#v", payloadOutboxEventTypes(repo.events))
+	}
 }
 
 func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
@@ -1351,7 +1378,38 @@ func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) 
 	}
 
 	assertBatchExplain("missing_manifest", "not_found", "manifest_not_found")
-	assertBatchExplain("mf_payload_2", "not_sealable", "manifest_not_sealable")
+	if got, _ := body["sealed_count"].(float64); got != 1 {
+		t.Fatalf("already-sealed batch should count as success, sealed_count=%v", body["sealed_count"])
+	}
+	foundAlready := false
+	for _, raw := range rawResults {
+		row, ok := raw.(map[string]any)
+		if !ok || row["manifest_id"] != "mf_payload_2" {
+			continue
+		}
+		if row["status"] != "already_sealed" {
+			t.Fatalf("mf_payload_2 expected already_sealed, got %#v", row["status"])
+		}
+		foundAlready = true
+	}
+	if !foundAlready {
+		t.Fatal("result row for mf_payload_2 not found")
+	}
+}
+
+func TestHandleSeal_RejectsOrderOnly(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
+	repo.svc = svc
+	req := httptest.NewRequest(http.MethodPost, "/v1/payload/seal", strings.NewReader(`{"order_id":"ord_payload_1","manifest_cleared":true}`))
+	rr := httptest.NewRecorder()
+	svc.HandleSeal(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "manifest_id_required") {
+		t.Fatalf("expected manifest_id_required, got %s", rr.Body.String())
+	}
 }
 
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
@@ -1457,16 +1515,23 @@ func assertPayloadWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 	t.Fatalf("expected websocket event type %q in messages: %q", wantType, messages)
 }
 
+type orderAssignmentCall struct {
+	orderID  string
+	routeID  string
+	driverID string
+}
+
 type payloadRepoSpy struct {
-	svc *Service
-	applyCalls int
-	events     []outbox.Event
+	svc         *Service
+	applyCalls  int
+	events      []outbox.Event
+	assignments []orderAssignmentCall
 }
 
 func (r *payloadRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if fn != nil {
-		if err := fn(ctx, &dummyPayloadTx{svc: r.svc}); err != nil {
+		if err := fn(ctx, &dummyPayloadTx{svc: r.svc, spy: r}); err != nil {
 			return err
 		}
 	}
@@ -1541,10 +1606,48 @@ func (r *payloadRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Serv
 	return nil
 }
 
-type dummyPayloadTx struct{ svc *Service }
-func (d *dummyPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) { return append([]ManifestRow(nil), d.svc.manifests...), nil }
+type dummyPayloadTx struct {
+	svc *Service
+	spy *payloadRepoSpy
+}
+
+func (d *dummyPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) {
+	return append([]ManifestRow(nil), d.svc.manifests...), nil
+}
 func (d *dummyPayloadTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
-func (d *dummyPayloadTx) ListManifestOrders(ctx context.Context, mid string) ([]ManifestOrder, error) { return d.svc.manifestOrders[mid], nil }
-func (d *dummyPayloadTx) SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error { return nil }
-func (d *dummyPayloadTx) ListExceptions(ctx context.Context) ([]ManifestException, error) { return append([]ManifestException(nil), d.svc.exceptions...), nil }
+func (d *dummyPayloadTx) ListManifestOrders(ctx context.Context, mid string) ([]ManifestOrder, error) {
+	return d.svc.manifestOrders[mid], nil
+}
+func (d *dummyPayloadTx) SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error {
+	return nil
+}
+func (d *dummyPayloadTx) ListExceptions(ctx context.Context) ([]ManifestException, error) {
+	return append([]ManifestException(nil), d.svc.exceptions...), nil
+}
 func (d *dummyPayloadTx) SaveException(ctx context.Context, e ManifestException) error { return nil }
+func (d *dummyPayloadTx) UpdateOrderAssignment(ctx context.Context, orderID, routeID, driverID string) error {
+	if d.spy != nil {
+		d.spy.assignments = append(d.spy.assignments, orderAssignmentCall{
+			orderID:  orderID,
+			routeID:  routeID,
+			driverID: driverID,
+		})
+	}
+	return nil
+}
+
+func (c *payloadCacheBackendSpy) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (c *payloadCacheBackendSpy) DecrBy(ctx context.Context, key string, value int64) (int64, error) {
+	return 0, nil
+}
+
+func (tx *dummyPayloadTx) DeleteManifestOrder(ctx context.Context, manifestID, orderID string) error {
+	return nil
+}
+
+func (tx *dummyPayloadTx) SaveShipUnits(ctx context.Context, units []ShipUnit) error {
+	return nil
+}

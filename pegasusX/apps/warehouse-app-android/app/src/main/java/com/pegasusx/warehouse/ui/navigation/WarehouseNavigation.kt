@@ -53,6 +53,7 @@ import com.pegasusx.warehouse.ui.components.WarehouseNavigationDrawer
 import com.pegasusx.warehouse.ui.screens.analytics.AnalyticsScreen
 import com.pegasusx.warehouse.ui.screens.auth.LoginScreen
 import com.pegasusx.warehouse.ui.screens.claims.ClaimsScreen
+import com.pegasusx.warehouse.ui.screens.coldchain.ColdChainScreen
 import com.pegasusx.warehouse.ui.screens.crm.CRMScreen
 import com.pegasusx.warehouse.ui.screens.dashboard.DashboardScreen
 import com.pegasusx.warehouse.ui.screens.dispatch.DispatchScreen
@@ -64,14 +65,18 @@ import com.pegasusx.warehouse.ui.screens.forecast.DemandForecastScreen
 import com.pegasusx.warehouse.ui.screens.inventory.InventoryScreen
 import com.pegasusx.warehouse.ui.screens.inventory.LocationSettingsScreen
 import com.pegasusx.warehouse.ui.screens.inventory.OpsSettingsScreen
+import com.pegasusx.warehouse.ui.screens.inventory.ReturnPolicySettingsScreen
+import com.pegasusx.warehouse.ui.screens.labor.LaborCapacityScreen
 import com.pegasusx.warehouse.ui.screens.preorders.PreordersScreen
 import com.pegasusx.warehouse.ui.screens.preorders.StockCommitmentsScreen
 import com.pegasusx.warehouse.ui.screens.manifests.ManifestsScreen
 import com.pegasusx.warehouse.ui.screens.more.MoreHubScreen
 import com.pegasusx.warehouse.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.warehouse.ui.screens.operations.OperationsScreen
+import com.pegasusx.warehouse.ui.screens.ops.WarehouseScoredExceptionsScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrderDetailScreen
 import com.pegasusx.warehouse.ui.screens.orders.OrdersScreen
+import com.pegasusx.warehouse.ui.screens.coverage.CoverageScreen
 import com.pegasusx.warehouse.ui.screens.payment.PaymentConfigScreen
 import com.pegasusx.warehouse.ui.screens.portal.PortalHandoffScreen
 import com.pegasusx.warehouse.ui.screens.products.ProductsScreen
@@ -94,7 +99,11 @@ object WarehouseRoutes {
     const val LOGIN = "login"
     const val DASHBOARD = "dashboard"
     const val ORDERS = "orders"
+    const val ORDERS_ROUTE = "orders?state={state}"
     const val ORDER_DETAIL = "orders/{id}"
+
+    fun orders(state: String? = null): String =
+        if (state.isNullOrBlank()) ORDERS else "$ORDERS?state=${android.net.Uri.encode(state)}"
     const val DRIVERS = "drivers"
     const val VEHICLES = "vehicles"
     const val VEHICLE_DETAIL = "vehicles/{id}"
@@ -104,6 +113,8 @@ object WarehouseRoutes {
     const val ANALYTICS = "analytics"
     const val CRM = "crm"
     const val RETURNS = "returns"
+    const val COLD_CHAIN = "cold_chain"
+    const val LABOR_CAPACITY = "labor_capacity"
     const val EXCEPTIONS = "exceptions"
     const val CLAIMS = "claims"
     const val RESCUES = "rescues"
@@ -117,14 +128,17 @@ object WarehouseRoutes {
     const val REPLENISHMENT = "replenishment"
     const val DISPATCH_SETTINGS = "dispatch_settings"
     const val OPS_SETTINGS = "ops_settings"
+    const val RETURN_POLICY = "return_policy"
     const val LOCATION_SETUP = "location_setup"
     const val LOCATION_SETTINGS = "location_settings"
     const val PREORDERS = "preorders"
     const val TOMORROW_BOARD = "tomorrow_board"
     const val STOCK_COMMITMENTS = "stock_commitments"
     const val PAYMENT_CONFIG = "payment_config"
+    const val COVERAGE = "coverage"
     const val NOTIFICATIONS = "notifications"
     const val OPERATIONS = "operations"
+    const val CONTROL_TOWER = "control_tower"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val SUPPLY_REQUEST_DETAIL = "supply_requests/{id}"
     const val PORTAL_HANDOFF = "portal/{feature}"
@@ -335,13 +349,23 @@ fun WarehouseNavigation(
                     )
                 }
 
-                composable(WarehouseRoutes.ORDERS) {
+                composable(
+                    route = WarehouseRoutes.ORDERS_ROUTE,
+                    arguments = listOf(
+                        navArgument("state") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
+                ) { entry ->
+                    val state = entry.arguments?.getString("state").orEmpty()
                     OrdersScreen(
                         api = api,
                         opsRepository = opsRepository,
                         realtimeSignals = realtimeSignals,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.ORDERS),
+                        initialState = state.takeIf { it.isNotBlank() },
                     )
                 }
 
@@ -407,11 +431,23 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.RETURNS) {
                     ReturnsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURNS))
                 }
+                composable(WarehouseRoutes.COLD_CHAIN) {
+                    ColdChainScreen(api = api, onBack = backFor(WarehouseRoutes.COLD_CHAIN))
+                }
+                composable(WarehouseRoutes.LABOR_CAPACITY) {
+                    LaborCapacityScreen(api = api, onBack = backFor(WarehouseRoutes.LABOR_CAPACITY))
+                }
                 composable(WarehouseRoutes.EXCEPTIONS) {
                     ExceptionsScreen(
                         api = api,
                         onOrderClick = { id -> navController.navigate(WarehouseRoutes.orderDetail(id)) },
                         onBack = backFor(WarehouseRoutes.EXCEPTIONS),
+                    )
+                }
+                composable(WarehouseRoutes.CONTROL_TOWER) {
+                    WarehouseScoredExceptionsScreen(
+                        api = api,
+                        onBack = backFor(WarehouseRoutes.CONTROL_TOWER),
                     )
                 }
                 composable(WarehouseRoutes.CLAIMS) {
@@ -497,6 +533,9 @@ fun WarehouseNavigation(
                 composable(WarehouseRoutes.OPS_SETTINGS) {
                     OpsSettingsScreen(api = api, onBack = backFor(WarehouseRoutes.OPS_SETTINGS))
                 }
+                composable(WarehouseRoutes.RETURN_POLICY) {
+                    ReturnPolicySettingsScreen(api = api, onBack = backFor(WarehouseRoutes.RETURN_POLICY))
+                }
                 composable(WarehouseRoutes.LOCATION_SETTINGS) {
                     LocationSettingsScreen(
                         api = api,
@@ -522,6 +561,9 @@ fun WarehouseNavigation(
                     StockCommitmentsScreen(api = api, onBack = backFor(WarehouseRoutes.STOCK_COMMITMENTS))
                 }
 
+                composable(WarehouseRoutes.COVERAGE) {
+                    CoverageScreen(api = api, onBack = backFor(WarehouseRoutes.COVERAGE))
+                }
                 composable(WarehouseRoutes.PAYMENT_CONFIG) {
                     PaymentConfigScreen(
                         opsRepository = opsRepository,

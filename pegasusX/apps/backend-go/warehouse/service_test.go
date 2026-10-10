@@ -708,6 +708,14 @@ func (b *warehouseCacheBackendSpy) Publish(context.Context, string, []byte) erro
 	return nil
 }
 
+func (b *warehouseCacheBackendSpy) IncrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
+func (b *warehouseCacheBackendSpy) DecrBy(context.Context, string, int64) (int64, error) {
+	return 0, nil
+}
+
 func (b *warehouseCacheBackendSpy) Subscribe(context.Context, string) (<-chan []byte, func(), error) {
 	ch := make(chan []byte)
 	close(ch)

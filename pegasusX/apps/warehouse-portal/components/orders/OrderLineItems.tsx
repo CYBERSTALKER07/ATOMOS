@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import type { WarehouseOrderDetail } from '@pegasusx/types';
 
 export interface OrderLineItemsProps {
@@ -5,6 +8,7 @@ export interface OrderLineItemsProps {
 }
 
 export function OrderLineItems({ order }: OrderLineItemsProps) {
+  const t = usePortalT();
   if (!order.line_items || order.line_items.length === 0) {
     return null;
   }
@@ -15,7 +19,7 @@ export function OrderLineItems({ order }: OrderLineItemsProps) {
     <section className="wh-bay-panel wh-bay--inventory wh-order-bento-lines">
       <div className="wh-section-head">
         <div>
-          <h2 className="wh-section-title">Line items</h2>
+          <h2 className="wh-section-title">{t("warehouse_portal.orders.order_line_items.text.line_items")}</h2>
           <p className="wh-section-desc">{order.line_items.length} products in this order.</p>
         </div>
       </div>
@@ -23,9 +27,9 @@ export function OrderLineItems({ order }: OrderLineItemsProps) {
         <table className="desk-table">
           <thead>
             <tr>
-              <th>Product</th>
-              <th className="text-right">Qty</th>
-              <th className="text-right">Unit (UZS)</th>
+              <th>{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+              <th className="text-right">{t("warehouse_portal.pick_waves.text.qty")}</th>
+              <th className="text-right">{t("warehouse_portal.orders.order_line_items.text.unit_uzs")}</th>
             </tr>
           </thead>
           <tbody>

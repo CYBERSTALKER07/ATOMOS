@@ -23,7 +23,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		r.Post("/v1/webhooks/global-pay", d.Service.HandleGlobalPayWebhook)
 		r.Post("/v1/webhooks/adyen", d.Service.HandleAdyenWebhook)
 		r.Post("/v1/webhooks/stripe", d.Service.HandleStripeWebhook)
-		r.Post("/v1/webhooks/payme", d.Service.HandlePaymeWebhook)
-		r.Post("/v1/webhooks/click", d.Service.HandleClickWebhook)
+		// UNWIRED: Payme Merchant API + Click SHOP handlers are implemented
+		// (payment.HandlePaymeWebhook / HandleClickWebhook) but must not be
+		// reachable until an explicit wire decision. Launch path is Cash +
+		// Global Pay + MySoliq + bank-file.
+		// r.Post("/v1/webhooks/payme", d.Service.HandlePaymeWebhook)
+		// r.Post("/v1/webhooks/click", d.Service.HandleClickWebhook)
 	})
 }

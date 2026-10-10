@@ -1,4 +1,15 @@
-apiVersion: kafka.strimzi.io/v1
+# Self-hosted Strimzi Kafka — DEV/LOCAL ONLY.
+#
+# Production and staging use GCP Managed Service for Apache Kafka, provisioned
+# by infra/terraform/kafka.tf (enable_managed_kafka=true) and consumed via
+# KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH (see kafkautil/auth.go and the staging
+# overlay). Do NOT deploy this manifest to prod.
+#
+# This manifest is the HA-corrected fallback topology: 3 dual-role nodes,
+# replication factor 3, min.in.sync.replicas 2. Single-broker/RF=1 was a
+# money-path hazard: any pod restart paused the outbox relay and dropped the
+# event backbone.
+apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
   name: dual-role
@@ -6,7 +17,7 @@ metadata:
     strimzi.io/cluster: pegasusx
   namespace: kafka
 spec:
-  replicas: 1
+  replicas: 3
   roles:
     - controller
     - broker
@@ -18,7 +29,7 @@ spec:
         size: 10Gi
         deleteClaim: false
 ---
-apiVersion: kafka.strimzi.io/v1
+apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: pegasusx
@@ -40,11 +51,11 @@ spec:
         type: internal
         tls: true
     config:
-      offsets.topic.replication.factor: 1
-      transaction.state.log.replication.factor: 1
-      transaction.state.log.min.isr: 1
-      default.replication.factor: 1
-      min.insync.replicas: 1
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
   entityOperator:
     topicOperator: {}
     userOperator: {}

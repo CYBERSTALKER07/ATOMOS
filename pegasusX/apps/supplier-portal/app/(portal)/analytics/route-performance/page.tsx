@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
@@ -16,6 +17,7 @@ type RoutePerfRow = {
 };
 
 export default function RoutePerformancePage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<RoutePerfRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,7 @@ export default function RoutePerformancePage() {
       setRows(body.routes ?? []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -40,16 +42,16 @@ export default function RoutePerformancePage() {
   }, [load]);
 
   return (
-    <PageChrome title="Route performance" description="Completed route efficiency and replan metrics." loading={loading} error={error}>
+    <PageChrome title={t("portal.nav.route_performance")} description={t("supplier_portal.residual.text.completed_route_efficiency_and_replan_metrics")} loading={loading} error={error}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-xs uppercase text-[var(--muted)]">
-            <th className="py-2 pr-3">Route</th>
-            <th className="py-2 pr-3">Driver</th>
-            <th className="py-2 pr-3 text-right">Planned stops</th>
-            <th className="py-2 pr-3 text-right">Actual stops</th>
-            <th className="py-2 pr-3 text-right">Replans</th>
-            <th className="py-2 pr-3">Computed</th>
+            <th className="py-2 pr-3">{t("supplier_portal.analytics.route_performance.text.route")}</th>
+            <th className="py-2 pr-3">{t("supplier_portal.analytics.route_performance.text.driver")}</th>
+            <th className="py-2 pr-3 text-right">{t("supplier_portal.analytics.route_performance.text.planned_stops")}</th>
+            <th className="py-2 pr-3 text-right">{t("supplier_portal.analytics.route_performance.text.actual_stops")}</th>
+            <th className="py-2 pr-3 text-right">{t("supplier_portal.analytics.route_performance.text.replans")}</th>
+            <th className="py-2 pr-3">{t("supplier_portal.analytics.route_performance.text.computed")}</th>
           </tr>
         </thead>
         <tbody>

@@ -1,7 +1,6 @@
 // Package retailer owns the retailer-domain handlers, services and repository
-// boundaries. In pegasusX every retailer is scoped to the single seeded
-// supplier, so the registration handler does NOT accept a supplier_id from the
-// body — it resolves the seeded supplier id from the application context.
+// boundaries. Gate 5 Phase 1: registration stamps TenantContext when present,
+// otherwise the bootstrap seed (retailer multi-supplier cart is Phase 2).
 package retailer
 
 import (
@@ -25,6 +24,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
@@ -209,36 +210,41 @@ type TrackingReceiptDossier struct {
 
 // TrackingOrder is the retailer-facing active delivery tracking projection.
 type TrackingOrder struct {
-	OrderID               string                   `json:"order_id"`
-	SupplierID            string                   `json:"supplier_id"`
-	RetailerID            string                   `json:"retailer_id"`
-	WarehouseID           string                   `json:"warehouse_id,omitempty"`
-	DriverID              string                   `json:"driver_id,omitempty"`
-	VehicleID             string                   `json:"vehicle_id,omitempty"`
-	LicensePlate          string                   `json:"license_plate,omitempty"`
-	RouteID               string                   `json:"route_id,omitempty"`
-	ManifestID            string                   `json:"manifest_id,omitempty"`
-	Status                string                   `json:"status"`
-	TrackingStatus        string                   `json:"tracking_status"`
-	TotalMinor            int64                    `json:"total_minor"`
-	Currency              string                   `json:"currency"`
-	LiveLocationAvailable bool                     `json:"live_location_available"`
-	DriverLocation        *TrackingLocation        `json:"driver_location,omitempty"`
-	PaymentEvidence       *TrackingPaymentEvidence `json:"payment_evidence,omitempty"`
-	ReceiptDossier        *TrackingReceiptDossier  `json:"receipt_dossier,omitempty"`
-	CreatedAt             string                   `json:"created_at"`
-	UpdatedAt             string                   `json:"updated_at"`
-	Items                 []TrackingLineItem       `json:"items"`
-	DeliveryToken         string                   `json:"delivery_token,omitempty"`
-	DeliveryExpectation   *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
-	IsApproaching         bool                     `json:"is_approaching"`
-	PaymentStatus         string                   `json:"payment_status,omitempty"`
+	OrderID               string `json:"order_id"`
+	SupplierID            string `json:"supplier_id"`
+	RetailerID            string `json:"retailer_id"`
+	ParentOrderID         string `json:"parent_order_id,omitempty"`
+	WarehouseID           string `json:"warehouse_id,omitempty"`
+	DriverID              string `json:"driver_id,omitempty"`
+	VehicleID             string `json:"vehicle_id,omitempty"`
+	LicensePlate          string `json:"license_plate,omitempty"`
+	RouteID               string `json:"route_id,omitempty"`
+	ManifestID            string `json:"manifest_id,omitempty"`
+	Status                string `json:"status"`
+	TrackingStatus        string `json:"tracking_status"`
+	TotalMinor            int64  `json:"total_minor"`
+	Currency              string `json:"currency"`
+	LiveLocationAvailable bool   `json:"live_location_available"`
+	// LocationFreshness: LIVE | LAST_KNOWN | AWAITING_TELEMETRY (G3.C honesty).
+	LocationFreshness string            `json:"location_freshness,omitempty"`
+	DriverLocation    *TrackingLocation `json:"driver_location,omitempty"`
+	// RouteGeometry is the planned sealed-route overlay (from SupplierTruckManifests).
+	RouteGeometry       *routing.RouteGeometryWire `json:"route_geometry,omitempty"`
+	PaymentEvidence     *TrackingPaymentEvidence   `json:"payment_evidence,omitempty"`
+	ReceiptDossier      *TrackingReceiptDossier    `json:"receipt_dossier,omitempty"`
+	CreatedAt           string                     `json:"created_at"`
+	UpdatedAt           string                     `json:"updated_at"`
+	Items               []TrackingLineItem         `json:"items"`
+	DeliveryToken       string                     `json:"delivery_token,omitempty"`
+	DeliveryExpectation *order.DeliveryExpectation `json:"delivery_expectation,omitempty"`
+	IsApproaching       bool                       `json:"is_approaching"`
+	PaymentStatus       string                     `json:"payment_status,omitempty"`
 	// ADR-009 fiscal hard-gate fields for receipt / tracking surfaces.
-	FiscalStatus          string                   `json:"fiscal_status,omitempty"`
-	FiscalQR              string                   `json:"fiscal_qr,omitempty"`
-	LatestFiscalReceiptID string                   `json:"latest_fiscal_receipt_id,omitempty"`
-	DeliveryLat           float64                  `json:"-"`
-	DeliveryLng           float64                  `json:"-"`
+	FiscalStatus          string  `json:"fiscal_status,omitempty"`
+	FiscalQR              string  `json:"fiscal_qr,omitempty"`
+	LatestFiscalReceiptID string  `json:"latest_fiscal_receipt_id,omitempty"`
+	DeliveryLat           float64 `json:"-"`
+	DeliveryLng           float64 `json:"-"`
 }
 
 type TrackingEventType string
@@ -296,21 +302,22 @@ type NotificationWriter interface {
 
 // Service wires repository, cache, idempotency and outbox dependencies.
 type Service struct {
-	repo        Repository
-	orders      OrderLifecycle
-	cartRepo    CartRepository
-	notifSvc    NotificationReader
-	cache       *cache.Cache
-	idem        idempotency.Store
-	proximity   *RetailerProximityService
-	locations   telemetry.LastLocationReader
-	supplierID  string
-	countryCode string
-	jwtSecret   string
-	jwtIssuer   string
-	log         *slog.Logger
-	now         func() time.Time
-	newID       func() string
+	repo           Repository
+	orders         OrderLifecycle
+	cartRepo       CartRepository
+	notifSvc       NotificationReader
+	cache          *cache.Cache
+	idem           idempotency.Store
+	proximity      *RetailerProximityService
+	locations      telemetry.LastLocationReader
+	seedSupplierID string
+	partners       TradingPartnerLookup
+	countryCode    string
+	jwtSecret      string
+	jwtIssuer      string
+	log            *slog.Logger
+	now            func() time.Time
+	newID          func() string
 
 	mu                  sync.RWMutex
 	autoOrderMu         sync.RWMutex
@@ -338,13 +345,14 @@ type Service struct {
 	timeEntries map[string]TimeEntryDTO // entryID -> entry
 	shifts      map[string]ShiftDTO
 	// Phase 6 sections + assist memory
-	sections         map[string]SectionDTO
-	sectionSkus      map[string]map[string]bool // sectionID -> sku set
-	staffSections    map[string]map[string]bool // sectionID -> userID set
-	assistTickets    map[string]AssistTicketDTO
+	sections      map[string]SectionDTO
+	sectionSkus   map[string]map[string]bool // sectionID -> sku set
+	staffSections map[string]map[string]bool // sectionID -> userID set
+	assistTickets map[string]AssistTicketDTO
 	// Close-out: auto-order execution
 	autoOrderWorker     *autoOrderWorkerState
 	autoOrderCandidates map[string][]AutoOrderCandidate
+	shadowProposalsMem  map[string][]AutoOrderShadowProposal // tests without Spanner
 	// L3 sell-through (memory)
 	sellThroughDaily   map[sellThroughKey]SellThroughDayDTO
 	sellThroughFactors map[string]float64 // retailer|sku|day → SELL_THROUGH
@@ -352,7 +360,12 @@ type Service struct {
 	reorderSuggestionSeed map[string][]RetailerReorderSuggestion
 	// Place mode
 	orderCreator          OrderCreator
-	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED
+	autoOrderPlaceEnabled bool // env AUTO_ORDER_PLACE_ENABLED (fallback when flags unset)
+	placeFlags            PlaceFlagEvaluator
+	soakGateDisabled      bool // test seam: bypass the soak-evidence gate
+	soakBypassAuditor     SoakBypassAuditor
+	soakBypassLogged      sync.Map // orgID|source → true (dedupe runtime audits)
+	soakBypassAudits      []map[string]any
 	// Durable-ish place/draft bucket for multi-run tests (retailer|day|sku|mode -> orderID)
 	autoOrderBucket map[string]string
 	// Local POS catalog (memory fallback)
@@ -380,31 +393,49 @@ type Service struct {
 	assistSLAOverride *bool
 	assistSLANotified map[string]bool // ticketID → notified (pre-column fallback)
 
-	firebaseVerifier auth.FirebaseVerifier
-	spannerClient    *spanner.Client
+	firebaseVerifier      auth.FirebaseVerifier
+	spannerClient         *spanner.Client
+	paymentSessionByOrder PaymentSessionByOrder
+	dashboardOrders       RetailerDashboardOrdersQuery
+	stockBalancesQuery    func(context.Context, string, string) ([]StockBalanceDTO, error)
+	shiftsQuery           func(context.Context, string, string, int) ([]ShiftDTO, error)
+	stockMovementsQuery   func(context.Context, string, string, string, int) ([]StockMovementDTO, error)
+	enabledPacksQuery     func(context.Context, string) (EnabledSet, error)
+	setPackEnabledFn      func(context.Context, string, string, string, bool, map[string]any) error
+	posSalesQuery         func(context.Context, string, string, time.Time, time.Time) ([]PosSaleDTO, error)
+	localSKUsQuery        func(context.Context, string, string, bool) ([]LocalSKU, error)
+	sectionSkusQuery      func(context.Context, string) ([]string, error)
+	sectionStaffQuery     func(context.Context, string) ([]string, error)
+	replaceSectionSkusFn  func(context.Context, SectionDTO, []string) error
+	addSectionSkusFn      func(context.Context, SectionDTO, []string) error
+	removeSectionSkusFn   func(context.Context, string, []string) error
+	replaceSectionStaffFn func(context.Context, SectionDTO, []string) error
 }
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo                 Repository
-	CartRepo             CartRepository
-	NotifSvc             NotificationReader
-	Orders               OrderLifecycle
-	OrderCreator         OrderCreator // optional; required for mode=place
+	Repo                  Repository
+	CartRepo              CartRepository
+	NotifSvc              NotificationReader
+	Orders                OrderLifecycle
+	OrderCreator          OrderCreator // optional; required for mode=place
 	AutoOrderPlaceEnabled bool
-	Cache                *cache.Cache
-	Idem                 idempotency.Store
-	Proximity            *RetailerProximityService
-	Locations            telemetry.LastLocationReader
-	SupplierID           string
-	CountryCode          string
-	JWTSecret            string
-	JWTIssuer            string
-	Log                  *slog.Logger
-	Now                  func() time.Time
-	NewID                func() string
-	FirebaseVerifier     auth.FirebaseVerifier
-	Spanner              *spanner.Client
+	Cache                 *cache.Cache
+	Idem                  idempotency.Store
+	Proximity             *RetailerProximityService
+	Locations             telemetry.LastLocationReader
+	// SeedSupplierID is bootstrap/fixture fallback only (Gate 5 Week 11).
+	SeedSupplierID string
+	// SupplierID is deprecated; use SeedSupplierID.
+	SupplierID       string
+	CountryCode      string
+	JWTSecret        string
+	JWTIssuer        string
+	Log              *slog.Logger
+	Now              func() time.Time
+	NewID            func() string
+	FirebaseVerifier auth.FirebaseVerifier
+	Spanner          *spanner.Client
 	// MultiOrgLoginEnabled overrides MULTI_ORG_LOGIN_ENABLED for tests (nil = env).
 	MultiOrgLoginEnabled *bool
 	// PosHoldsEnabled overrides POS_HOLDS_ENABLED for tests (nil = env).
@@ -415,6 +446,10 @@ type ServiceConfig struct {
 	OfflineCountEnabled *bool
 	// AssistSLAEnabled overrides ASSIST_SLA_ENABLED for tests (nil = env).
 	AssistSLAEnabled *bool
+	// PaymentSessionByOrder looks up a real PaymentSessions row by order id.
+	PaymentSessionByOrder PaymentSessionByOrder
+	// DashboardOrders injects child-order status counts for tests (Spanner-shaped).
+	DashboardOrders RetailerDashboardOrdersQuery
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -428,20 +463,24 @@ func NewService(c ServiceConfig) *Service {
 	if c.NewID == nil {
 		c.NewID = defaultRetailerID
 	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = strings.TrimSpace(c.SupplierID)
+	}
 	return &Service{
-		repo:                c.Repo,
-		cartRepo:            c.CartRepo,
-		notifSvc:            c.NotifSvc,
+		repo:                  c.Repo,
+		cartRepo:              c.CartRepo,
+		notifSvc:              c.NotifSvc,
 		orders:                c.Orders,
 		orderCreator:          c.OrderCreator,
 		autoOrderPlaceEnabled: c.AutoOrderPlaceEnabled,
 		autoOrderBucket:       make(map[string]string),
 		cache:                 c.Cache,
-		idem:                c.Idem,
-		proximity:           c.Proximity,
-		locations:           c.Locations,
-		supplierID:          c.SupplierID,
-		countryCode:         c.CountryCode,
+		idem:                  c.Idem,
+		proximity:             c.Proximity,
+		locations:             c.Locations,
+		seedSupplierID:        seedID,
+		countryCode:           c.CountryCode,
 		jwtSecret:             c.JWTSecret,
 		jwtIssuer:             c.JWTIssuer,
 		log:                   c.Log,
@@ -457,34 +496,57 @@ func NewService(c ServiceConfig) *Service {
 		stockVersionByLoc:     make(map[stockVersionKey]int64),
 		assistSLAOverride:     c.AssistSLAEnabled,
 		assistSLANotified:     make(map[string]bool),
-		favoriteSuppliers:   make(map[string]map[string]bool),
-		familyByRetailer:    make(map[string][]FamilyMember),
-		familyWritesGone:    make(map[string]bool),
-		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
-		ownerByRetailer:     make(map[string]RetailerUser),
-		staffByRetailer:     make(map[string][]RetailerUser),
-		packsByRetailer:     make(map[string]map[string]bool),
-		locationsByRetailer: make(map[string][]RetailerLocation),
-		userLocations:       make(map[string][]string),
-		stockBalances:       make(map[stockBalanceKey]memStockBalance),
-		receiveSessions:     make(map[string]ReceiveSessionDTO),
-		receiveByOrder:      make(map[string]string),
-		posRegisters:        make(map[string]RegisterDTO),
-		posSessions:         make(map[string]PosSessionDTO),
-		posSales:            make(map[string]PosSaleDTO),
-		posSalesByClient:    make(map[string]string),
-		timeEntries:         make(map[string]TimeEntryDTO),
-		shifts:              make(map[string]ShiftDTO),
-		sections:            make(map[string]SectionDTO),
-		sectionSkus:         make(map[string]map[string]bool),
-		staffSections:       make(map[string]map[string]bool),
-		assistTickets:       make(map[string]AssistTicketDTO),
+		favoriteSuppliers:     make(map[string]map[string]bool),
+		familyByRetailer:      make(map[string][]FamilyMember),
+		familyWritesGone:      make(map[string]bool),
+		autoOrderByRetailer:   make(map[string]*AutoOrderSettings),
+		ownerByRetailer:       make(map[string]RetailerUser),
+		staffByRetailer:       make(map[string][]RetailerUser),
+		packsByRetailer:       make(map[string]map[string]bool),
+		locationsByRetailer:   make(map[string][]RetailerLocation),
+		userLocations:         make(map[string][]string),
+		stockBalances:         make(map[stockBalanceKey]memStockBalance),
+		receiveSessions:       make(map[string]ReceiveSessionDTO),
+		receiveByOrder:        make(map[string]string),
+		posRegisters:          make(map[string]RegisterDTO),
+		posSessions:           make(map[string]PosSessionDTO),
+		posSales:              make(map[string]PosSaleDTO),
+		posSalesByClient:      make(map[string]string),
+		timeEntries:           make(map[string]TimeEntryDTO),
+		shifts:                make(map[string]ShiftDTO),
+		sections:              make(map[string]SectionDTO),
+		sectionSkus:           make(map[string]map[string]bool),
+		staffSections:         make(map[string]map[string]bool),
+		assistTickets:         make(map[string]AssistTicketDTO),
 		sellThroughDaily:      make(map[sellThroughKey]SellThroughDayDTO),
 		sellThroughFactors:    make(map[string]float64),
 		reorderSuggestionSeed: make(map[string][]RetailerReorderSuggestion),
 		firebaseVerifier:      c.FirebaseVerifier,
 		spannerClient:         c.Spanner,
+		paymentSessionByOrder: c.PaymentSessionByOrder,
+		dashboardOrders:       c.DashboardOrders,
 	}
+}
+
+// HasFirebaseVerifier reports whether OTP id_token login can verify tokens.
+func (s *Service) HasFirebaseVerifier() bool {
+	return s != nil && s.firebaseVerifier != nil
+}
+
+// PaymentSessionByOrder resolves a durable checkout session for an order.
+type PaymentSessionByOrder func(ctx context.Context, orderID string) (sessionID, gateway string, ok bool, err error)
+
+// SetPaymentSessionByOrder wires session lookup after payment repo construction.
+func (s *Service) SetPaymentSessionByOrder(fn PaymentSessionByOrder) {
+	if s == nil {
+		return
+	}
+	s.paymentSessionByOrder = fn
+}
+
+// resolveSupplierScope prefers request TenantContext over the bootstrap seed.
+func (s *Service) resolveSupplierScope(ctx context.Context) string {
+	return auth.PreferTenantSupplierID(ctx, s.seedSupplierID)
 }
 
 // SetOrderLifecycle wires the retailer-facing order aggregate after service construction.
@@ -512,10 +574,41 @@ func (s *Service) SetAutoOrderPlaceEnabled(enabled bool) {
 	s.autoOrderPlaceEnabled = enabled
 }
 
+// PlaceFlagEvaluator is the dual-control flag surface used at place time
+// (featureflags.Evaluate). Empty/nil falls back to the process-wide env bit.
+type PlaceFlagEvaluator interface {
+	Evaluate(ctx context.Context, flagKey, tenantType, tenantID string) (bool, string, error)
+}
+
+// SoakBypassAuditor records runtime soak-gate break-glass usage (env or flag).
+type SoakBypassAuditor interface {
+	RecordFlagAudit(ctx context.Context, actor, action, tenantType, tenantID, detailJSON string) error
+}
+
+// SetPlaceFlagEvaluator wires runtime dual-control evaluation for AUTO_ORDER_PLACE_ENABLED
+// and AUTO_ORDER_SOAK_GATE_DISABLED.
+func (s *Service) SetPlaceFlagEvaluator(eval PlaceFlagEvaluator) {
+	if s == nil {
+		return
+	}
+	s.placeFlags = eval
+}
+
+// SetSoakBypassAuditor wires PlatformAdminAudit for soak-gate break-glass (P2-7).
+func (s *Service) SetSoakBypassAuditor(a SoakBypassAuditor) {
+	if s == nil {
+		return
+	}
+	s.soakBypassAuditor = a
+}
+
 // RegisterRequest is the wire shape for POST /v1/auth/retailer/register.
 type RegisterRequest struct {
 	Phone                string  `json:"phone"`
 	Name                 string  `json:"name,omitempty"`
+	SupplierID           string  `json:"supplier_id,omitempty"`
+	InviteToken          string  `json:"invite_token,omitempty"`
+	CountryCode          string  `json:"country_code,omitempty"`
 	Lat                  float64 `json:"lat"`
 	Lng                  float64 `json:"lng"`
 	DeliveryAddress      string  `json:"delivery_address,omitempty"`
@@ -528,6 +621,7 @@ type RegisterRequest struct {
 // RegisterResponse is what callers get back.
 type RegisterResponse struct {
 	RetailerID string `json:"retailer_id"`
+	SupplierID string `json:"supplier_id,omitempty"`
 	Phone      string `json:"phone"`
 	H3Cell     string `json:"h3_cell"`
 	CreatedAt  string `json:"created_at"`
@@ -555,6 +649,17 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	if err := req.Validate(); err != nil {
 		return RegisterResponse{}, err
 	}
+	partnerID, inviteMarket, err := s.resolveTradingPartnerPack(ctx, req.SupplierID, req.InviteToken)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
+	pack, err := auth.FiscalPackForSupplier(partnerID)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
+	if err := assertAttachMarket(pack, req.CountryCode, inviteMarket); err != nil {
+		return RegisterResponse{}, err
+	}
 
 	// Dedupe: phone is uniquely indexed. A retry MAY hit a row that already
 	// exists; treat that as idempotent success.
@@ -563,22 +668,24 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	} else if found {
 		return RegisterResponse{
 			RetailerID: existing.RetailerID,
+			SupplierID: existing.SupplierID,
 			Phone:      existing.Phone,
 			H3Cell:     existing.H3Cell,
 			CreatedAt:  existing.CreatedAt.Format(time.RFC3339Nano),
 		}, nil
 	}
 
-	h3Cell := strings.TrimSpace(req.H3Cell)
-	if s.proximity != nil {
-		cell, err := s.proximity.CellForCoordinate(req.Lat, req.Lng)
-		if err != nil {
-			return RegisterResponse{}, fmt.Errorf("derive retailer h3_cell: %w", err)
-		}
-		h3Cell = cell
+	requestedCountry := strings.TrimSpace(req.CountryCode)
+	if requestedCountry == "" {
+		requestedCountry = s.countryCode
 	}
+	geo, err := proximity.StampNodeGeography(pack, req.Lat, req.Lng, requestedCountry)
+	if err != nil {
+		return RegisterResponse{}, err
+	}
+	h3Cell := geo.H3Cell
 	if h3Cell == "" {
-		return RegisterResponse{}, errors.New("h3_cell required")
+		return RegisterResponse{}, auth.ErrGeographyIncomplete
 	}
 
 	windowOpen, err := validateReceivingWindowField(req.ReceivingWindowOpen)
@@ -592,10 +699,10 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 
 	r := Retailer{
 		RetailerID:           s.newID(),
-		SupplierID:           s.supplierID,
+		SupplierID:           partnerID,
 		Phone:                req.Phone,
 		Name:                 req.Name,
-		CountryCode:          s.countryCode,
+		CountryCode:          geo.CountryCode,
 		Lat:                  req.Lat,
 		Lng:                  req.Lng,
 		DeliveryAddress:      strings.TrimSpace(req.DeliveryAddress),
@@ -613,7 +720,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 			RetailerID:  r.RetailerID,
 			Phone:       r.Phone,
 			Name:        r.Name,
-			SupplierID:  s.supplierID,
+			SupplierID:  r.SupplierID,
 			Lat:         r.Lat,
 			Lng:         r.Lng,
 			H3Cell:      r.H3Cell,
@@ -635,11 +742,12 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 
 	s.log.Info("retailer registered",
 		"retailer_id", r.RetailerID,
-		"supplier_id", s.supplierID,
+		"supplier_id", r.SupplierID,
 		"h3_cell", r.H3Cell,
 	)
 	return RegisterResponse{
 		RetailerID: r.RetailerID,
+		SupplierID: r.SupplierID,
 		Phone:      r.Phone,
 		H3Cell:     r.H3Cell,
 		CreatedAt:  r.CreatedAt.Format(time.RFC3339Nano),
@@ -693,7 +801,7 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.Register(r.Context(), req)
 	if err != nil {
 		s.log.Warn("retailer registration failed", "err", err)
-		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		writeAttachError(w, err)
 		return
 	}
 

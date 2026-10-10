@@ -1,9 +1,11 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ExplainStatusBanner, explainFromApiError } from '@pegasusx/explain-ui';
-import type { StatusExplain } from '@pegasusx/types';
+import { FACTORY_TRANSFER_STATES, type StatusExplain } from '@pegasusx/types';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useFactorySessionReconcile } from '@/lib/use-factory-session-reconcile';
 import { downloadCsv, exportCsv } from '@/lib/csv';
@@ -18,15 +20,20 @@ import EmptyState from '@/components/EmptyState';
 import { TransferFilters } from '@/components/transfers/TransferFilters';
 import { TransferList, type Transfer } from '@/components/transfers/TransferList';
 
-const STATE_FILTERS = ['ALL', 'DRAFT', 'APPROVED', 'LOADING', 'DISPATCHED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', 'CANCELLED'];
+const STATE_FILTERS = ['ALL', ...FACTORY_TRANSFER_STATES];
 
 
 export default function TransfersPage() {
+  const t = usePortalT();
+  const searchParams = useSearchParams();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchExplain, setFetchExplain] = useState<StatusExplain | null>(null);
-  const [stateFilter, setStateFilter] = useState('ALL');
+  const initialState = (searchParams.get('state') ?? 'ALL').trim().toUpperCase();
+  const [stateFilter, setStateFilter] = useState(
+    initialState && STATE_FILTERS.includes(initialState) ? initialState : 'ALL',
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,9 +95,7 @@ export default function TransfersPage() {
         if (!event) {
           return;
         }
-        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
-          return;
-        }
+        if (!event.type.startsWith('TRANSFER_') && !event.type.startsWith('MANIFEST_') && !event.type.startsWith('WAREHOUSE_TRANSFER_') && !event.type.startsWith('FACTORY_SUPPLY_')) { return; }
         void load();
       },
     });
@@ -121,8 +126,8 @@ export default function TransfersPage() {
     <PageTransition>
       <PageChrome
         icon="transfers"
-        title="Transfers"
-        description="Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor."
+        title={t("portal.nav.transfers")}
+        description={t("factory_portal.residual.text.review_warehouse_destination_movements_filter_by_state_and_open_")}
         loading={loading}
         skeletonVariant="table"
         error={error && transfers.length === 0 ? error : null}
@@ -147,18 +152,18 @@ export default function TransfersPage() {
         {fetchExplain ? <ExplainStatusBanner explain={fetchExplain} className="mb-4" /> : null}
         <KpiStatGrid columns={4}>
           <KpiStatCard
-            label="Visible transfers"
+            label={t("factory_portal.residual.text.visible_transfers")}
             value={transfers.length}
             sub={stateFilter === 'ALL' ? 'Across the full pipeline' : `Filtered to ${stateFilter}`}
           />
-          <KpiStatCard label="Approved" value={approvedCount} sub="Waiting to enter loading" />
-          <KpiStatCard label="In flight" value={inFlightCount} sub="Loading, dispatched, or in transit" />
-          <KpiStatCard label="High priority" value={highPriorityCount} sub="Require close operator attention" />
+          <KpiStatCard label={t("factory_portal.residual.text.approved")} value={approvedCount} sub="Waiting to enter loading" />
+          <KpiStatCard label={t("factory_portal.residual.text.in_flight")} value={inFlightCount} sub="Loading, dispatched, or in transit" />
+          <KpiStatCard label={t("factory_portal.residual.text.high_priority")} value={highPriorityCount} sub="Require close operator attention" />
         </KpiStatGrid>
 
         <PageSection
-          title="Pipeline view"
-          description="Filter by transfer state. Total volume reflects the current view."
+          title={t("factory_portal.transfers.text.pipeline_view")}
+          description={t("factory_portal.residual.text.filter_by_transfer_state_total_volume_reflects_the_current_view")}
           className="mt-6"
           actions={
             <span className="rounded-full px-4 py-2 text-sm" style={{ background: 'var(--desk-surface-subtle)', color: 'var(--desk-text-secondary)' }}>

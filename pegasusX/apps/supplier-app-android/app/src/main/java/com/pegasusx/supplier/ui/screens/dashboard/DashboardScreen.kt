@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -17,8 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.ui.PulseHonesty
+import com.pegasus.design.network.RealtimeRefreshEffect
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierDashboard
 import com.pegasusx.supplier.data.model.SupplierMEIONetworkSummary
 import com.pegasusx.supplier.data.model.ForecastConfidence
@@ -26,16 +29,27 @@ import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
 import com.pegasusx.supplier.ui.components.SupplierKpiTile
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.supplier.ui.components.SupplierPulseStrip
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.screens.planning.ForecastConfidenceView
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import com.pegasusx.supplier.util.forecastConfidenceFromDemand
 import com.pegasusx.supplier.util.formatForecastUpdatedAt
 import com.pegasusx.supplier.util.isForecastStale
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
+import com.pegasus.design.ui.MANIFEST_STATES
+import com.pegasus.design.network.MarketPack
+import com.pegasus.design.network.MarketPackBinder
+import com.pegasus.design.ui.PackBanner
+import com.pegasus.design.ui.StatusStack
+import com.pegasus.design.network.formatPackMoney
+import com.pegasusx.supplier.BuildConfig
+import com.pegasusx.supplier.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class DashboardKpi(
     val label: String,
@@ -43,10 +57,11 @@ private data class DashboardKpi(
     val icon: ImageVector,
 )
 
-private val dashboardKpis = listOf(
+private fun dashboardKpis(pack: MarketPack?) = listOf(
+    DashboardKpi("Revenue today", { formatPackMoney(it.todayRevenueMinor, pack) }, Icons.Default.CheckCircle),
+    DashboardKpi("Completion", { "${it.deliveriesCompletedToday}/${it.deliveriesAttemptedToday}" }, Icons.Default.LocalShipping),
     DashboardKpi("Pending orders", { "${it.pendingOrders}" }, Icons.Default.LocalShipping),
     DashboardKpi("Inventory SKUs", { "${it.inventorySKUs}" }, Icons.Default.Archive),
-    DashboardKpi("Configured", { if (it.isConfigured) "Yes" else "No" }, Icons.Default.CheckCircle),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,16 +73,25 @@ fun DashboardScreen(
     showBillingBanner: Boolean,
     onOpenBilling: () -> Unit,
     onOpenNotifications: () -> Unit = {},
+    onOpenOrderStatus: (String) -> Unit = {},
 ) {
     var dashboard by remember { mutableStateOf<SupplierDashboard?>(null) }
     var meiSummary by remember { mutableStateOf<SupplierMEIONetworkSummary?>(null) }
     var pulseEvents by remember { mutableStateOf<List<com.pegasusx.supplier.data.model.PulseEvent>>(emptyList()) }
     var pulseLoading by remember { mutableStateOf(true) }
+    var pulseError by remember { mutableStateOf<String?>(null) }
     var demandConfidence by remember { mutableStateOf<ForecastConfidence?>(null) }
     var demandGeneratedAt by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
+    }
 
     fun load(silent: Boolean = false) {
         scope.launch {
@@ -97,10 +121,18 @@ fun DashboardScreen(
                 if (!silent) loading = false
             }
             pulseLoading = true
-            runCatching {
-                ops.getPulse().body()?.let { pulseEvents = it.events }
-            }.onFailure {
-                pulseEvents = emptyList()
+            pulseError = null
+            try {
+                val resp = ops.getPulse()
+                val result = PulseHonesty.applyHttp(
+                    resp.isSuccessful,
+                    resp.body()?.events,
+                    pulseEvents,
+                )
+                pulseEvents = result.events
+                pulseError = result.error
+            } catch (_: Exception) {
+                pulseError = PulseHonesty.FAILED
             }
             pulseLoading = false
         }
@@ -119,13 +151,18 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard", fontWeight = FontWeight.Bold) },
+                title = {
+                    Column {
+                        Text("Dashboard", fontWeight = FontWeight.Bold)
+                        PackBanner(pack)
+                    }
+                },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                     IconButton(onClick = onOpenNotifications) {
-                        Icon(Icons.Default.Notifications, contentDescription = "Notifications")
+                        Icon(Icons.Default.Notifications, contentDescription = stringResource(R.string.portal_nav_notifications))
                     }
                 },
             )
@@ -133,7 +170,7 @@ fun DashboardScreen(
     ) { padding ->
         when {
             showFullScreenLoading(loading, dashboard != null) -> PegasusLoadingState(
-                title = "Loading dashboard…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_dashboard),
                 body = "Fetching supplier KPIs",
                 modifier = Modifier.padding(padding),
             )
@@ -192,7 +229,7 @@ fun DashboardScreen(
                             Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                 Text("MEIO network", style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    "${mei.warehousesScanned} warehouses · ${mei.transferRecommendations} transfer recs · ${mei.insightsGenerated} insights",
+                                    stringResource(R.string.mobile_supplier_ui_warehousesscanned_warehouses_transferrecommendations_transfer_recs_insig, mei.warehousesScanned, mei.transferRecommendations, mei.insightsGenerated),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -210,6 +247,7 @@ fun DashboardScreen(
                     SupplierPulseStrip(
                         events = pulseEvents,
                         loading = pulseLoading,
+                        error = pulseError,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     LazyVerticalGrid(
@@ -218,7 +256,7 @@ fun DashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         modifier = Modifier.weight(1f, fill = false),
                     ) {
-                        items(dashboardKpis, key = { it.label }) { kpi ->
+                        items(dashboardKpis(pack), key = { it.label }) { kpi ->
                             SupplierKpiTile(
                                 label = kpi.label,
                                 value = kpi.value(d),
@@ -226,8 +264,20 @@ fun DashboardScreen(
                             )
                         }
                     }
+                    StatusStack(
+                        counts = d.ordersByStatus,
+                        source = "live",
+                        onSelect = onOpenOrderStatus,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    StatusStack(
+                        counts = d.manifestsByState.ifEmpty { null },
+                        dictionary = MANIFEST_STATES,
+                        source = if (d.manifestsByState.isEmpty()) "empty" else "live",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Text(
-                        "Updated ${d.updatedAt}",
+                        stringResource(R.string.mobile_supplier_ui_updated_updatedat, d.updatedAt),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = PegasusSpacing.lg),

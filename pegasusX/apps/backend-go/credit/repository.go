@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"google.golang.org/api/iterator"
@@ -148,14 +149,17 @@ func (r *SpannerRepository) UpsertProfile(ctx context.Context, p Profile, emit f
 	if !p.Status.Valid() {
 		return fmt.Errorf("invalid credit profile status: %s", p.Status)
 	}
+	// The closure may be re-invoked by the Spanner client after an abort, so the
+	// caller's expected version must be captured before the closure mutates p.
+	callerVersion := p.Version
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		expectedVersion, reserved, balance, found, err := readProfileVersionReservedBalance(ctx, txn, p.RetailerID, p.SupplierID)
 		if err != nil {
 			return err
 		}
 		if found {
-			if p.Version != 0 && expectedVersion != p.Version {
-				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", expectedVersion, p.Version)
+			if callerVersion != 0 && expectedVersion != callerVersion {
+				return fmt.Errorf("optimistic concurrency conflict: expected %d, got %d", expectedVersion, callerVersion)
 			}
 			p.Version = expectedVersion + 1
 			if p.ReservedMinor == 0 {
@@ -421,9 +425,161 @@ func (r *SpannerRepository) ConvertOrderReservation(ctx context.Context, orderID
 	})
 }
 
+// AdjustReserveInTxn updates an order's reservation and adjusts the retailer's ReservedMinor.
+func (r *SpannerRepository) AdjustReserveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, newAmountMinor int64) error {
+	row, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{orderID},
+		[]string{"RetailerId", "SupplierId", "AmountMinor", "Status"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	}
+	var retailerID, supplierID, status string
+	var currentAmount int64
+	if err := row.Columns(&retailerID, &supplierID, &currentAmount, &status); err != nil {
+		return err
+	}
+	if status != string(ReservationReserved) || currentAmount == newAmountMinor {
+		return nil
+	}
+
+	delta := currentAmount - newAmountMinor
+	prof, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Version"})
+	if err != nil {
+		return err
+	}
+	var limit, balance, reserved, version int64
+	if err := prof.Columns(&limit, &balance, &reserved, &version); err != nil {
+		return err
+	}
+	newReserved := reserved - delta
+	if newReserved < 0 {
+		newReserved = 0
+	}
+	available := limit - balance - newReserved
+	if available < 0 {
+		available = 0
+	}
+
+	return txn.BufferWrite([]*spanner.Mutation{
+		spanner.UpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":     orderID,
+			"AmountMinor": newAmountMinor,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":           retailerID,
+			"SupplierId":           supplierID,
+			"ReservedMinor":        newReserved,
+			"AvailableCreditMinor": available,
+			"Version":              version + 1,
+			"UpdatedAt":            spanner.CommitTimestamp,
+		}),
+	})
+}
+
 // MarkBalanceInTxn converts reservation or marks balance in the same txn as credit leave.
 func (r *SpannerRepository) MarkBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
 	return r.convertReservationInTxn(ctx, txn, retailerID, supplierID, orderID, amountMinor, nil)
+}
+
+// ClearBalanceInTxn decreases profile balance when a credit-left order is paid
+// (G1-A2). Only acts when OrderCreditReservations is CONVERTED for orderID;
+// already CLEARED → no-op. Fail-closed on profile/write errors.
+func (r *SpannerRepository) ClearBalanceInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
+	if txn == nil {
+		return fmt.Errorf("nil spanner txn")
+	}
+	orderID = strings.TrimSpace(orderID)
+	if orderID == "" || amountMinor <= 0 {
+		return nil
+	}
+	// Prefer reservation as source of truth for credit-leave mark + amount.
+	row, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{orderID},
+		[]string{"RetailerId", "SupplierId", "AmountMinor", "Status"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			// Never credit-left this order — no balance to clear.
+			return nil
+		}
+		return err
+	}
+	var rid, sid, status string
+	var resAmount int64
+	if err := row.Columns(&rid, &sid, &resAmount, &status); err != nil {
+		return err
+	}
+	if status == string(ReservationCleared) {
+		return nil // idempotent
+	}
+	if status != string(ReservationConverted) {
+		// RESERVED/RELEASED: not on balance yet — nothing to clear.
+		return nil
+	}
+	if rid != "" {
+		retailerID = rid
+	}
+	if sid != "" {
+		supplierID = sid
+	}
+	clearAmt := amountMinor
+	if resAmount > 0 {
+		clearAmt = resAmount
+	}
+	if retailerID == "" || supplierID == "" || clearAmt <= 0 {
+		return nil
+	}
+
+	prof, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{retailerID, supplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Version"})
+	if err != nil {
+		if spanner.ErrCode(err) == codes.NotFound {
+			return ErrProfileNotFound
+		}
+		return err
+	}
+	var limit, balance, reserved, version int64
+	if err := prof.Columns(&limit, &balance, &reserved, &version); err != nil {
+		return err
+	}
+	newBalance := balance - clearAmt
+	if newBalance < 0 {
+		newBalance = 0
+	}
+	available := limit - newBalance - reserved
+	if available < 0 {
+		available = 0
+	}
+
+	buf := &spannerTxnBuffer{}
+	_ = outbox.EmitJSON(ctx, buf, events.AggregateCreditProfile, retailerID, events.TopicMain, events.CreditProfileEvent{
+		BaseEvent:      events.BaseEvent{Type: events.EventRetailerCreditProfileChanged, Timestamp: time.Now().UTC().Format(time.RFC3339Nano)},
+		ProfileID:      profileID(retailerID, supplierID),
+		RetailerID:     retailerID,
+		SupplierID:     supplierID,
+		CurrentBalance: -clearAmt,
+		Reason:         fmt.Sprintf("credit_payment:%s", orderID),
+	})
+
+	mutations := []*spanner.Mutation{
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":           retailerID,
+			"SupplierId":           supplierID,
+			"CurrentBalanceMinor":  newBalance,
+			"AvailableCreditMinor": available,
+			"Version":              version + 1,
+			"UpdatedAt":            spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":   orderID,
+			"Status":    string(ReservationCleared),
+			"UpdatedAt": spanner.CommitTimestamp,
+		}),
+	}
+	mutations = append(mutations, bufferOutboxMutations(buf)...)
+	return txn.BufferWrite(mutations)
 }
 
 func (r *SpannerRepository) convertReservationInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, fallbackAmount int64, emit func(outbox.TxnBuffer) error) error {
@@ -593,27 +749,68 @@ func bufferOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	}
 	out := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		out = append(out, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}))
+		out = append(out, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return out
 }
 
-// GetScoresForRetailers is a no-op stub: credit risk scoring product was removed.
+// GetScoresForRetailers returns empty without supplier scope — use Service.GetScoresForRetailers.
+// Kept for Repository interface compatibility; real scoring is service-layer (G3.B).
 func (r *SpannerRepository) GetScoresForRetailers(ctx context.Context, retailerIDs []string) (map[string]RetailerCreditScore, error) {
 	_ = ctx
 	_ = retailerIDs
 	return map[string]RetailerCreditScore{}, nil
 }
 
+func (r *SpannerRepository) ReserveOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, res OrderReservation) error {
+	existing, err := txn.ReadRow(ctx, "OrderCreditReservations", spanner.Key{res.OrderID}, []string{"Status", "AmountMinor"})
+	if err == nil {
+		var st string
+		var amt int64
+		_ = existing.Columns(&st, &amt)
+		if st == string(ReservationReserved) || st == string(ReservationConverted) {
+			return nil // idempotent
+		}
+	} else if spanner.ErrCode(err) != 5 {
+		return err
+	}
+
+	row, err := txn.ReadRow(ctx, "RetailerCreditProfiles", spanner.Key{res.RetailerID, res.SupplierID},
+		[]string{"CreditLimitMinor", "CurrentBalanceMinor", "ReservedMinor", "Status", "Version"})
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			return ErrProfileNotFound
+		}
+		return err
+	}
+	var limit, balance, reserved, version int64
+	var st string
+	_ = row.Columns(&limit, &balance, &reserved, &st, &version)
+	
+	if st != string(StatusActive) {
+		return ErrCreditNotEnabled
+	}
+	if limit-(balance+reserved) < res.AmountMinor {
+		return ErrLimitBreached
+	}
+	
+	muts := []*spanner.Mutation{
+		spanner.InsertOrUpdateMap("OrderCreditReservations", map[string]any{
+			"OrderId":     res.OrderID,
+			"RetailerId":  res.RetailerID,
+			"SupplierId":  res.SupplierID,
+			"AmountMinor": res.AmountMinor,
+			"Status":      string(ReservationReserved),
+			"CreatedAt":   spanner.CommitTimestamp,
+			"UpdatedAt":   spanner.CommitTimestamp,
+		}),
+		spanner.UpdateMap("RetailerCreditProfiles", map[string]any{
+			"RetailerId":    res.RetailerID,
+			"SupplierId":    res.SupplierID,
+			"ReservedMinor": reserved + res.AmountMinor,
+			"Version":       version + 1,
+			"UpdatedAt":     spanner.CommitTimestamp,
+		}),
+	}
+	return txn.BufferWrite(muts)
+}

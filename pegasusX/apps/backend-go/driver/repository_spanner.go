@@ -20,7 +20,7 @@ type Repository interface {
 	ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error)
 	CreateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
 	GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error)
-	UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
+	UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error
 	ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error)
 	FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error)
 }
@@ -92,24 +92,20 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		return fmt.Errorf("spanner driver repository: nil client")
 	}
 
-	if mutate != nil {
-		if err := mutate(); err != nil {
-			return err
-		}
-	}
-
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
-	}
-
-	if len(buf.events) == 0 {
-		return nil
-	}
-
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if mutate != nil {
+			if err := mutate(); err != nil {
+				return err
+			}
+		}
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
 		var mutations []*spanner.Mutation
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
@@ -133,6 +129,9 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
+		if len(mutations) == 0 {
+			return nil
+		}
 		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
@@ -145,12 +144,6 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner driver repository: nil client")
-	}
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
 	}
 	row := map[string]any{
 		"DriverId":          upd.DriverID,
@@ -168,6 +161,12 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 		}
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		mutations := []*spanner.Mutation{spanner.UpdateMap("Drivers", row)}
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
@@ -248,7 +247,7 @@ func (r *inMemoryRepository) CreateVehicle(ctx context.Context, v Vehicle, emit 
 func (r *inMemoryRepository) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) {
 	return Vehicle{}, nil
 }
-func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (r *inMemoryRepository) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {

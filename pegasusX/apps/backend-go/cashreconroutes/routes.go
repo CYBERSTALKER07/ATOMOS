@@ -8,10 +8,8 @@ import (
 )
 
 type Deps struct {
-	Handlers            *cashrecon.Handlers
-	FirebaseAuthEnabled bool
-	FirebaseVerifier    auth.FirebaseVerifier
-	AllowAuthBypass     bool
+	Handlers        *cashrecon.Handlers
+	AllowAuthBypass bool
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
@@ -29,9 +27,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/cash-reconciliations/{id}/write-off", h.HandleSupplierWriteOff)
 	}
 	auth.ProtectMutations(r, auth.MutationGuardConfig{
-		FirebaseEnabled:  d.FirebaseAuthEnabled,
-		FirebaseVerifier: d.FirebaseVerifier,
-		AllowBypass:      d.AllowAuthBypass,
+		AllowBypass: d.AllowAuthBypass,
 	}, func(gr chi.Router) {
 		gr.With(auth.RequireRole(auth.RoleDriver)).Group(mountDriver)
 		gr.With(auth.RequireRole(auth.RoleAdmin)).Group(mountSupplier)

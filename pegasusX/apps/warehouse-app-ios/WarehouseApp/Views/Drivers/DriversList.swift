@@ -33,7 +33,7 @@ struct DriversList: View {
                             .padding(.vertical, LabTheme.spacingXS)
                             .background(.quaternary, in: Capsule())
                         Menu {
-                            Button("Unassign") {
+                            Button("mobile_warehouse.ui.unassign") {
                                 onAssign(driver.driverId, nil)
                             }
                             ForEach(assignableVehicles(for: driver)) { vehicle in

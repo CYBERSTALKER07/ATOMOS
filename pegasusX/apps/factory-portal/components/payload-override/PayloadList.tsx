@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Icon from '@/components/Icon';
 import type { Manifest, Transfer } from '../../app/payload-override/page';
 
@@ -14,6 +17,7 @@ export function PayloadList({
   onCancelTransfer: (transferId: string, manifestId: string) => void;
   onCancelManifest: (manifestId: string) => void;
 }) {
+  const t = usePortalT();
   return (
     <div className="space-y-6">
       {loadingManifests.map((manifest) => (
@@ -33,7 +37,7 @@ export function PayloadList({
             </div>
             <div className="flex items-center gap-4">
               <div className="text-xs">
-                <span className="text-[var(--muted)]">Capacity: </span>
+                <span className="text-[var(--muted)]">{t("factory_portal.payload_override.payload_list.text.capacity")} </span>
                 <span className="font-medium tabular-nums">
                   {manifest.total_volume_vu.toLocaleString()} / {manifest.max_capacity_vu.toLocaleString()} VU
                 </span>
@@ -64,11 +68,11 @@ export function PayloadList({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[var(--surface)]">
-                <th className="text-left px-4 py-2 font-medium text-xs">Transfer</th>
-                <th className="text-left px-4 py-2 font-medium text-xs">Product</th>
-                <th className="text-right px-4 py-2 font-medium text-xs">Qty</th>
-                <th className="text-right px-4 py-2 font-medium text-xs">Volume (VU)</th>
-                <th className="text-right px-4 py-2 font-medium text-xs">Actions</th>
+                <th className="text-left px-4 py-2 font-medium text-xs">{t("factory_portal.payload_override.payload_list.text.transfer")}</th>
+                <th className="text-left px-4 py-2 font-medium text-xs">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+                <th className="text-right px-4 py-2 font-medium text-xs">{t("factory_portal.transfers._id_.text.qty")}</th>
+                <th className="text-right px-4 py-2 font-medium text-xs">{t("factory_portal.payload_override.payload_list.text.volume_vu")}</th>
+                <th className="text-right px-4 py-2 font-medium text-xs">{t("factory_portal.insights.text.actions")}</th>
               </tr>
             </thead>
             <tbody>

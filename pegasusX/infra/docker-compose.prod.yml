@@ -1,0 +1,318 @@
+# PegasusX Production Docker Compose Stack
+# Hardened multi-service orchestration with network isolation, health gates,
+# non-root execution, resource constraints, and rotation-capped logging.
+
+services:
+  spanner-emulator:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    container_name: pegasusx-prod-spanner
+    restart: always
+    networks:
+      - internal-data
+    ports:
+      - "127.0.0.1:9010:9010"
+      - "127.0.0.1:9020:9020"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2048M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    container_name: pegasusx-prod-redis
+    restart: always
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy volatile-lru
+      --activedefrag yes
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 256
+      --tcp-keepalive 60
+      --timeout 300
+      --hz 10
+    volumes:
+      - prod-redis-data:/data
+    networks:
+      - internal-data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 768M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pegasusx-prod-zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SYNC_LIMIT: 2
+    volumes:
+      - prod-zookeeper-data:/var/lib/zookeeper/data
+      - prod-zookeeper-log:/var/lib/zookeeper/log
+    networks:
+      - internal-data
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep -q Mode || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 512M
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pegasusx-prod-kafka
+    restart: always
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_COMPRESSION_TYPE: producer
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_NUM_PARTITIONS: 3
+    volumes:
+      - prod-kafka-data:/var/lib/kafka/data
+    networks:
+      - internal-data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.5"
+          memory: 2048M
+        reservations:
+          cpus: "0.5"
+          memory: 1024M
+
+  optimizer-core:
+    build:
+      context: ../services/optimizer-core
+      dockerfile: Dockerfile
+    container_name: pegasusx-prod-optimizer
+    restart: always
+    environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      OPTIMIZER_HTTP_PORT: "8082"
+      OPTIMIZER_SOFT_TIMEOUT_SEC: "5"
+    networks:
+      - internal-services
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/healthz')"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+
+  backend-go:
+    build:
+      context: ..
+      dockerfile: apps/backend-go/Dockerfile
+    container_name: pegasusx-prod-backend
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      optimizer-core:
+        condition: service_healthy
+    environment:
+      HTTP_PORT: "8080"
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      PEGASUSX_ENV: production
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    networks:
+      - public-ingress
+      - internal-services
+      - internal-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.5"
+          memory: 2048M
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  ai-worker:
+    build:
+      context: ..
+      dockerfile: apps/ai-worker/Dockerfile
+    container_name: pegasusx-prod-ai-worker
+    restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      optimizer-core:
+        condition: service_healthy
+      backend-go:
+        condition: service_healthy
+    environment:
+      HEALTH_PORT: "8081"
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      PEGASUSX_ENV: production
+    networks:
+      - internal-services
+      - internal-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+
+  handoff-service:
+    build:
+      context: ..
+      dockerfile: apps/handoff-service/Dockerfile
+    container_name: pegasusx-prod-handoff
+    restart: always
+    environment:
+      HTTP_PORT: "8082"
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    ports:
+      - "8082:8082"
+    networks:
+      - public-ingress
+      - internal-services
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 64M
+
+networks:
+  public-ingress:
+    name: pegasusx-prod-public
+    driver: bridge
+  internal-services:
+    name: pegasusx-prod-services
+    driver: bridge
+  internal-data:
+    name: pegasusx-prod-data
+    driver: bridge
+    internal: true
+
+volumes:
+  prod-redis-data:
+    name: pegasusx-prod-redis-data
+  prod-zookeeper-data:
+    name: pegasusx-prod-zookeeper-data
+  prod-zookeeper-log:
+    name: pegasusx-prod-zookeeper-log
+  prod-kafka-data:
+    name: pegasusx-prod-kafka-data

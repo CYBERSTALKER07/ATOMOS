@@ -45,6 +45,7 @@ export default function NotificationPanel({
   onMarkAllRead,
 }: NotificationPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
   // Close on outside click
   useEffect(() => {
@@ -162,7 +163,12 @@ export default function NotificationPanel({
                           {n.body}
                         </p>
                         {n.handoff_metadata ? (
-                          <div onClick={(e) => e.stopPropagation()} role="presentation">
+                          <div
+                            tabIndex={-1}
+                            onClick={stopPropagation}
+                            role="button"
+                            onKeyDown={stopPropagation}
+                          >
                             <HandoffInboxCard handoff={n.handoff_metadata} />
                           </div>
                         ) : null}

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,15 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 )
+
+const defaultRingBufferSize = 256
+
+type bufferedEvent struct {
+	Seq       int64
+	EventID   string
+	Payload   []byte
+	Timestamp time.Time
+}
 
 // Connection is the per-socket write seam. Production wraps a real WebSocket
 // connection (nhooyr.io/websocket or gorilla/websocket) and implements Send
@@ -56,6 +66,10 @@ type Hub struct {
 	rooms    map[string]map[string]Connection // room -> connectionID -> conn
 	joinedAt map[string]time.Time             // connectionID -> subscribe time
 
+	historyMu sync.RWMutex
+	history   map[string][]bufferedEvent // room -> ring buffer of recent events
+	globalSeq int64
+
 	// failureCount is bumped on every Publish failure. Exposed for metrics.
 	failureCount uint64
 	shedCount    uint64
@@ -81,6 +95,7 @@ func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits
 		limits:   limits,
 		rooms:    make(map[string]map[string]Connection),
 		joinedAt: make(map[string]time.Time),
+		history:  make(map[string][]bufferedEvent),
 	}
 }
 
@@ -233,6 +248,8 @@ func (h *Hub) Broadcast(ctx context.Context, room string, payload []byte) {
 }
 
 func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
+	h.recordHistory(room, payload)
+
 	h.mu.RLock()
 	conns := make([]Connection, 0, len(h.rooms[room]))
 	for _, c := range h.rooms[room] {
@@ -265,6 +282,64 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
 	}
 }
 
+func (h *Hub) recordHistory(room string, payload []byte) {
+	if h == nil || room == "" || len(payload) == 0 {
+		return
+	}
+	h.historyMu.Lock()
+	defer h.historyMu.Unlock()
+	h.globalSeq++
+	_, eventID := parseSSEEventMetadata(payload)
+	if eventID == "" {
+		eventID = strconv.FormatInt(h.globalSeq, 10)
+	}
+	buf := h.history[room]
+	evt := bufferedEvent{
+		Seq:       h.globalSeq,
+		EventID:   eventID,
+		Payload:   append([]byte(nil), payload...),
+		Timestamp: time.Now().UTC(),
+	}
+	buf = append(buf, evt)
+	if len(buf) > defaultRingBufferSize {
+		buf = buf[len(buf)-defaultRingBufferSize:]
+	}
+	h.history[room] = buf
+}
+
+// ReplaySince delivers buffered events for room to conn, starting after sinceSeq or lastEventID.
+func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, lastEventID string, conn Connection) int {
+	if h == nil || conn == nil || room == "" {
+		return 0
+	}
+	h.historyMu.RLock()
+	events := append([]bufferedEvent(nil), h.history[room]...)
+	h.historyMu.RUnlock()
+
+	lastEventID = strings.TrimSpace(lastEventID)
+	replayed := 0
+	foundMarker := false
+	for _, evt := range events {
+		if lastEventID != "" && !foundMarker {
+			if evt.EventID == lastEventID {
+				foundMarker = true
+			}
+			continue
+		}
+		if sinceSeq > 0 && evt.Seq <= sinceSeq {
+			continue
+		}
+		writeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		err := conn.Send(writeCtx, evt.Payload)
+		cancel()
+		if err != nil {
+			break
+		}
+		replayed++
+	}
+	return replayed
+}
+
 func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) {
 	if h.relay == nil {
 		return
@@ -292,36 +367,64 @@ func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) 
 
 // StartRelaySubscriber consumes one hub-scoped fanout channel and relays
 // decoded room payloads to local subscribers. Messages from the same instance
-// are ignored to avoid self-echo duplication.
+// are ignored to avoid self-echo duplication. It features an exponential backoff
+// reconnection loop so temporary Redis disconnects do not terminate relay fanout permanently.
 func (h *Hub) StartRelaySubscriber(ctx context.Context) {
 	if h == nil || h.relay == nil {
 		return
 	}
 	channel := h.relayChannel()
-	msgs, cancel, err := h.relay.Subscribe(ctx, channel)
-	if err != nil {
-		h.log.Error("ws relay subscribe failed", "hub", h.name, "channel", channel, "err", err)
-		return
-	}
-	defer cancel()
+	backoff := 50 * time.Millisecond
+	const maxBackoff = 5 * time.Second
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case raw, ok := <-msgs:
-			if !ok {
-				return
-			}
-			var envelope relayEnvelope
-			if err := json.Unmarshal(raw, &envelope); err != nil {
-				h.log.Warn("ws relay envelope decode failed", "hub", h.name, "err", err)
-				continue
-			}
-			if envelope.Source == h.instance || envelope.Room == "" || len(envelope.Payload) == 0 {
-				continue
-			}
-			h.fanoutLocal(ctx, envelope.Room, envelope.Payload)
+		default:
 		}
+
+		msgs, cancel, err := h.relay.Subscribe(ctx, channel)
+		if err != nil {
+			h.log.Warn("ws relay subscribe failed, retrying", "hub", h.name, "channel", channel, "err", err, "backoff", backoff)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
+				backoff *= 2
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
+				continue
+			}
+		}
+
+		// Reset backoff on successful subscription
+		backoff = 50 * time.Millisecond
+
+		active := true
+		for active {
+			select {
+			case <-ctx.Done():
+				cancel()
+				return
+			case raw, ok := <-msgs:
+				if !ok {
+					active = false
+					break
+				}
+				var envelope relayEnvelope
+				if err := json.Unmarshal(raw, &envelope); err != nil {
+					h.log.Warn("ws relay envelope decode failed", "hub", h.name, "err", err)
+					continue
+				}
+				if envelope.Source == h.instance || envelope.Room == "" || len(envelope.Payload) == 0 {
+					continue
+				}
+				h.fanoutLocal(ctx, envelope.Room, envelope.Payload)
+			}
+		}
+		cancel()
 	}
 }
 
@@ -368,3 +471,28 @@ type HubStats struct {
 // ErrUnauthorized is returned by helper functions that reject a subscription
 // because the caller's identity is not allowed on the requested room.
 var ErrUnauthorized = errors.New("ws: connection not authorized for room")
+
+func (h *Hub) TouchPresence(ctx context.Context, conn Connection) {
+	if h.relay == nil {
+		return
+	}
+	identity := conn.Identity()
+	if identity.Subject == "" {
+		return
+	}
+	key := fmt.Sprintf("{presence:%s}:%s", identity.Role, identity.Subject)
+	// 3x ping interval for TTL
+	_ = h.relay.Set(ctx, key, []byte("ONLINE"), 45*time.Second)
+}
+
+func (h *Hub) ClearPresence(ctx context.Context, conn Connection) {
+	if h.relay == nil {
+		return
+	}
+	identity := conn.Identity()
+	if identity.Subject == "" {
+		return
+	}
+	key := fmt.Sprintf("{presence:%s}:%s", identity.Role, identity.Subject)
+	_ = h.relay.Delete(ctx, key)
+}

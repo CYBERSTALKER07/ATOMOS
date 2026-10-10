@@ -8,7 +8,7 @@ struct ProfileHeader: View {
                 .foregroundStyle(LabTheme.fgTertiary)
                 .tracking(1.2)
 
-            Text("Profile")
+            Text("portal.nav.profile")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
         }

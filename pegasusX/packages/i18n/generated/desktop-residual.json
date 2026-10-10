@@ -1,0 +1,3013 @@
+{
+  "generated_at": "now",
+  "by_app": {
+    "supplier-portal": {
+      "unique": [
+        "28d actual units",
+        "28d forecast units",
+        "30-day revenue",
+        "Accept backorders when out of stock",
+        "Account holder name",
+        "Account number",
+        "Active",
+        "Active driver reports where the retailer did not confirm within the grace window.",
+        "Active overrides",
+        "Active routes from the digital twin — read-only visibility with ETA confidence colouring.",
+        "Address",
+        "Adyen",
+        "Airwallex",
+        "Alert",
+        "Amount must be a number.",
+        "Approve a driver request to finish the route before all stops are completed.",
+        "Arrived",
+        "Auto-approval thresholds, transfer limits, and service-level safety stock.",
+        "Auto-approve predictive push",
+        "Auto-approve stable",
+        "Available drivers",
+        "Back",
+        "Bank name",
+        "Barcode",
+        "Baseline SLA",
+        "Baseline rows",
+        "Cancels the order and notifies the retailer immediately. Reason is required.",
+        "Capacity breach",
+        "Card payments via the pegasusX global rail.",
+        "Card revenue settles to your supplier treasury account.",
+        "Cash on delivery",
+        "Catalog SKUs",
+        "Category",
+        "Category ID",
+        "Channel and quiet-hour rules per event type.",
+        "Chargeback recorded. Live finance refresh queued.",
+        "Chargeback reversal recorded. Live finance refresh queued.",
+        "City",
+        "Claim filing windows applied when orders complete. Retailers see the countdown from this policy.",
+        "Co-locate with factory",
+        "CoA save failed",
+        "Company registration number",
+        "Complete setup",
+        "Completed route efficiency and replan metrics.",
+        "Configure where payouts land and which checkout rails retailers can use.",
+        "Configured",
+        "Connection restored — escalation queue refreshed from server.",
+        "Connection restored — verify approval status before retrying.",
+        "Connection restored — verify chargeback status before retrying.",
+        "Connection restored — verify reversal status before retrying.",
+        "Connection restored — verify status before retrying.",
+        "Contact name",
+        "Could not load orders",
+        "Could not resolve your location to an address.",
+        "Country",
+        "Coverage radius (km)",
+        "Create and edit warehouse and factory nodes. Coverage radius and co-location drive delivery zones and supply lanes.",
+        "Create failed",
+        "Create products and set volumetric units (VU) for warehouse dispatch capacity.",
+        "Create webhook failed",
+        "Cross-border payouts and multi-currency settlement.",
+        "Currency",
+        "Custom seasonal windows override global forecast baselines for date ranges.",
+        "Deactivate failed",
+        "Default out-of-stock policy",
+        "Default window must be between 1 and 168 hours",
+        "Delivery-time line qty propose/resolve (driver → supplier).",
+        "Demand baseline",
+        "Demand predictions",
+        "Description",
+        "Discount (bps, 500 = 5%)",
+        "Dispute rows",
+        "Distribution nodes and coverage for retailer serviceability.",
+        "Dormant",
+        "Draft credit notes and issue reverse-logistics tasks.",
+        "Driver",
+        "Driver ID is required.",
+        "Driver-declared cash vs captured CASH payment legs — resolve open discrepancies.",
+        "Driver-rejected quantities awaiting write-off or return-to-stock.",
+        "EDI replay failed",
+        "Email",
+        "Empathy adoption, operator broadcast, replenishment trigger, and payment bypass.",
+        "Enable the supplier credit program and per-retailer Net terms. Disable requires Pegaus support.",
+        "Enable trade credit — irreversible in-app",
+        "Ends at (RFC3339)",
+        "Enter a non-zero quantity delta",
+        "Enter a valid list price.",
+        "Enter a valid phone number (6-14 digits)",
+        "Enter the 6-digit code",
+        "Enterprise card acquiring with local payment methods.",
+        "Export failed",
+        "External events and promotions that adjust base AI predictions.",
+        "Factories",
+        "Factory address",
+        "Factory admin",
+        "Factory cap (7d)",
+        "Failed to create override",
+        "Failed to create product",
+        "Failed to delete override",
+        "Failed to load catalog",
+        "Failed to load compliance stats",
+        "Failed to load exception map",
+        "Failed to load fleet tracking",
+        "Failed to load integrations",
+        "Failed to load inventory",
+        "Failed to load overrides",
+        "Failed to load product",
+        "Failed to load promotions",
+        "Failed to load return policy",
+        "Failed to load seasonal overrides",
+        "Failed to load topology",
+        "Failed to save product",
+        "Failed to send verification code",
+        "Fan out a message to supplier WS rooms by role.",
+        "Filter product ID",
+        "Filter retailer ID",
+        "Financial overview and operational intelligence.",
+        "Fired",
+        "Fleet entities",
+        "Fleet volume",
+        "Forecast units",
+        "Forecast units (24h)",
+        "Forecast value",
+        "Fulfilling nodes collect payment per dispatch lane.",
+        "Full ledger, chargebacks, and reconciliation tools.",
+        "GLN (13 digits)",
+        "GS1 company prefix (7–10 digits)",
+        "Geolocation is not supported in this browser.",
+        "Global Pay",
+        "H3 perimeter and warehouse coverage configured via topology.",
+        "H3 perimeter coverage and lane utilization from live supplier orders.",
+        "Immutable ledger-derived settlement and reconciliation view for supplier finance and support.",
+        "In transit",
+        "Ingest lag",
+        "Insights",
+        "Internal / co-located",
+        "Invalid verification code",
+        "Issue a one-time driver token for AWAITING_PAYMENT orders.",
+        "Issue key failed",
+        "Latest events across your network.",
+        "Ledger rows",
+        "Legal and location information used for invoicing, compliance, and delivery routing.",
+        "Legal name",
+        "List price and optional product-scoped sale discount.",
+        "Live finance stream, chargebacks, and reconciliation.",
+        "Live retailer floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers.",
+        "Live sealed-route execution, exception weather, and fleet onboarding.",
+        "Loaded",
+        "Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations.",
+        "Loading-gate overflows, damage reports, and manual removals raised during manifest execution.",
+        "Location permission denied.",
+        "Login failed",
+        "MEIO network",
+        "MEIO unavailable",
+        "Manage historical and future tax rates",
+        "Manage manifests and dispatch operations.",
+        "Manage warehouse coordinates and coverage radius.",
+        "Max VU",
+        "Max daily transfer units",
+        "Min confidence score",
+        "Min line qty (packs)",
+        "Min order (minor units)",
+        "Mismatch groups",
+        "Month earnings",
+        "Monthly salary payout",
+        "Name",
+        "Name and address are required.",
+        "Name and category are required.",
+        "New supplier?",
+        "No STORE_POS flywheel events yet. When retailers complete POS sales for your SKUs, rows appear here.",
+        "No active fleet orders.",
+        "No active warehouse lanes. Configure nodes on topology.",
+        "No claim chargebacks yet. Approve a claim in Exceptions → Claims to create one.",
+        "No claims in this filter. Retailer post-delivery claims appear here within the 48h window.",
+        "No data yet.",
+        "No demand signals yet. Add events or promos to adjust predictive inventory.",
+        "No escalations in queue.",
+        "No factories yet. Add a production node linked to your warehouse network.",
+        "No manifest exceptions in the current window.",
+        "No manifests in the current window.",
+        "No nearby drivers",
+        "No open cash discrepancies. Drivers auto-accept when declared matches expected.",
+        "No open exceptions. Escalations appear here when operators raise them.",
+        "No open returns — all rejected delivery lines are resolved.",
+        "No products to price. Create products in Catalog, then return here.",
+        "No retailer price overrides yet.",
+        "No supplier session. Sign in again to load compliance for your tenant.",
+        "No warehouse coverage configured.",
+        "No warehouses yet. Add your first distribution node.",
+        "None",
+        "OPEN replenishment suggestions from demand signals — create draft orders through normal order capture.",
+        "On shift",
+        "Open mismatches",
+        "Opens a warehouse supply request against your primary active warehouse.",
+        "Orders",
+        "Orders matching this filter will appear here.",
+        "Org members",
+        "Override failed",
+        "Override price (minor units)",
+        "P&L simulation failed",
+        "Partner API keys, outbound webhooks, bulk exports, and optional SFTP drop.",
+        "Payload staff",
+        "Payments, settlement authority, earnings, and reconciliation health.",
+        "Pending",
+        "Pending dispatch",
+        "Phone",
+        "Ping failed",
+        "Pipeline",
+        "Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve.",
+        "Postal code",
+        "Predicted versus actual order volume from supplier analytics authority.",
+        "Predictions",
+        "Preview",
+        "Price must be a non-negative integer (minor units).",
+        "Priority (higher wins ties)",
+        "Product ID",
+        "Product ID (SKU)",
+        "Product not found.",
+        "Product sale pricing",
+        "Product, category, and volume-based sales with retailer targeting and time windows.",
+        "Production nodes for manifests and warehouse replenishment.",
+        "Products",
+        "Projections",
+        "Quantity",
+        "Quantity negotiation is disabled. Use shop-closed, claims, or missing-items for delivery exceptions.",
+        "Read-only supplier planning graph — factories, warehouses, SKUs, and relationships.",
+        "Recent financial transactions.",
+        "Reconciliation mismatches",
+        "Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks.",
+        "Register",
+        "Registered",
+        "Reject orders when out of stock",
+        "Rejected",
+        "Replay failed",
+        "Replenishment insights",
+        "Required for compliance and payout verification.",
+        "Resolution queued for retry when back online.",
+        "Retailer ID",
+        "Retailer IDs (one per line)",
+        "Retailer scope",
+        "Retailer segments and SKU velocity classes for constrained allocation (O9-1).",
+        "Retailers",
+        "Retailers collect cash; reconcile manually.",
+        "Retailers see these options at checkout. Select all that apply.",
+        "Revenue at risk",
+        "Review H3 perimeter and warehouse coverage.",
+        "Review automated exception playbooks. Deactivate rules you do not want suggested.",
+        "Revoke failed",
+        "SFTP save failed",
+        "SKU availability, stock policy per warehouse, and quantity adjustments.",
+        "SKUs",
+        "SLA risk",
+        "SWIFT / BIC",
+        "Sale discount must be greater than zero.",
+        "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi",
+        "Save & continue",
+        "Save failed",
+        "Scope",
+        "Set custom prices per retailer and product SKU.",
+        "Set list and sale pricing per catalog product. Add products in Catalog first.",
+        "Settlement groups",
+        "Settlement net (authority)",
+        "Shop-closed, payment, and delivery escalation queues.",
+        "Single-tenant logistics control plane.",
+        "Skip for now",
+        "Starts at (RFC3339)",
+        "Status",
+        "Stockout SKUs",
+        "Stream of operational events and recent actions.",
+        "Street address",
+        "Supplier ID",
+        "Supplier Portal - pegasusX",
+        "Supplier Treasury",
+        "Supplier accepts payments",
+        "Supplier legal identity and registration state.",
+        "Supplier operator",
+        "Supplier scope",
+        "Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state.",
+        "Supplier-scoped active orders for dispatch oversight.",
+        "Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles.",
+        "Supplier-scoped ledger rows from logistics claim approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks.",
+        "Supplier-scoped order detail with warehouse admin actions when available.",
+        "Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible.",
+        "Tax ID (VAT / TIN)",
+        "There are no eligible drivers nearby to take this order right now.",
+        "This order is not visible in your supplier scope.",
+        "Total pallets",
+        "Touchless transfers",
+        "Tracking alerts",
+        "Transfer mode",
+        "Transfers",
+        "Treasury splits and dispute operations.",
+        "Treasury splits, settlement authority, and payment mismatches.",
+        "Truck replenishment",
+        "Unable to load",
+        "Unavailable drivers",
+        "Undo",
+        "Unit VU must be a positive number.",
+        "Unit volume (VU)",
+        "Units per case must be a positive integer when selling by case.",
+        "Updated",
+        "Upload CSV, review column mapping, approve, and apply to warehouse inventory.",
+        "Utilization",
+        "Vehicle",
+        "Version",
+        "View your durable finance ledger and payment movements.",
+        "Volume VU",
+        "WAPE (28d)",
+        "WH inbound cap",
+        "Waiting",
+        "Warehouse accepts payments",
+        "Warehouse address",
+        "Warehouse admin",
+        "Warehouse lanes derived from topology and live order volume. Lanes are read-only — edit warehouses and coverage on Topology.",
+        "Warehouses",
+        "Where supplier earnings are deposited after settlement.",
+        "Who receives card revenue when an order is fulfilled.",
+        "Your registered business address — not a warehouse dispatch point.",
+        "accept_failed",
+        "adjust_failed",
+        "approve_failed",
+        "bootstrap_failed",
+        "bulk_create_failed",
+        "create_draft_failed",
+        "create_failed",
+        "deactivate_failed",
+        "defaults_failed",
+        "dismiss_failed",
+        "dispatch_execute_failed",
+        "enable_failed",
+        "failed",
+        "feed_unavailable_apply_ddl_or_wait_for_pos",
+        "fleet_orders_failed",
+        "hold_failed",
+        "import_apply_failed",
+        "import_approve_failed",
+        "import_wizard_failed",
+        "invalid_limit",
+        "issue_failed",
+        "lines_failed",
+        "load_claims_failed",
+        "load_demand_analytics_failed",
+        "load_exceptions_failed",
+        "load_factories_failed",
+        "load_failed",
+        "load_flywheel_failed",
+        "load_geo_report_failed",
+        "load_knowledge_graph_failed",
+        "load_manifest_exceptions_failed",
+        "load_manifest_failed",
+        "load_manifests_failed",
+        "load_playbook_runs_failed",
+        "load_playbooks_failed",
+        "load_pricing_failed",
+        "load_profile_failed",
+        "load_reconciliation_failed",
+        "load_replenishment_policies_failed",
+        "load_returns_failed",
+        "load_scored_exceptions_failed",
+        "load_segmentation_failed",
+        "load_signals_failed",
+        "load_suggestions_failed",
+        "load_supplier_analytics_failed",
+        "load_supply_lanes_failed",
+        "load_topology_failed",
+        "load_warehouses_failed",
+        "order_id required",
+        "patch_failed",
+        "pegasusX",
+        "planning_outcomes_unavailable",
+        "planning_unavailable",
+        "policy_update_failed",
+        "preview_failed",
+        "product_id",
+        "quantity_on_hand",
+        "reject_failed",
+        "reorder_threshold",
+        "resolve_failed",
+        "retailer_id_required",
+        "save_factory_failed",
+        "save_failed",
+        "save_profile_failed",
+        "save_replenishment_policies_failed",
+        "save_topology_failed",
+        "save_warehouse_failed",
+        "scenario_failed",
+        "secret_ref",
+        "signal_status_unavailable",
+        "skip_failed",
+        "title_and_body_required",
+        "traceability_load_failed",
+        "twin_routes_failed",
+        "update_retailer_failed",
+        "update_sku_failed",
+        "warehouse_id",
+        "write_off_failed",
+        "Включить торговый кредит — необратимо в приложении"
+      ],
+      "files": [
+        {
+          "file": "apps/supplier-portal/app/layout.tsx",
+          "texts": [
+            "Single-tenant logistics control plane.",
+            "Supplier Portal - pegasusX"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/payments/page.tsx",
+          "texts": [
+            "Immutable ledger-derived settlement and reconciliation view for supplier finance and support."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/auth/layout.tsx",
+          "texts": [
+            "pegasusX"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/earnings/page.tsx",
+          "texts": [
+            "Chargeback recorded. Live finance refresh queued.",
+            "Chargeback reversal recorded. Live finance refresh queued.",
+            "Connection restored — verify chargeback status before retrying.",
+            "Connection restored — verify reversal status before retrying.",
+            "Dispute rows",
+            "Ledger rows",
+            "Mismatch groups",
+            "Supplier scope",
+            "Supplier treasury authority, disputes, and reconciliation operations sourced directly from payment ledger state."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/tracking/page.tsx",
+          "texts": [
+            "Failed to load fleet tracking"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/demand/payday-calendar/page.tsx",
+          "texts": [
+            "Monthly salary payout"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(dashboard)/ledger/page.tsx",
+          "texts": [
+            "Recent financial transactions.",
+            "View your durable finance ledger and payment movements."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(dashboard)/activity/page.tsx",
+          "texts": [
+            "Latest events across your network.",
+            "Stream of operational events and recent actions."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(dashboard)/compliance/page.tsx",
+          "texts": [
+            "Export failed",
+            "Failed to load compliance stats",
+            "No supplier session. Sign in again to load compliance for your tenant."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(dashboard)/chargebacks/page.tsx",
+          "texts": [
+            "Amount must be a number.",
+            "Record payment disputes and reversals against the durable finance ledger. Logistics claim chargebacks: Finance → Claim chargebacks."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(dashboard)/settings/tax-regimes/page.tsx",
+          "texts": [
+            "Manage historical and future tax rates"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/reconciliation/page.tsx",
+          "texts": [
+            "Full ledger, chargebacks, and reconciliation tools.",
+            "Open mismatches",
+            "Settlement net (authority)",
+            "Treasury splits, settlement authority, and payment mismatches.",
+            "load_reconciliation_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/topology/page.tsx",
+          "texts": [
+            "Create and edit warehouse and factory nodes. Coverage radius and co-location drive delivery zones and supply lanes.",
+            "Failed to load topology"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/warehouses/page.tsx",
+          "texts": [
+            "Distribution nodes and coverage for retailer serviceability.",
+            "No warehouses yet. Add your first distribution node.",
+            "load_warehouses_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/dispatch/page.tsx",
+          "texts": [
+            "Available drivers",
+            "Manage manifests and dispatch operations.",
+            "Pending dispatch",
+            "Unavailable drivers",
+            "dispatch_execute_failed",
+            "preview_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/catalog/page.tsx",
+          "texts": [
+            "Create products and set volumetric units (VU) for warehouse dispatch capacity.",
+            "Failed to load catalog"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/exceptions/page.tsx",
+          "texts": [
+            "No open exceptions. Escalations appear here when operators raise them.",
+            "Shop-closed, payment, and delivery escalation queues.",
+            "load_exceptions_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/operations/page.tsx",
+          "texts": [
+            "Connection restored — verify status before retrying.",
+            "Dormant",
+            "Empathy adoption, operator broadcast, replenishment trigger, and payment bypass.",
+            "Fired",
+            "Predictions",
+            "Rejected",
+            "Waiting",
+            "order_id required",
+            "title_and_body_required"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/delivery-zones/page.tsx",
+          "texts": [
+            "H3 perimeter and warehouse coverage configured via topology.",
+            "No warehouse coverage configured.",
+            "load_topology_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/geo-report/page.tsx",
+          "texts": [
+            "H3 perimeter coverage and lane utilization from live supplier orders.",
+            "Manage warehouse coordinates and coverage radius.",
+            "Review H3 perimeter and warehouse coverage.",
+            "load_geo_report_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/dashboard/page.tsx",
+          "texts": [
+            "Arrived",
+            "In transit",
+            "Loaded",
+            "Pending"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/promotions/page.tsx",
+          "texts": [
+            "Category ID",
+            "Deactivate failed",
+            "Description",
+            "Discount (bps, 500 = 5%)",
+            "Ends at (RFC3339)",
+            "Failed to load promotions",
+            "Min line qty (packs)",
+            "Min order (minor units)",
+            "Name",
+            "P&L simulation failed",
+            "Priority (higher wins ties)",
+            "Product ID",
+            "Product, category, and volume-based sales with retailer targeting and time windows.",
+            "Retailer IDs (one per line)",
+            "Retailer scope",
+            "Save failed",
+            "Scope",
+            "Starts at (RFC3339)"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/profile/page.tsx",
+          "texts": [
+            "Supplier legal identity and registration state.",
+            "load_profile_failed",
+            "save_profile_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/inventory/page.tsx",
+          "texts": [
+            "Enter a non-zero quantity delta",
+            "Failed to load inventory",
+            "SKU availability, stock policy per warehouse, and quantity adjustments.",
+            "adjust_failed",
+            "policy_update_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/factories/page.tsx",
+          "texts": [
+            "No factories yet. Add a production node linked to your warehouse network.",
+            "Production nodes for manifests and warehouse replenishment.",
+            "load_factories_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/manifest-exceptions/page.tsx",
+          "texts": [
+            "Loading-gate overflows, damage reports, and manual removals raised during manifest execution.",
+            "No manifest exceptions in the current window.",
+            "load_manifest_exceptions_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/returns/page.tsx",
+          "texts": [
+            "Driver-rejected quantities awaiting write-off or return-to-stock.",
+            "No open returns — all rejected delivery lines are resolved.",
+            "load_returns_failed",
+            "resolve_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/manifests/page.tsx",
+          "texts": [
+            "Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations.",
+            "No manifests in the current window.",
+            "load_manifests_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/supply-lanes/page.tsx",
+          "texts": [
+            "No active warehouse lanes. Configure nodes on topology.",
+            "Warehouse lanes derived from topology and live order volume. Lanes are read-only — edit warehouses and coverage on Topology.",
+            "load_supply_lanes_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/fleet/page.tsx",
+          "texts": [
+            "Live sealed-route execution, exception weather, and fleet onboarding."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/treasury/page.tsx",
+          "texts": [
+            "Live finance stream, chargebacks, and reconciliation.",
+            "Month earnings",
+            "Payments, settlement authority, earnings, and reconciliation health.",
+            "Reconciliation mismatches",
+            "Settlement groups",
+            "Supplier Treasury",
+            "Treasury splits and dispute operations."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/pricing/page.tsx",
+          "texts": [
+            "No products to price. Create products in Catalog, then return here.",
+            "Set list and sale pricing per catalog product. Add products in Catalog first.",
+            "load_pricing_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/page.tsx",
+          "texts": [
+            "30-day revenue",
+            "Demand predictions",
+            "Financial overview and operational intelligence.",
+            "Forecast units (24h)",
+            "Forecast value",
+            "Retailers",
+            "Total pallets",
+            "load_supplier_analytics_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/knowledge-graph/page.tsx",
+          "texts": [
+            "Read-only supplier planning graph — factories, warehouses, SKUs, and relationships.",
+            "load_knowledge_graph_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/route-performance/page.tsx",
+          "texts": [
+            "Completed route efficiency and replan metrics.",
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/demand/page.tsx",
+          "texts": [
+            "28d actual units",
+            "28d forecast units",
+            "Forecast units",
+            "Predicted versus actual order volume from supplier analytics authority.",
+            "Predictions",
+            "Retailers",
+            "Tracking alerts",
+            "WAPE (28d)",
+            "load_demand_analytics_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/demand/signals/page.tsx",
+          "texts": [
+            "External events and promotions that adjust base AI predictions.",
+            "No demand signals yet. Add events or promos to adjust predictive inventory.",
+            "load_signals_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/analytics/demand/flywheel/page.tsx",
+          "texts": [
+            "Live retailer floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers.",
+            "No STORE_POS flywheel events yet. When retailers complete POS sales for your SKUs, rows appear here.",
+            "feed_unavailable_apply_ddl_or_wait_for_pos",
+            "load_flywheel_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/chargebacks/claims/page.tsx",
+          "texts": [
+            "No claim chargebacks yet. Approve a claim in Exceptions → Claims to create one.",
+            "Supplier-scoped ledger rows from logistics claim approve (chargeback_clm_*). Manual PSP chargebacks stay on Finance → Chargebacks.",
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/pricing/retailer-overrides/page.tsx",
+          "texts": [
+            "Active overrides",
+            "Catalog SKUs",
+            "Failed to create override",
+            "Failed to delete override",
+            "Failed to load overrides",
+            "Filter product ID",
+            "Filter retailer ID",
+            "No retailer price overrides yet.",
+            "Override price (minor units)",
+            "Product ID (SKU)",
+            "Products",
+            "Retailer ID",
+            "Retailers",
+            "Set custom prices per retailer and product SKU."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/pricing/[productId]/page.tsx",
+          "texts": [
+            "Enter a valid list price.",
+            "List price and optional product-scoped sale discount.",
+            "Product not found.",
+            "Product sale pricing",
+            "Sale discount must be greater than zero.",
+            "load_failed",
+            "save_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/treasury/cash-reconciliations/page.tsx",
+          "texts": [
+            "Driver-declared cash vs captured CASH payment legs — resolve open discrepancies.",
+            "No open cash discrepancies. Drivers auto-accept when declared matches expected.",
+            "accept_failed",
+            "load_failed",
+            "write_off_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/fleet/orders/page.tsx",
+          "texts": [
+            "No active fleet orders.",
+            "Supplier-scoped active orders for dispatch oversight.",
+            "fleet_orders_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/manifests/[id]/page.tsx",
+          "texts": [
+            "Driver",
+            "Max VU",
+            "Orders",
+            "Updated",
+            "Vehicle",
+            "Volume VU",
+            "load_manifest_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/orders/components/OrdersList.tsx",
+          "texts": [
+            "Cancels the order and notifies the retailer immediately. Reason is required.",
+            "Could not load orders",
+            "Orders matching this filter will appear here."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/orders/[id]/page.tsx",
+          "texts": [
+            "Supplier-scoped order detail with warehouse admin actions when available.",
+            "This order is not visible in your supplier scope."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/finance/credit-notes/page.tsx",
+          "texts": [
+            "Draft credit notes and issue reverse-logistics tasks.",
+            "create_failed",
+            "issue_failed",
+            "lines_failed",
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/ops/map/page.tsx",
+          "texts": [
+            "Active routes from the digital twin — read-only visibility with ETA confidence colouring.",
+            "twin_routes_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/factories/components/FactoryForm.tsx",
+          "texts": [
+            "Factory address",
+            "Name and address are required.",
+            "save_factory_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/inventory/import/page.tsx",
+          "texts": [
+            "Upload CSV, review column mapping, approve, and apply to warehouse inventory.",
+            "import_apply_failed",
+            "import_approve_failed",
+            "import_wizard_failed",
+            "product_id",
+            "quantity_on_hand",
+            "reorder_threshold",
+            "warehouse_id"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/operations/replenishment-policies/page.tsx",
+          "texts": [
+            "Auto-approval thresholds, transfer limits, and service-level safety stock.",
+            "Auto-approve predictive push",
+            "Auto-approve stable",
+            "Max daily transfer units",
+            "Min confidence score",
+            "load_replenishment_policies_failed",
+            "save_replenishment_policies_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/exceptions/negotiations/page.tsx",
+          "texts": [
+            "Delivery-time line qty propose/resolve (driver → supplier).",
+            "Quantity negotiation is disabled. Use shop-closed, claims, or missing-items for delivery exceptions."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/exceptions/shop-closed/page.tsx",
+          "texts": [
+            "Active driver reports where the retailer did not confirm within the grace window.",
+            "Connection restored — escalation queue refreshed from server.",
+            "No escalations in queue.",
+            "Resolution queued for retry when back online.",
+            "load_failed",
+            "resolve_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/exceptions/early-complete/page.tsx",
+          "texts": [
+            "Approve a driver request to finish the route before all stops are completed.",
+            "Connection restored — verify approval status before retrying.",
+            "Driver ID is required.",
+            "approve_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/exceptions/claims/page.tsx",
+          "texts": [
+            "No claims in this filter. Retailer post-delivery claims appear here within the 48h window.",
+            "Post-delivery damage, missing, and OS&D claims. Choose settlement mode before approve.",
+            "approve_failed",
+            "load_claims_failed",
+            "reject_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/replenishment/suggestions/page.tsx",
+          "texts": [
+            "OPEN replenishment suggestions from demand signals — create draft orders through normal order capture.",
+            "bulk_create_failed",
+            "create_draft_failed",
+            "dismiss_failed",
+            "load_suggestions_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/catalog/[productId]/page.tsx",
+          "texts": [
+            "Barcode",
+            "Category",
+            "Failed to load product",
+            "Failed to save product",
+            "Name",
+            "Product ID",
+            "Status",
+            "Unit volume (VU)",
+            "Version"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/catalog/components/CreateProductForm.tsx",
+          "texts": [
+            "Failed to create product",
+            "Name and category are required.",
+            "Preview",
+            "Price must be a non-negative integer (minor units).",
+            "Unit VU must be a positive number.",
+            "Units per case must be a positive integer when selling by case."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/catalog/components/CatalogTable.tsx",
+          "texts": [
+            "Failed to save product"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/warehouses/components/WarehouseForm.tsx",
+          "texts": [
+            "Name and address are required.",
+            "Warehouse address",
+            "save_warehouse_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/credit/admin-disable/page.tsx",
+          "texts": [
+            "Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible.",
+            "failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/credit/collections/page.tsx",
+          "texts": [
+            "Supplier-scoped credit lines: limits, open balances, freeze / unfreeze. Policy enablement lives under Credit policy. Only your supplier_id profiles.",
+            "invalid_limit",
+            "load_failed",
+            "patch_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/credit/policy/page.tsx",
+          "texts": [
+            "Enable the supplier credit program and per-retailer Net terms. Disable requires Pegaus support.",
+            "defaults_failed",
+            "enable_failed",
+            "hold_failed",
+            "load_failed",
+            "retailer_id_required"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/segmentation/page.tsx",
+          "texts": [
+            "Retailer segments and SKU velocity classes for constrained allocation (O9-1)."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/planning/page.tsx",
+          "texts": [
+            "Create failed",
+            "Custom seasonal windows override global forecast baselines for date ranges.",
+            "Failed to load seasonal overrides"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/return-policy/page.tsx",
+          "texts": [
+            "Claim filing windows applied when orders complete. Retailers see the countdown from this policy.",
+            "Default window must be between 1 and 168 hours",
+            "Failed to load return policy",
+            "Save failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/playbooks/page.tsx",
+          "texts": [
+            "Review automated exception playbooks. Deactivate rules you do not want suggested.",
+            "deactivate_failed",
+            "load_playbooks_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/integrations/page.tsx",
+          "texts": [
+            "CoA save failed",
+            "Create webhook failed",
+            "Deactivate failed",
+            "EDI replay failed",
+            "Export failed",
+            "Failed to load integrations",
+            "Issue key failed",
+            "Partner API keys, outbound webhooks, bulk exports, and optional SFTP drop.",
+            "Ping failed",
+            "Replay failed",
+            "Revoke failed",
+            "SFTP save failed",
+            "secret_ref"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/(portal)/settings/notification-preferences/page.tsx",
+          "texts": [
+            "Channel and quiet-hour rules per event type.",
+            "load_failed",
+            "save_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/setup/business/page.tsx",
+          "texts": [
+            "City",
+            "Company registration number",
+            "Legal and location information used for invoicing, compliance, and delivery routing.",
+            "Postal code",
+            "Required for compliance and payout verification.",
+            "Save & continue",
+            "Skip for now",
+            "Street address",
+            "Tax ID (VAT / TIN)",
+            "Your registered business address — not a warehouse dispatch point."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/setup/billing/page.tsx",
+          "texts": [
+            "Account holder name",
+            "Account number",
+            "Adyen",
+            "Airwallex",
+            "Back",
+            "Bank name",
+            "Card payments via the pegasusX global rail.",
+            "Card revenue settles to your supplier treasury account.",
+            "Cash on delivery",
+            "Complete setup",
+            "Configure where payouts land and which checkout rails retailers can use.",
+            "Cross-border payouts and multi-currency settlement.",
+            "Enterprise card acquiring with local payment methods.",
+            "Fulfilling nodes collect payment per dispatch lane.",
+            "Global Pay",
+            "Retailers collect cash; reconcile manually.",
+            "Retailers see these options at checkout. Select all that apply.",
+            "SWIFT / BIC",
+            "Supplier accepts payments",
+            "Warehouse accepts payments",
+            "Where supplier earnings are deposited after settlement.",
+            "Who receives card revenue when an order is fulfilled."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/auth/register/page.tsx",
+          "texts": [
+            "Failed to send verification code",
+            "Invalid verification code"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/auth/login/page.tsx",
+          "texts": [
+            "Enter a valid phone number (6-14 digits)",
+            "Enter the 6-digit code",
+            "Login failed",
+            "New supplier?",
+            "Register"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/org-fleet/components/MetricsOverview.tsx",
+          "texts": [
+            "Factories",
+            "Fleet entities",
+            "Org members",
+            "Warehouses"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/app/org-fleet/components/utils.tsx",
+          "texts": [
+            "Factory admin",
+            "Payload staff",
+            "Supplier operator",
+            "Warehouse admin"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/PlanningBrainPanel.tsx",
+          "texts": [
+            "Alert",
+            "Baseline SLA",
+            "Capacity breach",
+            "Factory cap (7d)",
+            "Fleet volume",
+            "Revenue at risk",
+            "SLA risk",
+            "Stockout SKUs",
+            "Utilization",
+            "WH inbound cap",
+            "planning_unavailable",
+            "scenario_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/ReplenishmentTraceabilityPanel.tsx",
+          "texts": [
+            "traceability_load_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/CreditEnableModal.tsx",
+          "texts": [
+            "Enable trade credit — irreversible in-app",
+            "Savdo kreditini yoqish — ilovada qaytarib bo‘lmaydi",
+            "Включить торговый кредит — необратимо в приложении"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/LocationPicker.tsx",
+          "texts": [
+            "Address",
+            "Could not resolve your location to an address.",
+            "Geolocation is not supported in this browser.",
+            "Location permission denied."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/PageChrome.tsx",
+          "texts": [
+            "No data yet.",
+            "Unable to load"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/PlanningOutcomesPanel.tsx",
+          "texts": [
+            "Demand baseline",
+            "MEIO network",
+            "Replenishment insights",
+            "Touchless transfers",
+            "planning_outcomes_unavailable"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/TopologyEditor.tsx",
+          "texts": [
+            "Accept backorders when out of stock",
+            "Active",
+            "Co-locate with factory",
+            "Coverage radius (km)",
+            "Default out-of-stock policy",
+            "Factory address",
+            "Internal / co-located",
+            "Name",
+            "None",
+            "On shift",
+            "Product ID",
+            "Quantity",
+            "Reject orders when out of stock",
+            "Transfer mode",
+            "Truck replenishment",
+            "Undo",
+            "Warehouse address",
+            "save_topology_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/SupplierShell.tsx",
+          "texts": [
+            "pegasusX"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/SignalIngestOpsPanel.tsx",
+          "texts": [
+            "Baseline rows",
+            "Ingest lag",
+            "Pipeline",
+            "Projections",
+            "signal_status_unavailable"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/MeioNetworkPanel.tsx",
+          "texts": [
+            "Insights",
+            "MEIO unavailable",
+            "SKUs",
+            "Transfers",
+            "Warehouses"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/ControlTowerCommandPanel.tsx",
+          "texts": [
+            "Override failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/ExceptionWeatherMapPanel.tsx",
+          "texts": [
+            "Failed to load exception map"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/settings/SegmentationPanel.tsx",
+          "texts": [
+            "bootstrap_failed",
+            "load_segmentation_failed",
+            "update_retailer_failed",
+            "update_sku_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/control-tower/ScoredExceptionsPanel.tsx",
+          "texts": [
+            "load_scored_exceptions_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/exceptions/PlaybookRunsPanel.tsx",
+          "texts": [
+            "approve_failed",
+            "load_playbook_runs_failed",
+            "skip_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/exceptions/ExceptionsList.tsx",
+          "texts": [
+            "resolve_failed"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/operations/ReplenishmentAction.tsx",
+          "texts": [
+            "Opens a warehouse supply request against your primary active warehouse."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/operations/PaymentBypass.tsx",
+          "texts": [
+            "Issue a one-time driver token for AWAITING_PAYMENT orders."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/operations/OperatorBroadcast.tsx",
+          "texts": [
+            "Fan out a message to supplier WS rooms by role."
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/profile/SupplierIdentityCard.tsx",
+          "texts": [
+            "Configured",
+            "Country",
+            "Currency",
+            "Registered",
+            "Supplier ID"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/profile/ContactDetailsForm.tsx",
+          "texts": [
+            "Contact name",
+            "Email",
+            "GLN (13 digits)",
+            "GS1 company prefix (7–10 digits)",
+            "Legal name",
+            "Phone"
+          ]
+        },
+        {
+          "file": "apps/supplier-portal/components/orders/ReDispatchDialog.tsx",
+          "texts": [
+            "No nearby drivers",
+            "There are no eligible drivers nearby to take this order right now."
+          ]
+        }
+      ]
+    },
+    "warehouse-portal": {
+      "unique": [
+        "AI-powered stock recommendations from 4 data sources.",
+        "Active Users",
+        "Active orders have not reserved stock yet.",
+        "Active sealed routes and driver positions for this node.",
+        "Address",
+        "All Good",
+        "All drivers are on route or blocked.",
+        "All orders dispatched",
+        "Approve to create factory transfer rows; dismiss to clear.",
+        "As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically.",
+        "Available drivers",
+        "Base fee (minor)",
+        "Beyond-tier fee (minor)",
+        "Built-in depot starters plus your saved custom messages.",
+        "Cancels the order and notifies the retailer immediately.",
+        "Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing.",
+        "Configure warehouse auto-dispatch policy for this node.",
+        "Could not resolve that address. Try another suggestion.",
+        "Could not resolve your location to an address.",
+        "Create a factory replenishment request from forecast or manual line items.",
+        "Create a pick or stage location to putaway lots.",
+        "Create a wave from a draft or loading manifest.",
+        "Create an OPEN count for a bin + product.",
+        "Critical urgency",
+        "Cross-role timeline for this warehouse node.",
+        "Currency",
+        "Custom reason (optional)",
+        "Daily loading manifests for drivers and vehicles at this node.",
+        "Days between order placement and earliest fulfillment.",
+        "Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.",
+        "Depot address",
+        "Depot-scoped broadcasts and read-only pricing impact preview.",
+        "Dock queue for truck returns and claim reverse-logistics tickets — restock or write off.",
+        "Effective date (optional)",
+        "Emergency inbound, force receive, and transfer receipt by ID.",
+        "Enter a valid phone number (6-14 digits)",
+        "Enter the 6-digit code",
+        "Factory inbound transfer controls for warehouse operators.",
+        "Factory replenishment requests scoped to this warehouse node.",
+        "Failed to load warehouse tracking",
+        "Failed to send verification code",
+        "Fleet drivers with vehicle assignment and live truck status.",
+        "Fleet trucks with capacity, driver assignment, and live availability.",
+        "Free within km",
+        "Full order detail and warehouse exception actions.",
+        "GLN (13 digits)",
+        "Geolocation is not supported in this browser.",
+        "Invalid verification code",
+        "Invoiced revenue, payouts, and outstanding liabilities for this warehouse.",
+        "Invoices appear when retailers are billed for fulfilled orders.",
+        "Leave blank to clear a limit. Applies to standard and scheduled checkout.",
+        "Location permission denied.",
+        "Login failed",
+        "Manage truck breakdowns and propose rescue operations",
+        "Manifest and driver state breakdown for this node.",
+        "Manifest, order, and lock exceptions in one queue.",
+        "Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity.",
+        "Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately.",
+        "Max lead (days)",
+        "Max per SKU",
+        "Message",
+        "Min lead (days)",
+        "Min per SKU",
+        "New warehouse?",
+        "No Rescuers Available",
+        "No active dispatch locks. Dispatch operations are running freely.",
+        "No bins",
+        "No buyer data to analyze yet",
+        "No commitments",
+        "No cycle counts",
+        "No data yet.",
+        "No drivers available",
+        "No inventory items found",
+        "No invoices found",
+        "No lots",
+        "No pending orders need assignment right now.",
+        "No pick waves",
+        "No pre-orders",
+        "No products found",
+        "No replenishment insights",
+        "No supply requests found",
+        "No trucks currently require a rescue.",
+        "No warehouse metrics yet",
+        "On-hand stock levels with live sync and quantity adjustments.",
+        "Open insights",
+        "Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ.",
+        "Orders and manifests grouped by delivery date.",
+        "Outstanding",
+        "Paid",
+        "Pick an address from the list or refine your search.",
+        "Preorder → accept → dispatch → seal events from the ops pulse feed.",
+        "Prevent concurrent dispatch operations during loading.",
+        "Product / SKU ID",
+        "Proposed price (minor units)",
+        "Read-only view of supplier product catalog.",
+        "Read-only view. Payment gateways are configured by the supplier admin.",
+        "Real-time map tracking for sealed manifests in transit.",
+        "Receive/putaway with location + expiry (perishables) when WMS lots are enabled.",
+        "Register",
+        "Replay the last committed smart-dispatch runs for this node.",
+        "Retailer ID (optional)",
+        "Retailer relationships and purchase histories will appear here once orders are fulfilled by this node.",
+        "Retailer relationships, order volume, and revenue for this warehouse.",
+        "SKU-level ASAP + scheduled demand vs on-hand",
+        "Scheduled manual pre-orders will appear here.",
+        "Sealed manifest polylines and driver GPS for this warehouse node.",
+        "Select for dispatch. Double-click a card for order detail.",
+        "Single-tenant logistics control plane.",
+        "Smart suggest routes",
+        "Stock velocity alerts with approve/dismiss actions for this warehouse node.",
+        "Target role",
+        "The replenishment engine will surface stock velocity alerts when burn thresholds are crossed.",
+        "There are no active drivers with enough capacity.",
+        "Timezone",
+        "Title",
+        "Total Revenue",
+        "Total invoiced",
+        "Unable to load",
+        "Unavailable",
+        "Undispatched orders",
+        "View checkout gateways and settlement routing for this node.",
+        "Warehouse Portal - pegasusX",
+        "Warehouse address",
+        "Warehouse name",
+        "Warehouse operator session and scope.",
+        "Warehouse revenue, order health, fleet utilization, and import telemetry.",
+        "Warehouse staff and payloader accounts for terminal execution.",
+        "Warning / high",
+        "Weekday close",
+        "Weekday open",
+        "When enforcement is on, retailers cannot preview or create orders outside the window.",
+        "finance_permission_required",
+        "load_failed",
+        "pegasusX",
+        "§8.7 Wave 1A warehouse locations and stock lots (FEFO)",
+        "§8.7 Wave 1B manifest picks → ready-to-seal before payload seal",
+        "§8.7 Wave 1C stub counts + variance adjustments (approve does not change lots yet)"
+      ],
+      "files": [
+        {
+          "file": "apps/warehouse-portal/app/layout.tsx",
+          "texts": [
+            "Single-tenant logistics control plane.",
+            "Warehouse Portal - pegasusX"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/page.tsx",
+          "texts": [
+            "Active sealed routes and driver positions for this node.",
+            "As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically.",
+            "Cross-role timeline for this warehouse node.",
+            "Manifest and driver state breakdown for this node.",
+            "No warehouse metrics yet"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/settings/page.tsx",
+          "texts": [
+            "Checkout policy, pre-order lead window, per-line quantity limits, delivery surcharges, and depot location. Changes sync with dispatch and delivery routing.",
+            "Delivery fee distance is measured warehouse lat/lng → retailer delivery pin at checkout.",
+            "GLN (13 digits)",
+            "Warehouse address"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/payment-config/page.tsx",
+          "texts": [
+            "Read-only view. Payment gateways are configured by the supplier admin."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/drivers/page.tsx",
+          "texts": [
+            "Fleet drivers with vehicle assignment and live truck status."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/products/page.tsx",
+          "texts": [
+            "No products found",
+            "Read-only view of supplier product catalog."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/supply-requests/page.tsx",
+          "texts": [
+            "Factory replenishment requests scoped to this warehouse node.",
+            "No supply requests found"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/fleet-live-map/page.tsx",
+          "texts": [
+            "Real-time map tracking for sealed manifests in transit."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/auth/layout.tsx",
+          "texts": [
+            "pegasusX"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/bins/page.tsx",
+          "texts": [
+            "Create a pick or stage location to putaway lots.",
+            "No bins",
+            "No lots",
+            "Receive/putaway with location + expiry (perishables) when WMS lots are enabled.",
+            "§8.7 Wave 1A warehouse locations and stock lots (FEFO)"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/dispatch/page.tsx",
+          "texts": [
+            "Available drivers",
+            "Cancels the order and notifies the retailer immediately.",
+            "Manual truck assignment or smart dispatch across the fleet. Capacity uses product VU × quantity.",
+            "Mark trucks unavailable in real time — dispatch and smart suggest exclude them immediately.",
+            "Preorder → accept → dispatch → seal events from the ops pulse feed.",
+            "Replay the last committed smart-dispatch runs for this node.",
+            "Sealed manifest polylines and driver GPS for this warehouse node.",
+            "Smart suggest routes",
+            "Unavailable",
+            "Undispatched orders"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/crm/page.tsx",
+          "texts": [
+            "No buyer data to analyze yet",
+            "Retailer relationships and purchase histories will appear here once orders are fulfilled by this node.",
+            "Retailer relationships, order volume, and revenue for this warehouse."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/stock-commitments/page.tsx",
+          "texts": [
+            "Active orders have not reserved stock yet.",
+            "No commitments",
+            "SKU-level ASAP + scheduled demand vs on-hand"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/replenishment/page.tsx",
+          "texts": [
+            "Approve to create factory transfer rows; dismiss to clear.",
+            "Critical urgency",
+            "No replenishment insights",
+            "Open insights",
+            "Stock velocity alerts with approve/dismiss actions for this warehouse node.",
+            "The replenishment engine will surface stock velocity alerts when burn thresholds are crossed.",
+            "Warning / high"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/transfers/page.tsx",
+          "texts": [
+            "Emergency inbound, force receive, and transfer receipt by ID.",
+            "Factory inbound transfer controls for warehouse operators."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/exceptions/page.tsx",
+          "texts": [
+            "Manifest, order, and lock exceptions in one queue."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/demand-forecast/page.tsx",
+          "texts": [
+            "AI-powered stock recommendations from 4 data sources."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/operations/page.tsx",
+          "texts": [
+            "Depot-scoped broadcasts and read-only pricing impact preview."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/profile/page.tsx",
+          "texts": [
+            "Warehouse operator session and scope."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/inventory/page.tsx",
+          "texts": [
+            "On-hand stock levels with live sync and quantity adjustments."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/tomorrow-board/page.tsx",
+          "texts": [
+            "Orders and manifests grouped by delivery date."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/pick-waves/page.tsx",
+          "texts": [
+            "Create a wave from a draft or loading manifest.",
+            "No pick waves",
+            "§8.7 Wave 1B manifest picks → ready-to-seal before payload seal"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/tracking/page.tsx",
+          "texts": [
+            "Failed to load warehouse tracking"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/vehicles/page.tsx",
+          "texts": [
+            "Fleet trucks with capacity, driver assignment, and live availability."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/dispatch-settings/page.tsx",
+          "texts": [
+            "Configure warehouse auto-dispatch policy for this node."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/staff/page.tsx",
+          "texts": [
+            "Warehouse staff and payloader accounts for terminal execution."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/returns/page.tsx",
+          "texts": [
+            "Dock queue for truck returns and claim reverse-logistics tickets — restock or write off."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/manifests/page.tsx",
+          "texts": [
+            "Daily loading manifests for drivers and vehicles at this node."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/treasury/page.tsx",
+          "texts": [
+            "Invoiced revenue, payouts, and outstanding liabilities for this warehouse.",
+            "Outstanding",
+            "Paid",
+            "Total invoiced",
+            "View checkout gateways and settlement routing for this node."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/cycle-counts/page.tsx",
+          "texts": [
+            "Create an OPEN count for a bin + product.",
+            "No cycle counts",
+            "§8.7 Wave 1C stub counts + variance adjustments (approve does not change lots yet)"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/analytics/page.tsx",
+          "texts": [
+            "Warehouse revenue, order health, fleet utilization, and import telemetry."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/claims/page.tsx",
+          "texts": [
+            "Open post-delivery claims. Damage claims auto-open dock tickets on Returns inbound; approve/reject is supplier HQ."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/dispatch-locks/page.tsx",
+          "texts": [
+            "No active dispatch locks. Dispatch operations are running freely.",
+            "Prevent concurrent dispatch operations during loading."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/orders/[id]/page.tsx",
+          "texts": [
+            "Full order detail and warehouse exception actions."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/setup/location/page.tsx",
+          "texts": [
+            "Depot address",
+            "Warehouse name"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/dispatch/rescues/page.tsx",
+          "texts": [
+            "All Good",
+            "Manage truck breakdowns and propose rescue operations",
+            "No Rescuers Available",
+            "No trucks currently require a rescue.",
+            "There are no active drivers with enough capacity."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/auth/register/page.tsx",
+          "texts": [
+            "Failed to send verification code",
+            "Invalid verification code"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/auth/login/page.tsx",
+          "texts": [
+            "Enter a valid phone number (6-14 digits)",
+            "Enter the 6-digit code",
+            "Failed to send verification code",
+            "Login failed",
+            "New warehouse?",
+            "Register"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/supply-requests/new/page.tsx",
+          "texts": [
+            "Create a factory replenishment request from forecast or manual line items."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/app/credit/policy/page.tsx",
+          "texts": [
+            "finance_permission_required",
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/LocationPicker.tsx",
+          "texts": [
+            "Address",
+            "Could not resolve that address. Try another suggestion.",
+            "Could not resolve your location to an address.",
+            "Geolocation is not supported in this browser.",
+            "Location permission denied.",
+            "Pick an address from the list or refine your search."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/PageChrome.tsx",
+          "texts": [
+            "No data yet.",
+            "Unable to load"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/settings/OpsSettingsForm.tsx",
+          "texts": [
+            "Base fee (minor)",
+            "Beyond-tier fee (minor)",
+            "Currency",
+            "Days between order placement and earliest fulfillment.",
+            "Free within km",
+            "Leave blank to clear a limit. Applies to standard and scheduled checkout.",
+            "Max lead (days)",
+            "Max per SKU",
+            "Min lead (days)",
+            "Min per SKU",
+            "Timezone",
+            "Weekday close",
+            "Weekday open",
+            "When enforcement is on, retailers cannot preview or create orders outside the window."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/dispatch/DispatchDriverList.tsx",
+          "texts": [
+            "All drivers are on route or blocked.",
+            "No drivers available"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/dispatch/DispatchOrderList.tsx",
+          "texts": [
+            "All orders dispatched",
+            "No pending orders need assignment right now.",
+            "Select for dispatch. Double-click a card for order detail."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/preorders/PreordersList.tsx",
+          "texts": [
+            "No pre-orders",
+            "Scheduled manual pre-orders will appear here."
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/operations/OperationsPricingPreview.tsx",
+          "texts": [
+            "Product / SKU ID",
+            "Proposed price (minor units)",
+            "Retailer ID (optional)"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/operations/OperationsBroadcastForm.tsx",
+          "texts": [
+            "Built-in depot starters plus your saved custom messages.",
+            "Custom reason (optional)",
+            "Effective date (optional)",
+            "Message",
+            "Target role",
+            "Title"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/__tests__/KpiStatCard.test.tsx",
+          "texts": [
+            "Active Users",
+            "Total Revenue"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/inventory/InventoryStockList.tsx",
+          "texts": [
+            "No inventory items found"
+          ]
+        },
+        {
+          "file": "apps/warehouse-portal/components/treasury/TreasuryTransactionList.tsx",
+          "texts": [
+            "Invoices appear when retailers are billed for fulfilled orders.",
+            "No invoices found"
+          ]
+        }
+      ]
+    },
+    "factory-portal": {
+      "unique": [
+        "Active Users",
+        "Active gate",
+        "Active manifests",
+        "Address",
+        "Advance requests through ACK → production → ready → fulfill.",
+        "Aggregate product demand and fulfillment ratios across active requests.",
+        "Approved",
+        "Approved transfers will appear here as soon as warehouse demand is accepted.",
+        "Avg lead time",
+        "Completed",
+        "Could not resolve that address. Try another suggestion.",
+        "Could not resolve your location to an address.",
+        "DLQ threshold",
+        "Dispatch transfers or create a manifest to begin the loading gate workflow.",
+        "Dispatched",
+        "Driver",
+        "Enter a valid phone number (6-14 digits)",
+        "Enter the 6-digit code",
+        "Escalated",
+        "Exception queue",
+        "Facility type",
+        "Factory Portal — Pegasus",
+        "Factory address",
+        "Factory loading bay, transfer management, and dispatch operations.",
+        "Factory name",
+        "Factory operators review and advance warehouse demand from this queue.",
+        "Factory throughput, manifest pressure, and exception queue from the analytics endpoint.",
+        "Failed to send verification code",
+        "Filter by transfer state. Total volume reflects the current view.",
+        "Geolocation is not supported in this browser.",
+        "High priority",
+        "In flight",
+        "In production",
+        "Invalid verification code",
+        "Kanban by supply-request lifecycle state.",
+        "LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states.",
+        "Last sync",
+        "Loading fleet assignment options.",
+        "Loading manifest snapshot.",
+        "Loading operator profile.",
+        "Loading the current manifest and item breakdown for this transfer.",
+        "Location permission denied.",
+        "Login failed",
+        "Name",
+        "New factory?",
+        "No active transfers in the loading bay",
+        "No data yet.",
+        "No factory metrics yet",
+        "No manifests",
+        "No manifests currently in LOADING state",
+        "No notifications in your inbox at this time.",
+        "No replenishment insights at this time. Insights are generated based on stock velocity.",
+        "Now loading",
+        "Once transfer and loading activity starts, operational metrics will appear here.",
+        "Open a row to advance lifecycle actions.",
+        "Open exceptions",
+        "Operators and shift coverage registered for this factory node.",
+        "Order ID",
+        "Payload override is only available during the loading phase. All current manifests are either dispatched or completed.",
+        "Pick an address from the list or refine your search.",
+        "Preorder → accept → dispatch → seal events from the factory pulse feed.",
+        "Ready to fulfill",
+        "Ready to load",
+        "Rebalance or cancel transfers on manifests currently in LOADING state.",
+        "Register",
+        "Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context.",
+        "Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor.",
+        "Role",
+        "Rows highlighted when attempt count reaches DLQ threshold.",
+        "Stage a factory-to-warehouse movement.",
+        "Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading.",
+        "Stock velocity signals and reorder recommendations across connected warehouses.",
+        "Street address",
+        "Street address used for supply routing and loading bay operations. Changes sync across the factory network.",
+        "Submitted",
+        "Target manifest",
+        "The selected transfer is no longer available or could not be located for this factory.",
+        "There are no staff members registered for this factory.",
+        "There are no vehicles registered in the factory fleet yet.",
+        "Total Revenue",
+        "Total manifests",
+        "Total volume",
+        "Total volume (VU)",
+        "Transfers removed from manifests during loading — overflow, damage, or manual pull.",
+        "Transfers total",
+        "Unable to load",
+        "Vehicle",
+        "Vehicle availability and route assignments for this factory node.",
+        "View and manage all your factory notifications and alerts.",
+        "Visible transfers",
+        "pegasusX"
+      ],
+      "files": [
+        {
+          "file": "apps/factory-portal/app/layout.tsx",
+          "texts": [
+            "Factory Portal — Pegasus",
+            "Factory loading bay, transfer management, and dispatch operations."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/page.tsx",
+          "texts": [
+            "No factory metrics yet",
+            "Once transfer and loading activity starts, operational metrics will appear here."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/insights/page.tsx",
+          "texts": [
+            "No replenishment insights at this time. Insights are generated based on stock velocity.",
+            "Stock velocity signals and reorder recommendations across connected warehouses."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/supply-requests/page.tsx",
+          "texts": [
+            "Factory operators review and advance warehouse demand from this queue."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/loading-bay/page.tsx",
+          "texts": [
+            "Approved transfers will appear here as soon as warehouse demand is accepted.",
+            "Dispatched",
+            "No active transfers in the loading bay",
+            "Now loading",
+            "Preorder → accept → dispatch → seal events from the factory pulse feed.",
+            "Ready to load",
+            "Review approved factory transfers, advance active loading, and dispatch manifests without losing warehouse context.",
+            "Total volume"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/auth/layout.tsx",
+          "texts": [
+            "pegasusX"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/payload-override/page.tsx",
+          "texts": [
+            "No manifests currently in LOADING state",
+            "Payload override is only available during the loading phase. All current manifests are either dispatched or completed.",
+            "Rebalance or cancel transfers on manifests currently in LOADING state."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/transfers/page.tsx",
+          "texts": [
+            "Approved",
+            "Filter by transfer state. Total volume reflects the current view.",
+            "High priority",
+            "In flight",
+            "Review warehouse destination movements, filter by state, and open a transfer when it needs action from the factory floor.",
+            "Visible transfers"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/manifest-exceptions/page.tsx",
+          "texts": [
+            "DLQ threshold",
+            "Escalated",
+            "Last sync",
+            "Open exceptions",
+            "Transfers removed from manifests during loading — overflow, damage, or manual pull."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/staff/page.tsx",
+          "texts": [
+            "Name",
+            "Operators and shift coverage registered for this factory node.",
+            "Role",
+            "There are no staff members registered for this factory."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/manifests/page.tsx",
+          "texts": [
+            "Active gate",
+            "Completed",
+            "Dispatch transfers or create a manifest to begin the loading gate workflow.",
+            "Dispatched",
+            "LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states.",
+            "No manifests",
+            "Open a row to advance lifecycle actions.",
+            "Total manifests"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/fleet/page.tsx",
+          "texts": [
+            "There are no vehicles registered in the factory fleet yet.",
+            "Vehicle availability and route assignments for this factory node."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/notifications/page.tsx",
+          "texts": [
+            "No notifications in your inbox at this time.",
+            "View and manage all your factory notifications and alerts."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/analytics/page.tsx",
+          "texts": [
+            "Active manifests",
+            "Aggregate product demand and fulfillment ratios across active requests.",
+            "Avg lead time",
+            "Exception queue",
+            "Factory throughput, manifest pressure, and exception queue from the analytics endpoint.",
+            "Transfers total"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/manifests/[id]/page.tsx",
+          "texts": [
+            "Loading manifest snapshot."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/staff/[id]/page.tsx",
+          "texts": [
+            "Loading operator profile."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/transfers/[id]/page.tsx",
+          "texts": [
+            "Loading the current manifest and item breakdown for this transfer.",
+            "The selected transfer is no longer available or could not be located for this factory."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/transfers/create/page.tsx",
+          "texts": [
+            "Driver",
+            "Loading fleet assignment options.",
+            "Order ID",
+            "Stage a factory-to-warehouse movement.",
+            "Stage a factory-to-warehouse movement. Volume is captured in VU; optional order and fleet assignment can be set now or during loading.",
+            "Total volume (VU)",
+            "Vehicle"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/setup/factory/page.tsx",
+          "texts": [
+            "Facility type",
+            "Factory address",
+            "Factory name",
+            "Street address"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/auth/register/page.tsx",
+          "texts": [
+            "Failed to send verification code",
+            "Invalid verification code"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/auth/login/page.tsx",
+          "texts": [
+            "Enter a valid phone number (6-14 digits)",
+            "Enter the 6-digit code",
+            "Failed to send verification code",
+            "Login failed",
+            "New factory?",
+            "Register"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/app/settings/location/page.tsx",
+          "texts": [
+            "Factory address",
+            "Street address used for supply routing and loading bay operations. Changes sync across the factory network."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/LocationPicker.tsx",
+          "texts": [
+            "Address",
+            "Could not resolve that address. Try another suggestion.",
+            "Could not resolve your location to an address.",
+            "Geolocation is not supported in this browser.",
+            "Location permission denied.",
+            "Pick an address from the list or refine your search."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/PageChrome.tsx",
+          "texts": [
+            "No data yet.",
+            "Unable to load"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/supply-requests/SupplyRequestList.tsx",
+          "texts": [
+            "Advance requests through ACK → production → ready → fulfill."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/supply-requests/SupplyRequestBoard.tsx",
+          "texts": [
+            "Kanban by supply-request lifecycle state."
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/supply-requests/SupplyRequestHeader.tsx",
+          "texts": [
+            "In production",
+            "Ready to fulfill",
+            "Submitted",
+            "Total volume (VU)"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/payload-override/PayloadOverrideForm.tsx",
+          "texts": [
+            "Target manifest"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/__tests__/KpiStatCard.test.tsx",
+          "texts": [
+            "Active Users",
+            "Total Revenue"
+          ]
+        },
+        {
+          "file": "apps/factory-portal/components/manifest-exceptions/ManifestExceptionsList.tsx",
+          "texts": [
+            "Rows highlighted when attempt count reaches DLQ threshold."
+          ]
+        }
+      ]
+    },
+    "retailer-app-desktop": {
+      "unique": [
+        "AI Signals",
+        "Accept delivery proposal failed",
+        "Account identity, notification parameters, and AI-driven logic controls.",
+        "Action failed",
+        "Active Nodes",
+        "Active fulfillment",
+        "Address",
+        "Adjust failed",
+        "Approved",
+        "Arrived",
+        "Arriving",
+        "Assist tickets",
+        "Auto-Accepted",
+        "Auto-order run failed",
+        "Awaiting Payment",
+        "Back",
+        "Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count.",
+        "Billing address",
+        "Branches and delivery addresses. Solo shops get one primary automatically.",
+        "Cancel Requested",
+        "Cancel order failed",
+        "Cancelled",
+        "Card checkout failed",
+        "Card sales require network. Use cash offline.",
+        "Cash Collection",
+        "Cash confirmation failed",
+        "Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network.",
+        "Catalog",
+        "Catalog access restricted",
+        "Catalog access restricted for this account.",
+        "Catalog feeds are still populating reorder candidates.",
+        "Catalog is offline",
+        "Catalog sync degraded. Auto-retry is active.",
+        "Catalog unavailable",
+        "Category suppliers unavailable",
+        "Checkout failed",
+        "Choose a node from the queue to inspect manifest lines and actions.",
+        "City",
+        "Claim failed",
+        "Claim proof",
+        "Clear or park current cart before resuming a hold.",
+        "Clock in/out, open cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in.",
+        "Clock-in failed",
+        "Clock-out failed",
+        "Close failed",
+        "Close session requires network.",
+        "Close shift failed",
+        "Company",
+        "Completed",
+        "Completed deliveries from the tracking feed.",
+        "Confirm AI order failed",
+        "Confirm preorder failed",
+        "Connection restored — verify response before retrying.",
+        "Connection restored. Confirm checkout status before retrying.",
+        "Continue",
+        "Could not add family member",
+        "Could not confirm card",
+        "Could not copy password to clipboard",
+        "Could not deactivate card",
+        "Could not load family members",
+        "Could not load runs",
+        "Could not load saved cards",
+        "Could not remove family member",
+        "Could not resolve your location to an address.",
+        "Could not select organization",
+        "Could not set default card",
+        "Could not start card tokenization",
+        "Count failed",
+        "Country Code",
+        "Create failed",
+        "Create register failed",
+        "Customer help queue by section. Claim and complete as section lead.",
+        "Dashboard access is partially restricted for this account.",
+        "Deactivate failed",
+        "Delivered (Credit)",
+        "Departments and shelves — map SKUs and assign staff. Enables SECTIONS pack.",
+        "Disable failed",
+        "Dispatched",
+        "Dock pending",
+        "Doorway / drop-off photo is required to authorize bypass.",
+        "Driver Arrived",
+        "Driver positions for active inbound deliveries.",
+        "Edit preorder failed",
+        "Empathy Engine Intelligence with 5-level granular control.",
+        "Enable failed",
+        "Enter a valid phone number (6-14 digits)",
+        "Enter the 6-digit code",
+        "Entity Name",
+        "Explore approved suppliers and stage procurement orders.",
+        "Failed to load capabilities",
+        "Failed to load locations",
+        "Failed to load order",
+        "Failed to load orders",
+        "Failed to load organizations",
+        "Failed to load pulse",
+        "Failed to load stock",
+        "Failed to load team",
+        "Failed to send verification code",
+        "Failed to update execution mode",
+        "Find and connect with new suppliers.",
+        "Fiscal failed",
+        "Fix validation errors before saving profile changes.",
+        "Geolocation is not supported in this browser.",
+        "Global AI settings updated.",
+        "High-confidence replenishment signals for this cycle.",
+        "In Transit",
+        "Inbox sync degraded. Retry is available.",
+        "Insights access is partially restricted for this account.",
+        "Insights access restricted",
+        "Insights are offline",
+        "Insights sync degraded. Auto-retry is active.",
+        "Invalid verification code",
+        "Invite failed",
+        "Invite staff with roles. Owner cannot be demoted or deactivated.",
+        "Legacy family list. Prefer Team staff — migrate when ready.",
+        "Lifecycle management for connected supply nodes and trade settlements.",
+        "Live fleet orchestration and inbound logistics monitoring.",
+        "Live socket reconnecting. Event updates may be delayed.",
+        "Live socket reconnecting. New alerts may be delayed.",
+        "Live socket reconnecting. New signals may be delayed.",
+        "Live socket reconnecting. Setting events may be delayed.",
+        "Live socket reconnecting. Updates may arrive with delay.",
+        "Loaded",
+        "Location permission denied.",
+        "Login failed",
+        "Low stock bins",
+        "Manage your approved wholesale suppliers and discover new partners.",
+        "Mark all read failed",
+        "Mark read failed",
+        "Migration failed",
+        "Multi-location POS sales rollup. Sum of locations equals org net (C2.1 writers).",
+        "Network offline. Showing the latest cached dock queue.",
+        "New retailer?",
+        "No AI restock signals",
+        "No Capacity",
+        "No actionable signals detected",
+        "No approved products yet",
+        "No assets match criteria",
+        "No data yet.",
+        "No notifications yet",
+        "No orders yet",
+        "No products ready for reorder",
+        "No vendors connected",
+        "Non-Pegasus goods for POS. Prefixed local: — never sent to supplier reorder.",
+        "Notifications access restricted",
+        "Notifications access restricted for this account.",
+        "Notifications are offline",
+        "Notifications unavailable",
+        "Offline mode active. Showing latest cached configuration.",
+        "Offline mode active. Showing latest cached inbox data.",
+        "Offline mode active. Showing latest cached intelligence signals.",
+        "Offline mode active. Showing latest cached order data.",
+        "Offline mode active. Showing latest procurement data.",
+        "Offline mode active. Showing the latest cached catalog.",
+        "Offline mode active. Showing the latest cached operations data.",
+        "Offline mode active. Showing the latest known telemetry.",
+        "Open failed",
+        "Open orders",
+        "Open session requires network. Connect, then open till.",
+        "Open shift failed",
+        "Open shifts",
+        "Operational Region",
+        "Operations sync degraded. Auto-retry is active.",
+        "Order Placed",
+        "Order sync degraded. Auto-retry is active.",
+        "Orders",
+        "Orders access is partially restricted for this account.",
+        "Orders access restricted",
+        "Orders are offline",
+        "Orders unavailable",
+        "POS open sessions",
+        "Park failed",
+        "Park hold requires network (use local auto-park offline).",
+        "Pegasus Retailer",
+        "Pending",
+        "Pending Review",
+        "Pending fiscal",
+        "Pending payment requires completion.",
+        "Photo required for this claim type.",
+        "Photo upload failed",
+        "Postal code",
+        "Prediction feed is currently empty for this cycle.",
+        "Predictive demand signals and network analytics.",
+        "Pricing rules unavailable",
+        "Primary Contact",
+        "Procurement access is partially restricted for this account.",
+        "Procurement access restricted",
+        "Procurement is offline",
+        "Procurement sync degraded. Auto-retry is active.",
+        "Profile saved successfully.",
+        "Quarantined",
+        "Queue refresh failed. Retrying in the background.",
+        "REORDER NOW",
+        "Real-time arrival queue and proximity-locked secure verification.",
+        "Receive failed",
+        "Receiving window closes",
+        "Receiving window opens",
+        "Recent order and notification activity for your account.",
+        "Refresh failed",
+        "Register",
+        "Registration failed",
+        "Reject AI order failed",
+        "Reject delivery proposal failed",
+        "Reorder suggestions",
+        "Resume failed",
+        "Resume requires open session and network.",
+        "Retailer Desktop App for Pegasus",
+        "SKU update failed",
+        "Sale failed",
+        "Sales 7d",
+        "Sales, inventory, and shift variance digest. CSV export for desktop ops.",
+        "Scheduled",
+        "Select an order",
+        "Select at least one item quantity.",
+        "Set primary failed",
+        "Settings access is partially restricted for this account.",
+        "Settings sync degraded. Auto-retry is active.",
+        "Setup failed",
+        "Shift variances (closed)",
+        "Shipping address (default)",
+        "Shop Closed",
+        "Signals unavailable",
+        "Staff update failed",
+        "Stage repeat purchases from your approved catalog.",
+        "Staged Cart",
+        "Suppliers",
+        "Switch failed",
+        "Syncing catalog feeds...",
+        "Syncing dashboard feeds...",
+        "Syncing intelligence feeds...",
+        "Syncing live dock updates...",
+        "Syncing live telemetry...",
+        "Syncing notifications...",
+        "Syncing order feeds...",
+        "Syncing procurement feeds...",
+        "Syncing settings feeds...",
+        "Tax ID / VAT",
+        "Tax ID is required (minimum 5 characters).",
+        "Telemetry sync degraded. Auto-retry is active.",
+        "Tracking access restricted for this account.",
+        "Transfer failed",
+        "Turn on only what your shop needs. Solo shops run on Core alone.",
+        "Unable to load",
+        "Vendor feed unavailable",
+        "Void failed (manager role may be required)",
+        "Void hold failed",
+        "Void requires a synced server sale. Sync first or discard from pending queue.",
+        "Window closed — claim window has expired.",
+        "create_failed",
+        "load_failed",
+        "pegasusX"
+      ],
+      "files": [
+        {
+          "file": "apps/retailer-app-desktop/app/layout.tsx",
+          "texts": [
+            "Pegasus Retailer",
+            "Retailer Desktop App for Pegasus"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/auth/layout.tsx",
+          "texts": [
+            "pegasusX"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/insights/page.tsx",
+          "texts": [
+            "Insights access is partially restricted for this account.",
+            "Insights access restricted",
+            "Insights are offline",
+            "Insights sync degraded. Auto-retry is active.",
+            "Live socket reconnecting. New signals may be delayed.",
+            "No actionable signals detected",
+            "Offline mode active. Showing latest cached intelligence signals.",
+            "Predictive demand signals and network analytics.",
+            "REORDER NOW",
+            "Signals unavailable",
+            "Syncing intelligence feeds..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/page.tsx",
+          "texts": [
+            "Account identity, notification parameters, and AI-driven logic controls.",
+            "Company",
+            "Country Code",
+            "Entity Name",
+            "Fix validation errors before saving profile changes.",
+            "Global AI settings updated.",
+            "Live socket reconnecting. Setting events may be delayed.",
+            "Offline mode active. Showing latest cached configuration.",
+            "Operational Region",
+            "Pricing rules unavailable",
+            "Primary Contact",
+            "Profile saved successfully.",
+            "Receiving window closes",
+            "Receiving window opens",
+            "Settings access is partially restricted for this account.",
+            "Settings sync degraded. Auto-retry is active.",
+            "Syncing settings feeds..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/credit/page.tsx",
+          "texts": [
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/assist/page.tsx",
+          "texts": [
+            "Action failed",
+            "Create failed",
+            "Customer help queue by section. Claim and complete as section lead."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/sections/page.tsx",
+          "texts": [
+            "Create failed",
+            "Departments and shelves — map SKUs and assign staff. Enables SECTIONS pack.",
+            "SKU update failed",
+            "Staff update failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/hq/page.tsx",
+          "texts": [
+            "Multi-location POS sales rollup. Sum of locations equals org net (C2.1 writers)."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/catalog/page.tsx",
+          "texts": [
+            "Catalog access restricted",
+            "Catalog access restricted for this account.",
+            "Catalog is offline",
+            "Catalog sync degraded. Auto-retry is active.",
+            "Catalog unavailable",
+            "Category suppliers unavailable",
+            "Explore approved suppliers and stage procurement orders.",
+            "No approved products yet",
+            "No assets match criteria",
+            "Offline mode active. Showing the latest cached catalog.",
+            "Syncing catalog feeds..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/auto-order/page.tsx",
+          "texts": [
+            "Auto-order run failed",
+            "Could not load runs",
+            "Empathy Engine Intelligence with 5-level granular control.",
+            "Failed to update execution mode"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/control-tower/page.tsx",
+          "texts": [
+            "Active fulfillment",
+            "Assist tickets",
+            "Dock pending",
+            "Failed to load pulse",
+            "Low stock bins",
+            "Open orders",
+            "Open shifts",
+            "POS open sessions",
+            "Sales 7d",
+            "Shift variances (closed)"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/dashboard/page.tsx",
+          "texts": [
+            "Dashboard access is partially restricted for this account.",
+            "Live socket reconnecting. Event updates may be delayed.",
+            "Offline mode active. Showing the latest cached operations data.",
+            "Operations sync degraded. Auto-retry is active.",
+            "Syncing dashboard feeds..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/pos/page.tsx",
+          "texts": [
+            "Card sales require network. Use cash offline.",
+            "Cashier mode: open till online, sell cash offline when needed, sync on reconnect. Card requires network.",
+            "Clear or park current cart before resuming a hold.",
+            "Close failed",
+            "Close session requires network.",
+            "Create register failed",
+            "Open failed",
+            "Open session requires network. Connect, then open till.",
+            "Park failed",
+            "Park hold requires network (use local auto-park offline).",
+            "Resume failed",
+            "Resume requires open session and network.",
+            "Sale failed",
+            "Void failed (manager role may be required)",
+            "Void hold failed",
+            "Void requires a synced server sale. Sync first or discard from pending queue."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/procurement/page.tsx",
+          "texts": [
+            "Lifecycle management for connected supply nodes and trade settlements.",
+            "Live socket reconnecting. Updates may arrive with delay.",
+            "No vendors connected",
+            "Offline mode active. Showing latest procurement data.",
+            "Procurement access is partially restricted for this account.",
+            "Procurement access restricted",
+            "Procurement is offline",
+            "Procurement sync degraded. Auto-retry is active.",
+            "Syncing procurement feeds...",
+            "Vendor feed unavailable"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/tracking/page.tsx",
+          "texts": [
+            "Arrived",
+            "Arriving",
+            "Auto-Accepted",
+            "Awaiting Payment",
+            "Cancel Requested",
+            "Cancelled",
+            "Cash Collection",
+            "Completed",
+            "Delivered (Credit)",
+            "Dispatched",
+            "Fiscal failed",
+            "In Transit",
+            "Live fleet orchestration and inbound logistics monitoring.",
+            "Live socket reconnecting. Event updates may be delayed.",
+            "Loaded",
+            "No Capacity",
+            "Offline mode active. Showing the latest known telemetry.",
+            "Pending",
+            "Pending Review",
+            "Pending fiscal",
+            "Quarantined",
+            "Recent order and notification activity for your account.",
+            "Scheduled",
+            "Shop Closed",
+            "Syncing live telemetry...",
+            "Telemetry sync degraded. Auto-retry is active.",
+            "Tracking access restricted for this account."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/my-suppliers/page.tsx",
+          "texts": [
+            "Find and connect with new suppliers.",
+            "Manage your approved wholesale suppliers and discover new partners."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/orders/page.tsx",
+          "texts": [
+            "Accept delivery proposal failed",
+            "Approved",
+            "Arriving",
+            "Auto-Accepted",
+            "Awaiting Payment",
+            "Cancel Requested",
+            "Cancel order failed",
+            "Cancelled",
+            "Cash Collection",
+            "Choose a node from the queue to inspect manifest lines and actions.",
+            "Completed",
+            "Confirm AI order failed",
+            "Confirm preorder failed",
+            "Delivered (Credit)",
+            "Dispatched",
+            "Driver Arrived",
+            "Edit preorder failed",
+            "Fiscal failed",
+            "In Transit",
+            "Live socket reconnecting. Event updates may be delayed.",
+            "No Capacity",
+            "No orders yet",
+            "Offline mode active. Showing latest cached order data.",
+            "Order Placed",
+            "Order sync degraded. Auto-retry is active.",
+            "Orders access is partially restricted for this account.",
+            "Orders access restricted",
+            "Orders are offline",
+            "Orders unavailable",
+            "Pending Review",
+            "Pending fiscal",
+            "Quarantined",
+            "Reject AI order failed",
+            "Reject delivery proposal failed",
+            "Scheduled",
+            "Select an order",
+            "Shop Closed",
+            "Syncing order feeds..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/stock/page.tsx",
+          "texts": [
+            "Adjust failed",
+            "Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count.",
+            "Count failed",
+            "Failed to load stock",
+            "Receive failed",
+            "Transfer failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/shifts/page.tsx",
+          "texts": [
+            "Clock in/out, open cash shifts, reconcile float. When SHIFTS is on, POS requires clock-in.",
+            "Clock-in failed",
+            "Clock-out failed",
+            "Close shift failed",
+            "Open shift failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/notifications/page.tsx",
+          "texts": [
+            "Inbox sync degraded. Retry is available.",
+            "Live socket reconnecting. New alerts may be delayed.",
+            "Mark all read failed",
+            "Mark read failed",
+            "No notifications yet",
+            "Notifications access restricted",
+            "Notifications access restricted for this account.",
+            "Notifications are offline",
+            "Notifications unavailable",
+            "Offline mode active. Showing latest cached inbox data.",
+            "Refresh failed",
+            "Syncing notifications..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/dock/page.tsx",
+          "texts": [
+            "Arrived",
+            "Arriving",
+            "Auto-Accepted",
+            "Awaiting Payment",
+            "Cancel Requested",
+            "Cancelled",
+            "Cash Collection",
+            "Completed",
+            "Delivered (Credit)",
+            "Dispatched",
+            "In Transit",
+            "Live socket reconnecting. Updates may arrive with delay.",
+            "Loaded",
+            "Network offline. Showing the latest cached dock queue.",
+            "No Capacity",
+            "Pending",
+            "Pending Review",
+            "Quarantined",
+            "Queue refresh failed. Retrying in the background.",
+            "Real-time arrival queue and proximity-locked secure verification.",
+            "Scheduled",
+            "Shop Closed",
+            "Syncing live dock updates..."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/reports/page.tsx",
+          "texts": [
+            "Sales, inventory, and shift variance digest. CSV export for desktop ops."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/stock/local-skus/page.tsx",
+          "texts": [
+            "Non-Pegasus goods for POS. Prefixed local: — never sent to supplier reorder.",
+            "create_failed",
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/capabilities/page.tsx",
+          "texts": [
+            "Disable failed",
+            "Enable failed",
+            "Failed to load capabilities",
+            "Turn on only what your shop needs. Solo shops run on Core alone."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/cards/page.tsx",
+          "texts": [
+            "Could not confirm card",
+            "Could not deactivate card",
+            "Could not load saved cards",
+            "Could not set default card",
+            "Could not start card tokenization"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/family/page.tsx",
+          "texts": [
+            "Could not add family member",
+            "Could not copy password to clipboard",
+            "Could not load family members",
+            "Could not remove family member",
+            "Legacy family list. Prefer Team staff — migrate when ready.",
+            "Migration failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/team/page.tsx",
+          "texts": [
+            "Deactivate failed",
+            "Failed to load team",
+            "Invite failed",
+            "Invite staff with roles. Owner cannot be demoted or deactivated."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/(dashboard)/settings/locations/page.tsx",
+          "texts": [
+            "Branches and delivery addresses. Solo shops get one primary automatically.",
+            "Create failed",
+            "Failed to load locations",
+            "Set primary failed",
+            "Switch failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/setup/tax/page.tsx",
+          "texts": [
+            "Continue",
+            "Tax ID / VAT",
+            "Tax ID is required (minimum 5 characters)."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/setup/address/page.tsx",
+          "texts": [
+            "Back",
+            "Billing address",
+            "City",
+            "Postal code",
+            "Setup failed",
+            "Shipping address (default)"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/auth/select-org/page.tsx",
+          "texts": [
+            "Could not select organization",
+            "Failed to load organizations"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/auth/register/page.tsx",
+          "texts": [
+            "Failed to send verification code",
+            "Invalid verification code",
+            "Registration failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/app/auth/login/page.tsx",
+          "texts": [
+            "Enter a valid phone number (6-14 digits)",
+            "Enter the 6-digit code",
+            "Failed to send verification code",
+            "Login failed",
+            "New retailer?",
+            "Register"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/LocationPicker.tsx",
+          "texts": [
+            "Address",
+            "Could not resolve your location to an address.",
+            "Geolocation is not supported in this browser.",
+            "Location permission denied."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/CreditProfileCard.tsx",
+          "texts": [
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/ShopClosedModal.tsx",
+          "texts": [
+            "Connection restored — verify response before retrying.",
+            "Doorway / drop-off photo is required to authorize bypass.",
+            "Photo upload failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/PageChrome.tsx",
+          "texts": [
+            "No data yet.",
+            "Unable to load"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/CheckoutModal.tsx",
+          "texts": [
+            "Checkout failed",
+            "Connection restored. Confirm checkout status before retrying.",
+            "Could not confirm card",
+            "Could not start card tokenization"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/StockRequestReturnModal.tsx",
+          "texts": [
+            "Failed to load order",
+            "Failed to load orders"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/FileClaimPanel.tsx",
+          "texts": [
+            "Claim failed",
+            "Claim proof",
+            "Photo required for this claim type.",
+            "Photo upload failed",
+            "Select at least one item quantity.",
+            "Window closed — claim window has expired."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/OrgSwitcher.tsx",
+          "texts": [
+            "Switch failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/PaymentModal.tsx",
+          "texts": [
+            "Card checkout failed",
+            "Cash confirmation failed",
+            "Pending payment requires completion."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/insights/SellThroughPanel.tsx",
+          "texts": [
+            "load_failed"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/dashboard/KpiGrid.tsx",
+          "texts": [
+            "AI Signals",
+            "Active Nodes",
+            "Catalog",
+            "Orders",
+            "Reorder suggestions",
+            "Staged Cart",
+            "Suppliers"
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/dashboard/AiPredictionSection.tsx",
+          "texts": [
+            "High-confidence replenishment signals for this cycle.",
+            "No AI restock signals",
+            "Prediction feed is currently empty for this cycle."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/dashboard/QuickReorderSection.tsx",
+          "texts": [
+            "Catalog feeds are still populating reorder candidates.",
+            "No products ready for reorder",
+            "Stage repeat purchases from your approved catalog."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/tracking/TrackingStatus.tsx",
+          "texts": [
+            "Completed deliveries from the tracking feed."
+          ]
+        },
+        {
+          "file": "apps/retailer-app-desktop/components/tracking/TrackingMap.tsx",
+          "texts": [
+            "Arrived",
+            "Arriving",
+            "Auto-Accepted",
+            "Awaiting Payment",
+            "Cancel Requested",
+            "Cancelled",
+            "Cash Collection",
+            "Completed",
+            "Delivered (Credit)",
+            "Dispatched",
+            "Driver positions for active inbound deliveries.",
+            "Fiscal failed",
+            "In Transit",
+            "Loaded",
+            "No Capacity",
+            "Pending",
+            "Pending Review",
+            "Pending fiscal",
+            "Quarantined",
+            "Scheduled",
+            "Shop Closed"
+          ]
+        }
+      ]
+    }
+  }
+}

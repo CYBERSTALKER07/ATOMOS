@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.supply
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.StatusGreen
 import com.pegasusx.driver.ui.theme.StatusOrange
 import com.pegasusx.driver.ui.theme.StatusRed
+import com.pegasusx.driver.R
 
 private val arriveableStates = setOf("IN_TRANSIT", "IN_TRANSIT_TO_WAREHOUSE", "DISPATCHED")
 
@@ -64,11 +67,11 @@ fun SupplyTransfersScreen(
                 .padding(top = 56.dp, start = 8.dp, end = 16.dp, bottom = 8.dp),
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = lab.fg)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back), tint = lab.fg)
             }
             Column {
                 Text(
-                    text = "FACTORY SUPPLY",
+                    text = stringResource(R.string.mobile_driver_ui_factory_supply),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
@@ -76,7 +79,7 @@ fun SupplyTransfersScreen(
                     letterSpacing = 1.2.sp,
                 )
                 Text(
-                    text = "Warehouse deliveries",
+                    text = stringResource(R.string.mobile_driver_ui_warehouse_deliveries),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg,
@@ -104,7 +107,7 @@ fun SupplyTransfersScreen(
         when {
             state.isLoading && state.transfers.isEmpty() -> {
                 DriverLoadingState(
-                    title = "Loading transfers",
+                    title = stringResource(R.string.mobile_driver_ui_loading_transfers),
                     body = "Fetching assigned supply legs…",
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -128,7 +131,7 @@ fun SupplyTransfersScreen(
                 ) {
                     item {
                         Text(
-                            text = "${state.activeCount} active · ${state.transfers.size} total",
+                            text = stringResource(R.string.mobile_driver_ui_activecount_active_size_total, state.activeCount, state.transfers.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = lab.fgTertiary,
                         )
@@ -182,19 +185,19 @@ private fun SupplyTransferCard(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Warehouse ${transfer.warehouseId.takeLast(6)}",
+                text = stringResource(R.string.mobile_driver_ui_warehouse_takelast, transfer.warehouseId.takeLast(6)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = lab.fgSecondary,
             )
             if (!transfer.supplyRequestId.isNullOrBlank()) {
                 Text(
-                    text = "Supply ${transfer.supplyRequestId!!.takeLast(8)}",
+                    text = stringResource(R.string.mobile_driver_ui_supply_takelast, transfer.supplyRequestId!!.takeLast(8)),
                     style = MaterialTheme.typography.bodySmall,
                     color = lab.fgTertiary,
                 )
             }
             Text(
-                text = "Volume ${"%.1f".format(transfer.totalVolumeVu)} VU",
+                text = stringResource(R.string.mobile_driver_ui_volume_format_vu, "%.1f".format(transfer.totalVolumeVu)),
                 style = MaterialTheme.typography.bodySmall,
                 color = lab.fgTertiary,
             )

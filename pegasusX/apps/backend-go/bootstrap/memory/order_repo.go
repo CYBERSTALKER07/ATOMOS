@@ -87,6 +87,50 @@ func (r *inMemoryOrderRepo) CreateOrder(ctx context.Context, o *order.Order, emi
 	return nil
 }
 
+func (r *inMemoryOrderRepo) CreateOrderWithBackorder(ctx context.Context, o *order.Order, backorder *order.Order, inTxn func(context.Context, *spanner.ReadWriteTransaction) error, emit func(outbox.TxnBuffer) error, stockOpts order.StockReservationOpts) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if o == nil {
+		return fmt.Errorf("create order: nil aggregate")
+	}
+	if _, exists := r.byID[o.OrderID]; exists {
+		return fmt.Errorf("order_id collision: %s", o.OrderID)
+	}
+	if backorder != nil {
+		if _, exists := r.byID[backorder.OrderID]; exists {
+			return fmt.Errorf("backorder_id collision: %s", backorder.OrderID)
+		}
+	}
+	if r.windows != nil {
+		open, closeWindow, err := r.windows.GetReceivingWindows(ctx, o.RetailerID)
+		if err != nil {
+			return err
+		}
+		if err := order.SnapshotReceivingWindowsOnOrder(o, open, closeWindow); err != nil {
+			return err
+		}
+		if backorder != nil {
+			_ = order.SnapshotReceivingWindowsOnOrder(backorder, open, closeWindow)
+		}
+	}
+	if emit != nil {
+		txn := &inMemoryTxnBuffer{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+		if r.outboxAppender != nil {
+			if err := r.outboxAppender.Append(ctx, txn.events); err != nil {
+				return err
+			}
+		}
+	}
+	r.byID[o.OrderID] = *o
+	if backorder != nil {
+		r.byID[backorder.OrderID] = *backorder
+	}
+	return nil
+}
+
 func (r *inMemoryOrderRepo) GetOrder(_ context.Context, orderID string) (order.Order, bool, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -58,3 +58,17 @@ func TestValidateTelemetryFreshness(t *testing.T) {
 		t.Fatalf("want ErrProximityTelemetryStale, got %v", err)
 	}
 }
+
+func TestEvaluateSettlementProximity_H3Match(t *testing.T) {
+	orderLat, orderLng := 41.3111, 69.2797
+	settlementCell := SettlementH3Cell(orderLat, orderLng)
+	if settlementCell == "" {
+		t.Fatal("expected non-empty settlement cell")
+	}
+	// Driver at same coords matches Res 9 cell
+	method, _, ok := EvaluateSettlementProximity(orderLat, orderLng, orderLat, orderLng, settlementCell)
+	if !ok || method != ProximityMethodH3 {
+		t.Fatalf("expected H3 method, got ok=%v method=%s", ok, method)
+	}
+}
+

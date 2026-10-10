@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { cacheGet, cacheSet } from "@pegasusx/desktop-cache";
+import {
+  DEFAULT_CACHE_MAX_AGE_MS,
+  cacheGet,
+  cacheSet,
+  scopedCacheKey,
+} from "@pegasusx/desktop-cache";
 import { isTauri } from "@pegasusx/desktop-bridge";
 import { apiFetch } from "./auth";
+import { getRetailerId } from "./retailer-profile";
 
 type LiveDataError = Error & { status?: number };
 
@@ -20,6 +26,9 @@ export function useLiveData<T>(
   options: UseLiveDataOptions = {},
 ) {
   const useCache = options.cache !== false && isTauri() && url.length > 0;
+  const cacheKey = useCache
+    ? scopedCacheKey(getRetailerId() || "anon", url)
+    : "";
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,8 +68,8 @@ export function useLiveData<T>(
         if (!mountedRef.current || controller.signal.aborted) return;
         setData(json);
         setError(null);
-        if (useCache) {
-          void cacheSet(url, json);
+        if (useCache && cacheKey) {
+          void cacheSet(cacheKey, json);
         }
       } catch (err: unknown) {
         if (!mountedRef.current || controller.signal.aborted) return;
@@ -71,15 +80,17 @@ export function useLiveData<T>(
         setIsRefreshing(false);
       }
     },
-    [url, useCache],
+    [url, useCache, cacheKey],
   );
 
   useEffect(() => {
     mountedRef.current = true;
 
     const bootstrap = async () => {
-      if (useCache) {
-        const cached = await cacheGet<T>(url);
+      if (useCache && cacheKey) {
+        const cached = await cacheGet<T>(cacheKey, {
+          maxAgeMs: DEFAULT_CACHE_MAX_AGE_MS,
+        });
         if (!mountedRef.current) return;
         if (cached !== null) {
           setData(cached);
@@ -98,7 +109,7 @@ export function useLiveData<T>(
       abortRef.current?.abort();
       abortRef.current = null;
     };
-  }, [mutate, url, useCache]);
+  }, [mutate, url, useCache, cacheKey]);
 
   useEffect(() => {
     if (interval <= 0 || !url) return;

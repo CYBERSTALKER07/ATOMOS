@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.exceptions
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -52,6 +54,7 @@ import com.pegasusx.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,7 +142,7 @@ fun ManifestExceptionsScreen(
     ) { innerPadding ->
         when {
             loading && exceptions.isEmpty() -> PegasusLoadingState(
-                title = "Loading exceptions",
+                title = stringResource(R.string.mobile_factory_ui_loading_exceptions),
                 body = "Fetching transfers removed from manifests during loading.",
                 modifier = Modifier
                     .fillMaxSize()

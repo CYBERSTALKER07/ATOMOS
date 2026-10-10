@@ -1,44 +1,46 @@
 package com.pegasusx.warehouse.ui.portal
 
+import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.pegasusx.warehouse.R
 
 /** Portal-only surfaces — native apps hand off to warehouse-portal (port 3002). */
 enum class WarehousePortalFeature(
     val routeKey: String,
-    val title: String,
+    @param:StringRes val titleRes: Int,
     val subtitle: String,
     val portalPath: String,
     val icon: ImageVector,
 ) {
     REGISTER(
         routeKey = "register",
-        title = "Register warehouse",
+        titleRes = R.string.mobile_warehouse_ui_register_warehouse,
         subtitle = "Create a new warehouse account",
         portalPath = "/auth/register",
         icon = Icons.Default.Store,
     ),
     SETUP(
         routeKey = "setup",
-        title = "Warehouse setup",
+        titleRes = R.string.warehouse_portal_setup_setup_wizard_shell_text_warehouse_setup,
         subtitle = "Location, billing, and configuration",
         portalPath = "/setup/location",
         icon = Icons.Default.Settings,
     ),
     PROFILE(
         routeKey = "profile",
-        title = "Profile",
+        titleRes = R.string.portal_nav_profile,
         subtitle = "Account and warehouse identity",
         portalPath = "/profile",
         icon = Icons.Default.Person,
     ),
     SEARCH(
         routeKey = "search",
-        title = "Global search",
+        titleRes = R.string.mobile_warehouse_ui_global_search,
         subtitle = "Jump to any portal page",
         portalPath = "/",
         icon = Icons.Default.Search,

@@ -157,15 +157,25 @@ export default function InventoryPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Inventory</h1>
           <div className="flex gap-2 items-center">
+            <label htmlFor="inventory-search-input" className="sr-only">Search products</label>
             <input
+              id="inventory-search-input"
+              aria-label="Search products"
               placeholder="Search products..."
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}
               className="px-3 py-1.5 rounded-lg border text-sm w-48 focus:ring-2 focus:ring-[var(--primary)] outline-none"
               style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
             />
-            <label className="flex items-center gap-1.5 text-sm text-[var(--muted)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
-              <input type="checkbox" checked={lowOnly} onChange={e => { setLowOnly(e.target.checked); setLoading(true); }} className="rounded accent-[var(--primary)]" />
+            <label htmlFor="inventory-low-stock-checkbox" className="flex items-center gap-1.5 text-sm text-[var(--muted)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
+              <input
+                id="inventory-low-stock-checkbox"
+                aria-label="Low stock only"
+                type="checkbox"
+                checked={lowOnly}
+                onChange={e => { setLowOnly(e.target.checked); setLoading(true); }}
+                className="rounded accent-[var(--primary)]"
+              />
               Low stock only
             </label>
             <motion.button 
@@ -256,7 +266,10 @@ export default function InventoryPage() {
                       <td className="py-3 px-4 text-right">
                         {adjusting === item.product_id ? (
                           <div className="flex items-center gap-1 justify-end">
+                            <label htmlFor={`adjust-qty-${item.product_id}`} className="sr-only">New quantity</label>
                             <input
+                              id={`adjust-qty-${item.product_id}`}
+                              aria-label="New quantity"
                               type="number"
                               value={adjustVal}
                               onChange={e => setAdjustVal(e.target.value)}

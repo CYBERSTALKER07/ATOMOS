@@ -6,16 +6,29 @@ import (
 	"os"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
+	// Worker tier publishes a liveness heartbeat so an api-only tier can detect
+	// it and avoid double-running the notification consumer (P1-9).
+	bootstrap.StartWorkerHeartbeat(ctx, app.RedisClient, slog.Default())
 	if app.OutboxRelay != nil {
 		go app.OutboxRelay.Start(ctx)
 		slog.Info("outbox relay started")
+	}
+	if app.Spanner != nil {
+		go outbox.StartSupplierIDBackfill(ctx, app.Spanner, slog.Default())
+		if outbox.SupplierBackfillEnabled() {
+			slog.Info("outbox supplier_id backfill worker started")
+		}
 	}
 	if app.Cache != nil {
 		go app.Cache.StartInvalidationSubscriber(ctx)
@@ -33,6 +46,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.WarehouseEventConsumer.Start(ctx)
 		slog.Info("warehouse event consumer started")
 	}
+	if app.ClaimsEventConsumer != nil {
+		go app.ClaimsEventConsumer.Start(ctx)
+		slog.Info("claims event consumer started")
+	}
 	if app.ReturnsEventConsumer != nil {
 		go app.ReturnsEventConsumer.Start(ctx)
 		slog.Info("returns reverse-logistics consumer started")
@@ -47,9 +64,42 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.WebhookInbox.StartReconciler(ctx, app.PaymentService, 0)
 		slog.Info("webhook inbox reconciler started")
 	}
+	// P1-8: settlement-vs-captured reconciliation of stuck payment sessions.
+	// On by default; the reconciler skips stub gateway refs and only advances
+	// sessions stuck >15min via a real provider status check. Set
+	// PAYMENT_RECONCILE_DISABLED=1 to turn it off.
+	if app.WebhookReconciler != nil && os.Getenv("PAYMENT_RECONCILE_DISABLED") != "1" {
+		go func() {
+			// Initial jitter so a multi-replica rollout doesn't stampede the gateway.
+			timer := time.NewTimer(30 * time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := app.WebhookReconciler.ReconcileStuckSessions(ctx); err != nil {
+						slog.Warn("webhook reconciler pass failed", "err", err)
+					}
+				}
+			}
+		}()
+		slog.Info("webhook reconciler worker started", "interval", "5m")
+	}
 	if app.ReplenishmentEngine != nil && os.Getenv("REPLENISHMENT_CRON_DISABLED") != "1" {
 		app.ReplenishmentEngine.StartCron(ctx)
 		slog.Info("replenishment engine cron started")
+	}
+	if app.FactoryPlanning != nil {
+		app.FactoryPlanning.StartPlanningCron(ctx)
+		slog.Info("factory planning cron started")
 	}
 	if app.LaborCapacityService != nil {
 		go app.LaborCapacityService.RunDriverScoreWorker(ctx, 24*time.Hour)
@@ -59,6 +109,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.RouteAnalyticsWorker != nil {
 		go app.RouteAnalyticsWorker.RunNightlyWorker(ctx, 24*time.Hour)
 		slog.Info("route analytics worker started")
+	}
+	if app.OrderService != nil {
+		go order.StartSagaRecoveryWorker(ctx, app.OrderService, 15*time.Second)
+		slog.Info("order saga recovery worker started", "interval", "15s")
 	}
 	supplierID := ""
 	if app.Supplier.SupplierID != "" {
@@ -73,21 +127,29 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		slog.Info("reorder suggestion batch worker started")
 	}
 	if app.Config.WeatherWorkerEnabled && app.DemandService != nil {
-		// Use globally configured center. For Phase 1, treating this as city-level default region.
-		weatherCfg := demand.WeatherConfig{
-			BaseURL:        app.Config.WeatherBaseURL,
-			UpdateInterval: 6 * time.Hour,
-			LookaheadDays:  14,
-			Locations: []demand.Location{
-				{
-					Scope: "city:Tashkent", // Default to Tashkent logic for all retailers
-					Lat:   app.Config.DeliveryZoneCenterLat,
-					Lng:   app.Config.DeliveryZoneCenterLng,
+		scope, err := auth.WeatherScopeFromContext(context.Background(), "")
+		if err != nil {
+			slog.Info("weather ingestion worker skipped", "err", err)
+		} else {
+			weatherCfg := demand.WeatherConfig{
+				BaseURL:        app.Config.WeatherBaseURL,
+				UpdateInterval: 6 * time.Hour,
+				LookaheadDays:  14,
+				Locations: []demand.Location{
+					{
+						Scope: scope,
+						Lat:   app.Config.DeliveryZoneCenterLat,
+						Lng:   app.Config.DeliveryZoneCenterLng,
+					},
 				},
-			},
+			}
+			go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
+			slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays, "scope", scope)
 		}
-		go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
-		slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays)
+	}
+	if app.DemandService != nil {
+		go app.DemandService.RunDensityWorker(ctx, 6*time.Hour)
+		slog.Info("demand density worker started")
 	}
 
 	if app.ControlTowerWorker != nil {
@@ -97,6 +159,39 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 	if app.BillingTierConsumer != nil {
 		go app.BillingTierConsumer.Start(ctx)
 		slog.Info("billing tier consumer started")
+	}
+	if app.PartnerEventConsumer != nil {
+		go app.PartnerEventConsumer.Start(ctx)
+		slog.Info("partner webhook event consumer started")
+	}
+	if app.TwinEventConsumer != nil {
+		go app.TwinEventConsumer.Start(ctx)
+		slog.Info("digital twin event consumer started")
+	}
+	if app.PartnerWebhookDelivery != nil {
+		go app.PartnerWebhookDelivery.Start(ctx, 15*time.Second)
+		slog.Info("partner webhook delivery worker started")
+	}
+	if app.PartnerExportWorker != nil {
+		go app.PartnerExportWorker.Start(ctx, 20*time.Second)
+		slog.Info("partner export worker started")
+	}
+	if app.PartnerEdiInbound != nil {
+		go app.PartnerEdiInbound.Start(ctx, 30*time.Second)
+		slog.Info("partner edi inbound worker started")
+	}
+	if app.PartnerEdiOutbound != nil {
+		go app.PartnerEdiOutbound.Start(ctx, 20*time.Second)
+		slog.Info("partner edi outbound worker started")
+	}
+	if app.ARDunningWorker != nil {
+		go app.ARDunningWorker.Start(ctx, time.Hour)
+		slog.Info("ar dunning worker started", "enabled", os.Getenv("AR_DUNNING_ENABLED"))
+	}
+	// P1-6: Soliq EHF buyer-clearance poller (MySoliq path only; nil otherwise).
+	if app.BuyerAcceptancePoller != nil {
+		go app.BuyerAcceptancePoller.Run(ctx)
+		slog.Info("buyer acceptance poller started")
 	}
 	// Gate-0: auto-confirm due AI preorders (default off until smoke).
 	if app.OrderService != nil && os.Getenv("AUTO_CONFIRM_PREORDERS_ENABLED") == "1" {
@@ -127,6 +222,10 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.RetailerService.RunAutoOrderWorker(ctx, 15*time.Minute)
 		slog.Info("retailer auto-order worker started")
 	}
+	if app.FactoryService != nil {
+		go app.FactoryService.RunFactorySLABreachWorker(ctx, 5*time.Minute)
+		slog.Info("factory SLA breach worker started")
+	}
 }
 
 func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {
@@ -139,6 +238,62 @@ func startHubRelaySubscribers(ctx context.Context, hubs []*ws.Hub) {
 	slog.Info("ws relay subscribers started", "hub_count", len(hubs))
 }
 
+// startNotificationConsumerIfNoWorker starts the notification consumer on an
+// api-tier only when no worker-tier heartbeat is present. This restores FCM
+// push + inbox persistence for single-tier api deployments without
+// double-firing when a worker tier is running (P1-9).
+func startNotificationConsumerIfNoWorker(ctx context.Context, app *bootstrap.App) {
+	if app.NotificationConsumer == nil {
+		return
+	}
+	// RUN_MODE=all already started it via startBackgroundWorkers.
+	if app.Config != nil && app.Config.RunsWorkers() {
+		return
+	}
+	
+	go func() {
+		var consumerCtx context.Context
+		var cancel context.CancelFunc
+		var isRunning bool
+		
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		
+		// Initial check
+		if !bootstrap.WorkerLive(ctx, app.RedisClient) {
+			consumerCtx, cancel = context.WithCancel(ctx)
+			isRunning = true
+			go app.NotificationConsumer.Start(consumerCtx)
+			slog.Warn("no worker tier heartbeat detected; api tier started notification consumer (push+inbox safety net)")
+		} else {
+			slog.Info("worker tier live; api tier leaving notification consumer to worker")
+		}
+		
+		// Watch loop
+		for {
+			select {
+			case <-ctx.Done():
+				if cancel != nil {
+					cancel()
+				}
+				return
+			case <-ticker.C:
+				live := bootstrap.WorkerLive(ctx, app.RedisClient)
+				if live && isRunning {
+					slog.Info("worker tier heartbeat detected; stopping local notification consumer")
+					cancel()
+					isRunning = false
+				} else if !live && !isRunning {
+					slog.Warn("worker tier heartbeat lost; starting local notification consumer")
+					consumerCtx, cancel = context.WithCancel(ctx)
+					isRunning = true
+					go app.NotificationConsumer.Start(consumerCtx)
+				}
+			}
+		}
+	}()
+}
+
 func hubList(app *bootstrap.App) []*ws.Hub {
 	return []*ws.Hub{
 		app.RetailerHub,
@@ -148,5 +303,22 @@ func hubList(app *bootstrap.App) []*ws.Hub {
 		app.WarehouseHub,
 		app.FactoryHub,
 		app.TelemetryHub,
+		app.PlatformAdminHub,
 	}
+}
+
+// locationBusEmitter returns the direct Kafka emitter for driver location when available,
+// falling back to Spanner outbox only when Kafka publisher is unconfigured.
+// This decouples high-frequency driver GPS telemetry from Spanner write mutations.
+func locationBusEmitter(app *bootstrap.App) telemetryroutes.LocationBusEmitter {
+	if app == nil {
+		return nil
+	}
+	if app.OutboxPublisher != nil {
+		return telemetryroutes.NewDirectKafkaLocationBusEmitter(app.OutboxPublisher, slog.Default())
+	}
+	if app.Spanner != nil {
+		return telemetryroutes.NewSpannerLocationBusEmitter(app.Spanner)
+	}
+	return nil
 }

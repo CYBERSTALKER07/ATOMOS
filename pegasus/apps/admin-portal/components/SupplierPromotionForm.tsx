@@ -75,6 +75,8 @@ export default function SupplierPromotionForm({ availableSkus }: { availableSkus
           <div>
             <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Min Pallets (Threshold)</label>
             <input
+              id="min-pallets-threshold-input-3"
+              aria-label="Min Pallets (Threshold)"
               required
               type="number"
               min="1"
@@ -86,6 +88,8 @@ export default function SupplierPromotionForm({ availableSkus }: { availableSkus
           <div>
             <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Discount (%)</label>
             <input
+              id="discount-input-2"
+              aria-label="Discount (%)"
               required
               type="number"
               min="1"
@@ -100,6 +104,8 @@ export default function SupplierPromotionForm({ availableSkus }: { availableSkus
         <div>
           <label className="block text-[11px] font-medium mb-2" style={{ color: 'var(--muted)' }}>Valid Until</label>
           <input
+            id="valid-until-input-1"
+            aria-label="Valid Until"
             required
             type="datetime-local"
             className="w-full p-3 md-shape-xs text-[13px] focus:outline-none"

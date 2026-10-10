@@ -1,11 +1,16 @@
-import React from 'react';
-import type { SeasonalTemplatesResponse } from '@pegasusx/types';
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
+import React from "react";
+import type { SeasonalTemplatesResponse } from "@pegasusx/types";
 
 export type OverrideForm = {
   template_id: string;
   name: string;
   start_date: string;
   end_date: string;
+  /** Empty = server inherits builtin or defaults to 1.2 */
+  multiplier: string;
 };
 
 interface CreateOverrideFormProps {
@@ -25,6 +30,19 @@ export function CreateOverrideForm({
   onFormChange,
   onSubmit,
 }: CreateOverrideFormProps) {
+  const t = usePortalT();
+
+  function onTemplateChange(templateId: string) {
+    const builtin = data?.builtin_templates?.find((b) => b.id === templateId);
+    const next: OverrideForm = { ...form, template_id: templateId };
+    if (builtin?.multiplier != null && Number.isFinite(builtin.multiplier)) {
+      next.multiplier = String(builtin.multiplier);
+    } else if (!templateId) {
+      next.multiplier = "";
+    }
+    onFormChange(next);
+  }
+
   return (
     <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
       <label className="flex flex-col gap-1 md-typescale-body-small">
@@ -32,12 +50,13 @@ export function CreateOverrideForm({
         <select
           className="portal-input"
           value={form.template_id}
-          onChange={(e) => onFormChange({ ...form, template_id: e.target.value })}
+          onChange={(e) => onTemplateChange(e.target.value)}
         >
-          <option value="">Custom</option>
-          {(data?.builtin_templates ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
+          <option value="">{t("supplier_portal.settings.planning.create_override_form.text.custom")}</option>
+          {(data?.builtin_templates ?? []).map((tpl) => (
+            <option key={tpl.id} value={tpl.id}>
+              {tpl.name}
+              {tpl.multiplier != null ? ` (×${tpl.multiplier})` : ""}
             </option>
           ))}
         </select>
@@ -45,6 +64,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         Name (optional)
         <input
+          id="name-optional-input-4"
+          aria-label="Name (optional)"
           className="portal-input"
           value={form.name}
           onChange={(e) => onFormChange({ ...form, name: e.target.value })}
@@ -53,6 +74,8 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         Start date
         <input
+          id="start-date-input-3"
+          aria-label="Start date"
           type="date"
           className="portal-input"
           value={form.start_date}
@@ -62,10 +85,27 @@ export function CreateOverrideForm({
       <label className="flex flex-col gap-1 md-typescale-body-small">
         End date
         <input
+          id="end-date-input-2"
+          aria-label="End date"
           type="date"
           className="portal-input"
           value={form.end_date}
           onChange={(e) => onFormChange({ ...form, end_date: e.target.value })}
+        />
+      </label>
+      <label className="flex flex-col gap-1 md-typescale-body-small sm:col-span-2">
+        Multiplier (optional, 0.5–2.5)
+        <input
+          id="multiplier-optional-0-5-2-input-1"
+          aria-label="Multiplier (optional, 0.5–2.5)"
+          type="number"
+          step="0.01"
+          min={0.5}
+          max={2.5}
+          className="portal-input"
+          placeholder="Inherit from template or 1.2"
+          value={form.multiplier}
+          onChange={(e) => onFormChange({ ...form, multiplier: e.target.value })}
         />
       </label>
       {formError ? (

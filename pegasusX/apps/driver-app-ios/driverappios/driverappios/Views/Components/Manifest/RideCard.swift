@@ -42,7 +42,7 @@ struct RideCard: View {
                 
                 // Coordinates
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("DELIVERY TARGET")
+                    Text("mobile_driver.ui.delivery_target")
                         .font(.system(size: 9, weight: .bold, design: .monospaced))
                         .foregroundStyle(LabTheme.fgTertiary)
                     

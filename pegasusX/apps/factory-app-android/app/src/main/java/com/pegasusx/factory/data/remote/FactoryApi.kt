@@ -97,6 +97,16 @@ interface FactoryApi {
     @GET("v1/factory/supply-requests/{id}/fulfill-options")
     suspend fun getSupplyFulfillOptions(@Path("id") id: String): Response<SupplyFulfillOptions>
 
+    @GET("v1/factory/supply-requests/{id}/qc")
+    suspend fun getSupplyRequestQC(@Path("id") id: String): Response<SupplyRequestQCResponse>
+
+    @POST("v1/factory/supply-requests/{id}/qc")
+    suspend fun postSupplyRequestQC(
+        @Path("id") id: String,
+        @Header("Idempotency-Key") idempotencyKey: String,
+        @Body body: SupplyRequestQCRequest,
+    ): Response<SupplyRequestQCResponse>
+
     // ── Payload Override / Manifests ──
     @GET("v1/factory/manifests")
     suspend fun getManifests(
@@ -156,6 +166,9 @@ interface FactoryApi {
     @GET("v1/factory/fleet")
     suspend fun getFleet(): Response<VehicleListResponse>
 
+    @GET("v1/factory/fleet/live-map")
+    suspend fun getFleetLiveMap(): Response<FactoryFleetLiveMapResponse>
+
     @GET("v1/factory/fleet/drivers")
     suspend fun getFleetDrivers(): Response<FleetDriverListResponse>
 
@@ -171,6 +184,13 @@ interface FactoryApi {
 
     @GET("v1/factory/staff/{id}")
     suspend fun getStaffDetail(@Path("id") id: String): Response<StaffMember>
+
+    @POST("v1/factory/staff/{id}/set-password")
+    suspend fun setStaffPassword(
+        @Path("id") id: String,
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
+    ): Response<JsonElement>
 
     // ── Insights ──
     @GET("v1/warehouse/replenishment/insights")
@@ -209,6 +229,11 @@ interface FactoryApi {
         @Query("version") version: String,
         @Query("channel") channel: String = "production",
     ): Response<ClientPolicyResponse>
+
+    @POST("v1/user/device-token")
+    suspend fun registerDeviceToken(
+        @Body body: DeviceTokenRequest,
+    ): Response<Map<String, String>>
 
     // ── Location (factory-scoped staff have full read/write) ──
     @GET("v1/factory/ops/location")

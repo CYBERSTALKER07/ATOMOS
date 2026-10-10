@@ -121,6 +121,87 @@ enum WarehouseService {
         )
     }
 
+    static func createBin(locationId: String?, zone: String, locationType: String = "STAGE") async throws -> WarehouseBinLocation {
+        try await api.post(
+            "v1/warehouse/ops/bins",
+            body: WarehouseBinCreateRequest(
+                locationId: locationId,
+                zone: zone,
+                locationType: locationType,
+                pickSequence: 0
+            ),
+            idempotencyKey: "warehouse-bin-\(zone)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func putawayLot(
+        productId: String,
+        locationId: String,
+        quantity: Int,
+        expiryDate: String? = nil,
+        lotCode: String? = nil
+    ) async throws -> StockLotPutawayResponse {
+        try await api.post(
+            "v1/warehouse/ops/lots/putaway",
+            body: StockLotPutawayRequest(
+                productId: productId,
+                locationId: locationId,
+                quantity: quantity,
+                lotCode: lotCode,
+                expiryDate: expiryDate
+            ),
+            idempotencyKey: "warehouse-putaway-\(productId)-\(locationId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func listPickWaves(manifestId: String? = nil) async throws -> PickWaveListResponse {
+        var path = "v1/warehouse/ops/pick-waves"
+        if let manifestId, !manifestId.isEmpty {
+            path += "?manifest_id=\(manifestId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? manifestId)"
+        }
+        return try await api.get(path)
+    }
+
+    static func createPickWave(manifestId: String) async throws -> PickWave {
+        try await api.post(
+            "v1/warehouse/ops/pick-waves",
+            body: PickWaveCreateRequest(manifestId: manifestId),
+            idempotencyKey: "warehouse-pick-wave-\(manifestId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func getPickWave(waveId: String) async throws -> PickWave {
+        try await api.get("v1/warehouse/ops/pick-waves/\(waveId)")
+    }
+
+    static func confirmPickTask(waveId: String, taskId: String, quantityPicked: Int? = nil) async throws -> PickWave {
+        try await api.post(
+            "v1/warehouse/ops/pick-waves/\(waveId)/tasks/\(taskId)/confirm",
+            body: PickTaskConfirmRequest(quantityPicked: quantityPicked),
+            idempotencyKey: "warehouse-pick-confirm-\(waveId)-\(taskId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func listCycleCounts() async throws -> CycleCountListResponse {
+        try await api.get("v1/warehouse/ops/cycle-counts")
+    }
+
+    static func createCycleCount(locationId: String, productId: String, expectedQty: Int? = nil) async throws -> CycleCount {
+        try await api.post(
+            "v1/warehouse/ops/cycle-counts",
+            body: CycleCountCreateRequest(locationId: locationId, productId: productId, expectedQty: expectedQty),
+            idempotencyKey: "warehouse-cycle-\(locationId)-\(productId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
+    static func submitCycleCount(countId: String, countedQty: Int) async throws -> CycleCount {
+        try await api.post(
+            "v1/warehouse/ops/cycle-counts/\(countId)/submit",
+            body: CycleCountSubmitRequest(countedQty: countedQty),
+            idempotencyKey: "warehouse-cycle-submit-\(countId)-\(Int(Date().timeIntervalSince1970))"
+        )
+    }
+
     static func patchInventoryPolicy(productId: String, policy: String) async throws {
         try await api.patchVoid(
             "v1/warehouse/ops/inventory/\(productId)/policy",
@@ -131,6 +212,32 @@ enum WarehouseService {
 
     static func opsSettings() async throws -> WarehouseOpsSettingsResponse {
         try await api.get("v1/warehouse/ops/settings")
+    }
+
+    static func getReturnPolicy(
+        warehouseId: String? = nil,
+        supplierId: String? = nil
+    ) async throws -> WarehouseReturnPolicy {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty { query["warehouse_id"] = warehouseId }
+        if let supplierId, !supplierId.isEmpty { query["supplier_id"] = supplierId }
+        return try await api.get("v1/warehouse/return-policy", query: query)
+    }
+
+    static func putReturnPolicy(
+        _ body: WarehouseReturnPolicy,
+        warehouseId: String? = nil,
+        supplierId: String? = nil
+    ) async throws -> WarehouseReturnPolicy {
+        var query: [String: String] = [:]
+        if let warehouseId, !warehouseId.isEmpty { query["warehouse_id"] = warehouseId }
+        if let supplierId, !supplierId.isEmpty { query["supplier_id"] = supplierId }
+        return try await api.put(
+            "v1/warehouse/return-policy",
+            body: body,
+            query: query,
+            idempotencyKey: WarehouseIdempotency.returnPolicyPut(supplierId: body.supplierId)
+        )
     }
 
     static func preorders() async throws -> WarehousePreordersResponse {
@@ -225,6 +332,31 @@ enum WarehouseService {
 
     static func opsExceptions() async throws -> WarehouseOpsExceptionsResponse {
         try await api.get("v1/warehouse/ops/exceptions")
+    }
+
+    // MARK: - Cold chain
+    static func temperatureReadings(manifestId: String) async throws -> TemperatureReadingListResponse {
+        try await api.get(
+            "v1/warehouse/ops/temperature-readings",
+            query: ["manifest_id": manifestId]
+        )
+    }
+
+    static func ingestTemperatureReading(_ body: TemperatureReadingIngestRequest) async throws -> TemperatureReading {
+        try await api.post("v1/warehouse/ops/temperature-readings", body: body)
+    }
+
+    // MARK: - Labor capacity
+    static func laborZoneCapacity(date: String) async throws -> LaborZoneCapacityListResponse {
+        try await api.get("v1/labor-capacity/zone-capacity", query: ["date": date])
+    }
+
+    static func laborDriverScore(driverId: String) async throws -> LaborDriverScore {
+        try await api.get("v1/labor-capacity/driver-score/\(driverId)")
+    }
+
+    static func setLaborDriverAvailability(_ body: LaborDriverAvailabilityRequest) async throws -> LaborDriverAvailabilityResponse {
+        try await api.post("v1/labor-capacity/driver-availability", body: body)
     }
 
     static func supplierClaims(status: String? = "OPEN", limit: Int = 50) async throws -> WarehouseClaimsResponse {
@@ -333,6 +465,10 @@ enum WarehouseService {
         try await api.get("v1/warehouse/supply-requests/\(id)")
     }
 
+    static func supplyRequestQC(id: String) async throws -> SupplyRequestQCResponse {
+        try await api.get("v1/warehouse/supply-requests/\(id)/qc")
+    }
+
     static func demandForecast(days: Int = 7) async throws -> DemandForecastResponse {
         try await api.get("v1/warehouse/demand/forecast", query: ["days": "\(days)"])
     }
@@ -397,6 +533,14 @@ enum WarehouseService {
     // MARK: - Payment Config
     static func paymentConfig() async throws -> PaymentConfigResponse {
         try await api.get("v1/warehouse/ops/payment-config")
+    }
+
+    static func opsCoverage() async throws -> WarehouseCoverageResponse {
+        try await api.get("v1/warehouse/ops/coverage")
+    }
+
+    static func opsSupplyFactory() async throws -> WarehouseSupplyFactoryResponse {
+        try await api.get("v1/warehouse/ops/supply-factory")
     }
 
     // MARK: - P1-03 ops depth

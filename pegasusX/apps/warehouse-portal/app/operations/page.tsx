@@ -1,11 +1,12 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import {
   warehouseBroadcastKey,
   warehouseBroadcastTemplateCreateKey,
   warehouseBroadcastTemplateDeleteKey,
-} from '@pegasusx/api-client';
+} from '@pegasusx/api-core';
 import type { BroadcastTemplate, RetailerOverridePreview } from '@pegasusx/types';
 import { PageChrome } from '@/components/PageChrome';
 import { warehouseApi } from '@/lib/warehouse-api';
@@ -33,6 +34,7 @@ function applyTemplate(
 }
 
 export default function WarehouseOperationsPage() {
+  const t = usePortalT();
   const warehouseId = warehouseHomeNodeId();
   const scope = warehouseScopeQuery();
 
@@ -173,8 +175,8 @@ export default function WarehouseOperationsPage() {
   return (
     <PageChrome
       icon="send"
-      title="Depot operations"
-      description="Depot-scoped broadcasts and read-only pricing impact preview."
+      title={t("warehouse_portal.operations.text.depot_operations")}
+      description={t("warehouse_portal.residual.text.depot_scoped_broadcasts_and_read_only_pricing_impact_preview")}
     >
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-emerald-700">{message}</p> : null}

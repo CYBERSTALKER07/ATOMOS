@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.replenishment
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -15,6 +17,7 @@ import com.pegasusx.warehouse.data.model.ReplenishmentInsight
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 @Composable
 fun ReplenishmentList(
@@ -86,7 +89,7 @@ internal fun InsightCard(
                 WarehouseStatusChip(status = insight.status)
             }
             Text(
-                "Stock: ${insight.currentStock} · Reorder: ${insight.reorderQuantity}",
+                stringResource(R.string.mobile_warehouse_ui_stock_currentstock_reorder_reorderquantity, insight.currentStock, insight.reorderQuantity),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -94,7 +97,7 @@ internal fun InsightCard(
                 Text(formatDemandWhy(breakdown, insight.reasonCode), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
-                "Days until stockout: ${insight.daysUntilStockout}",
+                stringResource(R.string.mobile_warehouse_ui_days_until_stockout_daysuntilstockout, insight.daysUntilStockout),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

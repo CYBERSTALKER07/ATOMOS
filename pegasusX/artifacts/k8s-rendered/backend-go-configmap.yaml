@@ -29,7 +29,7 @@ data:
   GLOBAL_PAY_ENV: "staging"
   WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
   PUBLIC_BASE_URL: "https://api.pegasusx.app"
-  FIREBASE_PROJECT_ID: "pegasusx-prod"
+  FIREBASE_PROJECT_ID: "pegasus-503013"
   LOG_LEVEL: "info"
   LOG_FORMAT: "json"
   REQUIRE_INFRA_ADAPTERS: "true"

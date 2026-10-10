@@ -2,28 +2,34 @@ package retailer
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"google.golang.org/api/iterator"
 )
 
 // ControlTowerPulse is an honest retailer ops digest — never demo/simulator data.
 type ControlTowerPulse struct {
-	RetailerID         string   `json:"retailer_id"`
-	GeneratedAt        string   `json:"generated_at"`
-	OpenOrders         int      `json:"open_orders"`
-	ActiveFulfillments int      `json:"active_fulfillments"`
-	DockPending        int      `json:"dock_pending"`
-	PosOpenSessions    int      `json:"pos_open_sessions"`
-	OpenShifts         int      `json:"open_shifts"`
-	OpenAssistTickets  int      `json:"open_assist_tickets"`
-	LowStockSkuBins    int      `json:"low_stock_sku_bins"`
-	ShiftVariances7d   int      `json:"shift_variances_7d"`
-	SalesMinor7d       int64    `json:"sales_minor_7d"`
-	Capabilities       []string `json:"capabilities"`
-	Empty              bool     `json:"empty"`
+	RetailerID         string                       `json:"retailer_id"`
+	GeneratedAt        string                       `json:"generated_at"`
+	OpenOrders         int                          `json:"open_orders"`
+	ActiveFulfillments int                          `json:"active_fulfillments"`
+	DockPending        int                          `json:"dock_pending"`
+	PosOpenSessions    int                          `json:"pos_open_sessions"`
+	OpenShifts         int                          `json:"open_shifts"`
+	OpenAssistTickets  int                          `json:"open_assist_tickets"`
+	LowStockSkuBins    int                          `json:"low_stock_sku_bins"`
+	ShiftVariances7d   int                          `json:"shift_variances_7d"`
+	SalesMinor7d       int64                        `json:"sales_minor_7d"`
+	Capabilities       []string                     `json:"capabilities"`
+	Empty              bool                         `json:"empty"`
+	Source             string                       `json:"source"`
+	OrdersByStatus     map[string]int               `json:"orders_by_status"`
+	OrdersBySupplier   []RetailerSupplierOrderFacet `json:"orders_by_supplier"`
+	Loyalty            RetailerPulseLoyalty         `json:"loyalty"`
 }
 
 // HandleControlTowerPulse serves GET /v1/retailer/control-tower/pulse
@@ -50,56 +56,94 @@ func (s *Service) HandleControlTowerPulse(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	pulse := s.buildControlTowerPulse(r, orgID)
+	pulse, err := s.buildControlTowerPulse(r.Context(), orgID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "control_tower_pulse_failed"})
+		return
+	}
 	writeJSON(w, http.StatusOK, pulse)
 }
 
-func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlTowerPulse {
-	ctx := r.Context()
+func (s *Service) buildControlTowerPulse(ctx context.Context, orgID string) (ControlTowerPulse, error) {
 	now := s.now().UTC()
 	from7 := now.Add(-7 * 24 * time.Hour)
 
 	var openOrders, activeFulfillments, dockPending int
 	if s.repo != nil {
-		if orders, err := s.listRetailerTrackingOrders(ctx, orgID); err == nil {
-			for _, o := range orders {
-				st := o.Status
-				if st != "COMPLETED" && st != "CANCELLED" && st != "DELIVERED" {
-					openOrders++
-				}
-				switch st {
-				case "ASSIGNED", "IN_TRANSIT", "ARRIVED", "OUT_FOR_DELIVERY", "LOADED":
-					activeFulfillments++
-				case "ARRIVED_SHOP_CLOSED", "AT_DOORSTEP", "PENDING_RECEIVE":
-					dockPending++
-				}
+		orders, err := s.listRetailerTrackingOrders(ctx, orgID)
+		if err != nil {
+			return ControlTowerPulse{}, fmt.Errorf("control tower tracking: %w", err)
+		}
+		for _, o := range orders {
+			st := o.Status
+			if st != "COMPLETED" && st != "CANCELLED" && st != "DELIVERED" {
+				openOrders++
+			}
+			switch st {
+			case "ASSIGNED", "IN_TRANSIT", "ARRIVED", "OUT_FOR_DELIVERY", "LOADED":
+				activeFulfillments++
+			case "ARRIVED_SHOP_CLOSED", "AT_DOORSTEP", "PENDING_RECEIVE":
+				dockPending++
 			}
 		}
 	}
 
-	posOpen := s.countOpenPosSessions(ctx, orgID)
+	posOpen, err := s.countOpenPosSessions(ctx, orgID)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower pos: %w", err)
+	}
 
+	shifts, err := s.listShifts(ctx, orgID, "", 100)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower shifts: %w", err)
+	}
 	openShifts := 0
-	if shifts, err := s.listShifts(ctx, orgID, "", 100); err == nil {
-		for _, sh := range shifts {
-			if sh.Status == ShiftOpen {
-				openShifts++
-			}
+	variances := 0
+	for _, sh := range shifts {
+		if sh.Status == ShiftOpen {
+			openShifts++
+		}
+		if sh.Status == ShiftClosed && sh.VarianceMinor != nil && abs64(*sh.VarianceMinor) > 0 {
+			variances++
 		}
 	}
 
-	openAssist := 0
-	if tickets, err := s.listAssistTickets(ctx, orgID, "", AssistOpen, 100); err == nil {
-		openAssist = len(tickets)
+	tickets, err := s.listAssistTickets(ctx, orgID, "", AssistOpen, 100)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower assist: %w", err)
+	}
+	openAssist := len(tickets)
+
+	balances, err := s.listStockBalances(ctx, orgID, "")
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower stock: %w", err)
+	}
+	lowStock := 0
+	for _, b := range balances {
+		if b.OnHand > 0 && b.OnHand <= 5 {
+			lowStock++
+		}
 	}
 
-	_, lowStock := s.aggregateInventory(ctx, orgID, "")
-	variances := s.countClosedShiftVariances(ctx, orgID, "")
-	// countClosedShiftVariances is all closed with variance; ok as 7d proxy for pulse
-	salesMinor, _, _ := s.aggregateSales(orgID, "", from7, now)
+	salesMinor, _, _, err := s.aggregateSales(ctx, orgID, "", from7, now)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower sales: %w", err)
+	}
 
-	caps, _ := s.LoadEnabledPacks(ctx, orgID)
+	caps, err := s.LoadEnabledPacks(ctx, orgID)
+	if err != nil {
+		return ControlTowerPulse{}, fmt.Errorf("control tower packs: %w", err)
+	}
 	capList := caps.WithCORE().List()
+
+	orderRows, orderSource, err := s.loadRetailerDashboardOrders(ctx, orgID)
+	if err != nil {
+		return ControlTowerPulse{}, err
+	}
+	ordersByStatus, ordersBySupplier, rollupOpen := applyRetailerOrderRows(orderRows)
+	if orderSource != "empty" {
+		openOrders = rollupOpen
+	}
 
 	pulse := ControlTowerPulse{
 		RetailerID:         orgID,
@@ -114,6 +158,10 @@ func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlT
 		ShiftVariances7d:   variances,
 		SalesMinor7d:       salesMinor,
 		Capabilities:       capList,
+		Source:             orderSource,
+		OrdersByStatus:     ordersByStatus,
+		OrdersBySupplier:   ordersBySupplier,
+		Loyalty:            RetailerPulseLoyalty{Enrolled: false},
 	}
 	pulse.Empty = pulse.OpenOrders == 0 &&
 		pulse.ActiveFulfillments == 0 &&
@@ -123,12 +171,13 @@ func (s *Service) buildControlTowerPulse(r *http.Request, orgID string) ControlT
 		pulse.OpenAssistTickets == 0 &&
 		pulse.LowStockSkuBins == 0 &&
 		pulse.ShiftVariances7d == 0 &&
-		pulse.SalesMinor7d == 0
-	return pulse
+		pulse.SalesMinor7d == 0 &&
+		rollupOpen == 0
+	return pulse, nil
 }
 
-// countOpenPosSessions prefers Spanner (multi-pod honest); falls back to process memory.
-func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) int {
+// countOpenPosSessions prefers Spanner (multi-pod honest). Memory only when Spanner is unset.
+func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) (int, error) {
 	if s.spannerClient != nil {
 		stmt := spanner.Statement{
 			SQL: `SELECT COUNT(1) FROM RetailerPosSessions
@@ -137,12 +186,18 @@ func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) int {
 		}
 		iter := s.spannerClient.Single().Query(ctx, stmt)
 		defer iter.Stop()
-		if row, err := iter.Next(); err == nil {
-			var n int64
-			if err := row.Columns(&n); err == nil {
-				return int(n)
-			}
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return 0, nil
 		}
+		if err != nil {
+			return 0, err
+		}
+		var n int64
+		if err := row.Columns(&n); err != nil {
+			return 0, err
+		}
+		return int(n), nil
 	}
 	n := 0
 	s.mu.RLock()
@@ -154,5 +209,5 @@ func (s *Service) countOpenPosSessions(ctx context.Context, orgID string) int {
 		}
 	}
 	s.mu.RUnlock()
-	return n
+	return n, nil
 }

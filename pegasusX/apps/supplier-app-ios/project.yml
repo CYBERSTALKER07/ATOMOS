@@ -19,11 +19,17 @@ settings:
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
     TARGETED_DEVICE_FAMILY: "1,2"
     INFOPLIST_KEY_NSCameraUsageDescription: "Scan product barcodes when adding catalog EAN/GTIN"
+    INFOPLIST_KEY_NSUserNotificationsUsageDescription: "Receive supplier operations alerts"
 targets:
   SupplierAppIOS:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    dependencies:
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     sources:
       - path: SupplierApp
         excludes:
@@ -34,6 +40,10 @@ targets:
           - EANBarcode.swift
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: SupplierApp/Assets.xcassets
       - path: SupplierApp/GoogleService-Info.plist
     info:
@@ -41,10 +51,13 @@ targets:
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.supplier
         INFOPLIST_FILE: SupplierApp/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SupplierApp/SupplierApp.entitlements
   SupplierAppTests:
     type: bundle.unit-test
     platform: iOS
@@ -52,3 +65,7 @@ targets:
       - path: SupplierAppTests
     dependencies:
       - target: SupplierAppIOS
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 11.6.0

@@ -7,7 +7,7 @@ import { extractDriverPositions, useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import { MapPin, Wifi, WifiOff } from 'lucide-react';
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// -- Types -------------------------------------------------------------------
 
 type DriverPin = {
   driver_id: string;
@@ -38,7 +38,7 @@ function parseCurrentLocation(value: string | undefined): { lat: number; lng: nu
   return { lat, lng };
 }
 
-// ── Fleet Map Cell — The Anchor (2×2) ───────────────────────────────────────
+// -- Fleet Map Cell — The Anchor (2×2) ---------------------------------------
 // Most vital live component. Shows real-time GPS positions of all active fleet
 // members using MapLibre GL. Falls back to a canvas dot-grid when MapLibre
 // fails to load (SSR, missing token, etc.).
@@ -51,7 +51,7 @@ export default function FleetMapCell() {
   const mapInstanceRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
-  // ── Fetch active fleet positions ──────────────────────────────────────
+  // -- Fetch active fleet positions --------------------------------------
 
   const fetchFleet = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -87,7 +87,7 @@ export default function FleetMapCell() {
     }
   }, []);
 
-  // ── Polling (10s) ─────────────────────────────────────────────────────
+  // -- Polling (10s) -----------------------------------------------------
 
   useEffect(() => {
     const controller = new AbortController();
@@ -99,7 +99,7 @@ export default function FleetMapCell() {
     };
   }, [fetchFleet]);
 
-  // ── Shared telemetry live GPS ───────────────────────────────────────────
+  // -- Shared telemetry live GPS -------------------------------------------
 
   const telemetry = useTelemetry(
     useCallback((msg: TelemetryMessage) => {
@@ -142,7 +142,7 @@ export default function FleetMapCell() {
     }
   }, [telemetry.connected]);
 
-  // ── MapLibre GL Rendering ─────────────────────────────────────────────
+  // -- MapLibre GL Rendering ---------------------------------------------
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -192,7 +192,7 @@ export default function FleetMapCell() {
     };
   }, []);
 
-  // ── Update markers when pins change ───────────────────────────────────
+  // -- Update markers when pins change -----------------------------------
 
   useEffect(() => {
     const map = mapInstanceRef.current;

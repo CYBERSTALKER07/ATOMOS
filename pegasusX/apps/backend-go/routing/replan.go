@@ -60,9 +60,10 @@ func outboxMutation(e outbox.Event) *spanner.Mutation {
 		"EventId":       e.EventID,
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
-		"Topic":         e.TopicName,
-		"PayloadJson":   string(e.Payload),
+		"TopicName":     e.TopicName,
+		"Payload":       e.Payload,
 		"CreatedAt":     spanner.CommitTimestamp,
+		"SupplierId":    e.SupplierID,
 	})
 }
 

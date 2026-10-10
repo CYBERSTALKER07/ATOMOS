@@ -12,7 +12,7 @@ import {
   buildSupplierManifestSealIdempotencyKey,
 } from '../_shared/idempotency';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface ManifestLine {
   sku_id: string;
@@ -54,7 +54,7 @@ function shortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) + '…' : id;
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function ManifestsPage() {
   const { toast } = useToast();
@@ -71,7 +71,7 @@ export default function ManifestsPage() {
   const [isInjecting, setIsInjecting] = useState(false);
   const [forceSealingId, setForceSealingId] = useState<string | null>(null);
 
-  /* ─── Fetch ─────────────────────────────────────────────── */
+  /* --- Fetch ----------------------------------------------- */
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -104,7 +104,7 @@ export default function ManifestsPage() {
     fetchData();
   }, [fetchData]);
 
-  /* ─── CSV Export ────────────────────────────────────────── */
+  /* --- CSV Export ------------------------------------------ */
 
   const exportCSV = useCallback(async () => {
     setExporting(true);
@@ -128,13 +128,13 @@ export default function ManifestsPage() {
     }
   }, [date, toast]);
 
-  /* ─── Computed ──────────────────────────────────────────── */
+  /* --- Computed -------------------------------------------- */
 
   const totalQty = lines.reduce((a, l) => a + l.total_qty, 0);
   const totalOrders = orders.length;
   const totalSKUs = lines.length;
 
-  /* ─── Inject Order into LOADING Manifest ────────────────── */
+  /* --- Inject Order into LOADING Manifest ------------------ */
 
   const handleInjectOrder = useCallback(async () => {
     if (!injectModalManifest || !injectOrderId.trim()) return;
@@ -168,7 +168,7 @@ export default function ManifestsPage() {
     }
   }, [injectModalManifest, injectOrderId, toast, fetchData]);
 
-  /* ─── Force-Seal LOADING Manifest ───────────────────────── */
+  /* --- Force-Seal LOADING Manifest ------------------------- */
 
   const handleForceSeal = useCallback(async (manifestId: string) => {
     const reason = prompt('Force-seal reason (audit trail):');
@@ -201,7 +201,7 @@ export default function ManifestsPage() {
     }
   }, [toast, fetchData]);
 
-  /* ─── Render ────────────────────────────────────────────── */
+  /* --- Render ---------------------------------------------- */
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
@@ -216,7 +216,10 @@ export default function ManifestsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <label htmlFor="manifests-date-input" className="sr-only">Manifest Date</label>
           <input
+            id="manifests-date-input"
+            aria-label="Manifest Date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
@@ -511,10 +514,12 @@ export default function ManifestsPage() {
             </div>
             <div className="px-6 py-4 flex flex-col gap-4">
               <div>
-                <label className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                <label htmlFor="inject-order-id-input" className="md-typescale-label-medium block mb-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                   Order ID
                 </label>
                 <input
+                  id="inject-order-id-input"
+                  aria-label="Order ID"
                   type="text"
                   value={injectOrderId}
                   onChange={(e) => setInjectOrderId(e.target.value)}

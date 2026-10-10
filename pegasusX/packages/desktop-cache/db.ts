@@ -60,6 +60,19 @@ async function ensureMigrated(): Promise<SqlDatabase | null> {
           server_receipt_number TEXT
         )
       `);
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS pending_commands (
+          command_id TEXT PRIMARY KEY NOT NULL,
+          command_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          known_version INTEGER NOT NULL,
+          payload_json TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'PENDING',
+          last_error TEXT
+        )
+      `);
     })();
   }
   await migratePromise;

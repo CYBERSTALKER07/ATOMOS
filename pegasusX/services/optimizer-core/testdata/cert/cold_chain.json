@@ -1,0 +1,51 @@
+{
+  "id": "cold_chain",
+  "expect": {
+    "cold_order_id": "cold-o1",
+    "cold_vehicle_id": "reefer",
+    "min_routes": 1
+  },
+  "request": {
+    "v": "v1",
+    "trace_id": "cert-cold",
+    "supplier_id": "s1",
+    "home_node_id": "wh1",
+    "stops": [
+      {
+        "order_id": "cold-o1",
+        "retailer_id": "r1",
+        "lat": 41.31,
+        "lng": 69.25,
+        "volume_vu": 10.0,
+        "requires_cold_chain": true,
+        "handling_class": "COLD_CHAIN"
+      },
+      {
+        "order_id": "dry-o2",
+        "retailer_id": "r2",
+        "lat": 41.32,
+        "lng": 69.26,
+        "volume_vu": 10.0
+      }
+    ],
+    "vehicles": [
+      {
+        "vehicle_id": "dry-truck",
+        "driver_id": "d-dry",
+        "max_volume_vu": 100.0,
+        "start_lat": 41.30,
+        "start_lng": 69.24,
+        "has_refrigeration": false
+      },
+      {
+        "vehicle_id": "reefer",
+        "driver_id": "d-cold",
+        "max_volume_vu": 100.0,
+        "start_lat": 41.301,
+        "start_lng": 69.241,
+        "has_refrigeration": true
+      }
+    ],
+    "tunables": { "time_limit_ms": 3000 }
+  }
+}

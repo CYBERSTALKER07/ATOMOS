@@ -17,6 +17,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seasonalcore"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
 	"google.golang.org/api/iterator"
 )
@@ -38,11 +39,14 @@ type CycleResult struct {
 
 // Engine scans warehouse inventory against burn rates and persists insights.
 type Engine struct {
-	Spanner                *spanner.Client
-	Log                    *slog.Logger
-	Now                    func() time.Time
-	EchelonTargetsEnabled  bool
-	SegmentSvc             *segment.Service
+	Spanner               *spanner.Client
+	Log                   *slog.Logger
+	Now                   func() time.Time
+	EchelonTargetsEnabled bool
+	SegmentSvc            *segment.Service
+	// SeasonalReader applies Spanner seasonal overrides on suggested qty.
+	// When nil, builtins from seasonalcore are used.
+	SeasonalReader seasonalcore.MultiplierReader
 }
 
 // NewEngine returns an engine bound to Spanner.
@@ -50,9 +54,14 @@ func NewEngine(client *spanner.Client, log *slog.Logger) *Engine {
 	if log == nil {
 		log = slog.Default()
 	}
+	var reader seasonalcore.MultiplierReader
+	if client != nil {
+		reader = &seasonalcore.SpannerOverrideReader{Client: client}
+	}
 	return &Engine{
-		Spanner: client,
-		Log:     log,
+		Spanner:        client,
+		Log:            log,
+		SeasonalReader: reader,
 		Now: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -207,7 +216,27 @@ func (e *Engine) fetchActiveWarehouses(ctx context.Context, supplierID string) (
 }
 
 func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, int, error) {
-	leadDays := int64(defaultLeadTimeDays)
+	policy, _ := LoadPolicy(ctx, e.Spanner, wh.SupplierId)
+	leadDays := policy.LeadTimeDays
+	if leadDays <= 0 {
+		leadDays = defaultLeadTimeDays
+	}
+	leadSigmaAssumed := true
+	leadSigma := policy.LeadTimeSigmaDays
+	if leadSigma < 0 {
+		leadSigma = 1.0
+	}
+	if SafetyStockV2Enabled() {
+		if obs, err := ObservedLeadStats(ctx, e.Spanner, wh.SupplierId); err == nil && !obs.Assumed {
+			leadDays = int64(math.Round(obs.MeanDays))
+			if leadDays < 1 {
+				leadDays = 1
+			}
+			leadSigma = obs.SigmaDays
+			leadSigmaAssumed = false
+		}
+	}
+
 	stock, err := e.getWarehouseStock(ctx, wh.WarehouseId, wh.SupplierId)
 	if err != nil {
 		return 0, 0, fmt.Errorf("stock lookup: %w", err)
@@ -224,12 +253,18 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	if err != nil {
 		return 0, 0, fmt.Errorf("unit volume lookup: %w", err)
 	}
+	inTransit, err := InTransitBySKU(ctx, e.Spanner, wh.WarehouseId)
+	if err != nil {
+		e.Log.Warn("replenishment.in_transit_lookup_failed", "warehouse_id", wh.WarehouseId, "err", err)
+		inTransit = map[string]int64{}
+	}
 
 	allSkus := make(map[string]*skuStock)
 	for skuID, qty := range stock {
 		allSkus[skuID] = &skuStock{
 			SkuId:           skuID,
 			CurrentStock:    qty,
+			InTransitQty:    inTransit[skuID],
 			FactoryLeadDays: leadDays,
 			UnitVolumeVU:    vuMap[skuID],
 		}
@@ -237,7 +272,7 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	for skuID, rate := range burnRates {
 		sku := allSkus[skuID]
 		if sku == nil {
-			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, UnitVolumeVU: vuMap[skuID]}
+			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, InTransitQty: inTransit[skuID], UnitVolumeVU: vuMap[skuID]}
 			allSkus[skuID] = sku
 		}
 		sku.DailyBurnRate = rate
@@ -245,7 +280,7 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 	for skuID, qty := range unfulfilled {
 		sku := allSkus[skuID]
 		if sku == nil {
-			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, UnitVolumeVU: vuMap[skuID]}
+			sku = &skuStock{SkuId: skuID, FactoryLeadDays: leadDays, InTransitQty: inTransit[skuID], UnitVolumeVU: vuMap[skuID]}
 			allSkus[skuID] = sku
 		}
 		sku.UnfulfilledQty = qty
@@ -259,7 +294,36 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 		}
 		lead := float64(sku.FactoryLeadDays)
 		burn := sku.DailyBurnRate
-		reorderPoint := burn*lead + burn*lead*safetyBufferMultiplier
+		dBar := burn
+		if avg, ok, _ := AvgBaselineDemand(ctx, e.Spanner, wh.SupplierId, wh.WarehouseId, sku.SkuId); ok && avg > 0 {
+			dBar = avg
+		}
+		var reorderPoint float64
+		var ssResult SafetyStockResult
+		useV2 := SafetyStockV2Enabled()
+		if useV2 {
+			sigmaD, _, sigmaOK, _ := ResidualSigmaD(ctx, e.Spanner, wh.SupplierId, wh.WarehouseId, sku.SkuId)
+			sigmaDAssumed := !sigmaOK
+			if !sigmaOK {
+				sigmaD = math.Max(dBar*0.25, 1)
+			}
+			sl := policy.TargetServiceLevel
+			if sl <= 0 {
+				sl = 0.98
+			}
+			ssResult = ComputeReorderPoint(SafetyStockInputs{
+				DBar:             dBar,
+				SigmaD:           sigmaD,
+				SigmaDAssumed:    sigmaDAssumed,
+				L:                lead,
+				SigmaL:           leadSigma,
+				LeadSigmaAssumed: leadSigmaAssumed,
+				ServiceLevel:     sl,
+			})
+			reorderPoint = ssResult.ReorderPoint
+		} else {
+			reorderPoint = LegacyReorderPoint(burn, lead)
+		}
 		tte := float64(sku.CurrentStock) / burn
 		urgency := classifyUrgency(tte, lead)
 		if urgency == "STABLE" {
@@ -279,17 +343,38 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 				suggestedQty = computeSuggestedQtyWithEchelon(*sku, reorderPoint, target.TargetQty, true)
 			}
 		}
+		seasonMul := e.resolveSeasonalMultiplier(ctx, wh.SupplierId, e.Now())
+		if seasonMul > 0 && seasonMul != 1.0 {
+			suggestedQty = int64(math.Ceil(float64(suggestedQty) * seasonMul))
+			if suggestedQty < 1 {
+				suggestedQty = 1
+			}
+		}
 		reason := "LOW_STOCK"
 		if burn > float64(sku.CurrentStock)/lead {
 			reason = "HIGH_VELOCITY"
 		}
-		breakdownJSON, _ := json.Marshal(map[string]any{
-			"unfulfilled":   sku.UnfulfilledQty,
-			"in_transit":    sku.InTransitQty,
-			"current_stock": sku.CurrentStock,
-			"burn_rate_7d":  burn,
-			"reorder_point": reorderPoint,
-		})
+		breakdown := map[string]any{
+			"unfulfilled":         sku.UnfulfilledQty,
+			"in_transit":          sku.InTransitQty,
+			"current_stock":       sku.CurrentStock,
+			"burn_rate_7d":        burn,
+			"d_bar":               dBar,
+			"reorder_point":       reorderPoint,
+			"seasonal_multiplier": seasonMul,
+			"safety_stock_v2":     useV2,
+		}
+		if useV2 {
+			breakdown["safety_stock"] = ssResult.SafetyStock
+			breakdown["z_alpha"] = ssResult.ZAlpha
+			breakdown["sigma_d"] = ssResult.SigmaD
+			breakdown["sigma_l"] = ssResult.SigmaL
+			breakdown["sigma_d_assumed"] = ssResult.SigmaDAssumed
+			breakdown["lead_sigma_assumed"] = ssResult.LeadSigmaAssumed
+			breakdown["service_level"] = ssResult.ServiceLevel
+			breakdown["lead_days"] = ssResult.LeadDays
+		}
+		breakdownJSON, _ := json.Marshal(breakdown)
 
 		insightID := uuid.NewString()
 		if err := e.writeInsight(ctx, insightID, wh, sku, burn, tte, suggestedQty, urgency, reason, string(breakdownJSON)); err != nil {
@@ -301,6 +386,10 @@ func (e *Engine) analyzeWarehouse(ctx context.Context, wh warehouseInfo) (int, i
 			continue
 		}
 		insightCount++
+
+		if skipPlanningOwnedAutoTransfer(reason) {
+			continue
+		}
 
 		if urgency == "CRITICAL" {
 			if err := e.autoCreateTransfer(ctx, wh, insightID, sku.SkuId, suggestedQty, sku.UnitVolumeVU, wh.PrimaryFactoryId); err != nil {
@@ -424,23 +513,7 @@ func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	mutations := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, event := range eventsList {
-		createdAt := event.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       event.EventID,
-			"AggregateType": event.AggregateType,
-			"AggregateId":   event.AggregateID,
-			"TopicName":     event.TopicName,
-			"Payload":       event.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if event.PublishedAt != nil {
-			row["PublishedAt"] = event.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(event)))
 	}
 	return mutations
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
@@ -27,8 +28,9 @@ function SetupThemeToggle() {
 }
 
 function SetupStepList({ currentIndex }: { currentIndex: number }) {
+  const t = usePortalT();
   return (
-    <ol className="setup-step-list" aria-label="Onboarding progress">
+    <ol className="setup-step-list" aria-label={t("supplier_portal.setup.setup_wizard_shell.text.onboarding_progress")}>
       {SETUP_STEPS.map((step, index) => {
         const done = index < currentIndex;
         const active = index === currentIndex;
@@ -74,6 +76,7 @@ function MobileProgress({ currentIndex }: { currentIndex: number }) {
 }
 
 export default function SetupWizardShell({ children }: { children: React.ReactNode }) {
+  const t = usePortalT();
   const pathname = usePathname();
   const currentIndex = setupStepIndex(pathname);
   const [entered, setEntered] = useState(false);
@@ -84,7 +87,7 @@ export default function SetupWizardShell({ children }: { children: React.ReactNo
 
   return (
     <div className="setup-shell">
-      <aside className="setup-rail" aria-label="Setup progress">
+      <aside className="setup-rail" aria-label={t("supplier_portal.setup.setup_wizard_shell.text.setup_progress")}>
         <div>
           <div className="setup-rail-brand">
             <div className="setup-rail-mark" aria-hidden>
@@ -93,7 +96,7 @@ export default function SetupWizardShell({ children }: { children: React.ReactNo
               </svg>
             </div>
             <div>
-              <h2 className="setup-rail-title">Supplier setup</h2>
+              <h2 className="setup-rail-title">{t("supplier_portal.setup.setup_wizard_shell.text.supplier_setup")}</h2>
               <p className="setup-rail-sub">
                 A few details so retailers can order, pay, and receive payouts through your network.
               </p>
@@ -101,7 +104,7 @@ export default function SetupWizardShell({ children }: { children: React.ReactNo
           </div>
           <SetupStepList currentIndex={currentIndex} />
         </div>
-        <p className="setup-rail-footer">pegasusX &copy; 2026</p>
+        <p className="setup-rail-footer">{t("supplier_portal.auth.text.pegasusx_and_copy_2026")}</p>
       </aside>
 
       <div className="setup-main">

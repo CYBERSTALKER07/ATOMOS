@@ -42,11 +42,24 @@ enum SupplierSection: String, CaseIterable, Identifiable {
     case demandForecast = "Demand forecast"
     case planningBrain = "Planning sandbox"
     case planningSettings = "Planning settings"
+    case returnPolicy = "Return policy"
     case knowledgeGraph = "Knowledge graph"
     case replenishmentPolicies = "Replenishment policies"
     case factories = "Factories"
     case warehouses = "Warehouses"
-    case catalogDetail = "Catalog detail"
+        case crm = "CRM"
+        case loyalty = "Loyalty"
+        case entityResolution = "Entity resolution"
+        case payouts = "Payouts"
+        case catalogDetail = "Catalog detail"
+        case controlTower = "Control tower"
+        case playbooks = "Playbooks"
+        case segmentation = "Segmentation"
+        case taxRegimes = "Tax regimes"
+        case creditPolicy = "Credit policy"
+        case creditAdminDisable = "Credit admin disable"
+        case flywheel = "POS flywheel"
+        case paydayCalendar = "Payday calendar"
 
     var id: String { rawValue }
 
@@ -93,17 +106,30 @@ enum SupplierSection: String, CaseIterable, Identifiable {
         case .demandForecast: "chart.xyaxis.line"
         case .planningBrain: "brain.head.profile"
         case .planningSettings: "calendar"
+        case .returnPolicy: "arrow.uturn.backward.circle"
         case .knowledgeGraph: "point.3.connected.trianglepath.dotted"
         case .replenishmentPolicies: "doc.text"
         case .factories: "building.2"
         case .warehouses: "shippingbox.fill"
+        case .crm: "person.2"
+        case .loyalty: "star"
+        case .entityResolution: "point.3.connected.trianglepath.dotted"
+        case .payouts: "banknote"
         case .catalogDetail: "square.grid.2x2.fill"
+        case .controlTower: "antenna.radiowaves.left.and.right"
+        case .playbooks: "book"
+        case .segmentation: "square.grid.3x3"
+        case .taxRegimes: "building.columns"
+        case .creditPolicy: "creditcard"
+        case .creditAdminDisable: "exclamationmark.octagon"
+        case .flywheel: "arrow.triangle.2.circlepath"
+        case .paydayCalendar: "calendar"
         }
     }
 
-    /// Primary tabs on iPhone.
+    /// Primary tabs on iPhone. Home · Orders · Dispatch · Plan · More.
     static var compactTabs: [SupplierSection] {
-        [.dashboard, .orders, .fleet]
+        [.dashboard, .orders, .dispatchPreview, .planningBrain]
     }
 
     /// iPad sidebar: primary + ops + intelligence + network + account.
@@ -113,20 +139,20 @@ enum SupplierSection: String, CaseIterable, Identifiable {
 
     static var opsSections: [SupplierSection] {
         [
-            .manifests, .dispatchPreview, .activity,
-            .fleetOrders, .orgFleet, .treasury, .ledger, .payments, .chargebacks,
+            .fleet, .manifests, .activity,
+            .fleetOrders, .orgFleet, .treasury, .payouts, .ledger, .payments, .chargebacks,
             .claims, .claimChargebacks,
             .reconciliation, .compliance, .operations, .replenishmentPolicies,
-            .exceptions,
+            .exceptions, .creditPolicy, .creditAdminDisable, .taxRegimes,
         ]
     }
 
     static var intelligenceSections: [SupplierSection] {
-        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .planningBrain, .knowledgeGraph, .planningSettings]
+        [.analytics, .aiRecommendations, .geoReport, .demandForecast, .knowledgeGraph, .planningSettings, .returnPolicy, .controlTower, .playbooks, .flywheel, .paydayCalendar]
     }
 
     static var networkSections: [SupplierSection] {
-        [.topology, .factories, .warehouses, .deliveryZones, .supplyLanes]
+        [.topology, .factories, .warehouses, .crm, .loyalty, .entityResolution, .segmentation, .deliveryZones, .supplyLanes]
     }
 
     static var accountSections: [SupplierSection] {

@@ -13,7 +13,7 @@ struct ForecastSkuTable: View {
             }
 
             if let generatedAt = generatedAt, !generatedAt.isEmpty {
-                Text("Generated \(formattedGeneratedAt(generatedAt)) · \(forecastDays)-day window")
+                Text(L10n.format("mobile_warehouse.ui.generated_formattedgeneratedat_forecastdays_day_window", "\(formattedGeneratedAt(generatedAt))", "\(forecastDays)"))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

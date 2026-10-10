@@ -12,7 +12,7 @@ import {
   buildSupplierRetailerOverrideDeleteIdempotencyKey,
 } from '../../_shared/idempotency';
 
-/* ── Types ────────────────────────────────────────────────────────────────── */
+/* -- Types ------------------------------------------------------------------ */
 
 interface PriceOverride {
   override_id: string;
@@ -40,7 +40,7 @@ type ProductApiRecord = Partial<{
   base_price: number;
 }>;
 
-/* ── Helpers ──────────────────────────────────────────────────────────────── */
+/* -- Helpers ---------------------------------------------------------------- */
 
 const fieldStyle = {
   background: 'var(--field-background)',
@@ -66,7 +66,7 @@ function normalizeProduct(input: unknown): Product | null {
   };
 }
 
-/* ── Page ─────────────────────────────────────────────────────────────────── */
+/* -- Page ------------------------------------------------------------------- */
 
 export default function RetailerPricingOverridesPage() {
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
@@ -88,7 +88,7 @@ export default function RetailerPricingOverridesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  /* ── Fetch ──────────────────────────────────────────────────────────────── */
+  /* -- Fetch ---------------------------------------------------------------- */
 
   const fetchOverrides = useCallback(async () => {
     try {
@@ -129,7 +129,7 @@ export default function RetailerPricingOverridesPage() {
   useEffect(() => { fetchOverrides(); }, [fetchOverrides]);
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  /* ── Create ─────────────────────────────────────────────────────────────── */
+  /* -- Create --------------------------------------------------------------- */
 
   const handleCreate = async () => {
     setFormError('');
@@ -173,7 +173,7 @@ export default function RetailerPricingOverridesPage() {
     }
   };
 
-  /* ── Deactivate ─────────────────────────────────────────────────────────── */
+  /* -- Deactivate ----------------------------------------------------------- */
 
   const handleDeactivate = async (id: string) => {
     if (!confirm('Deactivate this price override?')) return;
@@ -192,7 +192,7 @@ export default function RetailerPricingOverridesPage() {
     }
   };
 
-  /* ── Drawer handlers ────────────────────────────────────────────────────── */
+  /* -- Drawer handlers ------------------------------------------------------ */
 
   const openCreate = () => {
     setDrawerMode('create');
@@ -207,7 +207,7 @@ export default function RetailerPricingOverridesPage() {
     setDrawerOpen(true);
   };
 
-  /* ── KPIs ───────────────────────────────────────────────────────────────── */
+  /* -- KPIs ----------------------------------------------------------------- */
 
   const uniqueRetailers = new Set(overrides.map(o => o.retailer_id)).size;
   const uniqueSkus = new Set(overrides.map(o => o.sku_id)).size;
@@ -217,7 +217,7 @@ export default function RetailerPricingOverridesPage() {
     return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000; // 7 days
   }).length;
 
-  /* ── Render ─────────────────────────────────────────────────────────────── */
+  /* -- Render --------------------------------------------------------------- */
 
   return (
     <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
@@ -245,7 +245,10 @@ export default function RetailerPricingOverridesPage() {
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
+        <label htmlFor="filter-retailer-input" className="sr-only">Filter by Retailer ID</label>
         <input
+          id="filter-retailer-input"
+          aria-label="Filter by Retailer ID"
           className="w-56 px-3 py-2 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
           style={fieldStyle}
           placeholder="Filter by Retailer ID"
@@ -364,8 +367,10 @@ export default function RetailerPricingOverridesPage() {
             )}
 
             <div>
-              <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Retailer ID *</label>
+              <label htmlFor="override-retailer-id" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Retailer ID *</label>
               <input
+                id="override-retailer-id"
+                aria-label="Retailer ID"
                 className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 style={fieldStyle}
                 placeholder="Enter retailer UUID"
@@ -390,8 +395,10 @@ export default function RetailerPricingOverridesPage() {
             </div>
 
             <div>
-              <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Override Price (UZS) *</label>
+              <label htmlFor="override-price-uzs" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Override Price (UZS) *</label>
               <input
+                id="override-price-uzs"
+                aria-label="Override Price (UZS)"
                 className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 style={fieldStyle}
                 type="number"
@@ -403,8 +410,10 @@ export default function RetailerPricingOverridesPage() {
             </div>
 
             <div>
-              <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Expires At</label>
+              <label htmlFor="override-expires-at" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Expires At</label>
               <input
+                id="override-expires-at"
+                aria-label="Expires At"
                 className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 style={fieldStyle}
                 type="datetime-local"

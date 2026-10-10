@@ -1,0 +1,36 @@
+name: Reusable Go unit
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Go module directory to build and test
+        type: string
+        default: apps/backend-go
+      go-version:
+        description: Go toolchain version
+        type: string
+        default: "1.25"
+
+jobs:
+  go-unit:
+    name: Build · vet · unit · race
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: true
+      - name: Build + vet
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          go build ./...
+          go vet ./...
+      - name: Unit tests (short)
+        working-directory: ${{ inputs.working-directory }}
+        run: go test ./... -short -count=1
+      - name: Race tests (critical packages)
+        working-directory: ${{ inputs.working-directory }}
+        run: go test ./auth/ ./order/ ./payment/ ./outbox/ ./fxrates/ ./idempotency/ ./cache/ -race -short -count=1

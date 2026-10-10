@@ -3,7 +3,7 @@ node_modules/
 .next/
 .cache/
 visuals/
-softwareengineercv-main/
+antimater/
 infra/
 apps/warehouse-app-ios/
 apps/retailer-app-desktop/

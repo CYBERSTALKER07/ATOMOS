@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map
 
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -92,6 +94,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import com.pegasusx.driver.R
 
 private fun locationFlow(context: android.content.Context): Flow<Location> = callbackFlow {
     val client = LocationServices.getFusedLocationProviderClient(context)
@@ -163,8 +166,8 @@ fun MapScreen(
         }
     }
 
-    // Default center: Tashkent
-    val defaultPosition = LatLng(41.2995, 69.2401)
+    val packCenter = com.pegasus.design.sessionMapCenter()
+    val defaultPosition = LatLng(packCenter?.lat ?: 0.0, packCenter?.lng ?: 0.0)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
@@ -335,7 +338,7 @@ fun MapScreen(
             if (isCameraLocked && mapPhase == MapPhase.NAVIGATING && driverPin != null) {
                 Marker(
                     state = MarkerState(position = driverPin),
-                    title = "You",
+                    title = stringResource(R.string.mobile_driver_ui_you),
                     rotation = displayBearing,
                     flat = true,
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
@@ -392,7 +395,6 @@ fun MapScreen(
                 onRequestRescue = { showRescueSheet = true },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(16.dp)
             )
         }
 

@@ -158,7 +158,8 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): CollectCashResponse
 
-    // Transition order state
+    // G1.C: do not call — backend always 501. Use arrive / depart / cash / card / credit edges.
+    @Deprecated("PATCH state is theatre (501); use delivery edge routes")
     @PATCH("v1/orders/{id}/state")
     suspend fun transitionState(
         @Path("id") orderId: String,
@@ -166,7 +167,7 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): Order
 
-    // Mark arrived — driver enters 500m geofence (IN_TRANSIT → ARRIVED)
+    // Mark arrived — driver enters pack breach_radius_meters (UZ 150m; IN_TRANSIT → ARRIVED)
     @POST("v1/delivery/arrive")
     suspend fun markArrived(
         @Body body: Map<String, String>,
@@ -374,6 +375,8 @@ interface DriverApi {
     suspend fun verifyHandshake(@Body body: VerifyHandshakeRequest): VerifyHandshakeResponse
 
     // Dynamic Delivery Edge Handling (in-delivery updates)
+    // G1.C: do not call — no durable writer (501). Use amend / partial-offload / missing-items.
+    @Deprecated("Mid-delivery update is not implemented; use amend edges")
     @POST("v1/delivery/update-order-during-delivery")
     suspend fun updateOrderDuringDelivery(@Body body: UpdateOrderDuringDeliveryRequest): UpdateOrderDuringDeliveryResponse
 

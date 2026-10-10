@@ -19,7 +19,7 @@ func NewMultiTopicConsumer(deps ConsumerDeps) *Consumer {
 		return NewConsumer(deps)
 	}
 	if deps.MaxAttempts <= 0 {
-		deps.MaxAttempts = 3
+		deps.MaxAttempts = 4
 	}
 	dialer, err := kafkautil.Dialer(deps.Auth)
 	if err != nil {
@@ -30,7 +30,10 @@ func NewMultiTopicConsumer(deps ConsumerDeps) *Consumer {
 	cfg := kafka.ReaderConfig{
 		Brokers:               deps.Brokers,
 		GroupID:               deps.GroupID,
+		MinBytes:              1,
 		MaxBytes:              10e6,
+		MaxWait:               500 * time.Millisecond,
+		StartOffset:           kafka.FirstOffset,
 		CommitInterval:        0,
 		WatchPartitionChanges: true,
 		Dialer:                dialer,

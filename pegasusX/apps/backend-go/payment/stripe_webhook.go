@@ -57,7 +57,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
 	row.WebhookID = s.newID("webhook")
 	row.Gateway = "STRIPE"
-	row.SupplierID = s.supplierID
+	row.SupplierID = s.seedSupplierID
 	row.ReceivedAt = now
 	row.SignatureValid = true
 
@@ -82,6 +82,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if row.OrderID == "" && intent.Metadata != nil {
 			row.OrderID = strings.TrimSpace(intent.Metadata["merchant_reference"])
 		}
+		row.SupplierID = s.resolveWebhookSupplierID(r.Context(), row.OrderID)
 		if eventType == "payment_intent.succeeded" {
 			row.Status = "PAID"
 		} else {

@@ -1,9 +1,12 @@
-import { Modal, View, Text, Pressable, FlatList } from 'react-native';
+import { Modal, View, Text, Pressable, FlatList, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { isIOS } from '../theme';
 import PayloadStatePanel from './PayloadStatePanel';
 import StatusBadge, { exceptionReasonTone } from './StatusBadge';
 import { SkeletonList } from './SkeletonPulse';
+import { useState } from 'react';
+import { authFetch } from '../authSession';
+import { API_BASE } from '../api';
 
 export type ManifestExceptionItem = {
   exception_id: string;
@@ -21,10 +24,43 @@ type ExceptionsSheetProps = {
   onRefresh: () => void;
   loading: boolean;
   exceptions: ManifestExceptionItem[];
-  theme: any; // Using any or importing Theme type if available. For now using any to match App.tsx structure where it passes T
+  theme: any; 
+  activeManifestId?: string;
 };
 
-export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, exceptions, theme: T }: ExceptionsSheetProps) {
+export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, exceptions, theme: T, activeManifestId }: ExceptionsSheetProps) {
+  const [damagedItemId, setDamagedItemId] = useState('');
+  const [damagedOrderId, setDamagedOrderId] = useState('');
+
+  const reportDamage = async () => {
+    if (!activeManifestId || !damagedItemId || !damagedOrderId) {
+      Alert.alert('Error', 'Missing required fields.');
+      return;
+    }
+    try {
+      const res = await authFetch(`${API_BASE}/v1/payload/exceptions/damaged`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          manifest_id: activeManifestId,
+          order_id: damagedOrderId,
+          item_id: damagedItemId,
+          price_deduction: 50 // Example default deduction
+        })
+      });
+      if (res.ok) {
+        Alert.alert('Success', 'Item marked as damaged. Ledger and order updated globally.');
+        setDamagedItemId('');
+        setDamagedOrderId('');
+        onRefresh();
+      } else {
+        Alert.alert('Error', 'Failed to report damage.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Network error.');
+    }
+  };
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
@@ -40,6 +76,30 @@ export default function ExceptionsSheet({ visible, onClose, onRefresh, loading, 
               <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
             </Pressable>
           </View>
+          
+          {/* Report Damage Section */}
+          <View style={{ padding: 16, backgroundColor: '#FEE2E2', borderBottomWidth: 1, borderBottomColor: '#FCA5A5' }}>
+            <Text style={{ color: '#991B1B', fontWeight: 'bold', marginBottom: 8 }}>Report Dock Damage</Text>
+            <TextInput
+              placeholder="Order ID"
+              value={damagedOrderId}
+              onChangeText={setDamagedOrderId}
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <TextInput
+              placeholder="Item ID"
+              value={damagedItemId}
+              onChangeText={setDamagedItemId}
+              style={{ backgroundColor: 'white', padding: 8, borderRadius: 4, marginBottom: 8 }}
+            />
+            <Pressable 
+              onPress={reportDamage}
+              style={{ backgroundColor: '#DC2626', padding: 10, borderRadius: 6, alignItems: 'center' }}
+            >
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>MARK DAMAGED</Text>
+            </Pressable>
+          </View>
+
           {loading && exceptions.length === 0 ? (
             <SkeletonList count={4} theme={T} />
           ) : (

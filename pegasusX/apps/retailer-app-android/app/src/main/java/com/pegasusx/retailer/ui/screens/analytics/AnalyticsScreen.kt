@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -88,8 +90,8 @@ import com.pegasusx.retailer.ui.screens.analytics.components.WeeklySpendCard
 import com.pegasusx.retailer.ui.screens.analytics.components.formatAmount
 import com.pegasusx.retailer.ui.screens.analytics.components.formatCompact
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
-import com.pegasusx.retailer.ui.screens.orders.components.AiPlannedCard
 import com.pegasusx.retailer.ui.theme.SquircleShape
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,27 +184,6 @@ fun AnalyticsScreen(
                     )
                 }
 
-                if (uiState.predictions.isNotEmpty()) {
-                    item {
-                        Text(
-                            "AI Demand Signals",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                        )
-                    }
-                    items(uiState.predictions, key = { it.id }) { forecast ->
-                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                            AiPlannedCard(
-                                forecast = forecast,
-                                onPreorder = { },
-                                onCorrect = { },
-                                onReject = { viewModel.dismissPrediction(forecast.id) },
-                            )
-                        }
-                    }
-                }
-
                 // Date Range Chips
                 item {
                     LazyRow(
@@ -232,7 +213,7 @@ fun AnalyticsScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         KpiCard(
-                            title = "This Month",
+                            title = stringResource(R.string.mobile_retailer_ui_this_month),
                             value = formatAmount(analytics.totalThisMonth),
                             subtitle = "Amount",
                             modifier = Modifier.weight(1f),
@@ -241,7 +222,7 @@ fun AnalyticsScreen(
                             ((analytics.totalThisMonth - analytics.totalLastMonth) * 100 / analytics.totalLastMonth).toInt()
                         else 0
                         KpiCard(
-                            title = "vs Last Month",
+                            title = stringResource(R.string.mobile_retailer_ui_vs_last_month),
                             value = if (delta >= 0) "+$delta%" else "$delta%",
                             subtitle = if (delta >= 0) "increase" else "decrease",
                             modifier = Modifier.weight(1f),
@@ -290,7 +271,7 @@ fun AnalyticsScreen(
                                                 maxLines = 1,
                                             )
                                             Text(
-                                                "${product.quantity} units",
+                                                stringResource(R.string.mobile_retailer_ui_quantity_units, product.quantity),
                                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                             )
@@ -351,13 +332,13 @@ fun AnalyticsScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             KpiCard(
-                                title = "Total Spent",
+                                title = stringResource(R.string.mobile_retailer_ui_total_spent),
                                 value = formatAmount(detailed.totalSpent),
                                 subtitle = "${detailed.totalOrders} orders",
                                 modifier = Modifier.weight(1f),
                             )
                             KpiCard(
-                                title = "Avg Order",
+                                title = stringResource(R.string.mobile_retailer_ui_avg_order),
                                 value = formatAmount(detailed.avgOrderValue),
                                 subtitle = "per order",
                                 modifier = Modifier.weight(1f),

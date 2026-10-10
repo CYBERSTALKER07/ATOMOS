@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -21,7 +20,7 @@ func LoadDeliveryExpectations(ctx context.Context, client *spanner.Client, now t
 		return out
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, Status, Source, ConfirmationStatus, DeliveryPriority,
+		SQL: `SELECT OrderId, SupplierId, Status, Source, ConfirmationStatus, DeliveryPriority,
 		             DeliverBefore, RequestedDeliveryDate, ProposedDeliveryDate,
 		             ReceivingWindowOpen, ReceivingWindowClose, Timezone
 		      FROM Orders
@@ -42,10 +41,10 @@ func LoadDeliveryExpectations(ctx context.Context, client *spanner.Client, now t
 		if !ok {
 			continue
 		}
-		
-		loc, err := time.LoadLocation(o.Timezone)
-		if err != nil || o.Timezone == "" {
-			loc = proximity.TashkentLocation
+
+		loc, locErr := resolveCalendarLocation(ctx, o.SupplierID, o.Timezone)
+		if locErr != nil {
+			continue
 		}
 		out[orderID] = ComputeDeliveryExpectation(now, loc, o)
 	}
@@ -71,16 +70,17 @@ func dedupeOrderIDs(orderIDs []string) []string {
 
 func scanOrderForExpectation(row *spanner.Row) (Order, string, bool) {
 	var (
-		orderID, status, source, confirmation, priority string
-		deliverBefore, requested, proposed              spanner.NullTime
-		windowOpen, windowClose, timezone               spanner.NullString
+		orderID, supplierID, status, source, confirmation, priority string
+		deliverBefore, requested, proposed                          spanner.NullTime
+		windowOpen, windowClose, timezone                           spanner.NullString
 	)
-	if err := row.Columns(&orderID, &status, &source, &confirmation, &priority,
+	if err := row.Columns(&orderID, &supplierID, &status, &source, &confirmation, &priority,
 		&deliverBefore, &requested, &proposed, &windowOpen, &windowClose, &timezone); err != nil {
 		return Order{}, "", false
 	}
 	o := Order{
 		OrderID:              orderID,
+		SupplierID:           supplierID,
 		Status:               Status(status),
 		Source:               OrderSource(source),
 		ConfirmationStatus:   ConfirmationStatus(confirmation),

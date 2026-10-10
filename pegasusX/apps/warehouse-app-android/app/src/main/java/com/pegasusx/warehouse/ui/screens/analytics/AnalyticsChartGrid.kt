@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.analytics
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -11,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.DailyMetric
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
+import com.pegasusx.warehouse.R
 
 @Composable
 fun AnalyticsChartGrid(
@@ -52,7 +55,7 @@ fun AnalyticsChartGrid(
             }
         }
         Text(
-            text = "Peak day: ${formatter.format(daily.maxOf { it.revenue })} UZS",
+            text = stringResource(R.string.mobile_warehouse_ui_peak_day_format_uzs, formatter.format(daily.maxOf { it.revenue })),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -1,13 +1,9 @@
 package payment
 
 import (
-	"crypto/md5"
-	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -25,7 +21,12 @@ type clickWebhookRequest struct {
 	ErrorNote         string `json:"error_note"`
 }
 
-// HandleClickWebhook serves POST /v1/webhooks/click.
+// HandleClickWebhook is the Click SHOP API Prepare (action=0) / Complete
+// (action=1) callback. Signatures follow docs.click.uz SHOP API (complete
+// includes merchant_prepare_id). Amount is so'm at the edge → int64 minor.
+//
+// UNWIRED: webhookroutes does not mount POST /v1/webhooks/click. Tests call
+// this handler directly. Live card checkout for CLICK stays catalog honesty 501.
 func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 	const endpoint = "/v1/webhooks/click"
 	if r.Method != http.MethodPost {
@@ -39,8 +40,8 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var req clickWebhookRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	req, err := decodeClickShopBody(r.Header.Get("Content-Type"), body)
+	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid_request", "invalid JSON body", endpoint, false, "")
 		return
 	}
@@ -50,6 +51,7 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "click_trans_id is required", endpoint, false, "")
 		return
 	}
+
 	var signatureValid bool
 	secrets := strings.Split(s.clickWebhookSecret, ",")
 	for _, secret := range secrets {
@@ -62,15 +64,65 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-
 	if !signatureValid {
 		writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 		return
 	}
 
-	status := "PAID"
-	if strings.TrimSpace(req.Error) != "" && req.Error != "0" {
-		status = "FAILED"
+	action := clickNormalizedAction(req.Action)
+	if action != clickActionPrepare && action != clickActionComplete {
+		s.writeClickShop(w, req, "", clickErrAction, "Action not found")
+		return
+	}
+
+	orderID := strings.TrimSpace(req.MerchantTransID)
+	if s.repo == nil {
+		s.writeClickShop(w, req, "", clickErrUserMissing, "User does not exist")
+		return
+	}
+	session, found, err := s.repo.GetSessionByOrderID(r.Context(), orderID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "database_error", err.Error(), endpoint, false, "")
+		return
+	}
+	if !found {
+		s.writeClickShop(w, req, "", clickErrUserMissing, "User does not exist")
+		return
+	}
+
+	amountMinor, err := clickSomToMinor(req.Amount)
+	if err != nil {
+		s.writeClickShop(w, req, "", clickErrAmount, "Incorrect parameter amount")
+		return
+	}
+	if session.AmountMinor != amountMinor {
+		s.writeClickShop(w, req, "", clickErrAmount, "Incorrect parameter amount")
+		return
+	}
+
+	prepareID := clickPrepareID(session)
+	if action == clickActionComplete {
+		gotPrepare := strings.TrimSpace(req.MerchantPrepareID)
+		if gotPrepare == "" {
+			s.writeClickShop(w, req, "", clickErrRequest, "Error in request from click")
+			return
+		}
+		if gotPrepare != prepareID {
+			s.writeClickShop(w, req, "", clickErrTxMissing, "Transaction does not exist")
+			return
+		}
+		if strings.EqualFold(session.Status, "PAID") {
+			s.writeClickShop(w, req, prepareID, clickErrAlreadyPaid, "Already paid")
+			return
+		}
+	}
+
+	status := "PREPARED"
+	if action == clickActionComplete {
+		status = "PAID"
+		if strings.TrimSpace(req.Error) != "" && req.Error != "0" {
+			status = "FAILED"
+		}
 	}
 
 	bodyHash := sha256Hex(body)
@@ -79,43 +131,14 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	amountMinor, _ := strconv.ParseInt(strings.TrimSpace(req.Amount), 10, 64)
-	orderID := strings.TrimSpace(req.MerchantTransID)
-
-	session, found, err := s.repo.GetSessionByOrderID(r.Context(), orderID)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "database_error", err.Error(), endpoint, false, "")
-		return
-	}
-	if !found {
-		resp := map[string]any{
-			"error":          -5,
-			"error_note":     "User does not exist",
-			"click_trans_id": transactionID,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-		return
-	}
-
-	if session.AmountMinor != amountMinor {
-		resp := map[string]any{
-			"error":          -2,
-			"error_note":     "Incorrect parameter amount",
-			"click_trans_id": transactionID,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-		return
-	}
-
 	now := s.now()
 	row := WebhookRecord{
 		WebhookID:      s.newID("webhook"),
 		Gateway:        "CLICK",
 		TransactionID:  transactionID,
-		OrderID:        strings.TrimSpace(req.MerchantTransID),
-		SupplierID:     s.supplierID,
+		OrderID:        orderID,
+		SessionID:      prepareID,
+		SupplierID:     s.resolveWebhookSupplierID(r.Context(), orderID),
 		Status:         status,
 		AmountMinor:    amountMinor,
 		Currency:       s.currency,
@@ -127,44 +150,49 @@ func (s *Service) HandleClickWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]any{
-		"error":      0,
-		"error_note": "accepted",
-		"click_trans_id": transactionID,
+	errorCode := clickErrOK
+	note := "Success"
+	if status == "FAILED" {
+		errorCode = clickErrCancelled
+		note = "Transaction cancelled"
 	}
+	resp := s.clickShopResponse(req, prepareID, errorCode, note)
 	respBytes, _ := json.Marshal(resp)
 	s.persistIdempotencyRecord(r.Context(), webhookKey, bodyHash, http.StatusOK, respBytes, 7*24*time.Hour)
-
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(respBytes)
 }
 
-func verifyClickSignature(req clickWebhookRequest, secret string) bool {
-	secret = strings.TrimSpace(secret)
-	if secret == "" {
-		return false
+func (s *Service) writeClickShop(w http.ResponseWriter, req clickWebhookRequest, prepareID string, code int, note string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(s.clickShopResponse(req, prepareID, code, note))
+}
+
+func (s *Service) clickShopResponse(req clickWebhookRequest, prepareID string, code int, note string) map[string]any {
+	resp := map[string]any{
+		"click_trans_id":    jsonValueIntOrString(req.ClickTransID),
+		"merchant_trans_id": req.MerchantTransID,
+		"error":             code,
+		"error_note":        note,
 	}
-	provided := strings.TrimSpace(req.SignString)
-	if provided == "" {
-		return false
+	if prepareID != "" {
+		resp["merchant_prepare_id"] = prepareID
+		if clickNormalizedAction(req.Action) == clickActionComplete {
+			resp["merchant_confirm_id"] = prepareID
+		}
 	}
-	payload := strings.TrimSpace(req.ClickTransID) +
-		strings.TrimSpace(req.ServiceID) +
-		secret +
-		strings.TrimSpace(req.MerchantTransID) +
-		strings.TrimSpace(req.Amount) +
-		strings.TrimSpace(req.Action) +
-		strings.TrimSpace(req.SignTime)
-	sum := md5.Sum([]byte(payload))
-	expected := hex.EncodeToString(sum[:])
-	
-	// Convert both to lowercase byte slices for safe constant-time comparison
-	bProvided := []byte(strings.ToLower(provided))
-	bExpected := []byte(expected)
-	
-	if len(bProvided) != len(bExpected) {
-		return false
+	return resp
+}
+
+func jsonValueIntOrString(s string) any {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return s
 	}
-	return subtle.ConstantTimeCompare(bProvided, bExpected) == 1
+	if n, err := json.Number(s).Int64(); err == nil && json.Number(s).String() == s {
+		return n
+	}
+	return s
 }

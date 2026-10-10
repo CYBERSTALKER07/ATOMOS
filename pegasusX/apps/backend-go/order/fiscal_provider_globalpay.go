@@ -75,9 +75,9 @@ func (p *GlobalPayReceiptProvider) CreateReceipt(ctx context.Context, req Fiscal
 	if p == nil {
 		return FiscalCreateResult{}, fmt.Errorf("global_pay_receipt: nil provider")
 	}
-	currency := strings.TrimSpace(req.Currency)
-	if currency == "" {
-		currency = "UZS"
+	currency, err := fiscalCurrency(ctx, req.SupplierID, req.Currency)
+	if err != nil {
+		return FiscalCreateResult{}, err
 	}
 	body := map[string]any{
 		"attempt_id":      req.AttemptID,

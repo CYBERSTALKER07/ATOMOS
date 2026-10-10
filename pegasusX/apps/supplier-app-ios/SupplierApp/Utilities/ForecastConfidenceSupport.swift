@@ -77,6 +77,26 @@ enum ForecastConfidenceSupport {
     }
 }
 
+enum PlanBrainTab: String, CaseIterable {
+    case planning
+    case brain
+}
+
+func planBrainTabFromQuery(_ raw: String?) -> PlanBrainTab {
+    raw?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "brain" ? .brain : .planning
+}
+
+func brainForecastLine(confidence: ForecastConfidence?, accuracyPoints: [Double]) -> [Double]? {
+    if confidence?.isBlocked == true { return nil }
+    if accuracyPoints.count < 2 { return nil }
+    return accuracyPoints
+}
+
+func factoryPlanningDisabledCode(status: Int, body: String) -> String? {
+    guard status == 409, body.contains("factory_planning_disabled") else { return nil }
+    return "factory_planning_disabled"
+}
+
 extension ForecastConfidence {
     var isBlocked: Bool {
         blockedReason != nil || label == "insufficient_history"

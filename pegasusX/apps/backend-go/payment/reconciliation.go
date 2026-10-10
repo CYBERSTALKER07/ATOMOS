@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -54,7 +55,13 @@ func (r *WebhookReconciler) ReconcileStuckSessions(ctx context.Context) error {
 		}
 
 		status := "AWAITING_PAYMENT"
-		if result.ProviderRef == "PAID" || result.ProviderRef == "gp_status_stub_paid" || result.ProviderRef == "AUTHORIZED" || result.ProviderRef == "CAPTURED" || result.ProviderRef == "SUCCESS" {
+		// Fabricated stub refs are never authoritative: only real provider
+		// statuses may advance a session. Stub mode is for load testing and
+		// must not mark sessions PAID.
+		if result.PolicySource == "GLOBAL_PAY_STUB" || strings.HasPrefix(result.ProviderRef, "gp_status_stub") {
+			continue
+		}
+		if result.ProviderRef == "PAID" || result.ProviderRef == "AUTHORIZED" || result.ProviderRef == "CAPTURED" || result.ProviderRef == "SUCCESS" {
 			status = "PAID"
 		} else if result.ProviderRef == "FAILED" || result.ProviderRef == "DECLINED" || result.ProviderRef == "CANCELLED" {
 			status = "FAILED"

@@ -21,22 +21,22 @@ struct ShopClosedView: View {
                     ForEach(rows) { row in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(row.orderId).font(.headline)
-                            Text("Driver \(row.driverId) · Retailer \(row.retailerId)").font(.caption)
+                            Text(L10n.format("mobile_supplier.ui.driver_driverid_retailer_retailerid", "\(row.driverId)", "\(row.retailerId)")).font(.caption)
                             if let reason = row.shopClosedReason, !reason.isEmpty {
-                                Text("Reason \(reason)").font(.caption2).foregroundStyle(.secondary)
+                                Text(L10n.format("mobile_supplier.ui.reason_reason_2", "\(reason)")).font(.caption2).foregroundStyle(.secondary)
                             }
                             if let grace = row.graceEndsAt, !grace.isEmpty {
-                                Text("Grace ends \(grace)").font(.caption2).foregroundStyle(.secondary)
+                                Text(L10n.format("mobile_supplier.ui.grace_ends_grace_2", "\(grace)")).font(.caption2).foregroundStyle(.secondary)
                             }
                             if let res = row.shopClosedResolution, !res.isEmpty {
-                                Text("Resolution \(res)").font(.caption2)
+                                Text(L10n.format("mobile_supplier.ui.resolution_res_2", "\(res)")).font(.caption2)
                             }
                             HStack {
-                                Button("Wait") { resolve(row.attemptId, action: "WAIT") }
+                                Button("mobile_supplier.ui.wait") { resolve(row.attemptId, action: "WAIT") }
                                     .disabled(busyId == row.attemptId)
-                                Button("Bypass") { resolve(row.attemptId, action: "BYPASS") }
+                                Button("mobile_supplier.ui.bypass") { resolve(row.attemptId, action: "BYPASS") }
                                     .disabled(busyId == row.attemptId)
-                                Button("Return") { resolve(row.attemptId, action: "RETURN_TO_DEPOT") }
+                                Button("mobile_supplier.ui.return") { resolve(row.attemptId, action: "RETURN_TO_DEPOT") }
                                     .disabled(busyId == row.attemptId)
                             }
                             .buttonStyle(.bordered)
@@ -45,7 +45,7 @@ struct ShopClosedView: View {
                 }
             }
         }
-        .navigationTitle("Shop closed")
+        .navigationTitle("mobile_supplier.ui.shop_closed")
         .task { await load() }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busyId != nil {

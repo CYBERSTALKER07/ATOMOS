@@ -98,7 +98,7 @@ func (s *Service) resolveComplianceSupplier(r *http.Request) (string, bool) {
 		supplierID = strings.TrimSpace(claims.SupplierID)
 	}
 	if supplierID == "" {
-		supplierID = strings.TrimSpace(s.supplierID)
+		supplierID = strings.TrimSpace(s.resolveSupplierScope(r.Context()))
 	}
 	return supplierID, supplierID != ""
 }
@@ -239,6 +239,7 @@ func (s *Service) HandleComplianceExport(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	freezeCurrency, _ := auth.CurrencyFromContext(ctx, supplierID)
 
 	switch format {
 	case "csv":
@@ -279,7 +280,7 @@ func (s *Service) HandleComplianceExport(w http.ResponseWriter, r *http.Request)
 			for _, r := range dash.CreditFreezes {
 				writeCSVBucket("credit_freezes", [][]string{{
 					r.RetailerID, "", r.RetailerID, r.Status,
-					strconv.FormatInt(r.CurrentBalanceMinor, 10), "UZS", r.RiskTier, r.UpdatedAt.UTC().Format(time.RFC3339),
+					strconv.FormatInt(r.CurrentBalanceMinor, 10), freezeCurrency, r.RiskTier, r.UpdatedAt.UTC().Format(time.RFC3339),
 				}})
 			}
 		}
@@ -547,7 +548,9 @@ func (s *Service) listClaimMismatches(ctx context.Context, supplierID string, li
 		}
 		r.OrderStatus = orderStatus
 		if r.Currency == "" {
-			r.Currency = "UZS"
+			if packCur, err := auth.CurrencyFromContext(ctx, supplierID); err == nil {
+				r.Currency = packCur
+			}
 		}
 
 		// 1. Terminal order mismatch

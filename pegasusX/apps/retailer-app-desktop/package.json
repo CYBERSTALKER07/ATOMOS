@@ -1,6 +1,6 @@
 {
   "name": "@pegasusx/retailer-app-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack --port 3001",
@@ -26,7 +26,8 @@
   "dependencies": {
     "@heroui/react": "^3.1.0",
     "@heroui/styles": "^3.1.0",
-    "@pegasusx/api-client": "workspace:*",
+    "@pegasusx/api-core": "workspace:*",
+    "@pegasusx/api-react": "workspace:*",
     "@pegasusx/desktop-bridge": "workspace:*",
     "@pegasusx/desktop-cache": "workspace:*",
     "@pegasusx/explain-ui": "workspace:*",
@@ -44,17 +45,14 @@
     "@tauri-apps/plugin-updater": "^2.9.0",
     "firebase": "^12.12.0",
     "framer-motion": "^12.40.0",
-    "h3-js": "^4.5.0",
     "lucide-react": "^1.7.0",
-    "mapbox-gl": "^3.20.0",
     "maplibre-gl": "^5.19.0",
     "motion": "^12.38.0",
     "next": "15.5.12",
     "qrcode.react": "^4.2.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-map-gl": "^8.1.0",
-    "recharts": "^3.9.1"
+    "react-map-gl": "^8.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -62,7 +60,6 @@
     "@tauri-apps/cli": "^2.10.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

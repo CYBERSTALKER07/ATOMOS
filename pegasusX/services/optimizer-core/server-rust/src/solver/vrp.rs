@@ -180,10 +180,11 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
         }
     }
 
-    let status = if unassigned.is_empty() {
-        SolverStatus::Optimal
+    let status = if routes.is_empty() && !unassigned.is_empty() {
+        SolverStatus::Infeasible
     } else {
-        SolverStatus::Feasible
+        // Nearest-neighbor greedy never proves optimality — report HEURISTIC (P2-2).
+        SolverStatus::Heuristic
     };
 
     info!("VRP solved with status {:?}, unassigned: {}", status, unassigned.len());

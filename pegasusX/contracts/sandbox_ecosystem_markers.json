@@ -1,0 +1,595 @@
+{
+  "description": "Canonical PX_E2E markers for full-ecosystem green pass (configuration + lifecycle + realtime cross-role).",
+  "categories": {
+    "configuration": {
+      "description": "Topology, org-fleet, warehouse/factory locations, fleet CRUD — not order-cycle but required for ops",
+      "markers": [
+        "PX_E2E_TOPOLOGY_EDIT_OK",
+        "PX_E2E_ORG_FLEET_OK",
+        "PX_E2E_WAREHOUSE_FLEET_MGMT_OK",
+        "PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK",
+        "PX_E2E_WAREHOUSE_STOCK_POLICY_OK",
+        "PX_E2E_WAREHOUSE_OPS_POLICY_OK",
+        "PX_E2E_WAREHOUSE_BROADCAST_OPS_OK",
+        "PX_E2E_CHECKOUT_LINE_LIMIT_OK",
+        "PX_E2E_DELIVERY_FEE_PREVIEW_OK",
+        "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK",
+        "PX_E2E_RETAILER_PRICING_OVERRIDE_OK"
+      ]
+    },
+    "order_lifecycle": {
+      "description": "Retailer order → payment → warehouse dispatch → factory supply → payload manifest → driver delivery",
+      "markers": [
+        "PX_E2E_ORDER_OK",
+        "PX_E2E_PAYMENT_OK",
+        "PX_E2E_CHECKOUT_PREVIEW_OK",
+        "PX_E2E_MANUAL_PREORDER_OK",
+        "PX_E2E_DELIVERY_PROPOSAL_OK",
+        "PX_E2E_DELIVERY_PROPOSAL_REJECT_CANCEL_OK",
+        "PX_E2E_CONCURRENT_STOCK_REJECT_OK",
+        "PX_E2E_CHECKOUT_POLICY_GRACE_OK",
+        "PX_E2E_ORDER_ACCEPTANCE_CLOSED_OK",
+        "PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK",
+        "PX_E2E_DISPATCH_CAPACITY_OK",
+        "PX_E2E_WAREHOUSE_ORDER_MUTATION_OK",
+        "PX_E2E_FACTORY_SUPPLY_REQUEST_OK",
+        "PX_E2E_FACTORY_MANIFEST_LIFECYCLE_OK",
+        "PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK",
+        "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
+        "PX_E2E_DELIVERY_OK",
+        "PX_E2E_SHOP_CLOSED_OK",
+        "PX_E2E_SHOP_CLOSED_CANCEL_RELEASE_OK",
+        "PX_E2E_RETURN_GATE_RECEIVE_OK"
+      ]
+    },
+    "realtime_cross_role": {
+      "description": "WebSocket fan-out + Kafka notification inbox across roles",
+      "markers": [
+        "PX_E2E_CROSS_ROLE_WS_OK",
+        "PX_E2E_DESKTOP_WS_OK",
+        "PX_E2E_CROSS_ROLE_DISPATCH_WS_OK",
+        "PX_E2E_NOTIFICATION_INBOX_OK",
+        "PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK",
+        "PX_E2E_TELEMETRY_OK"
+      ]
+    },
+    "role_umbrella": {
+      "description": "Per-role umbrella markers printed at end of SSMR e2e",
+      "markers": [
+        "PX_E2E_WAREHOUSE_OK",
+        "PX_E2E_FACTORY_OK",
+        "PX_E2E_PAYLOAD_OK",
+        "PX_E2E_CATALOG_OK",
+        "PX_E2E_REPLENISH_OK",
+        "PX_E2E_REPLENISH_COLOCATE_OK"
+      ]
+    },
+    "gap_closure": {
+      "description": "Finance gap-closure: cash recon, credit notes, reverse logistics, prefs",
+      "markers": [
+        "PX_E2E_NOTIFICATION_PREFS_OK",
+        "PX_E2E_ROUTE_PERFORMANCE_OK",
+        "PX_E2E_CREDIT_SCORE_NOTIFY_OK",
+        "PX_E2E_CASH_RECON_OK",
+        "PX_E2E_EXCEPTION_RESOLVE_OK",
+        "PX_E2E_CREDIT_NOTE_DRAFT_OK",
+        "PX_E2E_CREDIT_NOTE_OK",
+        "PX_E2E_REVERSE_LOGISTICS_OK",
+        "PX_E2E_REORDER_SUGGESTION_OK",
+        "PX_E2E_GAP_CLOSURE_OK"
+      ]
+    },
+    "multi_tenancy": {
+      "description": "Gate 5 Phase 1 request-scoped tenancy (register freeze, IDOR, outbox partition, tenant rate limits)",
+      "markers": [
+        "PX_E2E_TENANT_REGISTER_FROZEN_OK",
+        "PX_E2E_TENANT_REGISTER_FROZEN_SKIPPED",
+        "PX_E2E_TENANT_ORDER_ISOLATION_OK",
+        "PX_E2E_TENANT_ORDER_ISOLATION_SKIPPED",
+        "PX_E2E_OUTBOX_TENANT_PARTITION_OK",
+        "PX_E2E_OUTBOX_TENANT_PARTITION_SKIPPED",
+        "PX_E2E_TENANT_RATE_LIMIT_OK",
+        "PX_E2E_TENANT_RATE_LIMIT_SKIPPED"
+      ]
+    },
+    "parent_orders": {
+      "description": "Gate 5 Phase 2 multi-supplier cart / ParentOrders (register reopen + split + isolation)",
+      "markers": [
+        "PX_E2E_MULTI_SUPPLIER_REGISTER_OK",
+        "PX_E2E_MULTI_SUPPLIER_REGISTER_SKIPPED",
+        "PX_E2E_PARENT_ORDER_SPLIT_OK",
+        "PX_E2E_PARENT_ORDER_SPLIT_SKIPPED",
+        "PX_E2E_PARENT_ORDER_ISOLATION_OK",
+        "PX_E2E_PARENT_ORDER_ISOLATION_SKIPPED"
+      ]
+    },
+    "global_products": {
+      "description": "Gate 5 / §8.10 Phase 3 GlobalProducts master (GTIN link + fuzzy queue + offers compare)",
+      "markers": [
+        "PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_OK",
+        "PX_E2E_GLOBAL_PRODUCT_GTIN_LINK_SKIPPED",
+        "PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_OK",
+        "PX_E2E_GLOBAL_PRODUCT_FUZZY_QUEUE_SKIPPED",
+        "PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_OK",
+        "PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE_SKIPPED"
+      ]
+    },
+    "multi_org": {
+      "description": "Wave C1 multi-org auth (flag off default; picker/switch when MULTI_ORG_LOGIN_ENABLED)",
+      "markers": [
+        "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+        "PX_E2E_PENDING_ORG_REJECT_OK",
+        "PX_E2E_MULTI_ORG_PICKER_OK",
+        "PX_E2E_MULTI_ORG_PICKER_SKIPPED",
+        "PX_E2E_ORG_SWITCH_OK",
+        "PX_E2E_ORG_SWITCH_SKIPPED",
+        "PX_E2E_MULTI_ORG_AUTH_OK"
+      ]
+    },
+    "next_layer": {
+      "description": "Next-layer L1–L7 markers (flag-gated; SKIPPED when off)",
+      "markers": [
+        "PX_E2E_PAYMENT_CARD_SUCCESS_OK",
+        "PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED",
+        "PX_E2E_PAYMENT_CASH_FALLBACK_OK",
+        "PX_E2E_AUTO_ORDER_DRAFT_OK",
+        "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED",
+        "PX_E2E_AUTO_ORDER_SHADOW_OK",
+        "PX_E2E_AUTO_ORDER_SHADOW_SKIPPED",
+        "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
+        "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED",
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
+        "PX_E2E_OFFLINE_COUNT_CONFLICT_SKIPPED",
+        "PX_E2E_ASSIST_SLA_OK",
+        "PX_E2E_ASSIST_SLA_SKIPPED",
+        "PX_E2E_NEGOTIATION_OK",
+        "PX_E2E_NEGOTIATION_SKIPPED",
+        "PX_E2E_SOLIQ_SANDBOX_OK",
+        "PX_E2E_SOLIQ_SANDBOX_SKIPPED"
+      ]
+    },
+    "partner_integration": {
+      "description": "Gate-3 Partner API keys, /partner/v1 orders, IDOR, outbound webhook ping, export + replay + EDI-lite (SKIPPED until Partner migrations applied)",
+      "markers": [
+        "PX_E2E_PARTNER_KEY_AUTH_OK",
+        "PX_E2E_PARTNER_OAUTH_OK",
+        "PX_E2E_PARTNER_OAUTH_SKIPPED",
+        "PX_E2E_PARTNER_ORDER_CREATE_OK",
+        "PX_E2E_PARTNER_IDOR_DENIED",
+        "PX_E2E_WEBHOOK_DELIVERED_OK",
+        "PX_E2E_WEBHOOK_REPLAY_OK",
+        "PX_E2E_WEBHOOK_REPLAY_SKIPPED",
+        "PX_E2E_PARTNER_EXPORT_OK",
+        "PX_E2E_PARTNER_EXPORT_SKIPPED",
+        "PX_E2E_PARTNER_JOURNALS_OK",
+        "PX_E2E_PARTNER_JOURNALS_SKIPPED",
+        "PX_E2E_PARTNER_EDI_ORDERS_OK",
+        "PX_E2E_PARTNER_EDI_ORDERS_SKIPPED",
+        "PX_E2E_PARTNER_EDI_ORDRSP_OK",
+        "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
+        "PX_E2E_PARTNER_AS2_ORDERS_OK",
+        "PX_E2E_PARTNER_AS2_ORDERS_SKIPPED",
+        "PX_E2E_PARTNER_AS2_ORDRSP_OK",
+        "PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED",
+        "PX_E2E_PARTNER_SKIPPED"
+      ]
+    },
+    "fx_rates": {
+      "description": "Theatre #13 Wave 1: seeded FxRates identity + payment currency mismatch fail-closed (SKIPPED until FxRates migration)",
+      "markers": [
+        "PX_E2E_FX_RATE_SEEDED_OK",
+        "PX_E2E_FX_RATE_SEEDED_SKIPPED",
+        "PX_E2E_CURRENCY_MISMATCH_DENIED",
+        "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
+      ]
+    },
+    "fx_settlement_convert": {
+      "description": "Theatre #13 Wave 2: settlement authority operating_currency_total_minor (SKIPPED until FxRates/payment available)",
+      "markers": [
+        "PX_E2E_FX_SETTLEMENT_CONVERT_OK",
+        "PX_E2E_FX_SETTLEMENT_CONVERT_SKIPPED"
+      ]
+    },
+    "order_currency_picker": {
+      "description": "Theatre #13 Wave 2+: GET /v1/order/currencies + flag-gated allowlist (default off)",
+      "markers": [
+        "PX_E2E_ORDER_CURRENCY_PICKER_OK",
+        "PX_E2E_ORDER_CURRENCY_PICKER_SKIPPED"
+      ]
+    },
+    "gs1_labels": {
+      "description": "§8.9 Wave 2C GS1 SSCC at seal + ZPL label render (flag-gated GS1_LABELS_ENABLED)",
+      "markers": [
+        "PX_E2E_GS1_SSCC_OK",
+        "PX_E2E_GS1_SSCC_SKIPPED",
+        "PX_E2E_GS1_ZPL_OK",
+        "PX_E2E_GS1_ZPL_SKIPPED"
+      ]
+    },
+    "wms_lots": {
+      "description": "§8.7 Wave 1A bin locations + StockLots putaway + FEFO ordering (flag-gated WMS_LOTS_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_PUTAWAY_OK",
+        "PX_E2E_WMS_PUTAWAY_SKIPPED",
+        "PX_E2E_WMS_FEFO_OK",
+        "PX_E2E_WMS_FEFO_SKIPPED"
+      ]
+    },
+    "wms_pick_waves": {
+      "description": "§8.7 Wave 1B PickWaves/PickTasks + payload seal gate (flag-gated WMS_PICK_WAVES_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_PICK_WAVE_OK",
+        "PX_E2E_WMS_PICK_WAVE_SKIPPED",
+        "PX_E2E_WMS_SEAL_GATE_OK",
+        "PX_E2E_WMS_SEAL_GATE_SKIPPED"
+      ]
+    },
+    "wms_cycle_counts": {
+      "description": "§8.7 Wave 1C/PR-4 CycleCounts + apply-on-approve adjustments (flag-gated WMS_CYCLE_COUNTS_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_CYCLE_COUNT_OK",
+        "PX_E2E_WMS_CYCLE_COUNT_SKIPPED",
+        "PX_E2E_WMS_ADJUST_APPLY_OK",
+        "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
+      ]
+    },
+    "wms_cold_chain": {
+      "description": "§8.7 PR-6 TemperatureReadings + quarantine + TEMPERATURE_BREACH auto-raise (flag-gated WMS_COLD_CHAIN_ENABLED)",
+      "markers": [
+        "PX_E2E_WMS_COLD_CHAIN_OK",
+        "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
+        "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
+        "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
+      ]
+    },
+    "optimizer_constraints": {
+      "description": "§8.5 OR-Tools cold-chain vehicle filter via optimizer-core (soft-skip when sidecar absent)",
+      "markers": [
+        "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
+        "PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED"
+      ]
+    },
+    "collections": {
+      "description": "AR dunning step machine + DelinquencyCount + CREDIT_HOLD (flag-gated AR_DUNNING_ENABLED)",
+      "markers": [
+        "PX_E2E_COLLECTIONS_DUNNING_OK",
+        "PX_E2E_COLLECTIONS_DUNNING_SKIPPED"
+      ]
+    },
+    "forecast_accuracy": {
+      "description": "§8.4 ForecastAccuracyDaily WAPE join (flag-gated FORECAST_ACCURACY_ENABLED)",
+      "markers": [
+        "PX_E2E_FORECAST_ACCURACY_OK",
+        "PX_E2E_FORECAST_ACCURACY_SKIPPED"
+      ]
+    },
+    "forecast_algo": {
+      "description": "§8.1 Croston/SES/Holt–Winters baseline writer (flag-gated FORECAST_ALGO_ENABLED)",
+      "markers": [
+        "PX_E2E_FORECAST_ALGO_OK",
+        "PX_E2E_FORECAST_ALGO_SKIPPED"
+      ]
+    },
+    "safety_stock": {
+      "description": "§8.2 service-level safety stock + ReceivedAt / InTransitQty (flag-gated SAFETY_STOCK_V2_ENABLED)",
+      "markers": [
+        "PX_E2E_SAFETY_STOCK_OK",
+        "PX_E2E_SAFETY_STOCK_SKIPPED"
+      ]
+    },
+    "safety_stock_replay": {
+      "description": "§8.2 90-day fill-rate replay legacy vs v2 (flag-gated SAFETY_STOCK_V2_ENABLED)",
+      "markers": [
+        "PX_E2E_SAFETY_STOCK_REPLAY_OK",
+        "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
+      ]
+    },
+    "seasonal_override": {
+      "description": "Theatre #8: seasonal override Multiplier persist + GET echo (SKIPPED until Multiplier migration)",
+      "markers": [
+        "PX_E2E_SEASONAL_OVERRIDE_OK",
+        "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
+      ]
+    },
+    "sandbox_layer_b": {
+      "description": "Layer B sandbox proofs: two register(), cross-pack 422, planned pack 404, cell-eu not live",
+      "markers": [
+        "PX_E2E_SANDBOX_REGISTER_TWICE_OK",
+        "PX_E2E_SANDBOX_REGISTER_TWICE_SKIPPED",
+        "PX_E2E_CROSS_MARKET_DEFERRED_OK",
+        "PX_E2E_CROSS_MARKET_DEFERRED_SKIPPED",
+        "PX_E2E_PLANNED_PACK_CHECKOUT_404_OK",
+        "PX_E2E_PLANNED_PACK_CHECKOUT_404_SKIPPED",
+        "PX_E2E_CELL_EU_NOT_LIVE_OK",
+        "PX_E2E_CELL_EU_NOT_LIVE_SKIPPED"
+      ]
+    }
+  },
+  "required": [
+    "PX_E2E_TOPOLOGY_EDIT_OK",
+    "PX_E2E_ORG_FLEET_OK",
+    "PX_E2E_CROSS_ROLE_WS_OK",
+    "PX_E2E_CROSS_ROLE_DISPATCH_WS_OK",
+    "PX_E2E_ORDER_OK",
+    "PX_E2E_PAYMENT_OK",
+    "PX_E2E_WAREHOUSE_OK",
+    "PX_E2E_WAREHOUSE_DISPATCH_SETTINGS_OK",
+    "PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK",
+    "PX_E2E_WAREHOUSE_FLEET_MGMT_OK",
+    "PX_E2E_WAREHOUSE_FLEET_LIVE_MAP_OK",
+    "PX_E2E_WAREHOUSE_ORDER_MUTATION_OK",
+    "PX_E2E_FACTORY_OK",
+    "PX_E2E_FACTORY_MANIFEST_LIFECYCLE_OK",
+    "PX_E2E_FACTORY_SUPPLY_REQUEST_OK",
+    "PX_E2E_PAYLOAD_OK",
+    "PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK",
+    "PX_E2E_PAYLOAD_DRIVER_GATE_OK",
+    "PX_E2E_PAYLOAD_SEAL_FLOWS_OK",
+    "PX_E2E_REASSIGN_FLOWS_OK",
+    "PX_E2E_DELIVERY_OK",
+    "PX_E2E_TELEMETRY_OK",
+    "PX_E2E_SHOP_CLOSED_OK",
+    "PX_E2E_CATALOG_OK",
+    "PX_E2E_REPLENISH_OK",
+    "PX_E2E_REPLENISH_COLOCATE_OK",
+    "PX_E2E_MANUAL_PREORDER_OK",
+    "PX_E2E_DELIVERY_PROPOSAL_OK",
+    "PX_E2E_DELIVERY_PROPOSAL_REJECT_CANCEL_OK",
+    "PX_E2E_CONCURRENT_STOCK_REJECT_OK",
+    "PX_E2E_CHECKOUT_POLICY_GRACE_OK",
+    "PX_E2E_ORDER_ACCEPTANCE_CLOSED_OK",
+    "PX_E2E_NOTIFICATION_INBOX_OK",
+    "PX_E2E_DISPATCH_CAPACITY_OK",
+    "PX_E2E_DRIVER_EDGES_OK",
+    "PX_E2E_DRIVER_ASSIGN_DETECTION_OK",
+    "PX_E2E_SUPPLIER_OPERATIONS_OK",
+    "PX_E2E_SUPPLIER_IMPORT_WIZARD_OK",
+    "PX_E2E_SINGLE_ORG_LOGIN_UNCHANGED_OK",
+    "PX_E2E_PENDING_ORG_REJECT_OK",
+    "PX_E2E_MULTI_ORG_AUTH_OK",
+    "PX_E2E_CREDIT_PROFILES_OK",
+    "PX_E2E_CLAIMS_IDEMPOTENCY_OK",
+    "PX_E2E_CLAIM_ELIGIBILITY_OK",
+    "PX_E2E_CLAIM_WINDOW_SNAPSHOT_OK",
+    "PX_E2E_CLAIMS_CONCEALED_OK",
+    "PX_E2E_STORE_STOCK_CLAIM_HOLD_OK",
+    "PX_E2E_CLAIMS_REVERSE_OK",
+    "PX_E2E_CLAIM_MEDIA_GCS_OK",
+    "PX_E2E_CLAIMS_MEDIA_TICKET_OK",
+    "PX_E2E_CLAIMS_FILE_OK",
+    "PX_E2E_PARTNER_KEY_AUTH_OK",
+    "PX_E2E_PARTNER_OAUTH_OK",
+    "PX_E2E_PARTNER_ORDER_CREATE_OK",
+    "PX_E2E_PARTNER_IDOR_DENIED",
+    "PX_E2E_WEBHOOK_DELIVERED_OK"
+  ],
+  "plan90": [
+    "PX_E2E_MEIO_NETWORK_OK",
+    "PX_E2E_TOUCHLESS_REPLENISH_OK",
+    "PX_E2E_CONTROL_TOWER_OVERRIDE_OK",
+    "PX_E2E_DEMAND_BASELINE_OK",
+    "PX_E2E_SCENARIO_SANDBOX_OK",
+    "PX_E2E_KG_READ_OK"
+  ],
+  "plan91": [
+    "PX_E2E_SPARSITY_GATE_OK",
+    "PX_E2E_CONFIDENCE_LABEL_OK",
+    "PX_E2E_PLANNING_INGEST_OK",
+    "PX_E2E_PROMO_PL_SIM_OK",
+    "PX_E2E_CLOSED_LOOP_EVAL_OK"
+  ],
+  "optional": [
+    "PX_E2E_NEGOTIATION_SKIPPED",
+    "PX_E2E_DRIVER_FIREBASE_OTP_OK",
+    "PX_E2E_FACTORY_FIREBASE_OTP_OK",
+    "PX_E2E_PAYLOAD_FIREBASE_OTP_OK",
+    "PX_E2E_DOMAIN_TOPIC_DISPATCH_OK",
+    "PX_E2E_PAYME_WEBHOOK_OK",
+    "PX_E2E_CLICK_WEBHOOK_OK",
+    "PX_E2E_GAP_CLOSURE_OK",
+    "PX_E2E_CASH_RECON_OK",
+    "PX_E2E_CREDIT_NOTE_OK",
+    "PX_E2E_REVERSE_LOGISTICS_OK",
+    "PX_E2E_NOTIFICATION_PREFS_OK",
+    "PX_E2E_REORDER_SUGGESTION_OK",
+    "PX_E2E_EXCEPTION_RESOLVE_OK"
+  ],
+  "alternatives": {
+    "negotiation": [
+      "PX_E2E_NEGOTIATION_OK",
+      "PX_E2E_NEGOTIATION_SKIPPED"
+    ],
+    "payment_card": [
+      "PX_E2E_PAYMENT_CARD_SUCCESS_OK",
+      "PX_E2E_PAYMENT_CARD_SUCCESS_SKIPPED",
+      "PX_E2E_PAYMENT_CASH_FALLBACK_OK"
+    ],
+    "auto_order_draft": [
+      "PX_E2E_AUTO_ORDER_DRAFT_OK",
+      "PX_E2E_AUTO_ORDER_DRAFT_SKIPPED"
+    ],
+    "auto_order_shadow": [
+      "PX_E2E_AUTO_ORDER_SHADOW_OK",
+      "PX_E2E_AUTO_ORDER_SHADOW_SKIPPED"
+    ],
+    "claim_quarantine": [
+      "PX_E2E_CLAIM_STORE_QUARANTINE_OK",
+      "PX_E2E_CLAIM_STORE_QUARANTINE_SKIPPED"
+    ],
+    "offline_count": [
+      "PX_E2E_OFFLINE_COUNT_CONFLICT_OK",
+      "PX_E2E_OFFLINE_COUNT_CONFLICT_SKIPPED"
+    ],
+    "assist_sla": [
+      "PX_E2E_ASSIST_SLA_OK",
+      "PX_E2E_ASSIST_SLA_SKIPPED"
+    ],
+    "soliq_sandbox": [
+      "PX_E2E_SOLIQ_SANDBOX_OK",
+      "PX_E2E_SOLIQ_SANDBOX_SKIPPED"
+    ],
+    "multi_org_picker": [
+      "PX_E2E_MULTI_ORG_PICKER_OK",
+      "PX_E2E_MULTI_ORG_PICKER_SKIPPED"
+    ],
+    "multi_org_switch": [
+      "PX_E2E_ORG_SWITCH_OK",
+      "PX_E2E_ORG_SWITCH_SKIPPED"
+    ],
+    "credit_profiles": [
+      "PX_E2E_CREDIT_PROFILES_OK",
+      "PX_E2E_CREDIT_SCORE_NOTIFY_OK"
+    ],
+    "partner_integration": [
+      "PX_E2E_PARTNER_KEY_AUTH_OK",
+      "PX_E2E_PARTNER_OAUTH_OK",
+      "PX_E2E_PARTNER_OAUTH_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_order": [
+      "PX_E2E_PARTNER_ORDER_CREATE_OK",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_idor": [
+      "PX_E2E_PARTNER_IDOR_DENIED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_webhook": [
+      "PX_E2E_WEBHOOK_DELIVERED_OK",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_webhook_replay": [
+      "PX_E2E_WEBHOOK_REPLAY_OK",
+      "PX_E2E_WEBHOOK_REPLAY_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_export": [
+      "PX_E2E_PARTNER_EXPORT_OK",
+      "PX_E2E_PARTNER_EXPORT_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_journals": [
+      "PX_E2E_PARTNER_JOURNALS_OK",
+      "PX_E2E_PARTNER_JOURNALS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_edi_orders": [
+      "PX_E2E_PARTNER_EDI_ORDERS_OK",
+      "PX_E2E_PARTNER_EDI_ORDERS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_edi_ordrsp": [
+      "PX_E2E_PARTNER_EDI_ORDRSP_OK",
+      "PX_E2E_PARTNER_EDI_ORDRSP_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_as2_orders": [
+      "PX_E2E_PARTNER_AS2_ORDERS_OK",
+      "PX_E2E_PARTNER_AS2_ORDERS_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "partner_as2_ordrsp": [
+      "PX_E2E_PARTNER_AS2_ORDRSP_OK",
+      "PX_E2E_PARTNER_AS2_ORDRSP_SKIPPED",
+      "PX_E2E_PARTNER_SKIPPED"
+    ],
+    "fx_rate_seeded": [
+      "PX_E2E_FX_RATE_SEEDED_OK",
+      "PX_E2E_FX_RATE_SEEDED_SKIPPED"
+    ],
+    "currency_mismatch_denied": [
+      "PX_E2E_CURRENCY_MISMATCH_DENIED",
+      "PX_E2E_CURRENCY_MISMATCH_DENIED_SKIPPED"
+    ],
+    "fx_settlement_convert": [
+      "PX_E2E_FX_SETTLEMENT_CONVERT_OK",
+      "PX_E2E_FX_SETTLEMENT_CONVERT_SKIPPED"
+    ],
+    "order_currency_picker": [
+      "PX_E2E_ORDER_CURRENCY_PICKER_OK",
+      "PX_E2E_ORDER_CURRENCY_PICKER_SKIPPED"
+    ],
+    "gs1_sscc": [
+      "PX_E2E_GS1_SSCC_OK",
+      "PX_E2E_GS1_SSCC_SKIPPED"
+    ],
+    "gs1_zpl": [
+      "PX_E2E_GS1_ZPL_OK",
+      "PX_E2E_GS1_ZPL_SKIPPED"
+    ],
+    "wms_putaway": [
+      "PX_E2E_WMS_PUTAWAY_OK",
+      "PX_E2E_WMS_PUTAWAY_SKIPPED"
+    ],
+    "wms_fefo": [
+      "PX_E2E_WMS_FEFO_OK",
+      "PX_E2E_WMS_FEFO_SKIPPED"
+    ],
+    "wms_pick_wave": [
+      "PX_E2E_WMS_PICK_WAVE_OK",
+      "PX_E2E_WMS_PICK_WAVE_SKIPPED"
+    ],
+    "wms_seal_gate": [
+      "PX_E2E_WMS_SEAL_GATE_OK",
+      "PX_E2E_WMS_SEAL_GATE_SKIPPED"
+    ],
+    "wms_cycle_count": [
+      "PX_E2E_WMS_CYCLE_COUNT_OK",
+      "PX_E2E_WMS_CYCLE_COUNT_SKIPPED"
+    ],
+    "wms_adjust_apply": [
+      "PX_E2E_WMS_ADJUST_APPLY_OK",
+      "PX_E2E_WMS_ADJUST_APPLY_SKIPPED"
+    ],
+    "wms_cold_chain": [
+      "PX_E2E_WMS_COLD_CHAIN_OK",
+      "PX_E2E_WMS_COLD_CHAIN_SKIPPED",
+      "PX_E2E_WMS_COLD_CHAIN_BREACH_OK",
+      "PX_E2E_WMS_COLD_CHAIN_BREACH_SKIPPED"
+    ],
+    "optimizer_constraints": [
+      "PX_E2E_OPTIMIZER_CONSTRAINT_OK",
+      "PX_E2E_OPTIMIZER_CONSTRAINT_SKIPPED"
+    ],
+    "collections_dunning": [
+      "PX_E2E_COLLECTIONS_DUNNING_OK",
+      "PX_E2E_COLLECTIONS_DUNNING_SKIPPED"
+    ],
+    "forecast_accuracy": [
+      "PX_E2E_FORECAST_ACCURACY_OK",
+      "PX_E2E_FORECAST_ACCURACY_SKIPPED"
+    ],
+    "forecast_algo": [
+      "PX_E2E_FORECAST_ALGO_OK",
+      "PX_E2E_FORECAST_ALGO_SKIPPED"
+    ],
+    "safety_stock": [
+      "PX_E2E_SAFETY_STOCK_OK",
+      "PX_E2E_SAFETY_STOCK_SKIPPED"
+    ],
+    "safety_stock_replay": [
+      "PX_E2E_SAFETY_STOCK_REPLAY_OK",
+      "PX_E2E_SAFETY_STOCK_REPLAY_SKIPPED"
+    ],
+    "seasonal_override": [
+      "PX_E2E_SEASONAL_OVERRIDE_OK",
+      "PX_E2E_SEASONAL_OVERRIDE_SKIPPED"
+    ],
+    "sandbox_register_twice": [
+      "PX_E2E_SANDBOX_REGISTER_TWICE_OK",
+      "PX_E2E_SANDBOX_REGISTER_TWICE_SKIPPED"
+    ],
+    "cross_market_deferred": [
+      "PX_E2E_CROSS_MARKET_DEFERRED_OK",
+      "PX_E2E_CROSS_MARKET_DEFERRED_SKIPPED"
+    ],
+    "planned_pack_checkout_404": [
+      "PX_E2E_PLANNED_PACK_CHECKOUT_404_OK",
+      "PX_E2E_PLANNED_PACK_CHECKOUT_404_SKIPPED"
+    ],
+    "cell_eu_not_live": [
+      "PX_E2E_CELL_EU_NOT_LIVE_OK",
+      "PX_E2E_CELL_EU_NOT_LIVE_SKIPPED"
+    ]
+  }
+}

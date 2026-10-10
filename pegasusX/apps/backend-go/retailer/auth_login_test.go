@@ -11,9 +11,9 @@ func TestWriteMobileAuthResponse_IncludesConfiguredClaim(t *testing.T) {
 	t.Parallel()
 
 	svc := &Service{
-		supplierID: "sup-1",
-		jwtSecret:  "test-secret",
-		jwtIssuer:  "pegasusx-test",
+		seedSupplierID: "sup-1",
+		jwtSecret:      "test-secret",
+		jwtIssuer:      "pegasusx-test",
 	}
 
 	rec := httptest.NewRecorder()

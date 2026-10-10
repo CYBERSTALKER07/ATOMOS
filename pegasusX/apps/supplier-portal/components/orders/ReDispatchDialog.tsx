@@ -1,8 +1,9 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useEffect, useState, useCallback } from 'react';
-import { ApiError } from '@pegasusx/api-client';
-import { payloadApplyReassignKey, payloadRecommendReassignKey } from '@pegasusx/api-client/idempotency';
+import { ApiError } from '@pegasusx/api-core';
+import { payloadApplyReassignKey, payloadRecommendReassignKey } from '@pegasusx/api-core/idempotency';
 import type { ReassignmentCandidate } from '@pegasusx/types';
 import { createSupplierApi } from '@/lib/api';
 import Icon from '@/components/Icon';
@@ -18,6 +19,7 @@ export type ReDispatchDialogProps = {
 };
 
 export function ReDispatchDialog({ open, orderId, onClose, onSuccess }: ReDispatchDialogProps) {
+  const t = usePortalT();
   const [candidates, setCandidates] = useState<ReassignmentCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export function ReDispatchDialog({ open, orderId, onClose, onSuccess }: ReDispat
     >
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-lg font-semibold">Reassign Order</h2>
+          <h2 className="text-lg font-semibold">{t("supplier_portal.orders.re_dispatch_dialog.text.reassign_order")}</h2>
           <p className="text-sm text-[var(--muted)] mt-1 font-mono">{orderId}</p>
         </div>
         <button
@@ -96,7 +98,7 @@ export function ReDispatchDialog({ open, orderId, onClose, onSuccess }: ReDispat
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Reassignment Type</label>
+        <label className="block text-sm font-medium mb-2">{t("supplier_portal.orders.re_dispatch_dialog.text.reassignment_type")}</label>
         <div className="flex gap-2">
           <button
             type="button"
@@ -146,8 +148,8 @@ export function ReDispatchDialog({ open, orderId, onClose, onSuccess }: ReDispat
         ) : candidates.length === 0 && !error ? (
           <EmptyState
             icon="directions_car"
-            headline="No nearby drivers"
-            body="There are no eligible drivers nearby to take this order right now."
+            headline={t("supplier_portal.residual.text.no_nearby_drivers")}
+            body={t("supplier_portal.residual.text.there_are_no_eligible_drivers_nearby_to_take_this_order_right_no")}
           />
         ) : (
           <div className="space-y-3">

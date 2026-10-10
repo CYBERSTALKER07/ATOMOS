@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.activity
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,11 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierActivityEvent
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,7 +51,7 @@ fun ActivityScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Activity") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )

@@ -518,7 +518,7 @@ func (s *Service) createOrgMember(ctx context.Context, u RetailerUser) error {
 			RetailerID: u.RetailerID,
 			Phone:      u.Phone,
 			Name:       u.Name,
-			SupplierID: s.supplierID,
+			SupplierID: s.resolveSupplierScope(ctx),
 			UserID:     u.UserID,
 		}); err != nil {
 			return err

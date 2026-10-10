@@ -30,7 +30,7 @@ data class ChargebacksUiState(
     val retailerId: String = "",
     val gateway: String = "ADYEN",
     val amount: String = "",
-    val currency: String = "UZS",
+    val currency: String = "",
     val sessionId: String = "",
     val loading: Boolean = false,
     val message: String? = null,

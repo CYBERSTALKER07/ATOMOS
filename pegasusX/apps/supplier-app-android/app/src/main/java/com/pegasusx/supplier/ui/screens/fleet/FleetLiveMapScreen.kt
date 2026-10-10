@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,13 +20,14 @@ import com.pegasusx.supplier.util.SupplierIdempotencyKeys
 import com.pegasusx.supplier.ui.components.FleetLiveMapLibre
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +86,7 @@ fun FleetLiveMapScreen(
                 title = { Text("Live fleet") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -111,6 +114,11 @@ fun FleetLiveMapScreen(
                                 publishing = true
                                 publishStatus = null
                                 val polygon = defaultControlTowerPolygon()
+                                if (polygon == null) {
+                                    publishing = false
+                                    publishStatus = "no pack map center"
+                                    return@launch
+                                }
                                 val scopeId = SupplierIdempotencyKeys.supplierScopeId()
                                 val key = SupplierIdempotencyKeys.controlTowerZoneOverride(
                                     scopeId,
@@ -180,7 +188,7 @@ fun FleetLiveMapScreen(
                                 Text("Active control-tower zones", style = MaterialTheme.typography.titleSmall)
                                 zoneOverrides.take(3).forEach { override ->
                                     Text(
-                                        "${override.action} · expires ${override.ttlExpiresAt.take(19)}",
+                                        stringResource(R.string.mobile_supplier_ui_action_expires_take, override.action, override.ttlExpiresAt.take(19)),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
@@ -216,17 +224,21 @@ fun FleetLiveMapScreen(
     }
 }
 
-private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload = GeoJSONPolygonPayload(
-    coordinates = listOf(
-        listOf(
-            listOf(69.24, 41.31),
-            listOf(69.28, 41.31),
-            listOf(69.28, 41.34),
-            listOf(69.24, 41.34),
-            listOf(69.24, 41.31),
+private fun defaultControlTowerPolygon(): GeoJSONPolygonPayload? {
+    val c = com.pegasus.design.network.sessionMapCenter() ?: return null
+    val d = 0.02
+    return GeoJSONPolygonPayload(
+        coordinates = listOf(
+            listOf(
+                listOf(c.lng - d, c.lat - d),
+                listOf(c.lng + d, c.lat - d),
+                listOf(c.lng + d, c.lat + d),
+                listOf(c.lng - d, c.lat + d),
+                listOf(c.lng - d, c.lat - d),
+            ),
         ),
-    ),
-)
+    )
+}
 
 @Composable
 private fun FleetLiveRouteCard(route: SupplierFleetLiveRoute) {
@@ -234,8 +246,8 @@ private fun FleetLiveRouteCard(route: SupplierFleetLiveRoute) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
             Text(route.driverName ?: route.driverId, style = MaterialTheme.typography.titleMedium)
-            Text("${route.manifestState} · ${route.stopCountLabel(pointCount)}", style = MaterialTheme.typography.bodyMedium)
-            Text("Manifest ${route.manifestId.take(8)}…", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.mobile_supplier_ui_manifeststate_stopcountlabel, route.manifestState, route.stopCountLabel(pointCount)), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.mobile_supplier_ui_manifest_take, route.manifestId.take(8)), style = MaterialTheme.typography.bodySmall)
             if (route.liveLocationAvailable && route.driverLocation != null) {
                 val stale = route.locationStale == true
                 val location = route.driverLocation

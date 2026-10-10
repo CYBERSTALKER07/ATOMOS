@@ -4,6 +4,10 @@ import (
 	"context"
 	"time"
 
+	"cloud.google.com/go/spanner"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -48,10 +52,30 @@ func (s *Service) sweepDeferredPayments(ctx context.Context) error {
 		}
 
 		// Capture the deferred payment.
-		err = s.paymentCapturer.CaptureCardPayment(ctx, o.OrderID, o.TotalMinor, o.Currency)
+		providerRef, err := s.paymentCapturer.CaptureCardPayment(ctx, o.OrderID, o.TotalMinor, o.Currency)
 		if err != nil {
 			s.log.Warn("failed to capture payment for backordered order", "order_id", o.OrderID, "err", err)
 			// Payment failed, we leave it in backorder for now.
+			continue
+		}
+
+		// Record the confirmed capture in the payment ledger. The stable
+		// idempotency key dedupes sweep retries; the unique index on
+		// OrderPaymentLegs.IdempotencyKey turns a duplicate into AlreadyExists.
+		now := s.now()
+		leg := PaymentLeg{
+			OrderID:        o.OrderID,
+			LegID:          s.newID(),
+			Method:         MethodCard,
+			AmountMinor:    o.TotalMinor,
+			Status:         PaymentStatusCaptured,
+			IdempotencyKey: "card-backorder-" + o.OrderID,
+			ProviderRef:    spanner.NullString{StringVal: providerRef, Valid: providerRef != ""},
+			CreatedAt:      now,
+			CapturedAt:     spanner.NullTime{Time: now, Valid: true},
+		}
+		if legErr := s.recordPaymentLegStandalone(ctx, leg); legErr != nil && status.Code(legErr) != codes.AlreadyExists {
+			s.log.ErrorContext(ctx, "failed to record backorder capture leg", "order_id", o.OrderID, "err", legErr)
 			continue
 		}
 

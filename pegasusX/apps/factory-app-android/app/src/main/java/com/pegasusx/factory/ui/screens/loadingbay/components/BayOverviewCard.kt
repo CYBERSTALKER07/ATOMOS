@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.loadingbay.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun BayOverviewCard(
@@ -31,11 +34,11 @@ fun BayOverviewCard(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
-                text = "Loading bay flow",
+                text = stringResource(R.string.mobile_factory_ui_loading_bay_flow),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Track approved transfers, active loading work, and dispatched volume from one queue.",
+                text = stringResource(R.string.mobile_factory_ui_track_approved_transfers_active_loading_work_and_dispatched_volu),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

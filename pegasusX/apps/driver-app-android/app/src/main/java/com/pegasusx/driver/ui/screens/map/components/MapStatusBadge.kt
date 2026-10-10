@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.map.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +16,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.ui.screens.map.MapPhase
+import com.pegasusx.driver.R
 
 @Composable
 fun MapStatusBadge(
@@ -34,7 +37,7 @@ fun MapStatusBadge(
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "${activeOrdersCount} active stop${if (activeOrdersCount != 1) "s" else ""}",
+                text = stringResource(R.string.mobile_driver_ui_activeorderscount_active_stopif_s_else, activeOrdersCount, if (activeOrdersCount != 1) "s" else ""),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )

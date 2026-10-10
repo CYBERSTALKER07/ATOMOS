@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.procurement.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementUiState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun QuantityStepper(
@@ -32,7 +35,7 @@ fun QuantityStepper(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onDecrement, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Outlined.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+            Icon(Icons.Outlined.Remove, contentDescription = stringResource(R.string.mobile_retailer_ui_decrease), modifier = Modifier.size(16.dp))
         }
         Text(
             "$quantity",
@@ -40,7 +43,7 @@ fun QuantityStepper(
             modifier = Modifier.width(28.dp),
         )
         IconButton(onClick = onIncrement, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Outlined.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+            Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.mobile_retailer_ui_increase), modifier = Modifier.size(16.dp))
         }
     }
 }

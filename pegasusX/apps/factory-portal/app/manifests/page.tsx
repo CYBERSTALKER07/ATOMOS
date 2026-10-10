@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
@@ -36,6 +37,7 @@ function stateClass(state: string): string {
 }
 
 export default function ManifestsPage() {
+  const t = usePortalT();
   const [manifests, setManifests] = useState<ManifestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export default function ManifestsPage() {
       onMessage: (payload) => {
         const event = parseFactoryLiveEvent(payload);
         if (!event) return;
-        if (event.type === 'FACTORY_MANIFEST_UPDATE' || event.type === 'FACTORY_TRANSFER_UPDATE') {
+        if (event.type.startsWith('TRANSFER_') || event.type.startsWith('MANIFEST_') || event.type.startsWith('WAREHOUSE_TRANSFER_')) {
           void load();
         }
       },
@@ -91,8 +93,8 @@ export default function ManifestsPage() {
     <PageTransition>
       <PageChrome
         icon="manifests"
-        title="Manifests"
-        description="LEO loading gate — advance manifests through draft, loading, sealed, dispatched, and completed states."
+        title={t("portal.nav.manifests")}
+        description={t("factory_portal.residual.text.leo_loading_gate_advance_manifests_through_draft_loading_sealed_")}
         loading={loading}
         skeletonVariant="table"
         error={error}
@@ -107,20 +109,20 @@ export default function ManifestsPage() {
         }
       >
         <KpiStatGrid columns={4}>
-          <KpiStatCard label="Total manifests" value={manifests.length} sub="Visible in pipeline" />
-          <KpiStatCard label="Active gate" value={activeCount} sub="Draft, loading, or sealed" />
-          <KpiStatCard label="Dispatched" value={dispatchedCount} sub="Outbound this cycle" />
-          <KpiStatCard label="Completed" value={completedCount} sub="Fully closed manifests" />
+          <KpiStatCard label={t("factory_portal.residual.text.total_manifests")} value={manifests.length} sub="Visible in pipeline" />
+          <KpiStatCard label={t("factory_portal.residual.text.active_gate")} value={activeCount} sub="Draft, loading, or sealed" />
+          <KpiStatCard label={t("supplier_portal.dispatch.text.dispatched")} value={dispatchedCount} sub="Outbound this cycle" />
+          <KpiStatCard label={t("portal.page.orders.filter.completed")} value={completedCount} sub="Fully closed manifests" />
         </KpiStatGrid>
 
         {manifests.length === 0 ? (
           <EmptyState
             variant="no-data"
-            headline="No manifests"
-            body="Dispatch transfers or create a manifest to begin the loading gate workflow."
+            headline={t("factory_portal.residual.text.no_manifests")}
+            body={t("factory_portal.residual.text.dispatch_transfers_or_create_a_manifest_to_begin_the_loading_gat")}
           />
         ) : (
-          <PageSection title="Manifest pipeline" description="Open a row to advance lifecycle actions." className="mt-6">
+          <PageSection title={t("factory_portal.manifests.text.manifest_pipeline")} description={t("factory_portal.residual.text.open_a_row_to_advance_lifecycle_actions")} className="mt-6">
             <div className="overflow-x-auto -mx-5 px-5">
               <table className="desk-table w-full text-sm">
                 <thead>

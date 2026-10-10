@@ -1,11 +1,16 @@
 package supplier
 
 import (
+	"bytes"
 	"context"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -83,5 +88,26 @@ func TestBroadcastAdminMessageFansAllRoles(t *testing.T) {
 	}
 	if factoryConn.delivered != 1 {
 		t.Fatalf("factory deliveries = %d want 1", factoryConn.delivered)
+	}
+}
+
+func TestHandleBroadcast_NoSpanner503(t *testing.T) {
+	svc := &Service{
+		supplierID: "sup-1",
+		now:        func() time.Time { return time.Now().UTC() },
+	}
+	body := []byte(`{"title":"Hold","body":"Yard closed","role":"DRIVER"}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/broadcast", bytes.NewReader(body))
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{SupplierID: "sup-1", Role: auth.RoleAdmin, Subject: "admin-1"}))
+	rr := httptest.NewRecorder()
+	svc.HandleBroadcast(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want 503 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestSupplierBroadcastOutboxEventType(t *testing.T) {
+	if events.EventSupplierBroadcast != "SUPPLIER_BROADCAST" {
+		t.Fatalf("event type %q", events.EventSupplierBroadcast)
 	}
 }

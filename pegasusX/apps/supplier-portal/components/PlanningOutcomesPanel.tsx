@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ type PipelineStage = {
 };
 
 export default function PlanningOutcomesPanel() {
+  const t = usePortalT();
   const [demand, setDemand] = useState<SupplierDemandSummaryResponse | null>(null);
   const [meio, setMeio] = useState<SupplierMEIONetworkSummary | null>(null);
   const [policy, setPolicy] = useState<SupplierReplenishmentPolicy | null>(null);
@@ -49,7 +51,7 @@ export default function PlanningOutcomesPanel() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "planning_outcomes_unavailable");
+          setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.planning_outcomes_unavailable"));
         }
       } finally {
         if (!cancelled) setLoading(false);

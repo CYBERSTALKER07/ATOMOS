@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import type { ForecastConfidence } from "@pegasusx/types";
 import { formatBaselineSourceLabel } from "@/lib/forecast-confidence";
 
@@ -17,6 +18,7 @@ function confidenceColor(pct?: number): string {
 }
 
 export function ForecastConfidenceCard({ confidence, updatedAt, stale }: Props) {
+  const t = usePortalT();
   const blocked = Boolean(confidence.blocked_reason || confidence.label === "insufficient_history");
   const low = confidence.low_units ?? 0;
   const high = confidence.high_units ?? low;
@@ -28,7 +30,7 @@ export function ForecastConfidenceCard({ confidence, updatedAt, stale }: Props) 
       style={{ background: "var(--desk-surface-raised)", border: "1px solid var(--desk-border)" }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="md-typescale-title-small">Forecast confidence</span>
+        <span className="md-typescale-title-small">{t("supplier_portal.forecast_confidence_card.text.forecast_confidence")}</span>
         {confidence.baseline_source ? (
           <span className="md-chip text-[10px] uppercase tracking-wide">
             {formatBaselineSourceLabel(confidence.baseline_source)}
@@ -36,8 +38,12 @@ export function ForecastConfidenceCard({ confidence, updatedAt, stale }: Props) 
         ) : null}
       </div>
       {blocked ? (
-        <p className="md-typescale-body-small" style={{ color: "var(--desk-warning)" }}>
-          Insufficient history — predictive forecast blocked
+        <p
+          className="md-typescale-body-small"
+          data-testid="gs-u-forecast-blocked-reason"
+          style={{ color: "var(--desk-warning)" }}
+        >
+          {confidence.blocked_reason || "insufficient_history"}
         </p>
       ) : (
         <p className="md-kpi-value text-xl tabular-nums">

@@ -1,0 +1,406 @@
+name: pegasusx-sandbox
+
+services:
+  spanner-emulator:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    container_name: pegasusx-sandbox-spanner
+    ports:
+      - "9110:9010"
+      - "9120:9020"
+    networks:
+      - pegasusx-sandbox-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: pegasusx-sandbox-redis
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --activedefrag yes
+      --slowlog-log-slower-than 10000
+      --slowlog-max-len 128
+      --tcp-keepalive 60
+      --timeout 300
+      --hz 10
+    ports:
+      - "6389:6379"
+    volumes:
+      - pegasusx-sandbox-redis-data:/data
+    networks:
+      - pegasusx-sandbox-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: pegasusx-sandbox-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    volumes:
+      - pegasusx-sandbox-zookeeper-data:/var/lib/zookeeper/data
+      - pegasusx-sandbox-zookeeper-log:/var/lib/zookeeper/log
+    networks:
+      - pegasusx-sandbox-net
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep -q Mode || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 256M
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pegasusx-sandbox-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_COMPRESSION_TYPE: producer
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - "9094:9094"
+    volumes:
+      - pegasusx-sandbox-kafka-data:/var/lib/kafka/data
+    networks:
+      - pegasusx-sandbox-net
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9094 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    restart: unless-stopped
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: pegasusx-sandbox-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file:
+      - ../.env.sandbox.example
+    networks:
+      - pegasusx-sandbox-net
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_MAIN}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_MAIN}-dlq" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_ORDERS:-pegasusx-orders}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_DISPATCH:-pegasusx-dispatch}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_SPATIAL:-ssmr.events.spatial}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_DEMAND:-pegasusx-demand}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_REALTIME}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_WEBHOOKS}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_FREEZE_LOCKS}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_INVENTORY_IMPORT}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_EXCEPTIONS:-logistics.exceptions.v1}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.signal.ingest.v1 --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.request.v1 --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic planning.forecast.result.v1 --partitions 3 --replication-factor 1
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: pegasusx-sandbox-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ssmr-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "8083:8080"
+    networks:
+      - pegasusx-sandbox-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: unless-stopped
+
+  backend-setup:
+    image: golang:1.25-bookworm
+    container_name: pegasusx-sandbox-backend-setup
+    depends_on:
+      - spanner-emulator
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
+    env_file:
+      - ../.env.sandbox.example
+    environment:
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+    networks:
+      - pegasusx-sandbox-net
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          bash ./scripts/apply_ssmr_spanner_migrations.sh && exit 0
+          echo "spanner bootstrap retry $$attempt"
+          sleep 2
+        done
+        exit 1
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+
+  optimizer-core:
+    build:
+      context: ../services/optimizer-core
+      dockerfile: Dockerfile
+    container_name: pegasusx-sandbox-optimizer
+    environment:
+      INTERNAL_API_KEY: dev-internal-key
+      OPTIMIZER_HTTP_PORT: "8082"
+      OPTIMIZER_SOFT_TIMEOUT_SEC: "5"
+    ports:
+      - "8182:8082"
+    networks:
+      - pegasusx-sandbox-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: unless-stopped
+
+  backend-go:
+    image: golang:1.25-bookworm
+    container_name: pegasusx-sandbox-backend-go
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      backend-setup:
+        condition: service_completed_successfully
+      optimizer-core:
+        condition: service_healthy
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+      - ../.ssmr/gcs-signer-key.json:/run/secrets/gcs-signer-key.json:ro
+      - ../.ssmr/import-uploads:/data/import-uploads
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
+    env_file:
+      - ../.env.sandbox.example
+    environment:
+      HTTP_PORT: 8080
+      PUBLIC_BASE_URL: http://localhost:8180
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      OPTIMIZER_BASE_URL: http://optimizer-core:8082
+      DISPATCH_AI_MIN_STOPS: "1"
+      GCS_BUCKET_NAME: pegasus-503013-ssmr-assets
+      IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcs-signer-key.json
+      INTERNAL_API_KEY: dev-internal-key
+      GLOBAL_PAY_ENV: dev
+      REQUIRE_INFRA_ADAPTERS: "true"
+      RELIABILITY_MIDDLEWARE_ENABLED: "true"
+      FIREBASE_AUTH_ENABLED: "true"
+      FIREBASE_PROJECT_ID: demo-pegasus
+      FIREBASE_AUTH_EMULATOR_HOST: host.docker.internal:9099
+    command:
+      - /bin/sh
+      - -lc
+      - /usr/local/go/bin/go run ./apps/backend-go
+    ports:
+      - "8180:8080"
+    networks:
+      - pegasusx-sandbox-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M
+        reservations:
+          cpus: "0.2"
+          memory: 256M
+    restart: unless-stopped
+
+  ai-worker:
+    image: golang:1.25-bookworm
+    container_name: pegasusx-sandbox-ai-worker
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      backend-setup:
+        condition: service_completed_successfully
+      optimizer-core:
+        condition: service_healthy
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+      - ../.ssmr/import-uploads:/data/import-uploads
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
+    env_file:
+      - ../.env.sandbox.example
+    environment:
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      HEALTH_PORT: 8081
+      INTERNAL_API_KEY: dev-internal-key
+      IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
+    ports:
+      - "8181:8081"
+    command:
+      - /bin/sh
+      - -lc
+      - /usr/local/go/bin/go run ./apps/ai-worker
+    networks:
+      - pegasusx-sandbox-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1024M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+    restart: unless-stopped
+
+networks:
+  pegasusx-sandbox-net:
+    name: pegasusx-sandbox-network
+    driver: bridge
+
+volumes:
+  pegasusx-sandbox-redis-data:
+    name: pegasusx-sandbox-redis-data
+  pegasusx-sandbox-zookeeper-data:
+    name: pegasusx-sandbox-zookeeper-data
+  pegasusx-sandbox-zookeeper-log:
+    name: pegasusx-sandbox-zookeeper-log
+  pegasusx-sandbox-kafka-data:
+    name: pegasusx-sandbox-kafka-data
+  pegasusx-ssmr-go-mod:
+  pegasusx-ssmr-go-build:

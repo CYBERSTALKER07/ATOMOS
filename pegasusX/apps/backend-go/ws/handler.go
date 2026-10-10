@@ -31,15 +31,15 @@ type RegisterConfig struct {
 // RegisterRoutes mounts the WebSocket upgrade handler for the provided hubs.
 // Note: Authentication is enforced upstream by standard middleware. The Upgrade
 // handler extracts auth.Claims from context to determine identity and rooms.
-func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
+func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 	platformSvc *platform.Service,
-	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub *Hub,
+	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub, platformAdminHub *Hub,
 	cfg RegisterConfig,
 ) {
 	if log == nil {
 		log = slog.Default()
 	}
-	hubs := roleHubs{retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub}
+	hubs := roleHubs{retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub, platformAdminHub}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ident, ok := claimsFromRequest(req, jwtSecret)
@@ -66,7 +66,10 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 			ident:    ident,
 			conn:     conn,
 			joinedAt: time.Now(),
+			send:     make(chan []byte, 256),
+			stop:     make(chan struct{}),
 		}
+		go gConn.writePump()
 
 		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs, cfg)
 		if !ok {
@@ -75,13 +78,78 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 			return
 		}
 
-		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, log)
+		replayMissedEvents(req, ident, gConn, hubs, cfg)
+
+		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, hubs, log)
 	})
 
-	if firebaseAuthEnabled && verifier != nil {
-		r.With(auth.FirebaseAuth(verifier)).Get("/v1/ws", wsHandler)
-	} else {
-		r.Get("/v1/ws", wsHandler)
+	r.Get("/v1/ws", wsHandler)
+	r.Get("/v1/events", HandleSSEEvents(log, jwtSecret, platformSvc, hubs, cfg))
+}
+
+func parseReconnectParams(req *http.Request) (int64, string) {
+	if req == nil {
+		return 0, ""
+	}
+	lastEventID := strings.TrimSpace(req.Header.Get("Last-Event-ID"))
+	if lastEventID == "" {
+		lastEventID = strings.TrimSpace(req.URL.Query().Get("last_event_id"))
+	}
+	var sinceSeq int64
+	if seqStr := strings.TrimSpace(req.URL.Query().Get("since_seq")); seqStr != "" {
+		if s, err := strconv.ParseInt(seqStr, 10, 64); err == nil {
+			sinceSeq = s
+		}
+	}
+	return sinceSeq, lastEventID
+}
+
+// replayMissedEvents inspects reconnect headers/params and replays buffered messages from subscribed hubs.
+func replayMissedEvents(req *http.Request, ident auth.Claims, conn Connection, hubs roleHubs, cfg RegisterConfig) {
+	sinceSeq, lastEventID := parseReconnectParams(req)
+	if sinceSeq <= 0 && lastEventID == "" {
+		return
+	}
+	ctx := req.Context()
+	switch ident.Role {
+	case auth.RoleDriver:
+		if hubs.driver != nil && ident.Subject != "" {
+			hubs.driver.ReplaySince(ctx, "driver:"+ident.Subject, sinceSeq, lastEventID, conn)
+		}
+		if hubs.telemetry != nil && ident.Subject != "" {
+			hubs.telemetry.ReplaySince(ctx, "telemetry:driver:"+ident.Subject, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleRetailer:
+		if hubs.retailer != nil {
+			orgID := auth.ResolveRetailerOrgID(ident)
+			if orgID != "" {
+				hubs.retailer.ReplaySince(ctx, "retailer:"+orgID, sinceSeq, lastEventID, conn)
+			}
+		}
+	case auth.RoleAdmin:
+		if hubs.supplier != nil && ident.SupplierID != "" {
+			hubs.supplier.ReplaySince(ctx, "supplier:"+ident.SupplierID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
+		if hubs.warehouse != nil && ident.HomeNodeID != "" {
+			hubs.warehouse.ReplaySince(ctx, "warehouse:"+ident.HomeNodeID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RoleFactoryAdmin, auth.RoleFactory:
+		if hubs.factory != nil && ident.HomeNodeID != "" {
+			hubs.factory.ReplaySince(ctx, "factory:"+ident.HomeNodeID, sinceSeq, lastEventID, conn)
+		}
+	case auth.RolePayload:
+		if hubs.payload != nil {
+			for _, roomID := range []string{ident.Subject, ident.SupplierID} {
+				if roomID != "" {
+					hubs.payload.ReplaySince(ctx, "payload:"+roomID, sinceSeq, lastEventID, conn)
+				}
+			}
+		}
+	case auth.RolePlatformAdmin:
+		if hubs.platformAdmin != nil {
+			hubs.platformAdmin.ReplaySince(ctx, PlatformAdminRoom(), sinceSeq, lastEventID, conn)
+		}
 	}
 }
 
@@ -89,25 +157,47 @@ func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) 
 	if ident, ok := auth.FromContext(req.Context()); ok {
 		return ident, true
 	}
+	if strings.TrimSpace(jwtSecret) == "" {
+		return auth.Claims{}, false
+	}
+	// Native clients (Android/iOS) send Authorization: Bearer with a session JWT.
+	if ident, ok := auth.ParseBearerClaims(req, jwtSecret); ok {
+		if auth.IsPendingOrgSelect(ident) {
+			return auth.Claims{}, false
+		}
+		return ident, true
+	}
+	// Browsers cannot set Authorization on WebSocket(); short-lived tickets only.
 	token := strings.TrimSpace(req.URL.Query().Get("token"))
-	if token == "" || strings.TrimSpace(jwtSecret) == "" {
+	if token == "" {
 		return auth.Claims{}, false
 	}
 	ident, err := auth.Parse(token, jwtSecret)
 	if err != nil {
 		return auth.Claims{}, false
 	}
+	if !auth.IsWSTicket(ident) {
+		return auth.Claims{}, false
+	}
+	jti := strings.TrimSpace(ident.JTI)
+	if jti != "" {
+		revoked, err := auth.GetRevocationStore().IsRevoked(req.Context(), jti)
+		if err != nil || revoked {
+			return auth.Claims{}, false
+		}
+	}
 	return ident, true
 }
 
 type roleHubs struct {
-	retailer  *Hub
-	supplier  *Hub
-	driver    *Hub
-	payload   *Hub
-	warehouse *Hub
-	factory   *Hub
-	telemetry *Hub
+	retailer      *Hub
+	supplier      *Hub
+	driver        *Hub
+	payload       *Hub
+	warehouse     *Hub
+	factory       *Hub
+	telemetry     *Hub
+	platformAdmin *Hub
 }
 
 func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs, cfg RegisterConfig) ([]func(), bool) {
@@ -125,18 +215,30 @@ func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs, c
 		return subscribeWarehouseAdminRooms(ident, conn, hubs, unsubscribes), true
 	case auth.RoleFactoryAdmin, auth.RoleFactory:
 		return subscribeFactoryAdminRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RolePlatformAdmin:
+		return subscribePlatformAdminRooms(ident, conn, hubs, unsubscribes), true
 	default:
 		return nil, false
 	}
 }
 
+func subscribePlatformAdminRooms(_ auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.platformAdmin != nil {
+		unsubscribes = append(unsubscribes, hubs.platformAdmin.Subscribe(PlatformAdminRoom(), conn))
+	}
+	return unsubscribes
+}
+
 func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func(), cfg RegisterConfig) []func() {
-	if hubs.retailer != nil && ident.Subject != "" {
-		unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+ident.Subject, conn))
-		if cfg.RetailerPromoSuppliers != nil {
-			for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), ident.Subject) {
-				room := SupplierPromoRoom(supplierID)
-				unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
+	if hubs.retailer != nil {
+		orgID := auth.ResolveRetailerOrgID(ident)
+		if orgID != "" {
+			unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+orgID, conn))
+			if cfg.RetailerPromoSuppliers != nil {
+				for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), orgID) {
+					room := SupplierPromoRoom(supplierID)
+					unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
+				}
 			}
 		}
 	}
@@ -246,28 +348,51 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 		return []*Hub{hubs.warehouse, hubs.supplier, hubs.telemetry}
 	case auth.RoleFactoryAdmin, auth.RoleFactory:
 		return []*Hub{hubs.factory, hubs.supplier, hubs.telemetry}
+	case auth.RolePlatformAdmin:
+		return []*Hub{hubs.platformAdmin}
 	default:
 		return nil
 	}
 }
 
-func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, log *slog.Logger) {
+func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, hubs roleHubs, log *slog.Logger) {
 	maybeSendOutdated(req, conn, platformSvc, log)
 	done := make(chan struct{})
-	startPingLoop(conn, done, log)
+
+	// Touch presence on initial connect (use Background — req.Context() is
+	// cancelled by the HTTP server after the WebSocket upgrade completes).
+	for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+		if h != nil {
+			h.TouchPresence(context.Background(), conn)
+		}
+	}
+
+	// startPingLoop(conn, done, log) // handled by writePump now
 	defer func() {
 		close(done)
 		for _, unsubscribe := range unsubscribes {
 			unsubscribe()
+		}
+		// Clear presence on disconnect (req.Context() is long dead here).
+		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+			if h != nil {
+				h.ClearPresence(context.Background(), conn)
+			}
 		}
 		conn.close()
 	}()
 	conn.conn.SetReadLimit(1024)
 	_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	conn.conn.SetPongHandler(func(string) error {
+		// Touch presence on pong
+		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
+			if h != nil {
+				h.TouchPresence(context.Background(), conn)
+			}
+		}
 		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
 	})
-	
+
 	limiter := NewIngressRateLimiter()
 	for {
 		if _, _, err := conn.conn.ReadMessage(); err != nil {

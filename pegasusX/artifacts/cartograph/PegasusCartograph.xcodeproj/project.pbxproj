@@ -1,0 +1,328 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04A32BAC1C9B4B1A5FEEF777 /* Iso.swift in Sources */ = {isa = PBXBuildFile; fileRef = B16D3883D4B367AF565C5278 /* Iso.swift */; };
+		39E228E5AD59637709CC7D25 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CF6DCE51D0164BDA40D98C /* Palette.swift */; };
+		48C0F81A3FB15B0EF871CFB3 /* CityModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F41F4C2916A31314A3EED1 /* CityModel.swift */; };
+		4D4F2E9777FEC5880CF365ED /* CityCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 057D76F87B116ECB1DB70F42 /* CityCanvas.swift */; };
+		87E39366C0C0FD9236FEC79F /* SidePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D249CDE3FCEFABDB47515DB /* SidePanel.swift */; };
+		B150E9AA98F85720E97A6B86 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74206A7C5CFB66AC40284147 /* ContentView.swift */; };
+		F3A6A091F64869F64F270E7B /* PegasusCartographApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD827A2A0243D3555A3AAE49 /* PegasusCartographApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		057D76F87B116ECB1DB70F42 /* CityCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityCanvas.swift; sourceTree = "<group>"; };
+		08F41F4C2916A31314A3EED1 /* CityModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityModel.swift; sourceTree = "<group>"; };
+		6D249CDE3FCEFABDB47515DB /* SidePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidePanel.swift; sourceTree = "<group>"; };
+		74206A7C5CFB66AC40284147 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		B16D3883D4B367AF565C5278 /* Iso.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Iso.swift; sourceTree = "<group>"; };
+		C7F4182C97EA21E8BDA346C9 /* PegasusCartograph.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PegasusCartograph.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E6CF6DCE51D0164BDA40D98C /* Palette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Palette.swift; sourceTree = "<group>"; };
+		FD827A2A0243D3555A3AAE49 /* PegasusCartographApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusCartographApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		021C63E189ECB9B5762E9D9D /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				057D76F87B116ECB1DB70F42 /* CityCanvas.swift */,
+				08F41F4C2916A31314A3EED1 /* CityModel.swift */,
+				74206A7C5CFB66AC40284147 /* ContentView.swift */,
+				B16D3883D4B367AF565C5278 /* Iso.swift */,
+				E6CF6DCE51D0164BDA40D98C /* Palette.swift */,
+				FD827A2A0243D3555A3AAE49 /* PegasusCartographApp.swift */,
+				6D249CDE3FCEFABDB47515DB /* SidePanel.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		E908842565416A1A6093F05A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C7F4182C97EA21E8BDA346C9 /* PegasusCartograph.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FE09378EF7B1C97C39AA6959 = {
+			isa = PBXGroup;
+			children = (
+				021C63E189ECB9B5762E9D9D /* Sources */,
+				E908842565416A1A6093F05A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1C49B72B69691BBCD2A4F225 /* PegasusCartograph */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8E334E6B38A5375C405DBA16 /* Build configuration list for PBXNativeTarget "PegasusCartograph" */;
+			buildPhases = (
+				047073601BBA0B491326AF01 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PegasusCartograph;
+			packageProductDependencies = (
+			);
+			productName = PegasusCartograph;
+			productReference = C7F4182C97EA21E8BDA346C9 /* PegasusCartograph.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		328B641B4ECDCD5A27927015 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = A5B722E2BF59F98DF1B5EE1D /* Build configuration list for PBXProject "PegasusCartograph" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = FE09378EF7B1C97C39AA6959;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E908842565416A1A6093F05A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1C49B72B69691BBCD2A4F225 /* PegasusCartograph */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		047073601BBA0B491326AF01 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D4F2E9777FEC5880CF365ED /* CityCanvas.swift in Sources */,
+				48C0F81A3FB15B0EF871CFB3 /* CityModel.swift in Sources */,
+				B150E9AA98F85720E97A6B86 /* ContentView.swift in Sources */,
+				04A32BAC1C9B4B1A5FEEF777 /* Iso.swift in Sources */,
+				39E228E5AD59637709CC7D25 /* Palette.swift in Sources */,
+				F3A6A091F64869F64F270E7B /* PegasusCartographApp.swift in Sources */,
+				87E39366C0C0FD9236FEC79F /* SidePanel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		232C3B4FC9CA90303816695B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		37D57861C782AAF39F4A30D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		CCE38973AAA502E32DEA94CF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pegasus Cartograph";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHighResolutionCapable = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "pegasusX origin/main fbfd134e";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pegasusx.cartograph;
+				PRODUCT_NAME = "Pegasus Cartograph";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		EDC0464867CD1C12CE69C169 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "-";
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pegasus Cartograph";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHighResolutionCapable = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "pegasusX origin/main fbfd134e";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.pegasusx.cartograph;
+				PRODUCT_NAME = "Pegasus Cartograph";
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		8E334E6B38A5375C405DBA16 /* Build configuration list for PBXNativeTarget "PegasusCartograph" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDC0464867CD1C12CE69C169 /* Debug */,
+				CCE38973AAA502E32DEA94CF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A5B722E2BF59F98DF1B5EE1D /* Build configuration list for PBXProject "PegasusCartograph" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				232C3B4FC9CA90303816695B /* Debug */,
+				37D57861C782AAF39F4A30D0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 328B641B4ECDCD5A27927015 /* Project object */;
+}

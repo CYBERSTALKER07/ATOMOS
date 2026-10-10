@@ -13,9 +13,9 @@ struct WorkflowLaunchCard: View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
             Label {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text("Operator workflows")
+                    Text("mobile_factory.ui.operator_workflows")
                         .font(.headline)
-                    Text("Warehouse demand and live manifest overrides are available in native mobile flows.")
+                    Text("mobile_factory.ui.warehouse_demand_and_live_manifest_overrides_are_available_in_na")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

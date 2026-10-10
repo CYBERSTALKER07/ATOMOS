@@ -41,6 +41,7 @@ struct CashCollectionView: View {
                         .frame(width: 28, height: 28)
                         .background(LabTheme.fg.opacity(0.06), in: Circle())
                 }
+                .accessibilityLabel("Close")
                 .disabled(phase == .fiscalizing || isCompleting)
             }
             .padding(.horizontal, LabTheme.s24)
@@ -82,7 +83,7 @@ struct CashCollectionView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.branch")
                             .font(.system(size: 14, weight: .semibold))
-                        Text("Split Payment (Pay Now + Pay Later)")
+                        Text("mobile_driver.ui.split_payment_pay_now_pay_later")
                             .font(.system(size: 14, weight: .semibold))
                     }
                     .foregroundStyle(LabTheme.fg)
@@ -103,7 +104,7 @@ struct CashCollectionView: View {
                 Button { completeWithCash() } label: {
                     HStack(spacing: 8) {
                         if isCompleting { ProgressView().tint(LabTheme.buttonFg) }
-                        Text("Cash Collected — Capture")
+                        Text("mobile_driver.ui.cash_collected_capture")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.buttonFg)
@@ -118,7 +119,7 @@ struct CashCollectionView: View {
                 Button { retryFiscal() } label: {
                     HStack(spacing: 8) {
                         if isCompleting { ProgressView().tint(LabTheme.buttonFg) }
-                        Text("Retry Fiscal")
+                        Text("mobile_driver.ui.retry_fiscal")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.buttonFg)

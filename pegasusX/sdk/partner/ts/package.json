@@ -1,0 +1,12 @@
+{
+  "name": "@pegasusx/partner-sdk",
+  "version": "0.1.0",
+  "description": "Generated TypeScript (fetch) client for the PegasusX partner machine API (contracts/partner.openapi.yaml).",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json || true"
+  }
+}

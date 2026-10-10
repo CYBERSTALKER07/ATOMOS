@@ -24,9 +24,10 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({
   const isRoute = shipment.status === "ON_ROUTE";
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onSelect}
-      className={`bg-[#121417] border rounded-xl p-4 cursor-pointer transition-all duration-200 relative overflow-hidden group ${
+      className={`w-full text-left bg-[#121417] border rounded-xl p-4 cursor-pointer transition-all duration-200 relative overflow-hidden group focus:outline-none focus:ring-2 focus:ring-blue-500 ${
         isSelected
           ? "border-blue-500 ring-2 ring-blue-500/30 bg-[#161a20] shadow-xl shadow-blue-500/10"
           : "border-gray-800/80 hover:border-gray-700 hover:bg-[#16181d]"
@@ -93,6 +94,6 @@ export const ShipmentCard: React.FC<ShipmentCardProps> = ({
           </svg>
         )}
       </div>
-    </div>
+    </button>
   );
 };

@@ -36,9 +36,44 @@ func TestIsRetryableSpannerErr(t *testing.T) {
 
 func TestRunReadWriteTransactionNilClient(t *testing.T) {
 	t.Parallel()
-	if err := RunReadWriteTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	err := RunReadWriteTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return errors.New("should not run")
-	}); err != nil {
-		t.Fatalf("nil client: %v", err)
+	})
+	if err == nil {
+		t.Fatal("expected error for nil client, got nil")
+	}
+	if err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got: %v", err)
+	}
+}
+
+func TestRunChunkedTransactionNilClient(t *testing.T) {
+	t.Parallel()
+	err := RunChunkedTransaction(t.Context(), nil, []string{"item1"}, 1, func(ctx context.Context, txn *spanner.ReadWriteTransaction, chunk []string) error {
+		return errors.New("should not run")
+	})
+	if err == nil {
+		t.Fatal("expected error for nil client in chunked transaction, got nil")
+	}
+	if err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got: %v", err)
+	}
+}
+
+func TestRunReadOnlyTransactionNilClient(t *testing.T) {
+	t.Parallel()
+	err := RunReadOnlyTransaction(t.Context(), nil, func(ctx context.Context, txn *spanner.ReadOnlyTransaction) error {
+		return nil
+	})
+	if err == nil || err.Error() != "spanner: nil client" {
+		t.Fatalf("expected 'spanner: nil client', got %v", err)
+	}
+}
+
+func TestReadOnlyTxnFromContext_Nil(t *testing.T) {
+	t.Parallel()
+	txn := ReadOnlyTxnFromContext(context.Background())
+	if txn != nil {
+		t.Fatalf("expected nil txn from empty context, got %v", txn)
 	}
 }

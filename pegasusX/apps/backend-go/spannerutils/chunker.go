@@ -2,6 +2,7 @@ package spannerutils
 
 import (
 	"context"
+	"fmt"
 
 	"cloud.google.com/go/spanner"
 )
@@ -19,7 +20,7 @@ const DefaultChunkSize = 2000
 // If chunk N fails, chunks 1..N-1 have already committed.
 func RunChunkedTransaction[T any](ctx context.Context, client *spanner.Client, items []T, chunkSize int, fn func(context.Context, *spanner.ReadWriteTransaction, []T) error) error {
 	if client == nil {
-		return nil
+		return fmt.Errorf("spanner: nil client")
 	}
 	if len(items) == 0 {
 		return nil

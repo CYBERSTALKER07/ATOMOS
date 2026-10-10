@@ -52,6 +52,7 @@ export function OrderOpsCard({
   const canProposeDate = canProposeDateOverride ?? flags.canDelay;
   const canReject = canRejectOverride ?? flags.canReject;
   const hasQuickActions = showQuickActions && (onProposeDate || onReject);
+  const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
   function handleCardClick() {
     if (detailOpenMode === 'single') onOpenDetail();
@@ -88,7 +89,13 @@ export function OrderOpsCard({
           <p className="wh-ops-card-id mt-1 truncate">{orderId}</p>
           {meta ? <p className="text-xs text-[var(--muted)] mt-1">{meta}</p> : null}
         </div>
-        <div className="flex items-start gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <div
+          tabIndex={-1}
+          className="flex items-start gap-1 shrink-0"
+          onClick={stopPropagation}
+          role="button"
+          onKeyDown={stopPropagation}
+        >
           <div className="text-right mr-1">
             <p className="wh-ops-card-amount">{amountLabel}</p>
           </div>
@@ -109,8 +116,11 @@ export function OrderOpsCard({
 
       {hasQuickActions ? (
         <div
+          tabIndex={-1}
           className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[var(--border)]"
-          onClick={(e) => e.stopPropagation()}
+          onClick={stopPropagation}
+          role="button"
+          onKeyDown={stopPropagation}
         >
           {onProposeDate ? (
             <button

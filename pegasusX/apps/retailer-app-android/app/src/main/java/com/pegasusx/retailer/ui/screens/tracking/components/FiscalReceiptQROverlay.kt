@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.tracking.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
@@ -29,6 +31,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.pegasusx.retailer.BuildConfig
 import com.pegasusx.retailer.data.model.TrackingOrder
+import com.pegasusx.retailer.R
 
 @Composable
 fun FiscalReceiptQROverlay(
@@ -102,7 +105,7 @@ fun FiscalReceiptQROverlay(
             if (bitmap != null) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Fiscal QR",
+                    contentDescription = stringResource(R.string.mobile_retailer_ui_fiscal_qr),
                     modifier = Modifier.size(220.dp),
                 )
             } else {
@@ -114,7 +117,7 @@ fun FiscalReceiptQROverlay(
             }
             if (order.latestFiscalReceiptId.isNotBlank()) {
                 Text(
-                    "ID · ${order.latestFiscalReceiptId}",
+                    stringResource(R.string.mobile_retailer_ui_id_latestfiscalreceiptid, order.latestFiscalReceiptId),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

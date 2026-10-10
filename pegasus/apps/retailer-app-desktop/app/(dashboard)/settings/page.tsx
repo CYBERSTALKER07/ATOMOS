@@ -82,7 +82,7 @@ function validateProfileFields(
   return errors;
 }
 
-/* ── Toggle Switch ── */
+/* -- Toggle Switch -- */
 function Toggle({
   on,
   onToggle,
@@ -114,7 +114,7 @@ function Toggle({
   );
 }
 
-/* ── Override Row ── */
+/* -- Override Row -- */
 function OverrideRow({
   label,
   enabled,
@@ -162,7 +162,7 @@ function OverrideRow({
   );
 }
 
-/* ── Collapsible Section ── */
+/* -- Collapsible Section -- */
 function OverrideSection<T extends { enabled: boolean }>({
   title,
   icon: Icon,
@@ -264,7 +264,7 @@ function OverrideSection<T extends { enabled: boolean }>({
   );
 }
 
-/* ── Main Page ── */
+/* -- Main Page -- */
 
 export default function SettingsPage() {
   const {
@@ -281,7 +281,7 @@ export default function SettingsPage() {
     return getBrowserStorage()?.getItem("retailer_notif") !== "false";
   });
 
-  /* ── Profile State ── */
+  /* -- Profile State -- */
   const [profileEditing, setProfileEditing] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
@@ -834,13 +834,15 @@ function ProfileField({
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
         <Icon size={14} />
-        <span className="md-typescale-label-small font-light uppercase tracking-widest">
+        <label htmlFor={`setting-${label.toLowerCase().replace(/\s+/g, '-')}`} className="md-typescale-label-small font-light uppercase tracking-widest cursor-pointer">
           {label}
-        </span>
+        </label>
       </div>
       {editing ? (
         <>
           <input
+            id={`setting-${label.toLowerCase().replace(/\s+/g, '-')}`}
+            aria-label={label}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={Boolean(errorMessage)}

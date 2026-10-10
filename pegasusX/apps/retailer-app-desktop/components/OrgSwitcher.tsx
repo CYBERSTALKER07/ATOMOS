@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { Building2, ChevronDown, Loader2 } from "lucide-react";
 import type { RetailerMembershipDTO } from "@pegasusx/types";
@@ -11,6 +12,7 @@ import { getRetailerId } from "@/lib/retailer-profile";
  * On switch: clear-on-switch contract + full page reload into new org.
  */
 export function OrgSwitcher() {
+  const t = usePortalT();
   const [items, setItems] = useState<RetailerMembershipDTO[]>([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,7 +52,7 @@ export function OrgSwitcher() {
       // Hard reload so POS/cart/assist remount with new JWT scope.
       window.location.href = "/dashboard";
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Switch failed");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.switch_failed"));
       setBusy(false);
     }
   }

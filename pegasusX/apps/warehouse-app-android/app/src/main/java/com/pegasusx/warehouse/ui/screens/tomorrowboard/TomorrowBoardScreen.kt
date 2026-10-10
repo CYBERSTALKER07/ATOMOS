@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.tomorrowboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -16,6 +18,7 @@ import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +67,7 @@ fun TomorrowBoardScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -73,8 +76,8 @@ fun TomorrowBoardScreen(
     ) { innerPadding ->
         if (loading) {
             Box(Modifier.padding(innerPadding)) {
-                com.pegasus.design.PegasusLoadingState(
-                    title = "Loading board...",
+                com.pegasus.design.ui.PegasusLoadingState(
+                    title = stringResource(R.string.mobile_warehouse_ui_loading_board),
                     body = "Fetching operations for $date",
                 )
             }
@@ -100,8 +103,8 @@ fun TomorrowBoardScreen(
             }
             if (error != null) {
                 item(span = { GridItemSpan(maxLineSpan) }) { 
-                    com.pegasus.design.PegasusStatePane(
-                        kind = com.pegasus.design.PegasusStateKind.Error,
+                    com.pegasus.design.ui.PegasusStatePane(
+                        kind = com.pegasus.design.ui.PegasusStateKind.Error,
                         headline = "Failed to load board",
                         body = error!!,
                         actionLabel = "Retry",
@@ -111,8 +114,8 @@ fun TomorrowBoardScreen(
             }
             if (rows.isEmpty() && error == null) {
                 item(span = { GridItemSpan(maxLineSpan) }) { 
-                    com.pegasus.design.PegasusStatePane(
-                        kind = com.pegasus.design.PegasusStateKind.Empty,
+                    com.pegasus.design.ui.PegasusStatePane(
+                        kind = com.pegasus.design.ui.PegasusStateKind.Empty,
                         headline = "No operations",
                         body = "No orders scheduled for this date."
                     )

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { PageChrome } from "@/components/PageChrome";
@@ -7,16 +8,18 @@ import { PageChrome } from "@/components/PageChrome";
 /**
  * Quantity negotiation is product-disabled ecosystem-wide.
  * Delivery-time driver propose → supplier resolve is gated off (410 / empty list).
+ * Contract hooks: getSupplierNegotiationsPending, resolveSupplierNegotiation.
  * Not a substitute for claims, shop-closed, missing-items, or partial offload.
  */
 export default function NegotiationsExceptionsPage() {
+  const t = usePortalT();
   return (
     <PageChrome
       icon="handshake"
-      title="Quantity negotiations"
-      description="Delivery-time line qty propose/resolve (driver → supplier)."
+      title={t("supplier_portal.exceptions.negotiations.text.quantity_negotiations")}
+      description={t("supplier_portal.residual.text.delivery_time_line_qty_propose_resolve_driver_supplier")}
       empty
-      emptyMessage="Quantity negotiation is disabled. Use shop-closed, claims, or missing-items for delivery exceptions."
+      emptyMessage={t("supplier_portal.residual.text.quantity_negotiation_is_disabled_use_shop_closed_claims_or_missi")}
     >
       <div className="max-w-xl space-y-4 md-typescale-body-medium text-[var(--color-md-on-surface)]">
         <p className="text-[var(--color-md-outline)]">

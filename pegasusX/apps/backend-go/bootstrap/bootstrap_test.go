@@ -63,6 +63,14 @@ func (f *fakeRedisAdapter) Subscribe(_ context.Context, _ string) (<-chan []byte
 	return ch, cancel, nil
 }
 
+func (f *fakeRedisAdapter) IncrBy(_ context.Context, _ string, _ int64) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeRedisAdapter) DecrBy(_ context.Context, _ string, _ int64) (int64, error) {
+	return 0, nil
+}
+
 type fakeKafkaPublisher struct {
 	closed bool
 }
@@ -241,6 +249,40 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 	}
 	if !dlq.closed {
 		t.Fatalf("expected kafka dlq writer to be closed")
+	}
+}
+
+func TestNewApp_WiresLoginFirebaseVerifier(t *testing.T) {
+	stubRuntimeConstructors(t)
+
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
+		return &fakeRedisAdapter{}, nil
+	}
+	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
+		return &fakeKafkaPublisher{}, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string, _ kafkautil.ClientAuth) (kafkaRuntimeDLQWriter, error) {
+		return &fakeKafkaDLQWriter{}, nil
+	}
+	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
+		return nil, errors.New("skip spanner in firebase wire test")
+	}
+
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.FirebaseAuthEnabled = true
+	cfg.FirebaseProjectID = "demo-project"
+
+	app, err := NewApp(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("NewApp: %v", err)
+	}
+	t.Cleanup(func() { app.Close() })
+	if app.FirebaseVerifier == nil {
+		t.Fatal("App.FirebaseVerifier must be set when flag+project are set")
+	}
+	if app.RetailerService == nil || !app.RetailerService.HasFirebaseVerifier() {
+		t.Fatal("retailer login must receive the same verifier")
 	}
 }
 

@@ -3,10 +3,11 @@ package catalog
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"google.golang.org/api/iterator"
 )
 
@@ -42,8 +43,21 @@ func (e *StockEnricher) Enrich(
 		return out
 	}
 
-	lat, lng, err := loadRetailerCoordinates(ctx, e.client, retailerID)
-	if err != nil || (lat == 0 && lng == 0) {
+	pack, err := auth.CheckoutPackFromContext(ctx)
+	if err != nil {
+		return out
+	}
+	packCountry, err := auth.PackCountryCode(pack)
+	if err != nil {
+		return out
+	}
+
+	activeLocationID := ""
+	if claims, ok := auth.FromContext(ctx); ok {
+		activeLocationID = strings.TrimSpace(claims.ActiveLocationID)
+	}
+	store, err := (&proximity.CoverageStore{Client: e.client}).LoadStore(ctx, retailerID, activeLocationID)
+	if err != nil || (store.Lat == 0 && store.Lng == 0) {
 		return out
 	}
 
@@ -57,13 +71,34 @@ func (e *StockEnricher) Enrich(
 		bySupplier[sid] = append(bySupplier[sid], pid)
 	}
 
+	cov := &proximity.CoverageStore{Client: e.client}
 	for supplierID, productIDs := range bySupplier {
-		warehouseID, warehousePolicy, showCounts, err := resolveNearestWarehouse(ctx, e.client, supplierID, lat, lng)
-		if err != nil || warehouseID == "" {
+		warehouses, listErr := cov.ListWarehouses(ctx, supplierID)
+		if listErr != nil {
 			continue
 		}
-		snaps, err := loadStockSnapshots(ctx, e.client, supplierID, warehouseID, warehousePolicy, showCounts, productIDs)
-		if err != nil {
+		pins, pinErr := cov.ListPins(ctx, supplierID)
+		if pinErr != nil {
+			pins = nil
+		}
+		warehouseID, resolveErr := proximity.ResolveServingWarehouse(packCountry, store, warehouses, pins)
+		if resolveErr != nil || warehouseID == "" {
+			continue
+		}
+		policy := "REJECT"
+		showCounts := false
+		for _, wh := range warehouses {
+			if wh.WarehouseID != warehouseID {
+				continue
+			}
+			if strings.TrimSpace(wh.DefaultOutOfStockPolicy) != "" {
+				policy = wh.DefaultOutOfStockPolicy
+			}
+			showCounts = wh.ShowStockCounts
+			break
+		}
+		snaps, snapErr := loadStockSnapshots(ctx, e.client, supplierID, warehouseID, policy, showCounts, productIDs)
+		if snapErr != nil {
 			continue
 		}
 		for pid, snap := range snaps {
@@ -71,71 +106,6 @@ func (e *StockEnricher) Enrich(
 		}
 	}
 	return out
-}
-
-func loadRetailerCoordinates(ctx context.Context, client *spanner.Client, retailerID string) (float64, float64, error) {
-	row, err := client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Latitude", "Longitude"})
-	if err != nil {
-		return 0, 0, err
-	}
-	var lat, lng spanner.NullFloat64
-	if err := row.Columns(&lat, &lng); err != nil {
-		return 0, 0, err
-	}
-	if lat.Valid && lng.Valid {
-		return lat.Float64, lng.Float64, nil
-	}
-	return 0, 0, nil
-}
-
-func resolveNearestWarehouse(ctx context.Context, client *spanner.Client, supplierID string, lat, lng float64) (string, string, bool, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT WarehouseId, Lat, Lng, CoverageRadiusKm, COALESCE(DefaultOutOfStockPolicy, 'REJECT'),
-		             COALESCE(ShowStockCountsToRetailers, false)
-		      FROM Warehouses
-		      WHERE SupplierId = @supplierId AND IsActive = true`,
-		Params: map[string]any{"supplierId": supplierID},
-	}
-	iter := client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
-	bestID := ""
-	bestPolicy := "REJECT"
-	bestShowCounts := false
-	bestDist := math.MaxFloat64
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return "", "", false, err
-		}
-		var warehouseID, policy string
-		var showCounts bool
-		var wLat, wLng, radius spanner.NullFloat64
-		if err := row.Columns(&warehouseID, &wLat, &wLng, &radius, &policy, &showCounts); err != nil {
-			continue
-		}
-		if !wLat.Valid || !wLng.Valid {
-			continue
-		}
-		dist := haversineKm(lat, lng, wLat.Float64, wLng.Float64)
-		effectiveRadius := math.MaxFloat64
-		if radius.Valid && radius.Float64 > 0 {
-			effectiveRadius = radius.Float64
-		}
-		if dist <= effectiveRadius && dist < bestDist {
-			bestDist = dist
-			bestID = warehouseID
-			bestPolicy = strings.ToUpper(strings.TrimSpace(policy))
-			if bestPolicy == "" {
-				bestPolicy = "REJECT"
-			}
-			bestShowCounts = showCounts
-		}
-	}
-	return bestID, bestPolicy, bestShowCounts, nil
 }
 
 func loadStockSnapshots(
@@ -210,13 +180,4 @@ func resolvePolicy(warehouseDefault, productOverride string) string {
 		return "ACCEPT_BACKORDER"
 	}
 	return "REJECT"
-}
-
-func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
-	const earthRadiusKm = 6371.0
-	dLat := (lat2 - lat1) * math.Pi / 180
-	dLng := (lng2 - lng1) * math.Pi / 180
-	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
-		math.Cos(lat1*math.Pi/180)*math.Cos(lat2*math.Pi/180)*math.Sin(dLng/2)*math.Sin(dLng/2)
-	return earthRadiusKm * 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 }

@@ -1,0 +1,1270 @@
+openapi: 3.0.3
+info:
+  title: PegasusX Partner API
+  version: "1.6.0"
+  description: |
+    Gate-3 machine integration surface (§8.9). Authenticate with a partner API key
+    (`Authorization: Bearer pxk_…`) **or** a short-lived OAuth2 access token from
+    `POST /partner/v1/oauth/token` (`grant_type=client_credentials`; `PartnerApiKeys` are the clients).
+    Human JWT sessions issue keys via `/v1/admin/partner-keys` (supplier aliases under
+    `/v1/supplier/partner-*`, retailer under `/v1/retailer/partner-keys`, SFTP under
+    `/v1/supplier/partner-sftp` and `/v1/admin/partner-sftp`).
+    Wave 2A: bulk exports + webhook ops + SFTP. Wave 2B: EDI-lite. Wave 2C: GS1. Journals + configurable CoA.
+    AS2 transport over EDI-lite (not Drummond-certified).
+    Phase 2: master-data upsert (products/prices/stock), webhook secret rotation, POS demand feed,
+    CONTRL/APERAK + inbound ORDRSP/INVOIC, SFTP host-key pinning, GS1 DataMatrix AI scaffolding.
+servers:
+  - url: https://api-ssmr.pegasusx.app
+    description: SSMR
+paths:
+  /partner/v1/oauth/token:
+    post:
+      summary: OAuth2 client_credentials token
+      operationId: partnerOAuthToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerOAuthTokenRequest"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "#/components/schemas/PartnerOAuthTokenRequest"
+      responses:
+        "200":
+          description: Access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthTokenResponse"
+        "400":
+          description: OAuth error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthError"
+        "401":
+          description: Invalid client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOAuthError"
+  /partner/v1/orders:
+    post:
+      summary: Create order
+      operationId: partnerCreateOrder
+      security:
+        - PartnerApiKey: [orders:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerCreateOrderRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCreateOrderResponse"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/orders/{orderID}:
+    get:
+      summary: Get order (tenant-scoped; IDOR fail-closed)
+      operationId: partnerGetOrder
+      security:
+        - PartnerApiKey: [orders:read]
+      parameters:
+        - name: orderID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order
+        "404":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/catalog:
+    get:
+      summary: Catalog with resolved prices / stock enrichment
+      operationId: partnerListCatalog
+      security:
+        - PartnerApiKey: [catalog:read]
+      parameters:
+        - name: supplier_id
+          in: query
+          schema:
+            type: string
+        - name: retailer_id
+          in: query
+          schema:
+            type: string
+        - name: category_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Products
+  /partner/v1/catalog/products:
+    put:
+      summary: Batch upsert products by external_id (ProductId == external_id)
+      operationId: partnerUpsertProducts
+      security:
+        - PartnerApiKey: [catalog:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerProductUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/catalog/prices:
+    put:
+      summary: Batch upsert list prices by external_id
+      operationId: partnerUpsertPrices
+      security:
+        - PartnerApiKey: [catalog:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerPriceUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/inventory/availability:
+    get:
+      summary: On-hand minus reserved availability
+      operationId: partnerInventoryAvailability
+      security:
+        - PartnerApiKey: [inventory:read]
+      parameters:
+        - name: supplier_id
+          in: query
+          schema:
+            type: string
+        - name: retailer_id
+          in: query
+          schema:
+            type: string
+        - name: product_ids
+          in: query
+          schema:
+            type: string
+          description: Comma-separated product IDs
+      responses:
+        "200":
+          description: Availability rows
+  /partner/v1/inventory/stock:
+    put:
+      summary: Batch set absolute on-hand stock by external_id × warehouse
+      operationId: partnerUpsertStock
+      security:
+        - PartnerApiKey: [inventory:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerStockUpsertRequest"
+      responses:
+        "200":
+          description: Per-row results
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/demand/pos-feed:
+    post:
+      summary: Ingest POS sell-through demand signals (retail chain → planning)
+      operationId: partnerPOSDemandFeed
+      security:
+        - PartnerApiKey: [demand:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerPOSDemandFeedRequest"
+      responses:
+        "202":
+          description: Accepted
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/webhooks:
+    get:
+      summary: List webhook subscriptions (secret omitted; secret_prefix only)
+      operationId: partnerListWebhooks
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      responses:
+        "200":
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriptions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PartnerWebhookSubscription"
+    post:
+      summary: Create outbound webhook subscription
+      operationId: partnerCreateWebhook
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                event_types:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Created (signing_secret shown once)
+  /partner/v1/webhooks/{subscriptionID}:
+    delete:
+      summary: Deactivate webhook subscription
+      operationId: partnerDeactivateWebhook
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deactivated
+  /partner/v1/webhooks/{subscriptionID}/ping:
+    post:
+      summary: Send signed test delivery
+      operationId: partnerPingWebhook
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Delivered
+  /partner/v1/webhooks/{subscriptionID}/rotate-secret:
+    post:
+      summary: Rotate HMAC signing secret (returned once)
+      operationId: partnerRotateWebhookSecret
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: New signing_secret shown once
+        "404":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/webhooks/dead-letter:
+    get:
+      summary: List dead-letter delivery attempts
+      operationId: partnerListDeadLetter
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      responses:
+        "200":
+          description: Attempts
+  /partner/v1/webhooks/dead-letter/{attemptID}/replay:
+    post:
+      summary: Requeue a DEAD delivery attempt (full retry budget)
+      operationId: partnerReplayDeadLetter
+      security:
+        - PartnerApiKey: [webhooks:manage]
+      parameters:
+        - name: attemptID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Requeued as PENDING
+        "404":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/exports:
+    get:
+      summary: List recent export jobs for the key tenant
+      operationId: partnerListExports
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PartnerExportJob"
+    post:
+      summary: Create async bulk export job
+      operationId: partnerCreateExport
+      security:
+        - PartnerApiKey: [exports:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerCreateExportRequest"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerExportJob"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/exports/{jobID}:
+    get:
+      summary: Get export job status (+ signed download_url when SUCCEEDED)
+      operationId: partnerGetExport
+      security:
+        - PartnerApiKey: [exports:read]
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerExportJob"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/coa:
+    get:
+      summary: Get tenant chart of accounts for journals exports
+      operationId: partnerGetCoa
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: Resolved CoA (defaults when unset)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
+    put:
+      summary: Upsert tenant chart of accounts for journals exports
+      operationId: partnerPutCoa
+      security:
+        - PartnerApiKey: [exports:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerCoaMapUpdate"
+      responses:
+        "200":
+          description: Saved CoA
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/as2:
+    post:
+      summary: AS2 receive (EDI-lite ORDERS)
+      description: Unauthenticated RFC 4130 receive; identity via AS2-From/AS2-To + PKCS7. Sync MDN response.
+      operationId: partnerAs2Receive
+      security: []
+      responses:
+        "200":
+          description: Sync MDN (multipart/report)
+        "400":
+          description: Missing AS2 headers
+        "503":
+          description: AS2 disabled
+  /partner/v1/as2/config:
+    get:
+      summary: Get tenant AS2 station config
+      operationId: partnerGetAs2Config
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: AS2 config (no PEM material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
+    put:
+      summary: Upsert tenant AS2 station config
+      operationId: partnerPutAs2Config
+      security:
+        - PartnerApiKey: [exports:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerAs2ConfigUpdate"
+      responses:
+        "200":
+          description: Saved AS2 config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/edi/documents:
+    get:
+      summary: List recent EDI-lite documents for the key tenant
+      operationId: partnerListEdiDocuments
+      security:
+        - PartnerApiKey: [exports:read]
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PartnerEdiDocument"
+  /partner/v1/edi/documents/{documentID}:
+    get:
+      summary: Get EDI document status
+      operationId: partnerGetEdiDocument
+      security:
+        - PartnerApiKey: [exports:read]
+      parameters:
+        - name: documentID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerEdiDocument"
+        "404":
+          $ref: "#/components/responses/Problem"
+  /partner/v1/edi/documents/{documentID}/replay:
+    post:
+      summary: Requeue FAILED/EMITTED EDI document
+      operationId: partnerReplayEdiDocument
+      security:
+        - PartnerApiKey: [exports:read]
+      parameters:
+        - name: documentID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Requeued as RECEIVED
+        "404":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/admin/partner-keys:
+    post:
+      summary: Issue partner API key (human JWT)
+      operationId: issuePartnerApiKey
+      security:
+        - BearerJWT: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenant_type:
+                  type: string
+                  enum: [RETAILER, SUPPLIER]
+                tenant_id:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+                  description: Optional; SANDBOX issues `pxs_*` keys
+      responses:
+        "201":
+          description: Key issued (secret once)
+    get:
+      summary: List partner keys for caller tenant
+      operationId: listPartnerApiKeys
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Keys metadata
+  /v1/admin/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (admin / platform-admin JWT)
+      operationId: revokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-keys:
+    post:
+      summary: Issue partner API key (supplier portal JWT alias)
+      description: Same handler as `/v1/admin/partner-keys`; tenant scoped to the supplier session.
+      operationId: supplierIssuePartnerApiKey
+      security:
+        - BearerJWT: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+      responses:
+        "201":
+          description: Key issued (secret once)
+    get:
+      summary: List partner keys (supplier portal JWT alias)
+      operationId: supplierListPartnerApiKeys
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Keys metadata
+  /v1/supplier/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (supplier portal JWT alias)
+      operationId: supplierRevokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/retailer/partner-keys:
+    post:
+      summary: Issue partner API key (retailer self-serve)
+      operationId: retailerIssuePartnerApiKey
+      security:
+        - BearerJWT: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                environment:
+                  type: string
+                  enum: [LIVE, SANDBOX]
+      responses:
+        "201":
+          description: Key issued (secret once)
+    get:
+      summary: List partner keys (retailer self-serve)
+      operationId: retailerListPartnerApiKeys
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Keys metadata
+  /v1/retailer/partner-keys/{keyID}/revoke:
+    post:
+      summary: Revoke partner API key (retailer self-serve)
+      operationId: retailerRevokePartnerApiKey
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: keyID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Revoked
+        "404":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-sftp:
+    get:
+      summary: Get SFTP destination config (supplier portal JWT)
+      operationId: supplierGetPartnerSftp
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Config (no secret material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
+    put:
+      summary: Upsert SFTP destination config (supplier portal JWT)
+      operationId: supplierPutPartnerSftp
+      security:
+        - BearerJWT: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerSftpConfigUpdate"
+      responses:
+        "200":
+          description: Saved
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/admin/partner-sftp:
+    get:
+      summary: Get SFTP destination config (admin / platform-admin JWT)
+      operationId: adminGetPartnerSftp
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: tenant_type
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Config (no secret material)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
+    put:
+      summary: Upsert SFTP destination config (admin / platform-admin JWT)
+      operationId: adminPutPartnerSftp
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: tenant_type
+          in: query
+          schema:
+            type: string
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PartnerSftpConfigUpdate"
+      responses:
+        "200":
+          description: Saved
+        "422":
+          $ref: "#/components/responses/Problem"
+  /v1/supplier/partner-webhooks:
+    get:
+      summary: List webhooks (supplier portal JWT alias of /partner/v1/webhooks)
+      operationId: supplierListPartnerWebhooks
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Subscriptions
+    post:
+      summary: Create webhook (supplier portal JWT alias)
+      operationId: supplierCreatePartnerWebhook
+      security:
+        - BearerJWT: []
+      responses:
+        "201":
+          description: Created
+  /v1/supplier/partner-webhooks/{subscriptionID}/rotate-secret:
+    post:
+      summary: Rotate webhook secret (supplier portal JWT alias)
+      operationId: supplierRotatePartnerWebhookSecret
+      security:
+        - BearerJWT: []
+      parameters:
+        - name: subscriptionID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rotated
+  /v1/supplier/partner-as2:
+    get:
+      summary: Get AS2 config (supplier portal JWT alias of /partner/v1/as2/config)
+      operationId: supplierGetPartnerAs2
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: AS2 config
+    put:
+      summary: Upsert AS2 config (supplier portal JWT alias)
+      operationId: supplierPutPartnerAs2
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Saved
+  /v1/supplier/partner-coa:
+    get:
+      summary: Get CoA map (supplier portal JWT alias of /partner/v1/coa)
+      operationId: supplierGetPartnerCoa
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: CoA
+    put:
+      summary: Upsert CoA map (supplier portal JWT alias)
+      operationId: supplierPutPartnerCoa
+      security:
+        - BearerJWT: []
+      responses:
+        "200":
+          description: Saved
+components:
+  securitySchemes:
+    PartnerApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: pxk
+      description: Partner API key `pxk_<prefix>_<secret>` (still supported)
+    PartnerAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived token from POST /partner/v1/oauth/token (token_use=partner_access)
+    PartnerOAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: /partner/v1/oauth/token
+          scopes:
+            orders:read: Read orders
+            orders:write: Create orders
+            catalog:read: Read catalog
+            catalog:write: Upsert products and prices
+            inventory:read: Read availability
+            inventory:write: Upsert stock levels
+            demand:write: Push POS demand feeds
+            webhooks:manage: Manage webhooks
+            exports:read: Exports, EDI, CoA
+    BearerJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+  responses:
+    Problem:
+      description: Problem+JSON error
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+  schemas:
+    PartnerCreateOrderRequest:
+      type: object
+      required: [line_items, lat, lng]
+      properties:
+        supplier_id:
+          type: string
+          description: Required for RETAILER keys
+        retailer_id:
+          type: string
+          description: Required for SUPPLIER keys
+        line_items:
+          type: array
+          items:
+            type: object
+            properties:
+              sku:
+                type: string
+              quantity:
+                type: integer
+        h3_cell:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+    PartnerCreateOrderResponse:
+      type: object
+      properties:
+        order_id:
+          type: string
+        status:
+          type: string
+        total_minor:
+          type: integer
+        currency:
+          type: string
+    PartnerWebhookSubscription:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        url:
+          type: string
+        event_types:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        secret_prefix:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    PartnerCreateExportRequest:
+      type: object
+      required: [resource]
+      properties:
+        resource:
+          type: string
+          enum: [orders, invoices, inventory, ledger, journals]
+        format:
+          type: string
+          enum: [csv, json, xml]
+          default: csv
+        from:
+          type: string
+          description: RFC3339 or YYYY-MM-DD
+        to:
+          type: string
+          description: RFC3339 or YYYY-MM-DD
+    PartnerCoaMap:
+      type: object
+      properties:
+        account_ar:
+          type: string
+          example: "62.01"
+        account_revenue:
+          type: string
+          example: "90.01"
+        account_bank_cash:
+          type: string
+          example: "51.01"
+        using_defaults:
+          type: boolean
+        updated_at:
+          type: string
+          format: date-time
+        updated_by:
+          type: string
+    PartnerCoaMapUpdate:
+      type: object
+      properties:
+        account_ar:
+          type: string
+        account_revenue:
+          type: string
+        account_bank_cash:
+          type: string
+    PartnerAs2Config:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        as2_enabled:
+          type: boolean
+        our_as2_id:
+          type: string
+        partner_as2_id:
+          type: string
+        partner_url:
+          type: string
+        our_cert_secret_ref:
+          type: string
+        our_key_secret_ref:
+          type: string
+        partner_cert_secret_ref:
+          type: string
+        sign_required:
+          type: boolean
+        encrypt_required:
+          type: boolean
+    PartnerAs2ConfigUpdate:
+      type: object
+      properties:
+        as2_enabled:
+          type: boolean
+        our_as2_id:
+          type: string
+        partner_as2_id:
+          type: string
+        partner_url:
+          type: string
+        our_cert_secret_ref:
+          type: string
+        our_key_secret_ref:
+          type: string
+        partner_cert_secret_ref:
+          type: string
+        sign_required:
+          type: boolean
+        encrypt_required:
+          type: boolean
+    PartnerOAuthTokenRequest:
+      type: object
+      required: [grant_type, client_secret]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+        client_id:
+          type: string
+          description: PartnerApiKeys.KeyId or KeyPrefix
+        client_secret:
+          type: string
+          description: Full pxk_… plaintext
+        scope:
+          type: string
+          description: Space-separated subset of key scopes
+    PartnerOAuthTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        scope:
+          type: string
+    PartnerOAuthError:
+      type: object
+      properties:
+        error:
+          type: string
+        error_description:
+          type: string
+    PartnerExportJob:
+      type: object
+      properties:
+        job_id:
+          type: string
+        tenant_type:
+          type: string
+        tenant_id:
+          type: string
+        resource:
+          type: string
+        format:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+        row_count:
+          type: integer
+        sftp_status:
+          type: string
+          enum: [SKIPPED, UPLOADED, FAILED]
+        error:
+          type: string
+        download_url:
+          type: string
+        object_path:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+    PartnerSftpConfig:
+      type: object
+      description: SFTP destination metadata (secret material never returned)
+      properties:
+        configured:
+          type: boolean
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        secret_ref:
+          type: string
+          description: GSM secret name (not plaintext)
+        remote_dir:
+          type: string
+        is_active:
+          type: boolean
+        inbound_dir:
+          type: string
+        outbound_dir:
+          type: string
+        archive_dir:
+          type: string
+        edi_enabled:
+          type: boolean
+        host_key_sha256:
+          type: string
+          description: Base64 SHA-256 of SSH host key (pin); required when PARTNER_SFTP_STRICT_HOSTKEY=true
+    PartnerSftpConfigUpdate:
+      type: object
+      description: Upsert body for JWT SFTP config routes
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+        username:
+          type: string
+        secret_ref:
+          type: string
+        remote_dir:
+          type: string
+        inbound_dir:
+          type: string
+        outbound_dir:
+          type: string
+        archive_dir:
+          type: string
+        edi_enabled:
+          type: boolean
+        host_key_sha256:
+          type: string
+    PartnerProductUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, name]
+            properties:
+              external_id:
+                type: string
+              name:
+                type: string
+              category_id:
+                type: string
+              price_minor:
+                type: integer
+              currency:
+                type: string
+              unit:
+                type: string
+              barcode:
+                type: string
+              description:
+                type: string
+              image_url:
+                type: string
+              is_active:
+                type: boolean
+              handling_class:
+                type: string
+    PartnerPriceUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, price_minor]
+            properties:
+              external_id:
+                type: string
+              price_minor:
+                type: integer
+              currency:
+                type: string
+              retailer_id:
+                type: string
+                nullable: true
+    PartnerStockUpsertRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [external_id, warehouse_id, quantity_on_hand]
+            properties:
+              external_id:
+                type: string
+              warehouse_id:
+                type: string
+              quantity_on_hand:
+                type: integer
+              reorder_threshold:
+                type: integer
+    PartnerPOSDemandFeedRequest:
+      type: object
+      required: [lines]
+      properties:
+        store_id:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        lines:
+          type: array
+          items:
+            type: object
+            required: [external_id, quantity]
+            properties:
+              external_id:
+                type: string
+              quantity:
+                type: number
+              unit:
+                type: string
+    PartnerEdiDocument:
+      type: object
+      properties:
+        document_id:
+          type: string
+        direction:
+          type: string
+          enum: [IN, OUT]
+        doc_type:
+          type: string
+          enum: [ORDERS, ORDRSP, DESADV, INVOIC, CONTRL, APERAK]
+        external_doc_id:
+          type: string
+        order_id:
+          type: string
+        status:
+          type: string
+          enum: [RECEIVED, PROCESSED, FAILED, EMITTED]
+        remote_name:
+          type: string
+        object_path:
+          type: string
+        error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time

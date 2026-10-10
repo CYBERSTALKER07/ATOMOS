@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -13,21 +12,33 @@ import (
 )
 
 // Default publisher reliability knobs.
-// MaxAttempts is intentionally very high; WriteTimeout bounds total wait on
-// transient broker/network failures (kafka-go retries within that envelope).
+// WriteTimeout bounds each socket write; MaxAttempts caps kafka-go's internal
+// retries per WriteMessages call. Internal retries MUST stay finite and small:
+// the outbox relay above owns the retry/backoff/DLQ policy, and an unbounded
+// internal retry makes WriteMessages block invisibly (no relay logs), which
+// stalled all event delivery for minutes in SSMR.
 const (
-	defaultKafkaPublishMaxAttempts = math.MaxInt32
-	defaultKafkaPublishWriteTimeout = 30 * time.Second
+	defaultKafkaPublishMaxAttempts  = 3
+	defaultKafkaPublishWriteTimeout = 10 * time.Second
 	defaultKafkaPublishReadTimeout  = 10 * time.Second
 	defaultKafkaPublishBatchTimeout = 250 * time.Millisecond
+	defaultKafkaPublishBatchSize    = 100
+	defaultKafkaPublishBatchBytes   = 1048576 // 1MB
+	defaultKafkaPublishBackoffMin   = 100 * time.Millisecond
+	defaultKafkaPublishBackoffMax   = 1 * time.Second
 )
 
 // KafkaPublisherConfig tunes writer behavior for outbox delivery.
 type KafkaPublisherConfig struct {
-	BatchTimeout time.Duration
-	MaxAttempts  int
-	WriteTimeout time.Duration
-	ReadTimeout  time.Duration
+	BatchTimeout    time.Duration
+	BatchSize       int
+	BatchBytes      int64
+	Compression     kafka.Compression
+	WriteBackoffMin time.Duration
+	WriteBackoffMax time.Duration
+	MaxAttempts     int
+	WriteTimeout    time.Duration
+	ReadTimeout     time.Duration
 	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH = Managed Kafka SASL_SSL.
 	Auth kafkautil.ClientAuth
 }
@@ -35,6 +46,21 @@ type KafkaPublisherConfig struct {
 func (c *KafkaPublisherConfig) applyDefaults() {
 	if c.BatchTimeout <= 0 {
 		c.BatchTimeout = defaultKafkaPublishBatchTimeout
+	}
+	if c.BatchSize <= 0 {
+		c.BatchSize = defaultKafkaPublishBatchSize
+	}
+	if c.BatchBytes <= 0 {
+		c.BatchBytes = defaultKafkaPublishBatchBytes
+	}
+	if c.Compression == 0 {
+		c.Compression = kafka.Snappy
+	}
+	if c.WriteBackoffMin <= 0 {
+		c.WriteBackoffMin = defaultKafkaPublishBackoffMin
+	}
+	if c.WriteBackoffMax <= 0 {
+		c.WriteBackoffMax = defaultKafkaPublishBackoffMax
 	}
 	if c.MaxAttempts <= 0 {
 		c.MaxAttempts = defaultKafkaPublishMaxAttempts
@@ -53,6 +79,7 @@ func (c *KafkaPublisherConfig) applyDefaults() {
 //   - RequiredAcks=all (broker ISR ack)
 //   - High MaxAttempts + WriteTimeout (retry until delivery window expires)
 //   - Hash balancer on aggregate key (per-entity order)
+//   - Snappy compression for JSON payload throughput
 //   - Sync writes (Async=false)
 //   - AllowAutoTopicCreation=false (topics owned by Strimzi CRDs)
 //
@@ -80,6 +107,11 @@ func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*Kaf
 		Addr:                   kafka.TCP(brokers...),
 		RequiredAcks:           kafka.RequireAll,
 		BatchTimeout:           cfg.BatchTimeout,
+		BatchSize:              cfg.BatchSize,
+		BatchBytes:             cfg.BatchBytes,
+		Compression:            cfg.Compression,
+		WriteBackoffMin:        cfg.WriteBackoffMin,
+		WriteBackoffMax:        cfg.WriteBackoffMax,
 		MaxAttempts:            cfg.MaxAttempts,
 		WriteTimeout:           cfg.WriteTimeout,
 		ReadTimeout:            cfg.ReadTimeout,
@@ -94,6 +126,11 @@ func NewKafkaPublisherFromCSV(brokersCSV string, cfg KafkaPublisherConfig) (*Kaf
 // Publish writes a single message to a topic. Key should be aggregate root id
 // bytes to preserve per-entity ordering.
 func (p *KafkaPublisher) Publish(ctx context.Context, topic string, key []byte, value []byte) error {
+	return p.PublishWithHeaders(ctx, topic, key, value, nil)
+}
+
+// PublishWithHeaders writes with optional Kafka headers (event_id for consumer dedupe).
+func (p *KafkaPublisher) PublishWithHeaders(ctx context.Context, topic string, key []byte, value []byte, headers map[string][]byte) error {
 	if p == nil || p.writer == nil {
 		return fmt.Errorf("kafka publisher: nil writer")
 	}
@@ -106,11 +143,31 @@ func (p *KafkaPublisher) Publish(ctx context.Context, topic string, key []byte, 
 		Value: value,
 		Time:  time.Now().UTC(),
 	}
-	if traceID := traceIDFromPayload(value); traceID != "" {
-		msg.Headers = []kafka.Header{{Key: "trace_id", Value: []byte(traceID)}}
+	var hdrs []kafka.Header
+	hasTraceID := false
+	for k, v := range headers {
+		trimmedKey := strings.TrimSpace(k)
+		if trimmedKey == "" || len(v) == 0 {
+			continue
+		}
+		if strings.EqualFold(trimmedKey, "trace_id") {
+			hasTraceID = true
+		}
+		hdrs = append(hdrs, kafka.Header{Key: trimmedKey, Value: v})
 	}
-	return p.writer.WriteMessages(ctx, msg)
+	if !hasTraceID {
+		if traceID := traceIDFromPayload(value); traceID != "" {
+			hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+		}
+	}
+	msg.Headers = hdrs
+
+	start := time.Now()
+	err := p.writer.WriteMessages(ctx, msg)
+	RecordProducerPublish(topic, len(value), time.Since(start).Seconds(), err)
+	return err
 }
+
 
 func traceIDFromPayload(value []byte) string {
 	var envelope struct {

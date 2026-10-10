@@ -1,10 +1,11 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
-import { ApiError } from '@pegasusx/api-client';
+import { ApiError, moneyCurrency } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';
@@ -35,6 +36,7 @@ function formatMoney(minor: number, currency: string) {
 }
 
 export default function SupplierOrderDetailPage() {
+  const t = usePortalT();
   const params = useParams();
   const router = useRouter();
   const { push: toast } = useToast();
@@ -123,7 +125,7 @@ export default function SupplierOrderDetailPage() {
 
   if (!loading && !listRow && !detail) {
     return (
-      <PageChrome icon="orders" title="Order not found" description="This order is not visible in your supplier scope.">
+      <PageChrome icon="orders" title={t("order.error.not_found")} description={t("supplier_portal.residual.text.this_order_is_not_visible_in_your_supplier_scope")}>
         <Link href="/orders" className="md-btn md-btn-tonal inline-flex items-center gap-1.5 px-4 py-2">
           <Icon name="arrow_back" size={16} /> Back to orders
         </Link>
@@ -133,14 +135,14 @@ export default function SupplierOrderDetailPage() {
 
   const retailerLabel = detail?.retailer_name || listRow?.retailer_id || '—';
   const totalMinor = detail?.total_minor ?? listRow?.total_minor ?? 0;
-  const currency = listRow?.currency ?? 'UZS';
+  const currency = moneyCurrency(listRow?.currency);
   const totalUzs = detail?.total_uzs;
 
   return (
     <PageChrome
       icon="orders"
       title={`Order ${orderId.slice(0, 8)}…`}
-      description="Supplier-scoped order detail with warehouse admin actions when available."
+      description={t("supplier_portal.residual.text.supplier_scoped_order_detail_with_warehouse_admin_actions_when_a")}
       loading={loading}
       actions={
         <Link href="/orders" className="md-btn md-btn-outlined inline-flex items-center gap-1.5 px-3 py-1.5">
@@ -152,15 +154,15 @@ export default function SupplierOrderDetailPage() {
         <div className="md-card p-5 space-y-4">
           <div className="flex justify-between gap-4 flex-wrap">
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Retailer</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</p>
               <p className="font-medium">{retailerLabel}</p>
             </div>
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Status</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.compliance.text.status")}</p>
               <OrderStateChip state={state} />
             </div>
             <div>
-              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">Total</p>
+              <p className="md-typescale-label-medium text-[var(--color-md-outline)]">{t("supplier_portal.orders._id_.text.total")}</p>
               <p className="font-mono tabular-nums">
                 {totalUzs != null
                   ? new Intl.NumberFormat('uz-UZ').format(totalUzs)
@@ -206,10 +208,36 @@ export default function SupplierOrderDetailPage() {
               </button>
             </div>
           )}
+          {state === 'AWAITING_PAYMENT' && (
+            <div className="mt-4 p-4 rounded-xl border border-[var(--color-md-error)]/30 bg-[var(--color-md-error)]/10">
+              <p className="text-sm font-semibold text-[var(--color-md-error)] mb-1">
+                Emergency Payment Bypass
+              </p>
+              <p className="text-xs text-[var(--color-md-outline)] mb-3">
+                Generate bypass code for driver if POS terminal failed.
+              </p>
+              <button
+                type="button"
+                className="md-btn md-btn-outlined text-sm px-4 py-2"
+                style={{ color: 'var(--color-md-error)', borderColor: 'var(--color-md-error)' }}
+                disabled={acting}
+                onClick={() =>
+                  runMutation('Payment bypass token generated', async () => {
+                    // @ts-ignore
+                    const res = await supplierApi.issueSupplierPaymentBypass(orderId);
+                    toast(`Token: ${res.bypass_token}`, 'success');
+                    return res;
+                  })
+                }
+              >
+                Issue Bypass Token
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="md-card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">Status history</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[var(--color-md-outline)] mb-3">{t("supplier_portal.orders._id_.text.status_history")}</h2>
           <OrderTimelinePanel orderId={orderId} />
         </div>
 

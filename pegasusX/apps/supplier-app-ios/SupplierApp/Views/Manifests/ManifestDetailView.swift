@@ -22,7 +22,7 @@ struct ManifestDetailView: View {
                 SupplierEmptyView(title: "Not found", message: "Manifest could not be loaded.")
             }
         }
-        .navigationTitle("Manifest")
+        .navigationTitle("warehouse_portal.manifests.text.manifest")
         .task { await load() }
         .onChange(of: realtimeHub.reconnectEpoch) { _, _ in
             if busy {
@@ -41,9 +41,9 @@ struct ManifestDetailView: View {
             }
             Section("Summary") {
                 Text(detail.manifestId).font(.caption.monospaced())
-                Text("\(detail.status) · \(detail.ordersCount) orders")
+                Text(L10n.format("mobile_supplier.ui.status_orderscount_orders", "\(detail.status)", "\(detail.ordersCount)"))
                 Text(detail.driverName.isEmpty ? (detail.driverId ?? "—") : detail.driverName)
-                if let plate = detail.vehiclePlate { Text("Vehicle \(plate)") }
+                if let plate = detail.vehiclePlate { Text(L10n.format("mobile_supplier.ui.vehicle_plate_2", "\(plate)")) }
             }
             if state == "DRAFT" {
                 Section {
@@ -54,9 +54,9 @@ struct ManifestDetailView: View {
                 }
             }
             if state == "LOADING" {
-                Section("Inject order") {
-                    TextField("Order ID", text: $injectOrderId)
-                    Button("Inject order") {
+                Section("mobile_supplier.ui.inject_order") {
+                    TextField("supplier_portal.admin.control_center.field.order_id", text: $injectOrderId)
+                    Button("mobile_supplier.ui.inject_order") {
                         Task {
                             let orderId = injectOrderId.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !orderId.isEmpty else { return }

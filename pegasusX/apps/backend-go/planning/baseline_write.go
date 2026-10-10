@@ -34,7 +34,13 @@ func WriteBaselineWithOutbox(ctx context.Context, client *spanner.Client, now ti
 	if in.ForecastDate.IsZero() {
 		in.ForecastDate = now.UTC().Truncate(24 * time.Hour)
 	}
-	if in.LowUnits == 0 && in.HighUnits == 0 && in.BaselineQty > 0 {
+	// ±10% only when bands unset and not an algo write (algo supplies residual quantiles).
+	algoSource := in.BaselineSource == BaselineSourceCroston ||
+		in.BaselineSource == BaselineSourceHoltWinters ||
+		in.BaselineSource == BaselineSourceSES ||
+		in.BaselineSource == BaselineSourceMixed ||
+		in.Source == "forecast_algo"
+	if in.LowUnits == 0 && in.HighUnits == 0 && in.BaselineQty > 0 && !algoSource {
 		margin := int64(float64(in.BaselineQty) * 0.1)
 		if margin < 1 {
 			margin = 1

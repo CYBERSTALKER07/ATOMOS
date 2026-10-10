@@ -1,8 +1,9 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { retailerSetupKey } from "@pegasusx/api-client";
+import { retailerSetupKey } from "@pegasusx/api-core";
 import { getRetailerId } from "@/lib/retailer-profile";
 import { PortalField, PortalInput, PortalActions, FormAlert } from "@/components/portal";
 import { SETUP_TAX_KEY } from "@/components/setup/constants";
@@ -16,6 +17,7 @@ function getCookie(name: string) {
 }
 
 export default function SetupAddressPage() {
+  const t = usePortalT();
   const router = useRouter();
   const [taxId, setTaxId] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
@@ -84,7 +86,7 @@ export default function SetupAddressPage() {
       sessionStorage.removeItem(SETUP_TAX_KEY);
       window.location.href = "/dashboard";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Setup failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.billing_setup.error.setup_failed"));
       setSubmitting(false);
     }
   }
@@ -92,13 +94,13 @@ export default function SetupAddressPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="setup-form-title">Delivery addresses</h1>
-        <p className="setup-form-sub">Where should we bill and deliver your orders?</p>
+        <h1 className="setup-form-title">{t("retailer_desktop.setup.address.text.delivery_addresses")}</h1>
+        <p className="setup-form-sub">{t("retailer_desktop.setup.address.text.where_should_we_bill_and_deliver_your_orders")}</p>
       </div>
 
       {error ? <FormAlert variant="error">{error}</FormAlert> : null}
 
-      <PortalField id="billing-address" label="Billing address">
+      <PortalField id="billing-address" label={t("retailer_desktop.residual.text.billing_address")}>
         <PortalInput
           id="billing-address"
           value={billingAddress}
@@ -107,7 +109,7 @@ export default function SetupAddressPage() {
         />
       </PortalField>
 
-      <PortalField id="shipping-address" label="Shipping address (default)">
+      <PortalField id="shipping-address" label={t("retailer_desktop.residual.text.shipping_address_default")}>
         <PortalInput
           id="shipping-address"
           value={shippingAddress}
@@ -117,16 +119,16 @@ export default function SetupAddressPage() {
       </PortalField>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <PortalField id="city" label="City">
+        <PortalField id="city" label={t("supplier_portal.analytics.demand.signals.text.city")}>
           <PortalInput id="city" value={city} onChange={(e) => setCity(e.target.value)} />
         </PortalField>
-        <PortalField id="postal" label="Postal code" optional>
+        <PortalField id="postal" label={t("retailer_desktop.residual.text.postal_code")} optional>
           <PortalInput id="postal" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} />
         </PortalField>
       </div>
 
       <PortalActions
-        back={{ label: "Back", onClick: () => router.push("/setup/tax") }}
+        back={{ label: t("common.action.back"), onClick: () => router.push("/setup/tax") }}
         primary={{ label: submitting ? "Saving…" : "Complete setup", onClick: handleSubmit, loading: submitting }}
       />
     </div>

@@ -11,7 +11,7 @@ struct RequestRescueSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Rescue Reason")) {
+                Section(header: Text("mobile_driver.ui.rescue_reason")) {
                     Picker("Reason", selection: $reason) {
                         ForEach(reasons, id: \.self) {
                             Text($0)
@@ -20,15 +20,15 @@ struct RequestRescueSheet: View {
                     .pickerStyle(.menu)
                 }
                 
-                Section(header: Text("Additional Notes")) {
-                    TextField("Optional details...", text: $note)
+                Section(header: Text("mobile_driver.ui.additional_notes")) {
+                    TextField("mobile_driver.ui.optional_details", text: $note)
                 }
                 
                 Button(action: submitRescue) {
                     if isSubmitting {
                         ProgressView()
                     } else {
-                        Text("Request Rescue")
+                        Text("mobile_driver.ui.request_rescue")
                             .frame(maxWidth: .infinity)
                             .foregroundStyle(.white)
                     }
@@ -38,11 +38,11 @@ struct RequestRescueSheet: View {
                 .cornerRadius(10)
                 .disabled(isSubmitting)
             }
-            .navigationTitle("Request Rescue")
+            .navigationTitle("mobile_driver.ui.request_rescue")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
             }
         }

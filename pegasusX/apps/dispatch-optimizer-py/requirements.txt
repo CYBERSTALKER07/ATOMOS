@@ -1,0 +1,5 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+confluent-kafka==2.3.0
+ortools==9.8.3296
+python-dotenv==1.0.0

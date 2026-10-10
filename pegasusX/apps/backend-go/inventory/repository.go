@@ -7,6 +7,9 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 // Level mirrors the InventoryLevels Spanner row.
@@ -140,7 +143,26 @@ func (r *SpannerRepository) Upsert(ctx context.Context, l Level) error {
 			"Version":          l.Version,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		aggID := l.WarehouseID
+		if aggID == "" {
+			aggID = l.InventoryID
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, aggID, events.TopicMain, map[string]any{
+			"type":         events.EventInventoryQuantityUpdated,
+			"inventory_id": l.InventoryID,
+			"warehouse_id": l.WarehouseID,
+			"supplier_id":  l.SupplierID,
+			"product_id":   l.ProductID,
+			"quantity":     l.QuantityOnHand,
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("upsert inventory %s: %w", l.InventoryID, err)
@@ -149,15 +171,17 @@ func (r *SpannerRepository) Upsert(ctx context.Context, l Level) error {
 }
 
 // AdjustStock adds delta to QuantityOnHand with optimistic concurrency.
+// B4: emits INVENTORY_QUANTITY_UPDATED in the same RW txn (supplier inventory plane).
 func (r *SpannerRepository) AdjustStock(ctx context.Context, inventoryID string, delta int64, expectedVersion int64) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, readErr := txn.ReadRow(ctx, "InventoryLevels", spanner.Key{inventoryID},
-			[]string{"QuantityOnHand", "Version"})
+			[]string{"QuantityOnHand", "Version", "ProductId", "WarehouseId", "SupplierId"})
 		if readErr != nil {
 			return fmt.Errorf("read inventory %s: %w", inventoryID, readErr)
 		}
 		var onHand, version int64
-		if err := row.Columns(&onHand, &version); err != nil {
+		var productID, warehouseID, supplierID string
+		if err := row.Columns(&onHand, &version, &productID, &warehouseID, &supplierID); err != nil {
 			return fmt.Errorf("scan inventory %s: %w", inventoryID, err)
 		}
 		if version != expectedVersion {
@@ -165,7 +189,9 @@ func (r *SpannerRepository) AdjustStock(ctx context.Context, inventoryID string,
 		}
 		newOnHand := onHand + delta
 		if newOnHand < 0 {
-			newOnHand = 0
+			// Fail loudly: silently clamping negative stock to zero hides
+			// oversells and corrupts availability math downstream.
+			return fmt.Errorf("insufficient stock for %s: on_hand %d + delta %d would go negative", inventoryID, onHand, delta)
 		}
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":    inventoryID,
@@ -173,7 +199,28 @@ func (r *SpannerRepository) AdjustStock(ctx context.Context, inventoryID string,
 			"Version":        version + 1,
 			"UpdatedAt":      spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		// Fanout key: warehouse when present (WMS room); else inventory id.
+		aggID := warehouseID
+		if aggID == "" {
+			aggID = inventoryID
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, aggID, events.TopicMain, map[string]any{
+			"type":         events.EventInventoryQuantityUpdated,
+			"inventory_id": inventoryID,
+			"warehouse_id": warehouseID,
+			"supplier_id":  supplierID,
+			"product_id":   productID,
+			"delta":        delta,
+			"quantity":     newOnHand,
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("adjust stock %s: %w", inventoryID, err)
@@ -185,28 +232,51 @@ func (r *SpannerRepository) AdjustStock(ctx context.Context, inventoryID string,
 func (r *SpannerRepository) ReserveForOrder(ctx context.Context, inventoryID string, quantity int64, expectedVersion int64) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, readErr := txn.ReadRow(ctx, "InventoryLevels", spanner.Key{inventoryID},
-			[]string{"QuantityOnHand", "QuantityReserved", "Version"})
+			[]string{"QuantityOnHand", "QuantityReserved", "Version", "WarehouseId", "SupplierId", "ProductId"})
 		if readErr != nil {
 			return fmt.Errorf("read inventory %s: %w", inventoryID, readErr)
 		}
 		var onHand, reserved, version int64
-		if err := row.Columns(&onHand, &reserved, &version); err != nil {
+		var warehouseID, supplierID, productID string
+		if err := row.Columns(&onHand, &reserved, &version, &warehouseID, &supplierID, &productID); err != nil {
 			return fmt.Errorf("scan inventory %s: %w", inventoryID, err)
 		}
 		if version != expectedVersion {
 			return fmt.Errorf("inventory %s version conflict: expected %d got %d", inventoryID, expectedVersion, version)
 		}
-		if onHand < quantity {
-			return fmt.Errorf("inventory %s insufficient stock: %d available, %d requested", inventoryID, onHand, quantity)
+		available := onHand - reserved
+		if available < quantity {
+			return fmt.Errorf("inventory %s insufficient stock: %d available, %d requested", inventoryID, available, quantity)
 		}
+		newReserved := reserved + quantity
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":      inventoryID,
-			"QuantityOnHand":   onHand - quantity,
-			"QuantityReserved": reserved + quantity,
+			"QuantityOnHand":   onHand,
+			"QuantityReserved": newReserved,
 			"Version":          version + 1,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		aggID := warehouseID
+		if aggID == "" {
+			aggID = inventoryID
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, aggID, events.TopicMain, map[string]any{
+			"type":              events.EventInventoryQuantityUpdated,
+			"inventory_id":      inventoryID,
+			"warehouse_id":      warehouseID,
+			"supplier_id":       supplierID,
+			"product_id":        productID,
+			"quantity":          onHand,
+			"quantity_reserved": newReserved,
+			"timestamp":         time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("reserve stock %s: %w", inventoryID, err)
@@ -249,12 +319,13 @@ func (r *SpannerRepository) ReserveTxn(ctx context.Context, txn *spanner.ReadWri
 func (r *SpannerRepository) ReleaseReservation(ctx context.Context, inventoryID string, quantity int64, expectedVersion int64) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, readErr := txn.ReadRow(ctx, "InventoryLevels", spanner.Key{inventoryID},
-			[]string{"QuantityOnHand", "QuantityReserved", "Version"})
+			[]string{"QuantityOnHand", "QuantityReserved", "Version", "WarehouseId", "SupplierId", "ProductId"})
 		if readErr != nil {
 			return fmt.Errorf("read inventory %s: %w", inventoryID, readErr)
 		}
 		var onHand, reserved, version int64
-		if err := row.Columns(&onHand, &reserved, &version); err != nil {
+		var warehouseID, supplierID, productID string
+		if err := row.Columns(&onHand, &reserved, &version, &warehouseID, &supplierID, &productID); err != nil {
 			return fmt.Errorf("scan inventory %s: %w", inventoryID, err)
 		}
 		if version != expectedVersion {
@@ -264,14 +335,35 @@ func (r *SpannerRepository) ReleaseReservation(ctx context.Context, inventoryID 
 		if releaseQty > reserved {
 			releaseQty = reserved
 		}
+		newReserved := reserved - releaseQty
 		m := spanner.UpdateMap("InventoryLevels", map[string]any{
 			"InventoryId":      inventoryID,
 			"QuantityOnHand":   onHand + releaseQty,
-			"QuantityReserved": reserved - releaseQty,
+			"QuantityReserved": newReserved,
 			"Version":          version + 1,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return err
+		}
+		aggID := warehouseID
+		if aggID == "" {
+			aggID = inventoryID
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, aggID, events.TopicMain, map[string]any{
+			"type":              events.EventInventoryQuantityUpdated,
+			"inventory_id":      inventoryID,
+			"warehouse_id":      warehouseID,
+			"supplier_id":       supplierID,
+			"product_id":        productID,
+			"quantity":          onHand + releaseQty,
+			"quantity_reserved": newReserved,
+			"timestamp":         time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 	if err != nil {
 		return fmt.Errorf("release reservation %s: %w", inventoryID, err)

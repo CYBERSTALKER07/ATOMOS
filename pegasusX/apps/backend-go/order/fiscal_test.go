@@ -30,12 +30,53 @@ func TestFakeFiscalProviderFailHook(t *testing.T) {
 	}
 }
 
-func TestProviderFromEnvDefaultsPegasus(t *testing.T) {
+func TestProviderFromEnvDefaultsPegasusOutsideTaxEnv(t *testing.T) {
+	// G1.B: local/ssmr (non tax-class) still defaults to commercial PEGASUS when unset.
 	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("FISCAL_TAX_MARKET", "")
+	t.Setenv("PEGASUSX_ENV", "ssmr")
 	t.Setenv("FISCAL_GLOBAL_PAY_RECEIPT_ENABLED", "")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderPegasus {
+		t.Fatalf("ResolveFiscalProviderName = %q want PEGASUS", got)
+	}
 	p := ProviderFromEnv()
 	if _, ok := p.(PegasusReceiptProvider); !ok {
 		t.Fatalf("want PegasusReceiptProvider, got %T", p)
+	}
+}
+
+func TestProviderFromEnvDefaultsMySoliqInTaxEnv(t *testing.T) {
+	// G1.B: production/staging unset → MY_SOLIQ (hard-fail when creds missing).
+	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("FISCAL_TAX_MARKET", "")
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("FISCAL_MY_SOLIQ_BASE_URL", "")
+	t.Setenv("FISCAL_MY_SOLIQ_API_KEY", "")
+	t.Setenv("FISCAL_MY_SOLIQ_TIN", "")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderMySoliq {
+		t.Fatalf("ResolveFiscalProviderName = %q want MY_SOLIQ", got)
+	}
+	p := ProviderFromEnv()
+	_, err := p.CreateReceipt(context.Background(), FiscalCreateRequest{OrderID: "o", AttemptID: "a", AmountMinor: 100})
+	if err == nil {
+		t.Fatal("misconfigured MY_SOLIQ default must hard-fail CreateReceipt")
+	}
+}
+
+func TestProviderFromEnvTaxMarketFlag(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "")
+	t.Setenv("PEGASUSX_ENV", "ssmr")
+	t.Setenv("FISCAL_TAX_MARKET", "true")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderMySoliq {
+		t.Fatalf("got %q want MY_SOLIQ", got)
+	}
+}
+
+func TestProviderFromEnvExplicitPegasusInProduction(t *testing.T) {
+	t.Setenv("FISCAL_PROVIDER", "PEGASUS")
+	t.Setenv("PEGASUSX_ENV", "production")
+	if got := ResolveFiscalProviderName(); got != FiscalProviderPegasus {
+		t.Fatalf("got %q want PEGASUS", got)
 	}
 }
 
@@ -314,6 +355,42 @@ func TestFiscalWorkerIdempotentOnSuccessRedelivery(t *testing.T) {
 	}
 }
 
+func TestConfirmPaymentBypassOpensFiscalizingNotCompleted(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusAwaitingPayment)
+	o.DriverID = "drv-1"
+	o.SupplierID = "sup-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+
+	if err := svc.ConfirmPaymentBypass(context.Background(), o.OrderID, "drv-1", "sup-1"); err != nil {
+		t.Fatalf("ConfirmPaymentBypass: %v", err)
+	}
+	if repo.captured.Status != StatusFiscalizing {
+		t.Fatalf("status=%s want FISCALIZING (ADR-009; must not COMPLETED)", repo.captured.Status)
+	}
+	if len(repo.captured.PendingFiscalReceipts) != 1 {
+		t.Fatalf("pending fiscal receipts=%d want 1", len(repo.captured.PendingFiscalReceipts))
+	}
+	if repo.captured.PendingFiscalReceipts[0].PaymentMethod != "PAYMENT_BYPASS" {
+		t.Fatalf("payment method=%q want PAYMENT_BYPASS", repo.captured.PendingFiscalReceipts[0].PaymentMethod)
+	}
+}
+
+func TestConfirmPaymentBypassRejectsWrongDriver(t *testing.T) {
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusAwaitingPayment)
+	o.DriverID = "drv-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	if err := svc.ConfirmPaymentBypass(context.Background(), o.OrderID, "drv-other", ""); !errors.Is(err, ErrOrderForbidden) {
+		t.Fatalf("got %v want ErrOrderForbidden", err)
+	}
+	if repo.updateCalls != 0 {
+		t.Fatalf("updateCalls=%d want 0", repo.updateCalls)
+	}
+}
+
 func TestSettleExternalPaymentIgnoresTerminalAndFiscalStates(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	for _, st := range []Status{StatusCompleted, StatusFiscalizing, StatusFiscalFailed, StatusCancelled} {
@@ -323,7 +400,7 @@ func TestSettleExternalPaymentIgnoresTerminalAndFiscalStates(t *testing.T) {
 		}
 		repo := &testRepo{found: true, order: o}
 		svc := newTestService(repo, now)
-		err := svc.SettleExternalPayment(context.Background(), o.OrderID, "payme")
+		err := svc.SettleExternalPayment(context.Background(), o.OrderID, "payme", o.TotalMinor)
 		if err != nil {
 			t.Fatalf("status %s: unexpected err %v", st, err)
 		}
@@ -430,4 +507,75 @@ func TestNormalizeForceReasonCode(t *testing.T) {
 
 func containsType(payload []byte, eventType string) bool {
 	return strings.Contains(string(payload), eventType)
+}
+
+func TestCollectCash_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusPendingCashCollection)
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	claims := driverClaims()
+	claims.MarketCode = "EU"
+	ctx := auth.WithClaims(context.Background(), claims)
+	_, err := svc.CollectCash(ctx, claims, CollectCashRequest{
+		OrderID:   o.OrderID,
+		Latitude:  41.311,
+		Longitude: 69.279,
+	})
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRetryFiscal_PlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalFailed)
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	claims := driverClaims()
+	claims.MarketCode = "EU"
+	ctx := auth.WithClaims(context.Background(), claims)
+	_, err := svc.RetryFiscal(ctx, claims, o.OrderID)
+	if !errors.Is(err, auth.ErrMarketPackNotShipped) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestApplyFiscalWorkerResult_SupplierPlannedPackFailsClosed(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	auth.SetMarketProfileLookup(func(id string) (auth.MarketProfile, bool) {
+		if id == "sup-1" {
+			return auth.MarketProfile{MarketCode: "EU", HomeCell: "cell-eu"}, true
+		}
+		return auth.MarketProfile{}, false
+	})
+	t.Cleanup(func() { auth.SetMarketProfileLookup(nil) })
+
+	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	o := deliveryTestOrder(StatusFiscalizing)
+	o.LatestFiscalAttemptID = "att-1"
+	repo := &testRepo{found: true, order: o}
+	svc := newTestService(repo, now)
+	svc.SetFiscalProvider(FakeFiscalProvider{})
+	if err := svc.ApplyFiscalWorkerResult(context.Background(), o.OrderID, "att-1"); err != nil {
+		t.Fatalf("worker: %v", err)
+	}
+	if repo.captured.Status != StatusFiscalFailed {
+		t.Fatalf("status=%s want FISCAL_FAILED", repo.captured.Status)
+	}
+	if repo.captured.FiscalReceiptUpdate == nil || !strings.Contains(repo.captured.FiscalReceiptUpdate.ErrorMessage, auth.ErrMarketPackNotShipped.Error()) {
+		t.Fatalf("want pack fail on attempt, got %+v", repo.captured.FiscalReceiptUpdate)
+	}
+}
+
+func TestRequireFiscalPack_FakeForbiddenInProduction(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	t.Setenv("PEGASUSX_ENV", "production")
+	svc := newTestService(&testRepo{}, time.Now().UTC())
+	svc.SetFiscalProvider(FakeFiscalProvider{})
+	if err := svc.requireFiscalPack(context.Background(), "sup-1"); !errors.Is(err, auth.ErrFakeFiscalForbidden) {
+		t.Fatalf("err=%v", err)
+	}
 }

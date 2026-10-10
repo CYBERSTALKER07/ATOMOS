@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.forecast
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +63,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 private enum class ForecastSegment { Products, Series }
 
@@ -113,17 +116,17 @@ fun DemandForecastScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Demand Forecast") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     var expanded by remember { mutableStateOf(false) }
                     Box {
                         TextButton(onClick = { expanded = true }) {
-                            Text("${horizon}d")
+                            Text(stringResource(R.string.mobile_warehouse_ui_horizond, horizon))
                         }
                         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             listOf(7, 14, 30).forEach { days ->
                                 DropdownMenuItem(
-                                    text = { Text("$days days") },
+                                    text = { Text(stringResource(R.string.mobile_warehouse_ui_days_days, days)) },
                                     onClick = {
                                         horizon = days
                                         expanded = false
@@ -133,7 +136,7 @@ fun DemandForecastScreen(
                         }
                     }
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -280,9 +283,9 @@ private fun SeriesForecastBody(
                 Column(Modifier.padding(PegasusSpacing.lg)) {
                     Text(day.date, style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(PegasusSpacing.xs))
-                    Text("Projected units: ${fmt.format(day.projectedUnits)}")
+                    Text(stringResource(R.string.mobile_warehouse_ui_projected_units_format, fmt.format(day.projectedUnits)))
                     Text(
-                        "Committed: ${fmt.format(day.committedUnits)} · Pending: ${fmt.format(day.pendingConfirmationUnits)}",
+                        stringResource(R.string.mobile_warehouse_ui_committed_format_pending_format_2, fmt.format(day.committedUnits), fmt.format(day.pendingConfirmationUnits)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

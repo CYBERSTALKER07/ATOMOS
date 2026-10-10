@@ -10,7 +10,7 @@ import Icon from '@/components/Icon';
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 const TASHKENT = { latitude: 41.2995, longitude: 69.2401 };
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface FactoryNode {
   factory_id: string;
@@ -44,7 +44,7 @@ interface FactoryNetworkMapProps {
   onFactoryClick?: (f: FactoryNode) => void;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 export default function FactoryNetworkMap({ factories, onFactoryClick }: FactoryNetworkMapProps) {
   const mapRef = useRef<MapRef>(null);
@@ -246,11 +246,13 @@ export default function FactoryNetworkMap({ factories, onFactoryClick }: Factory
               longitude={f.lng}
               anchor="bottom"
             >
-              <div
+              <button
+                type="button"
+                aria-label={`Select factory ${f.name}`}
                 onClick={() => handleFactoryClick(f)}
                 onMouseEnter={() => setHoveredId(f.factory_id)}
                 onMouseLeave={() => setHoveredId(null)}
-                className="flex flex-col items-center cursor-pointer"
+                className="flex flex-col items-center cursor-pointer bg-transparent border-0 p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
               >
                 <div
                   className="flex items-center justify-center rounded-lg transition-all"
@@ -270,7 +272,7 @@ export default function FactoryNetworkMap({ factories, onFactoryClick }: Factory
                 >
                   {f.name}
                 </span>
-              </div>
+              </button>
             </Marker>
           );
         })}
@@ -320,6 +322,7 @@ export default function FactoryNetworkMap({ factories, onFactoryClick }: Factory
       <button
         type="button"
         onClick={handleLocate}
+        aria-label="Use current location"
         className="absolute bottom-4 right-4 flex items-center gap-2 px-3 py-2 rounded-full text-xs font-semibold z-10"
         style={{
           background: 'var(--background)',

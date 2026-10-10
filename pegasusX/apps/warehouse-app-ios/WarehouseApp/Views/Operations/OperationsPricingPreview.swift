@@ -19,20 +19,20 @@ struct OperationsPricingPreview: View {
                 )
             }
             Section {
-                TextField("Product / SKU ID", text: $productId)
+                TextField("warehouse_portal.residual.text.product_sku_id", text: $productId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onChange(of: productId) { _, _ in onSchedulePreview() }
-                TextField("Retailer ID (optional)", text: $retailerId)
+                TextField("warehouse_portal.residual.text.retailer_id_optional", text: $retailerId)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .onChange(of: retailerId) { _, _ in onSchedulePreview() }
-                TextField("Proposed price (minor units)", text: $proposedPrice)
+                TextField("warehouse_portal.residual.text.proposed_price_minor_units", text: $proposedPrice)
                     .keyboardType(.numberPad)
                     .onChange(of: proposedPrice) { _, _ in onSchedulePreview() }
 
                 if previewLoading {
-                    Text("Loading preview…")
+                    Text("warehouse_portal.operations.operations_pricing_preview.text.loading_preview")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -45,7 +45,7 @@ struct OperationsPricingPreview: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if preview.readOnly == true {
-                        Text("Read-only — contact supplier to apply overrides.")
+                        Text("warehouse_portal.operations.operations_pricing_preview.text.read_only_contact_supplier_to_apply_overrides")
                             .font(.footnote.weight(.medium))
                     }
                 }

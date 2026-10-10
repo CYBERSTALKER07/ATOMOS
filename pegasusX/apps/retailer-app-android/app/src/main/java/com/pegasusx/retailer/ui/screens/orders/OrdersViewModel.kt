@@ -6,9 +6,10 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.api.reconcileRetailerSession
 import com.pegasusx.retailer.data.local.TokenManager
-import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
+import com.pegasusx.retailer.data.model.RetailerAIPrediction
+import com.pegasusx.retailer.ui.filterCommand
 import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
@@ -29,10 +30,12 @@ enum class OrdersLoadIssue {
 data class OrdersUiState(
     val isLoading: Boolean = false,
     val allOrders: List<Order> = emptyList(),
-    val predictions: List<DemandForecast> = emptyList(),
+    val predictions: List<RetailerAIPrediction> = emptyList(),
     val error: String? = null,
     val loadIssue: OrdersLoadIssue? = null,
     val orderActionPending: Boolean = false,
+    val commandStatus: String? = null,
+    val commandSupplierId: String? = null,
 ) {
     val activeOrders: List<Order> get() = allOrders.filter {
         it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
@@ -44,6 +47,8 @@ data class OrdersUiState(
     }
     val aiPendingOrders: List<Order> get() = allOrders.filter { it.needsAiConfirmation }
     val scheduledPreorders: List<Order> get() = allOrders.filter { it.needsPreorderAction }
+    val commandOrders: List<Order>
+        get() = allOrders.filterCommand(commandStatus, commandSupplierId)
 
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -112,6 +117,14 @@ class OrdersViewModel @Inject constructor(
         retailerWebSocket.disconnect()
     }
 
+    fun applyCommandFilter(status: String?, supplierId: String?) {
+        _uiState.update { it.copy(commandStatus = status, commandSupplierId = supplierId) }
+    }
+
+    fun clearCommandFilter() {
+        _uiState.update { it.copy(commandStatus = null, commandSupplierId = null) }
+    }
+
     fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
             val hasData = _uiState.value.allOrders.isNotEmpty() || _uiState.value.predictions.isNotEmpty()
@@ -134,7 +147,7 @@ class OrdersViewModel @Inject constructor(
             }
 
             try {
-                nextPredictions = api.getPredictions(retailerId)
+                nextPredictions = api.getRetailerAIPredictions().items
             } catch (e: Exception) {
                 if (nextIssue == null) {
                     nextIssue = resolveLoadIssue(e)
@@ -188,53 +201,44 @@ class OrdersViewModel @Inject constructor(
         }
     }
 
-    fun requestPreorder(forecast: DemandForecast) {
-        // AI pre-orders removed from PegasusX retailer apps.
-        _uiState.update { it.copy(error = "AI pre-orders are not available in this app") }
-    }
-
-    fun correctPrediction(predictionId: String, amount: Long) {
-        viewModelScope.launch {
-            try {
-                api.correctPrediction(
-                    predictionId = predictionId,
-                    body = mapOf("amount" to amount),
-                    idempotencyKey = "retailer-prediction-correct:$predictionId:amount:$amount",
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            }
-        }
-    }
-
-    fun rejectPrediction(predictionId: String) {
-        viewModelScope.launch {
-            try {
-                api.correctPrediction(
-                    predictionId = predictionId,
-                    body = mapOf("status" to "REJECTED"),
-                    idempotencyKey = "retailer-prediction-correct:$predictionId:rejected",
-                )
-                refresh()
-            } catch (e: Exception) {
-                val issue = resolveLoadIssue(e)
-                _uiState.update {
-                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
-                }
-            }
-        }
-    }
-
     fun confirmAiOrder(orderId: String) {
-        _uiState.update { it.copy(error = "AI orders are not available") }
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.confirmAiOrder(
+                    body = mapOf("order_id" to orderId),
+                    idempotencyKey = RetailerIdempotencyKeys.confirmAI(orderId),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
     }
 
     fun rejectAiOrder(orderId: String, reason: String = "Retailer rejected") {
-        _uiState.update { it.copy(error = "AI orders are not available") }
+        viewModelScope.launch {
+            _uiState.update { it.copy(orderActionPending = true, error = null) }
+            try {
+                api.rejectAiOrder(
+                    body = mapOf("order_id" to orderId, "reason" to reason),
+                    idempotencyKey = RetailerIdempotencyKeys.rejectAI(orderId, reason),
+                )
+                refresh()
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            } finally {
+                _uiState.update { it.copy(orderActionPending = false) }
+            }
+        }
     }
 
     fun confirmPreorder(orderId: String) {

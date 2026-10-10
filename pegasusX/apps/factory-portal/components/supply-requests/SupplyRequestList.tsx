@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { Fragment, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PageSection } from '@/components/PageSection';
@@ -11,6 +14,8 @@ interface SupplyRequestListProps {
   handleToggleAll: () => void;
   handleToggleOne: (id: string, e: React.ChangeEvent<HTMLInputElement>) => void;
   handleTransition: (request: SupplyRequest, action: string) => void;
+  qcById: Record<string, string>;
+  onQC: (request: SupplyRequest, result: "PASS" | "FAIL") => void;
 }
 
 export function SupplyRequestList({
@@ -20,11 +25,14 @@ export function SupplyRequestList({
   handleToggleAll,
   handleToggleOne,
   handleTransition,
+  qcById,
+  onQC,
 }: SupplyRequestListProps) {
+  const t = usePortalT();
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null);
 
   return (
-    <PageSection title="Demand queue" description="Advance requests through ACK → production → ready → fulfill.">
+    <PageSection title={t("factory_portal.supply_requests.supply_request_list.text.demand_queue")} description={t("factory_portal.residual.text.advance_requests_through_ack_production_ready_fulfill")}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -34,22 +42,25 @@ export function SupplyRequestList({
           <thead>
             <tr style={{ background: 'var(--color-md-surface-container)' }}>
               <th className="text-left px-4 py-3 font-medium w-10">
+                <label htmlFor="select-all-requests" className="sr-only">Select all requests</label>
                 <input 
+                  id="select-all-requests"
+                  aria-label="Select all requests"
                   type="checkbox" 
                   className="rounded border-(--color-md-outline) bg-transparent"
                   checked={pageItems.length > 0 && selectedIds.size === pageItems.length}
                   onChange={handleToggleAll}
                 />
               </th>
-              <th className="text-left px-4 py-3 font-medium">Warehouse</th>
-              <th className="text-left px-4 py-3 font-medium">Priority</th>
-              <th className="text-left px-4 py-3 font-medium">State</th>
-              <th className="text-left px-4 py-3 font-medium">Items</th>
-              <th className="text-left px-4 py-3 font-medium">Notes</th>
-              <th className="text-left px-4 py-3 font-medium">Volume (VU)</th>
-              <th className="text-left px-4 py-3 font-medium">Delivery Date</th>
-              <th className="text-left px-4 py-3 font-medium">Created</th>
-              <th className="text-right px-4 py-3 font-medium">Actions</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.insights.text.warehouse")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.priority")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.state")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.loading_bay.loading_bay_grid.text.items")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.transfers._id_.text.notes")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.payload_override.payload_list.text.volume_vu")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.delivery_date")}</th>
+              <th className="text-left px-4 py-3 font-medium">{t("factory_portal.supply_requests.supply_request_list.text.created")}</th>
+              <th className="text-right px-4 py-3 font-medium">{t("factory_portal.insights.text.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -64,7 +75,10 @@ export function SupplyRequestList({
                 onClick={() => setExpandedRequestId(expandedRequestId === request.request_id ? null : request.request_id)}
               >
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <label htmlFor={`select-request-${request.request_id}`} className="sr-only">Select request {request.request_id}</label>
                   <input 
+                    id={`select-request-${request.request_id}`}
+                    aria-label={`Select request ${request.request_id}`}
                     type="checkbox" 
                     className="rounded border-(--color-md-outline) bg-transparent"
                     checked={selectedIds.has(request.request_id)}
@@ -116,6 +130,33 @@ export function SupplyRequestList({
                         {transitioning === request.request_id ? '...' : action.label}
                       </motion.button>
                     ))}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => void onQC(request, "PASS")}
+                      disabled={transitioning === request.request_id}
+                      className="px-3 py-1 rounded-lg text-xs font-medium text-white"
+                      style={{ background: "var(--color-md-success, #2e7d32)" }}
+                    >
+                      PASS
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      type="button"
+                      onClick={() => void onQC(request, "FAIL")}
+                      disabled={transitioning === request.request_id}
+                      className="px-3 py-1 rounded-lg text-xs font-medium text-white"
+                      style={{ background: "var(--color-md-error, #c62828)" }}
+                    >
+                      FAIL
+                    </motion.button>
+                    {qcById[request.request_id] ? (
+                      <span className="text-[10px] uppercase tracking-wide self-center">
+                        QC {qcById[request.request_id]}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
               </motion.tr>

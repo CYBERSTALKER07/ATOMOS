@@ -11,6 +11,7 @@ type Repository interface {
 	ListReconciliationsByStatus(ctx context.Context, status ReconciliationStatus) ([]CashReconciliation, error)
 	ListByDriver(ctx context.Context, driverID string, shiftDate time.Time) ([]CashReconciliation, error)
 	ListBySupplier(ctx context.Context, supplierID string, status ReconciliationStatus, limit int) ([]CashReconciliation, error)
+	ResolveDriverSupplierID(ctx context.Context, driverID string) (string, error)
 }
 
 // ExpectedCashComputer computes authoritative expected cash from payment legs.

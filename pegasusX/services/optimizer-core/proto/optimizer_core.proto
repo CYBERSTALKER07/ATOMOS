@@ -11,6 +11,8 @@ enum SolverStatus {
     FEASIBLE = 2;
     INFEASIBLE = 3;
     MODEL_INVALID = 4;
+    // Greedy / nearest-neighbor heuristics must never claim OPTIMAL (P2-2).
+    HEURISTIC = 5;
 }
 
 // ----------------------------------------------------------------------------

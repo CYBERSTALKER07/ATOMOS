@@ -195,13 +195,19 @@ export default function ControlCenterPage() {
           </div>
 
           <div className="space-y-3">
+            <label htmlFor="control-center-order-id" className="sr-only">{t("supplier_portal.admin.control_center.field.order_id")}</label>
             <input
+              id="control-center-order-id"
+              aria-label={t("supplier_portal.admin.control_center.field.order_id")}
               className="md-input-outlined w-full"
               placeholder={t("supplier_portal.admin.control_center.field.order_id")}
               value={orderId}
               onChange={(event) => setOrderId(event.target.value)}
             />
+            <label htmlFor="control-center-bypass-reason" className="sr-only">{t("supplier_portal.admin.control_center.field.reason")}</label>
             <input
+              id="control-center-bypass-reason"
+              aria-label={t("supplier_portal.admin.control_center.field.reason")}
               className="md-input-outlined w-full"
               placeholder={t("supplier_portal.admin.control_center.field.reason")}
               value={bypassReason}
@@ -236,7 +242,10 @@ export default function ControlCenterPage() {
           </div>
 
           <div className="space-y-3">
+            <label htmlFor="control-center-session-id" className="sr-only">{t("supplier_portal.admin.control_center.field.session_id")}</label>
             <input
+              id="control-center-session-id"
+              aria-label={t("supplier_portal.admin.control_center.field.session_id")}
               className="md-input-outlined w-full"
               placeholder={t("supplier_portal.admin.control_center.field.session_id")}
               value={sessionId}
@@ -271,7 +280,10 @@ export default function ControlCenterPage() {
           </div>
 
           <div className="space-y-3">
+            <label htmlFor="control-center-broadcast-title" className="sr-only">{t("supplier_portal.admin.control_center.field.title")}</label>
             <input
+              id="control-center-broadcast-title"
+              aria-label={t("supplier_portal.admin.control_center.field.title")}
               className="md-input-outlined w-full"
               placeholder={t("supplier_portal.admin.control_center.field.title")}
               value={broadcastTitle}

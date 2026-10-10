@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -16,6 +17,7 @@ import { PageChrome } from '@/components/PageChrome';
 import { PageSection } from '@/components/PageSection';
 
 export default function TruckDetailPage() {
+  const t = usePortalT();
   const params = useParams();
   const router = useRouter();
   const vehicleId = String(params.vehicleId ?? '');
@@ -117,10 +119,10 @@ export default function TruckDetailPage() {
         {vehicle && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <PageSection title="Overview">
+              <PageSection title={t("portal.nav.overview")}>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <dt className="text-(--muted)">Status</dt>
+                    <dt className="text-(--muted)">{t("warehouse_portal.bins.text.status")}</dt>
                     <dd className="mt-1">
                       <span className={`status-chip ${vehicle.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
                         {vehicleStatusLabel(vehicle.is_active)}
@@ -128,19 +130,19 @@ export default function TruckDetailPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-(--muted)">Capacity</dt>
+                    <dt className="text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.capacity")}</dt>
                     <dd className="mt-1 font-mono">{capacity} VU</dd>
                   </div>
                   <div>
-                    <dt className="text-(--muted)">License plate</dt>
+                    <dt className="text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.license_plate")}</dt>
                     <dd className="mt-1">{vehicle.license_plate}</dd>
                   </div>
                   <div>
-                    <dt className="text-(--muted)">Class</dt>
+                    <dt className="text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.class")}</dt>
                     <dd className="mt-1">{vehicle.vehicle_class}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-(--muted)">Assigned driver</dt>
+                    <dt className="text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.assigned_driver")}</dt>
                     <dd className="mt-1">
                       {vehicle.assigned_driver_id ? (
                         <Link href="/drivers" className="underline underline-offset-2">
@@ -153,7 +155,7 @@ export default function TruckDetailPage() {
                   </div>
                   {!vehicle.is_active && (vehicle.unavailable_reason || vehicle.unavailable_note) && (
                     <div className="sm:col-span-2">
-                      <dt className="text-(--muted)">Hold reason</dt>
+                      <dt className="text-(--muted)">{t("warehouse_portal.vehicles._vehicle_id_.text.hold_reason")}</dt>
                       <dd className="mt-1" style={{ color: 'var(--warning)' }}>
                         {formatUnavailableReason(vehicle.unavailable_reason, vehicle.unavailable_note)}
                       </dd>
@@ -162,7 +164,7 @@ export default function TruckDetailPage() {
                 </dl>
               </PageSection>
 
-              <PageSection title="Dispatch impact">
+              <PageSection title={t("warehouse_portal.vehicles._vehicle_id_.text.dispatch_impact")}>
                 <p className="text-sm text-(--muted)">
                   {vehicle.is_active
                     ? 'This truck is eligible for manual and smart dispatch when its assigned driver is on shift and not in transit.'

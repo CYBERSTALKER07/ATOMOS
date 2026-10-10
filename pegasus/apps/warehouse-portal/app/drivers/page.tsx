@@ -161,22 +161,32 @@ export default function DriversPage() {
         <form onSubmit={handleCreate} className="p-4 rounded-xl border border-(--border) space-y-3" style={{ background: 'var(--surface)' }}>
           <h2 className="text-sm font-semibold">New Driver</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              placeholder="Full Name"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              required
-              className="px-3 py-2 rounded-lg border text-sm"
-              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-            />
-            <input
-              placeholder="+998..."
-              value={form.phone}
-              onChange={e => setForm({ ...form, phone: e.target.value })}
-              required
-              className="px-3 py-2 rounded-lg border text-sm"
-              style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
-            />
+            <div>
+              <label htmlFor="driver-name-input" className="sr-only">Full Name</label>
+              <input
+                id="driver-name-input"
+                aria-label="Full Name"
+                placeholder="Full Name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                required
+                className="w-full px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+            </div>
+            <div>
+              <label htmlFor="driver-phone-input" className="sr-only">Phone Number</label>
+              <input
+                id="driver-phone-input"
+                aria-label="Phone Number"
+                placeholder="+998..."
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
+                required
+                className="w-full px-3 py-2 rounded-lg border text-sm"
+                style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+              />
+            </div>
           </div>
           <button type="submit" disabled={creating} className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50">
             {creating ? 'Creating...' : 'Create Driver'}

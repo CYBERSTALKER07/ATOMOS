@@ -12,7 +12,7 @@ struct NotificationPreferencesView: View {
             } else {
                 List {
                     if saved {
-                        Text("Saved").foregroundStyle(SupplierTheme.success)
+                        Text("mobile_supplier.ui.saved").foregroundStyle(SupplierTheme.success)
                     }
                     ForEach(prefs.indices, id: \.self) { idx in
                         let p = prefs[idx]
@@ -34,9 +34,9 @@ struct NotificationPreferencesView: View {
                 }
             }
         }
-        .navigationTitle("Notification preferences")
+        .navigationTitle("supplier_portal.settings.notification_preferences.text.notification_preferences")
         .toolbar {
-            Button("Save") {
+            Button("common.action.save") {
                 Task {
                     _ = try? await SupplierOperationsService.patchNotificationPreferences(prefs)
                     saved = true

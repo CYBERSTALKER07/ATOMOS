@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -71,7 +73,18 @@ func (s *Service) HandleInventoryPolicy(w http.ResponseWriter, r *http.Request) 
 	}
 
 	err := s.repo.UpdateInventoryPolicy(r.Context(), whID, productID, policy, req.ReorderThreshold, func(buf outbox.TxnBuffer) error {
-		return nil
+		// B2 M-P0-3: inventory policy mutations leave the bus.
+		payload := map[string]any{
+			"type":         events.EventInventoryPolicyUpdated,
+			"warehouse_id": whID,
+			"product_id":   productID,
+			"policy":       policy,
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
+		}
+		if req.ReorderThreshold != nil {
+			payload["reorder_threshold"] = *req.ReorderThreshold
+		}
+		return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, payload)
 	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory_policy"})

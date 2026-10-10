@@ -1,11 +1,14 @@
 package com.pegasusx.factory.ui.screens.staff.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun StaffSummaryCard(
@@ -23,11 +26,11 @@ fun StaffSummaryCard(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
-                text = "Staffing snapshot",
+                text = stringResource(R.string.mobile_factory_ui_staffing_snapshot),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Operators currently registered and active on the factory floor.",
+                text = stringResource(R.string.mobile_factory_ui_operators_currently_registered_and_active_on_the_factory_floor),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

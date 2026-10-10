@@ -13,7 +13,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
-func (s *Service) iosDashboardLocked() map[string]any {
+func (s *Service) iosDashboardLocked(supplierID string) map[string]any {
 	pending := int64(0)
 	loading := int64(0)
 	activeManifests := int64(len(s.manifests))
@@ -63,7 +63,7 @@ func (s *Service) iosDashboardLocked() map[string]any {
 		"vehicles_available": vehiclesAvailable,
 		"staff_on_shift":     onShift,
 		"critical_insights":  int64(len(s.manifestExceptions)),
-		"supplier_id":        s.supplierID,
+		"supplier_id":        supplierID,
 		"factory_id":         s.factoryNodeID,
 		"updated_at":         s.now().Format(time.RFC3339Nano),
 	}
@@ -170,6 +170,22 @@ func (s *Service) HandleFleet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
+	}
+	factoryID, _ := s.scopedFactoryID(r)
+	if factoryID == "" {
+		factoryID = s.factoryNodeID
+	}
+	if s.spannerClient != nil {
+		res, err := s.loadFactoryFleetFromSpanner(r.Context(), factoryID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "factory fleet spanner failed", "err", err, "factory_id", factoryID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fleet_failed"})
+			return
+		}
+		if res != nil {
+			writeJSON(w, http.StatusOK, map[string]any{"vehicles": res.IOSVehicles})
+			return
+		}
 	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
@@ -290,7 +306,7 @@ func (s *Service) HandleTransferTransition(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "transfer_transition_failed"})
 		return
 	}
-	s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.supplierID))
+	s.invalidateFactoryKeys(r.Context(), factoryTransferListKey(s.resolveSupplierScope(r.Context())))
 	idemCommitted = true
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, s.iosTransferPayload(row))
 }
@@ -326,7 +342,7 @@ func iosStaffMemberPayload(row StaffRow) map[string]any {
 		"staff_id":  row.StaffID,
 		"name":      row.Name,
 		"role":      row.Role,
-		"phone":     "",
+		"phone":     row.Phone,
 		"status":    "ACTIVE",
 		"joined_at": "",
 	}

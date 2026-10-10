@@ -174,7 +174,7 @@ func completeLifecycleDelivery(
 		"qr_token": qrData.Token,
 	})
 	scanOK := false
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/scan-qr", scanPayload, driverToken, fmt.Sprintf("lifecycle-scan-qr:%s:%d", orderID, attempt))
 		if err != nil {
 			return fmt.Errorf("scan qr: %w", err)
@@ -183,8 +183,10 @@ func completeLifecycleDelivery(
 			scanOK = true
 			break
 		}
-		if strings.Contains(string(respBody), "optimistic concurrency") {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusConflict || status == http.StatusUnprocessableEntity || status == http.StatusInternalServerError) &&
+			(strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		return fmt.Errorf("scan qr status %d: %s", status, string(respBody))
@@ -196,7 +198,7 @@ func completeLifecycleDelivery(
 	// Retailer selects cash collection (must be AWAITING_PAYMENT).
 	cashPayload, _ := json.Marshal(map[string]string{"order_id": orderID})
 	confirmOK := false
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := 0; attempt < 10; attempt++ {
 		idemKey := fmt.Sprintf("lifecycle-confirm-cash:%s:%d", orderID, attempt)
 		status, respBody, _, err = clientDo(ctx, client, http.MethodPost, base+"/v1/delivery/confirm-cash", cashPayload, retailerToken, idemKey)
 		if err != nil {
@@ -206,11 +208,13 @@ func completeLifecycleDelivery(
 			confirmOK = true
 			break
 		}
-		if status == http.StatusInternalServerError && (strings.Contains(string(respBody), "update_failed") || strings.Contains(string(respBody), "optimistic concurrency")) {
-			time.Sleep(200 * time.Millisecond)
+		body := string(respBody)
+		if (status == http.StatusInternalServerError || status == http.StatusConflict) &&
+			(strings.Contains(body, "update_failed") || strings.Contains(body, "optimistic concurrency") || strings.Contains(body, "request_in_progress")) {
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
-		if status == http.StatusConflict && strings.Contains(string(respBody), "PENDING_CASH") {
+		if status == http.StatusConflict && strings.Contains(body, "PENDING_CASH") {
 			confirmOK = true
 			break
 		}
@@ -226,21 +230,34 @@ func completeLifecycleDelivery(
 		"longitude": cfg.DeliveryZoneCenterLng,
 		// amount_received omitted → backend defaults to order total (compat)
 	})
-	collectReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
-	if err != nil {
-		return err
-	}
-	collectReq.Header.Set("Authorization", "Bearer "+driverToken)
-	collectReq.Header.Set("Content-Type", "application/json")
-	collectReq.Header.Set("Idempotency-Key", "lifecycle-collect-cash-"+orderID)
-	collectResp, err := client.Do(collectReq)
-	if err != nil {
-		return fmt.Errorf("collect cash request: %w", err)
-	}
-	defer collectResp.Body.Close()
-	body, _ := io.ReadAll(collectResp.Body)
-	if collectResp.StatusCode != http.StatusOK {
+	var body []byte
+	collectOK := false
+	for attempt := 0; attempt < 5; attempt++ {
+		collectReq, err := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/order/collect-cash", bytes.NewReader(collectBody))
+		if err != nil {
+			return err
+		}
+		collectReq.Header.Set("Authorization", "Bearer "+driverToken)
+		collectReq.Header.Set("Content-Type", "application/json")
+		collectReq.Header.Set("Idempotency-Key", fmt.Sprintf("lifecycle-collect-cash-%s-%d", orderID, attempt))
+		collectResp, err := client.Do(collectReq)
+		if err != nil {
+			return fmt.Errorf("collect cash request: %w", err)
+		}
+		body, _ = io.ReadAll(collectResp.Body)
+		collectResp.Body.Close()
+		if collectResp.StatusCode == http.StatusOK {
+			collectOK = true
+			break
+		}
+		if strings.Contains(string(body), "optimistic concurrency") {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
 		return fmt.Errorf("collect cash status %d: %s", collectResp.StatusCode, string(body))
+	}
+	if !collectOK {
+		return fmt.Errorf("collect cash failed after retries: %s", string(body))
 	}
 	// ADR-009: collect enters FISCALIZING; wait for worker SUCCESS → COMPLETED.
 	if err := waitOrderStatus(ctx, client, base, driverToken, orderID, "COMPLETED", 45*time.Second); err != nil {

@@ -3,6 +3,7 @@ package payload
 import (
 	"context"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 
@@ -20,7 +21,33 @@ func (s *Service) SetPortalManifestLister(lister PortalManifestLister) {
 	s.portalLister = lister
 }
 
-func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []manifest.Wire {
+// resolveRegionCode derives RegionCode dynamically from the node pack / market pack and cell configuration.
+func (s *Service) resolveRegionCode(warehouseID string) string {
+	if reg := strings.TrimSpace(os.Getenv("REGION_CODE")); reg != "" {
+		return reg
+	}
+	marketCode := auth.DefaultMarketCodeFromEnv()
+	homeCell := auth.DefaultHomeCellFromEnv()
+	cell := strings.ToUpper(strings.TrimPrefix(homeCell, "cell-"))
+	if cell != "" && cell != marketCode {
+		return marketCode + "-" + cell
+	}
+	if p, ok := auth.ResolveShippedMarketPack(marketCode); ok {
+		if p.HomeCell != "" {
+			pCell := strings.ToUpper(strings.TrimPrefix(p.HomeCell, "cell-"))
+			if pCell != "" && pCell != p.Code {
+				return p.Code + "-" + pCell
+			}
+		}
+		if marketCode == "UZ" {
+			return "UZ-TAS"
+		}
+		return p.Code
+	}
+	return marketCode
+}
+
+func (s *Service) listManifestWiresLocked(stateFilter, truckFilter, warehouseScope string) []manifest.Wire {
 	orderByID := make(map[string]OrderRow, len(s.orders))
 	for i := range s.orders {
 		orderByID[s.orders[i].OrderID] = s.orders[i]
@@ -30,6 +57,10 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []man
 	wire := make([]manifest.Wire, 0, len(rows))
 	for i := range rows {
 		m := rows[i]
+		// B7 PL-P0-6: JWT warehouse scope filters list (empty row WH still visible).
+		if !manifestMatchesWarehouseScope(m.WarehouseID, warehouseScope) {
+			continue
+		}
 		orders := append([]ManifestOrder(nil), s.manifestOrders[m.ManifestID]...)
 		payloadOrders := make([]manifest.PayloadOrderRow, 0, len(orders))
 		for j := range orders {
@@ -39,7 +70,7 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []man
 				State:       orders[j].State,
 				Amount:      or.TotalMinor,
 				RouteID:     or.RouteID,
-				WarehouseID: "",
+				WarehouseID: m.WarehouseID,
 				RetailerID:  "",
 			})
 		}
@@ -51,7 +82,7 @@ func (s *Service) listManifestWiresLocked(stateFilter, truckFilter string) []man
 			TotalVolumeVU: m.TotalVolumeVU,
 			MaxVolumeVU:   m.MaxVolumeVU,
 			StopCount:     m.StopCount,
-			RegionCode:    "UZ-TAS",
+			RegionCode:    s.resolveRegionCode(m.WarehouseID),
 			SealedAt:      m.SealedAt,
 			CreatedAt:     m.CreatedAt,
 			UpdatedAt:     m.UpdatedAt,
@@ -96,7 +127,7 @@ func (s *Service) manifestDetailWireLocked(manifestID string) (manifest.Wire, bo
 		TotalVolumeVU: m.TotalVolumeVU,
 		MaxVolumeVU:   m.MaxVolumeVU,
 		StopCount:     m.StopCount,
-		RegionCode:    "UZ-TAS",
+		RegionCode:    s.resolveRegionCode(m.WarehouseID),
 		SealedAt:      m.SealedAt,
 		CreatedAt:     m.CreatedAt,
 		UpdatedAt:     m.UpdatedAt,
@@ -127,7 +158,7 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 
 	var wire []manifest.Wire
 	if usePortal && s.portalLister != nil {
-		rows, err := s.portalLister.ListPortalManifests(r.Context(), s.supplierID)
+		rows, err := s.portalLister.ListPortalManifests(r.Context(), s.resolveSupplierScope(r.Context()))
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_manifests_failed"})
 			return
@@ -141,11 +172,13 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		_ = s.hydrateFromRepo(r.Context())
+		whScope := s.resolveWarehouseScope(r.Context())
 		s.mu.Lock()
 		s.ensureManifestStateLocked()
-		wire = s.listManifestWiresLocked(stateFilter, truckFilter)
+		wire = s.listManifestWiresLocked(stateFilter, truckFilter, whScope)
 		s.mu.Unlock()
 	}
+	s.attachInboundDriverLocations(r.Context(), wire)
 
 	writeJSON(w, http.StatusOK, map[string]any{"manifests": wire})
 }
@@ -165,12 +198,69 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
 	s.ensureManifestStateLocked()
+	idx := s.findManifestIndexLocked(manifestID)
+	var row ManifestRow
+	if idx >= 0 {
+		row = s.manifests[idx]
+	}
 	wire, ok := s.manifestDetailWireLocked(manifestID)
 	s.mu.Unlock()
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
 		return
 	}
+	// B7 PL-P0-6: detail for foreign warehouse when both sides set → 403 (not 404 leak).
+	if err := s.assertManifestWarehouseScope(r.Context(), row); err != nil {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_scope_forbidden"})
+		return
+	}
 	wire = s.enrichManifestWireExpectations(r.Context(), wire)
-	writeJSON(w, http.StatusOK, wire)
+	wires := []manifest.Wire{wire}
+	s.attachInboundDriverLocations(r.Context(), wires)
+	writeJSON(w, http.StatusOK, wires[0])
+}
+
+// attachInboundDriverLocations fills thin inbound map coords on payload manifest wires.
+func (s *Service) attachInboundDriverLocations(ctx context.Context, wires []manifest.Wire) {
+	if s == nil || s.locations == nil || len(wires) == 0 {
+		return
+	}
+	now := s.now()
+	cache := make(map[string]struct {
+		lat, lng float64
+		live     bool
+	}, len(wires))
+	for i := range wires {
+		driverID := strings.TrimSpace(wires[i].DriverID)
+		if driverID == "" {
+			continue
+		}
+		cached, ok := cache[driverID]
+		if !ok {
+			loc, found, err := s.locations.GetDriverLocation(ctx, driverID)
+			if err != nil || !found {
+				cache[driverID] = cached
+				continue
+			}
+			lat, lng := loc.Lat, loc.Lng
+			if lat == 0 {
+				lat = loc.Latitude
+			}
+			if lng == 0 {
+				lng = loc.Longitude
+			}
+			cached = struct {
+				lat, lng float64
+				live     bool
+			}{lat: lat, lng: lng, live: loc.IsLive(now)}
+			cache[driverID] = cached
+		}
+		if cached.lat == 0 && cached.lng == 0 {
+			continue
+		}
+		lat, lng := cached.lat, cached.lng
+		wires[i].DriverLat = &lat
+		wires[i].DriverLng = &lng
+		wires[i].LiveLocationAvailable = cached.live
+	}
 }

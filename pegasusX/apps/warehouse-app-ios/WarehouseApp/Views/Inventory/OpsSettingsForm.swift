@@ -36,19 +36,19 @@ struct OpsSettingsForm: View {
 
     var body: some View {
         Section {
-            Text("Checkout policy, pre-orders, delivery fees, and retailer catalog display.")
+            Text("mobile_warehouse.ui.checkout_policy_pre_orders_delivery_fees_and_retailer_catalog_di")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
 
         Section("Pre-order lead window") {
-            Text("Retailers can request delivery between these lead days from today.")
+            Text("mobile_warehouse.ui.retailers_can_request_delivery_between_these_lead_days_from_toda")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack {
-                TextField("Min days", text: $preorderMinLeadDays)
+                TextField("mobile_warehouse.ui.min_days", text: $preorderMinLeadDays)
                     .keyboardType(.numberPad)
-                TextField("Max days", text: $preorderMaxLeadDays)
+                TextField("mobile_warehouse.ui.max_days", text: $preorderMaxLeadDays)
                     .keyboardType(.numberPad)
             }
         }
@@ -59,8 +59,8 @@ struct OpsSettingsForm: View {
                 set: { policy = $0 ? "ACCEPT_BACKORDER" : "REJECT" }
             ))
             Picker("Policy", selection: $policy) {
-                Text("Reject").tag("REJECT")
-                Text("Accept backorder").tag("ACCEPT_BACKORDER")
+                Text("mobile_warehouse.ui.reject").tag("REJECT")
+                Text("supplier_portal.inventory.inventory_table.text.accept_backorder").tag("ACCEPT_BACKORDER")
             }
             .pickerStyle(.inline)
         }
@@ -72,41 +72,41 @@ struct OpsSettingsForm: View {
         Section("Order line quantity limits") {
             Toggle("No minimum quantity", isOn: $clearOrderLineMin)
             if !clearOrderLineMin {
-                TextField("Minimum quantity", text: $orderLineMin)
+                TextField("mobile_warehouse.ui.minimum_quantity", text: $orderLineMin)
                     .keyboardType(.numberPad)
             }
             Toggle("No maximum quantity", isOn: $clearOrderLineMax)
             if !clearOrderLineMax {
-                TextField("Maximum quantity", text: $orderLineMax)
+                TextField("mobile_warehouse.ui.maximum_quantity", text: $orderLineMax)
                     .keyboardType(.numberPad)
             }
         }
 
         Section("Express delivery") {
             Toggle("Express enabled", isOn: $expressEnabled)
-            TextField("Express stock floor", text: $expressStockFloor)
+            TextField("mobile_warehouse.ui.express_stock_floor", text: $expressStockFloor)
                 .keyboardType(.numberPad)
         }
 
         Section("Delivery fee rules") {
             Toggle("No delivery fee rules", isOn: $clearFeeRules)
             if !clearFeeRules {
-                TextField("Base fee (minor)", text: $feeBaseMinor)
+                TextField("warehouse_portal.residual.text.base_fee_minor", text: $feeBaseMinor)
                     .keyboardType(.numberPad)
-                TextField("Currency", text: $feeCurrency)
+                LabeledContent("supplier_portal.chargebacks.text.currency", value: feeCurrency)
                 ForEach($feeTiers) { $tier in
                     HStack {
-                        TextField("Max km", text: $tier.maxKm)
+                        TextField("mobile_warehouse.ui.max_km", text: $tier.maxKm)
                             .keyboardType(.decimalPad)
-                        TextField("Fee (minor)", text: $tier.feeMinor)
+                        TextField("mobile_warehouse.ui.fee_minor", text: $tier.feeMinor)
                             .keyboardType(.numberPad)
                     }
                 }
-                Button("Add tier") {
+                Button("mobile_warehouse.ui.add_tier") {
                     feeTiers.append(FeeTierDraft())
                 }
                 if feeTiers.count > 1 {
-                    Button("Remove last tier", role: .destructive) {
+                    Button("mobile_warehouse.ui.remove_last_tier", role: .destructive) {
                         feeTiers.removeLast()
                     }
                 }
@@ -114,17 +114,17 @@ struct OpsSettingsForm: View {
         }
 
         Section("Order acceptance hours") {
-            Text("When enforcement is on, retailers cannot preview or create orders outside the window.")
+            Text("warehouse_portal.residual.text.when_enforcement_is_on_retailers_cannot_preview_or_create_orders")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Toggle("Enforce order acceptance hours", isOn: $enforceOrderAcceptance)
             Toggle("Open 24 hours", isOn: $scheduleIs24h)
-            TextField("Timezone", text: $scheduleTimezone)
+            TextField("supplier_portal.configuration.countries.field.timezone", text: $scheduleTimezone)
             HStack {
-                TextField("Weekday open", text: $weekdayOpen)
-                TextField("Weekday close", text: $weekdayClose)
+                TextField("warehouse_portal.residual.text.weekday_open", text: $weekdayOpen)
+                TextField("warehouse_portal.residual.text.weekday_close", text: $weekdayClose)
             }
-            Text("Advanced JSON").font(.caption).foregroundStyle(.secondary)
+            Text("warehouse_portal.settings.ops_settings_form.text.advanced_json").font(.caption).foregroundStyle(.secondary)
             TextEditor(text: $scheduleJSON)
                 .font(.system(.caption, design: .monospaced))
                 .frame(minHeight: 140)

@@ -1,0 +1,8 @@
+# Ensure REST Service has BackendConfig + NEG for GCE Ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-go
+  annotations:
+    cloud.google.com/backend-config: '{"default": "pegasusx-api-backendconfig"}'
+    cloud.google.com/neg: '{"ingress": true}'

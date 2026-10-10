@@ -1,0 +1,68 @@
+'use client';
+
+import React from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import PegasusSciFiLogo from './visuals/PegasusSciFiLogo';
+import { useLanguage } from '../context/LanguageContext';
+
+function DitheredPortrait({ src, alt }: { src: string; alt: string }) {
+	return (
+		<div className="relative w-full aspect-square bg-black overflow-hidden flex items-center justify-center group">
+			<Image
+				src={src}
+				alt={alt}
+				width={400}
+				height={400}
+				priority
+				className="w-full h-full object-cover object-[50%_20%]"
+			/>
+		</div>
+	);
+}
+
+export function PegasusTestimonialsSection() {
+	const { language } = useLanguage();
+
+	return (
+		<section className="bg-black py-24 md:py-40 flex justify-center items-center">
+			<div className="max-w-[1100px] w-full px-6 md:px-12">
+				<div className="grid grid-cols-[140px_1fr] md:grid-cols-[180px_1fr] gap-x-6 md:gap-x-8 gap-y-12 items-center">
+					
+					{/* Row 1: Image & Quote */}
+					<div className="col-span-1">
+						<DitheredPortrait src="/cto_portrait.jpg" alt="Shakhzod Soliyev" />
+					</div>
+					<div className="col-span-1 h-full flex items-center">
+						<h3 className="text-[28px] md:text-[40px] lg:text-[48px] font-libre text-white leading-[1.3] tracking-tight">
+							{language === 'ru' 
+								? '«Мы оценивали Omni и другие BI-решения, но скорость получения инсайтов с Pegasus не имеет равных.»'
+								: '“We evaluated Omni and other BI tools, but the speed to insight with Pegasus is unmatched.”'}
+						</h3>
+					</div>
+
+					{/* Row 2: Logo & Name/Role */}
+					<div className="col-span-1 flex items-center justify-start h-full">
+						<div className="flex items-center">
+							<PegasusSciFiLogo variant="solid" color="white" height="auto" className="w-[120px] md:w-[160px] mt-0.5" />
+						</div>
+					</div>
+					<div className="col-span-1 flex flex-col justify-center">
+						<div className="text-white text-xl md:text-2xl font-bold">Shakhzod Soliyev</div>
+						<div className="text-zinc-500 text-sm md:text-base mt-1 font-medium leading-snug">
+							CEO &amp; CTO &middot; Pegasus &amp; Antimatter
+						</div>
+					</div>
+
+					{/* Row 3: Read Case Study Link */}
+					<div className="col-span-2 mt-[-16px]">
+						<Link href="#" className="text-zinc-400 hover:text-white transition-colors text-base md:text-lg flex items-center gap-2">
+							{language === 'ru' ? 'Читать кейс' : 'Read case study'} <span aria-hidden="true" className="font-light">&rarr;</span>
+						</Link>
+					</div>
+
+				</div>
+			</div>
+		</section>
+	);
+}

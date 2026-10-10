@@ -50,7 +50,7 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(ret.SupplierID) == "" {
-		ret.SupplierID = s.supplierID
+		ret.SupplierID = s.resolveSupplierScope(r.Context())
 	}
 
 	if name := firstNonEmpty(rawString(req, "name"), rawString(req, "store_name"), rawString(req, "owner_name"), rawString(req, "company")); name != "" {
@@ -67,6 +67,18 @@ func (s *Service) HandleRetailerSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	if country := rawString(req, "country_code"); country != "" {
 		ret.CountryCode = country
+	}
+	country, cell, stampErr := stampRetailerOptionalCoords(r.Context(), ret.Lat, ret.Lng, ret.CountryCode)
+	if stampErr != nil {
+		if writeMarketLaw(w, stampErr) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+		return
+	}
+	ret.CountryCode = country
+	if cell != "" {
+		ret.H3Cell = cell
 	}
 
 	// Desktop setup wizard fields — best-effort label when name is still empty.

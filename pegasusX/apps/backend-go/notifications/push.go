@@ -27,6 +27,12 @@ func (p *PushBridge) NotifyActor(ctx context.Context, actorID, actorRole string,
 	if p == nil || p.fcm == nil || p.tokens == nil || actorID == "" {
 		return
 	}
+	// G1.D: never look like push succeeded when FCM is no-op — log degraded loudly.
+	if p.fcm.IsNoOp() {
+		p.log.WarnContext(ctx, "fcm notify skipped: push_degraded no-op client",
+			"push_degraded", true, "alert", "fcm_noop", "actor_id", actorID, "actor_role", actorRole)
+		return
+	}
 	tokenList, err := p.tokens.ListTokens(ctx, actorID, actorRole)
 	if err != nil {
 		p.log.WarnContext(ctx, "list device tokens failed", "err", err, "actor_id", actorID)
@@ -34,7 +40,7 @@ func (p *PushBridge) NotifyActor(ctx context.Context, actorID, actorRole string,
 	}
 	for _, token := range tokenList {
 		if err := p.fcm.SendDataMessage(ctx, token, data); err != nil {
-			p.log.DebugContext(ctx, "fcm notify skipped", "err", err, "actor_id", actorID)
+			p.log.WarnContext(ctx, "fcm notify failed", "err", err, "actor_id", actorID, "push_degraded", false)
 		}
 	}
 }

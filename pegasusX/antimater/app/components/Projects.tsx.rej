@@ -1,0 +1,27 @@
+@@ -104,7 +104,7 @@
+ 
+ 		return (
+ 			<PageSection id="projects" className="py-24 bg-black">
+-				<div className="relative max-w-[1600px] mx-auto group">
++				<div className="relative w-full group">
+ 					{/* Scroll Navigation Buttons */}
+ 					<button
+ 						onClick={scrollLeft}
+@@ -129,7 +129,7 @@
+ 					{/* Scrollable Container */}
+ 					<div 
+ 						ref={scrollRef}
+-						className="flex flex-row overflow-x-auto scroll-smooth overscroll-x-contain snap-x snap-proximity gap-6 px-6 md:px-12 w-full h-[650px] lg:h-[600px]"
++						className="flex flex-row overflow-x-auto scroll-smooth overscroll-x-contain snap-x snap-proximity gap-8 pl-4 pr-12 md:pl-8 md:pr-24 w-full h-[700px] lg:h-[800px]"
+ 						style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+ 					>
+ 						{/* Style to hide webkit scrollbar */}
+@@ -141,7 +141,7 @@
+ 							<div
+ 								key={project.href}
+ 								className="relative rounded-3xl overflow-hidden flex-shrink-0 snap-center group/card bg-zinc-900 
+-											w-[85vw] md:w-[50vw] xl:max-w-[800px]"
++											w-[90vw] md:w-[70vw] xl:w-[1100px] xl:max-w-[1100px]"
+ 							>
+ 								{/* Blurred Image Background with Hover Reveal */}
+ 								<Image

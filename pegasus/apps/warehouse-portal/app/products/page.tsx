@@ -43,7 +43,10 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-xl font-light tracking-tight text-[var(--foreground)]">Product Catalog</h1>
           <div className="flex gap-2 items-center">
+            <label htmlFor="product-search-input" className="sr-only">Search products</label>
             <input
+              id="product-search-input"
+              aria-label="Search products"
               placeholder="Search products..."
               value={search}
               onChange={e => { setSearch(e.target.value); setLoading(true); }}

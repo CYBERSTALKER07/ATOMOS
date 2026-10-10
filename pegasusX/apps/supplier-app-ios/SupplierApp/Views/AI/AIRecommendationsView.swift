@@ -31,7 +31,7 @@ struct AIRecommendationsView: View {
 
                     if items.isEmpty {
                         Section {
-                            Text("No \(filter.lowercased()) advisory rows for this supplier.")
+                            Text(L10n.format("mobile_supplier.ui.no_lowercased_advisory_rows_for_this_supplier", "\(filter.lowercased())"))
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -45,7 +45,7 @@ struct AIRecommendationsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("AI recommendations")
+        .navigationTitle("mobile_supplier.ui.ai_recommendations")
         .task(id: filter) { await load() }
     }
 
@@ -63,12 +63,12 @@ struct AIRecommendationsView: View {
             if !rec.explanation.isEmpty {
                 Text(rec.explanation).font(.subheadline)
             }
-            Text("\(rec.aggregateType) \(rec.aggregateId) · Source \(rec.source)")
+            Text(L10n.format("mobile_supplier.ui.aggregatetype_aggregateid_source_source", "\(rec.aggregateType)", "\(rec.aggregateId)", "\(rec.source)"))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
             if !rec.reasonCodes.isEmpty {
-                Text("Reasons: \(rec.reasonCodes.joined(separator: ", "))")
+                Text(L10n.format("mobile_supplier.ui.reasons_joined", "\(rec.reasonCodes.joined(separator: ", "))"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

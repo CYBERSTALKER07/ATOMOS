@@ -127,7 +127,7 @@ func (s *Service) maybeWritePendingOrgSelect(w http.ResponseWriter, phone string
 		Role:        auth.RoleRetailer,
 		TokenUse:    auth.TokenUsePendingOrgSelect,
 		PhoneNumber: phone,
-		SupplierID:  s.supplierID,
+		SupplierID:  s.seedSupplierID,
 	}
 	token, err := auth.Issue(claims, auth.IssueOptions{Secret: s.jwtSecret, Issuer: s.jwtIssuer, TTL: ttl})
 	if err != nil {
@@ -139,10 +139,10 @@ func (s *Service) maybeWritePendingOrgSelect(w http.ResponseWriter, phone string
 		dtos = append(dtos, membershipToDTO(m))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token":           token,
-		"token_type":      "pending_org_select",
-		"memberships":     dtos,
-		"expires_in_sec":  int(ttl.Seconds()),
+		"token":            token,
+		"token_type":       "pending_org_select",
+		"memberships":      dtos,
+		"expires_in_sec":   int(ttl.Seconds()),
 		"membership_count": len(dtos),
 	})
 	return true
@@ -219,14 +219,8 @@ func (s *Service) resolveAuthenticatedMemberships(ctx context.Context, phone, se
 }
 
 func secretMatchesDemo(secret string) bool {
-	expect := strings.TrimSpace(os.Getenv("RETAILER_DEMO_PASSWORD"))
-	if expect == "" {
-		expect = strings.TrimSpace(os.Getenv("RETAILER_DEMO_PIN"))
-	}
-	if expect == "" {
-		expect = "1234"
-	}
-	return secret == expect
+	expect := demoRetailerSecret()
+	return expect != "" && secret == expect
 }
 
 // HandleListMemberships serves GET /v1/auth/retailer/memberships
@@ -421,7 +415,7 @@ func (s *Service) writeFullAuthForMembership(w http.ResponseWriter, ctx context.
 		RetailerID: m.RetailerID,
 		Phone:      m.Phone,
 		Name:       m.Name,
-		SupplierID: s.supplierID,
+		SupplierID: s.resolveSupplierScope(ctx),
 	}
 	if s.repo != nil {
 		if r, ok, err := s.repo.GetRetailer(ctx, m.RetailerID); err == nil && ok {

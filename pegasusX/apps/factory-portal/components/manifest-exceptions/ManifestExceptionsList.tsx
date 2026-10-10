@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { PageSection } from '@/components/PageSection';
 
 export interface ManifestException {
@@ -48,8 +51,9 @@ export function ManifestExceptionsList({
   resolvingId = null,
   onResolve,
 }: ManifestExceptionsListProps) {
+  const t = usePortalT();
   return (
-    <PageSection title="Exception inbox" description="Rows highlighted when attempt count reaches DLQ threshold." className="mt-6">
+    <PageSection title={t("factory_portal.manifest_exceptions.manifest_exceptions_list.text.exception_inbox")} description={t("factory_portal.residual.text.rows_highlighted_when_attempt_count_reaches_dlq_threshold")} className="mt-6">
       <div className="overflow-x-auto -mx-5 px-5">
         <table className="desk-table w-full text-sm">
           <thead>

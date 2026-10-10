@@ -125,11 +125,13 @@ export default function PlanningFederationPage() {
         className="mb-8 p-4 rounded-xl border"
         style={{ borderColor: "var(--border)" }}
       >
-        <label className="block text-xs uppercase tracking-widest opacity-50 mb-2">
+        <label htmlFor="tenant-query-input" className="block text-xs uppercase tracking-widest opacity-50 mb-2">
           Tenant selector
         </label>
         <div className="flex flex-col md:flex-row gap-3">
           <input
+            id="tenant-query-input"
+            aria-label="Search supplier name"
             type="text"
             value={tenantQuery}
             onChange={(e) => setTenantQuery(e.target.value)}

@@ -66,12 +66,38 @@ func TestOSRMClient_RouteGeometryWithSteps(t *testing.T) {
 	}
 }
 
+func TestOSRMClient_DistanceMatrix(t *testing.T) {
+	points := []LatLng{
+		{Lat: 41.2995, Lng: 69.2401},
+		{Lat: 41.3095, Lng: 69.2501},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/table/v1/driving/") {
+			t.Fatalf("unexpected path %s", r.URL.Path)
+		}
+		if !strings.Contains(r.URL.RawQuery, "annotations=distance") {
+			t.Fatalf("expected annotations=distance, got %s", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"code":"Ok","distances":[[0,1500],[1600,0]]}`))
+	}))
+	defer server.Close()
+
+	client := NewOSRMClient(server.URL, circuit.New("osrm-table-test", circuit.Config{}))
+	matrix, err := client.DistanceMatrix(context.Background(), points)
+	if err != nil {
+		t.Fatalf("DistanceMatrix: %v", err)
+	}
+	if matrix[0][1] != 1500 || matrix[1][0] != 1600 {
+		t.Fatalf("matrix=%v", matrix)
+	}
+}
+
 func TestGeometryBuilder_FallsBackToDense(t *testing.T) {
 	waypoints := []LatLng{
 		{Lat: 41.2995, Lng: 69.2401},
 		{Lat: 41.3095, Lng: 69.2501},
 	}
-	builder := NewGeometryBuilder(nil)
+	builder := NewGeometryBuilder(nil, nil, RoutingProviderAuto)
 	geometry := builder.Build(context.Background(), "route-1", waypoints)
 	if geometry.Source != "computed_dense" {
 		t.Fatalf("source=%q", geometry.Source)

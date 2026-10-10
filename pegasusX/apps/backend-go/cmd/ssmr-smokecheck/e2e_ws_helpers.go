@@ -55,7 +55,7 @@ func runCrossRoleSupplierBroadcastWS(ctx context.Context, client *http.Client, b
 	if err != nil {
 		return fmt.Errorf("issue supplier admin jwt: %w", err)
 	}
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, wsURL(base, adminToken), nil)
+	conn, _, err := dialWS(ctx, base, adminToken)
 	if err != nil {
 		return fmt.Errorf("supplier ws dial: %w", err)
 	}

@@ -18,35 +18,35 @@ struct CreateOrgMemberSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Email", text: $email)
-                TextField("Phone", text: $phone)
+                TextField("retailer_desktop.pos.text.name", text: $name)
+                TextField("supplier_portal.auth.login.email_label", text: $email)
+                TextField("common.field.phone", text: $phone)
                 SecureField("Password", text: $password)
                 Picker("Role", selection: $role) {
-                    Text("Warehouse admin").tag("WAREHOUSE_ADMIN")
-                    Text("Factory admin").tag("FACTORY_ADMIN")
-                    Text("Payload staff").tag("PAYLOAD")
-                    Text("Supplier operator").tag("ADMIN")
+                    Text("supplier_portal.residual.text.warehouse_admin").tag("WAREHOUSE_ADMIN")
+                    Text("supplier_portal.residual.text.factory_admin").tag("FACTORY_ADMIN")
+                    Text("supplier_portal.residual.text.payload_staff").tag("PAYLOAD")
+                    Text("supplier_portal.residual.text.supplier_operator").tag("ADMIN")
                 }
                 .onChange(of: role) { _, _ in nodeId = "" }
                 if role == "PAYLOAD" {
                     Picker("Node type", selection: $nodeType) {
-                        Text("Warehouse").tag("WAREHOUSE")
-                        Text("Factory").tag("FACTORY")
+                        Text("factory_portal.insights.text.warehouse").tag("WAREHOUSE")
+                        Text("factory_portal.setup.factory.text.factory").tag("FACTORY")
                     }
                     .onChange(of: nodeType) { _, _ in nodeId = "" }
                 }
                 if role != "ADMIN" {
                     Picker("Node", selection: $nodeId) {
-                        Text("Select node").tag("")
+                        Text("supplier_portal.org_fleet.components.org_member_form.text.select_node").tag("")
                         ForEach(nodeOptions, id: \.0) { id, label in Text(label).tag(id) }
                     }
                 }
                 if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("Create org member")
+            .navigationTitle("mobile_supplier.ui.create_org_member")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Create") { Task { await create() } }
                         .disabled(busy || name.isEmpty || phone.isEmpty || password.isEmpty || (role != "ADMIN" && nodeId.isEmpty))

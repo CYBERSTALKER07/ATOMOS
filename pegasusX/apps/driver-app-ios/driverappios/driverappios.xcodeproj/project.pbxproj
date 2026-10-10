@@ -112,9 +112,11 @@
 				2E5380432F6B10CF00C3D5C6 /* driverappios */,
 			);
 			name = driverappios;
-			packageProductDependencies = (
+            packageProductDependencies = (
 				DR11FB000000000000000002 /* FirebaseAuth */,
 				DR11FB000000000000000003 /* FirebaseCore */,
+				DR11FB000000000000000004 /* FirebaseMessaging */,
+				DR11PK000000000000000002 /* PegasusKit */,
 			);
 			productName = driverappios;
 			productReference = 2E5380412F6B10CF00C3D5C6 /* driverappios.app */;
@@ -193,14 +195,17 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
+				ru,
+				uz,
 			);
 			mainGroup = 2E5380382F6B10CF00C3D5C6;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			packageReferences = (
 				DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */,
 			);
 			productRefGroup = 2E5380422F6B10CF00C3D5C6 /* Products */;
 			projectDirPath = "";
@@ -297,6 +302,13 @@
 		};
 /* End PBXTargetDependency section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../../packages/mobile-ios-kit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -318,6 +330,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseCore;
+		};
+		DR11FB000000000000000004 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11FB000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		DR11PK000000000000000002 /* PegasusKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DR11PK000000000000000001 /* XCLocalSwiftPackageReference "mobile-ios-kit" */;
+			productName = PegasusKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 
@@ -456,7 +478,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -492,7 +513,6 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UIBackgroundModes = "(location)";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

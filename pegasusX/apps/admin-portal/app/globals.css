@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "@pegasusx/ui-kit/styles/desktop-foundation.css";
+@import "@pegasusx/ui-kit/styles/portal-ui.css";
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+  background: #f6f7f9;
+  color: #111827;
+}

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -22,6 +24,7 @@ import com.pegasusx.factory.ui.screens.transfer.components.TransferFilters
 import com.pegasusx.factory.ui.screens.transfer.components.TransferList
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 private val STATE_FILTERS = listOf("ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED")
 
@@ -32,11 +35,18 @@ fun TransferListScreen(
     onTransferClick: (String) -> Unit,
     onCreateTransfer: () -> Unit,
     onBack: () -> Unit,
+    initialState: String? = null,
 ) {
     var transfers by remember { mutableStateOf<List<Transfer>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedFilter by remember { mutableStateOf("ALL") }
+    var selectedFilter by remember { mutableStateOf(initialState?.takeIf { it.isNotBlank() } ?: "ALL") }
+
+    LaunchedEffect(initialState) {
+        if (!initialState.isNullOrBlank()) {
+            selectedFilter = initialState
+        }
+    }
     val scope = rememberCoroutineScope()
 
     fun load(silent: Boolean = false) {
@@ -81,7 +91,7 @@ fun TransferListScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Transfers")
                         Text(
-                            text = "Factory-to-warehouse movement pipeline",
+                            text = stringResource(R.string.mobile_factory_ui_factory_to_warehouse_movement_pipeline),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -110,7 +120,7 @@ fun TransferListScreen(
 
             when {
                 loading && transfers.isEmpty() -> PegasusLoadingState(
-                    title = "Loading transfers",
+                    title = stringResource(R.string.mobile_factory_ui_loading_transfers),
                     body = "Fetching the current transfer pipeline for this factory.",
                     modifier = Modifier.fillMaxSize(),
                 )

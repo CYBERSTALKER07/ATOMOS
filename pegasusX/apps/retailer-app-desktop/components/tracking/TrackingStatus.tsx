@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import { Package, MapPin, Users, Truck } from "lucide-react";
 import { BentoGrid, BentoCard } from "../BentoGrid";
 import CountUp from "../CountUp";
@@ -27,6 +30,7 @@ export function TrackingStatus({
   selectedSupplierIds,
   toggleSupplier,
 }: TrackingStatusProps) {
+  const t = usePortalT();
   return (
     <>
       <BentoGrid className="mb-2">
@@ -105,8 +109,8 @@ export function TrackingStatus({
 
       {recentReceipts.length > 0 && (
         <PageSection
-          title="Recent receipts"
-          description="Completed deliveries from the tracking feed."
+          title={t("retailer_desktop.tracking.tracking_status.text.recent_receipts")}
+          description={t("retailer_desktop.residual.text.completed_deliveries_from_the_tracking_feed")}
         >
           <div className="space-y-2 max-h-40 overflow-y-auto !mt-0">
             {recentReceipts.slice(0, 6).map((receipt) => {

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,6 +39,8 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class ShiftRow(
     val shiftId: String,
@@ -86,7 +90,7 @@ fun ShiftsScreen(
                 }
                 if (registerId == null) {
                     val regs = viewModel.api.getRegisters().asJsonObject.getAsJsonArray("items")
-                    if (regs != null && regs.size() > 0) {
+                    if (regs != null && regs.size > 0) {
                         registerId = regs[0].asJsonObject.get("register_id")?.asString
                     }
                 }
@@ -104,7 +108,7 @@ fun ShiftsScreen(
                 title = { Text("Shifts & time") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -186,7 +190,7 @@ fun ShiftsScreen(
                                 try {
                                     val body = mutableMapOf<String, Any>(
                                         "opening_float_minor" to (floatMinor.toLongOrNull() ?: 0L),
-                                        "currency" to "UZS",
+                                        "currency" to com.pegasusx.retailer.data.model.sessionPackCurrency(),
                                     )
                                     registerId?.let { body["register_id"] = it }
                                     viewModel.api.openShift(
@@ -208,9 +212,9 @@ fun ShiftsScreen(
             items(shifts) { row ->
                 Card {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("${row.status} · float ${row.openingFloatMinor / 100.0}")
+                        Text(stringResource(R.string.mobile_retailer_ui_status_float_n_0, row.status, row.openingFloatMinor / 100.0))
                         row.varianceMinor?.let {
-                            Text("Variance: ${it / 100.0}", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(R.string.mobile_retailer_ui_variance_n_0, it / 100.0), style = MaterialTheme.typography.bodySmall)
                         }
                         if (row.status == "OPEN") {
                             OutlinedButton(enabled = !busy, onClick = {

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.transfer.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,6 +23,7 @@ import com.pegasusx.factory.data.model.Transfer
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactoryStatusChip
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun TransferList(
@@ -66,7 +69,7 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Transfer ${transfer.id.take(8)}",
+                        text = stringResource(R.string.mobile_factory_ui_transfer_take, transfer.id.take(8)),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -84,12 +87,12 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 FactoryMetricTile(
-                    label = "Items",
+                    label = stringResource(R.string.warehouse_portal_supply_requests_id_text_items),
                     value = transfer.totalItems.toString(),
                     modifier = Modifier.weight(1f),
                 )
                 FactoryMetricTile(
-                    label = "Volume",
+                    label = stringResource(R.string.supplier_portal_promotions_text_volume),
                     value = "${String.format("%.0f", transfer.totalVolumeL)}L",
                     modifier = Modifier.weight(1f),
                 )
@@ -114,7 +117,7 @@ private fun TransferListSummary(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(
-                text = "$count transfers in view",
+                text = stringResource(R.string.mobile_factory_ui_count_transfers_in_view),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(

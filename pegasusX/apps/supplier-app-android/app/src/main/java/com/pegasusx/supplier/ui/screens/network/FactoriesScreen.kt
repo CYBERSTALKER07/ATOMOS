@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -10,10 +12,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.remote.GeocodeApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,12 +55,12 @@ fun FactoriesScreen(
                 title = { Text("Factories") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showAdd = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add factory")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.supplier_portal_factories_components_factory_form_text_add_factory))
                     }
                 },
             )

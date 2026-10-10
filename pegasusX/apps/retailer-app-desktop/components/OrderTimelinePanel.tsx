@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from 'react';
 import type { OrderTimelineEntry } from '@pegasusx/types';
 import { apiFetch } from '../lib/auth';
@@ -13,6 +14,7 @@ function formatWhen(iso: string): string {
 }
 
 export function OrderTimelinePanel({ orderId }: { orderId: string }) {
+  const t = usePortalT();
   const [items, setItems] = useState<OrderTimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,10 +41,10 @@ export function OrderTimelinePanel({ orderId }: { orderId: string }) {
   }, [load]);
 
   if (loading) {
-    return <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">Loading status history…</p>;
+    return <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.order_timeline_panel.text.loading_status_history")}</p>;
   }
   if (items.length === 0) {
-    return <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">No status history yet.</p>;
+    return <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">{t("retailer_desktop.order_timeline_panel.text.no_status_history_yet")}</p>;
   }
 
   return (

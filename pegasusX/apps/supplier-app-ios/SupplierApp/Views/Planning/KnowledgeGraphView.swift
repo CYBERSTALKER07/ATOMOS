@@ -13,23 +13,23 @@ struct KnowledgeGraphView: View {
                 SupplierErrorView(message: error) { Task { await load() } }
             } else if let graph {
                 ResponsiveGridContentWrapper {
-                    Section("Nodes (\(graph.nodes.count))") {
+                    Section(L10n.format("mobile_supplier.ui.nodes_count", "\(graph.nodes.count)")) {
                         ForEach(graph.nodes) { node in
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                                 Text(node.name?.isEmpty == false ? node.name! : node.id)
                                     .font(.headline)
-                                Text("\(node.type) · \(node.id)")
+                                Text(L10n.format("mobile_supplier.ui.type_id", "\(node.type)", "\(node.id)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
-                    Section("Edges (\(graph.edges.count))") {
+                    Section(L10n.format("mobile_supplier.ui.edges_count", "\(graph.edges.count)")) {
                         ForEach(graph.edges) { edge in
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
                                 Text(edge.relation)
                                     .font(.headline)
-                                Text("\(edge.from) → \(edge.to)")
+                                Text(L10n.format("mobile_supplier.ui.from_to", "\(edge.from)", "\(edge.to)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -39,7 +39,7 @@ struct KnowledgeGraphView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Knowledge graph")
+        .navigationTitle("mobile_supplier.ui.knowledge_graph")
         .task { await load() }
         .refreshable { await load(silent: true) }
     }

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.dashboard
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -25,7 +27,13 @@ import com.pegasusx.factory.service.EnterpriseUpdateConfig
 import com.pegasusx.factory.ui.components.ClientPolicyBanner
 import com.pegasusx.factory.ui.components.FactoryKpiBadge
 import com.pegasusx.factory.ui.components.FactoryKpiTile
+import com.pegasus.design.FACTORY_DRIVER_DUTY
+import com.pegasus.design.FACTORY_TRANSFER_STATES
+import com.pegasus.design.FACTORY_VEHICLE_STATES
+import com.pegasus.design.MANIFEST_STATES
 import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.SourceChip
+import com.pegasus.design.StatusStack
 import com.pegasusx.factory.ui.components.FactoryMetricTile
 import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasus.design.PegasusStateKind
@@ -37,6 +45,13 @@ import com.pegasusx.factory.ui.screens.dashboard.components.DashboardHeroCard
 import com.pegasusx.factory.ui.screens.dashboard.components.WorkflowLaunchCard
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
+import com.pegasus.design.MarketPack
+import com.pegasus.design.MarketPackBinder
+import com.pegasus.design.PackBanner
+import com.pegasusx.factory.data.remote.TokenHolder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class KpiCard(
     val label: String,
@@ -56,7 +71,7 @@ private val kpiCards = listOf(
     KpiCard("Staff on Shift", Icons.Default.People, FactoryRoutes.STAFF, { it.staffOnShift.toString() }, { "Operators currently active" }),
     KpiCard("Gate Exceptions", Icons.Default.Warning, FactoryRoutes.MANIFEST_EXCEPTIONS, { it.criticalInsights.toString() }, { "Transfers removed during loading" }),
 )
-private const val DASHBOARD_REFRESH_MS = 30_000L
+private const val DASHBOARD_REFRESH_MS = 60_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,6 +83,7 @@ fun DashboardScreen(
     var stats by remember { mutableStateOf(DashboardStats()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
+    var pack by remember { mutableStateOf<MarketPack?>(null) }
     var clientPolicyMessage by remember { mutableStateOf<String?>(null) }
     var clientPolicyForce by remember { mutableStateOf(false) }
     var pendingManifest by remember { mutableStateOf<AutoUpdater.Manifest?>(null) }
@@ -131,6 +147,9 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(Unit) {
+        pack = withContext(Dispatchers.IO) {
+            MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack
+        }
         load()
         loadClientPolicy()
         while (true) {
@@ -155,8 +174,9 @@ fun DashboardScreen(
                 title = {
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Factory dashboard")
+                        PackBanner(pack)
                         Text(
-                            text = "Dispatch, loading, fleet, and staffing status",
+                            text = stringResource(R.string.mobile_factory_ui_dispatch_loading_fleet_and_staffing_status),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -178,7 +198,7 @@ fun DashboardScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading dashboard",
+                title = stringResource(R.string.mobile_factory_ui_loading_dashboard),
                 body = "Fetching live factory metrics for loading, fleet, and staffing.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -227,7 +247,7 @@ fun DashboardScreen(
                     WorkflowLaunchCard(onNavigate = onNavigate)
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    FactorySectionTitle(title = "Operations at a glance")
+                    FactorySectionTitle(title = stringResource(R.string.mobile_factory_ui_operations_at_a_glance))
                 }
                 items(kpiCards, key = { it.label }) { card ->
                     val badge = when (card.label) {
@@ -242,6 +262,51 @@ fun DashboardScreen(
                         supporting = card.supporting(stats),
                         badge = badge,
                         onClick = { onNavigate(card.route) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                        SourceChip(if (stats.source.isBlank()) "empty" else stats.source)
+                        Text(
+                            if (stats.source == "empty") "No factory rows yet" else "Dashboard ${stats.source}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    FactorySectionTitle(title = "Transfers")
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.transfersByState,
+                        dictionary = FACTORY_TRANSFER_STATES,
+                        source = stats.source,
+                        onSelect = { key -> onNavigate(FactoryRoutes.transfers(key)) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    FactorySectionTitle(title = "Factory trucks")
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.manifestsByState,
+                        dictionary = MANIFEST_STATES,
+                        source = stats.source,
+                        onSelect = { onNavigate(FactoryRoutes.LOADING_BAY) },
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.vehiclesByState,
+                        dictionary = FACTORY_VEHICLE_STATES,
+                        source = stats.source,
+                    )
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    StatusStack(
+                        counts = stats.driverDuty,
+                        dictionary = FACTORY_DRIVER_DUTY,
+                        source = stats.source,
                     )
                 }
             }

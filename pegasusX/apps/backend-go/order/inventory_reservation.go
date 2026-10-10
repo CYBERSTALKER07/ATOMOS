@@ -3,20 +3,57 @@ package order
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
 
 // ReserveLineItemsInTxn increments QuantityReserved for each line when stock is available.
+// When WMS_LOTS_ENABLED, allocates FEFO/FIFO lots via stocklots (orderID required).
 func ReserveLineItemsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string, lineItems []LineItem) error {
+	return ReserveLineItemsForOrderInTxn(ctx, txn, supplierID, warehouseID, "", "", time.Time{}, lineItems)
+}
+
+// ReserveLineItemsForOrderInTxn reserves bag SKU or lot-level stock for an order.
+func ReserveLineItemsForOrderInTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	supplierID, warehouseID, orderID, retailerID string,
+	expectedDelivery time.Time,
+	lineItems []LineItem,
+) error {
 	if strings.TrimSpace(warehouseID) == "" || len(lineItems) == 0 {
 		return nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
+
+	if stocklots.LotsEnabled() {
+		lines := make([]stocklots.LineQty, 0, len(lineItems))
+		for _, item := range lineItems {
+			sku := strings.TrimSpace(item.SKU)
+			if sku == "" || item.Quantity <= 0 {
+				continue
+			}
+			lines = append(lines, stocklots.LineQty{SKU: sku, Quantity: item.Quantity})
+		}
+		err := stocklots.ReserveFEFOInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, expectedDelivery, lines)
+		if err != nil {
+			if errors.Is(err, stocklots.ErrInventoryExhausted) {
+				return fmt.Errorf("%w: %v", ErrInventoryExhausted, err)
+			}
+			return err
+		}
+		return nil
+	}
+
 	// Aggregate quantities by SKU to avoid double-read/overwrite issues for duplicate SKUs
 	skuQuantities := make(map[string]int64)
 	for _, item := range lineItems {
@@ -137,7 +174,19 @@ func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) 
 			if err := ReserveLineItemsInTxn(ctx, txn, c.supplierID, c.warehouseID, c.lineItems); err != nil {
 				return err
 			}
-			return insertStockReservationMarkerInTxn(txn, c.orderID)
+			if err := insertStockReservationMarkerInTxn(txn, c.orderID); err != nil {
+				return err
+			}
+			buf := outbox.NewSpannerTxnBuffer(txn)
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, c.orderID, events.TopicOrders, map[string]any{
+				"type":         "ORDER_INVENTORY_RESERVED",
+				"order_id":     c.orderID,
+				"supplier_id":  c.supplierID,
+				"warehouse_id": c.warehouseID,
+			}); err != nil {
+				return err
+			}
+			return buf.Flush(ctx)
 		})
 		if err != nil {
 			if s.log != nil {
@@ -148,7 +197,7 @@ func (s *Service) BackfillScheduledReservations(ctx context.Context, limit int) 
 		backfilled++
 	}
 	if backfilled > 0 && s.cache != nil {
-		s.cache.Invalidate(ctx, "catalog:products:"+s.supplierID)
+		s.cache.Invalidate(ctx, "catalog:products:"+s.resolveSupplierScope(ctx))
 	}
 	return backfilled, nil
 }

@@ -1,9 +1,10 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
-import { supplierShopClosedResolveKey } from "@pegasusx/api-client";
+import { supplierShopClosedResolveKey } from "@pegasusx/api-core";
 import type { ShopClosedAttemptRow } from "@pegasusx/types";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { PageChrome } from '@/components/PageChrome';
@@ -11,6 +12,7 @@ import { PageChrome } from '@/components/PageChrome';
 const api = createSupplierApi();
 
 export default function ShopClosedExceptionsPage() {
+  const t = usePortalT();
   const [rows, setRows] = useState<ShopClosedAttemptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +24,7 @@ export default function ShopClosedExceptionsPage() {
     api
       .getSupplierShopClosedActive({ limit: 500, offset: 0 })
       .then((resp) => setRows(resp.data ?? []))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,7 +35,7 @@ export default function ShopClosedExceptionsPage() {
   useSupplierSessionReconcile(() => {
     if (busyId) {
       setBusyId(null);
-      setError("Connection restored — escalation queue refreshed from server.");
+      setError(t("supplier_portal.residual.text.connection_restored_escalation_queue_refreshed_from_server"));
     }
     load();
   });
@@ -46,12 +48,12 @@ export default function ShopClosedExceptionsPage() {
         supplierShopClosedResolveKey(attemptId, action),
       );
       if (body.queued) {
-        setError("Resolution queued for retry when back online.");
+        setError(t("supplier_portal.residual.text.resolution_queued_for_retry_when_back_online"));
       } else {
         load();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "resolve_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.resolve_failed"));
     } finally {
       setBusyId(null);
     }
@@ -60,12 +62,12 @@ export default function ShopClosedExceptionsPage() {
   return (
     <PageChrome
       icon="warning"
-      title="Shop closed escalations"
-      description="Active driver reports where the retailer did not confirm within the grace window."
+      title={t("supplier_portal.exceptions.shop_closed.text.shop_closed_escalations")}
+      description={t("supplier_portal.residual.text.active_driver_reports_where_the_retailer_did_not_confirm_within_")}
       loading={loading}
       error={error}
       empty={!loading && rows.length === 0}
-      emptyMessage="No escalations in queue."
+      emptyMessage={t("supplier_portal.residual.text.no_escalations_in_queue")}
     >
       <p className="md-typescale-body-medium text-[var(--color-md-outline)]">
         <Link href="/exceptions" className="text-[var(--color-md-primary)] underline">

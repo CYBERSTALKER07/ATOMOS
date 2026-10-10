@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -12,11 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasusx.supplier.data.model.SupplierFleetOrderRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +53,7 @@ fun FleetOrdersScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Fleet orders") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -58,7 +61,7 @@ fun FleetOrdersScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading fleet orders…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_fleet_orders),
                 body = "In-flight assignments",
                 modifier = Modifier.padding(padding),
             )
@@ -87,8 +90,8 @@ fun FleetOrdersScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     ElevatedCard(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(PegasusSpacing.lg)) {
                             Text(row.orderId, style = MaterialTheme.typography.titleMedium)
-                            Text("${row.status} · Driver ${row.driverId ?: "—"}", style = MaterialTheme.typography.bodyMedium)
-                            row.routeId?.let { Text("Route $it", style = MaterialTheme.typography.bodySmall) }
+                            Text(stringResource(R.string.mobile_supplier_ui_status_driver_driverid, row.status, row.driverId ?: "—"), style = MaterialTheme.typography.bodyMedium)
+                            row.routeId?.let { Text(stringResource(R.string.mobile_supplier_ui_route_it, it), style = MaterialTheme.typography.bodySmall) }
                         }
                     }
                 }

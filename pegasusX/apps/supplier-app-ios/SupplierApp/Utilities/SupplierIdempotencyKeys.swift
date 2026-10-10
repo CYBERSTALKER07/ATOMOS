@@ -96,6 +96,34 @@ enum SupplierIdempotencyKeys {
         "supplier-seasonal-override:\(scopeId):\(stableHash("\(startDate):\(endDate)"))"
     }
 
+    static func networkModePut(scopeId: String, mode: String) -> String {
+        "supplier-network-mode:\(scopeId):\(mode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
+    static func planningPullMatrix(scopeId: String) -> String {
+        "supplier-planning-pull-matrix:\(scopeId)"
+    }
+
+    static func planningPredictivePush(scopeId: String) -> String {
+        "supplier-planning-predictive-push:\(scopeId)"
+    }
+
+    static func loyaltyProgramPatch(scopeId: String, reason: String) -> String {
+        "supplier-loyalty-program:\(scopeId):\(stableHash(reason.trimmingCharacters(in: .whitespacesAndNewlines)))"
+    }
+
+    static func planningKillSwitch(scopeId: String, reason: String) -> String {
+        "supplier-planning-kill-switch:\(scopeId):\(stableHash(reason.trimmingCharacters(in: .whitespacesAndNewlines)))"
+    }
+
+    static func payoutGenerate(scopeId: String, periodStart: String, periodEnd: String) -> String {
+        "supplier-payout-generate:\(scopeId):\(periodStart):\(periodEnd)"
+    }
+
+    static func returnPolicyPut(scopeId: String, hours: Int64) -> String {
+        "supplier-return-policy:\(scopeId):\(hours)"
+    }
+
     static func controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String) -> String {
         "supplier-control-tower-override:\(scopeId):\(stableHash("\(action):\(polygonFingerprint)"))"
     }

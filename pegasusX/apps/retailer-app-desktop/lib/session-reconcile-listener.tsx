@@ -1,11 +1,14 @@
 "use client";
 
+
+import { usePortalT } from "@/lib/i18n";
 import { useEffect } from "react";
 import { useWebSocket } from "./ws";
 import { reconcileRetailerSession } from "./session-reconcile";
 
 /** Runs server-authoritative snapshot refetch after each WS reconnect. */
 export function SessionReconcileListener() {
+  const t = usePortalT();
   const { reconnectEpoch } = useWebSocket();
 
   useEffect(() => {

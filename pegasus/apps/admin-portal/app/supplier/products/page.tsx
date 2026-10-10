@@ -184,7 +184,10 @@ export default function MyProductsPage() {
       <div className="flex gap-3 mb-6 flex-wrap items-center">
         <div className="relative flex-1 min-w-50 max-w-md">
           <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted" />
+          <label htmlFor="products-search-input" className="sr-only">Search products</label>
           <input
+            id="products-search-input"
+            aria-label="Search products"
             type="text"
             placeholder="Search products..."
             value={search}
@@ -251,8 +254,12 @@ export default function MyProductsPage() {
           {filtered.map(p => (
             <div
               key={p.sku_id}
-              className="md-card md-card-elevated md-shape-lg overflow-hidden flex flex-col transition-colors cursor-pointer"
+              role="button"
+              tabIndex={0}
+              aria-label={`View product ${p.name}`}
+              className="md-card md-card-elevated md-shape-lg overflow-hidden flex flex-col transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500"
               style={{ opacity: p.is_active ? 1 : 0.6 }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/supplier/products/${p.sku_id}`); } }}
               onClick={() => router.push(`/supplier/products/${p.sku_id}`)}
             >
               {/* Image */}

@@ -17,7 +17,7 @@ import {
   buildSupplierManualDispatchIdempotencyKey,
 } from '../_shared/idempotency';
 
-/* ─── Truck Color Palette for Manual Dispatch ─────────────── */
+/* --- Truck Color Palette for Manual Dispatch --------------- */
 
 const TRUCK_COLORS = [
   { bg: 'var(--color-md-primary)', text: 'var(--color-md-on-primary)', label: 'Blue' },
@@ -30,7 +30,7 @@ const TRUCK_COLORS = [
   { bg: '#607D8B', text: '#fff', label: 'Slate' },
 ];
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface ManifestOrder {
   order_id: string;
@@ -187,7 +187,7 @@ function projectionToDispatchResult(projection: DispatchJobProjection): Dispatch
   };
 }
 
-/* ─── Main Page ───────────────────────────────────────────── */
+/* --- Main Page --------------------------------------------- */
 
 export default function DispatchPage() {
   const token = useToken();
@@ -305,7 +305,7 @@ export default function DispatchPage() {
   };
   }, [hydrateDispatchJob, queuedJobId]);
 
-  /* ─── Waiting Room Polling ──────────────────────────────── */
+  /* --- Waiting Room Polling -------------------------------- */
 
   useSyncHub(
     "POLL",
@@ -342,7 +342,7 @@ export default function DispatchPage() {
     [token, result?.snapshot_timestamp],
   );
 
-  /* ─── Auto-Dispatch ─────────────────────────────────────── */
+  /* --- Auto-Dispatch --------------------------------------- */
 
   const runAutoDispatch = useCallback(async () => {
     if (!token) return;
@@ -397,7 +397,7 @@ export default function DispatchPage() {
     }
   }, [token, excludedTrucks, toast, clearProjectionPoll]);
 
-  /* ─── Confirm & Fleet-Dispatch ──────────────────────────── */
+  /* --- Confirm & Fleet-Dispatch ---------------------------- */
 
   const confirmDispatch = useCallback(async () => {
     if (!token || !result) return;
@@ -440,7 +440,7 @@ export default function DispatchPage() {
     }
   }, [token, result, toast, clearProjectionPoll]);
 
-  /* ─── Re-Dispatch Handlers ──────────────────────────────── */
+  /* --- Re-Dispatch Handlers -------------------------------- */
 
   const openReDispatch = useCallback(async (orderId: string) => {
     if (!token) return;
@@ -509,7 +509,7 @@ export default function DispatchPage() {
     }
   }, [token, reDispatchOrderId, toast, runAutoDispatch]);
 
-  /* ─── Manual Dispatch: Get Recommendations ──────────────── */
+  /* --- Manual Dispatch: Get Recommendations ---------------- */
 
   const getRecommendations = useCallback(async () => {
     if (!token) return;
@@ -541,7 +541,7 @@ export default function DispatchPage() {
     }
   }, [token, excludedTrucks, toast]);
 
-  /* ─── Manual Dispatch: Dispatch One Truck Group ─────────── */
+  /* --- Manual Dispatch: Dispatch One Truck Group ----------- */
 
   const manualDispatchGroup = useCallback(async (driverId: string) => {
     if (!token) return;
@@ -599,7 +599,7 @@ export default function DispatchPage() {
     }
   }, [token, orderAssignments, recommendations, toast]);
 
-  /* ─── Manual Dispatch: Move Order Between Trucks ────────── */
+  /* --- Manual Dispatch: Move Order Between Trucks ---------- */
 
   const moveOrder = useCallback((orderId: string, fromDriverId: string, toDriverId: string) => {
     setOrderAssignments((prev) => {
@@ -614,7 +614,7 @@ export default function DispatchPage() {
     });
   }, []);
 
-  /* ─── Manual Dispatch: Truck Color Map ──────────────────── */
+  /* --- Manual Dispatch: Truck Color Map -------------------- */
 
   const truckColorMap = useMemo(() => {
     if (!recommendations) return new Map<string, number>();
@@ -625,7 +625,7 @@ export default function DispatchPage() {
     return map;
   }, [recommendations]);
 
-  /* ─── Manual Dispatch: Flat order list with truck badges ── */
+  /* --- Manual Dispatch: Flat order list with truck badges -- */
 
   const allOrdersFlat = useMemo(() => {
     if (!recommendations) return [];
@@ -638,7 +638,7 @@ export default function DispatchPage() {
     return orders;
   }, [recommendations]);
 
-  /* ─── Utilization Bar ───────────────────────────────────── */
+  /* --- Utilization Bar ------------------------------------- */
 
   const UtilBar = ({ used, max }: { used: number; max: number }) => {
     const pct = max > 0 ? Math.min((used / max) * 100, 100) : 0;
@@ -655,7 +655,7 @@ export default function DispatchPage() {
     );
   };
 
-  /* ─── Render ────────────────────────────────────────────── */
+  /* --- Render ---------------------------------------------- */
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
@@ -768,7 +768,7 @@ export default function DispatchPage() {
         </div>
       )}
 
-      {/* ══════════════ AUTO MODE ══════════════ */}
+      {/* ============== AUTO MODE ============== */}
 
       {/* No result yet */}
       {mode === 'auto' && !result && !dispatching && (
@@ -1061,7 +1061,7 @@ export default function DispatchPage() {
         </>
       )}
 
-      {/* ══════════════ MANUAL MODE ══════════════ */}
+      {/* ============== MANUAL MODE ============== */}
 
       {/* No recommendations yet */}
       {mode === 'manual' && !recommendations && !recommendLoading && (
@@ -1346,7 +1346,7 @@ export default function DispatchPage() {
         </>
       )}
 
-      {/* ── Re-Dispatch Modal ──────────────────────────────────────────── */}
+      {/* -- Re-Dispatch Modal -------------------------------------------- */}
       {reDispatchOrderId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div

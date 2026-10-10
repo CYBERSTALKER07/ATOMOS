@@ -34,11 +34,11 @@ struct OfflineVerifierView: View {
 
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("OFFLINE VERIFICATION TERMINAL")
+            Text("mobile_driver.ui.offline_verification_terminal")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(LabTheme.fgTertiary)
 
-            Text("Hash Manifest Protocol")
+            Text("mobile_driver.ui.hash_manifest_protocol")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
         }
@@ -49,7 +49,7 @@ struct OfflineVerifierView: View {
 
     private var statusBar: some View {
         HStack {
-            Text("Protocol Status")
+            Text("mobile_driver.ui.protocol_status")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(LabTheme.fgSecondary)
             Spacer()
@@ -82,12 +82,12 @@ struct OfflineVerifierView: View {
                 .font(.system(size: 40))
                 .foregroundStyle(LabTheme.fg)
 
-            Text("Offline cryptographic verification allows delivery confirmation without network connectivity.")
+            Text("mobile_driver.ui.offline_cryptographic_verification_allows_delivery_confirmation_")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
                 .multilineTextAlignment(.center)
 
-            Text("Download your route manifest to begin.")
+            Text("mobile_driver.ui.download_your_route_manifest_to_begin")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
 
@@ -106,7 +106,7 @@ struct OfflineVerifierView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(LabTheme.fg)
-            Text("Downloading manifest...")
+            Text("mobile_driver.ui.downloading_manifest")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
         }
@@ -119,7 +119,7 @@ struct OfflineVerifierView: View {
 
     private func readyCard(_ manifest: RouteManifest) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            Label("Manifest Loaded", systemImage: "checkmark.shield.fill")
+            Label("mobile_driver.ui.manifest_loaded", systemImage: "checkmark.shield.fill")
                 .font(.headline)
                 .foregroundStyle(LabTheme.success)
 
@@ -135,7 +135,7 @@ struct OfflineVerifierView: View {
             Button {
                 Task { await vm.syncManifest() }
             } label: {
-                Text("Re-sync Manifest")
+                Text("mobile_driver.ui.re_sync_manifest")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .frame(maxWidth: .infinity)
@@ -157,14 +157,14 @@ struct OfflineVerifierView: View {
             .frame(height: 300)
             .clipShape(.rect(cornerRadius: LabTheme.cardRadius))
 
-            Text("Point at retailer QR code")
+            Text("mobile_driver.ui.point_at_retailer_qr_code")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
 
             Button {
                 vm.cancelScanner()
             } label: {
-                Text("Cancel")
+                Text("common.action.cancel")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(LabTheme.destructive)
                     .frame(maxWidth: .infinity)
@@ -182,7 +182,7 @@ struct OfflineVerifierView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(LabTheme.success)
 
-            Text("✓ Verified")
+            Text("mobile_driver.ui.verified")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(LabTheme.success)
 
@@ -190,7 +190,7 @@ struct OfflineVerifierView: View {
                 .font(.system(.headline, design: .monospaced))
                 .foregroundStyle(LabTheme.fg)
 
-            Text("SHA-256 match confirmed. Delivery queued for sync.")
+            Text("mobile_driver.ui.sha_256_match_confirmed_delivery_queued_for_sync")
                 .font(.subheadline)
                 .foregroundStyle(LabTheme.fgSecondary)
                 .multilineTextAlignment(.center)
@@ -213,7 +213,7 @@ struct OfflineVerifierView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(LabTheme.destructive)
 
-            Text("Fraud Detected")
+            Text("mobile_driver.ui.fraud_detected")
                 .font(.title2.bold())
                 .foregroundStyle(LabTheme.destructive)
 
@@ -240,7 +240,7 @@ struct OfflineVerifierView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(LabTheme.destructive)
 
-            Text("System Error")
+            Text("mobile_driver.ui.system_error")
                 .font(.title2.bold())
                 .foregroundStyle(LabTheme.destructive)
 

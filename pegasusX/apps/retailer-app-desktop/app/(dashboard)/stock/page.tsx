@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import {
   Loader2,
@@ -30,6 +31,7 @@ type Location = {
 };
 
 export default function StockPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<Balance[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState("");
@@ -82,7 +84,7 @@ export default function StockPage() {
       const json = (await res.json()) as { items?: Balance[] };
       setItems(json.items ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load stock");
+      setError(e instanceof Error ? e.message : t("retailer_desktop.residual.text.failed_to_load_stock"));
     } finally {
       setLoading(false);
     }
@@ -123,7 +125,7 @@ export default function StockPage() {
       setOrderId("");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Receive failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.receive_failed"));
     } finally {
       setBusy(false);
     }
@@ -156,7 +158,7 @@ export default function StockPage() {
       setBanner("Stock adjusted");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Adjust failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.adjust_failed"));
     } finally {
       setBusy(false);
     }
@@ -190,7 +192,7 @@ export default function StockPage() {
       setBanner("Transferred BACKROOM → FLOOR");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Transfer failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.transfer_failed"));
     } finally {
       setBusy(false);
     }
@@ -222,7 +224,7 @@ export default function StockPage() {
       setBanner("Cycle count committed");
       await loadStock();
     } catch (e) {
-      setBanner(e instanceof Error ? e.message : "Count failed");
+      setBanner(e instanceof Error ? e.message : t("retailer_desktop.residual.text.count_failed"));
     } finally {
       setBusy(false);
     }
@@ -230,8 +232,8 @@ export default function StockPage() {
 
   return (
     <PageChrome
-      title="Store stock"
-      description="Backroom / floor inventory separate from supplier warehouse ATP. Receive Pegasus deliveries, transfer, adjust, count."
+      title={t("portal.nav.store_stock")}
+      description={t("retailer_desktop.residual.text.backroom_floor_inventory_separate_from_supplier_warehouse_atp_re")}
     >
       <div className="mx-auto max-w-4xl space-y-6 px-4 pb-16 pt-2">
         {banner && (
@@ -293,9 +295,12 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <Plus className="h-4 w-4" /> Receive order into stock
             </h3>
+            <label htmlFor="receive-order-id" className="sr-only">Order ID</label>
             <input
+              id="receive-order-id"
+              aria-label="Order ID"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Order ID (COMPLETED / ARRIVED)"
+              placeholder={t("retailer_desktop.stock.text.order_id_completed_arrived")}
               value={orderId}
               onChange={(e) => setOrderId(e.target.value)}
             />
@@ -313,15 +318,21 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <ArrowLeftRight className="h-4 w-4" /> Putaway transfer
             </h3>
+            <label htmlFor="putaway-sku" className="sr-only">Transfer SKU</label>
             <input
+              id="putaway-sku"
+              aria-label="Transfer SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={xferSku}
               onChange={(e) => setXferSku(e.target.value)}
             />
+            <label htmlFor="putaway-qty" className="sr-only">Transfer Quantity</label>
             <input
+              id="putaway-qty"
+              aria-label="Transfer Quantity"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Qty"
+              placeholder={t("retailer_desktop.pos.text.qty")}
               value={xferQty}
               onChange={(e) => setXferQty(e.target.value)}
             />
@@ -336,16 +347,22 @@ export default function StockPage() {
           </div>
 
           <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-            <h3 className="font-semibold">Adjust</h3>
+            <h3 className="font-semibold">{t("retailer_desktop.stock.text.adjust")}</h3>
+            <label htmlFor="adjust-sku" className="sr-only">Adjust SKU</label>
             <input
+              id="adjust-sku"
+              aria-label="Adjust SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={adjustSku}
               onChange={(e) => setAdjustSku(e.target.value)}
             />
+            <label htmlFor="adjust-delta" className="sr-only">Quantity Delta</label>
             <input
+              id="adjust-delta"
+              aria-label="Quantity Delta"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Qty delta (+/-)"
+              placeholder={t("retailer_desktop.stock.text.qty_delta")}
               value={adjustDelta}
               onChange={(e) => setAdjustDelta(e.target.value)}
             />
@@ -372,15 +389,21 @@ export default function StockPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <ClipboardList className="h-4 w-4" /> Cycle count
             </h3>
+            <label htmlFor="count-sku" className="sr-only">Cycle Count SKU</label>
             <input
+              id="count-sku"
+              aria-label="Cycle Count SKU"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               placeholder="SKU"
               value={countSku}
               onChange={(e) => setCountSku(e.target.value)}
             />
+            <label htmlFor="count-qty" className="sr-only">Counted Quantity</label>
             <input
+              id="count-qty"
+              aria-label="Counted Quantity"
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              placeholder="Counted qty"
+              placeholder={t("retailer_desktop.stock.text.counted_qty")}
               value={countQty}
               onChange={(e) => setCountQty(e.target.value)}
             />
@@ -422,11 +445,11 @@ export default function StockPage() {
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">
                   <th className="py-2 pr-3">SKU</th>
-                  <th className="py-2 pr-3">Bin</th>
-                  <th className="py-2 pr-3">On hand</th>
-                  <th className="py-2 pr-3">Reserved</th>
-                  <th className="py-2 pr-3">Available</th>
-                  <th className="py-2">Actions</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.bin")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.on_hand")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.reserved")}</th>
+                  <th className="py-2 pr-3">{t("retailer_desktop.stock.text.available")}</th>
+                  <th className="py-2">{t("retailer_desktop.stock.text.actions")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -16,6 +16,7 @@ type ToastMessage = {
 
 type ToastContextValue = {
   push: (message: string, tone?: ToastTone, action?: ToastMessage["action"]) => void;
+  toast: (message: string, tone?: ToastTone, action?: ToastMessage["action"]) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -31,7 +32,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     }, 5000);
   }, []);
 
-  const value = useMemo(() => ({ push }), [push]);
+  const value = useMemo(() => ({ push, toast: push }), [push]);
 
   return (
     <ToastContext.Provider value={value}>

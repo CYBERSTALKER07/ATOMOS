@@ -99,6 +99,11 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): SealCompletedManifestsResponse
 
+    @POST("v1/payloader/manifests/seal-all")
+    suspend fun sealAllManifests(
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealCompletedManifestsResponse
+
     @POST("v1/payloader/manifests/{id}/seal")
     suspend fun sealManifest(
         @Path("id") manifestId: String,
@@ -112,32 +117,53 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
-    @GET("v1/supplier/manifests")
+    @GET("v1/payloader/manifests")
     suspend fun supplierManifests(
         @Query("state") state: String = "DRAFT",
     ): ManifestsResponse
 
-    @GET("v1/supplier/manifests/{id}")
+    @GET("v1/payloader/manifests/{id}")
     suspend fun supplierManifestDetail(@Path("id") manifestId: String): Manifest
 
-    @POST("v1/supplier/manifests/{id}/start-loading")
+    @POST("v1/payloader/manifests/{id}/start-loading")
     suspend fun supplierStartLoading(
         @Path("id") manifestId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
-    @POST("v1/supplier/manifests/{id}/seal")
+    @POST("v1/payloader/manifests/{id}/seal")
     suspend fun supplierSealManifest(
         @Path("id") manifestId: String,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): SealManifestResponse
 
-    @POST("v1/supplier/manifests/{id}/inject-order")
+    @POST("v1/payloader/manifests/{id}/inject-order")
     suspend fun supplierInjectOrder(
         @Path("id") manifestId: String,
         @Body req: InjectOrderRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
+
+    // ── Factory loading-bay (P1-18 / P2-25 parity with Expo terminal) ─────────
+    @GET("v1/factory/manifests")
+    suspend fun factoryManifests(
+        @Query("state") state: String = "DRAFT",
+    ): ManifestsResponse
+
+    @GET("v1/factory/manifests/{id}")
+    suspend fun factoryManifestDetail(@Path("id") manifestId: String): Manifest
+
+    @POST("v1/factory/manifests/{id}/start-loading")
+    suspend fun factoryStartLoading(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
+
+    @POST("v1/factory/manifests/{id}/seal")
+    suspend fun factorySealManifest(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealManifestResponse
 
     // ── Per-order seal / exception ───────────────────────────────────────────
     @POST("v1/payload/seal")
@@ -158,7 +184,7 @@ interface PayloadApi {
         @Query("offset") offset: Int = 0,
     ): ManifestExceptionsResponse
 
-    @POST("v1/delivery/missing-items")
+    @POST("v1/delivery/exception-report")
     suspend fun missingItems(
         @Body req: MissingItemsRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,

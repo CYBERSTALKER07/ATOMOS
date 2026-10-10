@@ -54,6 +54,10 @@ func (m *mockRepo) GetDeliveredOrderLines(ctx context.Context, orderId string) (
 	}, nil
 }
 
+func (m *mockRepo) OrderOwnedBySupplier(ctx context.Context, orderID, supplierID string) (bool, error) {
+	return true, nil
+}
+
 func (m *mockRepo) GetClaimOrder(ctx context.Context, claimID string) (string, int64, bool, error) {
 	return "order-claim", 5000, true, nil
 }

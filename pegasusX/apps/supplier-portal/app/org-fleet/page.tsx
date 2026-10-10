@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useSupplierSessionReconcile } from "@/lib/use-supplier-session-reconcile";
 import { createSupplierApi } from "@/lib/api";
 import { PageChrome } from "@/components/PageChrome";
@@ -19,6 +20,7 @@ type LoadState =
   | { status: "error"; message: string };
 
 export default function OrgFleetPage() {
+  const t = usePortalT();
   const api = useMemo(() => createSupplierApi(), []);
   const [state, setState] = useState<LoadState>({ status: "loading" });
 
@@ -56,7 +58,7 @@ export default function OrgFleetPage() {
   return (
     <PageChrome
       icon="person-add"
-      title="Org, staff, and fleet onboarding"
+      title={t("supplier_portal.org_fleet.text.org_staff_and_fleet_onboarding")}
       description="Seed node admins, payload staff, drivers, and vehicles from the supplier control plane so downstream factory, warehouse, payload, and driver work is not blocked by missing entity contracts."
       loading={state.status === "loading"}
       skeletonVariant="form"

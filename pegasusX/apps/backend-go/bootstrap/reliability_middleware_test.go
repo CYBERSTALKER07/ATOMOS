@@ -6,7 +6,29 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
+
+func TestReliabilityActorKey_TenantShared(t *testing.T) {
+	t.Setenv("TENANT_RATE_LIMIT_SHARED", "true")
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/profile", nil)
+	ctx := auth.WithClaims(req.Context(), auth.Claims{Subject: "user-a", Role: auth.RoleAdmin, SupplierID: "sup-1"})
+	ctx = auth.WithTenant(ctx, auth.TenantContext{SupplierID: "sup-1", Source: "jwt"})
+	req = req.WithContext(ctx)
+	got := reliabilityActorKey(req)
+	if got != "tenant:sup-1" {
+		t.Fatalf("got=%q want tenant:sup-1", got)
+	}
+
+	req2 := httptest.NewRequest(http.MethodGet, "/v1/supplier/profile", nil)
+	ctx2 := auth.WithClaims(req2.Context(), auth.Claims{Subject: "user-b", Role: auth.RoleAdmin, SupplierID: "sup-1"})
+	ctx2 = auth.WithTenant(ctx2, auth.TenantContext{SupplierID: "sup-1", Source: "jwt"})
+	req2 = req2.WithContext(ctx2)
+	if reliabilityActorKey(req2) != got {
+		t.Fatalf("shared tenant key mismatch")
+	}
+}
 
 func TestReliabilityMiddleware_RateLimitExceeded(t *testing.T) {
 	current := time.Unix(1_700_000_000, 0)

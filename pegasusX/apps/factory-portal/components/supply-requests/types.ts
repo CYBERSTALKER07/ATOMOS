@@ -21,4 +21,8 @@ export interface SupplyRequest {
   item_count?: number;
   items?: SupplyRequestItem[];
   created_at: string;
+  /** G7.1 handoff SLA */
+  sla_due_at?: string;
+  sla_status?: "ON_TIME" | "AT_RISK" | "BREACHED" | "MET" | "N/A" | string;
+  sla_hours_remaining?: number;
 }

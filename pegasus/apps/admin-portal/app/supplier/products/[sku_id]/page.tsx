@@ -340,7 +340,7 @@ export default function ProductDetailPage() {
   );
 }
 
-// ── Shared field components ───────────────────────────────────────────────
+// -- Shared field components -----------------------------------------------
 
 function Field({
   label, editing, value, onChange, type = 'text', placeholder, multiline,
@@ -353,14 +353,17 @@ function Field({
   placeholder?: string;
   multiline?: boolean;
 }) {
+  const inputId = `field-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
   return (
     <div>
-      <label className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>
+      <label htmlFor={inputId} className="md-typescale-label-small block mb-1" style={{ color: 'var(--muted)' }}>
         {label}
       </label>
       {editing ? (
         multiline ? (
           <textarea
+            id={inputId}
+            aria-label={label}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             rows={3}
@@ -369,6 +372,8 @@ function Field({
           />
         ) : (
           <input
+            id={inputId}
+            aria-label={label}
             type={type}
             value={value}
             onChange={(e) => onChange(e.target.value)}

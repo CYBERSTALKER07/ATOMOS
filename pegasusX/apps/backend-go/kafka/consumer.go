@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka/workerpool"
@@ -31,6 +32,21 @@ var (
 		Help:      "Total number of consumer errors",
 	}, []string{"topic", "partition"})
 
+	consumerMessagesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "consumer_messages_total",
+		Help:      "Total messages processed by Kafka consumers",
+	}, []string{"topic", "partition", "status"})
+
+	consumerProcessDurationSeconds = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "consumer_process_duration_seconds",
+		Help:      "Latency of message processing in seconds",
+		Buckets:   prometheus.DefBuckets,
+	}, []string{"topic"})
+
 	consumerPoisonSkipped = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "void",
 		Subsystem: "kafka",
@@ -40,6 +56,8 @@ var (
 )
 
 type EventHandler func(ctx context.Context, msg kafka.Message) error
+
+type DLQHook func(ctx context.Context, msg kafka.Message, reason error) error
 
 type DLQWriter interface {
 	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
@@ -53,6 +71,7 @@ type ConsumerDeps struct {
 	Topics      []string
 	Handler     EventHandler
 	DLQWriter   DLQWriter
+	OnDLQ       DLQHook
 	MaxAttempts int
 	// Auth: empty = local plaintext; GCP_MANAGED_OAUTH for Managed Kafka.
 	Auth kafkautil.ClientAuth
@@ -72,7 +91,7 @@ type consumerReader interface {
 
 func NewConsumer(deps ConsumerDeps) *Consumer {
 	if deps.MaxAttempts <= 0 {
-		deps.MaxAttempts = 3
+		deps.MaxAttempts = 4
 	}
 	dialer, err := kafkautil.Dialer(deps.Auth)
 	if err != nil {
@@ -96,12 +115,16 @@ func readerConfig(deps ConsumerDeps, dialer *kafka.Dialer) kafka.ReaderConfig {
 		Brokers:               deps.Brokers,
 		GroupID:               deps.GroupID,
 		Topic:                 deps.Topic,
+		MinBytes:              1,
 		MaxBytes:              10e6,
+		MaxWait:               500 * time.Millisecond,
+		StartOffset:           kafka.FirstOffset,
 		CommitInterval:        0, // sync commit after success/DLQ
 		WatchPartitionChanges: true,
 		Dialer:                dialer,
 	}
 }
+
 
 // Start runs the partition-parallel consumer until ctx is cancelled.
 func (c *Consumer) Start(ctx context.Context) {
@@ -139,12 +162,20 @@ func (c *Consumer) Start(ctx context.Context) {
 
 func (c *Consumer) dispatch(ctx context.Context, m kafka.Message) error {
 	lag := time.Since(m.Time).Seconds()
-	consumerLag.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Set(lag)
+	partitionStr := fmt.Sprintf("%d", m.Partition)
+	consumerLag.WithLabelValues(c.deps.Topic, partitionStr).Set(lag)
 
+	start := time.Now()
 	err := c.processWithRetries(ctx, m)
+	dur := time.Since(start)
+
 	if err == nil {
+		consumerMessagesTotal.WithLabelValues(c.deps.Topic, partitionStr, "success").Inc()
+		consumerProcessDurationSeconds.WithLabelValues(c.deps.Topic).Observe(dur.Seconds())
 		return nil
 	}
+
+	consumerMessagesTotal.WithLabelValues(c.deps.Topic, partitionStr, "error").Inc()
 	if dlqErr := c.sendToDLQ(ctx, m, err); dlqErr != nil {
 		slog.ErrorContext(ctx, "kafka dlq routing failed; leaving offset uncommitted",
 			"err", dlqErr,
@@ -155,23 +186,36 @@ func (c *Consumer) dispatch(ctx context.Context, m kafka.Message) error {
 		)
 		return workerpool.ErrSkipCommit
 	}
+	consumerMessagesTotal.WithLabelValues(c.deps.Topic, partitionStr, "dlq").Inc()
 	return nil
 }
 
 func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic in kafka handler: %v", r)
-			slog.ErrorContext(ctx, "panic recovered in kafka consumer", "err", err, "trace_id", TraceIDFromMessage(m))
-			consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
-		}
-	}()
-
 	for attempt := 1; attempt <= c.deps.MaxAttempts; attempt++ {
-		err = c.deps.Handler(ctx, m)
-		if err == nil {
+		var attemptErr error
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					attemptErr = fmt.Errorf("panic in kafka handler: %v", r)
+					slog.ErrorContext(ctx, "panic recovered in kafka consumer attempt",
+						"err", attemptErr,
+						"attempt", attempt,
+						"max", c.deps.MaxAttempts,
+						"topic", c.deps.Topic,
+						"partition", m.Partition,
+						"trace_id", TraceIDFromMessage(m),
+					)
+					consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
+				}
+			}()
+			attemptErr = c.deps.Handler(ctx, m)
+		}()
+
+		if attemptErr == nil {
 			return nil
 		}
+		err = attemptErr
+
 		slog.WarnContext(ctx, "kafka handler error",
 			"err", err,
 			"attempt", attempt,
@@ -180,6 +224,7 @@ func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err
 			"partition", m.Partition,
 			"trace_id", TraceIDFromMessage(m),
 		)
+
 		if attempt < c.deps.MaxAttempts {
 			backoff := retryBackoffWithJitter(attempt)
 			select {
@@ -197,18 +242,38 @@ func (c *Consumer) sendToDLQ(ctx context.Context, m kafka.Message, reason error)
 	if c.deps.DLQWriter == nil {
 		return fmt.Errorf("dlq writer not configured for topic %s", c.deps.Topic)
 	}
+	headers := append(m.Headers,
+		kafka.Header{Key: "dlq_reason", Value: []byte(reason.Error())},
+		kafka.Header{Key: "dlq_timestamp", Value: []byte(time.Now().UTC().Format(time.RFC3339Nano))},
+		kafka.Header{Key: "original_topic", Value: []byte(c.deps.Topic)},
+		kafka.Header{Key: "original_partition", Value: []byte(fmt.Sprintf("%d", m.Partition))},
+		kafka.Header{Key: "original_offset", Value: []byte(fmt.Sprintf("%d", m.Offset))},
+	)
+	if traceID := TraceIDFromMessage(m); traceID != "" {
+		hasTrace := false
+		for _, h := range headers {
+			if strings.EqualFold(h.Key, "trace_id") {
+				hasTrace = true
+				break
+			}
+		}
+		if !hasTrace {
+			headers = append(headers, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+		}
+	}
 	dlqMsg := kafka.Message{
-		Key:   m.Key,
-		Value: m.Value,
-		Headers: append(m.Headers,
-			kafka.Header{Key: "dlq_reason", Value: []byte(reason.Error())},
-			kafka.Header{Key: "original_topic", Value: []byte(c.deps.Topic)},
-			kafka.Header{Key: "original_partition", Value: []byte(fmt.Sprintf("%d", m.Partition))},
-			kafka.Header{Key: "original_offset", Value: []byte(fmt.Sprintf("%d", m.Offset))},
-		),
+		Key:     m.Key,
+		Value:   m.Value,
+		Headers: headers,
 	}
 	if err := c.deps.DLQWriter.WriteMessages(ctx, dlqMsg); err != nil {
 		return fmt.Errorf("write dlq message: %w", err)
+	}
+	if c.deps.OnDLQ != nil {
+		if hookErr := c.deps.OnDLQ(ctx, m, reason); hookErr != nil {
+			slog.ErrorContext(ctx, "kafka dlq hook failed", "err", hookErr, "topic", c.deps.Topic)
+			return fmt.Errorf("dlq hook: %w", hookErr)
+		}
 	}
 	return nil
 }

@@ -24,4 +24,5 @@ type Repository interface {
 
 	UpdateExceptionStatus(ctx context.Context, exceptionID, status string) error
 	UpdateExceptionAssignee(ctx context.Context, exceptionID, role string) error
+	RecordIntervention(ctx context.Context, manifestID, supplierID, operatorID, commandType, reasonCode, notes string) error
 }

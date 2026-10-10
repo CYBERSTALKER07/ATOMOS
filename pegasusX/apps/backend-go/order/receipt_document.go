@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/phpdave11/gofpdf"
 )
 
@@ -62,6 +64,8 @@ type ReceiptDocument struct {
 	Title         string           `json:"title"`
 	Subtitle      string           `json:"subtitle"`
 	FooterNote    string           `json:"footer_note"`
+	MarketCode    string           `json:"market_code,omitempty"`
+	FiscalAdapter string           `json:"fiscal_adapter,omitempty"`
 }
 
 type storedReceiptPayload struct {
@@ -94,7 +98,9 @@ type storedReceiptPayload struct {
 func formatMinorMoney(amountMinor int64, currency string) string {
 	cur := strings.ToUpper(strings.TrimSpace(currency))
 	if cur == "" {
-		cur = "UZS"
+		if packCur, err := auth.CurrencyFromContext(context.Background(), ""); err == nil {
+			cur = packCur
+		}
 	}
 	// Integer minor units (tiyin/tiyn style) → major with 2 decimals.
 	neg := amountMinor < 0
@@ -152,11 +158,19 @@ func BuildReceiptDocument(fr FiscalReceiptRow, order *Order, party ReceiptPartyC
 		currency = strings.TrimSpace(stored.Currency)
 	}
 	if currency == "" {
-		currency = "UZS"
+		if packCur, err := auth.CurrencyFromContext(context.Background(), ""); err == nil {
+			currency = packCur
+		}
 	}
 	country := strings.TrimSpace(stored.CountryCode)
 	if country == "" {
-		country = countryFromCurrency(currency)
+		supplierID := firstNonEmpty(fr.SupplierID)
+		if order != nil {
+			supplierID = firstNonEmpty(supplierID, order.SupplierID)
+		}
+		if packCountry, err := auth.CountryFromContext(context.Background(), firstNonEmpty(supplierID, stored.SupplierID)); err == nil {
+			country = packCountry
+		}
 	}
 	layout := receiptLayoutForCountry(country)
 
@@ -242,6 +256,15 @@ func BuildReceiptDocument(fr FiscalReceiptRow, order *Order, party ReceiptPartyC
 		amount = stored.AmountMinor
 	}
 
+	marketCode := ""
+	fiscalAdapter := ""
+	if pack, err := auth.FiscalPackForSupplier(firstNonEmpty(fr.SupplierID, stored.SupplierID)); err == nil {
+		marketCode = pack.Code
+		if ad, aerr := auth.PackFiscalAdapter(pack); aerr == nil {
+			fiscalAdapter = ad
+		}
+	}
+
 	return ReceiptDocument{
 		ReceiptID:     receiptID,
 		Provider:      firstNonEmpty(fr.Provider, stored.Provider, FiscalProviderPegasus),
@@ -270,6 +293,8 @@ func BuildReceiptDocument(fr FiscalReceiptRow, order *Order, party ReceiptPartyC
 		Title:         layout.Title,
 		Subtitle:      layout.Subtitle,
 		FooterNote:    layout.FooterNote,
+		MarketCode:    marketCode,
+		FiscalAdapter: fiscalAdapter,
 	}
 }
 

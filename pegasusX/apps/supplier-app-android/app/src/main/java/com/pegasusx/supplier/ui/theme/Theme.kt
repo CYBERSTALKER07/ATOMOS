@@ -5,7 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusMonochromeTheme
+import com.pegasus.design.ui.PegasusMonochromeTheme
 
 val SupplierShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),

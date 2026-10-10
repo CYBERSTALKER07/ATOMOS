@@ -31,6 +31,7 @@ struct CashCollectionView: View {
                         .frame(width: 28, height: 28)
                         .background(LabTheme.fg.opacity(0.06), in: Circle())
                 }
+                .accessibilityLabel("Close")
             }
             .padding(.horizontal, LabTheme.s24)
             .padding(.top, LabTheme.s24)
