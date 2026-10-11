@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import ParticleText from './ParticleText';
-import NeuralParticleCanvas from './NeuralParticleCanvas';
+import Dither from './visuals/Dither';
 
 export default function EarlyAccessSection() {
   const { t } = useLanguage();
@@ -15,17 +15,44 @@ export default function EarlyAccessSection() {
       data-keep-white
       aria-label="Request Early Access"
     >
-      {/* Background Neural Particle Face & Hand Mesh (100% Canvas Particles) */}
-      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-        <NeuralParticleCanvas />
-      </div>
-
       {/* Top Spacer */}
       <div className="relative z-10 w-full" />
 
-      {/* Center-Right Main Content Block */}
-      <div className="relative z-10 w-full flex justify-end items-center my-auto py-10 md:py-14">
-        <div className="w-full max-w-xl md:max-w-2xl lg:max-w-3xl lg:pl-16 text-left">
+      {/* Main Content Grid: Left Visual + Right Content */}
+      <div className="relative z-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center my-auto py-6 md:py-10">
+        {/* Left Visual: Dither with exact user configuration */}
+        <div className="w-full flex items-center justify-center">
+          <div
+            className="w-full h-[320px] sm:h-[420px] md:h-[500px] lg:h-[600px] relative overflow-hidden rounded-2xl border border-white/10"
+            style={{ width: '100%', position: 'relative' }}
+          >
+            <Dither
+              waveColor="#bcbcbc"
+              backgroundColor="#120f17"
+              ditherMode="bayer"
+              colorNum={4}
+              pixelSize={2}
+              waveSpeed={0.05}
+              waveFrequency={3}
+              waveAmplitude={0.3}
+              mouseEffect="erase"
+              mouseRadius={0.3}
+              palette={[]}
+              scale={1}
+              contrast={1}
+              brightness={0}
+              mouseStrength={1}
+              trail={0.5}
+              enableMouseInteraction
+              clickRipple
+              intro
+              disableAnimation={false}
+            />
+          </div>
+        </div>
+
+        {/* Right Content Block */}
+        <div className="w-full max-w-xl text-left lg:pl-6">
           {/* Eyebrow with leading dash line */}
           <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <span className="w-8 h-[1px] bg-white/40 inline-block shrink-0" />
@@ -34,7 +61,7 @@ export default function EarlyAccessSection() {
             </span>
           </div>
 
-          {/* Headline in Interactive Particle Text Style (same ParticleText as Hero) */}
+          {/* Headline in Interactive Particle Text Style */}
           <div className="w-full max-w-[620px] h-[150px] sm:h-[175px] md:h-[200px]">
             <ParticleText
               text={`${t('early_access_title_1', 'Request')}\n${t('early_access_title_2', 'Early')} *${t('early_access_title_3', 'Access.')}*`}
