@@ -104,7 +104,7 @@ export default function MasonryGrid({ images }: MasonryGridProps) {
  alt={image.title}
  width={600}
  height={800}
- className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
+ className="w-full h-auto object-cover"
  />
  
  {/* Overlay on hover */}

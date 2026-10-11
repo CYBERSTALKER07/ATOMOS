@@ -109,7 +109,7 @@ function MetricsPromptBridge({ prompt }: { prompt: string }) {
 
  {/* Prompt pill */}
  <div className="relative z-10 w-full max-w-[15rem] sm:max-w-[17rem] mx-auto px-2 group">
- <div className="rounded-none border border-emerald-400/40 bg-[linear-gradient(180deg,#047857,#064e3b)] px-4 py-2.5 sm:px-5 sm:py-3 shadow-xl transition-all duration-300 group-hover:scale-[1.02]">
+ <div className="rounded-none border border-emerald-400/40 bg-[linear-gradient(180deg,#047857,#064e3b)] px-4 py-2.5 sm:px-5 sm:py-3 shadow-xl">
  <p className="text-center text-[0.72rem] sm:text-xs text-emerald-100/95 font-light leading-snug">
  {prompt}
  </p>

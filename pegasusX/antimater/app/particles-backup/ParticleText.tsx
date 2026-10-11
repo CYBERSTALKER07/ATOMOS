@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type CSSProperties } from 'react';
-import { PEGASUS_GLYPHS, PEGASUS_LETTER_OFFSETS } from './visuals/PegasusSciFiLogo';
+import { PEGASUS_GLYPHS, PEGASUS_LETTER_OFFSETS } from '../components/visuals/PegasusSciFiLogo';
 
 export interface ParticleTextProps {
   text?: string;

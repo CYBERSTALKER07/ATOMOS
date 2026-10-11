@@ -251,9 +251,9 @@ export default function LogisticsSolutions() {
  className={cn(
  'w-2 h-2 shrink-0 transition-all duration-300',
  isActive
- ? 'bg-black scale-110'
+ ? 'bg-black'
  : isHovered
- ? 'bg-white/70 scale-105'
+ ? 'bg-white/70'
  : 'bg-transparent ring-1 ring-white/25'
  )}
  aria-hidden="true"

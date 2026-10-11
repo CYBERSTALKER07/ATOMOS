@@ -603,7 +603,7 @@ export default function LogisticsWorkflow() {
  >
  <div
  style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
- className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+ className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 cursor-pointer"
  >
  {node.icon}
  </div>
@@ -634,7 +634,7 @@ export default function LogisticsWorkflow() {
  >
  <div
  style={{ backgroundColor: node.bgColor || '#18181B', color: node.textColor || '#FFFFFF' }}
- className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+ className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 cursor-pointer"
  >
  {node.icon}
  </div>
@@ -665,7 +665,7 @@ export default function LogisticsWorkflow() {
  >
  <div
  style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
- className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+ className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 cursor-pointer"
  >
  {node.icon}
  </div>
@@ -696,7 +696,7 @@ export default function LogisticsWorkflow() {
  >
  <div
  style={{ backgroundColor: node.bgColor || '#FFFFFF', color: node.textColor || '#000000' }}
- className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 transition-transform duration-200 group-hover/node:scale-115 cursor-pointer"
+ className="workflow-node-icon w-10 h-10 rounded-none flex items-center justify-center border border-white/20 cursor-pointer"
  >
  {node.icon}
  </div>

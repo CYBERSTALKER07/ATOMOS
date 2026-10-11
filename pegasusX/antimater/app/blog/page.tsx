@@ -71,7 +71,7 @@ export default function BlogPage() {
           {/* Post 1 */}
           <div className="group cursor-pointer flex flex-col gap-4">
             <div className="aspect-[16/10] bg-[#f2f2f2] rounded-2xl overflow-hidden relative">
-               <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-black/10 group-hover:scale-105 transition-transform duration-500" />
+               <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-black/10 transition-opacity duration-500" />
             </div>
             <div>
               <div className="flex items-center gap-3 text-sm text-black/60 mb-2">
@@ -86,7 +86,7 @@ export default function BlogPage() {
           {/* Post 2 */}
           <div className="group cursor-pointer flex flex-col gap-4">
             <div className="aspect-[16/10] bg-[#f2f2f2] rounded-2xl overflow-hidden relative">
-               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent group-hover:scale-105 transition-transform duration-500" />
+               <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent transition-opacity duration-500" />
             </div>
             <div>
               <div className="flex items-center gap-3 text-sm text-black/60 mb-2">
@@ -101,7 +101,7 @@ export default function BlogPage() {
           {/* Post 3 */}
           <div className="group cursor-pointer flex flex-col gap-4">
             <div className="aspect-[16/10] bg-[#f2f2f2] rounded-2xl overflow-hidden relative">
-               <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-black/10 group-hover:scale-105 transition-transform duration-500" />
+               <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-black/10 transition-opacity duration-500" />
             </div>
             <div>
               <div className="flex items-center gap-3 text-sm text-black/60 mb-2">

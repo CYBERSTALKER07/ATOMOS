@@ -305,9 +305,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
  className={cx(
  'inline-flex items-center',
  'motion-reduce:transition-none',
- (item as { logoClassName?: string }).logoClassName,
- scaleOnHover &&
- 'transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/item:scale-110'
+ (item as { logoClassName?: string }).logoClassName
  )}
  data-brand-color={(item as { brandColor?: string }).brandColor}
  aria-hidden={!!(item as any).href && !(item as any).ariaLabel}
@@ -320,9 +318,7 @@ export const LogoLoop = React.memo<LogoLoopProps>(
  'h-[var(--logoloop-logoHeight)] w-auto block object-contain',
  '[-webkit-user-drag:none] pointer-events-none',
  '[image-rendering:-webkit-optimize-contrast]',
- 'motion-reduce:transition-none',
- scaleOnHover &&
- 'transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover/item:scale-110'
+ 'motion-reduce:transition-none'
  )}
  src={(item as any).src}
  srcSet={(item as any).srcSet}

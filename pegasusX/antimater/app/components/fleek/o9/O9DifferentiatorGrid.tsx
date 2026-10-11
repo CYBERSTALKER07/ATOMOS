@@ -117,7 +117,7 @@ export default function O9DifferentiatorGrid({
                 {/* Header row: Icon & Badges */}
                 <div className="flex items-center justify-between gap-3 mb-5">
                   <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform duration-200 shrink-0">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shrink-0">
                       <Icon className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
                     </div>
                     <span className="font-mono text-xs text-zinc-400 dark:text-zinc-500 font-medium shrink-0">

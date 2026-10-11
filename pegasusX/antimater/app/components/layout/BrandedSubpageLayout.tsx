@@ -161,7 +161,7 @@ export default function BrandedSubpageLayout({
 
             <div className="hidden sm:flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
               <span className="inline-flex items-center gap-1.5 text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 {breadcrumb.telemetryCode || 'SYSTEM ONLINE'}
               </span>
               <span className="text-zinc-700">|</span>
@@ -190,7 +190,7 @@ export default function BrandedSubpageLayout({
               <div className="lg:col-span-7 space-y-6 sm:space-y-8">
                 {badge && (
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 text-[10px] sm:text-[11px] font-mono tracking-[0.22em] uppercase">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                     {badge}
                   </div>
                 )}
@@ -234,7 +234,7 @@ export default function BrandedSubpageLayout({
                       alt={heroImageAlt || title}
                       fill
                       priority
-                      className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between font-mono text-[10px] text-zinc-400 tracking-wider">
@@ -409,7 +409,7 @@ export default function BrandedSubpageLayout({
 
             <div className="space-y-4 max-w-2xl relative z-10">
               <span className="font-mono text-[10px] tracking-[0.22em] text-emerald-400 uppercase inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                 {conversionBand?.kicker || 'PRODUCTION-GRADE ORCHESTRATION'}
               </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-light tracking-[-0.03em] text-white leading-tight">

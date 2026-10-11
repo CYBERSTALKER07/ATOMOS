@@ -370,7 +370,7 @@ const PillNav: React.FC<PillNavProps> = ({
  background: 'transparent'
  }}
  >
- <div className="transition-transform duration-200 hover:scale-[1.02] flex items-center">
+ <div className="flex items-center">
    <PegasusSciFiLogo variant="solid" color={isLight ? "#000000" : "#ffffff"} height="0.8rem" />
  </div>
 

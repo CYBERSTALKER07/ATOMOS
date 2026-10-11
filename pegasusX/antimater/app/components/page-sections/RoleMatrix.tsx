@@ -67,7 +67,7 @@ export default function RoleMatrix({ crossRole }: RoleMatrixProps) {
         <div className="w-full lg:w-7/12 pt-8 lg:pt-0">
           <motion.div variants={FADE_UP} className="h-full">
             <div className="p-[6px] rounded-[2rem] bg-white/[0.03] border border-white/10 group transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/[0.08] hover:border-white/20 h-full">
-              <div className="relative h-full w-full rounded-[calc(2rem-6px)] bg-[#050505] overflow-hidden p-10 lg:p-16 transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[0.98] flex flex-col justify-center min-h-[300px]">
+              <div className="relative h-full w-full rounded-[calc(2rem-6px)] bg-[#050505] overflow-hidden p-10 lg:p-16 flex flex-col justify-center min-h-[300px]">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50 z-10" />
                 
                 <AnimatePresence mode="wait">

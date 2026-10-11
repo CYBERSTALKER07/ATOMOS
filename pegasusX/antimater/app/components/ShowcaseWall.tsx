@@ -281,7 +281,7 @@ export default function ShowcaseWall() {
  alt={item.title}
  fill
  sizes="(max-width: 640px) 130px, (max-width: 1024px) 210px, 240px"
- className="object-cover grayscale contrast-125 brightness-95 group-hover:scale-105 transition-transform duration-500"
+ className="object-cover grayscale contrast-125 brightness-95"
  />
  </Link>
  </div>

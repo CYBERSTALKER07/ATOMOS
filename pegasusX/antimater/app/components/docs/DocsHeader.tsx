@@ -35,7 +35,7 @@ export default function DocsHeader({
  </button>
 
  <Link href="/docs" className="flex items-center space-x-2.5 group">
- <div className="w-8 h-8 rounded-none bg-white text-black flex items-center justify-center border border-white group-hover:scale-105 transition-transform">
+ <div className="w-8 h-8 rounded-none bg-white text-black flex items-center justify-center border border-white">
  <Terminal size={16} className="text-black" />
  </div>
  <div className="flex items-center space-x-1.5">

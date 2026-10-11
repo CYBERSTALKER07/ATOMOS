@@ -68,7 +68,7 @@ function icon(node: ReactNode, brandColor: string, title: string, href: string):
 		brandColor,
 		title,
 		href,
-		logoClassName: 'hover:scale-105 transition-transform duration-300',
+		logoClassName: 'transition-opacity duration-300',
 	};
 }
 

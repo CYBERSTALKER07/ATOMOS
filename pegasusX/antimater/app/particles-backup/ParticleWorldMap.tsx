@@ -5,7 +5,7 @@ import {
   WORLD_MAP_SVG_PATH,
   WORLD_MAP_WIDTH,
   WORLD_MAP_HEIGHT,
-} from './visuals/worldMapData';
+} from '../components/visuals/worldMapData';
 
 export interface ParticleWorldMapProps {
   variant?: 'light' | 'dark';

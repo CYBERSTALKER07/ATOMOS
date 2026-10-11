@@ -249,7 +249,7 @@ export default function TopicCanvas({ slug }: { slug: string }) {
 
   return (
     <div className="relative w-full h-full min-h-[380px] lg:min-h-[480px] bg-[#050505] overflow-hidden flex items-center justify-center group select-none">
-      <div className="absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-105">
+      <div className="absolute inset-0">
         <Image
           src={visual.src}
           alt={visual.alt}

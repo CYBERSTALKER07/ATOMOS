@@ -500,9 +500,9 @@ export default function SiteAssistant() {
 								<div className="items-start max-w-[88%] flex flex-col">
 									<div className="bg-gray-100 text-gray-800 p-4 text-[14px] rounded-3xl rounded-tl-sm">
 										<div className="flex items-center gap-2 opacity-60">
-											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
-											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse delay-75" />
-											<div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse delay-150" />
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+											<div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
 										</div>
 									</div>
 								</div>
@@ -592,7 +592,7 @@ export default function SiteAssistant() {
 						setDismissed(false);
 						setOpen((o) => !o);
 					}}
-					className="group relative flex items-center justify-center w-[52px] h-[52px] bg-black hover:bg-zinc-800 text-white rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
+					className="group relative flex items-center justify-center w-[52px] h-[52px] bg-black hover:bg-zinc-800 text-white rounded-full shadow-lg transition-transform active:scale-95"
 					aria-expanded={open}
 					aria-haspopup="dialog"
 				>

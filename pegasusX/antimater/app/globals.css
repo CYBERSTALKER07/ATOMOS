@@ -1134,14 +1134,14 @@ html.light .editorial-btn:not(.keep-dark):not([data-keep-dark]):hover *,
 }
 
 .editorial-card__image {
- transform: translateZ(0) scale(1);
+ transform: translateZ(0);
  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), filter 0.7s cubic-bezier(0.16, 1, 0.3, 1);
  will-change: transform, filter;
 }
 
 .editorial-card--interactive:hover .editorial-card__image,
 .editorial-card:hover .editorial-card__image {
- transform: scale(1.05) translateZ(0);
+ transform: translateZ(0);
  filter: contrast(104%) brightness(1.02);
 }
 
@@ -6082,7 +6082,6 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .site-assistant__launcher:hover {
- transform: scale(1.04);
  border-color: #ffffff;
 }
 
@@ -6112,7 +6111,7 @@ a.editorial-card--interactive:hover .chamfer-btn *,
 }
 
 .glowing-squircle-launcher:hover {
-  transform: translateY(-2px) scale(1.05);
+  transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.85) !important;
   box-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.35),
@@ -7391,14 +7390,12 @@ html.hide-default-cursor select {
 .module-card__image {
   object-fit: cover;
   filter: blur(24px);
-  transform: scale(1.1);
   transition: all 800ms ease-out;
-  will-change: filter, transform;
+  will-change: filter;
 }
 
 .module-card:hover .module-card__image {
   filter: blur(0px);
-  transform: scale(1.0);
 }
 
 .module-card__overlay {

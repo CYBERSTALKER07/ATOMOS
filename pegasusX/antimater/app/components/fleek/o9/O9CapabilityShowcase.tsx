@@ -112,7 +112,7 @@ export default function O9CapabilityShowcase({
                   src={imageSrc}
                   alt={item.title}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 dark:opacity-80"
+                  className="object-cover opacity-90 dark:opacity-80"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />

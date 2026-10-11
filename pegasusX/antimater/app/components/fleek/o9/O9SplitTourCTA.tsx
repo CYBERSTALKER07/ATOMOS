@@ -63,7 +63,7 @@ export default function O9SplitTourCTA({
               src={EDITORIAL_IMAGES[1]}
               alt=""
               fill
-              className="object-cover opacity-40 group-hover:scale-105 transition-transform duration-700"
+              className="object-cover opacity-40"
               sizes="(max-width: 900px) 100vw, 50vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent pointer-events-none" />
@@ -123,7 +123,7 @@ export default function O9SplitTourCTA({
               src={EDITORIAL_IMAGES[2]}
               alt=""
               fill
-              className="object-cover opacity-40 group-hover:scale-105 transition-transform duration-700"
+              className="object-cover opacity-40"
               sizes="(max-width: 900px) 100vw, 50vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent pointer-events-none" />

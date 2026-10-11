@@ -47,7 +47,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
  src="/Unknown-8.jpg"
  alt={isRu ? "Оптимизация маршрутов Pegasus" : "Autonomous Route Optimization"}
  fill
- className="object-cover transition-transform duration-500 group-hover/circle:scale-110"
+ className="object-cover"
  sizes="(max-width: 640px) 176px, 224px"
  />
  {/* Tactical Vignette Gradient Overlay */}
@@ -77,7 +77,7 @@ export default function TenityOrbitBentoSection({ className = '' }: TenityOrbitB
  src="/Unknown-5.jpg"
  alt={isRu ? "Телеметрия флота и терминалы" : "Fleet Terminal & Telematics"}
  fill
- className="object-cover transition-transform duration-500 group-hover/circle:scale-110"
+ className="object-cover"
  sizes="(max-width: 640px) 176px, 224px"
  />
  {/* Tactical Vignette Gradient Overlay */}
