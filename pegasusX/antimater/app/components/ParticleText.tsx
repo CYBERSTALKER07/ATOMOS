@@ -16,12 +16,13 @@ export interface ParticleTextProps {
   pointerRepel?: number;
   repelRadius?: number;
   idleDrift?: number;
-  trigger?: 'mount' | 'hover' | 'click' | 'none';
+  trigger?: 'mount' | 'view' | 'hover' | 'click' | 'none';
   fontSize?: number | string;
   fontWeight?: number | string;
   fontFamily?: string;
   letterSpacing?: string;
   fitContainer?: boolean;
+  fitWidth?: boolean;
   glow?: boolean;
   textAlign?: 'left' | 'center' | 'right';
   className?: string;
@@ -119,6 +120,7 @@ const ParticleText = ({
   fontFamily = 'inherit',
   letterSpacing,
   fitContainer = true,
+  fitWidth = false,
   glow = true,
   textAlign = 'left',
   className = '',
@@ -184,7 +186,7 @@ const ParticleText = ({
       const size = particle.size;
       ctx.fillStyle = particle.color;
 
-      if (size <= 2.1) {
+      if (size <= 2.6) {
         ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
         return;
       }
@@ -353,25 +355,27 @@ const ParticleText = ({
         if (currentBuild !== buildId) return;
 
         const content = String(text || ' ');
+        const isMultiLineOrStyled = content.includes('\n') || content.includes('*') || content.includes('_');
         const maxTextWidth = width * 0.98;
         const maxTextHeight = height * 0.94;
-        offCtx.font = font;
-        if (letterSpacing && 'letterSpacing' in offCtx) {
-          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-        }
-        let metrics = offCtx.measureText(content);
-        let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
-        let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-        let currentHeight = ascent + descent;
-        let measuredWidth = Math.max(1, metrics.width);
 
-        if (fitContainer) {
-          const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
-          const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
-          const scale = Math.min(widthScale, heightScale);
+        let startX = 0;
 
-          if (scale < 1) {
-            resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+        if (!isMultiLineOrStyled) {
+          offCtx.font = font;
+          if (letterSpacing && 'letterSpacing' in offCtx) {
+            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+          }
+          let metrics = offCtx.measureText(content);
+          let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+          let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+          let currentHeight = ascent + descent;
+          let measuredWidth = Math.max(1, metrics.width);
+
+          if (fitWidth) {
+            const targetWidth = Math.floor(width * 0.98);
+            const widthScale = targetWidth / Math.max(1, measuredWidth);
+            resolvedSize = Math.max(16, Math.floor(resolvedSize * widthScale));
             font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
             await waitForFonts(font);
             if (currentBuild !== buildId) return;
@@ -380,29 +384,142 @@ const ParticleText = ({
               (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
             }
             metrics = offCtx.measureText(content);
+            if (Math.abs(metrics.width - targetWidth) > 4 && metrics.width > 0) {
+              const fineScale = targetWidth / metrics.width;
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * fineScale));
+              font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+              offCtx.font = font;
+              if (letterSpacing && 'letterSpacing' in offCtx) {
+                (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+              }
+              metrics = offCtx.measureText(content);
+            }
+          } else if (fitContainer) {
+            const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
+            const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
+            const scale = Math.min(widthScale, heightScale);
+
+            if (scale < 1) {
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+              font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+              await waitForFonts(font);
+              if (currentBuild !== buildId) return;
+              offCtx.font = font;
+              if (letterSpacing && 'letterSpacing' in offCtx) {
+                (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+              }
+              metrics = offCtx.measureText(content);
+            }
+          }
+
+          const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
+          const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
+          const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+          const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+          const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
+          const textWidth = Math.max(1, left + right);
+          const textHeight = Math.max(1, finalAscent + finalDescent);
+          startX = padding + Math.max(0, left);
+
+          offscreen.width = textWidth + padding * 2;
+          offscreen.height = textHeight + padding * 2;
+          offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+          offCtx.font = font;
+          if (letterSpacing && 'letterSpacing' in offCtx) {
+            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+          }
+          offCtx.textAlign = 'left';
+          offCtx.textBaseline = 'alphabetic';
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fillText(content, startX, padding + finalAscent);
+        } else {
+          const rawLines = content.split('\n');
+          const italicFamily = '"Libre Baskerville", "Times New Roman", Georgia, serif';
+
+          type Segment = { text: string; isItalic: boolean };
+          const parseSegments = (lineStr: string): Segment[] => {
+            const segs: Segment[] = [];
+            const regex = /(\*[^*]+\*|_[^_]+_)/g;
+            let last = 0;
+            let m: RegExpExecArray | null;
+            while ((m = regex.exec(lineStr)) !== null) {
+              if (m.index > last) {
+                segs.push({ text: lineStr.slice(last, m.index), isItalic: false });
+              }
+              segs.push({ text: m[0].slice(1, -1), isItalic: true });
+              last = regex.lastIndex;
+            }
+            if (last < lineStr.length) {
+              segs.push({ text: lineStr.slice(last), isItalic: false });
+            }
+            return segs.length > 0 ? segs : [{ text: lineStr, isItalic: false }];
+          };
+
+          const lineSegs = rawLines.map(parseSegments);
+
+          const measureAll = (sz: number) => {
+            const curFont = `${fontWeight} ${sz}px ${resolvedFamily}`;
+            const curItalic = `italic 400 ${Math.round(sz * 1.05)}px ${italicFamily}`;
+            let maxW = 0;
+            const widths: number[] = [];
+
+            for (const segs of lineSegs) {
+              let lineW = 0;
+              for (const seg of segs) {
+                offCtx.font = seg.isItalic ? curItalic : curFont;
+                lineW += offCtx.measureText(seg.text).width;
+              }
+              widths.push(lineW);
+              if (lineW > maxW) maxW = lineW;
+            }
+            const lineH = Math.ceil(sz * 1.16);
+            const totalH = Math.ceil(sz * 0.82) + (rawLines.length - 1) * lineH + Math.ceil(sz * 0.22);
+            return { maxW, widths, lineH, totalH, curFont, curItalic };
+          };
+
+          let m = measureAll(resolvedSize);
+
+          if (fitContainer) {
+            const wScale = m.maxW > maxTextWidth ? maxTextWidth / m.maxW : 1;
+            const hScale = m.totalH > maxTextHeight ? maxTextHeight / m.totalH : 1;
+            const scale = Math.min(wScale, hScale);
+            if (scale < 1) {
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+              m = measureAll(resolvedSize);
+            }
+          }
+
+          const padding = Math.max(6, Math.ceil(resolvedSize * 0.04));
+          const textWidth = Math.ceil(m.maxW);
+          const textHeight = Math.ceil(m.totalH);
+          startX = padding;
+
+          offscreen.width = textWidth + padding * 2;
+          offscreen.height = textHeight + padding * 2;
+          offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+          offCtx.textAlign = 'left';
+          offCtx.textBaseline = 'alphabetic';
+          offCtx.fillStyle = '#ffffff';
+
+          const ascent = Math.ceil(resolvedSize * 0.78);
+
+          for (let i = 0; i < lineSegs.length; i++) {
+            const segs = lineSegs[i];
+            let curX = startX;
+            if (textAlign === 'right') {
+              curX = startX + (textWidth - m.widths[i]);
+            } else if (textAlign === 'center') {
+              curX = startX + (textWidth - m.widths[i]) * 0.5;
+            }
+            const lineY = padding + ascent + i * m.lineH;
+
+            for (const seg of segs) {
+              offCtx.font = seg.isItalic ? m.curItalic : m.curFont;
+              offCtx.fillText(seg.text, curX, lineY);
+              curX += offCtx.measureText(seg.text).width;
+            }
           }
         }
-
-        const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
-        const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
-        const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
-        const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
-        const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
-        const textWidth = Math.max(1, left + right);
-        const textHeight = Math.max(1, finalAscent + finalDescent);
-        const startX = padding + Math.max(0, left);
-
-        offscreen.width = textWidth + padding * 2;
-        offscreen.height = textHeight + padding * 2;
-        offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
-        offCtx.font = font;
-        if (letterSpacing && 'letterSpacing' in offCtx) {
-          (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
-        }
-        offCtx.textAlign = 'left';
-        offCtx.textBaseline = 'alphabetic';
-        offCtx.fillStyle = '#ffffff';
-        offCtx.fillText(content, startX, padding + finalAscent);
 
         const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
 
@@ -426,7 +543,9 @@ const ParticleText = ({
         }
       }
 
-      const maxParticles = useBrandmark ? Math.max(5000, Math.min(10000, targets.length)) : Math.max(900, Math.min(5200, Math.floor((width * height) / 90)));
+      const maxParticles = useBrandmark || fitWidth
+        ? Math.max(5000, Math.min(10000, targets.length))
+        : Math.max(900, Math.min(5200, Math.floor((width * height) / 90)));
       const stride = Math.max(1, Math.ceil(targets.length / maxParticles));
       const baseRgb = hexToRgb(color);
       const highlightRgb = hexToRgb(highlightColor);
@@ -474,7 +593,15 @@ const ParticleText = ({
         });
         gathering = false;
       } else {
-        startGather(false);
+        if (trigger === 'view') {
+          if (isVisible) {
+            startGather(true);
+          } else {
+            gathering = false;
+          }
+        } else {
+          startGather(false);
+        }
       }
 
       ensureRenderLoop();
@@ -502,7 +629,7 @@ const ParticleText = ({
     };
 
     const handleClick = (): void => {
-      if (trigger === 'click') startGather(true);
+      startGather(true);
     };
 
     const reduceMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -520,6 +647,8 @@ const ParticleText = ({
     const resizeObserver = new ResizeObserver(queueSample);
     resizeObserver.observe(container);
 
+    let hasTriggeredView = false;
+
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
         const wasVisible = isVisible;
@@ -527,6 +656,10 @@ const ParticleText = ({
 
         if (isVisible && !wasVisible) {
           ensureRenderLoop();
+          if (trigger === 'view' && !hasTriggeredView) {
+            hasTriggeredView = true;
+            startGather(true);
+          }
         } else if (!isVisible && wasVisible) {
           if (animationFrame !== null) {
             window.cancelAnimationFrame(animationFrame);

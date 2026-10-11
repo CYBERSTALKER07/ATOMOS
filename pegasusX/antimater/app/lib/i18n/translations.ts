@@ -79,6 +79,13 @@ const EN_DICT = {
  cta_band_title: 'SUPERCHARGE YOUR LOGISTICS STACK',
  cta_band_body: 'Dispatch boards, live fleet maps, and treasury on one shared order truth — portal and native apps for every role.',
 
+ // Early Access Section
+ early_access_eyebrow: "JOIN THE NEXT GENERATION OF LOGISTICS",
+ early_access_title_1: "Request",
+ early_access_title_2: "Early",
+ early_access_title_3: "Access.",
+ early_access_btn: "Request Access",
+
  // Request Demo Page (/join)
  join_title: 'Request a Live Pegasus Demo',
  join_subtitle: 'Experience how Pegasus replaces fragmented logistics tools with one real-time platform across 6 roles.',
@@ -635,6 +642,13 @@ const RU_DICT = {
  // Fleek CTA Band
  cta_band_title: 'УСКОРЬТЕ ВАШ ЛОГИСТИЧЕСКИЙ СТЕК',
  cta_band_body: 'Диспетчерские панели, карта автопарка и казначейство на основе единых достоверных данных — портал и мобильные приложения для всех ролей.',
+
+ // Early Access Section
+ early_access_eyebrow: "ПРИСОЕДИНЯЙТЕСЬ К НОВОМУ ПОКОЛЕНИЮ ЛОГИСТИКИ",
+ early_access_title_1: "Запросите",
+ early_access_title_2: "Ранний",
+ early_access_title_3: "Доступ.",
+ early_access_btn: "Запросить доступ",
 
  // Request Demo Page (/join)
  join_title: 'Запросить демо-версию Pegasus',

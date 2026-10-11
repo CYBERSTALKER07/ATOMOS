@@ -29,6 +29,7 @@ const Projects = dynamic(() => import('./components/Projects'));
 const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
 const SpurIntelligenceSection = dynamic(() => import('./components/SpurIntelligenceSection'));
 const Licensing = dynamic(() => import('./components/Licensing'));
+const EarlyAccessSection = dynamic(() => import('./components/EarlyAccessSection'));
 const Footer = dynamic(() => import('./components/Footer'));
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -136,6 +137,7 @@ export default async function Home() {
  <section id="section-deploy">
  <DispatchVisualSection />
  <Licensing />
+ <EarlyAccessSection />
  <Footer />
  </section>
  </div>
