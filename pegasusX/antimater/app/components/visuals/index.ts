@@ -9,3 +9,4 @@ export { default as IntegrationsHubVisual } from './IntegrationsHubVisual';
 export { default as BridgeSwapVisual } from './BridgeSwapVisual';
 export { default as EcosystemDitherStage } from './EcosystemDitherStage';
 export { default as FooterWordmark } from './FooterWordmark';
+export { default as DitheredFaceCanvas } from './DitheredFaceCanvas';

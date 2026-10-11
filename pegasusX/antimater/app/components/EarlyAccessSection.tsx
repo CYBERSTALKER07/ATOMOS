@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import ParticleText from './ParticleText';
-import Dither from './visuals/Dither';
+import DitheredFaceCanvas from './visuals/DitheredFaceCanvas';
 
 export default function EarlyAccessSection() {
   const { t } = useLanguage();
@@ -15,31 +15,9 @@ export default function EarlyAccessSection() {
       data-keep-white
       aria-label="Request Early Access"
     >
-      {/* Background Dither Visual (like in About section) */}
-      <div 
-        className="absolute inset-y-0 left-0 w-full lg:w-[65%] select-none overflow-hidden"
-        style={{
-          WebkitMaskImage: 'url(/images/early-access-mask.png)',
-          WebkitMaskSize: 'contain',
-          WebkitMaskRepeat: 'no-repeat',
-          WebkitMaskPosition: 'left center',
-          maskImage: 'url(/images/early-access-mask.png)',
-          maskSize: 'contain',
-          maskRepeat: 'no-repeat',
-          maskPosition: 'left center',
-        }}
-      >
-        <Dither
-          waveColor={[0.06274509803921569, 0.7254901960784313, 0.5058823529411764]}
-          disableAnimation={false}
-          enableMouseInteraction={true}
-          mouseRadius={0.3}
-          colorNum={4}
-          waveAmplitude={0.3}
-          waveFrequency={3}
-          waveSpeed={0.05}
-          backgroundColor={[0, 0, 0]}
-        />
+      {/* Background Interactive Dithered Face & Hand Mesh (Bayer 8x8 matrix shader matching About) */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+        <DitheredFaceCanvas />
       </div>
 
       {/* Top Spacer */}
@@ -65,7 +43,7 @@ export default function EarlyAccessSection() {
               particleSize={2.0}
               density={2.5}
               color="#ffffff"
-              highlightColor="#34d399"
+              highlightColor="#c084fc"
               scatter={140}
               gatherDuration={1350}
               stagger={260}
