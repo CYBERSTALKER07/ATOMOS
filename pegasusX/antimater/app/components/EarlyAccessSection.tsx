@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useLanguage } from '../context/LanguageContext';
 import ParticleText from './ParticleText';
-import DitheredFaceCanvas from './visuals/DitheredFaceCanvas';
+import NeuralParticleCanvas from './NeuralParticleCanvas';
 
 export default function EarlyAccessSection() {
   const { t } = useLanguage();
@@ -15,9 +15,9 @@ export default function EarlyAccessSection() {
       data-keep-white
       aria-label="Request Early Access"
     >
-      {/* Background Interactive Dithered Face & Hand Mesh (Bayer 8x8 matrix shader matching About) */}
+      {/* Background Neural Particle Face & Hand Mesh (100% Canvas Particles) */}
       <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
-        <DitheredFaceCanvas />
+        <NeuralParticleCanvas />
       </div>
 
       {/* Top Spacer */}
