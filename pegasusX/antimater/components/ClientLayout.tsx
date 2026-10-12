@@ -163,7 +163,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               }}
             >
               <NavigationScrollManager />
-              {allowHeavyFx ? <DitherCursor color="#ffffff" ditherSize={3} radius={0.12} decay={0.015} intensity={0.6} /> : null}
+              {allowHeavyFx ? <DitherCursor color="#10B981" ditherSize={2} radius={0.05} decay={0.02} intensity={0.5} /> : null}
               {children}
               <SiteAssistant />
             </ReactLenis>
