@@ -28,6 +28,13 @@ export interface DitherProps {
   clickRipple?: boolean;
   intro?: boolean;
   dpr?: number;
+  /** Optional image URL. When set, the image luminance drives the dither field instead of the waves. */
+  image?: string;
+  imageFit?: 'cover' | 'contain';
+  /** object-position style alignment, 0..1 for x and y. */
+  imagePosition?: [number, number];
+  /** How much of the wave pattern flows through the image (0 = static image). */
+  imageNoise?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -54,6 +61,10 @@ type Settings = {
   clickRipple: boolean;
   intro: boolean;
   dpr?: number;
+  image?: string;
+  imageFit: 'cover' | 'contain';
+  imagePosition: [number, number];
+  imageNoise: number;
 };
 
 type TrailPoint = { x: number; y: number; weight: number };
@@ -106,6 +117,10 @@ uniform vec4 uRipples[${MAX_RIPPLES}];
 uniform int uRippleCount;
 uniform float uIntro;
 uniform float uReach;
+uniform sampler2D uImage;
+uniform int uUseImage;
+uniform vec4 uImageRect;
+uniform float uImageNoise;
 out vec4 outColor;
 
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -193,7 +208,19 @@ void main() {
     warp += (dist > 0.0001 ? delta / dist : vec2(0.0)) * sin(dist / max(uRadius, 0.001) * 16.0 - uTime * 7.0) * 0.04 * touch * uStrength;
   }
 
-  float f = pattern((uv + warp) / uScale);
+  float f;
+  if (uUseImage == 1) {
+    vec2 px = vec2(corner.x, uResolution.y - corner.y) + vec2(warp.x, -warp.y) * uResolution.y;
+    vec2 iuv = (px - uImageRect.xy) / uImageRect.zw;
+    float img = 0.0;
+    if (iuv.x >= 0.0 && iuv.y >= 0.0 && iuv.x <= 1.0 && iuv.y <= 1.0) {
+      img = dot(texture(uImage, iuv).rgb, vec3(0.2126, 0.7152, 0.0722));
+    }
+    float n = pattern((uv + warp) / uScale);
+    f = img * (1.0 + (n - 0.5) * uImageNoise);
+  } else {
+    f = pattern((uv + warp) / uScale);
+  }
   if (uEffect == 0) f -= 0.5 * touch * uStrength;
   if (uEffect == 1) f += 0.5 * touch * uStrength;
   f += ring * 0.55;
@@ -369,6 +396,10 @@ const Dither = ({
   clickRipple = true,
   intro = true,
   dpr,
+  image,
+  imageFit = 'cover',
+  imagePosition = [0.5, 0.5],
+  imageNoise = 0.35,
   className = '',
   style
 }: DitherProps) => {
@@ -396,7 +427,11 @@ const Dither = ({
     trail: clamp(trail, 0, 1),
     clickRipple,
     intro,
-    dpr
+    dpr,
+    image,
+    imageFit,
+    imagePosition,
+    imageNoise: Math.max(0, imageNoise)
   };
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -432,6 +467,16 @@ const Dither = ({
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     const framebuffer = gl.createFramebuffer();
+
+    const imageTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, imageTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const imageState = { src: '', width: 1, height: 1 };
+    let disposed = false;
 
     const probe = document.createElement('canvas').getContext('2d', { willReadFrequently: true });
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -533,6 +578,17 @@ const Dither = ({
       gl.uniform1i(w.uRippleCount, rippleCount);
       gl.uniform1f(w.uIntro, eased);
       gl.uniform1f(w.uReach, 0.5 * Math.hypot(view.width / view.height, 1) + 0.45);
+      const iw = imageState.width;
+      const ih = imageState.height;
+      const k = s.imageFit === 'contain' ? Math.min(view.width / iw, view.height / ih) : Math.max(view.width / iw, view.height / ih);
+      const rw = iw * k;
+      const rh = ih * k;
+      gl.uniform4f(w.uImageRect, (view.width - rw) * s.imagePosition[0], (view.height - rh) * s.imagePosition[1], rw, rh);
+      gl.uniform1i(w.uUseImage, s.image ? 1 : 0);
+      gl.uniform1f(w.uImageNoise, s.imageNoise);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, imageTex);
+      gl.uniform1i(w.uImage, 1);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -690,9 +746,30 @@ const Dither = ({
     document.addEventListener('visibilitychange', onVisibility);
     resize();
 
+    const loadImage = (src?: string) => {
+      if (!src || src === imageState.src) return;
+      imageState.src = src;
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        if (disposed || imageState.src !== src) return;
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, imageTex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        imageState.width = img.naturalWidth || 1;
+        imageState.height = img.naturalHeight || 1;
+        if (!raf) render();
+        wake();
+      };
+      img.src = src;
+    };
+    loadImage(settingsRef.current.image);
+
     let lastDpr = settingsRef.current.dpr;
     wakeRef.current = () => {
       const s = settingsRef.current;
+      loadImage(s.image);
       if (s.dpr !== lastDpr) {
         lastDpr = s.dpr;
         resize();
@@ -703,6 +780,7 @@ const Dither = ({
     };
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
       wakeRef.current = null;
       resizeObserver.disconnect();
@@ -718,6 +796,7 @@ const Dither = ({
       gl.deleteBuffer(buffer);
       gl.deleteVertexArray(vao);
       gl.deleteTexture(field);
+      gl.deleteTexture(imageTex);
       gl.deleteFramebuffer(framebuffer);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
