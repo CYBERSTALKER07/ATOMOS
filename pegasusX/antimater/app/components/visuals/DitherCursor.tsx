@@ -374,15 +374,26 @@ export default function DitherCursor({
   const simulationScene = useMemo(() => new Scene(), []);
 
   return (
-    <div className={cn('fixed inset-0 w-full h-full pointer-events-none z-50 overflow-hidden', className)}>
+    <div
+      className={cn('fixed inset-0 w-full h-full pointer-events-none z-50 overflow-hidden', className)}
+      style={{ pointerEvents: 'none' }}
+    >
       <Canvas
         orthographic
         camera={{ zoom: 1, position: [0, 0, 1], near: 0.1, far: 1000 }}
         gl={{ alpha: true, antialias: false }}
+        events={() => ({
+          enabled: false,
+          priority: 0,
+          handlePointer: () => () => {},
+          connected: false as unknown as HTMLElement
+        })}
+        style={{ pointerEvents: 'none' }}
         onCreated={({ gl }) => {
           gl.outputColorSpace = SRGBColorSpace;
+          gl.domElement.style.pointerEvents = 'none';
         }}
-        className="w-full h-full"
+        className="w-full h-full pointer-events-none"
       >
         <DitherCursorInner
           simulationScene={simulationScene}
