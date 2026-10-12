@@ -9,7 +9,7 @@ import type { Language } from '@/app/lib/i18n/translations';
 import { ReactLenis, useLenis } from 'lenis/react';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 
-import SplashCursor from '@/app/components/SplashCursor';
+import DitherCursor from '@/app/components/visuals/DitherCursor';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
 import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
@@ -163,7 +163,7 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               }}
             >
               <NavigationScrollManager />
-              {allowHeavyFx ? <SplashCursor COLOR="#10B981" RAINBOW_MODE={false} /> : null}
+              {allowHeavyFx ? <DitherCursor color="#ffffff" ditherSize={3} radius={0.12} decay={0.015} intensity={0.6} /> : null}
               {children}
               <SiteAssistant />
             </ReactLenis>
