@@ -29,6 +29,9 @@ func (c *Config) ValidateProductionProfile() error {
 	if c.EnablePaymentSimulator {
 		return fmt.Errorf("ENABLE_PAYMENT_SIMULATOR must be false when PEGASUSX_ENV=production")
 	}
+	if c.HandoffLegacyOrderIDFallback {
+		return fmt.Errorf("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=production")
+	}
 	if strings.TrimSpace(c.JWTSecret) == "" ||
 		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.JWTSecret)), "dev-") ||
 		strings.EqualFold(strings.TrimSpace(c.JWTSecret), "dev-only-change-me") {

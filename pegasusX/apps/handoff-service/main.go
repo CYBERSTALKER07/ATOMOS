@@ -15,8 +15,8 @@ import (
 )
 
 type validateRequest struct {
-	OrderID       string `json:"order_id"`
-	StoredToken   string `json:"stored_token"`
+	OrderID        string `json:"order_id"`
+	StoredToken    string `json:"stored_token"`
 	PresentedToken string `json:"presented_token"`
 }
 
@@ -28,6 +28,9 @@ type publicRequest struct {
 
 func main() {
 	engine := handoff.FromEnv()
+	if engine.LegacyOrderIDFallback() && productionEnv() {
+		log.Fatal("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=production")
+	}
 	apiKey := strings.TrimSpace(os.Getenv("INTERNAL_API_KEY"))
 	port := strings.TrimSpace(os.Getenv("HTTP_PORT"))
 	if port == "" {
@@ -70,8 +73,17 @@ func main() {
 		})
 	})
 
-	log.Printf("handoff-service listening on :%s legacy_fallback=%v", port, engine != nil)
+	log.Printf("handoff-service listening on :%s legacy_fallback=%v", port, engine.LegacyOrderIDFallback())
 	log.Fatal(http.ListenAndServe(":"+port, r))
+}
+
+func productionEnv() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
+	case "production", "prod":
+		return true
+	default:
+		return false
+	}
 }
 
 func internalAPIKeyMiddleware(expected string) func(http.Handler) http.Handler {

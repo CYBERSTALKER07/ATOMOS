@@ -82,7 +82,10 @@ type Config struct {
 	AllowAuthBypass     bool
 	// EnablePaymentSimulator mounts /sim/globalpay. Never allowed in production.
 	EnablePaymentSimulator bool
-	MaxSuppliers           int
+	// HandoffLegacyOrderIDFallback accepts the order id as a delivery token
+	// when no DeliveryToken is stored. Local sims opt in. Production rejects it.
+	HandoffLegacyOrderIDFallback bool
+	MaxSuppliers                 int
 	// AllowMultiSupplierRegister is ignored on POST /v1/auth/supplier/register
 	// (GS-T2). New tenants mint via POST /v1/platform/tenants/register.
 	AllowMultiSupplierRegister bool
@@ -166,6 +169,7 @@ func LoadConfig() (*Config, error) {
 		ReliabilityEnabled:              envBool("RELIABILITY_MIDDLEWARE_ENABLED", true),
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
 		EnablePaymentSimulator:          envBool("ENABLE_PAYMENT_SIMULATOR", false),
+		HandoffLegacyOrderIDFallback:    envBool("HANDOFF_LEGACY_ORDER_ID_FALLBACK", false),
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 1),
 		AllowMultiSupplierRegister:      envBool("ALLOW_MULTI_SUPPLIER_REGISTER", false),
 		// Same rule as seed fail-closed: explicit TENANT_CONTEXT_ENFORCED, else sandbox|production.

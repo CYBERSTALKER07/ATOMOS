@@ -2,6 +2,17 @@ package handoff
 
 import "testing"
 
+func TestFromEnv_DefaultsLegacyFallbackOff(t *testing.T) {
+	t.Setenv("HANDOFF_LEGACY_ORDER_ID_FALLBACK", "")
+	engine := FromEnv()
+	if engine.LegacyOrderIDFallback() {
+		t.Fatal("unset HANDOFF_LEGACY_ORDER_ID_FALLBACK must not accept the order id")
+	}
+	if err := engine.Validate("ord-1", "", "ord-1"); err == nil {
+		t.Fatal("order id must not validate when the stored token is empty")
+	}
+}
+
 func TestEngineMintOnLoaded(t *testing.T) {
 	engine := New(Config{LegacyOrderIDFallback: true, Mint: func() string { return "tok-abc" }})
 	token := ""
@@ -71,4 +82,3 @@ func TestEngine_EnforceCryptographicTokenWhenFallbackDisabled(t *testing.T) {
 		t.Fatalf("unexpected validation error with valid token: %v", err)
 	}
 }
-

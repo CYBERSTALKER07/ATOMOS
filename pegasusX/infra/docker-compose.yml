@@ -254,6 +254,7 @@ services:
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      HANDOFF_LEGACY_ORDER_ID_FALLBACK: "true"
     ports:
       - "8080:8080"
     networks:

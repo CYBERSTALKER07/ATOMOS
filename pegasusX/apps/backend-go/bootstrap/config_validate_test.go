@@ -361,6 +361,13 @@ func TestValidateProductionProfile_RejectsAuthBypassAndPaymentSimulator(t *testi
 	if err == nil || !strings.Contains(err.Error(), "ENABLE_PAYMENT_SIMULATOR") {
 		t.Fatalf("simulator err=%v", err)
 	}
+
+	cfg = productionProfileConfig(t)
+	cfg.HandoffLegacyOrderIDFallback = true
+	err = cfg.ValidateProductionProfile()
+	if err == nil || !strings.Contains(err.Error(), "HANDOFF_LEGACY_ORDER_ID_FALLBACK") {
+		t.Fatalf("handoff fallback err=%v", err)
+	}
 }
 
 func TestValidateProductionProfile_AllowsAuthBypassOutsideProduction(t *testing.T) {
@@ -368,6 +375,7 @@ func TestValidateProductionProfile_AllowsAuthBypassOutsideProduction(t *testing.
 	cfg := testConfig()
 	cfg.AllowAuthBypass = true
 	cfg.EnablePaymentSimulator = true
+	cfg.HandoffLegacyOrderIDFallback = true
 	if err := cfg.ValidateProductionProfile(); err != nil {
 		t.Fatalf("non-production profile should not reject bypass: %v", err)
 	}
