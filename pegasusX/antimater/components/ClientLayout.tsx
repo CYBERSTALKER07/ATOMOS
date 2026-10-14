@@ -9,7 +9,6 @@ import type { Language } from '@/app/lib/i18n/translations';
 import { ReactLenis, useLenis } from 'lenis/react';
 import { usePerfProfile } from '@/app/hooks/useDevice';
 
-import DitherCursor from '@/app/components/visuals/DitherCursor';
 import { CookieConsentProvider } from '@/app/context/CookieConsentContext';
 import CookieBanner from '@/app/components/cookies/CookieBanner';
 import CookiePreferenceModal from '@/app/components/cookies/CookiePreferenceModal';
@@ -92,7 +91,7 @@ interface ClientLayoutProps {
 const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }) => {
   const pathname = usePathname();
   const isAssistantPage = pathname?.startsWith('/assistant');
-  const { allowHeavyFx, isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
+  const { isLowEnd, isMobile, prefersReducedMotion } = usePerfProfile();
 
   // Disable browser automatic scroll restoration so page transitions always start at top
   useEffect(() => {
@@ -163,7 +162,6 @@ const ClientLayout: React.FC<ClientLayoutProps> = ({ children, initialLanguage }
               }}
             >
               <NavigationScrollManager />
-              {allowHeavyFx ? <DitherCursor color="#10B981" ditherSize={2} radius={0.05} decay={0.02} intensity={0.5} /> : null}
               {children}
               <SiteAssistant />
             </ReactLenis>
