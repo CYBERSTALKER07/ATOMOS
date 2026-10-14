@@ -241,7 +241,7 @@ function PromptOverlay({
  {isMobile ? promptTextMobile : promptText}
  {!reducedMotion && (
  <span
- className="inline-block w-[2px] h-[1em] align-[-0.1em] ml-0.5 bg-white/80 animate-[pulse_1s_ease-in-out_infinite]"
+ className="inline-block w-[2px] h-[1em] align-[-0.1em] ml-0.5 bg-white/80"
  aria-hidden
  />
  )}

@@ -36,48 +36,49 @@ export default function Licensing() {
  },
  ];
 
- useEffect(() => {
- if (!sectionRef.current || !titleRef.current || !contentRef.current || !cardsRef.current) return;
+  useEffect(() => {
+    if (!sectionRef.current || !titleRef.current || !contentRef.current || !cardsRef.current) return;
 
- if (isMobile || isLowEnd || prefersReducedMotion) {
- gsap.set([titleRef.current, contentRef.current, cardsRef.current], {
- opacity: 1,
- y: 0,
- scale: 1,
- });
- return;
- }
+    if (isMobile || isLowEnd || prefersReducedMotion) {
+      gsap.set([titleRef.current, contentRef.current, cardsRef.current], {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+      });
+      return;
+    }
 
- const ctx = gsap.context(() => {
- const timeline = gsap.timeline({
- scrollTrigger: {
- trigger: sectionRef.current,
- start: 'top 80%',
- end: 'bottom 20%',
- toggleActions: 'play none none reverse',
- fastScrollEnd: true,
- },
- });
+    const ctx = gsap.context(() => {
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: 'top 95%',
+          once: true,
+          fastScrollEnd: true,
+        },
+      });
 
- timeline
- .fromTo(titleRef.current, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 1.2, ease: 'pegasus' })
- .fromTo(contentRef.current, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.8, ease: 'pegasus' }, '-=0.4')
- .fromTo(
- cardsRef.current?.children ? Array.from(cardsRef.current.children) : [],
- { opacity: 0, y: 30 },
- { opacity: 1, y: 0, duration: 0.6, stagger: 0.15, ease: 'pegasus' },
- '-=0.3'
- );
- }, sectionRef);
+      timeline
+        .fromTo(titleRef.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' })
+        .fromTo(contentRef.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.35')
+        .fromTo(
+          cardsRef.current?.children ? Array.from(cardsRef.current.children) : [],
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, ease: 'power2.out' },
+          '-=0.35'
+        );
+    }, sectionRef);
 
- return () => ctx.revert();
- }, [isMobile, isLowEnd, prefersReducedMotion]);
+    ScrollTrigger.refresh();
+
+    return () => ctx.revert();
+  }, [isMobile, isLowEnd, prefersReducedMotion]);
 
  return (
  <section
  ref={sectionRef}
  id="deployment"
- className="min-h-screen py-20 bg-[#F8FAFC] dark:bg-black text-zinc-900 dark:text-white relative overflow-hidden flex items-center transition-colors"
+ className="py-16 md:py-24 bg-[#F8FAFC] dark:bg-black text-zinc-900 dark:text-white relative overflow-hidden flex items-center transition-colors"
  >
  <div className="container mx-auto px-4 relative z-10">
  <div className="max-w-6xl mx-auto">
@@ -112,6 +113,7 @@ export default function Licensing() {
  ctaLabel={card.ctaLabel}
  ctaStyle="button"
  splitCta
+                imagePriority={true}
  className="deployment-card min-h-[28rem]"
  hoverLabel={card.href === '/platform' ? t('licensing_hover_view') : t('licensing_hover_demo')}
  />

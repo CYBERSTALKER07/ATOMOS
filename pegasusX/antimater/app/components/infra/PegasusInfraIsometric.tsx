@@ -9,7 +9,7 @@ export default function PegasusInfraIsometric() {
       {/* Title / Description Overlay (like the Runlayer example left side) */}
       <div className="absolute top-20 left-8 md:left-16 z-20 max-w-lg pointer-events-none">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-emerald-400 text-[10px] tracking-widest uppercase mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
           Infrastructure Overview
         </div>
         <h2 className="text-4xl md:text-5xl font-light text-white tracking-tight mb-4">

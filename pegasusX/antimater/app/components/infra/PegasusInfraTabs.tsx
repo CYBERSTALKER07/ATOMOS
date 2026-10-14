@@ -54,7 +54,7 @@ export default function PegasusInfraTabs({
       {/* Live System Status Indicator */}
       <div className="flex items-center gap-3 font-mono text-[11px] text-zinc-400">
         <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span className="text-white font-medium">99.998% UPTIME</span>
         </span>
         <span className="text-zinc-600">/</span>

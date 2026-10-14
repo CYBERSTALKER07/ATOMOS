@@ -17,18 +17,15 @@ import { getServerLanguage } from '@/app/lib/i18n/server';
 import { translations } from '@/app/lib/i18n/translations';
 
 const OrderCycleVisualSection = dynamic(() => import('./components/OrderCycleVisualSection'));
-const DispatchVisualSection = dynamic(() => import('./components/DispatchVisualSection'));
 const LastMileSection = dynamic(() => import('./components/LastMileSection'));
 const PlatformFeatures = dynamic(() => import('./components/PlatformFeatures'));
 const PromptDashboardSection = dynamic(() => import('./components/PromptDashboardSection'));
 const AskPromptSection = dynamic(() => import('./components/ask-prompt/AskPromptSection'));
 const OurApproach = dynamic(() => import('./components/OurApproach'));
 const DevelopmentTools = dynamic(() => import('./components/DevelopmentTools'));
-
-const Projects = dynamic(() => import('./components/Projects'));
 const PegasusTestimonialsSection = dynamic(() => import('./components/PegasusTestimonialsSection').then((mod) => mod.PegasusTestimonialsSection));
 const SpurIntelligenceSection = dynamic(() => import('./components/SpurIntelligenceSection'));
-const Licensing = dynamic(() => import('./components/Licensing'));
+import Licensing from './components/Licensing';
 const EarlyAccessSection = dynamic(() => import('./components/EarlyAccessSection'));
 const Footer = dynamic(() => import('./components/Footer'));
 
@@ -126,7 +123,6 @@ export default async function Home() {
 
  <section id="section-showcase">
  <PegasusTestimonialsSection />
- <Projects />
  <OrderCycleVisualSection />
  </section>
 
@@ -135,7 +131,6 @@ export default async function Home() {
  </section>
 
  <section id="section-deploy">
- <DispatchVisualSection />
  <Licensing />
  <EarlyAccessSection />
  <Footer />
