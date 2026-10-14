@@ -144,11 +144,11 @@ func (d *LoginDeps) lookupAdmin(ctx context.Context, subject, email string) (sub
 // envBootstrapAdmin allows PLATFORM_ADMIN_SUBJECT + PLATFORM_ADMIN_PASSWORD (plaintext)
 // for first-boot SSMR. Hash is generated in-process; not for multi-admin production.
 var (
-	envAdminHash   string
-	envAdminInit   sync.Once
-	envAdminSub    string
-	envAdminEmail  string
-	envAdminOk     bool
+	envAdminHash  string
+	envAdminInit  sync.Once
+	envAdminSub   string
+	envAdminEmail string
+	envAdminOk    bool
 )
 
 func envBootstrapAdmin(subject, email string) (sub, hash string, ok bool) {
@@ -198,15 +198,17 @@ func EnsureAdminFromEnv(ctx context.Context, client *spanner.Client) error {
 	}
 	email := strings.TrimSpace(os.Getenv("PLATFORM_ADMIN_EMAIL"))
 	now := time.Now().UTC()
-	_, err = client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("PlatformAdminUsers", map[string]interface{}{
-			"Subject":      sub,
-			"Email":        spanner.NullString{StringVal: email, Valid: email != ""},
-			"PasswordHash": string(hash),
-			"Enabled":      true,
-			"CreatedAt":    now,
-			"UpdatedAt":    now,
-		}),
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdateMap("PlatformAdminUsers", map[string]interface{}{
+				"Subject":      sub,
+				"Email":        spanner.NullString{StringVal: email, Valid: email != ""},
+				"PasswordHash": string(hash),
+				"Enabled":      true,
+				"CreatedAt":    now,
+				"UpdatedAt":    now,
+			}),
+		})
 	})
 	if err != nil && strings.Contains(err.Error(), "PlatformAdminUsers") {
 		return nil // migration not applied yet — env bootstrap login still works

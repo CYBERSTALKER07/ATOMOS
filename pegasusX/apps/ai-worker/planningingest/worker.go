@@ -88,7 +88,8 @@ func (r *Runtime) handle(ctx context.Context, svc *planning.Service, value []byt
 	if supplierID == "" {
 		return nil
 	}
-	return svc.ProjectSignal(ctx, supplierID, in)
+	_, err = svc.ProjectSignal(ctx, supplierID, in)
+	return err
 }
 
 // Close releases the kafka reader.

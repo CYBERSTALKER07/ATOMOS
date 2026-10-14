@@ -102,6 +102,9 @@ func (s *Service) HandleOrderCardCheckout(w http.ResponseWriter, r *http.Request
 	}
 	defer r.Body.Close()
 
+	if !s.requireMoneyIdempotencyKey(w, r, "/v1/order/card-checkout") {
+		return
+	}
 	if rec, ok := s.handleIdempotentHit(w, r, body); ok {
 		_ = rec
 		return
@@ -225,6 +228,9 @@ func (s *Service) HandleOrderCashCheckout(w http.ResponseWriter, r *http.Request
 	}
 	defer r.Body.Close()
 
+	if !s.requireMoneyIdempotencyKey(w, r, "/v1/order/cash-checkout") {
+		return
+	}
 	if rec, ok := s.handleIdempotentHit(w, r, body); ok {
 		_ = rec
 		return
@@ -399,17 +405,17 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 			}
 			if existing.AmountMinor == req.AmountMinor && (req.Gateway == "" || strings.EqualFold(existing.Gateway, req.Gateway)) {
 				return existing, PaymentAttemptRecord{
-					SessionID:       existing.SessionID,
-					Gateway:         existing.Gateway,
-					ExecutionAction: string(ExecutionActionCheckoutInit),
-					Status:          "INITIATED",
-					CreatedAt:       existing.CreatedAt,
-					UpdatedAt:       existing.UpdatedAt,
-				}, ExecutionResult{
-					ResolvedGateway: existing.Gateway,
-					Mode:            ExecutionMode(existing.Mode),
-					PolicySource:    policy.PolicySource,
-				}, nil
+						SessionID:       existing.SessionID,
+						Gateway:         existing.Gateway,
+						ExecutionAction: string(ExecutionActionCheckoutInit),
+						Status:          "INITIATED",
+						CreatedAt:       existing.CreatedAt,
+						UpdatedAt:       existing.UpdatedAt,
+					}, ExecutionResult{
+						ResolvedGateway: existing.Gateway,
+						Mode:            ExecutionMode(existing.Mode),
+						PolicySource:    policy.PolicySource,
+					}, nil
 			}
 		}
 	}

@@ -273,6 +273,7 @@ func TestHandleAcceptSupplyRequest_RequiresQCPass(t *testing.T) {
 		httptest.NewRequest(http.MethodPost, "/v1/factory/supply-requests/srq_factory_1/accept", strings.NewReader(`{}`)),
 		"requestID", "srq_factory_1",
 	)
+	req.Header.Set("Idempotency-Key", "factory-accept:srq_factory_1:qc-block")
 	rr := httptest.NewRecorder()
 	svc.HandleAcceptSupplyRequest(rr, req)
 	if rr.Code != http.StatusConflict {
@@ -299,6 +300,7 @@ func TestHandleAcceptSupplyRequest_PassAllows(t *testing.T) {
 		httptest.NewRequest(http.MethodPost, "/v1/factory/supply-requests/srq_factory_1/accept", strings.NewReader(`{}`)),
 		"requestID", "srq_factory_1",
 	)
+	req.Header.Set("Idempotency-Key", "factory-accept:srq_factory_1:qc-pass")
 	rr := httptest.NewRecorder()
 	svc.HandleAcceptSupplyRequest(rr, req)
 	if rr.Code != http.StatusOK {

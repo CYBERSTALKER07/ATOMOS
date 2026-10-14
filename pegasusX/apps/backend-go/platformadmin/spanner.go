@@ -41,7 +41,9 @@ func (r *SpannerRepository) UpsertTenant(ctx context.Context, t Tenant) error {
 	if t.OffboardedAt != nil {
 		row["OffboardedAt"] = *t.OffboardedAt
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("PlatformTenants", row)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("PlatformTenants", row)})
+	})
 	return err
 }
 
@@ -95,15 +97,17 @@ func (r *SpannerRepository) ListTenants(ctx context.Context, status string, limi
 }
 
 func (r *SpannerRepository) InsertAudit(ctx context.Context, row AuditRow) error {
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertMap("PlatformAdminAudit", map[string]any{
-		"AuditId":      row.AuditID,
-		"ActorSubject": row.ActorSubject,
-		"Action":       row.Action,
-		"TenantType":   row.TenantType,
-		"TenantId":     row.TenantID,
-		"DetailJson":   row.DetailJSON,
-		"CreatedAt":    spanner.CommitTimestamp,
-	})})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertMap("PlatformAdminAudit", map[string]any{
+			"AuditId":      row.AuditID,
+			"ActorSubject": row.ActorSubject,
+			"Action":       row.Action,
+			"TenantType":   row.TenantType,
+			"TenantId":     row.TenantID,
+			"DetailJson":   row.DetailJSON,
+			"CreatedAt":    spanner.CommitTimestamp,
+		})})
+	})
 	return err
 }
 

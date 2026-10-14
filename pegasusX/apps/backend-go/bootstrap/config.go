@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -79,7 +80,9 @@ type Config struct {
 	AllowMemoryFallback bool
 	ReliabilityEnabled  bool
 	AllowAuthBypass     bool
-	MaxSuppliers        int
+	// EnablePaymentSimulator mounts /sim/globalpay. Never allowed in production.
+	EnablePaymentSimulator bool
+	MaxSuppliers           int
 	// AllowMultiSupplierRegister is ignored on POST /v1/auth/supplier/register
 	// (GS-T2). New tenants mint via POST /v1/platform/tenants/register.
 	AllowMultiSupplierRegister bool
@@ -162,6 +165,7 @@ func LoadConfig() (*Config, error) {
 		AllowMemoryFallback:             envBool("ALLOW_MEMORY_FALLBACK", false),
 		ReliabilityEnabled:              envBool("RELIABILITY_MIDDLEWARE_ENABLED", true),
 		AllowAuthBypass:                 envBool("ALLOW_AUTH_BYPASS", false),
+		EnablePaymentSimulator:          envBool("ENABLE_PAYMENT_SIMULATOR", false),
 		MaxSuppliers:                    envInt("MAX_SUPPLIERS", 1),
 		AllowMultiSupplierRegister:      envBool("ALLOW_MULTI_SUPPLIER_REGISTER", false),
 		// Same rule as seed fail-closed: explicit TENANT_CONTEXT_ENFORCED, else sandbox|production.
@@ -186,6 +190,9 @@ func LoadConfig() (*Config, error) {
 	// Enterprise fail-closed: production and strict infra never allow memory repos.
 	if isProductionEnv() || cfg.RequireInfraAdapters {
 		cfg.AllowMemoryFallback = false
+	}
+	if cfg.AllowAuthBypass && !isProductionEnv() {
+		slog.Warn("ALLOW_AUTH_BYPASS is enabled; mutation routes can skip session auth")
 	}
 	if err := cfg.ValidateProductionProfile(); err != nil {
 		return nil, err

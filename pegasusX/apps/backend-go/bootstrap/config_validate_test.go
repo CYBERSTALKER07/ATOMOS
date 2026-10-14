@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -344,4 +345,49 @@ func TestLoadConfig_SSMRDevSecretsAllowed(t *testing.T) {
 	if cfg.GlobalPayWebhookSecret != "dev-global-pay-secret" {
 		t.Fatalf("secret = %q", cfg.GlobalPayWebhookSecret)
 	}
+}
+
+func TestValidateProductionProfile_RejectsAuthBypassAndPaymentSimulator(t *testing.T) {
+	cfg := productionProfileConfig(t)
+	cfg.AllowAuthBypass = true
+	err := cfg.ValidateProductionProfile()
+	if err == nil || !strings.Contains(err.Error(), "ALLOW_AUTH_BYPASS") {
+		t.Fatalf("auth bypass err=%v", err)
+	}
+
+	cfg = productionProfileConfig(t)
+	cfg.EnablePaymentSimulator = true
+	err = cfg.ValidateProductionProfile()
+	if err == nil || !strings.Contains(err.Error(), "ENABLE_PAYMENT_SIMULATOR") {
+		t.Fatalf("simulator err=%v", err)
+	}
+}
+
+func TestValidateProductionProfile_AllowsAuthBypassOutsideProduction(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "sandbox")
+	cfg := testConfig()
+	cfg.AllowAuthBypass = true
+	cfg.EnablePaymentSimulator = true
+	if err := cfg.ValidateProductionProfile(); err != nil {
+		t.Fatalf("non-production profile should not reject bypass: %v", err)
+	}
+}
+
+func productionProfileConfig(t *testing.T) *Config {
+	t.Helper()
+	t.Setenv("PEGASUSX_ENV", "production")
+	t.Setenv("TENANT_CONTEXT_ENFORCED", "true")
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	t.Setenv("HOME_CELL", "cell-eu")
+	t.Setenv("FISCAL_PROVIDER", "PEGASUS")
+	t.Setenv("FISCAL_ALLOW_COMMERCIAL_RECEIPTS", "true")
+	t.Setenv("FCM_ALLOW_NOOP", "true")
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+	cfg.AllowMemoryFallback = false
+	cfg.PlatformAdminMFARequired = true
+	cfg.JWTSecret = "eu-cell-jwt-not-from-uz"
+	cfg.GlobalPayEnv = "unused"
+	cfg.UpdatesBaseURL = "https://cdn.void.example"
+	return cfg
 }

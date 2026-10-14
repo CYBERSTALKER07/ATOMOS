@@ -245,7 +245,6 @@ export default function CheckoutModal({
       const previewRes = await apiFetch("/v1/checkout/preview", {
         method: "POST",
         body: JSON.stringify({
-          retailer_id: profile.id,
           latitude: 0,
           longitude: 0,
           items: lineItems,
@@ -307,7 +306,6 @@ export default function CheckoutModal({
       );
 
       const checkoutPayload: Record<string, unknown> = {
-        retailer_id: profile.id,
         payment_gateway: checkoutGatewayForMethod(method, gateways),
         latitude: 0,
         longitude: 0,

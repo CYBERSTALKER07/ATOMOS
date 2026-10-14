@@ -538,6 +538,9 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 			row.ErrorCode = "OFD_ERROR"
 		}
 		row.ErrorMessage = provErr.Error()
+		if err := ValidateStatusTransition(string(previousStatus), string(StatusFiscalFailed), TransitionOpts{}); err != nil {
+			return err
+		}
 		orderRecord.Status = StatusFiscalFailed
 		orderRecord.FiscalStatus = FiscalStatusFailed
 		orderRecord.LatestFiscalAttemptID = attemptID
@@ -565,6 +568,9 @@ func (s *Service) ApplyFiscalWorkerResult(ctx context.Context, orderID, attemptI
 	row.FiscalReceiptID = result.FiscalReceiptID
 	row.FiscalQR = result.FiscalQR
 	row.ProviderPayload = result.RawPayload
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusCompleted), TransitionOpts{}); err != nil {
+		return err
+	}
 	orderRecord.Status = StatusCompleted
 	orderRecord.FiscalStatus = FiscalStatusSuccess
 	orderRecord.LatestFiscalReceiptID = result.FiscalReceiptID
@@ -615,6 +621,9 @@ func (s *Service) completeOrderFromExistingFiscalSuccess(ctx context.Context, or
 	}
 	now := s.now().UTC()
 	previousStatus := orderRecord.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusCompleted), TransitionOpts{}); err != nil {
+		return err
+	}
 	orderRecord.Status = StatusCompleted
 	orderRecord.FiscalStatus = FiscalStatusSuccess
 	orderRecord.LatestFiscalReceiptID = existing.FiscalReceiptID
@@ -856,6 +865,9 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	}
 
 	previousStatus := orderRecord.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusCompleted), TransitionOpts{}); err != nil {
+		return CollectCashResponse{}, err
+	}
 	orderRecord.Status = StatusCompleted
 	orderRecord.FiscalStatus = FiscalStatusForceSkipped
 	orderRecord.LatestFiscalAttemptID = attemptID

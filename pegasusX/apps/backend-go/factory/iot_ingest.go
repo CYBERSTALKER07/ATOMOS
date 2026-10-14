@@ -117,7 +117,9 @@ func (i *IotIngestor) flushBatch(batch map[string]int64) {
 			mutations = append(mutations, m)
 		}
 		if len(mutations) > 0 {
-			if _, err := i.svc.spannerClient.Apply(ctx, mutations); err != nil {
+			if _, err := i.svc.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite(mutations)
+			}); err != nil {
 				i.log.Error("failed to persist IoT telemetry batch to Spanner", "count", len(mutations), "err", err)
 			}
 		}

@@ -160,7 +160,6 @@ async function fetchCheckoutPreviewCaps(
   const res = await apiFetch('/v1/checkout/preview', {
     method: 'POST',
     body: JSON.stringify({
-      retailer_id: retailerId,
       latitude: 0,
       longitude: 0,
       items: cartItems.map((item) => ({

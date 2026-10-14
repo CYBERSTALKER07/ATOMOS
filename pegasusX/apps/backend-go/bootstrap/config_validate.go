@@ -23,6 +23,12 @@ func (c *Config) ValidateProductionProfile() error {
 	if c.AllowMemoryFallback {
 		return fmt.Errorf("ALLOW_MEMORY_FALLBACK must be false when PEGASUSX_ENV=production")
 	}
+	if c.AllowAuthBypass {
+		return fmt.Errorf("ALLOW_AUTH_BYPASS must be false when PEGASUSX_ENV=production")
+	}
+	if c.EnablePaymentSimulator {
+		return fmt.Errorf("ENABLE_PAYMENT_SIMULATOR must be false when PEGASUSX_ENV=production")
+	}
 	if strings.TrimSpace(c.JWTSecret) == "" ||
 		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.JWTSecret)), "dev-") ||
 		strings.EqualFold(strings.TrimSpace(c.JWTSecret), "dev-only-change-me") {

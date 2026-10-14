@@ -70,6 +70,8 @@ func (r *SpannerRepository) SetFeatureFlag(ctx context.Context, f FeatureFlag) e
 			"ApprovedAt": f.UpdatedAt,
 		})
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{m})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	})
 	return err
 }

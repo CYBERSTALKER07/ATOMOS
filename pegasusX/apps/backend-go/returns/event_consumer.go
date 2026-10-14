@@ -3,6 +3,7 @@ package returns
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -28,7 +29,7 @@ func NewEventConsumer(svc *Service, log *slog.Logger) *EventConsumer {
 // HandleEvent processes REVERSE_LOGISTICS_REQUIRED and damage CLAIM_FILED payloads.
 func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) error {
 	if c == nil || c.svc == nil {
-		return nil
+		return fmt.Errorf("returns consumer: nil service")
 	}
 	ctx = pegasuskafka.WithTraceFromMessage(ctx, msg)
 	envelope, err := pegasuskafka.EnvelopeFromMessage(msg)

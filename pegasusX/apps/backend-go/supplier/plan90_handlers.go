@@ -468,14 +468,14 @@ func (s *Service) HandlePlanningSeasonalEstimate(w http.ResponseWriter, r *http.
 }
 
 // HandlePlanningSignalIngest serves POST /v1/supplier/planning/signals/ingest.
+// The signal row and outbox event commit together. The relay publishes Kafka.
 func (s *Service) HandlePlanningSignalIngest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	brokers := strings.Split(strings.TrimSpace(os.Getenv("KAFKA_BROKERS")), ",")
-	pub := planning.NewKafkaSignalPublisher(brokers, planning.IngestTopic())
-	if pub == nil {
+	svc := s.planningService()
+	if svc == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "ingest_unavailable"})
 		return
 	}
@@ -484,7 +484,7 @@ func (s *Service) HandlePlanningSignalIngest(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	signalID, err := planning.IngestSignal(r.Context(), pub, s.scopedSupplierID(r), in)
+	signalID, err := svc.ProjectSignalWithOutbox(r.Context(), s.scopedSupplierID(r), in)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return

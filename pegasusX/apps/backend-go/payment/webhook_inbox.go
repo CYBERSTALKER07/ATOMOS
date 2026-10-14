@@ -45,19 +45,17 @@ func (s *WebhookInboxStore) Enqueue(ctx context.Context, row WebhookRecord, sour
 		return fmt.Errorf("marshal webhook record: %w", err)
 	}
 	now := s.now().UTC()
-	_, err = s.client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("WebhookInbox", map[string]any{
-			"WebhookId":   row.WebhookID,
-			"Gateway":     row.Gateway,
-			"RecordJson":  string(recordJSON),
-			"Source":      source,
-			"Status":      webhookInboxStatusPending,
-			"Attempts":    int64(0),
-			"NextRetryAt": now,
-			"CreatedAt":   now,
-			"UpdatedAt":   now,
-		}),
-	})
+	err = s.writeMutations(ctx, spanner.InsertOrUpdateMap("WebhookInbox", map[string]any{
+		"WebhookId":   row.WebhookID,
+		"Gateway":     row.Gateway,
+		"RecordJson":  string(recordJSON),
+		"Source":      source,
+		"Status":      webhookInboxStatusPending,
+		"Attempts":    int64(0),
+		"NextRetryAt": now,
+		"CreatedAt":   now,
+		"UpdatedAt":   now,
+	}))
 	if err != nil {
 		return fmt.Errorf("enqueue webhook inbox: %w", err)
 	}
@@ -105,13 +103,13 @@ func (s *WebhookInboxStore) ProcessPending(ctx context.Context, svc *Service, li
 			continue
 		}
 		var record WebhookRecord
-		
+
 		recordBytes, marshalErr := json.Marshal(recordJSON.Value)
 		if marshalErr != nil {
 			_ = s.markDead(ctx, webhookID, attempts, marshalErr)
 			continue
 		}
-		
+
 		if err := json.Unmarshal(recordBytes, &record); err != nil {
 			_ = s.markDead(ctx, webhookID, attempts, err)
 			continue
@@ -120,9 +118,7 @@ func (s *WebhookInboxStore) ProcessPending(ctx context.Context, svc *Service, li
 			_ = s.scheduleRetry(ctx, webhookID, attempts+1, err)
 			continue
 		}
-		_, _ = s.client.Apply(ctx, []*spanner.Mutation{
-			spanner.Delete("WebhookInbox", spanner.Key{webhookID}),
-		})
+		_ = s.writeMutations(ctx, spanner.Delete("WebhookInbox", spanner.Key{webhookID}))
 		processed++
 	}
 	return processed, nil
@@ -137,15 +133,22 @@ func (s *WebhookInboxStore) scheduleRetry(ctx context.Context, webhookID string,
 		t := s.now().UTC().Add(time.Duration(attempts*attempts) * time.Second)
 		nextRetry = &t
 	}
-	_, err := s.client.Apply(ctx, []*spanner.Mutation{
-		spanner.UpdateMap("WebhookInbox", map[string]any{
-			"WebhookId":   webhookID,
-			"Status":      status,
-			"Attempts":    attempts,
-			"NextRetryAt": nextRetry,
-			"LastError":   cause.Error(),
-			"UpdatedAt":   s.now().UTC(),
-		}),
+	return s.writeMutations(ctx, spanner.UpdateMap("WebhookInbox", map[string]any{
+		"WebhookId":   webhookID,
+		"Status":      status,
+		"Attempts":    attempts,
+		"NextRetryAt": nextRetry,
+		"LastError":   cause.Error(),
+		"UpdatedAt":   s.now().UTC(),
+	}))
+}
+
+func (s *WebhookInboxStore) writeMutations(ctx context.Context, muts ...*spanner.Mutation) error {
+	if s == nil || s.client == nil {
+		return fmt.Errorf("webhook inbox: nil client")
+	}
+	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(muts)
 	})
 	return err
 }

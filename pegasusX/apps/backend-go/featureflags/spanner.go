@@ -53,7 +53,9 @@ func (r *SpannerRepository) Upsert(ctx context.Context, o Override) error {
 	if !o.ApprovedAt.IsZero() {
 		m["ApprovedAt"] = spanner.NullTime{Time: o.ApprovedAt, Valid: true}
 	}
-	_, err := r.client.Apply(ctx, []*spanner.Mutation{spanner.InsertOrUpdateMap("FeatureFlagOverrides", m)})
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("FeatureFlagOverrides", m)})
+	})
 	return err
 }
 

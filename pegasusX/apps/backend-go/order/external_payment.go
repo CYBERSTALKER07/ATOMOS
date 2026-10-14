@@ -111,6 +111,9 @@ func (s *Service) beginFiscalFromAwaitingPayment(
 		return err
 	}
 	previousStatus := orderRecord.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusFiscalizing), TransitionOpts{}); err != nil {
+		return err
+	}
 	row := s.newFiscalPendingRow(ctx, orderRecord, method, "", orderRecord.TotalMinor)
 	orderRecord.Status = StatusFiscalizing
 	// Version must stay at the value read from Spanner: UpdateOrder compares it

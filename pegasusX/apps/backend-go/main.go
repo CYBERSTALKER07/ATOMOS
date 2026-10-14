@@ -61,13 +61,13 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"github.com/pegasusx/pegasusx/apps/backend-go/storageroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/storageroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/syncroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/taxroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/syncroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/updateroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
@@ -367,7 +367,7 @@ func main() {
 	demandroutes.RegisterRoutes(r, demandroutes.Deps{
 		Service: app.DemandService,
 	})
-	
+
 	var syncCache cache.Backend
 	if app.Cache != nil {
 		syncCache = app.Cache.Backend()
@@ -448,10 +448,9 @@ func main() {
 		r.Get("/v1/supplier/route-performance", h.HandleListRoutePerformance)
 	}
 
-	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".
-	// Provides a browser UI for end-to-end payment testing without hitting the real gateway.
+	// Global Pay local simulator is opt-in. Production validation rejects the flag.
 	gpEnv := strings.ToLower(strings.TrimSpace(cfg.GlobalPayEnv))
-	if gpEnv != "production" && gpEnv != "staging" {
+	if cfg.EnablePaymentSimulator && gpEnv != "production" {
 		simHandler := simulator.NewHandler(
 			cfg.GlobalPayWebhookSecret,
 			"http://localhost:"+cfg.HTTPPort,

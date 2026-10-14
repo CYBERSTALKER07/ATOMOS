@@ -2,19 +2,19 @@ package payload
 
 import (
 	"context"
-	"sync/atomic"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/outbox" 
 	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -54,7 +54,7 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 	for _, u := range existing {
 		have[u.OrderID] = true
 	}
-	
+
 	newUnits := []ShipUnit{}
 	seq := int64(len(existing))
 	for _, oid := range orderIDs {
@@ -77,11 +77,11 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 		newUnits = append(newUnits, unit)
 		seq++
 	}
-	
+
 	if len(newUnits) == 0 {
 		return 0, nil
 	}
-	
+
 	err = s.repo.RunTx(ctx, func(ctx context.Context, tx PayloadTx) error {
 		if err := tx.SaveShipUnits(ctx, newUnits); err != nil {
 			return err
@@ -96,18 +96,18 @@ func (s *Service) EnsureShipUnitsForManifest(ctx context.Context, manifestID str
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(ctx, txn, events.AggregateRoute, manifestID, events.TopicMain, map[string]any{
-			"type":          "EventShipUnitsGenerated",
-			"manifest_id":   manifestID,
-			"units_count":   len(newUnits),
-			"supplier_id":   s.resolveSupplierScope(ctx),
-			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+			"type":        "EventShipUnitsGenerated",
+			"manifest_id": manifestID,
+			"units_count": len(newUnits),
+			"supplier_id": s.resolveSupplierScope(ctx),
+			"timestamp":   time.Now().UTC().Format(time.RFC3339Nano),
 		})
 	})
-	
+
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return len(newUnits), nil
 }
 
@@ -201,16 +201,18 @@ func (s *Service) insertShipUnit(ctx context.Context, u ShipUnit) error {
 		s.shipUnits[u.ManifestID] = append(s.shipUnits[u.ManifestID], u)
 		return nil
 	}
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("ManifestShipUnits", map[string]any{
-			"ManifestId": u.ManifestID,
-			"ShipUnitId": u.ShipUnitID,
-			"Sscc":       u.SSCC,
-			"OrderId":    u.OrderID,
-			"Sequence":   u.Sequence,
-			"Gtin":       nullableStr(u.GTIN),
-			"CreatedAt":  spanner.CommitTimestamp,
-		}),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertMap("ManifestShipUnits", map[string]any{
+				"ManifestId": u.ManifestID,
+				"ShipUnitId": u.ShipUnitID,
+				"Sscc":       u.SSCC,
+				"OrderId":    u.OrderID,
+				"Sequence":   u.Sequence,
+				"Gtin":       nullableStr(u.GTIN),
+				"CreatedAt":  spanner.CommitTimestamp,
+			}),
+		})
 	})
 	return err
 }

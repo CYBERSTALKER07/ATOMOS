@@ -430,27 +430,29 @@ func (s *Service) recordRefundCreditNote(ctx context.Context, refundID string, o
 	// CreditNotes.CreatedAt/IssuedAt predate allow_commit_timestamp (DDL has no
 	// OPTIONS) — wall clock here, consistent with the creditnote repository.
 	cnNow := s.now().UTC()
-	_, err = s.spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertMap("CreditNotes", map[string]any{
-			"CreditNoteId":  creditNoteID,
-			"OrderId":       orderRow.OrderID,
-			"Type":          "REFUND",
-			"Status":        "ISSUED",
-			"ReasonCode":    reasonCode,
-			"ReasonText":    spanner.NullString{StringVal: "refund_id=" + refundID, Valid: true},
-			"TotalNetMinor": amount,
-			"TotalVatMinor": int64(0),
-			"TotalGrossMinor": amount,
-			"OriginalEhfId": spanner.NullString{StringVal: originalEhf, Valid: originalEhf != ""},
-			"CreatedBy":     actor,
-			"CreatedAt":     cnNow,
-			"IssuedAt":      cnNow,
-		}),
-		spanner.UpdateMap("Refunds", map[string]any{
-			"RefundId":     refundID,
-			"CreditNoteId": spanner.NullString{StringVal: creditNoteID, Valid: true},
-			"UpdatedAt":    spanner.CommitTimestamp,
-		}),
+	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertMap("CreditNotes", map[string]any{
+				"CreditNoteId":    creditNoteID,
+				"OrderId":         orderRow.OrderID,
+				"Type":            "REFUND",
+				"Status":          "ISSUED",
+				"ReasonCode":      reasonCode,
+				"ReasonText":      spanner.NullString{StringVal: "refund_id=" + refundID, Valid: true},
+				"TotalNetMinor":   amount,
+				"TotalVatMinor":   int64(0),
+				"TotalGrossMinor": amount,
+				"OriginalEhfId":   spanner.NullString{StringVal: originalEhf, Valid: originalEhf != ""},
+				"CreatedBy":       actor,
+				"CreatedAt":       cnNow,
+				"IssuedAt":        cnNow,
+			}),
+			spanner.UpdateMap("Refunds", map[string]any{
+				"RefundId":     refundID,
+				"CreditNoteId": spanner.NullString{StringVal: creditNoteID, Valid: true},
+				"UpdatedAt":    spanner.CommitTimestamp,
+			}),
+		})
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("persist credit note: %w", err)

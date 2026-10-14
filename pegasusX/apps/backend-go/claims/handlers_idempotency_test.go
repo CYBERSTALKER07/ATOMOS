@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,5 +78,26 @@ func TestHandleFileOrderClaim_IdempotentReplay(t *testing.T) {
 	svc.HandleFileOrderClaim(rr3, req)
 	if rr3.Code != http.StatusConflict {
 		t.Fatalf("mismatch status=%d want 409 body=%s", rr3.Code, rr3.Body.String())
+	}
+}
+
+func TestHandleFileOrderClaim_RequiresIdempotencyKey(t *testing.T) {
+	svc := NewService(Config{
+		Repo:   NewMemoryRepository(),
+		Orders: fakeOrders{ok: true, o: completedOrder(time.Now().UTC())},
+		Idem:   idempotency.NewInMemoryStore(),
+		Log:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("orderID", "ord-1")
+	req := httptest.NewRequest(http.MethodPost, "/v1/orders/ord-1/claims", strings.NewReader(`{"claim_type":"MISSING"}`))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "ret-1", Role: auth.RoleRetailer,
+	}))
+	rr := httptest.NewRecorder()
+	svc.HandleFileOrderClaim(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%s", rr.Code, rr.Body.String())
 	}
 }

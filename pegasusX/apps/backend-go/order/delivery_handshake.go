@@ -50,17 +50,13 @@ func (s *Service) VerifyHandshake(ctx context.Context, claims auth.Claims, req V
 		return VerifyHandshakeResponse{}, fmt.Errorf("spoofing prevention: %w", err)
 	}
 
-	// Token compatibility
-	// Plain token vs JWT fallback
-	if s.jwtSecret != "" && o.ManifestID != "" && len(req.Token) > 20 {
-		if err := s.validateOfflineQR(o.ManifestID, claims.Subject, o.OrderID, req.Token); err != nil {
-			return VerifyHandshakeResponse{}, fmt.Errorf("invalid token: %w", err)
-		}
-	} else {
-		// Example plain token check, in reality verify with token hash from db
+	// Always compare against the persisted delivery token. A short or missing
+	// manifest must not skip verification.
+	if err := s.validateDeliveryToken(o, strings.TrimSpace(req.Token)); err != nil {
+		return VerifyHandshakeResponse{}, fmt.Errorf("invalid token: %w", err)
 	}
 
-	// At this point we could emit an audit or create DeliverySession, but as an MVP for the requirement we just verify.
+	// Verification only. Doorstep completion stays on scan-qr, collect-cash, and offline POD.
 	return VerifyHandshakeResponse{
 		Success: true,
 		Message: fmt.Sprintf("Handshake verified, distance: %.0fm", distanceM),

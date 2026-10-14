@@ -1444,6 +1444,18 @@ func (s *Service) writeWebhookReplayIfExists(w http.ResponseWriter, r *http.Requ
 	return true
 }
 
+func (s *Service) requireMoneyIdempotencyKey(w http.ResponseWriter, r *http.Request, endpoint string) bool {
+	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if key == "" {
+		key = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+	}
+	if key == "" {
+		writeJSONError(w, http.StatusBadRequest, "idempotency_key_required", "Idempotency-Key is required", endpoint, false, "")
+		return false
+	}
+	return true
+}
+
 func (s *Service) handleIdempotentHit(w http.ResponseWriter, r *http.Request, body []byte) (idempotency.Record, bool) {
 	key := r.Header.Get("Idempotency-Key")
 	if key == "" || s.idem == nil {

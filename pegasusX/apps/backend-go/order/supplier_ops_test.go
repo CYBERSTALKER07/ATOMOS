@@ -303,3 +303,17 @@ func TestStoreEarlyCompleteRequest(t *testing.T) {
 		t.Fatalf("expected cached content to contain reason, got %s", string(raw))
 	}
 }
+
+func TestHandleListEarlyCompleteRequests_NotImplemented(t *testing.T) {
+	svc := NewService(ServiceConfig{})
+	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/ops/orders/early-complete", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleWarehouseAdmin}))
+	rr := httptest.NewRecorder()
+	svc.HandleListEarlyCompleteRequests(rr, req)
+	if rr.Code != http.StatusNotImplemented {
+		t.Fatalf("status=%d want 501 body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "not_implemented") {
+		t.Fatalf("body=%s", rr.Body.String())
+	}
+}

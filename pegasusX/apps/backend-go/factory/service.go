@@ -1385,7 +1385,7 @@ func (s *Service) loadFactoryFleetFromSpanner(ctx context.Context, factoryID str
 		Params: map[string]any{"fid": factoryID},
 	}
 	iter := s.spannerClient.Single().
-		WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+		WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
 		Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -2670,7 +2670,7 @@ func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
