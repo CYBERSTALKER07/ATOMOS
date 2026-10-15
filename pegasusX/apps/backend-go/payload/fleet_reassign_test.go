@@ -16,6 +16,7 @@ func TestHandleFleetReassign_PersistsOrderAssignment(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/fleet/reassign", strings.NewReader(`{"order_ids":["ord_payload_1"],"new_route_id":"route_veh_payload_2"}`))
+	req.Header.Set("Idempotency-Key", "test-key-2")
 	rr := httptest.NewRecorder()
 	svc.HandleFleetReassign(rr, req)
 
@@ -53,6 +54,7 @@ func TestHandleFleetReassign_NoPersistOnConflict(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/fleet/reassign", strings.NewReader(`{"order_ids":["ord_missing"],"new_route_id":"route_veh_payload_2"}`))
+	req.Header.Set("Idempotency-Key", "test-key-3")
 	rr := httptest.NewRecorder()
 	svc.HandleFleetReassign(rr, req)
 

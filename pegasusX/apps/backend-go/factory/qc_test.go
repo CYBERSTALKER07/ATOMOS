@@ -85,6 +85,7 @@ func TestHandleSupplyRequestQC_InvalidResult400(t *testing.T) {
 	svc := newFactoryTestService(&factoryRepoSpy{}, &factoryCacheBackendSpy{})
 	svc.qcRepo = &memoryQCRepo{requests: map[string]qcRequestMeta{}, rows: map[string]SupplyRequestQCResponse{}}
 	req := withFactoryRouteParam(httptest.NewRequest(http.MethodPost, "/v1/factory/supply-requests/req-1/qc", strings.NewReader(`{"result":"MAYBE"}`)), "id", "req-1")
+	req.Header.Set("Idempotency-Key", "test-qc-maybe")
 	rr := httptest.NewRecorder()
 	svc.HandleSupplyRequestQC(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -139,6 +140,7 @@ func TestHandleSupplyRequestQC_PostPASSPersistsWithoutChangingState(t *testing.T
 	}
 	svc.qcRepo = mem
 	req := withFactoryRouteParam(httptest.NewRequest(http.MethodPost, "/v1/factory/supply-requests/req-1/qc", strings.NewReader(`{"result":"PASS","notes":"ok"}`)), "id", "req-1")
+	req.Header.Set("Idempotency-Key", "test-qc-pass")
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Subject: "inspector-1", Role: auth.RoleFactoryAdmin, SupplierID: "supplier-test"}))
 	rr := httptest.NewRecorder()
 	svc.HandleSupplyRequestQC(rr, req)

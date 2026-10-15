@@ -79,7 +79,7 @@ func (s *Service) HandleStaffSetPassword(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req struct {
@@ -131,9 +131,9 @@ func (s *Service) HandleStaffSetPassword(w http.ResponseWriter, r *http.Request)
 	}
 	s.invalidateFactoryKeys(r.Context(), factoryStaffListKey(supplierID))
 	s.writeIdempotentJSON(w, r, body, http.StatusOK, map[string]any{
-		"staff_id":           staffID,
-		"must_set_password":  false,
-		"password_set":       true,
+		"staff_id":          staffID,
+		"must_set_password": false,
+		"password_set":      true,
 	})
 }
 

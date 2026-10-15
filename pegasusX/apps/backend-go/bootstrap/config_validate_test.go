@@ -370,6 +370,20 @@ func TestValidateProductionProfile_RejectsAuthBypassAndPaymentSimulator(t *testi
 	}
 }
 
+func TestValidateProductionProfile_RejectsHandoffFallbackInStaging(t *testing.T) {
+	t.Setenv("PEGASUSX_ENV", "staging")
+	cfg := testConfig()
+	cfg.HandoffLegacyOrderIDFallback = true
+	err := cfg.ValidateProductionProfile()
+	if err == nil || !strings.Contains(err.Error(), "HANDOFF_LEGACY_ORDER_ID_FALLBACK") {
+		t.Fatalf("staging handoff err=%v", err)
+	}
+	cfg.HandoffLegacyOrderIDFallback = false
+	if err := cfg.ValidateProductionProfile(); err != nil {
+		t.Fatalf("staging with fallback off: %v", err)
+	}
+}
+
 func TestValidateProductionProfile_AllowsAuthBypassOutsideProduction(t *testing.T) {
 	t.Setenv("PEGASUSX_ENV", "sandbox")
 	cfg := testConfig()

@@ -38,6 +38,7 @@ func TestHandleManifestException_EscalationSeamParity(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payload/manifest-exception", strings.NewReader(`{"manifest_id":"mf_payload_1","order_id":"ord_payload_1","reason":"OVERFLOW","metadata":"retry"}`))
+	req.Header.Set("Idempotency-Key", "test-key-5")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestException(rr, req)
@@ -127,6 +128,7 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"balance"}`))
+	req.Header.Set("Idempotency-Key", "test-key-6")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -187,6 +189,7 @@ func TestHandleApplyReassign_MissingOrderNoPersist(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_missing","to_manifest_id":"mf_payload_2"}`))
+	req.Header.Set("Idempotency-Key", "test-key-7")
 	rr := httptest.NewRecorder()
 	svc.HandleApplyReassign(rr, req)
 
@@ -233,6 +236,7 @@ func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"capacity-test"}`))
+	req.Header.Set("Idempotency-Key", "test-key-8")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -303,6 +307,7 @@ func TestHandleApplyReassign_OrderAlreadyAssignedNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"noop"}`))
+	req.Header.Set("Idempotency-Key", "test-key-9")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -378,6 +383,7 @@ func TestHandleApplyReassign_TargetUnavailableConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","reason":"auto-no-target"}`))
+	req.Header.Set("Idempotency-Key", "test-key-10")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -449,6 +455,7 @@ func TestHandleApplyReassign_SameManifestCandidateNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"same-manifest"}`))
+	req.Header.Set("Idempotency-Key", "test-key-11")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -525,6 +532,7 @@ func TestHandleApplyReassign_ExplicitSameRouteNoop(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"explicit-same-route"}`))
+	req.Header.Set("Idempotency-Key", "test-key-12")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -620,6 +628,7 @@ func TestHandleApplyReassign_ExplicitSameRouteSelectsAlternateManifestWhenSource
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"sealed-source-same-route"}`))
+	req.Header.Set("Idempotency-Key", "test-key-13")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -715,6 +724,7 @@ func TestHandleApplyReassign_TargetDriverManifestMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_driver_id":"drv_payload_other","reason":"driver-manifest-mismatch"}`))
+	req.Header.Set("Idempotency-Key", "test-key-14")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -803,6 +813,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-order-missing"}`))
+	req.Header.Set("Idempotency-Key", "test-key-15")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -890,6 +901,7 @@ func TestHandleApplyReassign_SourceRouteManifestMismatchConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-route-mismatch"}`))
+	req.Header.Set("Idempotency-Key", "test-key-16")
 	rr := httptest.NewRecorder()
 
 	svc.HandleApplyReassign(rr, req)
@@ -965,6 +977,7 @@ func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *te
 	svc.mu.Unlock()
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstReq.Header.Set("Idempotency-Key", "test-key-17")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 	if firstRR.Code != http.StatusOK {
@@ -977,6 +990,7 @@ func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *te
 	payloadTypesAfterFirst := payloadWSMessageTypes(payloadConn.messages)
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_route_id":"route_veh_payload_1","reason":"force-route-conflict"}`))
+	secondReq.Header.Set("Idempotency-Key", "test-key-18")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1070,6 +1084,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanou
 	svc.mu.Unlock()
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstReq.Header.Set("Idempotency-Key", "test-key-19")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 	if firstRR.Code != http.StatusOK {
@@ -1086,6 +1101,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanou
 	svc.mu.Unlock()
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_3","reason":"source-order-missing-after-success"}`))
+	secondReq.Header.Set("Idempotency-Key", "test-key-20")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1173,6 +1189,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	body := `{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"replay-idempotency"}`
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-21")
 	firstRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(firstRR, firstReq)
 
@@ -1243,6 +1260,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	}
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-22")
 	secondRR := httptest.NewRecorder()
 	svc.HandleApplyReassign(secondRR, secondReq)
 
@@ -1337,6 +1355,7 @@ func TestHandleSealCompletedManifests_AttachesExplainOnFailedRows(t *testing.T) 
 		"/v1/payloader/manifests/seal-completed",
 		strings.NewReader(`{"manifest_ids":["missing_manifest","mf_payload_2"]}`),
 	)
+	req.Header.Set("Idempotency-Key", "test-key-23")
 	rr := httptest.NewRecorder()
 	svc.HandleSealCompletedManifests(rr, req)
 
@@ -1402,6 +1421,7 @@ func TestHandleSeal_RejectsOrderOnly(t *testing.T) {
 	svc := newPayloadTestService(repo, &payloadCacheBackendSpy{})
 	repo.svc = svc
 	req := httptest.NewRequest(http.MethodPost, "/v1/payload/seal", strings.NewReader(`{"order_id":"ord_payload_1","manifest_cleared":true}`))
+	req.Header.Set("Idempotency-Key", "test-key-24")
 	rr := httptest.NewRecorder()
 	svc.HandleSeal(rr, req)
 	if rr.Code != http.StatusBadRequest {

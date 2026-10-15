@@ -31,7 +31,7 @@ func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) erro
 	}
 	var envelope map[string]any
 	if err := json.Unmarshal(msg.Value, &envelope); err != nil {
-		return nil
+		return err
 	}
 	eventType, _ := envelope["type"].(string)
 	eventType = strings.TrimSpace(eventType)

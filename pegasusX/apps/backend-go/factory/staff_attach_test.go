@@ -14,6 +14,7 @@ func TestHandleFactoryLogin_IDTokenWithoutVerifierUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/login",
 		strings.NewReader(`{"id_token":"tok"}`))
+	req.Header.Set("Idempotency-Key", "test-key-46")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryLogin(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -25,6 +26,7 @@ func TestHandleFactoryRegister_IDTokenWithoutVerifierUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/register",
 		strings.NewReader(`{"name":"Bay","phone":"+15551212","id_token":"tok","assigned_factory_id":"fac-1"}`))
+	req.Header.Set("Idempotency-Key", "test-key-47")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryRegister(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -37,6 +39,7 @@ func TestHandleFactoryRegister_RequiresInvite(t *testing.T) {
 	svc := NewService(ServiceConfig{JWTSecret: "t5-secret", SeedSupplierID: "seed-1"})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/register",
 		strings.NewReader(`{"name":"Bay","phone":"+15551212","password":"pass12","assigned_factory_id":"fac-1"}`))
+	req.Header.Set("Idempotency-Key", "test-key-48")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryRegister(rr, req)
 	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), staffinvite.ErrInviteRequired.Error()) {
@@ -53,6 +56,7 @@ func TestHandleFactoryRegister_RejectsSeedInviteOutsideSSMR(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/register",
 		strings.NewReader(`{"name":"Bay","phone":"+15551212","password":"pass12","invite_token":"`+tok+`"}`))
+	req.Header.Set("Idempotency-Key", "test-key-49")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryRegister(rr, req)
 	if rr.Code != http.StatusForbidden {
@@ -69,6 +73,7 @@ func TestHandleFactoryRegister_PasswordRequired(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/register",
 		strings.NewReader(`{"name":"Bay","phone":"+15551212","invite_token":"`+tok+`"}`))
+	req.Header.Set("Idempotency-Key", "test-key-50")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryRegister(rr, req)
 	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), staffinvite.ErrPasswordRequired.Error()) {
@@ -95,6 +100,7 @@ func TestFactoryDemoLogin_NoDefaultPhoneOutsideSSMR(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/factory/login",
 		strings.NewReader(`{"phone":"+998901000099","pin":"1234"}`))
+	req.Header.Set("Idempotency-Key", "test-key-51")
 	rr := httptest.NewRecorder()
 	svc.HandleFactoryLogin(rr, req)
 	if rr.Code == http.StatusOK {

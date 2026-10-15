@@ -137,11 +137,14 @@ func (r *SpannerRepository) SaveChargeback(ctx context.Context, c ChargebackReco
 
 	muts := []*spanner.Mutation{base, ledgerMutation(buildChargebackLedgerEntry(c))}
 	je, err := BuildClaimDisputeJournalEntry(c.ChargebackID, c.OrderID, c.SupplierID, c.RetailerID, c.Currency, "LEDGER_ONLY", c.AmountMinor, c.CreatedAt, "Claim dispute settlement")
-	if err == nil {
-		if jeMuts, err := JournalEntryMutations(je); err == nil {
-			muts = append(muts, jeMuts...)
-		}
+	if err != nil {
+		return fmt.Errorf("chargeback journal: %w", err)
 	}
+	jeMuts, err := JournalEntryMutations(je)
+	if err != nil {
+		return fmt.Errorf("chargeback journal: %w", err)
+	}
+	muts = append(muts, jeMuts...)
 	return r.writeWithOutbox(ctx, emit, muts...)
 }
 
@@ -764,6 +767,45 @@ func ledgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 // LedgerMutation transforms a LedgerEntryRecord into a Spanner insert/update mutation on PaymentLedgerEntries.
 func LedgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 	return ledgerMutation(entry)
+}
+
+// WriteSettlementJournal buffers a balanced escrow-release journal for one payout batch.
+func WriteSettlementJournal(txn *spanner.ReadWriteTransaction, batchID, supplierID, currency string, grossMinor, feeMinor int64) error {
+	if txn == nil {
+		return fmt.Errorf("settlement journal: nil transaction")
+	}
+	je, err := BuildSettlementJournalEntry(batchID, supplierID, currency, grossMinor, feeMinor)
+	if err != nil {
+		return err
+	}
+	muts, err := JournalEntryMutations(je)
+	if err != nil {
+		return err
+	}
+	if len(muts) == 0 {
+		return nil
+	}
+	return txn.BufferWrite(muts)
+}
+
+// WriteDoorstepShortfall buffers a balanced cash-shortfall journal on txn.
+// Call it inside the same read-write transaction as the cash capture.
+func WriteDoorstepShortfall(_ context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error {
+	if txn == nil {
+		return fmt.Errorf("doorstep shortfall: nil transaction")
+	}
+	je, err := BuildDoorstepCashShortfallJournalEntry(orderID, supplierID, driverID, currency, expectedMinor, receivedMinor, occurredAt)
+	if err != nil {
+		return err
+	}
+	muts, err := JournalEntryMutations(je)
+	if err != nil {
+		return err
+	}
+	if len(muts) == 0 {
+		return nil
+	}
+	return txn.BufferWrite(muts)
 }
 
 // JournalEntryMutations validates and transforms a JournalEntry into Spanner mutations on PaymentLedgerEntries.

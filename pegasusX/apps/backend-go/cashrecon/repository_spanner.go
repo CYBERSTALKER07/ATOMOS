@@ -13,8 +13,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"google.golang.org/api/iterator"
-	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type SpannerRepository struct {
@@ -73,10 +73,15 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 					cr.CreatedAt,
 					"Driver cash variance on shift submission",
 				)
-				if err == nil && je != nil {
-					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
-						muts = append(muts, jeMuts...)
+				if err != nil {
+					return err
+				}
+				if je != nil {
+					jeMuts, mErr := payment.JournalEntryMutations(je)
+					if mErr != nil {
+						return mErr
 					}
+					muts = append(muts, jeMuts...)
 				}
 			case EventCashReconciliationAccepted:
 				resolvedAt := time.Now().UTC()
@@ -93,10 +98,15 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 					resolvedAt,
 					"Finance accepted cash variance",
 				)
-				if err == nil && je != nil {
-					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
-						muts = append(muts, jeMuts...)
+				if err != nil {
+					return err
+				}
+				if je != nil {
+					jeMuts, mErr := payment.JournalEntryMutations(je)
+					if mErr != nil {
+						return mErr
 					}
+					muts = append(muts, jeMuts...)
 				}
 			case EventCashReconciliationWrittenOff:
 				resolvedAt := time.Now().UTC()
@@ -113,10 +123,15 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 					resolvedAt,
 					"Finance wrote off cash shortage",
 				)
-				if err == nil && je != nil {
-					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
-						muts = append(muts, jeMuts...)
+				if err != nil {
+					return err
+				}
+				if je != nil {
+					jeMuts, mErr := payment.JournalEntryMutations(je)
+					if mErr != nil {
+						return mErr
 					}
+					muts = append(muts, jeMuts...)
 				}
 			}
 		}

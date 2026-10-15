@@ -150,6 +150,20 @@ export interface OrderCreated {
   receiving_window_close?: string;
 }
 
+export interface OrderConflictReconciled {
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id?: RetailerId;
+  driver_id?: DriverId;
+  resolution?: string;
+  previous_status?: OrderStatus;
+  status?: OrderStatus;
+  delivered_at?: string;
+  proof_signature?: string;
+  proof_photo_url?: string;
+  dispute_note?: string;
+}
+
 export interface OrderStatusChanged {
   order_id: OrderId;
   supplier_id: SupplierId;

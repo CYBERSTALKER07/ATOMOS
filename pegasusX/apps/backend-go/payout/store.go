@@ -80,7 +80,7 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 			        AND CreatedAt >= @start AND CreatedAt < @end`,
 			Params: map[string]any{"sid": supplierID, "start": start, "end": end},
 		})
-		
+
 		sums := make(map[string]*SumLegsResult)
 		for {
 			row, e := iter.Next()
@@ -100,7 +100,7 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 			if sums[cur] == nil {
 				sums[cur] = &SumLegsResult{Currency: cur}
 			}
-			
+
 			if gross >= 0 {
 				sums[cur].Captured += gross
 			} else {
@@ -122,11 +122,11 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 			if err != nil {
 				return err
 			}
-			
+
 			if err := emitPayoutEvent(ctx, buf, events.EventPayoutBatchGenerated, b, ""); err != nil {
 				return err
 			}
-			
+
 			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.InsertMap("PayoutBatches", map[string]any{
 					"BatchId":            b.BatchID,
@@ -160,19 +160,19 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 			if _, err := txn.Update(ctx, stmt); err != nil {
 				return err
 			}
-			
+
 			batches = append(batches, b)
 		}
 
 		return buf.Flush(ctx)
 	})
-	
+
 	if spanner.ErrCode(err) == codes.AlreadyExists {
 		if existingList, err2 := r.ListBySupplierPeriod(ctx, supplierID, start, end); err2 == nil && len(existingList) > 0 {
 			return existingList, nil
 		}
 	}
-	
+
 	return batches, err
 }
 
@@ -289,12 +289,14 @@ func (r *Repository) UpdateStatus(ctx context.Context, batchID, status, exportUR
 // webhooks / search / notifications see the state change atomically.
 func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, exportURI, railRef string) error {
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{"SupplierId", "NetPayoutMinor", "Currency"})
+		row, err := txn.ReadRow(ctx, "PayoutBatches", spanner.Key{batchID}, []string{
+			"SupplierId", "GrossCapturedMinor", "RefundedMinor", "CommissionMinor", "NetPayoutMinor", "Currency",
+		})
 		if err != nil {
 			return err
 		}
 		var b Batch
-		if err := row.Columns(&b.SupplierID, &b.NetPayoutMinor, &b.Currency); err != nil {
+		if err := row.Columns(&b.SupplierID, &b.GrossCapturedMinor, &b.RefundedMinor, &b.CommissionMinor, &b.NetPayoutMinor, &b.Currency); err != nil {
 			return err
 		}
 		b.BatchID = batchID
@@ -326,6 +328,14 @@ func (r *Repository) UpdateStatusRef(ctx context.Context, batchID, status, expor
 		}
 		if strings.TrimSpace(railRef) != "" {
 			m["RailReference"] = spanner.NullString{StringVal: railRef, Valid: true}
+		}
+		if status == StatusPaid && SettlementJournal != nil {
+			gross := b.GrossCapturedMinor - b.RefundedMinor
+			if gross > 0 {
+				if err := SettlementJournal(txn, batchID, b.SupplierID, b.Currency, gross, b.CommissionMinor); err != nil {
+					return err
+				}
+			}
 		}
 		if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("PayoutBatches", m)}); err != nil {
 			return err

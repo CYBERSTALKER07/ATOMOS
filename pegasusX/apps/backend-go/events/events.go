@@ -108,10 +108,10 @@ const (
 	// supply_request | transfer_transit.
 	EventFactorySLABreach = "FACTORY_SLA_BREACH"
 	// P5 planning — names already on generated client WS enums; emit for real.
-	EventPullMatrixCompleted  = "PULL_MATRIX_COMPLETED"
-	EventLookAheadCompleted   = "LOOK_AHEAD_COMPLETED"
-	EventNetworkModeChanged   = "NETWORK_MODE_CHANGED"
-	EventLoyaltyPointsEarned  = "LOYALTY_POINTS_EARNED"
+	EventPullMatrixCompleted = "PULL_MATRIX_COMPLETED"
+	EventLookAheadCompleted  = "LOOK_AHEAD_COMPLETED"
+	EventNetworkModeChanged  = "NETWORK_MODE_CHANGED"
+	EventLoyaltyPointsEarned = "LOYALTY_POINTS_EARNED"
 
 	// @Sync(SystemEvent)
 	EventFreezeLockAcquired = "FREEZE_LOCK_ACQUIRED"
@@ -133,9 +133,9 @@ const (
 	EventWMSTemperatureBreach     = "WMS_TEMPERATURE_BREACH"
 
 	// @Sync(FactoryEvent)
-	EventFactoryCreated         = "FACTORY_CREATED"
-	EventFactoryLocationUpdated = "FACTORY_LOCATION_UPDATED"
-	EventFactoryStaffCreated    = "FACTORY_STAFF_CREATED"
+	EventFactoryCreated          = "FACTORY_CREATED"
+	EventFactoryLocationUpdated  = "FACTORY_LOCATION_UPDATED"
+	EventFactoryStaffCreated     = "FACTORY_STAFF_CREATED"
 	EventFactoryStaffPasswordSet = "FACTORY_STAFF_PASSWORD_SET"
 	// EventFactoryTransferCreated is factory-plane internal transfer create (P3-C).
 	// @Sync(WarehouseTransferEvent)
@@ -218,6 +218,9 @@ const (
 	// @Sync(CashVarianceEvent) cash collect shortfall / overage (integer Tiyin)
 	EventCashShortfall = "CASH_SHORTFALL"
 	EventCashOverage   = "CASH_OVERAGE"
+
+	// @Sync(OrderConflictReconciledEvent)
+	EventOrderConflictReconciled = "ORDER_CONFLICT_RECONCILED"
 
 	// @Sync(LogisticsException) claims / OS&D / reverse logistics
 	EventClaimFiled                 = "CLAIM_FILED"
@@ -332,7 +335,7 @@ const (
 	// @Sync(ProductEvent)
 	EventProductCreated         = "PRODUCT_CREATED"
 	EventProductUpdated         = "PRODUCT_UPDATED"
-	EventProductPriceChanged     = "PRODUCT_PRICE_CHANGED"
+	EventProductPriceChanged    = "PRODUCT_PRICE_CHANGED"
 	EventProductDeactivated     = "PRODUCT_DEACTIVATED"
 	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
 

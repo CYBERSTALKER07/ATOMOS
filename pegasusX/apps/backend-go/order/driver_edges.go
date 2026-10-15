@@ -148,17 +148,17 @@ func (s *Service) HandleBypassOffload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "bypass_offload_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "bypass_offload_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -217,7 +217,7 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false

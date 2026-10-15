@@ -107,6 +107,7 @@ func TestHandleResolveManifestException_SpannerShapedRow(t *testing.T) {
 	}}}
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifest-exceptions/mex-spanner-1/resolve", strings.NewReader(`{"resolution":"RESOLVED"}`))
+	req.Header.Set("Idempotency-Key", "test-key-61")
 	req = withFactoryRouteParam(req, "exceptionID", "mex-spanner-1")
 	rr := httptest.NewRecorder()
 	svc.HandleResolveManifestException(rr, req)
@@ -128,6 +129,7 @@ func TestHandleDispatch_EmptyQueueNoInvent(t *testing.T) {
 	factoryDisablePortalSeed(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"reason":"wave"}`))
+	req.Header.Set("Idempotency-Key", "test-key-62")
 	rr := httptest.NewRecorder()
 	svc.HandleDispatch(rr, req)
 	if rr.Code != http.StatusOK {

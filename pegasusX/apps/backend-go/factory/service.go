@@ -946,7 +946,7 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 			return
 		}
-		if s.guardIdempotency(w, r, body) {
+		if s.guardIdempotencyStrict(w, r, body) {
 			return
 		}
 		idemCommitted := false
@@ -1264,7 +1264,7 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 
@@ -1594,7 +1594,7 @@ func (s *Service) handleCreateStaff(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req struct {
@@ -1746,7 +1746,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	if s.spannerClient != nil {
@@ -1947,7 +1947,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req manifestRebalanceRequest
@@ -2151,7 +2151,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req manifestCancelTransferRequest
@@ -2313,7 +2313,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req manifestCancelRequest
@@ -2457,7 +2457,7 @@ func (s *Service) HandleResolveManifestException(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req struct {

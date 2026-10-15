@@ -26,6 +26,7 @@ func TestHandleTransferTransition_UsesRepositoryApply(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/tr_bay_1/transition", strings.NewReader(`{"target_state":"LOADING"}`))
+	req.Header.Set("Idempotency-Key", "test-key-28")
 	req = withFactoryRouteParam(req, "transferID", "tr_bay_1")
 	rr := httptest.NewRecorder()
 
@@ -104,6 +105,7 @@ func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"transfer_ids":["tr_bay_2"],"reason":"bay"}`))
+	req.Header.Set("Idempotency-Key", "test-key-29")
 	rr := httptest.NewRecorder()
 	svc.HandleDispatch(rr, req)
 
@@ -135,6 +137,7 @@ func TestHandleManifestStartLoading_SeamParity(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/mf_factory_1/start-loading", strings.NewReader(`{"reason":"ops"}`))
+	req.Header.Set("Idempotency-Key", "test-key-30")
 	req = withFactoryRouteParam(req, "manifestID", "mf_factory_1")
 	rr := httptest.NewRecorder()
 
@@ -186,6 +189,7 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"reason":"wave"}`))
+	req.Header.Set("Idempotency-Key", "test-key-31")
 	rr := httptest.NewRecorder()
 
 	svc.HandleDispatch(rr, req)
@@ -240,6 +244,7 @@ func TestHandleManifestSeal_EmitsRouteMetadata(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/mf_factory_1/seal", strings.NewReader(`{"reason":"seal"}`))
+	req.Header.Set("Idempotency-Key", "test-key-32")
 	req = withFactoryRouteParam(req, "manifestID", "mf_factory_1")
 	rr := httptest.NewRecorder()
 
@@ -316,6 +321,7 @@ func TestHandleManifestRebalance_IdempotentAlreadyAssigned(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_1","to_vehicle":"veh_factory_1","reason":"noop"}`))
+	req.Header.Set("Idempotency-Key", "test-key-33")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -362,6 +368,7 @@ func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	cancelReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","reason":"ops"}`))
+	cancelReq.Header.Set("Idempotency-Key", "test-key-34")
 	cancelRR := httptest.NewRecorder()
 	svc.HandleManifestCancelTransfer(cancelRR, cancelReq)
 	if cancelRR.Code != http.StatusOK {
@@ -377,6 +384,7 @@ func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 	factoryTypesAfterCancel := factoryWSMessageTypes(factoryConn.messages)
 
 	rebalanceReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"retry"}`))
+	rebalanceReq.Header.Set("Idempotency-Key", "test-key-35")
 	rebalanceRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(rebalanceRR, rebalanceReq)
 
@@ -465,6 +473,7 @@ func TestHandleManifestRebalance_TransferStateNotMutable(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"state-check"}`))
+	req.Header.Set("Idempotency-Key", "test-key-36")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -522,6 +531,7 @@ func TestHandleManifestRebalance_GlobalTransferMissingConflict(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"global-drift"}`))
+	req.Header.Set("Idempotency-Key", "test-key-37")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -584,6 +594,7 @@ func TestHandleManifestRebalance_TransferRouteMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"route-consistency"}`))
+	req.Header.Set("Idempotency-Key", "test-key-38")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -641,6 +652,7 @@ func TestHandleManifestRebalance_TransferLedgerMismatch(t *testing.T) {
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(`{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","reason":"ledger-parity"}`))
+	req.Header.Set("Idempotency-Key", "test-key-39")
 	rr := httptest.NewRecorder()
 
 	svc.HandleManifestRebalance(rr, req)
@@ -689,6 +701,7 @@ func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 	body := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle":"veh_factory_1","reason":"replay-idempotency"}`
 
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-40")
 	firstRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(firstRR, firstReq)
 
@@ -736,6 +749,7 @@ func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 	}
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-41")
 	secondRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(secondRR, secondReq)
 
@@ -825,6 +839,7 @@ func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout
 
 	firstBody := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle_id":"veh_factory_1","reason":"baseline-success"}`
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(firstBody))
+	firstReq.Header.Set("Idempotency-Key", "test-key-42")
 	firstRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(firstRR, firstReq)
 
@@ -852,6 +867,7 @@ func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout
 
 	conflictBody := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","to_driver_id":"drv_factory_2","to_vehicle_id":"veh_factory_2","reason":"route-mismatch-after-success"}`
 	conflictReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/rebalance", strings.NewReader(conflictBody))
+	conflictReq.Header.Set("Idempotency-Key", "test-key-43")
 	conflictRR := httptest.NewRecorder()
 	svc.HandleManifestRebalance(conflictRR, conflictReq)
 
@@ -925,6 +941,7 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 
 	body := `{"manifest_id":"mf_factory_1","transfer_id":"tr_factory_1","reason":"ops"}`
 	firstReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(body))
+	firstReq.Header.Set("Idempotency-Key", "test-key-44")
 	firstRR := httptest.NewRecorder()
 
 	svc.HandleManifestCancelTransfer(firstRR, firstReq)
@@ -950,6 +967,7 @@ func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 	factoryTypesAfterFirst := factoryWSMessageTypes(factoryConn.messages)
 
 	secondReq := httptest.NewRequest(http.MethodPost, "/v1/factory/manifests/cancel-transfer", strings.NewReader(body))
+	secondReq.Header.Set("Idempotency-Key", "test-key-45")
 	secondRR := httptest.NewRecorder()
 
 	svc.HandleManifestCancelTransfer(secondRR, secondReq)
@@ -1308,4 +1326,3 @@ func TestHandleFleetVehicles_DemoFallbackAndStructure(t *testing.T) {
 		t.Fatalf("expected VehicleID and PlateNo in fleet vehicle: %#v", resp.Vehicles[0])
 	}
 }
-

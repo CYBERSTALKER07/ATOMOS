@@ -989,6 +989,52 @@
       "title": "NegotiationPayload",
       "type": "object"
     },
+    "OrderConflictReconciledPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "delivered_at": {
+          "type": "string"
+        },
+        "dispute_note": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "previous_status": {
+          "type": "string"
+        },
+        "proof_photo_url": {
+          "type": "string"
+        },
+        "proof_signature": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "order_id",
+        "supplier_id"
+      ],
+      "title": "OrderConflictReconciledPayload",
+      "type": "object"
+    },
     "OrderForceCompletedPayload": {
       "additionalProperties": true,
       "properties": {
@@ -3753,6 +3799,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/OrderConflictReconciledPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CONFLICT_RECONCILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderConflictReconciledEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/OrderPayload"
         },
         {
@@ -6366,6 +6431,7 @@
         "ORDER_ASSIGNED",
         "ORDER_CAPACITY_OVERFLOW",
         "ORDER_CONDITION_REPORTED",
+        "ORDER_CONFLICT_RECONCILED",
         "ORDER_CREATED",
         "ORDER_FINALIZED",
         "ORDER_FORCE_COMPLETED",
@@ -6594,6 +6660,7 @@
     "ORDER_ASSIGNED": "OrderPayload",
     "ORDER_CAPACITY_OVERFLOW": "SplitShipmentPayload",
     "ORDER_CONDITION_REPORTED": "ConditionPayload",
+    "ORDER_CONFLICT_RECONCILED": "OrderConflictReconciledPayload",
     "ORDER_CREATED": "OrderPayload",
     "ORDER_FINALIZED": "OrderPayload",
     "ORDER_FORCE_COMPLETED": "OrderForceCompletedPayload",

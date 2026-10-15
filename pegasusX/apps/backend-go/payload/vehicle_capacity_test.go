@@ -32,6 +32,7 @@ func TestHandleVehicleCapacity_GoneUnwired(t *testing.T) {
 func TestHandleVehicleCapacity_MethodNotAllowed(t *testing.T) {
 	svc := newPayloadTestService(&payloadRepoSpy{}, &payloadCacheBackendSpy{})
 	req := httptest.NewRequest(http.MethodPost, "/v1/payload/capacity/v-1", nil)
+	req.Header.Set("Idempotency-Key", "test-key-4")
 	rr := httptest.NewRecorder()
 	svc.HandleVehicleCapacity(rr, req)
 	if rr.Code != http.StatusMethodNotAllowed {

@@ -10,8 +10,12 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
-
 )
+
+// SettlementJournal buffers a balanced escrow-release journal inside the
+// transaction that marks a payout batch PAID. Bootstrap wires the payment
+// ledger writer. Nil leaves the status update without a journal.
+var SettlementJournal func(txn *spanner.ReadWriteTransaction, batchID, supplierID, currency string, grossMinor, feeMinor int64) error
 
 // Supplier payout batches: NetPayout = Σcaptured − Σrefunds − commission,
 // computed over provider-confirmed payment legs in the period. The batch is
@@ -137,7 +141,7 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 		if err != nil {
 			return Batch{}, err
 		}
-		
+
 		return Batch{
 			BatchID:            s.newID(),
 			SupplierID:         supplierID,
@@ -153,14 +157,14 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 			CreatedBy:          actor,
 		}, nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
 	if len(batches) == 0 {
 		return nil, ErrNothingPayable
 	}
-	
+
 	return batches, nil
 }
 

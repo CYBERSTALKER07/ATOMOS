@@ -35,6 +35,7 @@ func TestHandleStaffSetPassword_RequiresSecret(t *testing.T) {
 		httptest.NewRequest(http.MethodPost, "/v1/factory/staff/stf_x/set-password", strings.NewReader(`{}`)),
 		"staffID", "stf_x",
 	)
+	req.Header.Set("Idempotency-Key", "test-staff-empty")
 	rr := httptest.NewRecorder()
 	svc.HandleStaffSetPassword(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -53,6 +54,7 @@ func TestHandleStaffSetPassword_Memory(t *testing.T) {
 		httptest.NewRequest(http.MethodPost, "/v1/factory/staff/stf_x/set-password", strings.NewReader(`{"pin":"4321"}`)),
 		"staffID", "stf_x",
 	)
+	req.Header.Set("Idempotency-Key", "test-staff-pin")
 	rr := httptest.NewRecorder()
 	svc.HandleStaffSetPassword(rr, req)
 	if rr.Code != http.StatusOK {

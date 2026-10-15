@@ -11,7 +11,13 @@ import (
 // ValidateProductionProfile rejects dev-default webhook secrets when
 // PEGASUSX_ENV=production. SSMR/local stacks keep dev-* secrets in .env.ssmr.
 func (c *Config) ValidateProductionProfile() error {
-	if c == nil || !isProductionEnv() {
+	if c == nil {
+		return nil
+	}
+	if !isProductionEnv() {
+		if auth.IsStaging() && c.HandoffLegacyOrderIDFallback {
+			return fmt.Errorf("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=staging")
+		}
 		return nil
 	}
 	if !auth.TenantContextEnforced() {

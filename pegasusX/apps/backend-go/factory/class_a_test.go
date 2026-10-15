@@ -35,6 +35,7 @@ func TestHandleStaff_Create_ClassA(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/staff", strings.NewReader(`{"name":"Bay Lead","role":"FACTORY_OPERATOR","phone":"+998901112233"}`))
+	req.Header.Set("Idempotency-Key", "test-key-52")
 	rr := httptest.NewRecorder()
 	svc.HandleStaff(rr, req)
 
@@ -77,6 +78,7 @@ func TestHandleStaff_Create_NameRequired(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/staff", strings.NewReader(`{"role":"FACTORY_OPERATOR"}`))
+	req.Header.Set("Idempotency-Key", "test-key-53")
 	rr := httptest.NewRecorder()
 	svc.HandleStaff(rr, req)
 
@@ -94,6 +96,7 @@ func TestHandleStaff_Create_RoleInvalid(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/staff", strings.NewReader(`{"name":"X","role":"ADMIN"}`))
+	req.Header.Set("Idempotency-Key", "test-key-54")
 	rr := httptest.NewRecorder()
 	svc.HandleStaff(rr, req)
 
@@ -140,6 +143,7 @@ func TestHandleResolveManifestException_ClassA(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifest-exceptions/mex_factory_demo_1/resolve", strings.NewReader(`{"resolution":"RESOLVED","note":"ok"}`))
+	req.Header.Set("Idempotency-Key", "test-key-55")
 	req = withFactoryRouteParam(req, "exceptionID", "mex_factory_demo_1")
 	rr := httptest.NewRecorder()
 	svc.HandleResolveManifestException(rr, req)
@@ -170,6 +174,7 @@ func TestHandleResolveManifestException_NotFound(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/manifest-exceptions/mex_missing/resolve", strings.NewReader(`{"resolution":"RESOLVED"}`))
+	req.Header.Set("Idempotency-Key", "test-key-56")
 	req = withFactoryRouteParam(req, "exceptionID", "mex_missing")
 	rr := httptest.NewRecorder()
 	svc.HandleResolveManifestException(rr, req)
@@ -191,6 +196,7 @@ func TestHandleTransfers_Create_OrderIDTooLong(t *testing.T) {
 	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/create", strings.NewReader(`{"order_id":"ssmr-factory-tr-1755443457491052000-0","total_vu":12}`))
+	req.Header.Set("Idempotency-Key", "test-key-57")
 	rr := httptest.NewRecorder()
 	svc.HandleTransfers(rr, req)
 
@@ -216,6 +222,7 @@ func TestHandleTransfers_Create_EmitsTransferCreated(t *testing.T) {
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/create", strings.NewReader(`{"order_id":"ord_x","total_vu":40}`))
+	req.Header.Set("Idempotency-Key", "test-key-58")
 	rr := httptest.NewRecorder()
 	svc.HandleTransfers(rr, req)
 

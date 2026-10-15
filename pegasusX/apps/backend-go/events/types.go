@@ -274,6 +274,23 @@ func (e OrderEvent) WithCustomerStage() any {
 	return e
 }
 
+// OrderConflictReconciledEvent records an offline physical delivery that won
+// against an online cancel. The order lands on RECONCILIATION_REQUIRED.
+type OrderConflictReconciledEvent struct {
+	BaseEvent
+	OrderID        string `json:"order_id"`
+	SupplierID     string `json:"supplier_id"`
+	RetailerID     string `json:"retailer_id,omitempty"`
+	DriverID       string `json:"driver_id,omitempty"`
+	Resolution     string `json:"resolution,omitempty"`
+	PreviousStatus string `json:"previous_status,omitempty"`
+	Status         string `json:"status,omitempty"`
+	DeliveredAt    string `json:"delivered_at,omitempty"`
+	ProofSignature string `json:"proof_signature,omitempty"`
+	ProofPhotoURL  string `json:"proof_photo_url,omitempty"`
+	DisputeNote    string `json:"dispute_note,omitempty"`
+}
+
 // ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6 & HARDEN-02).
 type ParentOrderEvent struct {
 	BaseEvent

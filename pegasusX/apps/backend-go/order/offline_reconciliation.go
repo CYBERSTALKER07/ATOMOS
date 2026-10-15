@@ -129,19 +129,19 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 		current.WarehouseNotes = strings.TrimSpace(current.WarehouseNotes + " | " + disputeNote)
 
 		err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicExceptions, map[string]any{
-				"type":            "ORDER_CONFLICT_RECONCILED",
-				"order_id":        req.OrderID,
-				"supplier_id":     current.SupplierID,
-				"retailer_id":     current.RetailerID,
-				"driver_id":       req.DriverID,
-				"resolution":      string(ResolutionPhysicalCustodyWon),
-				"prior_status":    string(previousStatus),
-				"new_status":      string(StatusReconciliationRequired),
-				"delivered_at":    req.DeliveredAt.Format(time.RFC3339),
-				"proof_signature": req.ProofSignature,
-				"proof_photo_url": req.ProofPhotoURL,
-				"dispute_note":    disputeNote,
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicExceptions, events.OrderConflictReconciledEvent{
+				BaseEvent:      events.BaseEvent{Type: events.EventOrderConflictReconciled, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
+				OrderID:        req.OrderID,
+				SupplierID:     current.SupplierID,
+				RetailerID:     current.RetailerID,
+				DriverID:       req.DriverID,
+				Resolution:     string(ResolutionPhysicalCustodyWon),
+				PreviousStatus: string(previousStatus),
+				Status:         string(StatusReconciliationRequired),
+				DeliveredAt:    req.DeliveredAt.Format(time.RFC3339),
+				ProofSignature: req.ProofSignature,
+				ProofPhotoURL:  req.ProofPhotoURL,
+				DisputeNote:    disputeNote,
 			})
 		})
 		if err != nil {

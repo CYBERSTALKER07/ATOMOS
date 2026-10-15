@@ -251,7 +251,10 @@ export const PayloadTerminalApi = {
 export async function reportScanProgress(manifestId: string, itemId: string, itemVu: number): Promise<{ loaded_vu: number }> {
     const res = await authFetch(`${API_BASE}/v1/payloader/manifests/${manifestId}/load-ledger/scan`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `payload-load-scan:${manifestId}:${itemId}:${itemVu}:${Date.now()}`,
+        },
         body: JSON.stringify({ order_id: itemId, quantity: itemVu }),
     });
     if (!res.ok) {

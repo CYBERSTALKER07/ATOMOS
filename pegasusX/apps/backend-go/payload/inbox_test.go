@@ -37,6 +37,7 @@ func TestHandleMarkNotificationsRead_NilStoreUnavailable(t *testing.T) {
 	svc := NewService(ServiceConfig{Repo: NewInMemoryRepository()})
 	req := httptest.NewRequest(http.MethodPost, "/v1/user/notifications/read",
 		strings.NewReader(`{"mark_all":true}`))
+	req.Header.Set("Idempotency-Key", "test-key-1")
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
 		Subject: "pay-1", Role: auth.RolePayload, SupplierID: "sup-1",
 	}))

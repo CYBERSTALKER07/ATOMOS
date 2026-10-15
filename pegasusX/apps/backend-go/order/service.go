@@ -391,6 +391,7 @@ type Service struct {
 	allocator          Allocator
 	allocationRequired bool
 	returnPolicies     ReturnPolicyStore
+	doorstepShortfall  func(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error
 
 	currencyPickerEnabled bool
 	currencyAllowlist     []string
@@ -509,6 +510,13 @@ func NewService(c ServiceConfig) *Service {
 		}
 	}
 	return svc
+}
+
+// SetDoorstepShortfall writes a balanced shortfall journal in the cash-collect transaction.
+func (s *Service) SetDoorstepShortfall(fn func(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error) {
+	if s != nil {
+		s.doorstepShortfall = fn
+	}
 }
 
 // SetReturnPolicyStore wires claim-window policy persistence (optional).
@@ -2317,6 +2325,11 @@ func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req Colle
 			if err := s.AssertMoneyCoversDeliveryTxn(txnCtx, txn, req.OrderID, receivedMinor, shortfall); err != nil {
 				return err
 			}
+			if s.doorstepShortfall != nil && orderRecord.TotalMinor > receivedMinor {
+				if err := s.doorstepShortfall(txnCtx, txn, req.OrderID, orderRecord.SupplierID, claims.Subject, orderRecord.Currency, orderRecord.TotalMinor, receivedMinor, s.now()); err != nil {
+					return err
+				}
+			}
 			leg := PaymentLeg{
 				OrderID:     req.OrderID,
 				LegID:       s.newID(),
@@ -2975,7 +2988,7 @@ func (s *Service) HandleMarkArrived(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -3022,7 +3035,7 @@ func (s *Service) HandleSubmitDelivery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -3066,7 +3079,7 @@ func (s *Service) HandleConfirmOffload(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -3110,7 +3123,7 @@ func (s *Service) HandleCompleteOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false

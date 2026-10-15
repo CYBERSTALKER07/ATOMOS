@@ -20,6 +20,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/analytics"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cashrecon"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
@@ -45,7 +46,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
-	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap/memory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
@@ -529,6 +529,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var feeResolver *billing.FeeScheduleResolver
 	if spannerClient != nil {
 		feeResolver = billing.NewFeeScheduleResolver(spannerClient)
+		payout.SettlementJournal = payment.WriteSettlementJournal
 		payoutSvc = payout.NewService(payout.NewRepository(spannerClient))
 		payoutSvc.SetCommissionResolver(feeResolver)
 		payoutSvc.SetCache(cacheClient)
@@ -593,6 +594,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Replanner:             routingSvc,
 	})
 	orderSvc.SetManifestStore(manifestStore)
+	orderSvc.SetDoorstepShortfall(payment.WriteDoorstepShortfall)
 	if spannerClient != nil {
 		segmentSvc := segment.NewService(segment.NewSpannerRepository(spannerClient))
 		allocSvc := allocation.NewAllocationService(spannerClient)

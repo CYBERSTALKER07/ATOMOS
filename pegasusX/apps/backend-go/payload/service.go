@@ -145,16 +145,16 @@ type TruckRow struct {
 
 // OrderRow represents one payloader-visible order row.
 type OrderRow struct {
-	OrderID          string `json:"order_id"`
-	Status           string `json:"status"`
-	TotalMinor       int64  `json:"total_minor"`
-	Currency         string `json:"currency"`
-	ManifestID       string `json:"manifest_id,omitempty"`
-	RouteID          string `json:"route_id,omitempty"`
-	VehicleID        string `json:"vehicle_id,omitempty"`
-	DispatchPriority int    `json:"dispatch_priority,omitempty"`
-	OverflowCount    int64  `json:"overflow_count,omitempty"`
-	ReassignDepth    int    `json:"reassign_depth,omitempty"`
+	OrderID          string  `json:"order_id"`
+	Status           string  `json:"status"`
+	TotalMinor       int64   `json:"total_minor"`
+	Currency         string  `json:"currency"`
+	ManifestID       string  `json:"manifest_id,omitempty"`
+	RouteID          string  `json:"route_id,omitempty"`
+	VehicleID        string  `json:"vehicle_id,omitempty"`
+	DispatchPriority int     `json:"dispatch_priority,omitempty"`
+	OverflowCount    int64   `json:"overflow_count,omitempty"`
+	ReassignDepth    int     `json:"reassign_depth,omitempty"`
 	SplitGroupID     string  `json:"split_group_id,omitempty"`
 	Lat              float64 `json:"lat,omitempty"`
 	Lng              float64 `json:"lng,omitempty"`
@@ -807,7 +807,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	manifestID := manifestIDParam(r)
@@ -926,7 +926,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	manifestID := manifestIDParam(r)
@@ -1064,7 +1064,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -1277,7 +1277,7 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -1382,7 +1382,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req applyReassignRequest
@@ -1729,7 +1729,7 @@ func (s *Service) HandleSealCompletedManifests(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req struct {
@@ -1863,7 +1863,7 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	manifestID := manifestIDParam(r)
@@ -1968,7 +1968,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req sealRequest
@@ -2102,7 +2102,7 @@ func (s *Service) HandleSealAll(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 

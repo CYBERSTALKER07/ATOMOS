@@ -22,6 +22,7 @@ func TestHandleDispatch_BatcherFlagDoesNot503WithoutSpanner(t *testing.T) {
 	repo.svc = svc
 	factoryDisablePortalSeed(t)
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{}`))
+	req.Header.Set("Idempotency-Key", "test-key-59")
 	rr := httptest.NewRecorder()
 	svc.HandleDispatch(rr, req)
 	if rr.Code != http.StatusOK {

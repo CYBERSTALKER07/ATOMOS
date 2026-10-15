@@ -22,7 +22,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	var req struct {
@@ -63,13 +63,13 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			driverID := s.driverIDForRouteLocked(req.NewRouteID)
-			
+
 			// Adjust Manifests
 			oldRouteID := s.orders[oIdx].RouteID
-			
+
 			oldMIdx := s.findManifestIndexLocked(oldRouteID)
 			newMIdx := s.findManifestIndexLocked(req.NewRouteID)
-			
+
 			// Find volume from ManifestOrders
 			var vol int64
 			oldOrders, _ := tx.ListManifestOrders(ctx, oldRouteID)
@@ -79,11 +79,11 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-			
+
 			if err := tx.UpdateOrderAssignment(ctx, orderID, req.NewRouteID, driverID); err != nil {
 				return err
 			}
-			
+
 			if oldMIdx >= 0 {
 				s.manifests[oldMIdx].TotalVolumeVU -= vol
 				if s.manifests[oldMIdx].TotalVolumeVU < 0 {
@@ -97,7 +97,7 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 				s.manifests[newMIdx].TotalVolumeVU += vol
 				s.manifests[newMIdx].UpdatedAt = now
 				_ = tx.SaveManifest(ctx, s.manifests[newMIdx])
-				
+
 				mo := ManifestOrder{
 					ManifestID: req.NewRouteID,
 					OrderID:    orderID,
@@ -118,12 +118,12 @@ func (s *Service) HandleFleetReassign(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateRoute, req.NewRouteID, events.TopicMain, map[string]any{
-			"type":          events.EventOrderReassigned,
-			"new_route_id":  req.NewRouteID,
-			"reassigned":    reassigned,
-			"supplier_id":   s.resolveSupplierScope(r.Context()),
-			"warehouse_id":  s.resolveWarehouseScope(r.Context()),
-			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+			"type":         events.EventOrderReassigned,
+			"new_route_id": req.NewRouteID,
+			"reassigned":   reassigned,
+			"supplier_id":  s.resolveSupplierScope(r.Context()),
+			"warehouse_id": s.resolveWarehouseScope(r.Context()),
+			"timestamp":    time.Now().UTC().Format(time.RFC3339Nano),
 		})
 	})
 	if err != nil {

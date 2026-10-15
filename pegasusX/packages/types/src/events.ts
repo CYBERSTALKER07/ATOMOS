@@ -1,5 +1,5 @@
 import { WsEventEnvelope } from "./envelope";
-import { ARInvoiceEventPayload, BuyerAcceptanceEventPayload, CommandLifecycle, DeliverySessionUpdated, DriverAvailabilityChangedEvent, DriverCreated, DriverLocationUpdatedEvent, FactoryCreated, FactoryStaffCreated, FactoryTransferCreated, ManifestCancelled, ManifestExceptionResolved, ManifestOrderException, ManifestOrderInjected, ManifestRebalanced, ManifestSealed, OrderAssigned, OrderCreated, OrderFinalized, OrderReassigned, OrderStatusChanged, OrderValidationFailed, PaymentCleared, PaymentRequired, PayoutBatchEventPayload, RetailerRegistered, SettlementRequired, SplitPaymentCreated, SupplierCreated, VehicleCreated, WarehouseCreated, WarehouseDispatchLockChanged, WarehouseSupplyRequestOpened } from "./event-payloads";
+import { ARInvoiceEventPayload, BuyerAcceptanceEventPayload, CommandLifecycle, DeliverySessionUpdated, DriverAvailabilityChangedEvent, DriverCreated, DriverLocationUpdatedEvent, FactoryCreated, FactoryStaffCreated, FactoryTransferCreated, ManifestCancelled, ManifestExceptionResolved, ManifestOrderException, ManifestOrderInjected, ManifestRebalanced, ManifestSealed, OrderAssigned, OrderConflictReconciled, OrderCreated, OrderFinalized, OrderReassigned, OrderStatusChanged, OrderValidationFailed, PaymentCleared, PaymentRequired, PayoutBatchEventPayload, RetailerRegistered, SettlementRequired, SplitPaymentCreated, SupplierCreated, VehicleCreated, WarehouseCreated, WarehouseDispatchLockChanged, WarehouseSupplyRequestOpened } from "./event-payloads";
 
 // ── Discriminated WS event union ────────────────────────────────────────────
 export type WsEvent =
@@ -16,6 +16,7 @@ export type WsEvent =
   | WsEventEnvelope<"MANIFEST_EXCEPTION_RESOLVED", ManifestExceptionResolved>
   | WsEventEnvelope<"ORDER_CREATED", OrderCreated>
   | WsEventEnvelope<"ORDER_STATUS_CHANGED", OrderStatusChanged>
+  | WsEventEnvelope<"ORDER_CONFLICT_RECONCILED", OrderConflictReconciled>
   | WsEventEnvelope<"ORDER_VALIDATION_FAILED", OrderValidationFailed>
   | WsEventEnvelope<"ORDER_ASSIGNED", OrderAssigned>
   | WsEventEnvelope<"ORDER_REASSIGNED", OrderReassigned>

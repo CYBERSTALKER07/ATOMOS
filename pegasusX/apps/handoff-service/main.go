@@ -28,8 +28,8 @@ type publicRequest struct {
 
 func main() {
 	engine := handoff.FromEnv()
-	if engine.LegacyOrderIDFallback() && productionEnv() {
-		log.Fatal("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV=production")
+	if engine.LegacyOrderIDFallback() && handoffFallbackForbidden() {
+		log.Fatal("HANDOFF_LEGACY_ORDER_ID_FALLBACK must be false when PEGASUSX_ENV is production or staging")
 	}
 	apiKey := strings.TrimSpace(os.Getenv("INTERNAL_API_KEY"))
 	port := strings.TrimSpace(os.Getenv("HTTP_PORT"))
@@ -77,9 +77,9 @@ func main() {
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
-func productionEnv() bool {
+func handoffFallbackForbidden() bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
-	case "production", "prod":
+	case "production", "prod", "staging":
 		return true
 	default:
 		return false

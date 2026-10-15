@@ -17,6 +17,7 @@ func TestHandlePayloaderLogin_IDTokenWithoutVerifierUnavailable(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/payloader/login",
 		strings.NewReader(`{"id_token":"tok"}`))
+	req.Header.Set("Idempotency-Key", "test-key-25")
 	rr := httptest.NewRecorder()
 	svc.HandlePayloaderLogin(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -32,6 +33,7 @@ func TestHandlePayloaderLogin_NoDefault998(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/payloader/login",
 		strings.NewReader(`{"phone":"+998901110022","pin":"33333333"}`))
+	req.Header.Set("Idempotency-Key", "test-key-26")
 	rr := httptest.NewRecorder()
 	svc.HandlePayloaderLogin(rr, req)
 	if rr.Code == http.StatusOK {
@@ -59,6 +61,7 @@ func TestHandlePayloaderLogin_StaffRow(t *testing.T) {
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/auth/payloader/login",
 		strings.NewReader(`{"phone":"+15550002","pin":"3333"}`))
+	req.Header.Set("Idempotency-Key", "test-key-27")
 	rr := httptest.NewRecorder()
 	svc.HandlePayloaderLogin(rr, req)
 	if rr.Code != http.StatusOK {
