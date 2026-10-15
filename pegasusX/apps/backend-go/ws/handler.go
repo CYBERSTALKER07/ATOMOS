@@ -69,7 +69,6 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			send:     make(chan []byte, 256),
 			stop:     make(chan struct{}),
 		}
-		go gConn.writePump()
 
 		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs, cfg)
 		if !ok {
@@ -77,10 +76,16 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string,
 			gConn.close()
 			return
 		}
+		gConn.onClose = func() {
+			for _, unsubscribe := range unsubscribeFuncs {
+				unsubscribe()
+			}
+		}
+		go gConn.writePump()
 
 		replayMissedEvents(req, ident, gConn, hubs, cfg)
 
-		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, hubs, log)
+		go runConnectionLoop(req, gConn, platformSvc, hubs, log)
 	})
 
 	r.Get("/v1/ws", wsHandler)
@@ -355,7 +360,7 @@ func roleHubsForIdentity(ident auth.Claims, hubs roleHubs) []*Hub {
 	}
 }
 
-func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, hubs roleHubs, log *slog.Logger) {
+func runConnectionLoop(req *http.Request, conn *gorillaConn, platformSvc *platform.Service, hubs roleHubs, log *slog.Logger) {
 	maybeSendOutdated(req, conn, platformSvc, log)
 	done := make(chan struct{})
 
@@ -370,9 +375,7 @@ func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func
 	// startPingLoop(conn, done, log) // handled by writePump now
 	defer func() {
 		close(done)
-		for _, unsubscribe := range unsubscribes {
-			unsubscribe()
-		}
+		conn.signalClosed()
 		// Clear presence on disconnect (req.Context() is long dead here).
 		for _, h := range roleHubsForIdentity(conn.Identity(), hubs) {
 			if h != nil {

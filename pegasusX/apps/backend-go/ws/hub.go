@@ -63,9 +63,10 @@ type Hub struct {
 	instance string
 	limits   HubLimits
 
-	mu       sync.RWMutex
-	rooms    map[string]map[string]Connection // room -> connectionID -> conn
-	joinedAt map[string]time.Time             // connectionID -> subscribe time
+	mu          sync.RWMutex
+	rooms       map[string]map[string]Connection // room -> connectionID -> conn
+	joinedAt    map[string]time.Time             // connectionID -> first subscribe time
+	socketRooms map[string]int                   // connectionID -> rooms still joined
 
 	historyMu sync.RWMutex
 	history   map[string][]bufferedEvent // room -> ring buffer of recent events
@@ -91,14 +92,15 @@ func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits
 		log = slog.Default()
 	}
 	return &Hub{
-		name:     name,
-		relay:    relay,
-		log:      log,
-		instance: fmt.Sprintf("%s-%d-%d", name, time.Now().UnixNano(), hubInstanceCounter.Add(1)),
-		limits:   limits,
-		rooms:    make(map[string]map[string]Connection),
-		joinedAt: make(map[string]time.Time),
-		history:  make(map[string][]bufferedEvent),
+		name:        name,
+		relay:       relay,
+		log:         log,
+		instance:    fmt.Sprintf("%s-%d-%d", name, time.Now().UnixNano(), hubInstanceCounter.Add(1)),
+		limits:      limits,
+		rooms:       make(map[string]map[string]Connection),
+		joinedAt:    make(map[string]time.Time),
+		socketRooms: make(map[string]int),
+		history:     make(map[string][]bufferedEvent),
 	}
 }
 
@@ -125,8 +127,10 @@ func (h *Hub) Subscribe(room string, conn Connection) func() {
 	if _, ok := h.rooms[room]; !ok {
 		h.rooms[room] = make(map[string]Connection)
 	}
-	h.rooms[room][conn.ID()] = conn
-	h.joinedAt[conn.ID()] = now
+	if _, already := h.rooms[room][conn.ID()]; !already {
+		h.rooms[room][conn.ID()] = conn
+		h.noteJoinLocked(conn.ID(), now)
+	}
 	h.shedRoomLocked(room)
 	h.recordMetricsLocked()
 	roomName := room
@@ -137,22 +141,64 @@ func (h *Hub) Subscribe(room string, conn Connection) func() {
 func (h *Hub) unsubscribe(room, connID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if conns, ok := h.rooms[room]; ok {
+	h.forgetRoomLocked(room, connID)
+	h.recordMetricsLocked()
+}
+
+// noteJoinLocked records one more room for a socket. Caller holds h.mu.
+func (h *Hub) noteJoinLocked(connID string, now time.Time) {
+	if h.socketRooms[connID] == 0 {
+		h.joinedAt[connID] = now
+	}
+	h.socketRooms[connID]++
+}
+
+// forgetRoomLocked removes connID from one room and frees the socket when no
+// rooms remain. Caller holds h.mu.
+func (h *Hub) forgetRoomLocked(room, connID string) {
+	conns, ok := h.rooms[room]
+	if !ok {
+		return
+	}
+	if _, present := conns[connID]; !present {
+		return
+	}
+	delete(conns, connID)
+	if len(conns) == 0 {
+		delete(h.rooms, room)
+	}
+	h.noteLeaveLocked(connID)
+}
+
+// noteLeaveLocked drops one room membership. Caller holds h.mu.
+func (h *Hub) noteLeaveLocked(connID string) {
+	n := h.socketRooms[connID]
+	if n <= 1 {
+		delete(h.socketRooms, connID)
+		delete(h.joinedAt, connID)
+		return
+	}
+	h.socketRooms[connID] = n - 1
+}
+
+// dropSocketLocked removes a dead socket from every room on this hub.
+// Caller holds h.mu.
+func (h *Hub) dropSocketLocked(connID string) {
+	for room, conns := range h.rooms {
+		if _, ok := conns[connID]; !ok {
+			continue
+		}
 		delete(conns, connID)
 		if len(conns) == 0 {
 			delete(h.rooms, room)
 		}
 	}
+	delete(h.socketRooms, connID)
 	delete(h.joinedAt, connID)
-	h.recordMetricsLocked()
 }
 
 func (h *Hub) connectionCountLocked() int {
-	conns := 0
-	for _, room := range h.rooms {
-		conns += len(room)
-	}
-	return conns
+	return len(h.socketRooms)
 }
 
 // HasSubscribers reports whether a room has active local subscribers.
@@ -182,8 +228,7 @@ func (h *Hub) shedRoomLocked(room string) {
 			if reapable, ok := c.(Reapable); ok {
 				reapable.Reap()
 			}
-			delete(conns, oldestID)
-			delete(h.joinedAt, oldestID)
+			h.forgetRoomLocked(room, oldestID)
 			h.shedCount++
 			h.recordShed(1)
 			h.log.Debug("ws shed stale connection",
@@ -233,7 +278,11 @@ func (h *Hub) AttachRoomsForRetailer(retailerID string, rooms []string) {
 			h.rooms[room] = make(map[string]Connection)
 		}
 		for connID, conn := range baseConns {
+			if _, already := h.rooms[room][connID]; already {
+				continue
+			}
 			h.rooms[room][connID] = conn
+			h.noteJoinLocked(connID, h.joinedAt[connID])
 		}
 	}
 }
@@ -273,14 +322,10 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
 	}
 	if len(dead) > 0 {
 		h.mu.Lock()
-		if conns, ok := h.rooms[room]; ok {
-			for _, id := range dead {
-				delete(conns, id)
-			}
-			if len(conns) == 0 {
-				delete(h.rooms, room)
-			}
+		for _, id := range dead {
+			h.dropSocketLocked(id)
 		}
+		h.recordMetricsLocked()
 		h.mu.Unlock()
 	}
 }
@@ -471,14 +516,10 @@ type relayEnvelope struct {
 func (h *Hub) Stats() HubStats {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	conns := 0
-	for _, room := range h.rooms {
-		conns += len(room)
-	}
 	return HubStats{
 		Hub:         h.name,
 		Rooms:       len(h.rooms),
-		Connections: conns,
+		Connections: h.connectionCountLocked(),
 		PubFailures: h.failureCount,
 		ShedCount:   h.shedCount,
 		MaxPerRoom:  h.limits.MaxPerRoom,

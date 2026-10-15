@@ -59,8 +59,8 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 		return OfflineDeliverySyncResult{}, fmt.Errorf("order %s: not found", req.OrderID)
 	}
 
-	// 1. Idempotent check: order is already marked delivered or completed
-	if current.Status == StatusCompleted || current.Status == StatusDeliveredOnCredit || current.Status == StatusPendingCashCollection {
+	// 1. Idempotent check: order is already past the offline delivery write.
+	if offlineDeliveryAlreadyApplied(current.Status) {
 		return OfflineDeliverySyncResult{
 			OrderID:     req.OrderID,
 			Resolution:  ResolutionIdempotentNoop,
@@ -69,13 +69,12 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 		}, nil
 	}
 
-	// 2. Active order: standard physical delivery completion
+	// 2. Active order: walk only edges the status graph allows.
 	if current.Status == StatusArrived || current.Status == StatusInTransit {
-		targetStatus := StatusDeliveredOnCredit
-		if strings.EqualFold(req.PaymentMethod, "CASH") && req.AmountCollectedMinor > 0 {
-			targetStatus = StatusPendingCashCollection
-		} else if strings.EqualFold(req.PaymentMethod, "PREPAID") {
-			targetStatus = StatusCompleted
+		previousStatus := current.Status
+		targetStatus, err := offlineDeliveryTarget(previousStatus, req.PaymentMethod, req.AmountCollectedMinor)
+		if err != nil {
+			return OfflineDeliverySyncResult{}, fmt.Errorf("offline delivery %s: %w", req.OrderID, err)
 		}
 
 		current.Status = targetStatus
@@ -89,13 +88,14 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 
 		if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicOrders, events.OrderEvent{
-				BaseEvent:  events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
-				OrderID:    current.OrderID,
-				SupplierID: current.SupplierID,
-				RetailerID: current.RetailerID,
-				DriverID:   current.DriverID,
-				Status:     string(targetStatus),
-				Reason:     "offline_delivery_sync",
+				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
+				OrderID:        current.OrderID,
+				SupplierID:     current.SupplierID,
+				RetailerID:     current.RetailerID,
+				DriverID:       current.DriverID,
+				PreviousStatus: string(previousStatus),
+				Status:         string(targetStatus),
+				Reason:         "offline_delivery_sync",
 			})
 		}); err != nil {
 			return OfflineDeliverySyncResult{}, fmt.Errorf("update delivered order %s: %w", req.OrderID, err)
@@ -116,8 +116,12 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 			"PHYSICAL_CUSTODY_WON: Driver %s completed offline delivery at %s with POD. Online cancellation superseded; converted to post-delivery dispute.",
 			req.DriverID, req.DeliveredAt.Format(time.RFC3339),
 		)
+		previousStatus := current.Status
+		if err := offlineCancelConflictTarget(previousStatus); err != nil {
+			return OfflineDeliverySyncResult{}, fmt.Errorf("offline conflict %s: %w", req.OrderID, err)
+		}
 
-		current.Status = StatusDeliveredOnCredit
+		current.Status = StatusReconciliationRequired
 		current.UpdatedAt = s.now().UTC()
 		if req.DriverID != "" && current.DriverID == "" {
 			current.DriverID = req.DriverID
@@ -126,18 +130,18 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 
 		err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicExceptions, map[string]any{
-				"type":                 "ORDER_CONFLICT_RECONCILED",
-				"order_id":             req.OrderID,
-				"supplier_id":          current.SupplierID,
-				"retailer_id":          current.RetailerID,
-				"driver_id":            req.DriverID,
-				"resolution":           string(ResolutionPhysicalCustodyWon),
-				"prior_status":         string(StatusCancelled),
-				"new_status":           string(StatusDeliveredOnCredit),
-				"delivered_at":         req.DeliveredAt.Format(time.RFC3339),
-				"proof_signature":      req.ProofSignature,
-				"proof_photo_url":      req.ProofPhotoURL,
-				"dispute_note":         disputeNote,
+				"type":            "ORDER_CONFLICT_RECONCILED",
+				"order_id":        req.OrderID,
+				"supplier_id":     current.SupplierID,
+				"retailer_id":     current.RetailerID,
+				"driver_id":       req.DriverID,
+				"resolution":      string(ResolutionPhysicalCustodyWon),
+				"prior_status":    string(previousStatus),
+				"new_status":      string(StatusReconciliationRequired),
+				"delivered_at":    req.DeliveredAt.Format(time.RFC3339),
+				"proof_signature": req.ProofSignature,
+				"proof_photo_url": req.ProofPhotoURL,
+				"dispute_note":    disputeNote,
 			})
 		})
 		if err != nil {
@@ -153,11 +157,56 @@ func (s *Service) ReconcileOfflineDelivery(ctx context.Context, req OfflineDeliv
 		return OfflineDeliverySyncResult{
 			OrderID:     req.OrderID,
 			Resolution:  ResolutionPhysicalCustodyWon,
-			FinalStatus: StatusDeliveredOnCredit,
+			FinalStatus: StatusReconciliationRequired,
 			Disputed:    true,
 			DisputeNote: disputeNote,
 		}, nil
 	}
 
 	return OfflineDeliverySyncResult{}, fmt.Errorf("order %s in unhandled status %s for offline reconciliation", req.OrderID, current.Status)
+}
+
+func offlineDeliveryAlreadyApplied(status Status) bool {
+	switch status {
+	case StatusCompleted, StatusDeliveredOnCredit, StatusPendingCashCollection, StatusAwaitingPayment, StatusFiscalizing, StatusReconciliationRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// offlineDeliveryTarget walks IN_TRANSIT through ARRIVED, then the payment edge
+// the graph already allows. Prepaid stops at FISCALIZING so Soliq still runs.
+func offlineDeliveryTarget(from Status, method string, amountMinor int64) (Status, error) {
+	hops := []Status{StatusDeliveredOnCredit}
+	switch {
+	case strings.EqualFold(method, "CASH") && amountMinor > 0:
+		hops = []Status{StatusPendingCashCollection}
+	case strings.EqualFold(method, "PREPAID"):
+		hops = []Status{StatusAwaitingPayment, StatusFiscalizing}
+	}
+	if from == StatusInTransit {
+		hops = append([]Status{StatusArrived}, hops...)
+	}
+	cursor := from
+	for _, next := range hops {
+		if err := ValidateStatusTransition(string(cursor), string(next), TransitionOpts{Reason: "offline_delivery_sync"}); err != nil {
+			return "", err
+		}
+		cursor = next
+	}
+	return cursor, nil
+}
+
+// offlineCancelConflictTarget checks the graph path into RECONCILIATION_REQUIRED.
+// CANCEL_REQUESTED must pass through CANCELLED; both edges already exist.
+func offlineCancelConflictTarget(from Status) error {
+	cursor := from
+	if cursor == StatusCancelRequested {
+		if err := ValidateStatusTransition(string(cursor), string(StatusCancelled), TransitionOpts{Reason: "offline_physical_custody"}); err != nil {
+			return err
+		}
+		cursor = StatusCancelled
+	}
+	return ValidateStatusTransition(string(cursor), string(StatusReconciliationRequired), TransitionOpts{Reason: "offline_physical_custody"})
 }

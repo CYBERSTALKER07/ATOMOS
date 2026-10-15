@@ -91,13 +91,15 @@ func isLocalDevelopmentOrigin(origin string) bool {
 
 // gorillaConn wraps a gorilla/websocket connection to implement ws.Connection.
 type gorillaConn struct {
-	id       string
-	ident    auth.Claims
-	conn     *websocket.Conn
-	joinedAt time.Time
-	mu       sync.Mutex
-	send     chan []byte
-	stop     chan struct{}
+	id        string
+	ident     auth.Claims
+	conn      *websocket.Conn
+	joinedAt  time.Time
+	mu        sync.Mutex
+	send      chan []byte
+	stop      chan struct{}
+	onClose   func()
+	closeOnce sync.Once
 }
 
 func (c *gorillaConn) writePump() {
@@ -105,6 +107,7 @@ func (c *gorillaConn) writePump() {
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
+		c.signalClosed()
 	}()
 	for {
 		select {
@@ -131,7 +134,6 @@ func (c *gorillaConn) writePump() {
 		}
 	}
 }
-
 
 func (c *gorillaConn) ID() string {
 	return c.id
@@ -163,6 +165,20 @@ func (c *gorillaConn) ping(timeout time.Duration) error {
 
 func (c *gorillaConn) close() {
 	c.Reap()
+	c.signalClosed()
+}
+
+// signalClosed runs the disconnect hook once. Unsubscribe must happen here so
+// a closed socket frees its capacity slot before the next upgrade.
+func (c *gorillaConn) signalClosed() {
+	if c == nil {
+		return
+	}
+	c.closeOnce.Do(func() {
+		if c.onClose != nil {
+			c.onClose()
+		}
+	})
 }
 
 // Reap force-closes the socket. Invoked by hub shedding when a fresher session

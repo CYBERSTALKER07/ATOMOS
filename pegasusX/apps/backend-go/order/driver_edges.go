@@ -10,12 +10,12 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -231,7 +231,7 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
 		return
 	}
-	
+
 	var req struct {
 		Location DriverTelemetry `json:"location"`
 	}
@@ -245,7 +245,7 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	
+
 	// Perform transition to DeliveredOnCredit, enforcing proximity via UpdateOrderWithTxn similar to shop-closed.
 	// But let's load the order to get the proximity unlocked status and method, and to perform the update.
 	var current Order
@@ -259,8 +259,11 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if current.Status != StatusArrived {
-		s.writeOrderMutationError(w, "credit leave failed", orderID, fmt.Errorf("%w: order must be ARRIVED for credit leave (current: %s)", ErrInvalidStatusTransition, current.Status))
+	if err := ValidateStatusTransition(string(current.Status), string(StatusDeliveredOnCredit), TransitionOpts{
+		Actor:  claims.Subject,
+		Reason: "credit_leave",
+	}); err != nil {
+		s.writeOrderMutationError(w, "credit leave failed", orderID, err)
 		return
 	}
 
@@ -299,11 +302,11 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 		}
 
 		leg := PaymentLeg{
-			OrderID:        orderID,
-			LegID:          s.newID(),
-			Method:         MethodCredit,
-			AmountMinor:    current.TotalMinor,
-			Status:         PaymentStatusCaptured,
+			OrderID:     orderID,
+			LegID:       s.newID(),
+			Method:      MethodCredit,
+			AmountMinor: current.TotalMinor,
+			Status:      PaymentStatusCaptured,
 			// Stable key: a retried credit leave must hit the unique index,
 			// not mint a second leg (mirrors the shop-closed worker key).
 			IdempotencyKey: "credit-leave-" + orderID,
@@ -390,12 +393,12 @@ func (s *Service) HandleCreditLeave(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]any{
-		"order_id":            orderID,
-		"status":              string(StatusDeliveredOnCredit),
-		"proximity_unlocked":  proxUnlocked,
-		"proximity_method":    proxMethod,
-		"due_at":              dueAt,
-		"terms_days":          termsDays,
+		"order_id":           orderID,
+		"status":             string(StatusDeliveredOnCredit),
+		"proximity_unlocked": proxUnlocked,
+		"proximity_method":   proxMethod,
+		"due_at":             dueAt,
+		"terms_days":         termsDays,
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(ctx, r, body, http.StatusOK, respBytes)

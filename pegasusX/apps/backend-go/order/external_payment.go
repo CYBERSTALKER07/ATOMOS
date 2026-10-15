@@ -159,6 +159,11 @@ func (s *Service) flagPaymentAfterCancel(ctx context.Context, orderRecord Order,
 		return nil
 	}
 	previousStatus := orderRecord.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusReconciliationRequired), TransitionOpts{
+		Reason: "payment_received_after_cancel:" + strings.TrimSpace(gateway),
+	}); err != nil {
+		return err
+	}
 	orderRecord.Status = StatusReconciliationRequired
 	orderRecord.UpdatedAt = s.now()
 

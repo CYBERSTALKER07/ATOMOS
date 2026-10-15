@@ -120,6 +120,13 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 	if current.Source != OrderSourceAIPreorder || current.ConfirmationStatus != ConfirmationStatusPending {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
+	previousStatus := current.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusCancelled), TransitionOpts{
+		Actor:  strings.TrimSpace(retailerID),
+		Reason: strings.TrimSpace(req.Reason),
+	}); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
 	current.ConfirmationStatus = ConfirmationStatusRejected
 	current.Status = StatusCancelled
 	decisionAt := s.now()
@@ -133,7 +140,7 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
-			PreviousStatus:        string(StatusPending),
+			PreviousStatus:        string(previousStatus),
 			Status:                string(current.Status),
 			Reason:                strings.TrimSpace(req.Reason),
 			ActorRole:             string(auth.RoleRetailer),

@@ -101,14 +101,34 @@ func TestOfflineReconciliation_PhysicalCustodySupremacy(t *testing.T) {
 	if !res.Disputed {
 		t.Error("expected Disputed to be true")
 	}
-	if res.FinalStatus != StatusDeliveredOnCredit {
-		t.Errorf("expected DELIVERED_ON_CREDIT, got %s", res.FinalStatus)
+	if res.FinalStatus != StatusReconciliationRequired {
+		t.Errorf("expected RECONCILIATION_REQUIRED, got %s", res.FinalStatus)
 	}
-	if repo.captured.Status != StatusDeliveredOnCredit {
-		t.Errorf("expected repo captured status DELIVERED_ON_CREDIT, got %s", repo.captured.Status)
+	if repo.captured.Status != StatusReconciliationRequired {
+		t.Errorf("expected repo captured status RECONCILIATION_REQUIRED, got %s", repo.captured.Status)
 	}
 	if !strings.Contains(repo.captured.WarehouseNotes, "PHYSICAL_CUSTODY_WON") {
 		t.Errorf("expected warehouse notes to document custody resolution, got %s", repo.captured.WarehouseNotes)
+	}
+}
+
+func TestOfflineReconciliation_InTransitPrepaidStopsAtFiscalizing(t *testing.T) {
+	repo := &testRepo{
+		found: true,
+		order: Order{OrderID: "ord-transit", SupplierID: "sup-1", RetailerID: "ret-1", Status: StatusInTransit},
+	}
+	svc := NewService(ServiceConfig{Repo: repo, SupplierID: "sup-1", Currency: "UZS", Log: slog.Default()})
+	res, err := svc.ReconcileOfflineDelivery(context.Background(), OfflineDeliverySyncRequest{
+		OrderID:       "ord-transit",
+		DriverID:      "drv-1",
+		DeliveredAt:   time.Now().UTC(),
+		PaymentMethod: "PREPAID",
+	})
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if res.FinalStatus != StatusFiscalizing {
+		t.Fatalf("status = %s, want FISCALIZING", res.FinalStatus)
 	}
 }
 
