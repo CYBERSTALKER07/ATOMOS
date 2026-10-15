@@ -243,7 +243,7 @@ func (s *Service) WarehouseEditPreorder(ctx context.Context, ops *auth.Warehouse
 	if actorID == "" {
 		actorID = resolvedOps.WarehouseID
 	}
-	
+
 	updatedOrder, err := s.updatePreorderLines(ctx, current, lineItems, func(txn outbox.TxnBuffer, updated Order) error {
 		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, updated, "WAREHOUSE_ADMIN", actorID)
 	})
@@ -319,7 +319,7 @@ func (s *Service) HandleWarehouseEditPreorder(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -445,7 +445,7 @@ func (s *Service) HandleWarehouseMarkDelayed(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -485,7 +485,7 @@ func (s *Service) HandleWarehouseRejectOrder(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
@@ -528,7 +528,7 @@ func (s *Service) HandleWarehousePayloadOverflow(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false

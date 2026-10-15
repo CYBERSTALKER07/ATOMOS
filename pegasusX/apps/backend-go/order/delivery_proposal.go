@@ -199,7 +199,7 @@ func (s *Service) HandleWarehouseProposeDelivery(w http.ResponseWriter, r *http.
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, bodyBytes) {
+	if s.guardIdempotencyStrict(w, r, bodyBytes) {
 		return
 	}
 	idemCommitted := false
