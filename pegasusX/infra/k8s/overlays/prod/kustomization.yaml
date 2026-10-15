@@ -19,26 +19,26 @@ resources:
   - ../../osrm/service.yaml
   - managed-certificate.yaml
 
-# Digest-pinned images from asia-south1 Artifact Registry (pegasus-503013).
+# Digest-pinned images from asia-south1 Artifact Registry (pegasusx-prod-uz).
 # Gate-0: scripts/ci_fail_placeholder_images.sh fails on PLACEHOLDER/:latest/:local.
 images:
   - name: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/backend-go
     digest: sha256:a5b31a6bd963757780aa675e9778989ac75cd25329b785f4e202cd82c5e4a181
   - name: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/ai-worker
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/ai-worker
     digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
   # CronJobs in base still reference legacy us-central1 :latest — remap to same digests.
   - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/backend-go
     digest: sha256:a5b31a6bd963757780aa675e9778989ac75cd25329b785f4e202cd82c5e4a181
   - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/ai-worker
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/ai-worker
     digest: sha256:9f05b7d8f2d2e4e50b59d84750f1025a94ecc93aa3ba005203dee06df344cb30
   # Real optimizer-core image path (never remap to backend-go — that crash-loops Python pods).
   # Keep replicas 0 until this AR image is published; then bump replicas ≥ 1.
   - name: pegasusx-optimizer-core
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/optimizer-core
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-ssmr-images/optimizer-core
     newTag: ssmr
 
 # Autonomy soak path (shadow + forecast accuracy). Place stays off until flip evidence.
@@ -49,7 +49,7 @@ configMapGenerator:
       # G1.B tax default: MY_SOLIQ (creds/EDS via ExternalSecret — boot fails closed if missing).
       - FISCAL_PROVIDER=MY_SOLIQ
       # G1.D: push must be live in prod (set FCM_ALLOW_NOOP only for emergency degraded).
-      # FIREBASE_PROJECT_ID is the ConfigMap value (pegasus-503013), matching client plists.
+      # FIREBASE_PROJECT_ID is the ConfigMap value (pegasusx-prod-uz), matching client plists.
       # ExternalSecret does not supply FIREBASE_PROJECT_ID.
       - FORECAST_ACCURACY_ENABLED=true
       - FORECAST_ALGO_ENABLED=true
@@ -64,9 +64,9 @@ configMapGenerator:
 #   1. terraform apply -var="enable_managed_kafka=true" -var="environment=prod"
 #   2. Grant the prod backend GSA roles/managedkafka.client on the cluster.
 #   3. Merge into configMapGenerator above:
-#        KAFKA_BROKERS=bootstrap.CLUSTER_ID.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
+#        KAFKA_BROKERS=bootstrap.CLUSTER_ID.asia-south1.managedkafka.pegasusx-prod-uz.cloud.goog:9092
 #        KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
-#        KAFKA_SASL_USERNAME=prod-backend@pegasus-503013.iam.gserviceaccount.com
+#        KAFKA_SASL_USERNAME=prod-backend@pegasusx-prod-uz.iam.gserviceaccount.com
 #        KAFKA_TOPIC_MAIN_DLQ=prod.events.orders-dlq
 #        KAFKA_TOPIC_DUAL_WRITE=false
 #        KAFKA_TOPIC_CONSUME_DOMAIN=false

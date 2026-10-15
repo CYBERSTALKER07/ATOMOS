@@ -195,6 +195,9 @@ func RegisterRoutes(r chi.Router, h *Handlers, stepUp ...func(http.Handler) http
 		pr.Get("/ops/outbox/summary", h.HandleOutboxSummary)
 		pr.Get("/ops/outbox/events", h.HandleOutboxEvents)
 		pr.Get("/ops/outbox/dead-letters", h.HandleOutboxDeadLetters)
+		pr.Post("/ops/outbox/dead-letters/{eventId}/replay", h.HandleReplayDeadLetter)
+		pr.Get("/ops/disputes", h.HandleListDisputes)
+		pr.Post("/ops/disputes/{orderId}/resolve", h.HandleResolveDispute)
 		pr.Get("/ops/runtime", h.HandleRuntime)
 	})
 }

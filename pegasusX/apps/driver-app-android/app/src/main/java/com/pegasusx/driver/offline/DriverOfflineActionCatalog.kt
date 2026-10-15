@@ -17,6 +17,7 @@ object DriverOfflineActionCatalog : OfflineEndpointCatalog {
     const val ENDPOINT_SHOP_CLOSED = "v1/delivery/shop-closed"
     const val ENDPOINT_PARTIAL = "v1/delivery/partial-offload"
     const val ENDPOINT_DELIVER = "v1/order/deliver"
+    const val ENDPOINT_SUBMIT_OFFLINE_POD = "v1/delivery/submit-offline-pod"
     const val ENDPOINT_COLLECT_CASH = "v1/order/collect-cash"
     const val ENDPOINT_CREDIT = "v1/delivery/credit-delivery"
     const val ENDPOINT_ARRIVE = "v1/delivery/arrive"
@@ -34,7 +35,7 @@ object DriverOfflineActionCatalog : OfflineEndpointCatalog {
 
     override fun priorityFor(endpoint: String): Int = when (normalize(endpoint)) {
         ENDPOINT_PROXIMITY -> 10
-        ENDPOINT_SHOP_CLOSED, ENDPOINT_PARTIAL, ENDPOINT_DELIVER -> 20
+        ENDPOINT_SHOP_CLOSED, ENDPOINT_PARTIAL, ENDPOINT_DELIVER, ENDPOINT_SUBMIT_OFFLINE_POD -> 20
         ENDPOINT_COLLECT_CASH, ENDPOINT_CREDIT -> 30
         else -> 40
     }
@@ -46,6 +47,7 @@ object DriverOfflineActionCatalog : OfflineEndpointCatalog {
             ENDPOINT_SHOP_CLOSED,
             ENDPOINT_PARTIAL,
             ENDPOINT_DELIVER,
+            ENDPOINT_SUBMIT_OFFLINE_POD,
             ENDPOINT_COLLECT_CASH,
             ENDPOINT_CREDIT,
             ENDPOINT_ARRIVE,

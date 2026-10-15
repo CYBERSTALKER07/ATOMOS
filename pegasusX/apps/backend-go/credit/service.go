@@ -6,6 +6,7 @@ import (
 
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -83,6 +84,24 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		return result, nil
 	case StatusInactive, StatusClosed:
 		result.Reason = "credit_not_enabled"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if profile.RiskTier == RiskTierBlock {
+		result.Reason = "risk_tier_blocked"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if profile.DelinquencyCount >= MaxDelinquencyTolerance() {
+		result.Reason = "delinquent_account_hold"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if ScoreAutoHoldEnabled() && profile.RiskScore > 0 && profile.RiskScore <= ScoreAutoHoldMax() {
+		result.Reason = "risk_score_critical"
 		result.Shortfall = amountMinor
 		return result, nil
 	}
@@ -188,8 +207,29 @@ func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string)
 	return s.repo.GetProfile(ctx, retailerID, supplierID)
 }
 
+const defaultMaxDelinquencyTolerance = int64(2)
+
+// MaxDelinquencyTolerance returns the delinquency count threshold that triggers auto-freeze and blocks credit.
+func MaxDelinquencyTolerance() int64 {
+	raw := strings.TrimSpace(os.Getenv("CREDIT_MAX_DELINQUENCY_TOLERANCE"))
+	if raw == "" {
+		return defaultMaxDelinquencyTolerance
+	}
+	var n int64
+	for _, c := range raw {
+		if c < '0' || c > '9' {
+			return defaultMaxDelinquencyTolerance
+		}
+		n = n*10 + int64(c-'0')
+	}
+	if n <= 0 {
+		return defaultMaxDelinquencyTolerance
+	}
+	return n
+}
+
 // BumpDelinquency increments DelinquencyCount by 1 for collections (first OVERDUE).
-// Idempotent only at the call-site (dunning worker bumps once per step transition).
+// When delinquency reaches or exceeds tolerance, it automatically sets the profile to FROZEN.
 func (s *Service) BumpDelinquency(ctx context.Context, retailerID, supplierID string) error {
 	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
 	if err != nil {
@@ -200,7 +240,44 @@ func (s *Service) BumpDelinquency(ctx context.Context, retailerID, supplierID st
 	}
 	p.DelinquencyCount++
 	p.LastEvaluatedAt = s.now()
+	if p.DelinquencyCount >= MaxDelinquencyTolerance() && p.Status == StatusActive {
+		p.Status = StatusFrozen
+	}
 	return s.UpsertProfile(ctx, p, "system:dunning", "delinquency_bump")
+}
+
+// FreezeProfile transitions a profile to FROZEN with reason.
+func (s *Service) FreezeProfile(ctx context.Context, retailerID, supplierID, reason string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrProfileNotFound
+	}
+	if p.Status == StatusFrozen {
+		return nil
+	}
+	p.Status = StatusFrozen
+	p.LastEvaluatedAt = s.now()
+	return s.UpsertProfile(ctx, p, "system:credit_freeze", reason)
+}
+
+// UnfreezeProfile transitions a profile back to ACTIVE from FROZEN.
+func (s *Service) UnfreezeProfile(ctx context.Context, retailerID, supplierID, reason string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrProfileNotFound
+	}
+	if p.Status != StatusFrozen {
+		return nil
+	}
+	p.Status = StatusActive
+	p.LastEvaluatedAt = s.now()
+	return s.UpsertProfile(ctx, p, "system:credit_unfreeze", reason)
 }
 
 // UpsertProfile creates or updates a credit profile.

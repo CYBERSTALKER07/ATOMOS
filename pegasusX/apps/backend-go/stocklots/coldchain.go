@@ -223,6 +223,29 @@ func hydrateBandFromProducts(ctx context.Context, txn *spanner.ReadWriteTransact
 	return minC, maxC, true, nil
 }
 
+// LoadManifestDetails retrieves the supplier, warehouse, driver, and truck ID for a manifest.
+func LoadManifestDetails(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) (supplierID, warehouseID, driverID, truckID string, err error) {
+	manifestID = strings.TrimSpace(manifestID)
+	if txn == nil || manifestID == "" {
+		return "", "", "", "", fmt.Errorf("invalid manifest query")
+	}
+	row, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{manifestID},
+		[]string{"SupplierId", "WarehouseId", "DriverId", "TruckId"})
+	if err != nil {
+		return "", "", "", "", err
+	}
+	var sup, drv, trk string
+	var wh spanner.NullString
+	if err := row.Columns(&sup, &wh, &drv, &trk); err != nil {
+		return "", "", "", "", err
+	}
+	whID := ""
+	if wh.Valid {
+		whID = wh.StringVal
+	}
+	return strings.TrimSpace(sup), strings.TrimSpace(whID), strings.TrimSpace(drv), strings.TrimSpace(trk), nil
+}
+
 // (quarantineManifestLotsInTxn removed to fix TRK6-001)
 
 // ListTemperatureReadings lists recent readings for a manifest.

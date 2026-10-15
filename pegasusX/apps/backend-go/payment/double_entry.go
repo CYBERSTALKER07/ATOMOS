@@ -19,19 +19,26 @@ const (
 // Standard system accounts
 const (
 	// Assets
-	AccountAccountsReceivable     = "AR:RETAILER"       // Retailer outstanding invoices
-	AccountCashInTransit          = "CASH:DRIVER"       // Driver collected cash on delivery
-	AccountCardPSPTransit         = "PSP:GATEWAY"       // In-flight funds with Payme/Click/Adyen
-	AccountBankOperating          = "BANK:OPERATING"    // Supplier bank account
+	AccountAccountsReceivable     = "AR:RETAILER"        // Retailer outstanding invoices
+	AccountCashInTransit          = "CASH:DRIVER"        // Driver collected cash on delivery
+	AccountDriverReceivableVariance = "AR:DRIVER:VARIANCE" // Driver owes for cash shortage
+	AccountCashOffice             = "CASH:OFFICE"        // Physical cash vault in finance office
+	AccountCardPSPTransit         = "PSP:GATEWAY"        // In-flight funds with Payme/Click/Adyen
+	AccountBankOperating          = "BANK:OPERATING"     // Supplier bank account
 
 	// Liabilities
-	AccountSupplierPayable        = "AP:SUPPLIER"       // Net due to supplier
-	AccountPlatformEscrow         = "ESCROW:ORDER"      // Buyer funds held before fulfillment
-	AccountRetailerCredit         = "WALLET:RETAILER"   // Customer deposit / credit wallet
+	AccountSupplierPayable        = "AP:SUPPLIER"        // Net due to supplier
+	AccountPlatformEscrow         = "ESCROW:ORDER"       // Buyer funds held before fulfillment
+	AccountRetailerCredit         = "WALLET:RETAILER"    // Customer deposit / credit wallet
+	AccountDriverPayableVariance  = "AP:DRIVER:VARIANCE" // Surplus cash held pending investigation
 
 	// Equity / Revenue / Expense
-	AccountPlatformFeeRevenue     = "REV:PLATFORM:FEE"  // Pegasus platform marketplace cut
-	AccountDiscountsAndAllowances = "EXP:PROMO:DISCOUNT"// Promo code / marketing subsidy
+	AccountPlatformFeeRevenue     = "REV:PLATFORM:FEE"   // Pegasus platform marketplace cut
+	AccountDiscountsAndAllowances = "EXP:PROMO:DISCOUNT" // Promo code / marketing subsidy
+	AccountCashWriteOffExpense    = "EXP:CASH:WRITEOFF"  // Uncollectible cash variance written off
+	AccountCashOverShortRevenue   = "REV:CASH:OVERAGE"   // Unclaimed surplus recognized as revenue
+	AccountClaimsSettlementExpense = "EXP:CLAIMS:SETTLEMENT" // Claims dispute expense
+	AccountCreditNoteAdjustment   = "ADJ:CREDITNOTE"     // Credit note adjustment expense
 )
 
 // PostingDirection designates Debit or Credit in double-entry bookkeeping.
@@ -260,6 +267,264 @@ func BuildSettlementJournalEntry(
 	return je, nil
 }
 
+// BuildCashVarianceJournalEntry creates and validates a balanced JournalEntry for driver shift cash reconciliation discrepancy.
+// - Shortfall (declared < expected): Driver owes the difference.
+//   Debit: AR:DRIVER:VARIANCE (Party: DriverID)
+//   Credit: CASH:DRIVER (Party: DriverID)
+// - Overage (declared > expected): Excess physical cash handed over.
+//   Debit: CASH:DRIVER (Party: DriverID)
+//   Credit: AP:DRIVER:VARIANCE (Party: DriverID)
+func BuildCashVarianceJournalEntry(
+	reconciliationID, supplierID, driverID, routeID, currency string,
+	expectedMinor, declaredMinor int64,
+	occurredAt time.Time,
+	memo string,
+) (*JournalEntry, error) {
+	diff := declaredMinor - expectedMinor
+	if diff == 0 {
+		return nil, fmt.Errorf("ledger: no variance for balanced cash reconciliation %s", reconciliationID)
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	je := &JournalEntry{
+		EntryID:    fmt.Sprintf("jentry_cashrecon_%s", reconciliationID),
+		SupplierID: supplierID,
+		Currency:   strings.ToUpper(currency),
+		Memo:       memo,
+		OccurredAt: occurredAt,
+		Postings:   make([]Posting, 0, 2),
+	}
+
+	if diff < 0 {
+		shortfall := -diff
+		// Driver owes the difference: Debit Receivable, Credit Cash-in-Transit
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountDriverReceivableVariance + ":" + driverID,
+				AccountType: AccountClassAsset,
+				Direction:   PostingDebit,
+				AmountMinor: shortfall,
+				Currency:    je.Currency,
+				PartyID:     driverID,
+				Description: fmt.Sprintf("Cash shortfall on shift recon %s", reconciliationID),
+			},
+			Posting{
+				AccountCode: AccountCashInTransit + ":" + driverID,
+				AccountType: AccountClassAsset,
+				Direction:   PostingCredit,
+				AmountMinor: shortfall,
+				Currency:    je.Currency,
+				PartyID:     driverID,
+				Description: fmt.Sprintf("Reduction of cash in transit float for shift recon %s", reconciliationID),
+			},
+		)
+	} else {
+		overage := diff
+		// Excess cash collected: Debit Cash-in-Transit, Credit Suspense Liability
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountCashInTransit + ":" + driverID,
+				AccountType: AccountClassAsset,
+				Direction:   PostingDebit,
+				AmountMinor: overage,
+				Currency:    je.Currency,
+				PartyID:     driverID,
+				Description: fmt.Sprintf("Surplus cash received on shift recon %s", reconciliationID),
+			},
+			Posting{
+				AccountCode: AccountDriverPayableVariance + ":" + driverID,
+				AccountType: AccountClassLiability,
+				Direction:   PostingCredit,
+				AmountMinor: overage,
+				Currency:    je.Currency,
+				PartyID:     driverID,
+				Description: fmt.Sprintf("Driver cash overage liability for shift recon %s", reconciliationID),
+			},
+		)
+	}
+
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("cash variance ledger validation failed: %w", err)
+	}
+	return je, nil
+}
+
+// BuildCashResolutionJournalEntry creates and validates a balanced JournalEntry when finance accepts or writes off a discrepancy.
+func BuildCashResolutionJournalEntry(
+	reconciliationID, supplierID, driverID, action, currency string,
+	differenceMinor int64,
+	occurredAt time.Time,
+	memo string,
+) (*JournalEntry, error) {
+	if differenceMinor == 0 {
+		return nil, fmt.Errorf("ledger: no discrepancy to resolve for reconciliation %s", reconciliationID)
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	action = strings.ToUpper(strings.TrimSpace(action))
+	je := &JournalEntry{
+		EntryID:    fmt.Sprintf("jentry_cashres_%s_%s", strings.ToLower(action), reconciliationID),
+		SupplierID: supplierID,
+		Currency:   strings.ToUpper(currency),
+		Memo:       memo,
+		OccurredAt: occurredAt,
+		Postings:   make([]Posting, 0, 2),
+	}
+
+	if differenceMinor < 0 {
+		shortfall := -differenceMinor
+		if action == "ACCEPT" {
+			// Driver repaid cash into office vault
+			je.Postings = append(je.Postings,
+				Posting{
+					AccountCode: AccountCashOffice,
+					AccountType: AccountClassAsset,
+					Direction:   PostingDebit,
+					AmountMinor: shortfall,
+					Currency:    je.Currency,
+					PartyID:     supplierID,
+					Description: fmt.Sprintf("Cash repaid to office vault for recon %s", reconciliationID),
+				},
+				Posting{
+					AccountCode: AccountDriverReceivableVariance + ":" + driverID,
+					AccountType: AccountClassAsset,
+					Direction:   PostingCredit,
+					AmountMinor: shortfall,
+					Currency:    je.Currency,
+					PartyID:     driverID,
+					Description: fmt.Sprintf("Clear driver shortfall receivable for recon %s", reconciliationID),
+				},
+			)
+		} else { // WRITE_OFF
+			// Company writes off the shortage as loss/expense
+			je.Postings = append(je.Postings,
+				Posting{
+					AccountCode: AccountCashWriteOffExpense,
+					AccountType: AccountClassExpense,
+					Direction:   PostingDebit,
+					AmountMinor: shortfall,
+					Currency:    je.Currency,
+					PartyID:     supplierID,
+					Description: fmt.Sprintf("Cash shortage written off as expense for recon %s", reconciliationID),
+				},
+				Posting{
+					AccountCode: AccountDriverReceivableVariance + ":" + driverID,
+					AccountType: AccountClassAsset,
+					Direction:   PostingCredit,
+					AmountMinor: shortfall,
+					Currency:    je.Currency,
+					PartyID:     driverID,
+					Description: fmt.Sprintf("Relieve driver receivable via write-off for recon %s", reconciliationID),
+				},
+			)
+		}
+	} else {
+		overage := differenceMinor
+		// Overage accepted or resolved -> recognized as miscellaneous revenue
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountDriverPayableVariance + ":" + driverID,
+				AccountType: AccountClassLiability,
+				Direction:   PostingDebit,
+				AmountMinor: overage,
+				Currency:    je.Currency,
+				PartyID:     driverID,
+				Description: fmt.Sprintf("Relieve driver cash overage liability for recon %s", reconciliationID),
+			},
+			Posting{
+				AccountCode: AccountCashOverShortRevenue,
+				AccountType: AccountClassRevenue,
+				Direction:   PostingCredit,
+				AmountMinor: overage,
+				Currency:    je.Currency,
+				PartyID:     supplierID,
+				Description: fmt.Sprintf("Recognize cash overage surplus as revenue for recon %s", reconciliationID),
+			},
+		)
+	}
+
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("cash resolution ledger validation failed: %w", err)
+	}
+	return je, nil
+}
+
+// BuildDoorstepCashShortfallJournalEntry creates a balanced JournalEntry when a driver collects less cash than order total at the doorstep.
+func BuildDoorstepCashShortfallJournalEntry(
+	orderID, supplierID, driverID, currency string,
+	expectedMinor, receivedMinor int64,
+	occurredAt time.Time,
+) (*JournalEntry, error) {
+	if expectedMinor <= 0 {
+		return nil, fmt.Errorf("ledger: expected minor must be positive, got %d", expectedMinor)
+	}
+	shortfall := expectedMinor - receivedMinor
+	if shortfall <= 0 {
+		return nil, fmt.Errorf("ledger: no shortfall for doorstep cash collection (expected=%d, received=%d)", expectedMinor, receivedMinor)
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	je := &JournalEntry{
+		EntryID:    fmt.Sprintf("jentry_doorstep_shortfall_%s", orderID),
+		OrderID:    orderID,
+		SupplierID: supplierID,
+		Currency:   strings.ToUpper(currency),
+		Memo:       fmt.Sprintf("Doorstep cash shortfall for order %s", orderID),
+		OccurredAt: occurredAt,
+		Postings:   make([]Posting, 0, 3),
+	}
+
+	if receivedMinor > 0 {
+		je.Postings = append(je.Postings, Posting{
+			AccountCode: AccountCashInTransit + ":" + driverID,
+			AccountType: AccountClassAsset,
+			Direction:   PostingDebit,
+			AmountMinor: receivedMinor,
+			Currency:    je.Currency,
+			PartyID:     driverID,
+			Description: fmt.Sprintf("Physical cash collected at doorstep for order %s", orderID),
+		})
+	}
+	je.Postings = append(je.Postings, Posting{
+		AccountCode: AccountDriverReceivableVariance + ":" + driverID,
+		AccountType: AccountClassAsset,
+		Direction:   PostingDebit,
+		AmountMinor: shortfall,
+		Currency:    je.Currency,
+		PartyID:     driverID,
+		Description: fmt.Sprintf("Driver shortfall liability recorded at doorstep for order %s", orderID),
+	})
+	je.Postings = append(je.Postings, Posting{
+		AccountCode: AccountPlatformEscrow + ":" + orderID,
+		AccountType: AccountClassLiability,
+		Direction:   PostingCredit,
+		AmountMinor: expectedMinor,
+		Currency:    je.Currency,
+		PartyID:     supplierID,
+		Description: fmt.Sprintf("Order fulfillment escrow obligation for %s", orderID),
+	})
+
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("doorstep shortfall ledger validation failed: %w", err)
+	}
+	return je, nil
+}
+
 // ToLedgerEntryRecords transforms a balanced JournalEntry into durable LedgerEntryRecords for persistence.
 func (je *JournalEntry) ToLedgerEntryRecords() []LedgerEntryRecord {
 	records := make([]LedgerEntryRecord, 0, len(je.Postings))
@@ -295,4 +560,179 @@ func (je *JournalEntry) ToLedgerEntryRecords() []LedgerEntryRecord {
 		})
 	}
 	return records
+}
+
+// BuildClaimDisputeJournalEntry creates and validates a balanced JournalEntry when a claim dispute is settled/approved.
+func BuildClaimDisputeJournalEntry(
+	claimID, orderID, supplierID, retailerID, currency, settlementMode string,
+	amountMinor int64,
+	occurredAt time.Time,
+	memo string,
+) (*JournalEntry, error) {
+	if amountMinor <= 0 {
+		return nil, fmt.Errorf("ledger: claim settlement amount must be positive, got %d", amountMinor)
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		supplierID = "_platform"
+	}
+	retailerID = strings.TrimSpace(retailerID)
+	if retailerID == "" {
+		retailerID = "_retailer"
+	}
+
+	je := &JournalEntry{
+		EntryID:    fmt.Sprintf("jentry_claim_%s", claimID),
+		OrderID:    orderID,
+		SupplierID: supplierID,
+		RetailerID: retailerID,
+		Currency:   strings.ToUpper(currency),
+		Memo:       memo,
+		OccurredAt: occurredAt,
+		Postings:   make([]Posting, 0, 2),
+	}
+
+	mode := strings.ToUpper(strings.TrimSpace(settlementMode))
+	switch {
+	case strings.Contains(mode, "STORE_CREDIT"):
+		// Retailer receives store credit / wallet balance
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountClaimsSettlementExpense,
+				AccountType: AccountClassExpense,
+				Direction:   PostingDebit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     supplierID,
+				Description: fmt.Sprintf("Claim %s dispute settlement allowance expense", claimID),
+			},
+			Posting{
+				AccountCode: AccountRetailerCredit + ":" + retailerID,
+				AccountType: AccountClassLiability,
+				Direction:   PostingCredit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     retailerID,
+				Description: fmt.Sprintf("Credit balance credited to retailer wallet for claim %s", claimID),
+			},
+		)
+	case strings.Contains(mode, "GATEWAY_REFUND"):
+		// Direct PSP card refund back to retailer's card
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountSupplierPayable + ":" + supplierID,
+				AccountType: AccountClassLiability,
+				Direction:   PostingDebit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     supplierID,
+				Description: fmt.Sprintf("Clawback of supplier payable for refund on claim %s", claimID),
+			},
+			Posting{
+				AccountCode: AccountCardPSPTransit,
+				AccountType: AccountClassAsset,
+				Direction:   PostingCredit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     retailerID,
+				Description: fmt.Sprintf("PSP gateway partial refund for claim %s", claimID),
+			},
+		)
+	default:
+		// Ledger only / supplier chargeback: Supplier payable reduced, AR receivable reduced
+		je.Postings = append(je.Postings,
+			Posting{
+				AccountCode: AccountSupplierPayable + ":" + supplierID,
+				AccountType: AccountClassLiability,
+				Direction:   PostingDebit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     supplierID,
+				Description: fmt.Sprintf("Clawback of supplier payable for claim %s", claimID),
+			},
+			Posting{
+				AccountCode: AccountAccountsReceivable + ":" + retailerID,
+				AccountType: AccountClassAsset,
+				Direction:   PostingCredit,
+				AmountMinor: amountMinor,
+				Currency:    je.Currency,
+				PartyID:     retailerID,
+				Description: fmt.Sprintf("Accounts receivable relief for claim %s", claimID),
+			},
+		)
+	}
+
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("claim dispute ledger validation failed: %w", err)
+	}
+	return je, nil
+}
+
+// BuildCreditNoteJournalEntry creates and validates a balanced JournalEntry when a credit note is issued.
+func BuildCreditNoteJournalEntry(
+	creditNoteID, orderID, supplierID, retailerID, currency string,
+	amountMinor int64,
+	occurredAt time.Time,
+	memo string,
+) (*JournalEntry, error) {
+	if amountMinor <= 0 {
+		return nil, fmt.Errorf("ledger: credit note amount must be positive, got %d", amountMinor)
+	}
+	if currency == "" {
+		currency = "UZS"
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		supplierID = "_platform"
+	}
+	retailerID = strings.TrimSpace(retailerID)
+	if retailerID == "" {
+		retailerID = "_retailer"
+	}
+
+	je := &JournalEntry{
+		EntryID:    fmt.Sprintf("jentry_cn_%s", creditNoteID),
+		OrderID:    orderID,
+		SupplierID: supplierID,
+		RetailerID: retailerID,
+		Currency:   strings.ToUpper(currency),
+		Memo:       memo,
+		OccurredAt: occurredAt,
+		Postings:   make([]Posting, 0, 2),
+	}
+
+	je.Postings = append(je.Postings,
+		Posting{
+			AccountCode: AccountCreditNoteAdjustment + ":" + supplierID,
+			AccountType: AccountClassExpense,
+			Direction:   PostingDebit,
+			AmountMinor: amountMinor,
+			Currency:    je.Currency,
+			PartyID:     supplierID,
+			Description: fmt.Sprintf("Credit note %s adjustment expense", creditNoteID),
+		},
+		Posting{
+			AccountCode: AccountAccountsReceivable + ":" + retailerID,
+			AccountType: AccountClassAsset,
+			Direction:   PostingCredit,
+			AmountMinor: amountMinor,
+			Currency:    je.Currency,
+			PartyID:     retailerID,
+			Description: fmt.Sprintf("Accounts receivable reduction for credit note %s", creditNoteID),
+		},
+	)
+
+	if err := je.Validate(); err != nil {
+		return nil, fmt.Errorf("credit note ledger validation failed: %w", err)
+	}
+	return je, nil
 }

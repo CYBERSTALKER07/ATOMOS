@@ -29,12 +29,35 @@ class ProblemDetailException(val problem: ProblemDetail) :
 
 @Serializable
 enum class OrderState {
-    PENDING, PENDING_REVIEW, SCHEDULED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED,
-    ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION,
+    PENDING, PENDING_REVIEW, SCHEDULED, AUTO_ACCEPTED, BACKORDERED, DELAYED,
+    LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED,
+    SHOP_CLOSED_PENDING, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION,
     FISCALIZING, FISCAL_FAILED,
     CANCEL_REQUESTED, NO_CAPACITY, COMPLETED, CANCELLED,
-    QUARANTINE, DELIVERED_ON_CREDIT
+    QUARANTINE, DELIVERED_ON_CREDIT, RECONCILIATION_REQUIRED
 }
+
+@Serializable
+enum class CustomerStage(val displayName: String, val progressPercent: Int) {
+    @SerialName("PLACED") PLACED("Order Placed", 20),
+    @SerialName("PROCESSING") PROCESSING("Preparing Order", 50),
+    @SerialName("OUT_FOR_DELIVERY") OUT_FOR_DELIVERY("Out for Delivery", 80),
+    @SerialName("DELIVERED") DELIVERED("Delivered", 100),
+    @SerialName("CANCELLED") CANCELLED("Cancelled", 0),
+    @SerialName("EXCEPTION_ACTION_REQUIRED") EXCEPTION_ACTION_REQUIRED("Action Required", 75);
+}
+
+val OrderState.customerStage: CustomerStage
+    get() = when (this) {
+        OrderState.SCHEDULED, OrderState.AUTO_ACCEPTED, OrderState.BACKORDERED, OrderState.PENDING_REVIEW -> CustomerStage.PLACED
+        OrderState.PENDING, OrderState.DELAYED, OrderState.LOADED, OrderState.DISPATCHED -> CustomerStage.PROCESSING
+        OrderState.IN_TRANSIT, OrderState.ARRIVING, OrderState.ARRIVED,
+        OrderState.AWAITING_PAYMENT, OrderState.PENDING_CASH_COLLECTION -> CustomerStage.OUT_FOR_DELIVERY
+        OrderState.COMPLETED, OrderState.DELIVERED_ON_CREDIT, OrderState.FISCALIZING -> CustomerStage.DELIVERED
+        OrderState.CANCELLED, OrderState.NO_CAPACITY -> CustomerStage.CANCELLED
+        OrderState.SHOP_CLOSED_PENDING, OrderState.ARRIVED_SHOP_CLOSED, OrderState.CANCEL_REQUESTED,
+        OrderState.FISCAL_FAILED, OrderState.RECONCILIATION_REQUIRED, OrderState.QUARANTINE -> CustomerStage.EXCEPTION_ACTION_REQUIRED
+    }
 
 @Serializable
 data class Order(
@@ -657,6 +680,28 @@ data class OfflineDeliveryPayload(
     @SerialName("order_id") val orderId: String,
     @SerialName("scanned_token") val scannedToken: String,
     val signature: String,
+)
+
+@Serializable
+data class OfflinePoDRequest(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("driver_id") val driverId: String,
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("signed_challenge") val signedChallenge: String,
+    @SerialName("signed_response") val signedResponse: String,
+    @SerialName("amount_minor") val amountMinor: Long,
+    @SerialName("offline_timestamp") val offlineTimestamp: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+@Serializable
+data class OfflinePoDResponse(
+    @SerialName("order_id") val orderId: String,
+    val status: String,
+    @SerialName("dispute_status") val disputeStatus: String? = null,
+    @SerialName("proof_id") val proofId: String? = null,
+    val message: String = "",
 )
 
 @Serializable

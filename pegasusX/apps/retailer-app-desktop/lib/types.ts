@@ -28,6 +28,8 @@ export interface Order {
   auto_confirm_at: string | null;
   deliver_before: string | null;
   delivery_token: string | null;
+  customer_stage?: string | null;
+  customer_progress_percent?: number | null;
   version: number;
   created_at: string;
   items?: LineItem[];

@@ -50,7 +50,7 @@ type StockLotLocation struct {
 	Location Location `json:"location"`
 }
 
-// WavePickRequest defines the input to a FEFO wave pick allocation.
+// WavePickRequest defines the input to a  wave pick allocation.
 type WavePickRequest struct {
 	WaveID       string         `json:"wave_id"`
 	WarehouseID  string         `json:"warehouse_id"`
@@ -103,3 +103,32 @@ type WaveShortfall struct {
 	Allocated int64  `json:"allocated"`
 	Shortfall int64  `json:"shortfall"`
 }
+
+// Two-Phase Inventory Hold statuses.
+const (
+	HoldStatusHeld      = "HELD"
+	HoldStatusConfirmed = "CONFIRMED"
+	HoldStatusReleased  = "RELEASED"
+	HoldStatusExpired   = "EXPIRED"
+)
+
+// HoldLine represents a product quantity reserved under a soft hold.
+type HoldLine struct {
+	ProductID string `json:"product_id"`
+	Quantity  int64  `json:"quantity"`
+}
+
+// Hold represents a two-phase distributed inventory soft hold.
+type Hold struct {
+	HoldID        string     `json:"hold_id" spanner:"HoldId"`
+	SupplierID    string     `json:"supplier_id" spanner:"SupplierId"`
+	WarehouseID   string     `json:"warehouse_id" spanner:"WarehouseId"`
+	ReferenceType string     `json:"reference_type" spanner:"ReferenceType"`
+	ReferenceID   string     `json:"reference_id" spanner:"ReferenceId"`
+	Status        string     `json:"status" spanner:"Status"`
+	Lines         []HoldLine `json:"lines"`
+	ExpiresAt     time.Time  `json:"expires_at" spanner:"ExpiresAt"`
+	CreatedAt     time.Time  `json:"created_at" spanner:"CreatedAt"`
+	UpdatedAt     time.Time  `json:"updated_at" spanner:"UpdatedAt"`
+}
+

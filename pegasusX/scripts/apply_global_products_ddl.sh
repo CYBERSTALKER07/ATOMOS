@@ -25,7 +25,7 @@ if [[ -n "${SPANNER_EMULATOR_HOST:-}" ]]; then
 		go run ./cmd/apply-migration --ddl "$DDL"
 	)
 else
-	PROJECT="${SPANNER_PROJECT:-pegasus-503013}"
+	PROJECT="${SPANNER_PROJECT:-pegasusx-prod-uz}"
 	INSTANCE="${SPANNER_INSTANCE:-pegasusx-ssmr-spanner}"
 	DATABASE="${SPANNER_DATABASE:-pegasusx-ssmr-db}"
 	echo "==> cloud projects/${PROJECT}/instances/${INSTANCE}/databases/${DATABASE}"

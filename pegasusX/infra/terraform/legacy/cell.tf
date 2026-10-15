@@ -97,8 +97,8 @@ check "europe_west1_vpc_must_be_custom" {
 
 check "non_uz_cell_not_in_live_project" {
   assert {
-    condition     = local.cell_id == "uz" || var.project_id != "pegasus-503013"
-    error_message = "GS-C2: a non-uz cell must not share project pegasus-503013."
+    condition     = local.cell_id == "uz" || var.project_id != "pegasusx-prod-uz"
+    error_message = "GS-C2: a non-uz cell must not share project pegasusx-prod-uz."
   }
 }
 

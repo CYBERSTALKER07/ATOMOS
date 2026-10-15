@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -210,6 +211,9 @@ func (d *NotificationDispatcher) handleTelemetryLocation(ctx context.Context, pa
 	}
 	d.broadcastSupplier(ctx, supplierID, payload)
 	d.broadcastDriver(ctx, driverID, payload)
+	if supplierID != "" && d.deps.TelemetryHub != nil {
+		d.deps.TelemetryHub.Broadcast(ctx, ws.SupplierTelemetryRoom(supplierID), payload)
+	}
 	return nil
 }
 
@@ -572,5 +576,27 @@ func (d *NotificationDispatcher) handleFinanceGapEvent(ctx context.Context, payl
 	}
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.persistInbox(ctx, e.supplierID(), "ADMIN", payload)
+	return nil
+}
+
+func (d *NotificationDispatcher) handleProductAndCategoryCreated(ctx context.Context, payload []byte, traceID string) error {
+	var e struct {
+		Type       string `json:"type"`
+		SupplierID string `json:"supplier_id"`
+		ProductID  string `json:"product_id"`
+		CategoryID string `json:"category_id"`
+	}
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode product/category event: %w", err)
+	}
+	aggregateID := e.ProductID
+	if aggregateID == "" {
+		aggregateID = e.CategoryID
+	}
+	if d.dropFanout(e.Type, traceID, aggregateID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	d.broadcastRetailerPromoSupplier(ctx, e.SupplierID, payload)
 	return nil
 }

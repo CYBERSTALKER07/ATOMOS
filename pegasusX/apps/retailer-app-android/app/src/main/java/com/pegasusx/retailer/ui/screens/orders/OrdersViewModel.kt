@@ -6,6 +6,7 @@ import com.pegasusx.retailer.data.api.PegasusApi
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.api.reconcileRetailerSession
 import com.pegasusx.retailer.data.local.TokenManager
+import com.pegasusx.retailer.data.model.CustomerStage
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.data.model.RetailerAIPrediction
@@ -38,12 +39,14 @@ data class OrdersUiState(
     val commandSupplierId: String? = null,
 ) {
     val activeOrders: List<Order> get() = allOrders.filter {
-        it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
+        it.status.customerStage == CustomerStage.OUT_FOR_DELIVERY ||
+            it.status.customerStage == CustomerStage.EXCEPTION_ACTION_REQUIRED ||
+            it.status in setOf(OrderStatus.LOADED, OrderStatus.DISPATCHED)
     }
     val pendingOrders: List<Order> get() = allOrders.filter {
-        it.status == OrderStatus.PENDING ||
-            it.status == OrderStatus.PENDING_REVIEW ||
-            it.status == OrderStatus.SCHEDULED
+        it.status.customerStage == CustomerStage.PLACED ||
+            it.status == OrderStatus.PENDING ||
+            it.status == OrderStatus.DELAYED
     }
     val aiPendingOrders: List<Order> get() = allOrders.filter { it.needsAiConfirmation }
     val scheduledPreorders: List<Order> get() = allOrders.filter { it.needsPreorderAction }

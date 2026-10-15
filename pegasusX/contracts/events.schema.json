@@ -168,6 +168,38 @@
       "title": "CashVariancePayload",
       "type": "object"
     },
+    "CategoryPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "base_event": {},
+        "category_id": {
+          "type": "string"
+        },
+        "icon_key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parent_category_id": {
+          "type": "string"
+        },
+        "sort_order": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_event",
+        "category_id",
+        "name",
+        "supplier_id"
+      ],
+      "title": "CategoryPayload",
+      "type": "object"
+    },
     "CommandPayload": {
       "additionalProperties": true,
       "properties": {
@@ -1012,6 +1044,12 @@
         "currency": {
           "type": "string"
         },
+        "customer_progress_percent": {
+          "type": "integer"
+        },
+        "customer_stage": {
+          "type": "string"
+        },
         "driver_id": {
           "type": "string"
         },
@@ -1271,9 +1309,21 @@
     "ProductPayload": {
       "additionalProperties": true,
       "properties": {
+        "barcode": {
+          "type": "string"
+        },
         "base_event": {},
+        "category_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
         "handling_class": {
           "type": "string"
+        },
+        "is_active": {
+          "type": "boolean"
         },
         "is_hazardous": {
           "type": "boolean"
@@ -1281,11 +1331,23 @@
         "is_perishable": {
           "type": "boolean"
         },
+        "name": {
+          "type": "string"
+        },
+        "previous_price_minor": {
+          "type": "integer"
+        },
+        "price_minor": {
+          "type": "integer"
+        },
         "product_id": {
           "type": "string"
         },
         "requires_cold_chain": {
           "type": "boolean"
+        },
+        "stock_quantity": {
+          "type": "integer"
         },
         "storage_temp_max_c": {
           "anyOf": [
@@ -1309,15 +1371,17 @@
         },
         "supplier_id": {
           "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
         }
       },
       "required": [
         "base_event",
-        "handling_class",
-        "is_hazardous",
-        "is_perishable",
         "product_id",
-        "requires_cold_chain",
         "supplier_id"
       ],
       "title": "ProductPayload",
@@ -2374,6 +2438,44 @@
         }
       ],
       "title": "CashShortfallEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CategoryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CATEGORY_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CategoryCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CategoryPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CATEGORY_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CategoryUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -4321,6 +4423,44 @@
         {
           "properties": {
             "type": {
+              "const": "PRODUCT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProductCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProductPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRODUCT_DEACTIVATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProductDeactivatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProductPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "PRODUCT_HANDLING_UPDATED"
             }
           },
@@ -4331,6 +4471,44 @@
         }
       ],
       "title": "ProductHandlingUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProductPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRODUCT_PRICE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProductPriceChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ProductPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRODUCT_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ProductUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -5110,6 +5288,25 @@
         }
       ],
       "title": "RouteReorderedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RoutePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ROUTE_REPLANNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RouteReplannedEnvelope"
     },
     {
       "allOf": [
@@ -6100,6 +6297,8 @@
         "CART_SYNC_UPDATED",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
+        "CATEGORY_CREATED",
+        "CATEGORY_UPDATED",
         "CLAIM_FILED",
         "CLAIM_RESOLVED",
         "CLAIM_UNDER_REVIEW",
@@ -6202,7 +6401,11 @@
         "PRE_ORDER_EDITED",
         "PRE_ORDER_NOTIFIED",
         "PRE_ORDER_NUDGE",
+        "PRODUCT_CREATED",
+        "PRODUCT_DEACTIVATED",
         "PRODUCT_HANDLING_UPDATED",
+        "PRODUCT_PRICE_CHANGED",
+        "PRODUCT_UPDATED",
         "PROMOTION_CHANGED",
         "PROXIMITY_UNLOCKED",
         "PULL_MATRIX_COMPLETED",
@@ -6244,6 +6447,7 @@
         "REVERSE_LOGISTICS_REQUIRED",
         "ROUTE_CREATED",
         "ROUTE_REORDERED",
+        "ROUTE_REPLANNED",
         "SERVICE_POLICY_UPDATED",
         "SETTLEMENT_REQUIRED",
         "SHOP_CLOSED",
@@ -6321,6 +6525,8 @@
     "CART_SYNC_UPDATED": "SyncPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",
+    "CATEGORY_CREATED": "CategoryPayload",
+    "CATEGORY_UPDATED": "CategoryPayload",
     "CLAIM_FILED": "LogisticsExceptionPayload",
     "CLAIM_RESOLVED": "LogisticsExceptionPayload",
     "CLAIM_UNDER_REVIEW": "LogisticsExceptionPayload",
@@ -6423,7 +6629,11 @@
     "PRE_ORDER_EDITED": "PreOrderPayload",
     "PRE_ORDER_NOTIFIED": "PreOrderPayload",
     "PRE_ORDER_NUDGE": "PreOrderPayload",
+    "PRODUCT_CREATED": "ProductPayload",
+    "PRODUCT_DEACTIVATED": "ProductPayload",
     "PRODUCT_HANDLING_UPDATED": "ProductPayload",
+    "PRODUCT_PRICE_CHANGED": "ProductPayload",
+    "PRODUCT_UPDATED": "ProductPayload",
     "PROMOTION_CHANGED": "PromotionPayload",
     "PROXIMITY_UNLOCKED": "ShopClosedBypassOffloadPayload",
     "PULL_MATRIX_COMPLETED": "SupplyRequestPayload",
@@ -6465,6 +6675,7 @@
     "REVERSE_LOGISTICS_REQUIRED": "LogisticsExceptionPayload",
     "ROUTE_CREATED": "RoutePayload",
     "ROUTE_REORDERED": "RoutePayload",
+    "ROUTE_REPLANNED": "RoutePayload",
     "SERVICE_POLICY_UPDATED": "OrderPayload",
     "SETTLEMENT_REQUIRED": "FinancePayload",
     "SHOP_CLOSED": "ShopClosedPayload",

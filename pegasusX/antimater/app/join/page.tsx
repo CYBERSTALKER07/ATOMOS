@@ -32,39 +32,48 @@ export default function JoinPage() {
  setFieldErrors(next);
  return Object.keys(next).length === 0;
  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
 
- const handleSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!validate()) return;
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    setErrorMessage('');
 
- setIsSubmitting(true);
- setSubmitStatus('idle');
- setErrorMessage('');
+    try {
+      const response = await fetch('/api/enterprise/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          role: formData.position,
+          company: formData.portfolio,
+          message: formData.message,
+          inquiry_type: 'demo',
+          source_page: '/join',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to submit');
 
- try {
- const response = await fetch('/api/apply', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify(formData),
- });
- const data = await response.json();
- if (!response.ok) throw new Error(data.error || 'Failed to submit');
+      try {
+        const stored = localStorage.getItem('team_applications');
+        const applications = stored ? JSON.parse(stored) : [];
+        applications.unshift(data.data || data.application);
+        localStorage.setItem('team_applications', JSON.stringify(applications));
+      } catch {}
 
- const stored = localStorage.getItem('team_applications');
- const applications = stored ? JSON.parse(stored) : [];
- applications.unshift(data.application);
- localStorage.setItem('team_applications', JSON.stringify(applications));
-
- setSubmitStatus('success');
- setFormData({ name: '', email: '', position: 'Supplier Operations', portfolio: '', message: '' });
- setFieldErrors({});
- } catch (error) {
- setSubmitStatus('error');
- setErrorMessage(error instanceof Error ? error.message : 'Something went wrong');
- } finally {
- setIsSubmitting(false);
- }
- };
+      setSubmitStatus('success');
+      setFormData({ name: '', email: '', position: 'Supplier Operations', portfolio: '', message: '' });
+      setFieldErrors({});
+    } catch (error) {
+      setSubmitStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
  const handleChange = (
  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

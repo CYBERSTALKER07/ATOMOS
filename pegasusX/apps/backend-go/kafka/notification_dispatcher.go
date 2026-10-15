@@ -26,6 +26,8 @@ type DispatcherDeps struct {
 	SupplierHub     *ws.Hub
 	WarehouseHub    *ws.Hub
 	DriverHub       *ws.Hub
+	TelemetryHub    *ws.Hub
+	Replanner       any
 	RetailerHub     *ws.Hub
 	FactoryHub      *ws.Hub
 	PayloadHub      *ws.Hub
@@ -131,7 +133,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleDriverEdgeEvent(ctx, msg.Value, traceID)
 	case events.EventNegotiationProposed, events.EventNegotiationResolved:
 		return d.handleNegotiationEvent(ctx, msg.Value, traceID)
-	case events.EventRouteReordered, events.EventRouteCreated:
+	case events.EventRouteReordered, events.EventRouteCreated, events.EventRouteReplanned:
 		return d.handleRouteEvent(ctx, msg.Value, traceID)
 	case events.EventDispatchRequested, events.EventDispatchPlanned:
 		return d.handleDispatchEvent(ctx, msg.Value, traceID)
@@ -167,6 +169,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleSupplierCreated(ctx, msg.Value, traceID)
 	case events.EventCartSyncUpdated, events.EventInventorySyncComplete:
 		return d.handleSyncEvent(ctx, msg.Value, traceID)
+	case events.EventProductCreated, events.EventCategoryCreated:
+		return d.handleProductAndCategoryCreated(ctx, msg.Value, traceID)
 	case events.EventPromotionChanged:
 		return d.handlePromotionChanged(ctx, msg.Value, traceID)
 	case events.EventRetailerPriceOverride:
@@ -224,7 +228,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 	// B2 M-P0-3: WMS stock mutations fan to warehouse + supplier rooms.
 	case events.EventInventoryQuantityUpdated, events.EventInventoryPolicyUpdated,
 		events.EventWMSPutaway, events.EventWMSPickConfirmed,
-		events.EventWMSCycleApproved, events.EventWMSTemperatureBreach:
+		events.EventWMSCycleApproved:
 		return d.handleWMSStockEvent(ctx, msg.Value, traceID)
 	// B3 M-P0-6: multi-supplier parent rollup → retailer room.
 	case events.EventParentOrderCreated, events.EventParentOrderUpdated:
@@ -765,6 +769,11 @@ func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload [
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	d.broadcastDriver(ctx, e.DriverID, payload)
 	d.broadcastWarehouse(ctx, e.WarehouseID, payload)
+	
+	if e.Type == events.EventRouteReplanned && e.DriverID != "" && d.deps.DriverHub != nil {
+		d.deps.DriverHub.Broadcast(ctx, ws.DriverCommandRoom(e.DriverID), payload)
+	}
+
 	return nil
 }
 

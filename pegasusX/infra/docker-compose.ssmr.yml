@@ -308,7 +308,7 @@ services:
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
       DISPATCH_AI_MIN_STOPS: "1"
-      GCS_BUCKET_NAME: pegasus-503013-ssmr-assets
+      GCS_BUCKET_NAME: pegasusx-prod-uz-ssmr-assets
       IMPORT_LOCAL_FILE_ROOT: /data/import-uploads
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcs-signer-key.json
       INTERNAL_API_KEY: dev-internal-key

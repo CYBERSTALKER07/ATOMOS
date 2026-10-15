@@ -58,7 +58,7 @@ func TestCellIsolation_KafkaTopicsDisjoint(t *testing.T) {
 			t.Fatalf("topic %q overlaps UZ and EU", tpc)
 		}
 	}
-	uzBoot := "bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092"
+	uzBoot := "bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasusx-prod-uz.cloud.goog:9092"
 	euBoot := "bootstrap.pegasusx-eu-kafka.europe-west1.managedkafka.pegasusx-cell-eu.cloud.goog:9092"
 	if uzBoot == euBoot {
 		t.Fatal("UZ and EU Kafka bootstrap must differ")

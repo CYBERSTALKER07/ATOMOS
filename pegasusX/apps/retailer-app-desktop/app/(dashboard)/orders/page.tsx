@@ -50,6 +50,7 @@ import {
   retailerCancelKey,
   retailerRequestCancelKey,
 } from "@pegasusx/api-core";
+import { toOrderCustomerStage } from "@pegasusx/types";
 import { useOptionalWebSocket } from "../../../lib/ws";
 import { getRetailerProfile } from "@/lib/retailer-profile";
 import type { Order, TrackingResponse } from "../../../lib/types";
@@ -70,6 +71,7 @@ const chipCfg: Record<
   ARRIVING: { color: "success", label: "Arriving" },
   ARRIVED: { color: "success", label: "Driver Arrived" },
   ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
+  SHOP_CLOSED_PENDING: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   CANCELLED: { color: "danger", label: "Cancelled" },
@@ -77,9 +79,12 @@ const chipCfg: Record<
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  BACKORDERED: { color: "default", label: "Backordered" },
+  DELAYED: { color: "default", label: "Delayed" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
-	DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
-	SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
+  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  RECONCILIATION_REQUIRED: { color: "warning", label: "Reconciliation Required" },
+  SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 type LoadIssue = "restricted" | "offline" | "error";
@@ -393,12 +398,17 @@ function OrdersPageContent() {
   const supplierFilter = (searchParams.get("supplier") || "").trim();
   const filtered = useMemo(() => {
     let rows = list;
-    if (activeTab === "ACTIVE")
-      rows = rows.filter(
-        (o) => o.state !== "COMPLETED" && o.state !== "CANCELLED",
-      );
-    else if (activeTab === "COMPLETED")
-      rows = rows.filter((o) => o.state === "COMPLETED");
+    if (activeTab === "ACTIVE") {
+      rows = rows.filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage !== "DELIVERED" && stage !== "CANCELLED";
+      });
+    } else if (activeTab === "COMPLETED") {
+      rows = rows.filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage === "DELIVERED";
+      });
+    }
     if (statusFilter) {
       rows = rows.filter((o) => String(o.state || "").toUpperCase() === statusFilter);
     }
@@ -409,15 +419,23 @@ function OrdersPageContent() {
   }, [activeTab, list, statusFilter, supplierFilter]);
 
   const kpi = useMemo(() => {
-    const active = list.filter(
-      (o) => o.state === "IN_TRANSIT" || o.state === "DISPATCHED",
-    ).length;
-    const pending = list.filter(
-      (o) => o.state === "PENDING" || o.state === "SCHEDULED",
-    ).length;
-    const completed = list.filter((o) => o.state === "COMPLETED").length;
+    const active = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "OUT_FOR_DELIVERY" || stage === "EXCEPTION_ACTION_REQUIRED";
+    }).length;
+    const pending = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "PLACED" || stage === "PROCESSING";
+    }).length;
+    const completed = list.filter((o) => {
+      const stage = o.customer_stage || toOrderCustomerStage(o.state);
+      return stage === "DELIVERED";
+    }).length;
     const totalRev = list
-      .filter((o) => o.state === "COMPLETED")
+      .filter((o) => {
+        const stage = o.customer_stage || toOrderCustomerStage(o.state);
+        return stage === "DELIVERED";
+      })
       .reduce((s, o) => s + o.amount, 0);
     return { active, pending, completed, totalRev, total: list.length };
   }, [list]);

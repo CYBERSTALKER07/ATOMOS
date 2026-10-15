@@ -317,6 +317,7 @@ final class DriverSocketState {
 
     private struct DriverEnvelope: Decodable {
         let type: String
+        let event_id: String?
         let order_id: String?
         let response: String?
         let bypass_token: String?
@@ -347,6 +348,7 @@ final class DriverSocketState {
     var connectionState: SocketConnectionState = .disconnected
 
     private let wsSchemaVersion = 2
+    private var lastEventID: String?
     private var webSocketTask: URLSessionWebSocketTask?
     private var reconnectWorkItem: DispatchWorkItem?
     private var shouldReconnect = false
@@ -364,6 +366,9 @@ final class DriverSocketState {
 
         stopMonitoring()
         shouldReconnect = true
+        if currentBaseURL != baseURL || currentToken != token {
+            lastEventID = nil
+        }
         currentBaseURL = baseURL
         currentToken = token
         reconnectAttempt = 0
@@ -414,12 +419,22 @@ final class DriverSocketState {
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
 
-        guard let url = URL(string: "\(wsBase)/v1/ws?sv=\(wsSchemaVersion)") else {
+        var components = URLComponents(string: "\(wsBase)/v1/ws")
+        var queryItems = [URLQueryItem(name: "sv", value: "\(wsSchemaVersion)")]
+        if let lastEventID, !lastEventID.isEmpty {
+            queryItems.append(URLQueryItem(name: "last_event_id", value: lastEventID))
+        }
+        components?.queryItems = queryItems
+
+        guard let url = components?.url else {
             return
         }
 
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let lastEventID, !lastEventID.isEmpty {
+            request.setValue(lastEventID, forHTTPHeaderField: "Last-Event-ID")
+        }
 
         let task = URLSession.shared.webSocketTask(with: request)
         webSocketTask = task
@@ -467,6 +482,10 @@ final class DriverSocketState {
 
         guard let envelope = try? JSONDecoder().decode(DriverEnvelope.self, from: data) else {
             return
+        }
+
+        if let eventId = envelope.event_id, !eventId.isEmpty {
+            lastEventID = eventId
         }
 
         if envelope.type == "SYSTEM_APP_OUTDATED" {

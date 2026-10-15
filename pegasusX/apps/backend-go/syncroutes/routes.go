@@ -2,11 +2,15 @@ package syncroutes
 
 import (
 	"encoding/json"
+	"context"
 	"net/http"
+
+	"cloud.google.com/go/spanner"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseops"
 )
 
 // MaxSyncBatchSize caps the number of commands in a single batch to prevent
@@ -45,6 +49,46 @@ type Deps struct {
 // RegisterRoutes mounts the offline sync endpoints.
 func RegisterRoutes(r chi.Router, deps Deps) {
 	r.Post("/v1/sync/commands", handleSyncCommands(deps))
+	r.Post("/v1/sync/crdt", handleSyncCRDT(deps))
+}
+
+func handleSyncCRDT(deps Deps) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := auth.FromContext(r.Context())
+		if !ok || claims.Role != auth.RoleWarehouse {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+
+		var req struct {
+			Updates []warehouseops.LWWInventorySet `json:"updates"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"invalid_json"}`, http.StatusBadRequest)
+			return
+		}
+
+		if deps.Engine == nil || deps.Engine.Spanner == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]string{"status": "MOCKED"})
+			return
+		}
+
+		_, err := deps.Engine.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return warehouseops.MergeOfflineAdjustments(ctx, txn, req.Updates)
+		})
+		
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "crdt_merge_failed"})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "SUCCESS"})
+	}
 }
 
 func handleSyncCommands(deps Deps) http.HandlerFunc {

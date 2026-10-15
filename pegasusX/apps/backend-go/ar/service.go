@@ -674,6 +674,9 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID, stat
 }
 
 func (r *SpannerRepository) list(ctx context.Context, col, id, status string, limit int) ([]Invoice, error) {
+	if col != "SupplierId" && col != "RetailerId" {
+		return nil, fmt.Errorf("invalid ar column %q", col)
+	}
 	if limit <= 0 {
 		limit = 50
 	}

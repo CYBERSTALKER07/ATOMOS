@@ -1,7 +1,11 @@
 package cashrecon
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,10 +14,25 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 )
 
 type Handlers struct {
-	Svc *Service
+	Svc  *Service
+	Idem idempotency.Store
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func idempotencyKey(r *http.Request) string {
+	k := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if k == "" {
+		k = strings.TrimSpace(r.Header.Get("X-Idempotency-Key"))
+	}
+	return k
 }
 
 type wireReconciliation struct {
@@ -81,13 +100,37 @@ func (h *Handlers) HandleDriverSubmit(w http.ResponseWriter, r *http.Request) {
 	if supplierID == "" {
 		supplierID = strings.TrimSpace(claims.SupplierID)
 	}
+	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_failed"})
+		return
+	}
+	defer r.Body.Close()
+
+	bodyHash := sha256Hex(bodyBytes)
+	idemKey := idempotencyKey(r)
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:driver:cashrecon:" + driverID + ":" + idemKey
+		replay, hit, gErr := idempotency.Guard(r.Context(), h.Idem, fullKey, bodyHash)
+		if errors.Is(gErr, idempotency.ErrConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "idempotency_conflict"})
+			return
+		}
+		if hit {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(replay.StatusCode)
+			_, _ = w.Write(replay.Response)
+			return
+		}
+	}
+
 	var body struct {
 		RouteID           *string `json:"route_id"`
 		ShiftDate         string  `json:"shift_date"`
 		DeclaredCashMinor int64   `json:"declared_cash_minor"`
 		DriverNote        *string `json:"driver_note"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.Unmarshal(bodyBytes, &body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -112,7 +155,20 @@ func (h *Handlers) HandleDriverSubmit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, toWire(*cr))
+
+	respBytes, _ := json.Marshal(toWire(*cr))
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:driver:cashrecon:" + driverID + ":" + idemKey
+		_ = h.Idem.Save(r.Context(), fullKey, idempotency.Record{
+			BodyHash:   bodyHash,
+			StatusCode: http.StatusOK,
+			Response:   respBytes,
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 func (h *Handlers) HandleDriverList(w http.ResponseWriter, r *http.Request) {
@@ -198,15 +254,53 @@ func (h *Handlers) HandleSupplierAccept(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
+
+	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_failed"})
+		return
+	}
+	defer r.Body.Close()
+
+	bodyHash := sha256Hex(bodyBytes)
+	idemKey := idempotencyKey(r)
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:supplier:cashrecon:accept:" + id + ":" + idemKey
+		replay, hit, gErr := idempotency.Guard(r.Context(), h.Idem, fullKey, bodyHash)
+		if errors.Is(gErr, idempotency.ErrConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "idempotency_conflict"})
+			return
+		}
+		if hit {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(replay.StatusCode)
+			_, _ = w.Write(replay.Response)
+			return
+		}
+	}
+
 	var body struct {
 		Note string `json:"note"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.Unmarshal(bodyBytes, &body)
 	if err := h.Svc.Accept(r.Context(), id, claims.Subject, strings.TrimSpace(body.Note)); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "accepted"})
+
+	respBytes, _ := json.Marshal(map[string]string{"status": "accepted"})
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:supplier:cashrecon:accept:" + id + ":" + idemKey
+		_ = h.Idem.Save(r.Context(), fullKey, idempotency.Record{
+			BodyHash:   bodyHash,
+			StatusCode: http.StatusOK,
+			Response:   respBytes,
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 func (h *Handlers) HandleSupplierWriteOff(w http.ResponseWriter, r *http.Request) {
@@ -220,15 +314,53 @@ func (h *Handlers) HandleSupplierWriteOff(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
+
+	bodyBytes, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_failed"})
+		return
+	}
+	defer r.Body.Close()
+
+	bodyHash := sha256Hex(bodyBytes)
+	idemKey := idempotencyKey(r)
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:supplier:cashrecon:writeoff:" + id + ":" + idemKey
+		replay, hit, gErr := idempotency.Guard(r.Context(), h.Idem, fullKey, bodyHash)
+		if errors.Is(gErr, idempotency.ErrConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "idempotency_conflict"})
+			return
+		}
+		if hit {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(replay.StatusCode)
+			_, _ = w.Write(replay.Response)
+			return
+		}
+	}
+
 	var body struct {
 		Note string `json:"note"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = json.Unmarshal(bodyBytes, &body)
 	if err := h.Svc.WriteOff(r.Context(), id, claims.Subject, strings.TrimSpace(body.Note)); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "written_off"})
+
+	respBytes, _ := json.Marshal(map[string]string{"status": "written_off"})
+	if idemKey != "" && h.Idem != nil {
+		fullKey := "idem:supplier:cashrecon:writeoff:" + id + ":" + idemKey
+		_ = h.Idem.Save(r.Context(), fullKey, idempotency.Record{
+			BodyHash:   bodyHash,
+			StatusCode: http.StatusOK,
+			Response:   respBytes,
+			StoredAt:   time.Now().UTC(),
+		}, 24*time.Hour)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(respBytes)
 }
 
 func driverIDFromRequest(r *http.Request) string {

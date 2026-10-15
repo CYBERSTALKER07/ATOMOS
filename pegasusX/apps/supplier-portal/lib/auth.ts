@@ -163,6 +163,12 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
+  const method = (init?.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (!headers["Idempotency-Key"] && !headers["idempotency-key"] && !headers["X-Idempotency-Key"] && !headers["x-idempotency-key"]) {
+      headers["Idempotency-Key"] = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    }
+  }
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }

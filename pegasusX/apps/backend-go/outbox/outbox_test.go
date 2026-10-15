@@ -136,3 +136,51 @@ func TestWriteAudit_NilBufferIsNoOp(t *testing.T) {
 		t.Fatalf("WriteAudit with nil buffer returned error: %v", err)
 	}
 }
+
+type dummyOrderEvent struct {
+	OrderID                 string `json:"order_id"`
+	Status                  string `json:"status"`
+	CustomerStage           string `json:"customer_stage,omitempty"`
+	CustomerProgressPercent int    `json:"customer_progress_percent,omitempty"`
+}
+
+func (d dummyOrderEvent) WithCustomerStage() any {
+	if d.Status == "ARRIVING" {
+		d.CustomerStage = "OUT_FOR_DELIVERY"
+		d.CustomerProgressPercent = 80
+	}
+	return d
+}
+
+func TestEmitJSON_StampsCustomerStage(t *testing.T) {
+	t.Parallel()
+
+	mock := &mockTxnBuffer{}
+	ctx := context.Background()
+
+	ev := dummyOrderEvent{
+		OrderID: "ord_123",
+		Status:  "ARRIVING",
+	}
+
+	err := EmitJSON(ctx, mock, "Order", "ord_123", "orders.topic", ev)
+	if err != nil {
+		t.Fatalf("EmitJSON failed: %v", err)
+	}
+	if len(mock.bufferedEvents) != 1 {
+		t.Fatalf("expected 1 buffered event, got %d", len(mock.bufferedEvents))
+	}
+
+	var parsed dummyOrderEvent
+	if err := json.Unmarshal(mock.bufferedEvents[0].Payload, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal payload: %v", err)
+	}
+
+	if parsed.CustomerStage != "OUT_FOR_DELIVERY" {
+		t.Errorf("expected CustomerStage OUT_FOR_DELIVERY, got %s", parsed.CustomerStage)
+	}
+	if parsed.CustomerProgressPercent != 80 {
+		t.Errorf("expected CustomerProgressPercent 80, got %d", parsed.CustomerProgressPercent)
+	}
+}
+

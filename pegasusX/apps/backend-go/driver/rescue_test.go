@@ -1,14 +1,17 @@
 package driver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 )
 
 func TestHandleRescueRequest_MethodNotAllowed(t *testing.T) {
@@ -207,5 +210,77 @@ func TestRescueEvent_SchemaAndTypeContracts(t *testing.T) {
 	}
 	if orderM["to_driver_id"] != "drv-2" || orderM["from_driver_id"] != "drv-1" {
 		t.Fatalf("driver id mapping error: %v", orderM)
+	}
+}
+
+func TestHandleRescueRequest_IdempotencyReplay(t *testing.T) {
+	body := []byte(`{}`)
+	cached := map[string]any{"status": "requested", "rescue_id": "resc-cached-1"}
+	cachedBytes, err := json.Marshal(cached)
+	if err != nil {
+		t.Fatalf("marshal cached: %v", err)
+	}
+
+	store := idempotency.NewInMemoryStore()
+	key := "driver-rescue:drv-broken:test"
+	if err := store.Save(context.Background(), key, idempotency.Record{
+		BodyHash:   sha256HexBytes(body),
+		StatusCode: http.StatusOK,
+		Response:   cachedBytes,
+	}, 24*time.Hour); err != nil {
+		t.Fatalf("save replay: %v", err)
+	}
+
+	svc := newDriverTestService(&driverRepoSpy{}, &driverCacheBackendSpy{})
+	svc.idem = store
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/driver/ops/rescue/request", strings.NewReader(string(body)))
+	req = withDriverClaims(req, auth.Claims{Subject: "drv-broken"})
+	req.Header.Set("Idempotency-Key", key)
+	rr := httptest.NewRecorder()
+
+	svc.HandleRescueRequest(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != string(cachedBytes) {
+		t.Fatalf("expected replay body %s, got %s", string(cachedBytes), rr.Body.String())
+	}
+}
+
+func TestHandleRescueRespond_IdempotencyReplay(t *testing.T) {
+	body := []byte(`{"rescue_id":"resc-101","broken_driver_id":"drv-broken","accept":true}`)
+	cached := map[string]any{"status": "recorded", "rescue_id": "resc-101", "accepted": true}
+	cachedBytes, err := json.Marshal(cached)
+	if err != nil {
+		t.Fatalf("marshal cached: %v", err)
+	}
+
+	store := idempotency.NewInMemoryStore()
+	key := "driver-rescue-respond:drv-rescue:test"
+	if err := store.Save(context.Background(), key, idempotency.Record{
+		BodyHash:   sha256HexBytes(body),
+		StatusCode: http.StatusOK,
+		Response:   cachedBytes,
+	}, 24*time.Hour); err != nil {
+		t.Fatalf("save replay: %v", err)
+	}
+
+	svc := newDriverTestService(&driverRepoSpy{}, &driverCacheBackendSpy{})
+	svc.idem = store
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/driver/ops/rescue/respond", strings.NewReader(string(body)))
+	req = withDriverClaims(req, auth.Claims{Subject: "drv-rescue"})
+	req.Header.Set("Idempotency-Key", key)
+	rr := httptest.NewRecorder()
+
+	svc.HandleRescueRespond(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
+	}
+	if rr.Body.String() != string(cachedBytes) {
+		t.Fatalf("expected replay body %s, got %s", string(cachedBytes), rr.Body.String())
 	}
 }

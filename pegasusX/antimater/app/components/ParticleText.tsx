@@ -43,6 +43,8 @@ type Particle = {
   seed: number;
   depth: number;
   delay: number;
+  sinPhase: number;
+  cosPhase: number;
 };
 
 const hexToRgb = (hex: string): Rgb | null => {
@@ -182,19 +184,9 @@ const ParticleText = ({
       gathering = true;
     };
 
-    const drawParticle = (particle: Particle): void => {
-      const size = particle.size;
-      ctx.fillStyle = particle.color;
-
-      if (size <= 2.6) {
-        ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
-        return;
-      }
-
-      ctx.beginPath();
-      ctx.arc(particle.x, particle.y, size / 2, 0, Math.PI * 2);
-      ctx.fill();
-    };
+    let lastRenderTime = 0;
+    const targetFps = 60;
+    const frameInterval = 1000 / targetFps;
 
     const render = (now: number): void => {
       if (!isVisible) {
@@ -202,21 +194,42 @@ const ParticleText = ({
         return;
       }
 
+      // Throttle to 60fps on high-refresh rate displays (e.g. 120Hz ProMotion on Mac/iPad)
+      // to avoid overtaxing Safari compositor and battery.
+      if (now - lastRenderTime < frameInterval - 1) {
+        animationFrame = window.requestAnimationFrame(render);
+        return;
+      }
+      lastRenderTime = now;
+
       ctx.clearRect(0, 0, width, height);
 
-      if (glow && !reducedMotion) {
-        ctx.shadowBlur = Math.min(4, particleSize * 1.6);
-        ctx.shadowColor = highlightColor;
-      } else {
-        ctx.shadowBlur = 0;
-      }
+      // In Safari WebKit, ctx.shadowBlur in 2D canvas draw loops causes CPU software blur convolution passes.
+      // We keep ctx.shadowBlur = 0 and apply the glow via GPU-accelerated CSS drop-shadow on the canvas element!
+      ctx.shadowBlur = 0;
 
       pointer.smoothX += (pointer.x - pointer.smoothX) * 0.18;
       pointer.smoothY += (pointer.y - pointer.smoothY) * 0.18;
 
       let complete = true;
 
-      particles.forEach(particle => {
+      // Precompute time waves once per frame instead of calculating Math.sin/cos thousands of times
+      const driftTime = now * 0.001;
+      const sinT = Math.sin(driftTime * 0.9);
+      const cosT = Math.cos(driftTime * 0.9);
+      const sinT2 = Math.sin(driftTime * 0.75);
+      const cosT2 = Math.cos(driftTime * 0.75);
+
+      const hasRepel = pointer.active && !reducedMotion && pointerRepel > 0 && repelRadius > 0;
+      const follow = reducedMotion ? 1 : 0.22;
+
+      let currentColor = '';
+      if (!gathering) {
+        ctx.globalAlpha = 1;
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const particle = particles[i];
         let baseX = particle.targetX;
         let baseY = particle.targetY;
         let progress = 1;
@@ -229,12 +242,11 @@ const ParticleText = ({
           baseY = particle.startY + (particle.targetY - particle.startY) * eased;
           if (progress < 1) complete = false;
         } else if (!reducedMotion && idleDrift > 0) {
-          const driftTime = now * 0.001;
-          baseX += Math.sin(driftTime * 0.9 + particle.seed * 10) * idleDrift * particle.depth;
-          baseY += Math.cos(driftTime * 0.75 + particle.depth * 10) * idleDrift * particle.depth;
+          baseX += (sinT * particle.cosPhase + cosT * particle.sinPhase) * idleDrift * particle.depth;
+          baseY += (cosT2 * particle.cosPhase - sinT2 * particle.sinPhase) * idleDrift * particle.depth;
         }
 
-        if (pointer.active && !reducedMotion && pointerRepel > 0 && repelRadius > 0) {
+        if (hasRepel) {
           const dx = baseX - pointer.smoothX;
           const dy = baseY - pointer.smoothY;
           const distance = Math.hypot(dx, dy);
@@ -245,16 +257,27 @@ const ParticleText = ({
           }
         }
 
-        const follow = reducedMotion ? 1 : 0.22;
         particle.x += (baseX - particle.x) * follow;
         particle.y += (baseY - particle.y) * follow;
 
-        ctx.globalAlpha = clamp(0.35 + progress * 0.65, 0, 1);
-        drawParticle(particle);
-      });
+        if (gathering) {
+          ctx.globalAlpha = clamp(0.35 + progress * 0.65, 0, 1);
+        }
 
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
+        if (particle.color !== currentColor) {
+          ctx.fillStyle = particle.color;
+          currentColor = particle.color;
+        }
+
+        const size = particle.size;
+        if (size <= 2.6) {
+          ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
 
       if (gathering && complete) {
         gathering = false;
@@ -544,8 +567,8 @@ const ParticleText = ({
       }
 
       const maxParticles = useBrandmark || fitWidth
-        ? Math.max(5000, Math.min(10000, targets.length))
-        : Math.max(900, Math.min(5200, Math.floor((width * height) / 90)));
+        ? Math.max(2600, Math.min(3800, targets.length))
+        : Math.max(900, Math.min(3600, Math.floor((width * height) / 90)));
       const stride = Math.max(1, Math.ceil(targets.length / maxParticles));
       const baseRgb = hexToRgb(color);
       const highlightRgb = hexToRgb(highlightColor);
@@ -562,6 +585,8 @@ const ParticleText = ({
         const distance = (noStartAnimation ? 0 : scatter) * (0.35 + depth * 0.75);
         const startX = target.x + Math.cos(angle) * distance + (seed - 0.5) * scatter * 0.45;
         const startY = target.y + Math.sin(angle) * distance + (depth - 0.9) * scatter * 0.45;
+        const sinPhase = Math.sin(seed * 10);
+        const cosPhase = Math.cos(seed * 10);
 
         return {
           x: noStartAnimation ? target.x : startX,
@@ -574,9 +599,14 @@ const ParticleText = ({
           color: particleColor,
           seed,
           depth,
-          delay: noStartAnimation ? 0 : seed * stagger
+          delay: noStartAnimation ? 0 : seed * stagger,
+          sinPhase,
+          cosPhase
         };
       });
+
+      // Sort particles by color so context state changes (ctx.fillStyle) are minimized to a handful of changes per frame
+      particles.sort((a, b) => (a.color > b.color ? 1 : a.color < b.color ? -1 : 0));
 
       pointer.x = width / 2;
       pointer.y = height / 2;
@@ -716,7 +746,11 @@ const ParticleText = ({
       style={style}
       aria-label={text}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 block h-full w-full transform-gpu"
+        aria-hidden="true"
+      />
       <span className="sr-only">{text}</span>
     </div>
   );

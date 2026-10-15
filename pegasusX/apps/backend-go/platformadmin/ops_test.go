@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -96,3 +97,42 @@ func TestHandleOutboxSummary_NoStoreOmitsCounts(t *testing.T) {
 		t.Fatalf("must not invent dead_letter_count: %+v", body)
 	}
 }
+
+func TestHandleReplayDeadLetter_NoSpannerServiceUnavailable(t *testing.T) {
+	h := &Handlers{Svc: NewService(NewMemoryRepository()), Ops: &OpsDeps{}}
+	req := httptest.NewRequest(http.MethodPost, "/v1/platform-admin/ops/outbox/dead-letters/evt-123/replay", nil)
+	rr := httptest.NewRecorder()
+	h.HandleReplayDeadLetter(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want 503 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandleListDisputes_NoSpannerReturnsAvailableFalse(t *testing.T) {
+	h := &Handlers{Svc: NewService(NewMemoryRepository()), Ops: &OpsDeps{}}
+	req := httptest.NewRequest(http.MethodGet, "/v1/platform-admin/ops/disputes", nil)
+	rr := httptest.NewRecorder()
+	h.HandleListDisputes(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["available"] != false {
+		t.Fatalf("want available=false, got %+v", body)
+	}
+}
+
+func TestHandleResolveDispute_Validation(t *testing.T) {
+	h := &Handlers{Svc: NewService(NewMemoryRepository()), Ops: &OpsDeps{}}
+	// Missing resolution body
+	req := httptest.NewRequest(http.MethodPost, "/v1/platform-admin/ops/disputes/ord-123/resolve", strings.NewReader(`{}`))
+	rr := httptest.NewRecorder()
+	h.HandleResolveDispute(rr, req)
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d want 503 (no spanner), got body=%s", rr.Code, rr.Body.String())
+	}
+}
+

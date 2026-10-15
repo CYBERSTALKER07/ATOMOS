@@ -9,6 +9,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 )
@@ -22,6 +23,7 @@ type Service struct {
 	promotions *promotion.Service
 	stock      *StockEnricher
 	globalHook ProductUpsertHook
+	idem       idempotency.Store
 }
 
 // ProductUpsertHook is invoked after successful product create/update (GlobalProducts).
@@ -32,6 +34,22 @@ type ProductUpsertHook interface {
 // SetGlobalProductHook wires the optional GlobalProducts linker.
 func (s *Service) SetGlobalProductHook(h ProductUpsertHook) {
 	s.globalHook = h
+}
+
+// SetIdempotencyStore wires the shared idempotency store used to honor Idempotency-Key.
+func (s *Service) SetIdempotencyStore(store idempotency.Store) {
+	if s == nil {
+		return
+	}
+	s.idem = store
+}
+
+// IdempotencyStore exposes the configured store.
+func (s *Service) IdempotencyStore() idempotency.Store {
+	if s == nil {
+		return nil
+	}
+	return s.idem
 }
 
 // NewService creates a catalog service with the given dependencies.
@@ -56,9 +74,24 @@ func (s *Service) GetCategory(ctx context.Context, categoryID string) (*Category
 	return s.repo.GetCategory(ctx, categoryID)
 }
 
-// CreateCategory adds a new category and invalidates the cache.
+// CreateCategory adds a new category, emits CATEGORY_CREATED, and invalidates the cache.
 func (s *Service) CreateCategory(ctx context.Context, cat Category) error {
-	if err := s.repo.CreateCategory(ctx, cat); err != nil {
+	emit := func(txn outbox.TxnBuffer) error {
+		catEvt := events.CategoryEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      events.EventCategoryCreated,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			CategoryID:       cat.CategoryID,
+			SupplierID:       cat.SupplierID,
+			Name:             cat.Name,
+			ParentCategoryID: cat.ParentCategoryID,
+			IconKey:          cat.IconKey,
+			SortOrder:        cat.SortOrder,
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateCategory, cat.CategoryID, events.TopicMain, catEvt)
+	}
+	if err := s.repo.CreateCategory(ctx, cat, emit); err != nil {
 		return err
 	}
 	if s.cache != nil {
@@ -179,9 +212,35 @@ func (s *Service) GetProduct(ctx context.Context, productID string) (*Product, e
 	return s.repo.GetProduct(ctx, productID)
 }
 
-// CreateProduct adds a new product, emits PRODUCT_HANDLING_UPDATED, and invalidates the cache.
+// CreateProduct adds a new product, emits PRODUCT_CREATED and PRODUCT_HANDLING_UPDATED, and invalidates the cache.
 func (s *Service) CreateProduct(ctx context.Context, p Product) error {
 	emit := func(txn outbox.TxnBuffer) error {
+		createdEvt := events.ProductEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      events.EventProductCreated,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			ProductID:         p.ProductID,
+			SupplierID:        p.SupplierID,
+			HandlingClass:     string(p.HandlingClass),
+			RequiresColdChain: p.RequiresColdChain,
+			IsHazardous:       p.IsHazardous,
+			IsPerishable:      p.IsPerishable,
+			StorageTempMinC:   p.StorageTempMinC,
+			StorageTempMaxC:   p.StorageTempMaxC,
+			Name:              p.Name,
+			CategoryID:        p.CategoryID,
+			PriceMinor:        p.PriceMinor,
+			Currency:          p.Currency,
+			StockQuantity:     p.StockQuantity,
+			Unit:              p.Unit,
+			Barcode:           p.Barcode,
+			IsActive:          p.IsActive,
+			Version:           1,
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, createdEvt); err != nil {
+			return err
+		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
 	}
 	if err := s.repo.CreateProduct(ctx, p, emit); err != nil {
@@ -222,10 +281,62 @@ func (s *Service) ListCategorySuppliers(ctx context.Context, categoryID string) 
 	return suppliers, nil
 }
 
-// UpdateProduct modifies an existing product with optimistic concurrency and emits PRODUCT_HANDLING_UPDATED.
+// UpdateProduct modifies an existing product with optimistic concurrency and emits lifecycle outbox events.
 func (s *Service) UpdateProduct(ctx context.Context, p Product) error {
+	prev, _ := s.repo.GetProduct(ctx, p.ProductID)
+	var prevPrice int64
+	if prev != nil {
+		prevPrice = prev.PriceMinor
+	}
+
 	emit := func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p))
+		eventType := events.EventProductUpdated
+		if prev != nil && prev.PriceMinor != p.PriceMinor {
+			eventType = events.EventProductPriceChanged
+		}
+		evt := events.ProductEvent{
+			BaseEvent: events.BaseEvent{
+				Type:      eventType,
+				Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			},
+			ProductID:          p.ProductID,
+			SupplierID:         p.SupplierID,
+			HandlingClass:      string(p.HandlingClass),
+			RequiresColdChain:  p.RequiresColdChain,
+			IsHazardous:        p.IsHazardous,
+			IsPerishable:       p.IsPerishable,
+			StorageTempMinC:    p.StorageTempMinC,
+			StorageTempMaxC:    p.StorageTempMaxC,
+			Name:               p.Name,
+			CategoryID:         p.CategoryID,
+			PriceMinor:         p.PriceMinor,
+			PreviousPriceMinor: prevPrice,
+			Currency:           p.Currency,
+			StockQuantity:      p.StockQuantity,
+			Unit:               p.Unit,
+			Barcode:            p.Barcode,
+			IsActive:           p.IsActive,
+			Version:            p.Version + 1,
+		}
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, evt); err != nil {
+			return err
+		}
+
+		if prev != nil && prev.IsActive && !p.IsActive {
+			deactEvt := evt
+			deactEvt.BaseEvent.Type = events.EventProductDeactivated
+			deactEvt.BaseEvent.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, deactEvt); err != nil {
+				return err
+			}
+		}
+
+		if prev == nil || prev.HandlingClass != p.HandlingClass || prev.RequiresColdChain != p.RequiresColdChain || prev.IsHazardous != p.IsHazardous || prev.IsPerishable != p.IsPerishable {
+			if err := outbox.EmitJSON(ctx, txn, events.AggregateProduct, p.ProductID, events.TopicMain, productHandlingEvent(p)); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	if err := s.repo.UpdateProduct(ctx, p, emit); err != nil {
 		return err

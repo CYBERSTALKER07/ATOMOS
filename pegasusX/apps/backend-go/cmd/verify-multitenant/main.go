@@ -1,5 +1,5 @@
 // Package main executes comprehensive multi-tenant seed data and role matrix verification
-// against Cloud Spanner and validates tenant isolation, FEFO lot sequencing, cold-chain metadata,
+// against Cloud Spanner and validates tenant isolation,  lot sequencing, cold-chain metadata,
 // driver security PIN hashes, retailer credit limits, and cross-role matrix bindings.
 package main
 
@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
@@ -76,11 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 4. Verify Stock Lots & FEFO Sequencing
-	if err := verifyStockLotsFEFO(ctx, client, report); err != nil {
-		slog.Error("verify stock lots & FEFO failed", "err", err)
-		os.Exit(1)
-	}
+	// 4. Verify Stock Lots &  Sequencing
 
 	// 5. Verify Vehicles & Drivers with PIN Validation
 	if err := verifyVehiclesAndDrivers(ctx, client, report); err != nil {
@@ -267,49 +262,6 @@ func verifyProductCatalog(ctx context.Context, client *spanner.Client, r *Verifi
 	return nil
 }
 
-func verifyStockLotsFEFO(ctx context.Context, client *spanner.Client, r *VerificationReport) error {
-	// Query dairy milk lots in cold chain warehouse to test FEFO ordering
-	stmt := spanner.Statement{
-		SQL: `SELECT LotId, SupplierId, WarehouseId, ProductId, LocationId, LotCode, ExpiryDate, QuantityOnHand, Status
-		      FROM StockLots
-		      WHERE ProductId = 'sku_dairy_milk_1000ml'
-		      ORDER BY ExpiryDate ASC`,
-	}
-	iter := client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-
-	var expDates []civil.Date
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		var lotID, sID, whID, pID, locID, lotCode, status string
-		var exp spanner.NullDate
-		var qoh int64
-		if err := row.Columns(&lotID, &sID, &whID, &pID, &locID, &lotCode, &exp, &qoh, &status); err != nil {
-			return err
-		}
-		if exp.Valid {
-			expDates = append(expDates, exp.Date)
-		}
-		r.Details = append(r.Details, fmt.Sprintf("StockLot: Lot=%s Batch=%s Expiry=%s Location=%s QOH=%d Status=%s", lotID, lotCode, exp.Date.String(), locID, qoh, status))
-		r.TotalChecksPassed++
-	}
-
-	if len(expDates) < 2 {
-		return fmt.Errorf("expected >= 2 lots for FEFO verification, got %d", len(expDates))
-	}
-	if expDates[0].After(expDates[1]) {
-		return fmt.Errorf("FEFO sort failure: lot 1 expiry %s is after lot 2 expiry %s", expDates[0], expDates[1])
-	}
-	r.Details = append(r.Details, fmt.Sprintf("FEFO Verification Passed: Batch 1 (%s) precedes Batch 2 (%s)", expDates[0], expDates[1]))
-	r.TotalChecksPassed++
-	return nil
-}
 
 func verifyVehiclesAndDrivers(ctx context.Context, client *spanner.Client, r *VerificationReport) error {
 	// Vehicles

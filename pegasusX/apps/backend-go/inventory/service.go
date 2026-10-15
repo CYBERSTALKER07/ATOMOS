@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -103,3 +104,75 @@ func (s *Service) FindByWarehouseProduct(ctx context.Context, warehouseID, produ
 	}
 	return level, nil
 }
+
+// ReleaseTxn returns reserved stock within an existing Spanner transaction.
+func (s *Service) ReleaseTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, quantity int64) error {
+	return s.repo.ReleaseTxn(ctx, txn, warehouseID, productID, quantity)
+}
+
+// CreateHold initiates a soft hold on stock with an expiration timestamp.
+func (s *Service) CreateHold(ctx context.Context, hold Hold) error {
+	return s.repo.CreateHold(ctx, hold)
+}
+
+// ConfirmHold commits a soft hold to confirmed status.
+func (s *Service) ConfirmHold(ctx context.Context, holdID string) error {
+	return s.repo.ConfirmHold(ctx, holdID)
+}
+
+// ReleaseHold cancels a soft hold and returns held inventory.
+func (s *Service) ReleaseHold(ctx context.Context, holdID string) error {
+	return s.repo.ReleaseHold(ctx, holdID)
+}
+
+// SweepExpiredHolds finds expired holds and releases their inventory.
+func (s *Service) SweepExpiredHolds(ctx context.Context) (int, error) {
+	if s == nil || s.repo == nil {
+		return 0, nil
+	}
+	now := time.Now().UTC()
+	expired, err := s.repo.ListExpiredHolds(ctx, now, 100)
+	if err != nil {
+		return 0, fmt.Errorf("list expired holds: %w", err)
+	}
+	count := 0
+	for _, h := range expired {
+		if err := s.repo.ReleaseHold(ctx, h.HoldID); err != nil {
+			if s.log != nil {
+				s.log.Warn("release expired hold failed", "hold_id", h.HoldID, "err", err)
+			}
+			continue
+		}
+		count++
+	}
+	return count, nil
+}
+
+// StartHoldSweeper starts a background daemon that periodically sweeps expired holds.
+func (s *Service) StartHoldSweeper(ctx context.Context, interval time.Duration) {
+	if s == nil || s.repo == nil {
+		return
+	}
+	if interval <= 0 {
+		interval = 1 * time.Minute
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if n, err := s.SweepExpiredHolds(ctx); err != nil {
+					if s.log != nil {
+						s.log.Warn("hold sweeper tick failed", "err", err)
+					}
+				} else if n > 0 && s.log != nil {
+					s.log.Info("swept expired inventory holds", "count", n)
+				}
+			}
+		}
+	}()
+}
+

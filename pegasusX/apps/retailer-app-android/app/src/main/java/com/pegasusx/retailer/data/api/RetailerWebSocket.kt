@@ -26,6 +26,7 @@ import javax.inject.Singleton
 @Serializable
 data class RetailerWSMessage(
     @SerialName("type") val type: String,
+    @SerialName("event_id") val eventId: String? = null,
     @SerialName("order_id") val orderId: String = "",
     @SerialName("invoice_id") val invoiceId: String = "",
     @SerialName("session_id") val sessionId: String = "",
@@ -91,6 +92,7 @@ class RetailerWebSocket @Inject constructor(
     private var reconnectTask: ScheduledFuture<*>? = null
     private val intentionalClose = AtomicBoolean(false)
     private val reconnectAttempt = AtomicInteger(0)
+    @Volatile private var lastEventId: String? = null
 
     private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 16)
     val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
@@ -112,17 +114,25 @@ class RetailerWebSocket @Inject constructor(
         val token = tokenManager.getToken() ?: return
 
         val wsBase = BuildConfig.WS_URL
-        val url = "$wsBase/v1/ws"
+        val currentLastId = lastEventId
+        val url = if (!currentLastId.isNullOrBlank()) {
+            "$wsBase/v1/ws?last_event_id=$currentLastId"
+        } else {
+            "$wsBase/v1/ws"
+        }
 
         val okClient = OkHttpClient.Builder()
             .pingInterval(30, TimeUnit.SECONDS)
             .build()
         client = okClient
 
-        val request = Request.Builder()
+        val reqBuilder = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
-            .build()
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val request = reqBuilder.build()
 
         socket = okClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -135,6 +145,9 @@ class RetailerWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val msg = json.decodeFromString<RetailerWSMessage>(text)
+                    if (!msg.eventId.isNullOrBlank()) {
+                        lastEventId = msg.eventId
+                    }
                     _events.tryEmit(msg)
                 } catch (_: Exception) {
                     // ignore malformed messages

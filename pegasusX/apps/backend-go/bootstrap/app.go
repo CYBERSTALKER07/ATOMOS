@@ -324,6 +324,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		catalogRepo := catalog.NewSpannerRepository(spannerClient)
 		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log, promotionSvc, catalog.NewStockEnricher(spannerClient))
+		catalogSvc.SetIdempotencyStore(idemStore)
 		log.Info("catalog service enabled", "backend", "spanner")
 		if globalproducts.Enabled() {
 			gpRepo := globalproducts.NewSpannerRepository(spannerClient)
@@ -341,6 +342,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		inventoryRepo := inventory.NewSpannerRepository(spannerClient)
 		inventorySvc = inventory.NewService(inventoryRepo, cacheClient, log)
+		inventorySvc.StartHoldSweeper(context.Background(), 1*time.Minute)
 		log.Info("inventory service enabled", "backend", "spanner")
 	}
 
@@ -515,6 +517,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	creditSvc.SetPolicyGate(creditPolicySvc)
 	arSvc := ar.NewService(arRepo)
 	arDunning := ar.NewDunningWorker(arSvc, log)
+	arDunning.SetDelinquencyBump(func(ctx context.Context, supplierID, retailerID string) error {
+		return creditSvc.BumpDelinquency(ctx, retailerID, supplierID)
+	})
+	arDunning.SetAutoHold(func(ctx context.Context, supplierID, retailerID string) error {
+		return creditSvc.FreezeProfile(ctx, retailerID, supplierID, "dunning_credit_hold")
+	})
 	// Phase 1 money surfaces: payouts (bank-file) + billing fee schedule.
 	var payoutSvc *payout.Service
 	var billingInvoiceWorker *billing.InvoiceWorker
@@ -550,7 +558,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		pricingSvc = pricing.NewService(pricing.NewSpannerRepository(spannerClient))
 		cashReconRepo := cashrecon.NewSpannerRepository(spannerClient)
 		cashReconSvc = cashrecon.NewService(cashReconRepo, cashReconRepo)
-		cashReconHandlers = &cashrecon.Handlers{Svc: cashReconSvc}
+		cashReconHandlers = &cashrecon.Handlers{Svc: cashReconSvc, Idem: idemStore}
 		creditNoteRepo := creditnote.NewSpannerRepository(spannerClient)
 		creditNoteSvc = creditnote.NewService(creditNoteRepo)
 		creditNoteHandlers = &creditnote.Handlers{
@@ -619,6 +627,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
 	order.StartPreorderSweeper(orderSvc)
+	order.StartFiscalSweeper(orderSvc)
+	order.StartStaleReservationSweeper(orderSvc)
+	credit.StartOverdueCreditSweeper(creditSvc, 1*time.Minute)
 	go orderSvc.StartNegotiationSweeper(context.Background())
 	go orderSvc.StartDeferredPaymentSweeper(context.Background(), 5*time.Minute)
 	if spannerClient != nil {
@@ -1012,12 +1023,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		whOpsDrivers = warehouseOpsDriversQuery(spannerClient)
 		whOpsVehicles = warehouseOpsVehiclesQuery(spannerClient)
 	}
-	stocklots.SetLotsEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_LOTS_ENABLED")), "true"))
 	stocklots.SetPickWavesEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_WAVES_ENABLED")), "true"))
 	stocklots.SetCycleCountsEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_CYCLE_COUNTS_ENABLED")), "true"))
 	stocklots.SetPickSShapeEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_PICK_SSHAPE_ENABLED")), "true"))
 	stocklots.SetSealSoftWarnEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_SEAL_SOFT_WARN")), "true"))
-	stocklots.SetColdChainEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("WMS_COLD_CHAIN_ENABLED")), "true"))
 	stocklots.SetLoadLedgerEnabled(strings.EqualFold(strings.TrimSpace(os.Getenv("PAYLOAD_LOAD_LEDGER_ENABLED")), "true"))
 	stocklots.SetLaborCapacityEnforce(strings.EqualFold(strings.TrimSpace(os.Getenv("LABOR_CAPACITY_ENFORCE")), "true"))
 	stocklots.SetTemperatureBreachRaiser(func(ctx context.Context, txn *spanner.ReadWriteTransaction, args stocklots.TemperatureBreachArgs) error {
@@ -1275,7 +1284,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			cfg, kafkaAuth, redisAdapter, spannerClient, cacheClient, pushBridge,
 			notifSvc, retailerSvc, retailerHub, supplierHub, driverHub, warehouseHub,
 			factoryHub, payloadHub, orderSvc, warehouseSvc, returnsSvc, claimsSvc,
-			partnerSvc, fxSvc, log,
+			partnerSvc, fxSvc, telemetryHub, routingSvc, log,
 		)
 		if err != nil {
 			return nil, err

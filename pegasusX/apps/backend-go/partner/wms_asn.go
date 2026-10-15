@@ -60,7 +60,7 @@ func asnKey(tt, tid, asn string) string {
 
 // ProcessInboundASN records ASN idempotently and returns a putaway-ready receipt.
 // Stock putaway is best-effort via inventory absolute set when product id/sku known;
-// full lot FEFO remains stocklots when WMS_LOTS enabled.
+// full lot  remains stocklots when WMS_LOTS enabled.
 func (s *Service) ProcessInboundASN(ctx context.Context, p Principal, req ASNRequest) (ASNResult, error) {
 	if err := s.requireSupplierPrincipal(p); err != nil {
 		return ASNResult{}, err

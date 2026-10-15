@@ -37,13 +37,16 @@ final class OrdersViewModel {
 
     var activeOrders: [Order] {
         allOrders.filter {
-            $0.status == .loaded || $0.status == .dispatched || $0.status == .inTransit || $0.status == .arrived
+            $0.status.customerStage == .outForDelivery ||
+                $0.status.customerStage == .exceptionActionRequired ||
+                $0.status == .loaded || $0.status == .dispatched
         }
     }
 
     var pendingOrders: [Order] {
         allOrders.filter {
-            $0.status == .pending || $0.status == .pendingReview || $0.status == .scheduled
+            $0.status.customerStage == .placed ||
+                $0.status == .pending || $0.status == .delayed
         }
     }
 

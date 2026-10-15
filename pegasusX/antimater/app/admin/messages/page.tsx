@@ -1,284 +1,332 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
 import AdminShell from '../components/AdminShell';
 import { useLanguage } from '@/app/context/LanguageContext';
-
-interface Message {
- id: string;
- name: string;
- email: string;
- subject: string;
- message: string;
- timestamp: string;
- read: boolean;
-}
+import type { EnterpriseRequest, RequestStatus } from '@/app/lib/supabase/types';
 
 export default function MessagesPage() {
- const { t } = useLanguage();
- const [messages, setMessages] = useState<Message[]>([]);
- const [selectedMsg, setSelectedMsg] = useState<Message | null>(null);
- const [notification, setNotification] = useState<Message | null>(null);
- const listRef = useRef<HTMLDivElement>(null);
- const notificationRef = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
+  const [messages, setMessages] = useState<EnterpriseRequest[]>([]);
+  const [selectedMsg, setSelectedMsg] = useState<EnterpriseRequest | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const listRef = useRef<HTMLDivElement>(null);
 
- useEffect(() => {
- document.title = `${t('admin_nav_messages', 'Messages')} | Pegasus Admin`;
+  const loadMessages = useCallback(async () => {
+    try {
+      const url =
+        activeFilter === 'all'
+          ? '/api/admin/requests?inquiry_type=general'
+          : `/api/admin/requests?inquiry_type=general&status=${activeFilter}`;
 
- if (listRef.current) {
- gsap.fromTo(listRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' });
- }
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setMessages(json.data);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('[ADMIN_MESSAGES] Could not fetch from Supabase API, falling back:', err);
+    }
 
- // Load messages from localStorage
- loadMessages();
+    // Fallback to localStorage if offline
+    try {
+      const stored = localStorage.getItem('customer_messages');
+      if (stored) {
+        const msgs = JSON.parse(stored);
+        setMessages(
+          msgs.map((m: any) => ({
+            id: m.id || crypto.randomUUID(),
+            created_at: m.timestamp || m.created_at || new Date().toISOString(),
+            updated_at: m.timestamp || m.created_at || new Date().toISOString(),
+            name: m.name || 'Anonymous',
+            email: m.email || '',
+            company: m.company || null,
+            role: null,
+            inquiry_type: 'general',
+            subject: m.subject || 'General Inquiry',
+            message: m.message || '',
+            status: m.read ? 'contacted' : 'new',
+            priority: 'normal',
+          }))
+        );
+      }
+    } catch {}
+  }, [activeFilter]);
 
- // Poll for new messages every 3 seconds
- const interval = setInterval(() => {
- loadMessages();
- }, 3000);
+  useEffect(() => {
+    document.title = `${t('admin_nav_messages', 'Messages')} | Pegasus Admin`;
+    setIsLoading(true);
+    loadMessages().finally(() => setIsLoading(false));
 
- return () => clearInterval(interval);
- }, [t]);
+    const interval = setInterval(() => {
+      loadMessages();
+    }, 6000);
 
- const loadMessages = () => {
- const stored = localStorage.getItem('customer_messages');
- if (stored) {
- const msgs = JSON.parse(stored);
- setMessages(msgs);
- 
- // Check for new unread messages
- const newMsgs = msgs.filter((msg: Message) => !msg.read);
- if (newMsgs.length > 0 && !notification) {
- showNotification(newMsgs[0]);
- }
- }
- };
+    return () => clearInterval(interval);
+  }, [loadMessages, t]);
 
- const showNotification = (msg: Message) => {
- setNotification(msg);
- 
- // Animate notification
- gsap.fromTo(notificationRef.current,
- { x: 400, opacity: 0, scale: 0.8 },
- { 
- x: 0, 
- opacity: 1, 
- scale: 1, 
- duration: 0.8, 
- ease: 'back.out(1.7)',
- onComplete: () => {
- // Auto-hide after 5 seconds
- setTimeout(() => {
- gsap.to(notificationRef.current, {
- x: 400,
- opacity: 0,
- duration: 0.5,
- ease: 'power2.in',
- onComplete: () => setNotification(null)
- });
- }, 5000);
- }
- }
- );
- };
+  useEffect(() => {
+    if (listRef.current) {
+      gsap.fromTo(listRef.current, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
+    }
+  }, [activeFilter]);
 
- const markAsRead = (id: string) => {
- const updated = messages.map(msg => 
- msg.id === id ? { ...msg, read: true } : msg
- );
- setMessages(updated);
- localStorage.setItem('customer_messages', JSON.stringify(updated));
- };
+  const updateStatus = async (id: string, newStatus: RequestStatus) => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch('/api/admin/requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus }),
+      });
 
- const viewMessage = (msg: Message) => {
- setSelectedMsg(msg);
- markAsRead(msg.id);
- 
- // Animate modal
- gsap.fromTo('.modal-content',
- { scale: 0.8, opacity: 0 },
- { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }
- );
- };
+      if (res.ok) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, status: newStatus, updated_at: new Date().toISOString() } : m))
+        );
 
- const closeModal = () => {
- gsap.to('.modal-content', {
- scale: 0.8,
- opacity: 0,
- duration: 0.3,
- ease: 'power2.in',
- onComplete: () => setSelectedMsg(null)
- });
- };
+        if (selectedMsg && selectedMsg.id === id) {
+          setSelectedMsg((prev) => (prev ? { ...prev, status: newStatus } : null));
+        }
+      }
+    } catch (err) {
+      console.error('[ADMIN_MESSAGES] Error updating message status:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
- const deleteMessage = (id: string) => {
- const updated = messages.filter(m => m.id !== id);
- setMessages(updated);
- localStorage.setItem('customer_messages', JSON.stringify(updated));
- setSelectedMsg(null);
- };
+  const deleteMessage = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this message?')) return;
 
- const unreadCount = messages.filter(msg => !msg.read).length;
+    try {
+      await fetch(`/api/admin/requests?id=${id}`, { method: 'DELETE' });
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+      setSelectedMsg(null);
+    } catch (err) {
+      console.error('[ADMIN_MESSAGES] Error deleting message:', err);
+    }
+  };
 
- return (
- <AdminShell
- title={t('admin_messages_title', 'Customer messages')}
- subtitle={t('admin_messages_sub', 'View and manage contact form inquiries.')}
- badge={
- unreadCount > 0 ? (
- <span className="border border-[#A9EBF9] bg-[#A9EBF9]/10 px-4 py-2 font-mono text-sm text-[#A9EBF9]">
- {unreadCount} {t('admin_badge_new', 'unread')}
- </span>
- ) : undefined
- }
- nav={[
- { label: t('admin_nav_apps', 'Applications'), href: '/admin' },
- { label: t('admin_nav_messages', 'Messages'), href: '/admin/messages', active: true },
- ]}
- >
- {notification && (
- <div 
- ref={notificationRef}
- className="fixed top-8 right-8 z-50 bg-[#0D0D0D] border-2 border-[#A9EBF9] rounded-none p-6 w-96"
- >
- <div className="flex items-start gap-4">
- <div className="w-12 h-12 bg-[#A9EBF9] rounded-none flex items-center justify-center flex-shrink-0">
- <span className="text-2xl">💬</span>
- </div>
- <div className="flex-1">
- <h4 className="font-light text-lg mb-1 text-[#A9EBF9]">{t('admin_new_msg', 'New Message!')}</h4>
- <p className="text-white font-semibold">{notification.name}</p>
- <p className="text-gray-400 text-sm truncate">{notification.subject}</p>
- <button
- onClick={() => viewMessage(notification)}
- className="mt-3 text-[#A9EBF9] hover:text-white transition-colors text-sm font-semibold"
- >
- {t('admin_view_details', 'Read Message →')}
- </button>
- </div>
- <button
- onClick={() => {
- gsap.to(notificationRef.current, {
- x: 400,
- opacity: 0,
- duration: 0.3,
- onComplete: () => setNotification(null)
- });
- }}
- className="text-white hover:text-[#FE5934] transition-colors"
- >
- ✕
- </button>
- </div>
- </div>
- )}
+  const viewMessage = (msg: EnterpriseRequest) => {
+    setSelectedMsg(msg);
+    if (msg.status === 'new') {
+      updateStatus(msg.id, 'in_review');
+    }
+  };
 
- <div ref={listRef}>
- {messages.length === 0 ? (
- <div className="border border-white/15 p-8 text-center md:p-12">
- <h3 className="text-xl font-semibold">{t('admin_no_msgs', 'No messages yet')}</h3>
- <p className="mt-2 text-sm text-white/50">
- {t('admin_no_msgs_desc', 'Customer messages appear here from the contact form.')}
- </p>
- </div>
- ) : (
- <div className="space-y-3">
- {messages.map((msg) => (
- <button
- key={msg.id}
- type="button"
- onClick={() => viewMessage(msg)}
- className={`w-full border p-4 text-left transition-colors md:p-5 ${
- msg.read ? 'border-white/15 hover:border-white/30' : 'border-[#A9EBF9]/50 bg-black'
- }`}
- >
- <div className="flex items-start justify-between gap-3">
- <div>
- <div className="flex items-center gap-2">
- <h3 className="font-semibold">{msg.name}</h3>
- {!msg.read ? (
- <span className="bg-[#A9EBF9] px-2 py-0.5 font-mono text-[10px] text-black">
- {t('admin_badge_new', 'NEW')}
- </span>
- ) : null}
- </div>
- <p className="mt-1 text-sm font-medium text-white/80">{msg.subject}</p>
- <p className="mt-1 line-clamp-2 text-sm text-white/45">{msg.message}</p>
- </div>
- <span className="shrink-0 font-mono text-[10px] text-white/35">
- {new Date(msg.timestamp).toLocaleDateString()}
- </span>
- </div>
- </button>
- ))}
- </div>
- )}
- </div>
+  const closeModal = () => {
+    setSelectedMsg(null);
+  };
 
- {/* Modal */}
- {selectedMsg && (
- <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
- <div className="modal-content bg-[#0D0D0D] border-2 border-white rounded-none p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
- <div className="flex justify-between items-start mb-6">
- <h2 className="text-3xl font-light">Message Details</h2>
- <button
- onClick={closeModal}
- className="text-white hover:text-[#FE5934] transition-colors text-2xl"
- >
- ✕
- </button>
- </div>
+  const getStatusBadge = (status: RequestStatus) => {
+    switch (status) {
+      case 'new':
+        return 'border-[#FBFF63] bg-[#FBFF63]/10 text-[#FBFF63]';
+      case 'in_review':
+        return 'border-[#A9EBF9] bg-[#A9EBF9]/10 text-[#A9EBF9]';
+      case 'contacted':
+        return 'border-blue-400 bg-blue-500/10 text-blue-400';
+      case 'qualified':
+        return 'border-[#8DDC96] bg-[#8DDC96]/10 text-[#8DDC96]';
+      case 'closed':
+        return 'border-zinc-600 bg-zinc-800 text-zinc-400';
+      default:
+        return 'border-zinc-500 text-zinc-400';
+    }
+  };
 
- <div className="space-y-6">
- <div>
- <label className="text-sm text-gray-400 uppercase tracking-wider">From</label>
- <p className="text-xl font-light mt-1">{selectedMsg.name}</p>
- </div>
+  const unreadCount = messages.filter((m) => m.status === 'new').length;
 
- <div>
- <label className="text-sm text-gray-400 uppercase tracking-wider">Email</label>
- <a 
- href={`mailto:${selectedMsg.email}`}
- className="text-xl font-light mt-1 block text-[#A9EBF9] hover:text-white transition-colors"
- >
- {selectedMsg.email}
- </a>
- </div>
+  return (
+    <AdminShell
+      title={t('admin_messages_title', 'Customer Inquiries & Messages')}
+      subtitle={t('admin_messages_sub', 'Live Supabase inbox for website contacts, partnerships, and general queries.')}
+      badge={
+        unreadCount > 0 ? (
+          <span className="border border-[#A9EBF9] bg-[#A9EBF9]/10 px-4 py-2 font-mono text-sm text-[#A9EBF9]">
+            {unreadCount} {t('admin_badge_new', 'UNREAD')}
+          </span>
+        ) : undefined
+      }
+      nav={[
+        { label: t('admin_nav_apps', 'Demo Requests'), href: '/admin' },
+        { label: t('admin_nav_messages', 'General Inquiries'), href: '/admin/messages', active: true },
+      ]}
+    >
+      {/* FILTER BUTTONS */}
+      <div className="mb-6 flex flex-wrap gap-2 font-mono text-xs">
+        {['all', 'new', 'in_review', 'contacted', 'closed'].map((filter) => (
+          <button
+            key={filter}
+            onClick={() => setActiveFilter(filter)}
+            className={`border px-3 py-1.5 uppercase transition-colors ${
+              activeFilter === filter
+                ? 'border-white bg-white text-black'
+                : 'border-white/20 text-white/60 hover:border-white/40 hover:text-white'
+            }`}
+          >
+            {filter.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
 
- <div>
- <label className="text-sm text-gray-400 uppercase tracking-wider">Subject</label>
- <p className="text-xl font-light mt-1">{selectedMsg.subject}</p>
- </div>
+      <div ref={listRef}>
+        {isLoading ? (
+          <div className="border border-white/10 p-12 text-center font-mono text-xs uppercase tracking-widest text-white/40">
+            Loading messages from Supabase...
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="border border-white/15 p-8 text-center md:p-12">
+            <h3 className="text-xl font-semibold">{t('admin_no_msgs', 'No messages found')}</h3>
+            <p className="mt-2 text-sm text-white/50">
+              {t('admin_no_msgs_desc', 'Customer messages and inquiries will appear here.')}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {messages.map((msg) => (
+              <button
+                key={msg.id}
+                type="button"
+                onClick={() => viewMessage(msg)}
+                className={`w-full border p-4 text-left transition-colors md:p-5 ${
+                  msg.status === 'new'
+                    ? 'border-[#A9EBF9]/70 bg-black'
+                    : 'border-white/15 hover:border-white/30'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-white">{msg.name}</h3>
+                      <span
+                        className={`border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${getStatusBadge(
+                          msg.status
+                        )}`}
+                      >
+                        {msg.status.replace('_', ' ')}
+                      </span>
+                      {msg.company && (
+                        <span className="font-mono text-xs text-white/40">({msg.company})</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm font-medium text-white/80">
+                      {msg.subject || 'General Inquiry'}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-white/45">{msg.message}</p>
+                  </div>
+                  <span className="shrink-0 font-mono text-[10px] text-white/35">
+                    {new Date(msg.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
- <div>
- <label className="text-sm text-gray-400 uppercase tracking-wider">Message</label>
- <p className="text-lg mt-2 leading-relaxed bg-black p-4 rounded-none border-2 border-white whitespace-pre-wrap">
- {selectedMsg.message}
- </p>
- </div>
+      {/* MODAL */}
+      {selectedMsg && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0D0D0D] border-2 border-white p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span
+                  className={`border px-2 py-0.5 font-mono text-xs uppercase tracking-wider ${getStatusBadge(
+                    selectedMsg.status
+                  )}`}
+                >
+                  {selectedMsg.status.replace('_', ' ')}
+                </span>
+                <h2 className="text-2xl md:text-3xl font-light mt-2 text-white">{selectedMsg.name}</h2>
+              </div>
+              <button
+                onClick={closeModal}
+                className="text-white hover:text-[#FE5934] transition-colors text-2xl"
+              >
+                ✕
+              </button>
+            </div>
 
- <div>
- <label className="text-sm text-gray-400 uppercase tracking-wider">Received</label>
- <p className="text-lg mt-1">{new Date(selectedMsg.timestamp).toLocaleString()}</p>
- </div>
+            <div className="space-y-6">
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider font-mono">Email</label>
+                <a
+                  href={`mailto:${selectedMsg.email}?subject=Re: ${selectedMsg.subject || 'Pegasus Inquiry'}`}
+                  className="text-xl font-light mt-1 block text-[#A9EBF9] hover:underline break-all"
+                >
+                  {selectedMsg.email}
+                </a>
+              </div>
 
- <div className="flex gap-4 pt-4">
- <a
- href={`mailto:${selectedMsg.email}?subject=Re: ${selectedMsg.subject}`}
- className="editorial-btn editorial-btn--inverted flex-1"
- >
- Reply via Email
- </a>
- <button type="button" onClick={() => deleteMessage(selectedMsg.id)} className="editorial-btn flex-1">
- Delete
- </button>
- </div>
- </div>
- </div>
- </div>
- )}
+              {selectedMsg.company && (
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider font-mono">Company</label>
+                  <p className="text-lg font-light mt-1 text-white">{selectedMsg.company}</p>
+                </div>
+              )}
 
- </AdminShell>
- );
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider font-mono">Subject</label>
+                <p className="text-lg font-light mt-1 text-white">{selectedMsg.subject || 'General Inquiry'}</p>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider font-mono">Message</label>
+                <p className="text-base mt-2 leading-relaxed bg-black p-4 border border-white/20 whitespace-pre-wrap text-white font-sans">
+                  {selectedMsg.message}
+                </p>
+              </div>
+
+              {/* WORKFLOW STATUS BUTTONS */}
+              <div className="border border-white/20 p-4 bg-white/[0.02]">
+                <label className="text-xs text-white/70 uppercase tracking-wider font-mono block mb-2">
+                  Update Status
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {(['new', 'in_review', 'contacted', 'closed'] as RequestStatus[]).map((st) => (
+                    <button
+                      key={st}
+                      disabled={isUpdating || selectedMsg.status === st}
+                      onClick={() => updateStatus(selectedMsg.id, st)}
+                      className={`border px-3 py-1.5 font-mono text-xs uppercase tracking-wider transition-colors ${
+                        selectedMsg.status === st
+                          ? 'border-white bg-white text-black font-semibold'
+                          : 'border-white/20 text-white/60 hover:border-white/50 hover:text-white'
+                      }`}
+                    >
+                      {st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-white/10">
+                <a
+                  href={`mailto:${selectedMsg.email}?subject=Re: ${selectedMsg.subject || 'Pegasus Inquiry'}`}
+                  className="editorial-btn editorial-btn--inverted flex-1 text-center"
+                >
+                  Reply via Email
+                </a>
+                <button
+                  type="button"
+                  onClick={() => deleteMessage(selectedMsg.id)}
+                  className="editorial-btn flex-1 text-[#FE5934] hover:border-[#FE5934]"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </AdminShell>
+  );
 }

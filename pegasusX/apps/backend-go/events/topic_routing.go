@@ -125,7 +125,7 @@ func DomainTopicForEventType(eventType string) string {
 		EventManifestLoadingStarted, EventManifestOrderInjected, EventManifestOrderException,
 		EventManifestDLQEscalation, EventManifestRebalanced, EventManifestCancelled,
 		EventManifestSealed, EventManifestDispatched, EventManifestCompleted,
-		EventRouteCreated, EventRouteReordered, EventDriverAvailabilityChanged,
+		EventRouteCreated, EventRouteReordered, EventRouteReplanned, EventDriverAvailabilityChanged,
 		EventVehicleAvailabilityChanged, EventFreezeLockAcquired, EventFreezeLockReleased:
 		return TopicDispatch
 	case EventDriverLocationUpdated, EventDriverReturnApproaching,

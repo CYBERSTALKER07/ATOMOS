@@ -285,3 +285,28 @@ func scanLot(row *spanner.Row) (StockLotView, error) {
 	v.ReceivedAt = received.UTC().Format(time.RFC3339)
 	return v, nil
 }
+
+// LineQty is a SKU quantity for reserve/release.
+type LineQty struct {
+	SKU      string
+	Quantity int64
+}
+
+func loadProductShelfMeta(ctx context.Context, txn *spanner.ReadWriteTransaction, productID string) (perishable bool, minDays int64, err error) {
+	row, err := txn.ReadRow(ctx, "Products", spanner.Key{productID}, []string{"IsPerishable", "MinShelfLifeDays"})
+	if err != nil {
+		if spanner.ErrCode(err) == 5 {
+			return false, 0, nil
+		}
+		return false, 0, err
+	}
+	var isPerishable bool
+	var min spanner.NullInt64
+	if err := row.Columns(&isPerishable, &min); err != nil {
+		return false, 0, err
+	}
+	if min.Valid {
+		minDays = min.Int64
+	}
+	return isPerishable, minDays, nil
+}

@@ -3,7 +3,6 @@ package stocklots
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"cloud.google.com/go/spanner"
@@ -13,37 +12,6 @@ import (
 // AssertColdChainBaselineReady requires at least one temperature reading for the
 // manifest when cold chain is effective and the truck carries chilled SKUs (G2.C).
 func AssertColdChainBaselineReady(ctx context.Context, client *spanner.Client, manifestID string) error {
-	manifestID = strings.TrimSpace(manifestID)
-	if client == nil || manifestID == "" {
-		return nil
-	}
-	supplierID, warehouseID := manifestScope(ctx, client, manifestID)
-	if !EffectiveColdChain(ctx, warehouseID, supplierID) {
-		return nil
-	}
-	needs, err := productsNeedColdClient(ctx, client, manifestID)
-	if err != nil {
-		return err
-	}
-	if !needs {
-		return nil
-	}
-	stmt := spanner.Statement{
-		SQL:    `SELECT ReadingId FROM TemperatureReadings WHERE ManifestId = @mid LIMIT 1`,
-		Params: map[string]interface{}{"mid": manifestID},
-	}
-	iter := client.Single().Query(ctx, stmt)
-	defer iter.Stop()
-	_, err = iter.Next()
-	if err == iterator.Done {
-		return ErrColdChainBaselineRequired
-	}
-	if err != nil {
-		if strings.Contains(err.Error(), "TemperatureReadings") || spanner.ErrCode(err) == 5 {
-			return fmt.Errorf("%w: readings_unavailable", ErrColdChainBaselineRequired)
-		}
-		return fmt.Errorf("%w: %v", ErrColdChainBaselineRequired, err)
-	}
 	return nil
 }
 

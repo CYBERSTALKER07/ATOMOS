@@ -2,13 +2,15 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 // Repository is the persistence seam for the driver module.
@@ -168,10 +170,85 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 			}
 		}
 		mutations := []*spanner.Mutation{spanner.UpdateMap("Drivers", row)}
+
+		// Durable Shift State Machine Tracking
+		if upd.OnShift {
+			// Check if driver already has an ACTIVE shift
+			activeStmt := spanner.Statement{
+				SQL:    `SELECT ShiftId FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
+				Params: map[string]any{"id": upd.DriverID},
+			}
+			iter := txn.Query(txnCtx, activeStmt)
+			_, sErr := iter.Next()
+			iter.Stop()
+			if errors.Is(sErr, iterator.Done) {
+				var supplierID, warehouseID, vehicleID string
+				driverStmt := spanner.Statement{
+					SQL:    `SELECT SupplierId, HomeNodeId, VehicleId FROM Drivers WHERE DriverId = @id`,
+					Params: map[string]any{"id": upd.DriverID},
+				}
+				dIter := txn.Query(txnCtx, driverStmt)
+				if dRow, dErr := dIter.Next(); dErr == nil {
+					var sup, wh, veh spanner.NullString
+					_ = dRow.Columns(&sup, &wh, &veh)
+					supplierID = sup.StringVal
+					warehouseID = wh.StringVal
+					vehicleID = veh.StringVal
+				}
+				dIter.Stop()
+
+				shiftID := uuid.NewString()
+				mutations = append(mutations, spanner.InsertMap("DriverShifts", map[string]any{
+					"DriverId":      upd.DriverID,
+					"ShiftId":       shiftID,
+					"SupplierId":    supplierID,
+					"WarehouseId":   warehouseID,
+					"VehicleId":     vehicleID,
+					"Status":        "ACTIVE",
+					"StartAt":       spanner.CommitTimestamp,
+					"DurationHours": 0.0,
+					"CreatedAt":     spanner.CommitTimestamp,
+					"UpdatedAt":     spanner.CommitTimestamp,
+				}))
+			}
+		} else {
+			// Find active shift and close it
+			activeStmt := spanner.Statement{
+				SQL:    `SELECT ShiftId, StartAt FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
+				Params: map[string]any{"id": upd.DriverID},
+			}
+			iter := txn.Query(txnCtx, activeStmt)
+			sRow, sErr := iter.Next()
+			if sErr == nil {
+				var shiftID string
+				var startAt time.Time
+				if err := sRow.Columns(&shiftID, &startAt); err == nil {
+					durationHours := time.Since(startAt).Hours()
+					if durationHours < 0 {
+						durationHours = 0
+					}
+					mutations = append(mutations, spanner.UpdateMap("DriverShifts", map[string]any{
+						"DriverId":      upd.DriverID,
+						"ShiftId":       shiftID,
+						"Status":        "COMPLETED",
+						"EndAt":         spanner.CommitTimestamp,
+						"DurationHours": durationHours,
+						"Notes":         upd.Note,
+						"UpdatedAt":     spanner.CommitTimestamp,
+					}))
+				}
+			}
+			iter.Stop()
+		}
+
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
 			if createdAt.IsZero() {
 				createdAt = time.Now().UTC()
+			}
+			supID := e.SupplierID
+			if strings.TrimSpace(supID) == "" {
+				supID = outbox.ResolveSupplierID("", []byte(e.Payload))
 			}
 			outboxRow := map[string]any{
 				"EventId":       e.EventID,
@@ -179,6 +256,7 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 				"AggregateId":   e.AggregateID,
 				"TopicName":     e.TopicName,
 				"Payload":       e.Payload,
+				"SupplierId":    supID,
 				"CreatedAt":     createdAt,
 				"PublishedAt":   nil,
 			}

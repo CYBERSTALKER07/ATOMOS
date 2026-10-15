@@ -1,6 +1,5 @@
 // Package main seeds complete multi-tenant topologies into Cloud Spanner for Milestone 2.
 // It idempotently provisions primary and secondary suppliers, warehouses, factories,
-// localized product catalogs with cold-chain bounds, stock lots with FEFO shelf-life,
 // vehicles, drivers with secure PINs, retailer accounts with credit limits, and full role matrices.
 package main
 
@@ -586,11 +585,9 @@ func seedMultiTenantData(ctx context.Context, client *spanner.Client, cfg *boots
 		}),
 	)
 
-	// Stock Lots with realistic FEFO shelf-life
 	mfgAugust := civil.DateOf(now.AddDate(0, 0, -10))
 	mfgJuly := civil.DateOf(now.AddDate(0, 0, -40))
 
-	// FEFO Milk batch 1 (expires in 12 days) vs batch 2 (expires in 26 days)
 	expMilk1 := civil.DateOf(now.AddDate(0, 0, 12))
 	expMilk2 := civil.DateOf(now.AddDate(0, 0, 26))
 	expButter := civil.DateOf(now.AddDate(0, 1, 15))
@@ -601,7 +598,6 @@ func seedMultiTenantData(ctx context.Context, client *spanner.Client, cfg *boots
 	expCroissant := civil.DateOf(now.AddDate(0, 0, 5))
 
 	mutations = append(mutations,
-		// Milk FEFO Early Lot
 		spanner.InsertOrUpdateMap("StockLots", map[string]any{
 			"LotId":            "lot_milk_batch_01",
 			"SupplierId":       PrimarySupplierID,
@@ -618,7 +614,6 @@ func seedMultiTenantData(ctx context.Context, client *spanner.Client, cfg *boots
 			"CreatedAt":        ts,
 			"UpdatedAt":        ts,
 		}),
-		// Milk FEFO Later Lot
 		spanner.InsertOrUpdateMap("StockLots", map[string]any{
 			"LotId":            "lot_milk_batch_02",
 			"SupplierId":       PrimarySupplierID,

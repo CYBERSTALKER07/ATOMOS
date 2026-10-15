@@ -33,7 +33,7 @@ echo "[4/5] Handlers / PreferTenant wiring ..."
 grep -q 'routePerfListStmt' apps/backend-go/analytics/handlers.go
 grep -q 'WHERE SupplierId = @supplierId' apps/backend-go/analytics/handlers.go
 grep -q 'SetSupplierID' apps/backend-go/demand/service.go
-grep -q 'PreferTenantSupplierID' apps/backend-go/bootstrap/bootstrap.go
+grep -q 'PreferTenantSupplierID' apps/backend-go/bootstrap/app.go
 
 echo "[5/5] Unit tests ..."
 (cd apps/backend-go && go test ./analytics/ ./demand/ -count=1)

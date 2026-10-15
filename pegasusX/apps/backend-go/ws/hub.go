@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -82,6 +83,8 @@ func NewHub(name string, relay cache.Backend, log *slog.Logger) *Hub {
 	return NewHubWithLimits(name, relay, log, DefaultHubLimits(name))
 }
 
+var hubInstanceCounter atomic.Uint64
+
 // NewHubWithLimits constructs a Hub with explicit shedding/capacity limits.
 func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits HubLimits) *Hub {
 	if log == nil {
@@ -91,7 +94,7 @@ func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits
 		name:     name,
 		relay:    relay,
 		log:      log,
-		instance: fmt.Sprintf("%s-%d", name, time.Now().UnixNano()),
+		instance: fmt.Sprintf("%s-%d-%d", name, time.Now().UnixNano(), hubInstanceCounter.Add(1)),
 		limits:   limits,
 		rooms:    make(map[string]map[string]Connection),
 		joinedAt: make(map[string]time.Time),
@@ -248,7 +251,7 @@ func (h *Hub) Broadcast(ctx context.Context, room string, payload []byte) {
 }
 
 func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
-	h.recordHistory(room, payload)
+	deliveredPayload := h.recordHistory(room, payload)
 
 	h.mu.RLock()
 	conns := make([]Connection, 0, len(h.rooms[room]))
@@ -260,7 +263,7 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
 	var dead []string
 	for _, c := range conns {
 		writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		err := c.Send(writeCtx, payload)
+		err := c.Send(writeCtx, deliveredPayload)
 		cancel()
 		if err != nil {
 			dead = append(dead, c.ID())
@@ -282,9 +285,33 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
 	}
 }
 
-func (h *Hub) recordHistory(room string, payload []byte) {
+func enrichWSEventPayload(payload []byte, seq int64, eventID string) []byte {
+	var object map[string]any
+	if err := json.Unmarshal(payload, &object); err != nil {
+		return payload
+	}
+	modified := false
+	if _, ok := object["event_id"]; !ok && eventID != "" {
+		object["event_id"] = eventID
+		modified = true
+	}
+	if _, ok := object["seq"]; !ok && seq > 0 {
+		object["seq"] = seq
+		modified = true
+	}
+	if !modified {
+		return payload
+	}
+	patched, err := json.Marshal(object)
+	if err != nil {
+		return payload
+	}
+	return patched
+}
+
+func (h *Hub) recordHistory(room string, payload []byte) []byte {
 	if h == nil || room == "" || len(payload) == 0 {
-		return
+		return payload
 	}
 	h.historyMu.Lock()
 	defer h.historyMu.Unlock()
@@ -293,11 +320,12 @@ func (h *Hub) recordHistory(room string, payload []byte) {
 	if eventID == "" {
 		eventID = strconv.FormatInt(h.globalSeq, 10)
 	}
+	enriched := enrichWSEventPayload(payload, h.globalSeq, eventID)
 	buf := h.history[room]
 	evt := bufferedEvent{
 		Seq:       h.globalSeq,
 		EventID:   eventID,
-		Payload:   append([]byte(nil), payload...),
+		Payload:   append([]byte(nil), enriched...),
 		Timestamp: time.Now().UTC(),
 	}
 	buf = append(buf, evt)
@@ -305,6 +333,7 @@ func (h *Hub) recordHistory(room string, payload []byte) {
 		buf = buf[len(buf)-defaultRingBufferSize:]
 	}
 	h.history[room] = buf
+	return enriched
 }
 
 // ReplaySince delivers buffered events for room to conn, starting after sinceSeq or lastEventID.

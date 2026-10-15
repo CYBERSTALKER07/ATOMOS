@@ -55,6 +55,8 @@ xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
 Pods/
+.build/
+.swiftpm/
 
 # expo
 .expo/

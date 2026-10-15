@@ -109,14 +109,14 @@ configMapGenerator:
       - CLAIM_AUTO_APPROVE_MAX_MINOR=0
       - CREDIT_NOTE_AUTO_FROM_CLAIM=false
       - CLAIM_EVIDENCE_MAX_BYTES=10485760
-      - SPANNER_PROJECT=pegasus-503013
+      - SPANNER_PROJECT=pegasusx-prod-uz
       - SPANNER_INSTANCE=pegasusx-staging-spanner
-      - SPANNER_DATABASE=pegasusx-staging-db
+      - SPANNER_DATABASE=main
       - REDIS_ADDR=10.175.232.20:6378
       - REDIS_TLS_ENABLED=true
-      - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasus-503013.cloud.goog:9092
+      - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasusx-prod-uz.cloud.goog:9092
       - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
-      - KAFKA_SASL_USERNAME=staging-backend@pegasus-503013.iam.gserviceaccount.com
+      - KAFKA_SASL_USERNAME=backend-go-sa@pegasusx-prod-uz.iam.gserviceaccount.com
       - KAFKA_TOPIC_MAIN=staging.events.orders
       - KAFKA_TOPIC_MAIN_DLQ=staging.events.orders-dlq
       - KAFKA_TOPIC_ORDERS=staging.events.orders
@@ -138,17 +138,17 @@ labels:
 
 images:
   - name: PEGASUSX_BACKEND_GO_IMAGE_PLACEHOLDER
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/backend-go
     newTag: staging
   - name: PEGASUSX_AI_WORKER_IMAGE_PLACEHOLDER
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/ai-worker
     newTag: staging
   - name: pegasusx-optimizer-core:local
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/optimizer-core
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/optimizer-core
     newTag: staging
   - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/ai-worker
     newTag: staging
   - name: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest
-    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go
+    newName: asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/backend-go
     newTag: staging

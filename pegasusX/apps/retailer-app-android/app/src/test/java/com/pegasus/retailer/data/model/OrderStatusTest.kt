@@ -160,4 +160,24 @@ class OrderStatusTest {
     fun ringLabel_awaitingPayment_isPay() {
         assertEquals("Pay", OrderStatus.AWAITING_PAYMENT.ringLabel)
     }
+
+    @Test
+    fun customerStage_matchesGoldenFixture() {
+        val stream = javaClass.classLoader?.getResourceAsStream("order-customer-stage.json")
+            ?: error("order-customer-stage.json resource not found")
+        val jsonStr = stream.bufferedReader().use { it.readText() }
+        val mappingObj = org.json.JSONObject(jsonStr).getJSONObject("mapping")
+
+        OrderStatus.entries.forEach { status ->
+            if (mappingObj.has(status.name)) {
+                val expectedStageName = mappingObj.getString(status.name)
+                assertEquals(
+                    "Status ${status.name} mapped to unexpected CustomerStage",
+                    expectedStageName,
+                    status.customerStage.name
+                )
+            }
+        }
+    }
 }
+

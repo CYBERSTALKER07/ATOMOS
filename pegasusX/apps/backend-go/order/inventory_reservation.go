@@ -3,7 +3,6 @@ package order
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,7 +16,7 @@ import (
 )
 
 // ReserveLineItemsInTxn increments QuantityReserved for each line when stock is available.
-// When WMS_LOTS_ENABLED, allocates FEFO/FIFO lots via stocklots (orderID required).
+// When WMS_LOTS_ENABLED, allocates /FIFO lots via stocklots (orderID required).
 func ReserveLineItemsInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string, lineItems []LineItem) error {
 	return ReserveLineItemsForOrderInTxn(ctx, txn, supplierID, warehouseID, "", "", time.Time{}, lineItems)
 }
@@ -34,25 +33,6 @@ func ReserveLineItemsForOrderInTxn(
 		return nil
 	}
 	supplierID = strings.TrimSpace(supplierID)
-
-	if stocklots.LotsEnabled() {
-		lines := make([]stocklots.LineQty, 0, len(lineItems))
-		for _, item := range lineItems {
-			sku := strings.TrimSpace(item.SKU)
-			if sku == "" || item.Quantity <= 0 {
-				continue
-			}
-			lines = append(lines, stocklots.LineQty{SKU: sku, Quantity: item.Quantity})
-		}
-		err := stocklots.ReserveFEFOInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, expectedDelivery, lines)
-		if err != nil {
-			if errors.Is(err, stocklots.ErrInventoryExhausted) {
-				return fmt.Errorf("%w: %v", ErrInventoryExhausted, err)
-			}
-			return err
-		}
-		return nil
-	}
 
 	// Aggregate quantities by SKU to avoid double-read/overwrite issues for duplicate SKUs
 	skuQuantities := make(map[string]int64)
@@ -89,6 +69,66 @@ func ReserveLineItemsForOrderInTxn(
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})}); err != nil {
 			return fmt.Errorf("buffer inventory update: %w", err)
+		}
+
+		if stocklots.EffectiveLots(ctx, warehouseID, supplierID) && orderID != "" {
+			stmt := spanner.Statement{
+				SQL: `SELECT LotId, QuantityOnHand, QuantityReserved
+				      FROM StockLots
+				      WHERE WarehouseId = @w AND ProductId = @p AND Status = 'AVAILABLE'
+				        AND QuantityOnHand - QuantityReserved > 0
+				      ORDER BY ExpiryDate ASC, ReceivedAt ASC`,
+				Params: map[string]any{"w": warehouseID, "p": sku},
+			}
+			iter := txn.Query(ctx, stmt)
+			defer iter.Stop()
+			rem := quantity
+			for {
+				if rem <= 0 {
+					break
+				}
+				row, err := iter.Next()
+				if err == iterator.Done {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("read lots for FEFO %s: %w", sku, err)
+				}
+				var lotID string
+				var lqoh, lqr int64
+				if err := row.Columns(&lotID, &lqoh, &lqr); err != nil {
+					return fmt.Errorf("decode lot for FEFO: %w", err)
+				}
+				avail := lqoh - lqr
+				if avail <= 0 {
+					continue
+				}
+				take := avail
+				if rem < take {
+					take = rem
+				}
+				rem -= take
+				muts := []*spanner.Mutation{
+					spanner.UpdateMap("StockLots", map[string]any{
+						"LotId":            lotID,
+						"QuantityReserved": lqr + take,
+						"UpdatedAt":        spanner.CommitTimestamp,
+					}),
+				}
+				if orderID != "" {
+					muts = append(muts, spanner.InsertOrUpdateMap("OrderLotReservations", map[string]any{
+						"OrderId":  orderID,
+						"LotId":    lotID,
+						"Quantity": take,
+					}))
+				}
+				if err := txn.BufferWrite(muts); err != nil {
+					return fmt.Errorf("buffer lot reserve: %w", err)
+				}
+			}
+			if rem > 0 {
+				return fmt.Errorf("%w: sku %s short by %d on lots", ErrInventoryExhausted, sku, rem)
+			}
 		}
 	}
 	return nil

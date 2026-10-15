@@ -136,6 +136,19 @@ enum class OrderStatus {
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE, RECONCILIATION_REQUIRED, DELAYED -> -1
         }
 
+    val customerStage: CustomerStage
+        get() = when (this) {
+            SCHEDULED, AUTO_ACCEPTED, PENDING_REVIEW -> CustomerStage.PLACED
+            PENDING, DELAYED, LOADED, DISPATCHED -> CustomerStage.PROCESSING
+            IN_TRANSIT, ARRIVING, ARRIVED,
+            AWAITING_PAYMENT, PENDING_CASH_COLLECTION -> CustomerStage.OUT_FOR_DELIVERY
+            COMPLETED, DELIVERED_ON_CREDIT, FISCALIZING -> CustomerStage.DELIVERED
+            CANCELLED, NO_CAPACITY -> CustomerStage.CANCELLED
+            ARRIVED_SHOP_CLOSED, CANCEL_REQUESTED,
+            FISCAL_FAILED, RECONCILIATION_REQUIRED,
+            QUARANTINE -> CustomerStage.EXCEPTION_ACTION_REQUIRED
+        }
+
     companion object {
         /** Ordered timeline steps with retailer-friendly labels. */
         val timelineSteps = listOf(
@@ -147,6 +160,18 @@ enum class OrderStatus {
             "Delivered" to COMPLETED,
         )
     }
+}
+
+// ── Customer Stage (High-level 4-step progress facade matching backend) ──
+
+@Serializable
+enum class CustomerStage(val displayName: String, val progressPercent: Int) {
+    @SerialName("PLACED") PLACED("Order Placed", 20),
+    @SerialName("PROCESSING") PROCESSING("Preparing Order", 50),
+    @SerialName("OUT_FOR_DELIVERY") OUT_FOR_DELIVERY("Out for Delivery", 80),
+    @SerialName("DELIVERED") DELIVERED("Delivered", 100),
+    @SerialName("CANCELLED") CANCELLED("Cancelled", 0),
+    @SerialName("EXCEPTION_ACTION_REQUIRED") EXCEPTION_ACTION_REQUIRED("Action Required", 75);
 }
 
 // ── Variant (iOS: Variant) ──

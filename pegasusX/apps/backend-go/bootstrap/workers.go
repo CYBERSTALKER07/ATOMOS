@@ -22,6 +22,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/partner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/returns"
+	"github.com/pegasusx/pegasusx/apps/backend-go/routing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -61,6 +62,8 @@ func setupKafkaConsumers(
 	claimsSvc *claims.Service,
 	partnerSvc *partner.Service,
 	fxSvc *fxrates.Service,
+	telemetryHub *ws.Hub,
+	routingSvc *routing.Service,
 	log *slog.Logger,
 ) (*kafkaConsumers, error) {
 	dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ, kafkaAuth)
@@ -99,12 +102,14 @@ func setupKafkaConsumers(
 		WarehouseHub:    warehouseHub,
 		FactoryHub:      factoryHub,
 		PayloadHub:      payloadHub,
+		TelemetryHub:    telemetryHub,
 		Push:            pushBridge,
 		Inbox:           notifSvc,
 		EventDedup:      kafkaEventDedup,
 		ConsumerGroupID: notificationConsumerGroup,
 		Cache:           cacheClient,
 		RetailerActors:  retailerSvc, // Phase 1 multi-user FCM fanout
+		Replanner:       routingSvc,
 	})
 	dispatcherTopics := events.DispatcherConsumerTopics()
 	notificationConsumer := kafka.NewMultiTopicConsumer(kafka.ConsumerDeps{

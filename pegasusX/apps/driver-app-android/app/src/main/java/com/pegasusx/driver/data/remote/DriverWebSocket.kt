@@ -32,6 +32,7 @@ import javax.inject.Singleton
 @Serializable
 data class DriverWSMessage(
     val type: String,
+    @SerialName("event_id") val eventId: String? = null,
     @SerialName("order_id") val orderId: String? = null,
     @SerialName("command_id") val commandId: String? = null,
     @SerialName("trace_id") val traceId: String? = null,
@@ -87,6 +88,7 @@ class DriverWebSocket @Inject constructor(
     private var currentBaseUrl: String? = null
     private var currentToken: String? = null
     private var pendingRetryAfterMs: Long? = null
+    @Volatile private var lastEventId: String? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     fun connect(baseUrl: String, driverId: String, token: String) {
@@ -97,6 +99,9 @@ class DriverWebSocket @Inject constructor(
         reconnectAttempt.set(0)
         hasConnectedOnce.set(false)
         _outdatedState.value = null
+        if (currentBaseUrl != baseUrl || currentToken != token) {
+            lastEventId = null
+        }
         currentBaseUrl = baseUrl
         currentToken = token
 
@@ -120,15 +125,24 @@ class DriverWebSocket @Inject constructor(
     }
 
     private fun connectInternal(baseUrl: String, token: String) {
-        val wsUrl = baseUrl
+        val baseWsUrl = baseUrl
             .replace("http://", "ws://")
             .replace("https://", "wss://")
             .plus("/v1/ws?sv=$WS_SCHEMA_VERSION")
+        val currentLastId = lastEventId
+        val wsUrl = if (!currentLastId.isNullOrBlank()) {
+            "$baseWsUrl&last_event_id=$currentLastId"
+        } else {
+            baseWsUrl
+        }
 
-        val request = Request.Builder()
+        val reqBuilder = Request.Builder()
             .url(wsUrl)
             .addHeader("Authorization", "Bearer $token")
-            .build()
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val request = reqBuilder.build()
 
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -143,6 +157,9 @@ class DriverWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val msg = json.decodeFromString<DriverWSMessage>(text)
+                    if (!msg.eventId.isNullOrBlank()) {
+                        lastEventId = msg.eventId
+                    }
                     if (msg.type == "SYSTEM_APP_OUTDATED") {
                         publishOutdatedState(msg)
                     }

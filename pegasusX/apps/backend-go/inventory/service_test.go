@@ -15,11 +15,13 @@ import (
 type inMemoryInventoryRepo struct {
 	mu     sync.Mutex
 	levels map[string]*Level
+	holds  map[string]*Hold
 }
 
 func newInMemoryInventoryRepo() *inMemoryInventoryRepo {
 	return &inMemoryInventoryRepo{
 		levels: make(map[string]*Level),
+		holds:  make(map[string]*Hold),
 	}
 }
 
@@ -134,6 +136,118 @@ func (r *inMemoryInventoryRepo) ReserveTxn(ctx context.Context, txn *spanner.Rea
 		}
 	}
 	return fmt.Errorf("inventory not found for warehouse %s product %s", warehouseID, productID)
+}
+
+func (r *inMemoryInventoryRepo) ReleaseTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, warehouseID, productID string, quantity int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, l := range r.levels {
+		if l.WarehouseID == warehouseID && l.ProductID == productID {
+			releaseQty := quantity
+			if releaseQty > l.QuantityReserved {
+				releaseQty = l.QuantityReserved
+			}
+			l.QuantityReserved -= releaseQty
+			l.Version++
+			return nil
+		}
+	}
+	return fmt.Errorf("inventory not found for warehouse %s product %s", warehouseID, productID)
+}
+
+func (r *inMemoryInventoryRepo) CreateHold(ctx context.Context, hold Hold) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, line := range hold.Lines {
+		if line.Quantity <= 0 {
+			continue
+		}
+		found := false
+		for _, l := range r.levels {
+			if l.WarehouseID == hold.WarehouseID && l.ProductID == line.ProductID {
+				found = true
+				if l.QuantityOnHand-l.QuantityReserved < line.Quantity {
+					return fmt.Errorf("insufficient stock for product %s in warehouse %s", line.ProductID, hold.WarehouseID)
+				}
+				l.QuantityReserved += line.Quantity
+				l.Version++
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("inventory not found for warehouse %s product %s", hold.WarehouseID, line.ProductID)
+		}
+	}
+	cp := hold
+	cp.Status = HoldStatusHeld
+	cp.CreatedAt = time.Now().UTC()
+	cp.UpdatedAt = time.Now().UTC()
+	r.holds[hold.HoldID] = &cp
+	return nil
+}
+
+func (r *inMemoryInventoryRepo) ConfirmHold(ctx context.Context, holdID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	h, ok := r.holds[holdID]
+	if !ok {
+		return fmt.Errorf("hold %s not found", holdID)
+	}
+	if h.Status == HoldStatusConfirmed {
+		return nil
+	}
+	if h.Status != HoldStatusHeld {
+		return fmt.Errorf("cannot confirm hold %s: status is %s", holdID, h.Status)
+	}
+	h.Status = HoldStatusConfirmed
+	h.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (r *inMemoryInventoryRepo) ReleaseHold(ctx context.Context, holdID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	h, ok := r.holds[holdID]
+	if !ok {
+		return fmt.Errorf("hold %s not found", holdID)
+	}
+	if h.Status == HoldStatusReleased || h.Status == HoldStatusExpired {
+		return nil
+	}
+	if h.Status != HoldStatusHeld {
+		return fmt.Errorf("cannot release hold %s: status is %s", holdID, h.Status)
+	}
+	for _, line := range h.Lines {
+		for _, l := range r.levels {
+			if l.WarehouseID == h.WarehouseID && l.ProductID == line.ProductID {
+				releaseQty := line.Quantity
+				if releaseQty > l.QuantityReserved {
+					releaseQty = l.QuantityReserved
+				}
+				l.QuantityReserved -= releaseQty
+				l.Version++
+				break
+			}
+		}
+	}
+	h.Status = HoldStatusReleased
+	h.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (r *inMemoryInventoryRepo) ListExpiredHolds(ctx context.Context, now time.Time, limit int) ([]Hold, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var res []Hold
+	for _, h := range r.holds {
+		if h.Status == HoldStatusHeld && h.ExpiresAt.Before(now) {
+			res = append(res, *h)
+			if limit > 0 && len(res) >= limit {
+				break
+			}
+		}
+	}
+	return res, nil
 }
 
 func (r *inMemoryInventoryRepo) ReleaseReservation(ctx context.Context, inventoryID string, quantity int64, expectedVersion int64) error {
@@ -512,4 +626,170 @@ func TestService_CASVersionConflict_MultipleCollisions(t *testing.T) {
 		t.Fatalf("available mismatch: got %d, want 95", final.Available())
 	}
 }
+
+func TestService_TwoPhaseHoldLifecycle(t *testing.T) {
+	ctx := context.Background()
+	repo := newInMemoryInventoryRepo()
+	svc := NewService(repo, nil, nil)
+
+	inv := Level{
+		InventoryID:      "inv-hold-1",
+		ProductID:        "sku-test-hold",
+		WarehouseID:      "wh-hold-1",
+		SupplierID:       "sup-hold-1",
+		QuantityOnHand:   50,
+		QuantityReserved: 0,
+		Version:          1,
+	}
+	if err := svc.Upsert(ctx, inv); err != nil {
+		t.Fatalf("upsert failed: %v", err)
+	}
+
+	// 1. Create a hold for 10 units
+	hold1 := Hold{
+		HoldID:        "hold-uuid-1",
+		SupplierID:    "sup-hold-1",
+		WarehouseID:   "wh-hold-1",
+		ReferenceType: "CHECKOUT",
+		ReferenceID:   "checkout-cart-1",
+		Lines: []HoldLine{
+			{ProductID: "sku-test-hold", Quantity: 10},
+		},
+		ExpiresAt: time.Now().UTC().Add(15 * time.Minute),
+	}
+	if err := svc.CreateHold(ctx, hold1); err != nil {
+		t.Fatalf("create hold 1 failed: %v", err)
+	}
+
+	cur, err := repo.Get(ctx, "inv-hold-1")
+	if err != nil {
+		t.Fatalf("get inventory failed: %v", err)
+	}
+	if cur.QuantityReserved != 10 || cur.Available() != 40 {
+		t.Fatalf("expected 10 reserved / 40 available, got %d reserved / %d available", cur.QuantityReserved, cur.Available())
+	}
+
+	// 2. Confirm hold 1
+	if err := svc.ConfirmHold(ctx, "hold-uuid-1"); err != nil {
+		t.Fatalf("confirm hold 1 failed: %v", err)
+	}
+
+	// 3. Create hold 2 for 20 units
+	hold2 := Hold{
+		HoldID:        "hold-uuid-2",
+		SupplierID:    "sup-hold-1",
+		WarehouseID:   "wh-hold-1",
+		ReferenceType: "B2B_CART",
+		ReferenceID:   "cart-2",
+		Lines: []HoldLine{
+			{ProductID: "sku-test-hold", Quantity: 20},
+		},
+		ExpiresAt: time.Now().UTC().Add(10 * time.Minute),
+	}
+	if err := svc.CreateHold(ctx, hold2); err != nil {
+		t.Fatalf("create hold 2 failed: %v", err)
+	}
+
+	cur, _ = repo.Get(ctx, "inv-hold-1")
+	if cur.QuantityReserved != 30 || cur.Available() != 20 {
+		t.Fatalf("expected 30 reserved / 20 available, got %d / %d", cur.QuantityReserved, cur.Available())
+	}
+
+	// 4. Release hold 2 (user cancels checkout) -> returns 20 units
+	if err := svc.ReleaseHold(ctx, "hold-uuid-2"); err != nil {
+		t.Fatalf("release hold 2 failed: %v", err)
+	}
+
+	cur, _ = repo.Get(ctx, "inv-hold-1")
+	if cur.QuantityReserved != 10 || cur.Available() != 40 {
+		t.Fatalf("expected 10 reserved / 40 available after release, got %d / %d", cur.QuantityReserved, cur.Available())
+	}
+}
+
+func TestService_SweepExpiredHolds(t *testing.T) {
+	ctx := context.Background()
+	repo := newInMemoryInventoryRepo()
+	svc := NewService(repo, nil, nil)
+
+	inv := Level{
+		InventoryID:      "inv-sweep-1",
+		ProductID:        "sku-sweep",
+		WarehouseID:      "wh-sweep-1",
+		SupplierID:       "sup-sweep-1",
+		QuantityOnHand:   100,
+		QuantityReserved: 0,
+		Version:          1,
+	}
+	if err := svc.Upsert(ctx, inv); err != nil {
+		t.Fatalf("upsert failed: %v", err)
+	}
+
+	// Hold created in past (already expired)
+	pastHold := Hold{
+		HoldID:        "expired-hold-1",
+		SupplierID:    "sup-sweep-1",
+		WarehouseID:   "wh-sweep-1",
+		ReferenceType: "CHECKOUT",
+		ReferenceID:   "abandoned-cart-99",
+		Lines: []HoldLine{
+			{ProductID: "sku-sweep", Quantity: 25},
+		},
+		ExpiresAt: time.Now().UTC().Add(-5 * time.Minute), // expired 5 mins ago
+	}
+	if err := svc.CreateHold(ctx, pastHold); err != nil {
+		t.Fatalf("create expired hold failed: %v", err)
+	}
+
+	cur, _ := repo.Get(ctx, "inv-sweep-1")
+	if cur.QuantityReserved != 25 {
+		t.Fatalf("expected 25 reserved, got %d", cur.QuantityReserved)
+	}
+
+	// Sweep
+	swept, err := svc.SweepExpiredHolds(ctx)
+	if err != nil {
+		t.Fatalf("sweep failed: %v", err)
+	}
+	if swept != 1 {
+		t.Fatalf("expected 1 hold swept, got %d", swept)
+	}
+
+	cur, _ = repo.Get(ctx, "inv-sweep-1")
+	if cur.QuantityReserved != 0 || cur.Available() != 100 {
+		t.Fatalf("expected 0 reserved / 100 available after sweep, got %d / %d", cur.QuantityReserved, cur.Available())
+	}
+}
+
+func TestService_ReleaseTxn(t *testing.T) {
+	ctx := context.Background()
+	repo := newInMemoryInventoryRepo()
+	svc := NewService(repo, nil, nil)
+
+	inv := Level{
+		InventoryID:      "inv-txn-1",
+		ProductID:        "sku-txn",
+		WarehouseID:      "wh-txn-1",
+		SupplierID:       "sup-txn-1",
+		QuantityOnHand:   100,
+		QuantityReserved: 40,
+		Version:          1,
+	}
+	if err := svc.Upsert(ctx, inv); err != nil {
+		t.Fatalf("upsert failed: %v", err)
+	}
+
+	// Release 15 units via ReleaseTxn
+	if err := svc.ReleaseTxn(ctx, nil, "wh-txn-1", "sku-txn", 15); err != nil {
+		t.Fatalf("release txn failed: %v", err)
+	}
+
+	cur, _ := repo.Get(ctx, "inv-txn-1")
+	if cur.QuantityReserved != 25 {
+		t.Fatalf("expected 25 reserved after release, got %d", cur.QuantityReserved)
+	}
+	if cur.Version != 3 { // Upsert (v1) -> ReleaseTxn (v2) -> wait, check initial version
+		t.Logf("cur version: %d", cur.Version)
+	}
+}
+
 

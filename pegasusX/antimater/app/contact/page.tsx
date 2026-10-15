@@ -32,39 +32,47 @@ export default function ContactPage() {
  setFieldErrors(next);
  return Object.keys(next).length === 0;
  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
 
- const handleSubmit = async (e: React.FormEvent) => {
- e.preventDefault();
- if (!validate()) return;
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+    setErrorMessage('');
 
- setIsSubmitting(true);
- setSubmitStatus('idle');
- setErrorMessage('');
+    try {
+      const response = await fetch('/api/enterprise/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          inquiry_type: 'general',
+          source_page: '/contact',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to send message');
 
- try {
- const response = await fetch('/api/contact', {
- method: 'POST',
- headers: { 'Content-Type': 'application/json' },
- body: JSON.stringify(formData),
- });
- const data = await response.json();
- if (!response.ok) throw new Error(data.error || 'Failed to send message');
+      try {
+        const stored = localStorage.getItem('customer_messages');
+        const messages = stored ? JSON.parse(stored) : [];
+        messages.unshift(data.data || data.message || data.inquiry);
+        localStorage.setItem('customer_messages', JSON.stringify(messages));
+      } catch {}
 
- const stored = localStorage.getItem('customer_messages');
- const messages = stored ? JSON.parse(stored) : [];
- messages.unshift(data.message ?? data.inquiry);
- localStorage.setItem('customer_messages', JSON.stringify(messages));
-
- setSubmitStatus('success');
- setFormData({ name: '', email: '', subject: '', message: '' });
- setFieldErrors({});
- } catch (error) {
- setSubmitStatus('error');
- setErrorMessage(error instanceof Error ? error.message : 'Something went wrong');
- } finally {
- setIsSubmitting(false);
- }
- };
+      setSubmitStatus('success');
+      setFormData({ name: '', email: '', subject: '', message: '' });
+      setFieldErrors({});
+    } catch (error) {
+      setSubmitStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
  const { name, value } = e.target;

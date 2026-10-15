@@ -263,7 +263,20 @@ export default function OrdersPage() {
                 }}
               >
                 <option value="">{t('portal.page.orders.filter.all_states')}</option>
-                {['PENDING', 'LOADED', 'IN_TRANSIT', 'DELAYED', 'ARRIVED', 'COMPLETED', 'CANCELLED'].map((s) => (
+                {[
+                  'PENDING',
+                  'LOADED',
+                  'DISPATCHED',
+                  'IN_TRANSIT',
+                  'ARRIVING',
+                  'ARRIVED',
+                  'SHOP_CLOSED_PENDING',
+                  'AWAITING_PAYMENT',
+                  'DELAYED',
+                  'QUARANTINE',
+                  'COMPLETED',
+                  'CANCELLED',
+                ].map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>

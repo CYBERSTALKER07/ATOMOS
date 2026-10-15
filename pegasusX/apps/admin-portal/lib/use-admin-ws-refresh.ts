@@ -25,6 +25,7 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
     let socket: WebSocket | null = null;
     let reconnectTimer: number | undefined;
     let attempts = 0;
+    let lastEventId: string | null = null;
 
     const closeSocket = () => {
       if (!socket) return;
@@ -41,11 +42,20 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
       try {
         const session = await api.wsSession(token);
         if (cancelled) return;
-        const url = `${backendWsURL()}?token=${encodeURIComponent(session.token)}`;
+        const query = new URLSearchParams({ token: session.token });
+        if (lastEventId) {
+          query.set("last_event_id", lastEventId);
+        }
+        const url = `${backendWsURL()}?${query.toString()}`;
         socket = new WebSocket(url);
         socket.onmessage = (ev) => {
           try {
-            const msg = JSON.parse(String(ev.data)) as { type?: string; action?: string };
+            const msg = JSON.parse(String(ev.data)) as { type?: string; action?: string; event_id?: string; id?: string };
+            if (msg.event_id) {
+              lastEventId = msg.event_id;
+            } else if (msg.id) {
+              lastEventId = msg.id;
+            }
             if (msg.type === "PLATFORM_ADMIN_AUDIT") {
               onSignalRef.current(msg.type, msg.action || "");
             }

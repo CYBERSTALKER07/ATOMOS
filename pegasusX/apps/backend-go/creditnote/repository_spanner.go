@@ -48,6 +48,54 @@ func (r *SpannerRepository) SaveCreditNote(ctx context.Context, cn CreditNote, e
 			}
 		}
 		muts = append(muts, outboxMutations(buf.events)...)
+		if cn.Status == CreditNoteStatusFiscalPending && cn.TotalGrossMinor > 0 {
+			var supplierID, retailerID, currency string
+			orderRow, rErr := txn.ReadRow(ctx, "Orders", spanner.Key{cn.OrderId}, []string{"SupplierId", "RetailerId", "Currency"})
+			if rErr == nil {
+				_ = orderRow.Columns(&supplierID, &retailerID, &currency)
+				if currency == "" {
+					currency = "UZS"
+				}
+				if supplierID == "" {
+					supplierID = "_platform"
+				}
+				if retailerID == "" {
+					retailerID = "_retailer"
+				}
+				now := time.Now().UTC()
+				refID := fmt.Sprintf("jentry_cn_%s", cn.CreditNoteId)
+				muts = append(muts,
+					spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+						"LedgerEntryId": fmt.Sprintf("%s_p0", refID),
+						"OrderId":       cn.OrderId,
+						"SupplierId":    supplierID,
+						"RetailerId":    retailerID,
+						"Gateway":       "GENERAL_LEDGER",
+						"EntryType":     "GL_DEBIT_ADJ_CREDITNOTE",
+						"AmountMinor":   cn.TotalGrossMinor,
+						"Currency":      strings.ToUpper(currency),
+						"ReferenceId":   refID,
+						"Source":        "ledger.creditnote",
+						"OccurredAt":    now,
+						"CreatedAt":     spanner.CommitTimestamp,
+					}),
+					spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+						"LedgerEntryId": fmt.Sprintf("%s_p1", refID),
+						"OrderId":       cn.OrderId,
+						"SupplierId":    supplierID,
+						"RetailerId":    retailerID,
+						"Gateway":       "GENERAL_LEDGER",
+						"EntryType":     "GL_CREDIT_AR_RETAILER",
+						"AmountMinor":   cn.TotalGrossMinor,
+						"Currency":      strings.ToUpper(currency),
+						"ReferenceId":   refID,
+						"Source":        "ledger.creditnote",
+						"OccurredAt":    now,
+						"CreatedAt":     spanner.CommitTimestamp,
+					}),
+				)
+			}
+		}
 		return txn.BufferWrite(muts)
 	})
 	return err

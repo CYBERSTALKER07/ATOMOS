@@ -38,6 +38,9 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if !s.requireMutationIdempotencyKey(w, r) {
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
@@ -118,6 +121,9 @@ func (s *Service) HandleReceiveTransfer(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	if !s.requireMutationIdempotencyKey(w, r) {
+		return
+	}
 	transferID := strings.TrimSpace(chi.URLParam(r, "id"))
 	if transferID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "transfer_id_required"})
@@ -155,6 +161,9 @@ func (s *Service) HandleReceiveTransfer(w http.ResponseWriter, r *http.Request) 
 func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	if !s.requireMutationIdempotencyKey(w, r) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)

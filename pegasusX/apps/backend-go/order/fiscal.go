@@ -30,6 +30,7 @@ const (
 	FiscalStatusSuccess      = "SUCCESS"
 	FiscalStatusFailed       = "FAILED"
 	FiscalStatusForceSkipped = "FORCE_SKIPPED"
+	FiscalStatusDeadLetter   = "DEAD_LETTER"
 
 	FiscalProviderFake      = "FAKE"
 	FiscalProviderPegasus   = "PEGASUS"    // platform commercial receipt (default product path)

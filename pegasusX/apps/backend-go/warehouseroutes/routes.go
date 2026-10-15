@@ -81,8 +81,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Get("/v1/warehouse/ops/inventory-accuracy", d.WMSHandler.HandleInventoryAccuracy)
 			rr.Get("/v1/warehouse/ops/inventory-reconcile", d.WMSHandler.HandleReconcileInventoryV2)
 			rr.Post("/v1/warehouse/ops/cycle-counts/enqueue-abc", d.WMSHandler.HandleEnqueueABCCounts)
-			rr.Get("/v1/warehouse/ops/temperature-readings", d.WMSHandler.HandleTemperatureReadings)
-			rr.Post("/v1/warehouse/ops/temperature-readings", d.WMSHandler.HandleTemperatureReadings)
 			rr.Group(func(admin chi.Router) {
 				admin.Use(auth.RequireRole(auth.RoleWarehouseAdmin, auth.RoleAdmin))
 				admin.Post("/v1/warehouse/ops/pick-waves/{waveID}/waive-shorts", d.WMSHandler.HandleWaivePickShorts)

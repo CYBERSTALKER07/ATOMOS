@@ -14,6 +14,7 @@ enum DriverOfflineActionCatalog {
     static let shopClosed = "v1/delivery/shop-closed"
     static let partial = "v1/delivery/partial-offload"
     static let deliver = "v1/order/deliver"
+    static let submitOfflinePoD = "v1/delivery/submit-offline-pod"
     static let collectCash = "v1/order/collect-cash"
     static let credit = "v1/delivery/credit-delivery"
     static let arrive = "v1/delivery/arrive"
@@ -35,7 +36,7 @@ enum DriverOfflineActionCatalog {
     static func priority(for endpoint: String) -> Int {
         switch normalize(endpoint) {
         case proximity: return 10
-        case shopClosed, partial, deliver: return 20
+        case shopClosed, partial, deliver, submitOfflinePoD: return 20
         case collectCash, credit: return 30
         default: return 40
         }
@@ -44,7 +45,7 @@ enum DriverOfflineActionCatalog {
     static func isOfflineEligible(_ endpoint: String) -> Bool {
         let ep = normalize(endpoint)
         let known: Set<String> = [
-            proximity, shopClosed, partial, deliver, collectCash, credit,
+            proximity, shopClosed, partial, deliver, submitOfflinePoD, collectCash, credit,
             arrive, offload, complete, split, bypassOffload, paymentBypass,
             depart, returnComplete, cashRecon, routeReorder, availability,
         ]

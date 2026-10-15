@@ -3,6 +3,7 @@ package payment
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestDoubleEntry_BalancedSplitTenderPasses(t *testing.T) {
@@ -178,3 +179,191 @@ func TestDoubleEntry_DeterministicIdempotencyKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestDoubleEntry_CashVarianceShortfall(t *testing.T) {
+	// Driver expected to collect 100,000 UZS, declared 80,000 UZS -> Shortfall 20,000 UZS
+	je, err := BuildCashVarianceJournalEntry("recon-short-1", "sup-1", "driver-1", "route-1", "UZS", 100000, 80000, time.Time{}, "Driver cash shortfall")
+	if err != nil {
+		t.Fatalf("expected valid cash variance shortfall, got: %v", err)
+	}
+
+	if err := je.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+
+	if len(je.Postings) != 2 {
+		t.Fatalf("expected 2 postings, got %d", len(je.Postings))
+	}
+
+	// Posting 0: Debit AR:DRIVER:VARIANCE:driver-1 for 20000
+	if je.Postings[0].Direction != PostingDebit || je.Postings[0].AccountCode != "AR:DRIVER:VARIANCE:driver-1" || je.Postings[0].AmountMinor != 20000 {
+		t.Errorf("unexpected debit posting: %+v", je.Postings[0])
+	}
+
+	// Posting 1: Credit CASH:DRIVER:driver-1 for 20000
+	if je.Postings[1].Direction != PostingCredit || je.Postings[1].AccountCode != "CASH:DRIVER:driver-1" || je.Postings[1].AmountMinor != 20000 {
+		t.Errorf("unexpected credit posting: %+v", je.Postings[1])
+	}
+
+	muts, err := JournalEntryMutations(je)
+	if err != nil {
+		t.Fatalf("mutations failed: %v", err)
+	}
+	if len(muts) != 2 {
+		t.Fatalf("expected 2 spanner mutations, got %d", len(muts))
+	}
+}
+
+func TestDoubleEntry_CashVarianceOverage(t *testing.T) {
+	// Driver expected to collect 100,000 UZS, declared 115,000 UZS -> Overage 15,000 UZS
+	je, err := BuildCashVarianceJournalEntry("recon-over-1", "sup-1", "driver-2", "route-1", "UZS", 100000, 115000, time.Time{}, "Driver cash overage")
+	if err != nil {
+		t.Fatalf("expected valid cash variance overage, got: %v", err)
+	}
+
+	if err := je.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+
+	// Posting 0: Debit CASH:DRIVER:driver-2 for 15000
+	if je.Postings[0].Direction != PostingDebit || je.Postings[0].AccountCode != "CASH:DRIVER:driver-2" || je.Postings[0].AmountMinor != 15000 {
+		t.Errorf("unexpected debit posting: %+v", je.Postings[0])
+	}
+
+	// Posting 1: Credit AP:DRIVER:VARIANCE:driver-2 for 15000
+	if je.Postings[1].Direction != PostingCredit || je.Postings[1].AccountCode != "AP:DRIVER:VARIANCE:driver-2" || je.Postings[1].AmountMinor != 15000 {
+		t.Errorf("unexpected credit posting: %+v", je.Postings[1])
+	}
+}
+
+func TestDoubleEntry_CashResolutionAcceptAndWriteOff(t *testing.T) {
+	// Resolve shortfall with ACCEPT (driver repays cash into office vault)
+	jeAccept, err := BuildCashResolutionJournalEntry("recon-res-1", "sup-1", "driver-1", "ACCEPT", "UZS", -20000, time.Time{}, "Driver repaid shortfall")
+	if err != nil {
+		t.Fatalf("expected valid accept, got: %v", err)
+	}
+	if err := jeAccept.Validate(); err != nil {
+		t.Fatalf("accept validation failed: %v", err)
+	}
+	if jeAccept.Postings[0].AccountCode != "CASH:OFFICE" || jeAccept.Postings[1].AccountCode != "AR:DRIVER:VARIANCE:driver-1" {
+		t.Errorf("unexpected accept accounts: %+v, %+v", jeAccept.Postings[0], jeAccept.Postings[1])
+	}
+
+	// Resolve shortfall with WRITE_OFF (company absorbs loss)
+	jeWriteOff, err := BuildCashResolutionJournalEntry("recon-res-2", "sup-1", "driver-1", "WRITE_OFF", "UZS", -20000, time.Time{}, "Finance write-off")
+	if err != nil {
+		t.Fatalf("expected valid write-off, got: %v", err)
+	}
+	if err := jeWriteOff.Validate(); err != nil {
+		t.Fatalf("write-off validation failed: %v", err)
+	}
+	if jeWriteOff.Postings[0].AccountCode != "EXP:CASH:WRITEOFF" || jeWriteOff.Postings[1].AccountCode != "AR:DRIVER:VARIANCE:driver-1" {
+		t.Errorf("unexpected write-off accounts: %+v, %+v", jeWriteOff.Postings[0], jeWriteOff.Postings[1])
+	}
+
+	// Resolve overage with ACCEPT (recognized as misc revenue)
+	jeOverage, err := BuildCashResolutionJournalEntry("recon-res-3", "sup-1", "driver-2", "ACCEPT", "UZS", 15000, time.Time{}, "Recognize surplus")
+	if err != nil {
+		t.Fatalf("expected valid overage resolution, got: %v", err)
+	}
+	if err := jeOverage.Validate(); err != nil {
+		t.Fatalf("overage resolution validation failed: %v", err)
+	}
+	if jeOverage.Postings[0].AccountCode != "AP:DRIVER:VARIANCE:driver-2" || jeOverage.Postings[1].AccountCode != "REV:CASH:OVERAGE" {
+		t.Errorf("unexpected overage resolution accounts: %+v, %+v", jeOverage.Postings[0], jeOverage.Postings[1])
+	}
+}
+
+func TestDoubleEntry_DoorstepCashShortfall(t *testing.T) {
+	// Order total is 100,000 UZS, driver collected 90,000 UZS, shortfall 10,000 UZS
+	je, err := BuildDoorstepCashShortfallJournalEntry("ord-doorstep-1", "sup-1", "driver-1", "UZS", 100000, 90000, time.Time{})
+	if err != nil {
+		t.Fatalf("expected valid doorstep shortfall, got: %v", err)
+	}
+	if err := je.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+
+	if len(je.Postings) != 3 {
+		t.Fatalf("expected 3 postings, got %d", len(je.Postings))
+	}
+	// Debits: CASH:DRIVER (90000) + AR:DRIVER:VARIANCE (10000) = 100000
+	// Credit: ESCROW:ORDER (100000)
+	var sumDebit, sumCredit int64
+	for _, p := range je.Postings {
+		if p.Direction == PostingDebit {
+			sumDebit += p.AmountMinor
+		} else {
+			sumCredit += p.AmountMinor
+		}
+	}
+	if sumDebit != 100000 || sumCredit != 100000 {
+		t.Errorf("debits (%d) != credits (%d)", sumDebit, sumCredit)
+	}
+}
+
+func TestDoubleEntry_ClaimDisputeSettlements(t *testing.T) {
+	// 1) Store credit settlement mode
+	jeStoreCredit, err := BuildClaimDisputeJournalEntry("clm-1", "ord-1", "sup-1", "ret-1", "UZS", "STORE_CREDIT", 45000, time.Time{}, "Damaged items")
+	if err != nil {
+		t.Fatalf("expected valid store credit claim, got: %v", err)
+	}
+	if err := jeStoreCredit.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+	if jeStoreCredit.Postings[0].AccountCode != "EXP:CLAIMS:SETTLEMENT" || jeStoreCredit.Postings[1].AccountCode != "WALLET:RETAILER:ret-1" {
+		t.Errorf("unexpected accounts for store credit: %+v", jeStoreCredit.Postings)
+	}
+
+	// 2) Gateway refund settlement mode
+	jeRefund, err := BuildClaimDisputeJournalEntry("clm-2", "ord-2", "sup-1", "ret-1", "UZS", "GATEWAY_REFUND", 30000, time.Time{}, "Missing items")
+	if err != nil {
+		t.Fatalf("expected valid gateway refund claim, got: %v", err)
+	}
+	if err := jeRefund.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+	if jeRefund.Postings[0].AccountCode != "AP:SUPPLIER:sup-1" || jeRefund.Postings[1].AccountCode != "PSP:GATEWAY" {
+		t.Errorf("unexpected accounts for gateway refund: %+v", jeRefund.Postings)
+	}
+
+	// 3) Ledger only settlement mode
+	jeLedger, err := BuildClaimDisputeJournalEntry("clm-3", "ord-3", "sup-1", "ret-1", "UZS", "LEDGER_ONLY", 25000, time.Time{}, "Expired goods")
+	if err != nil {
+		t.Fatalf("expected valid ledger claim, got: %v", err)
+	}
+	if err := jeLedger.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+	if jeLedger.Postings[0].AccountCode != "AP:SUPPLIER:sup-1" || jeLedger.Postings[1].AccountCode != "AR:RETAILER:ret-1" {
+		t.Errorf("unexpected accounts for ledger claim: %+v", jeLedger.Postings)
+	}
+}
+
+func TestDoubleEntry_CreditNoteAdjustment(t *testing.T) {
+	je, err := BuildCreditNoteJournalEntry("cn-123", "ord-555", "sup-1", "ret-1", "UZS", 50000, time.Time{}, "Partial return credit note")
+	if err != nil {
+		t.Fatalf("expected valid credit note, got: %v", err)
+	}
+	if err := je.Validate(); err != nil {
+		t.Fatalf("validation failed: %v", err)
+	}
+	if len(je.Postings) != 2 {
+		t.Fatalf("expected 2 postings, got %d", len(je.Postings))
+	}
+	if je.Postings[0].AccountCode != "ADJ:CREDITNOTE:sup-1" || je.Postings[0].Direction != PostingDebit {
+		t.Errorf("unexpected debit posting: %+v", je.Postings[0])
+	}
+	if je.Postings[1].AccountCode != "AR:RETAILER:ret-1" || je.Postings[1].Direction != PostingCredit {
+		t.Errorf("unexpected credit posting: %+v", je.Postings[1])
+	}
+
+	muts, err := JournalEntryMutations(je)
+	if err != nil {
+		t.Fatalf("JournalEntryMutations failed: %v", err)
+	}
+	if len(muts) != 2 {
+		t.Fatalf("expected 2 mutations, got %d", len(muts))
+	}
+}
+

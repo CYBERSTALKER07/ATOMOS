@@ -34,6 +34,7 @@ const chipCfg: Record<
   ARRIVED: { color: "success", label: "Arrived" },
   ARRIVING: { color: "accent", label: "Arriving" },
   ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
+  SHOP_CLOSED_PENDING: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   COMPLETED: { color: "success", label: "Completed" },
@@ -44,8 +45,12 @@ const chipCfg: Record<
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  BACKORDERED: { color: "default", label: "Backordered" },
+  DELAYED: { color: "default", label: "Delayed" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  RECONCILIATION_REQUIRED: { color: "warning", label: "Reconciliation Required" },
+  SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 function formatAmount(amount: number): string {

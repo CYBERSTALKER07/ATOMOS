@@ -185,6 +185,7 @@ const (
 	// @Sync(RouteEvent)
 	EventRouteCreated   = "ROUTE_CREATED"
 	EventRouteReordered = "ROUTE_REORDERED"
+	EventRouteReplanned = "ROUTE_REPLANNED"
 
 	// @Sync(RouteEvent)
 	EventDispatchRequested = "DISPATCH_REQUESTED"
@@ -329,7 +330,15 @@ const (
 	EventPayoutPolicyUpdated   = "PAYOUT_POLICY_UPDATED"
 
 	// @Sync(ProductEvent)
+	EventProductCreated         = "PRODUCT_CREATED"
+	EventProductUpdated         = "PRODUCT_UPDATED"
+	EventProductPriceChanged     = "PRODUCT_PRICE_CHANGED"
+	EventProductDeactivated     = "PRODUCT_DEACTIVATED"
 	EventProductHandlingUpdated = "PRODUCT_HANDLING_UPDATED"
+
+	// @Sync(CategoryEvent)
+	EventCategoryCreated = "CATEGORY_CREATED"
+	EventCategoryUpdated = "CATEGORY_UPDATED"
 
 	// @Sync(PreOrderEvent)
 	EventPreOrderNotified     = "PRE_ORDER_NOTIFIED"
@@ -393,6 +402,7 @@ const (
 	AggregatePayoutPolicy          = "PayoutPolicy"
 	AggregateCountryOverride       = "CountryOverride"
 	AggregateLotRecall             = "LotRecall"
+	AggregateCategory              = "Category"
 )
 
 func topicFromEnv(key string, fallback string) string {

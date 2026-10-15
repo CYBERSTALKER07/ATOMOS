@@ -1,5 +1,7 @@
 package events
 
+import "github.com/pegasusx/pegasusx/apps/backend-go/orderstage"
+
 // Canonical Event Structs for Kafka Outbox Publishing.
 // These structs enforce consistency across the backend and satisfy the
 // enterprise kafka-event-contracts rules.
@@ -254,6 +256,22 @@ type OrderEvent struct {
 	GPSLat                float64 `json:"gps_lat,omitempty"`
 	GPSLng                float64 `json:"gps_lng,omitempty"`
 	Message               string  `json:"message,omitempty"`
+	// Derived from Status at emit time (see outbox.EmitJSON); never set by callers.
+	CustomerStage           string `json:"customer_stage,omitempty"`
+	CustomerProgressPercent int    `json:"customer_progress_percent,omitempty"`
+}
+
+// WithCustomerStage returns a copy with CustomerStage/CustomerProgressPercent
+// derived from Status. Statuses that are not order statuses are left unstamped.
+func (e OrderEvent) WithCustomerStage() any {
+	if e.CustomerStage != "" {
+		return e
+	}
+	if s, ok := orderstage.Lookup(e.Status); ok {
+		e.CustomerStage = string(s)
+		e.CustomerProgressPercent = orderstage.ProgressPercent(s)
+	}
+	return e
 }
 
 // ParentOrderEvent is the multi-supplier ParentOrders rollup lifecycle (B3 M-P0-6 & HARDEN-02).
@@ -643,17 +661,39 @@ type PlanningEvent struct {
 }
 
 // @Sync(ProductEvent)
-// ProductEvent handles product handling classification updates.
+// ProductEvent handles product lifecycle and handling classification updates.
 type ProductEvent struct {
 	BaseEvent
-	ProductID         string   `json:"product_id"`
-	SupplierID        string   `json:"supplier_id"`
-	HandlingClass     string   `json:"handling_class"`
-	RequiresColdChain bool     `json:"requires_cold_chain"`
-	IsHazardous       bool     `json:"is_hazardous"`
-	IsPerishable      bool     `json:"is_perishable"`
-	StorageTempMinC   *float64 `json:"storage_temp_min_c,omitempty"`
-	StorageTempMaxC   *float64 `json:"storage_temp_max_c,omitempty"`
+	ProductID          string   `json:"product_id"`
+	SupplierID         string   `json:"supplier_id"`
+	HandlingClass      string   `json:"handling_class,omitempty"`
+	RequiresColdChain  bool     `json:"requires_cold_chain,omitempty"`
+	IsHazardous        bool     `json:"is_hazardous,omitempty"`
+	IsPerishable       bool     `json:"is_perishable,omitempty"`
+	StorageTempMinC    *float64 `json:"storage_temp_min_c,omitempty"`
+	StorageTempMaxC    *float64 `json:"storage_temp_max_c,omitempty"`
+	Name               string   `json:"name,omitempty"`
+	CategoryID         string   `json:"category_id,omitempty"`
+	PriceMinor         int64    `json:"price_minor,omitempty"`
+	PreviousPriceMinor int64    `json:"previous_price_minor,omitempty"`
+	Currency           string   `json:"currency,omitempty"`
+	StockQuantity      int64    `json:"stock_quantity,omitempty"`
+	Unit               string   `json:"unit,omitempty"`
+	Barcode            string   `json:"barcode,omitempty"`
+	IsActive           bool     `json:"is_active,omitempty"`
+	Version            int64    `json:"version,omitempty"`
+}
+
+// @Sync(CategoryEvent)
+// CategoryEvent handles product category mutations.
+type CategoryEvent struct {
+	BaseEvent
+	CategoryID       string `json:"category_id"`
+	SupplierID       string `json:"supplier_id"`
+	Name             string `json:"name"`
+	ParentCategoryID string `json:"parent_category_id,omitempty"`
+	IconKey          string `json:"icon_key,omitempty"`
+	SortOrder        int64  `json:"sort_order,omitempty"`
 }
 
 // @Sync(ConditionEvent)

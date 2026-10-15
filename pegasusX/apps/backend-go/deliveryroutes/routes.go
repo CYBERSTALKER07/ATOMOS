@@ -21,6 +21,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		r.Post("/verify-handshake", handleVerifyHandshake(d.Service))
 		r.Post("/update-order-during-delivery", handleUpdateOrderDuringDelivery(d.Service))
+		r.Post("/submit-offline-pod", d.Service.HandleSubmitOfflinePoD)
 	})
 }
 

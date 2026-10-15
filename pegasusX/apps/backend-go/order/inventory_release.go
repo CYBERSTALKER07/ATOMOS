@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
-	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 )
 
 // ReleaseReservationsInTxn decrements QuantityReserved for each line item within an existing RW transaction.
@@ -24,12 +23,6 @@ func ReleaseReservationsForOrderInTxn(ctx context.Context, txn *spanner.ReadWrit
 	warehouseID = strings.TrimSpace(warehouseID)
 	orderID = strings.TrimSpace(orderID)
 
-	if stocklots.LotsEnabled() && orderID != "" {
-		return stocklots.ReleaseLotReservationsInTxn(ctx, txn, supplierID, warehouseID, orderID)
-	}
-	if stocklots.LotsEnabled() && orderID == "" {
-		return fmt.Errorf("lot inventory release requires order_id when WMS_LOTS_ENABLED")
-	}
 	if len(lineItems) == 0 {
 		return nil
 	}

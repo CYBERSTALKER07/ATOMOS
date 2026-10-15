@@ -2,7 +2,7 @@
 # Matches the live cell attributes. GSM/VPC stay auto so an accidental apply
 # does not ForceNew JWT/PSP secrets or the auto-mode VPC.
 
-project_id  = "pegasus-503013"
+project_id  = "pegasusx-prod-uz"
 tenant_slug = "staging"
 environment = "staging"
 region      = "asia-south1"

@@ -130,6 +130,12 @@ func TraceParentFromContext(ctx context.Context) string {
 	return v
 }
 
+// customerStageStamper is implemented by payloads (such as events.OrderEvent)
+// that can stamp customer stage and progress percentage at serialization time.
+type customerStageStamper interface {
+	WithCustomerStage() any
+}
+
 // EmitJSON marshals payload as JSON and buffers an Event onto the active
 // transaction. Callers MUST pass the same trace_id that flows through their
 // request context so cross-system correlation remains intact.
@@ -145,18 +151,26 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		return fmt.Errorf("outbox: aggregateType/aggregateID/topic required")
 	}
 	traceID := TraceIDFromContext(ctx)
+	if s, ok := payload.(customerStageStamper); ok {
+		payload = s.WithCustomerStage()
+	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("outbox: marshal payload: %w", err)
 	}
+	eventID := newEventID()
 	if traceID != "" {
 		raw, err = injectTraceID(raw, traceID)
 		if err != nil {
 			return fmt.Errorf("outbox: inject trace id: %w", err)
 		}
 	}
+	raw, err = injectEventID(raw, eventID)
+	if err != nil {
+		return fmt.Errorf("outbox: inject event id: %w", err)
+	}
 	return txn.BufferOutbox(ctx, Event{
-		EventID:       newEventID(),
+		EventID:       eventID,
 		AggregateType: aggregateType,
 		AggregateID:   aggregateID,
 		TopicName:     topic,
@@ -220,6 +234,25 @@ func injectTraceID(raw []byte, traceID string) ([]byte, error) {
 		return raw, nil
 	}
 	object["trace_id"] = traceID
+	patched, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+	return patched, nil
+}
+
+func injectEventID(raw []byte, eventID string) ([]byte, error) {
+	if strings.TrimSpace(eventID) == "" {
+		return raw, nil
+	}
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return raw, nil
+	}
+	if _, exists := object["event_id"]; exists {
+		return raw, nil
+	}
+	object["event_id"] = eventID
 	patched, err := json.Marshal(object)
 	if err != nil {
 		return nil, err

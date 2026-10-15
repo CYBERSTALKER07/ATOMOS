@@ -128,6 +128,21 @@ func (s *Service) HandleGetProduct(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreateProduct serves POST /v1/catalog/products.
 func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
+	body, err := readLimitedBody(r, 256*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		SupplierID        string   `json:"supplier_id"`
 		CategoryID        string   `json:"category_id"`
@@ -150,7 +165,7 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		StorageTempMinC   *float64 `json:"storage_temp_min_c"`
 		StorageTempMaxC   *float64 `json:"storage_temp_max_c"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -202,7 +217,8 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, p)
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusCreated, p)
 }
 
 // HandleUpdateProduct serves PUT /v1/catalog/products/{productID}.
@@ -212,6 +228,21 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "product_id required"})
 		return
 	}
+	body, err := readLimitedBody(r, 256*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		Name              string   `json:"name"`
 		Description       string   `json:"description"`
@@ -234,7 +265,7 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 		StorageTempMaxC   *float64 `json:"storage_temp_max_c"`
 		Version           int64    `json:"version"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -315,10 +346,15 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	existing.Version = req.Version
 	if err := s.UpdateProduct(r.Context(), *existing); err != nil {
 		slog.ErrorContext(r.Context(), "update product failed", "err", err, "product_id", productID)
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "version_conflict"})
+		if errors.Is(err, ErrOptimisticLockConflict) {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "version_conflict"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	writeJSON(w, http.StatusOK, existing)
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusOK, existing)
 }
 
 // HandleSearchSuppliers serves GET /v1/catalog/suppliers/search.
@@ -364,6 +400,21 @@ func (s *Service) HandleListCategorySuppliers(w http.ResponseWriter, r *http.Req
 
 // HandleCreateCategory serves POST /v1/catalog/categories.
 func (s *Service) HandleCreateCategory(w http.ResponseWriter, r *http.Request) {
+	body, err := readLimitedBody(r, 64*1024)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
+		return
+	}
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
+
 	var req struct {
 		SupplierID       string `json:"supplier_id"`
 		Name             string `json:"name"`
@@ -371,7 +422,7 @@ func (s *Service) HandleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		IconKey          string `json:"icon_key"`
 		SortOrder        int64  `json:"sort_order"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
@@ -396,7 +447,8 @@ func (s *Service) HandleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
-	writeJSON(w, http.StatusCreated, cat)
+	idemCommitted = true
+	s.writeIdempotentJSON(w, r, body, http.StatusCreated, cat)
 }
 
 // HandleGetUploadTicket serves GET /v1/catalog/products/upload-ticket?ext=jpg.

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
@@ -74,8 +75,13 @@ func (s *Service) SubmitReconciliation(ctx context.Context, req SubmitReconcilia
 		status = ReconciliationStatusAccepted
 	}
 
+	reconID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("%s:%s:%d", driverID, civil.DateOf(shiftDate.UTC()).String(), req.DeclaredCashMinor))).String()
+	if existing, err := s.repo.GetReconciliation(ctx, reconID); err == nil && existing != nil {
+		return existing, nil
+	}
+
 	cr := CashReconciliation{
-		ReconciliationId:  uuid.New().String(),
+		ReconciliationId:  reconID,
 		SupplierId:        supplierID,
 		DriverId:          driverID,
 		RouteId:           req.RouteId,

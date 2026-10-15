@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLanguage } from '@/app/context/LanguageContext';
 
 type AdminShellProps = {
@@ -18,9 +19,20 @@ export default function AdminShell({ title, subtitle, badge, nav, children }: Ad
  <div className="min-h-screen bg-black text-white">
  <header className="border-b border-white/10 bg-black">
  <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4">
- <div className="flex flex-wrap items-center gap-6">
- <Link href="/" className="editorial-btn editorial-btn--sm">
- {t('admin_home', '← Home')}
+ <div className="flex flex-wrap items-center gap-4">
+ <Link href="/" className="flex items-center gap-2.5 group">
+ <div className="w-8 h-8 border border-white/20 bg-[#0d0d0d] flex items-center justify-center p-1 group-hover:border-[#A9EBF9] transition-colors">
+ <Image
+ src="/pegasus-nav.png"
+ alt="Pegasus Emblem"
+ width={24}
+ height={24}
+ className="w-full h-full object-contain"
+ />
+ </div>
+ <span className="font-mono text-xs tracking-widest uppercase text-white/80 group-hover:text-white">
+ PEGASUS // ADMIN
+ </span>
  </Link>
  {nav?.map((item) => (
  <Link

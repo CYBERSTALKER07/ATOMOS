@@ -135,7 +135,14 @@ func (r *SpannerRepository) SaveChargeback(ctx context.Context, c ChargebackReco
 		"CreatedAt":    c.CreatedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildChargebackLedgerEntry(c)))
+	muts := []*spanner.Mutation{base, ledgerMutation(buildChargebackLedgerEntry(c))}
+	je, err := BuildClaimDisputeJournalEntry(c.ChargebackID, c.OrderID, c.SupplierID, c.RetailerID, c.Currency, "LEDGER_ONLY", c.AmountMinor, c.CreatedAt, "Claim dispute settlement")
+	if err == nil {
+		if jeMuts, err := JournalEntryMutations(je); err == nil {
+			muts = append(muts, jeMuts...)
+		}
+	}
+	return r.writeWithOutbox(ctx, emit, muts...)
 }
 
 // SaveReversal persists one chargeback reversal and optional outbox events.
@@ -159,14 +166,64 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 		return fmt.Errorf("spanner payment repository: nil client")
 	}
 
+	if w.WebhookID == "" && w.Gateway != "" && w.TransactionID != "" {
+		w.WebhookID = fmt.Sprintf("wh_%s_%s", strings.ToLower(w.Gateway), strings.ToLower(w.TransactionID))
+	}
+
 	return spannerutils.RunReadWriteTransaction(ctx, r.client, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "PaymentWebhooks", spanner.Key{w.WebhookID}, []string{"WebhookId"})
-		if err != nil && spanner.ErrCode(err) != codes.NotFound {
-			return fmt.Errorf("read webhook: %w", err)
+		// 1. Direct primary key check
+		if w.WebhookID != "" {
+			row, err := txn.ReadRow(ctx, "PaymentWebhooks", spanner.Key{w.WebhookID}, []string{"WebhookId"})
+			if err != nil && spanner.ErrCode(err) != codes.NotFound {
+				return fmt.Errorf("read webhook: %w", err)
+			}
+			if err == nil && row != nil {
+				// Webhook already processed, skip emitting events and mutations
+				return nil
+			}
 		}
-		if err == nil && row != nil {
-			// Webhook already processed, skip emitting events and mutations
-			return nil
+
+		// 2. Secondary index check by (Gateway, TransactionId)
+		if w.Gateway != "" && w.TransactionID != "" {
+			stmt := spanner.Statement{
+				SQL: `SELECT WebhookId FROM PaymentWebhooks@{FORCE_INDEX=Idx_PaymentWebhooks_ByGatewayTxnReceived}
+				      WHERE Gateway = @gateway AND TransactionId = @txnId LIMIT 1`,
+				Params: map[string]any{
+					"gateway": w.Gateway,
+					"txnId":   w.TransactionID,
+				},
+			}
+			iter := txn.Query(ctx, stmt)
+			defer iter.Stop()
+			if _, err := iter.Next(); err == nil {
+				// Webhook already processed under this provider transaction!
+				return nil
+			} else if err != iterator.Done {
+				return fmt.Errorf("read webhook by gateway txn: %w", err)
+			}
+		}
+
+		// 3. Unique index check on PaymentLedgerEntries by (Gateway, EntryType, ReferenceId)
+		if w.TransactionID != "" {
+			entryType := "WEBHOOK_" + normalizedUpper(w.Status, "UNKNOWN")
+			gateway := normalizedUpper(w.Gateway, "UNKNOWN")
+			stmtLedger := spanner.Statement{
+				SQL: `SELECT LedgerEntryId FROM PaymentLedgerEntries@{FORCE_INDEX=Idx_PaymentLedgerEntries_GatewayTypeRef}
+				      WHERE Gateway = @gateway AND EntryType = @entryType AND ReferenceId = @refId LIMIT 1`,
+				Params: map[string]any{
+					"gateway":   gateway,
+					"entryType": entryType,
+					"refId":     w.TransactionID,
+				},
+			}
+			iterL := txn.Query(ctx, stmtLedger)
+			defer iterL.Stop()
+			if _, err := iterL.Next(); err == nil {
+				// Ledger entry already recorded for this transaction and status. Idempotent return.
+				return nil
+			} else if err != iterator.Done {
+				return fmt.Errorf("read ledger entry by gateway type ref: %w", err)
+			}
 		}
 
 		buf := &spannerTxnBuffer{}
@@ -189,8 +246,43 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 			"ReceivedAt":     w.ReceivedAt.UTC(),
 		})
 
-		mutations := make([]*spanner.Mutation, 0, 2+len(buf.events))
+		mutations := make([]*spanner.Mutation, 0, 4+len(buf.events))
 		mutations = append(mutations, base, ledgerMutation(buildWebhookLedgerEntry(w)))
+
+		// Update PaymentSessions if session exists
+		if w.SessionID != "" {
+			sessRow, err := txn.ReadRow(ctx, "PaymentSessions", spanner.Key{w.SessionID}, []string{"SessionId", "Status"})
+			if err == nil && sessRow != nil {
+				var curStatus string
+				_ = sessRow.ColumnByName("Status", &curStatus)
+				if !strings.EqualFold(curStatus, w.Status) {
+					mutations = append(mutations, spanner.UpdateMap("PaymentSessions", map[string]any{
+						"SessionId": w.SessionID,
+						"Status":    w.Status,
+						"UpdatedAt": w.ReceivedAt.UTC(),
+					}))
+				}
+			}
+		} else if w.OrderID != "" {
+			stmtSess := spanner.Statement{
+				SQL: `SELECT SessionId, Status FROM PaymentSessions@{FORCE_INDEX=Idx_PaymentSessions_ByOrderCreated}
+				      WHERE OrderId = @orderId ORDER BY CreatedAt DESC LIMIT 1`,
+				Params: map[string]any{"orderId": w.OrderID},
+			}
+			iterSess := txn.Query(ctx, stmtSess)
+			defer iterSess.Stop()
+			if sRow, sErr := iterSess.Next(); sErr == nil {
+				var sID, sStatus string
+				if err := sRow.Columns(&sID, &sStatus); err == nil && !strings.EqualFold(sStatus, w.Status) {
+					mutations = append(mutations, spanner.UpdateMap("PaymentSessions", map[string]any{
+						"SessionId": sID,
+						"Status":    w.Status,
+						"UpdatedAt": w.ReceivedAt.UTC(),
+					}))
+				}
+			}
+		}
+
 		for _, e := range buf.events {
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
@@ -667,6 +759,27 @@ func ledgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
 		"OccurredAt":    occurredAt.UTC(),
 		"CreatedAt":     createdAt.UTC(),
 	})
+}
+
+// LedgerMutation transforms a LedgerEntryRecord into a Spanner insert/update mutation on PaymentLedgerEntries.
+func LedgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
+	return ledgerMutation(entry)
+}
+
+// JournalEntryMutations validates and transforms a JournalEntry into Spanner mutations on PaymentLedgerEntries.
+func JournalEntryMutations(je *JournalEntry) ([]*spanner.Mutation, error) {
+	if je == nil {
+		return nil, nil
+	}
+	if err := je.Validate(); err != nil {
+		return nil, err
+	}
+	records := je.ToLedgerEntryRecords()
+	muts := make([]*spanner.Mutation, 0, len(records))
+	for _, rec := range records {
+		muts = append(muts, LedgerMutation(rec))
+	}
+	return muts, nil
 }
 
 func normalizedUpper(v string, fallback string) string {

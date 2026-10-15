@@ -6,9 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
-	"github.com/pegasusx/pegasusx/apps/backend-go/demand"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
@@ -126,27 +124,7 @@ func startBackgroundWorkers(ctx context.Context, app *bootstrap.App) {
 		go app.ReorderSuggestionWorker.RunBatchWorker(ctx, supplierID, 12*time.Hour)
 		slog.Info("reorder suggestion batch worker started")
 	}
-	if app.Config.WeatherWorkerEnabled && app.DemandService != nil {
-		scope, err := auth.WeatherScopeFromContext(context.Background(), "")
-		if err != nil {
-			slog.Info("weather ingestion worker skipped", "err", err)
-		} else {
-			weatherCfg := demand.WeatherConfig{
-				BaseURL:        app.Config.WeatherBaseURL,
-				UpdateInterval: 6 * time.Hour,
-				LookaheadDays:  14,
-				Locations: []demand.Location{
-					{
-						Scope: scope,
-						Lat:   app.Config.DeliveryZoneCenterLat,
-						Lng:   app.Config.DeliveryZoneCenterLng,
-					},
-				},
-			}
-			go app.DemandService.RunWeatherIngestionWorker(ctx, weatherCfg)
-			slog.Info("weather ingestion worker started", "lookahead_days", weatherCfg.LookaheadDays, "scope", scope)
-		}
-	}
+
 	if app.DemandService != nil {
 		go app.DemandService.RunDensityWorker(ctx, 6*time.Hour)
 		slog.Info("demand density worker started")

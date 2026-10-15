@@ -164,25 +164,25 @@ export default function Hero() {
      ref={(el) => {
       videoRefs.current[idx] = el;
      }}
-     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+     className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 transform-gpu will-change-[opacity] ${
       idx === activeVideoIdx ? 'opacity-90 z-[1]' : 'opacity-0 z-0 pointer-events-none'
      }`}
      src={vid.src}
      autoPlay={idx === 0}
      muted
      playsInline
-     preload="auto"
+     preload={idx === activeVideoIdx ? 'auto' : (idx === (activeVideoIdx + 1) % HERO_VIDEOS.length ? 'metadata' : 'none')}
      onEnded={() => handleVideoEnded(idx)}
      poster="/images/topics/control_plane.jpg"
     />
    ))}
    {/* Cinematic overlays for text readability */}
-   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-[2]" />
-   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-[2]" />
+   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none z-[2] transform-gpu" />
+   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none z-[2] transform-gpu" />
    </div>
 
    {/* ── Content Overlay ── */}
-   <div className="w-full relative z-10">
+   <div className="w-full relative z-10 transform-gpu isolate">
    <div
     ref={textRef}
     className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 min-h-[80vh] lg:min-h-[85vh]"
@@ -194,8 +194,8 @@ export default function Hero() {
       <span className="sr-only">{t('hero_title')}</span>
       <ParticleText
        useBrandmark={true}
-       particleSize={2.1}
-       density={2.2}
+       particleSize={isMobile ? 1.9 : 2.1}
+       density={isMobile ? 3.2 : isLowEnd ? 2.8 : 2.2}
        color="#10b981"
        highlightColor="#34d399"
        scatter={120}
@@ -203,10 +203,9 @@ export default function Hero() {
        stagger={260}
        pointerRepel={38}
        repelRadius={95}
-       idleDrift={0.25}
+       idleDrift={isLowEnd ? 0.12 : 0.25}
        trigger="none"
        textAlign="left"
-       glow
       />
      </div>
 
@@ -252,7 +251,7 @@ export default function Hero() {
 
     <a
      href="/join"
-     className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm"
+     className="inline-flex items-center justify-center gap-2 px-8 py-3 transition-all text-sm sm:text-base font-medium bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm transform-gpu"
     >
      <span>{t('hero_demo')}</span>
      <span className="text-lg leading-none mt-[-2px]">›</span>

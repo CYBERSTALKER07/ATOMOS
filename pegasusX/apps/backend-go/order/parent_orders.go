@@ -18,11 +18,12 @@ import (
 
 // ParentOrderChild is one child order in a parent rollup response.
 type ParentOrderChild struct {
-	OrderID    string `json:"order_id"`
-	SupplierID string `json:"supplier_id"`
-	Status     string `json:"status"`
-	TotalMinor int64  `json:"total_minor"`
-	Currency   string `json:"currency"`
+	OrderID       string        `json:"order_id"`
+	SupplierID    string        `json:"supplier_id"`
+	Status        string        `json:"status"`
+	CustomerStage CustomerStage `json:"customer_stage,omitempty"`
+	TotalMinor    int64         `json:"total_minor"`
+	Currency      string        `json:"currency"`
 }
 
 // ParentOrderView is the retailer-facing parent rollup (on-read aggregation).
@@ -30,6 +31,7 @@ type ParentOrderView struct {
 	ParentOrderID string             `json:"parent_order_id"`
 	RetailerID    string             `json:"retailer_id"`
 	Status        string             `json:"status"`
+	CustomerStage CustomerStage      `json:"customer_stage,omitempty"`
 	Currency      string             `json:"currency"`
 	TotalMinor    int64              `json:"total_minor"`
 	ChildCount    int                `json:"child_count"`
@@ -89,6 +91,7 @@ func (s *Service) GetParentOrder(ctx context.Context, retailerID, parentOrderID 
 	}
 	view.Children = children
 	view.Status = rollupParentStatus(children)
+	view.CustomerStage = ToCustomerStage(Status(view.Status))
 	view.ChildCount = len(children)
 	var total int64
 	for _, c := range children {
@@ -132,6 +135,7 @@ func (s *Service) listChildrenByParent(ctx context.Context, parentOrderID string
 		if err := row.Columns(&c.OrderID, &c.SupplierID, &c.Status, &c.TotalMinor, &c.Currency); err != nil {
 			return nil, fmt.Errorf("scan parent child: %w", err)
 		}
+		c.CustomerStage = ToCustomerStage(Status(c.Status))
 		out = append(out, c)
 	}
 	return out, nil
@@ -158,6 +162,7 @@ func (s *Service) listChildrenByParentFallback(ctx context.Context, parentOrderI
 		if err := row.Columns(&c.OrderID, &c.SupplierID, &c.Status, &c.TotalMinor, &c.Currency); err != nil {
 			return nil, fmt.Errorf("scan parent child: %w", err)
 		}
+		c.CustomerStage = ToCustomerStage(Status(c.Status))
 		out = append(out, c)
 	}
 	return out, nil

@@ -150,75 +150,9 @@ func CreatePickWaveInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction,
 			return nil, err
 		}
 		// Lots off: bag-of-SKU tasks. Confirm does not deplete StockLots.
-		if !EffectiveLots(ctx, warehouseID, supplierID) {
-			drafts = append(drafts, skuPickDraftsFromLines(oid, lines)...)
-			continue
-		}
-		// Lots on: FEFO-allocate from available lots for line items.
-		for _, line := range lines {
-			cands, err := loadAvailableLots(ctx, txn, supplierID, warehouseID, line.SKU)
-			if err != nil {
-				return nil, err
-			}
-			sort.SliceStable(cands, func(i, j int) bool {
-				if cands[i].Expiry.Valid && cands[j].Expiry.Valid {
-					ti := cands[i].Expiry.Date.In(time.UTC)
-					tj := cands[j].Expiry.Date.In(time.UTC)
-					if !ti.Equal(tj) {
-						return ti.Before(tj)
-					}
-				}
-				return cands[i].ReceivedAt.Before(cands[j].ReceivedAt)
-			})
-			need := line.Quantity
-			for _, c := range cands {
-				if need <= 0 {
-					break
-				}
-				take := c.Available
-				if take > need {
-					take = need
-				}
-				if take <= 0 {
-					continue
-				}
-				// Reserve for wave (same as order reserve) so confirm can deplete.
-				if err := txn.BufferWrite([]*spanner.Mutation{spanner.UpdateMap("StockLots", map[string]any{
-					"LotId":            c.LotID,
-					"QuantityReserved": c.Reserved + take,
-					"UpdatedAt":        spanner.CommitTimestamp,
-				})}); err != nil {
-					return nil, err
-				}
-				if err := txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("OrderLotReservations", map[string]any{
-					"OrderId":   oid,
-					"LotId":     c.LotID,
-					"Quantity":  take,
-					"CreatedAt": spanner.CommitTimestamp,
-				})}); err != nil {
-					return nil, err
-				}
-				lid := ""
-				if locRow, err := txn.ReadRow(ctx, "StockLots", spanner.Key{c.LotID}, []string{"LocationId"}); err == nil {
-					_ = locRow.Columns(&lid)
-				}
-				seq, zone, aisle := locationPickMeta(ctx, txn, warehouseID, lid)
-				drafts = append(drafts, pickTaskDraft{
-					OrderID: oid, ProductID: line.SKU, LotID: c.LotID, LocationID: lid, Qty: take, Seq: seq,
-					Zone: zone, Aisle: aisle,
-				})
-				need -= take
-				c.Reserved += take
-				c.Available -= take
-			}
-			if need > 0 {
-				return nil, fmt.Errorf("%w: sku %s short %d for order %s", ErrInventoryExhausted, line.SKU, need, oid)
-			}
-			if err := RollupInventoryV2InTxn(ctx, txn, supplierID, warehouseID, line.SKU); err != nil {
-				return nil, err
-			}
-		}
+		drafts = append(drafts, skuPickDraftsFromLines(oid, lines)...)
 	}
+
 	if len(drafts) == 0 {
 		return nil, fmt.Errorf("no_pick_tasks")
 	}

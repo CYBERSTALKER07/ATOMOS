@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pegasusx.retailer.data.model.CustomerStage
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
 import com.pegasusx.retailer.ui.theme.PillShape
@@ -348,7 +349,7 @@ fun OrderDetailSheetContent(
                             )
                         }
                     }
-                } else if (order.status == OrderStatus.PENDING || order.status == OrderStatus.LOADED) {
+                } else if ((order.status.customerStage == CustomerStage.PLACED || order.status.customerStage == CustomerStage.PROCESSING) && !order.status.hasDeliveryToken) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"google.golang.org/api/iterator"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/grpc/codes"
@@ -56,6 +57,70 @@ func (r *SpannerRepository) SaveReconciliation(ctx context.Context, cr CashRecon
 				muts = append(muts, exMut)
 			}
 		}
+
+		// Double-entry general ledger balancing in PaymentLedgerEntries
+		if cr.DifferenceMinor != 0 {
+			switch eventType {
+			case EventCashReconciliationCreated:
+				je, err := payment.BuildCashVarianceJournalEntry(
+					cr.ReconciliationId,
+					cr.SupplierId,
+					cr.DriverId,
+					derefStr(cr.RouteId),
+					"UZS",
+					cr.ExpectedCashMinor,
+					cr.DeclaredCashMinor,
+					cr.CreatedAt,
+					"Driver cash variance on shift submission",
+				)
+				if err == nil && je != nil {
+					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
+						muts = append(muts, jeMuts...)
+					}
+				}
+			case EventCashReconciliationAccepted:
+				resolvedAt := time.Now().UTC()
+				if cr.ResolvedAt != nil {
+					resolvedAt = *cr.ResolvedAt
+				}
+				je, err := payment.BuildCashResolutionJournalEntry(
+					cr.ReconciliationId,
+					cr.SupplierId,
+					cr.DriverId,
+					"ACCEPT",
+					"UZS",
+					cr.DifferenceMinor,
+					resolvedAt,
+					"Finance accepted cash variance",
+				)
+				if err == nil && je != nil {
+					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
+						muts = append(muts, jeMuts...)
+					}
+				}
+			case EventCashReconciliationWrittenOff:
+				resolvedAt := time.Now().UTC()
+				if cr.ResolvedAt != nil {
+					resolvedAt = *cr.ResolvedAt
+				}
+				je, err := payment.BuildCashResolutionJournalEntry(
+					cr.ReconciliationId,
+					cr.SupplierId,
+					cr.DriverId,
+					"WRITE_OFF",
+					"UZS",
+					cr.DifferenceMinor,
+					resolvedAt,
+					"Finance wrote off cash shortage",
+				)
+				if err == nil && je != nil {
+					if jeMuts, mErr := payment.JournalEntryMutations(je); mErr == nil {
+						muts = append(muts, jeMuts...)
+					}
+				}
+			}
+		}
+
 		muts = append(muts, outboxMutations(buf.events)...)
 		return txn.BufferWrite(muts)
 	})

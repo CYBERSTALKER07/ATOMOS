@@ -112,6 +112,13 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null
     ): DeliverySubmitResponse
 
+    // Cryptographic Offline Proof of Delivery (PoD)
+    @POST("v1/delivery/submit-offline-pod")
+    suspend fun submitOfflinePoD(
+        @Body request: OfflinePoDRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): OfflinePoDResponse
+
     // Amend order — batch line-item reconciliation at delivery
     @POST("v1/order/amend")
     suspend fun amendOrder(

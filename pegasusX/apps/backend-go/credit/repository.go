@@ -25,6 +25,7 @@ type Repository interface {
 	ReleaseOrderReservation(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
 	ConvertOrderReservation(ctx context.Context, orderID string, emit func(outbox.TxnBuffer) error) error
 	GetOrderReservation(ctx context.Context, orderID string) (OrderReservation, bool, error)
+	ListDelinquentCandidates(ctx context.Context, limit int) ([]Profile, error)
 }
 
 // SpannerRepository is a Spanner-backed credit profile repository.
@@ -127,6 +128,38 @@ func (r *SpannerRepository) ListBySupplier(ctx context.Context, supplierID, stat
 		}
 		if err != nil {
 			return nil, fmt.Errorf("list credit profiles: %w", err)
+		}
+		p, err := scanProfileRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, nil
+}
+
+// ListDelinquentCandidates returns active credit profiles that have open balance or delinquency count > 0.
+func (r *SpannerRepository) ListDelinquentCandidates(ctx context.Context, limit int) ([]Profile, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner credit repository: nil client")
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	sql := fmt.Sprintf("SELECT %s FROM RetailerCreditProfiles WHERE Status = 'ACTIVE' AND (DelinquencyCount > 0 OR CurrentBalanceMinor > 0) ORDER BY UpdatedAt DESC LIMIT %d", profileSelectColumns, limit)
+	iter := r.client.Single().Query(ctx, spanner.Statement{SQL: sql})
+	defer iter.Stop()
+	out := make([]Profile, 0, 16)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list delinquent candidates: %w", err)
 		}
 		p, err := scanProfileRow(row)
 		if err != nil {

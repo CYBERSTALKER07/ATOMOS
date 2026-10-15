@@ -138,6 +138,59 @@ enum OrderStatus: String, Codable, CaseIterable {
     var canCancel: Bool {
         self == .pending || self == .pendingReview || self == .scheduled || self == .autoAccepted
     }
+
+    var customerStage: CustomerStage {
+        switch self {
+        case .scheduled, .autoAccepted, .pendingReview:
+            return .placed
+        case .pending, .delayed, .loaded, .dispatched:
+            return .processing
+        case .inTransit, .arriving, .arrived,
+             .awaitingPayment, .pendingCashCollection:
+            return .outForDelivery
+        case .completed, .deliveredOnCredit, .fiscalizing:
+            return .delivered
+        case .cancelled, .noCapacity:
+            return .cancelled
+        case .arrivedShopClosed, .cancelRequested,
+             .fiscalFailed, .reconciliationRequired,
+             .quarantine:
+            return .exceptionActionRequired
+        }
+    }
+}
+
+// MARK: - Customer Stage (High-level 4-step progress facade matching backend)
+
+enum CustomerStage: String, Codable, CaseIterable {
+    case placed = "PLACED"
+    case processing = "PROCESSING"
+    case outForDelivery = "OUT_FOR_DELIVERY"
+    case delivered = "DELIVERED"
+    case cancelled = "CANCELLED"
+    case exceptionActionRequired = "EXCEPTION_ACTION_REQUIRED"
+
+    var displayName: String {
+        switch self {
+        case .placed:                     return "Order Placed"
+        case .processing:                 return "Preparing Order"
+        case .outForDelivery:           return "Out for Delivery"
+        case .delivered:                  return "Delivered"
+        case .cancelled:                  return "Cancelled"
+        case .exceptionActionRequired:  return "Action Required"
+        }
+    }
+
+    var progressPercent: Int {
+        switch self {
+        case .placed:                     return 20
+        case .processing:                 return 50
+        case .outForDelivery:           return 80
+        case .delivered:                  return 100
+        case .cancelled:                  return 0
+        case .exceptionActionRequired:  return 75
+        }
+    }
 }
 
 // MARK: - Order Line Item
