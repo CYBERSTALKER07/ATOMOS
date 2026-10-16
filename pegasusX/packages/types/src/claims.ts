@@ -108,6 +108,7 @@ export interface ApproveClaimRequest {
 
 export interface RejectClaimRequest {
   resolution_note?: string;
+  reason?: string;
 }
 
 /** Result of chargeback adjudication after approve. */

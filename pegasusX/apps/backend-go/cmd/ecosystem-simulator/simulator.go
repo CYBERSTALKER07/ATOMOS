@@ -461,6 +461,7 @@ func (s *Simulator) driverReportDamage(ctx context.Context, token, driverID, ord
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/v1/delivery/report-damage", s.base), bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Idempotency-Key", fmt.Sprintf("driver-report-damage:%s:%s", driverID, orderID))
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return err

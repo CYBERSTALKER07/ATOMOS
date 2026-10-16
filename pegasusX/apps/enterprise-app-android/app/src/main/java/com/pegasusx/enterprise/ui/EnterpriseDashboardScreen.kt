@@ -71,11 +71,11 @@ fun EnterpriseDashboardScreen(
     )
 
     Scaffold(
-        containerColor = CADColors.PitchBlack,
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Surface(
-                color = CADColors.PanelDark,
+                color = MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(width = 1.dp, color = CADColors.BorderStroke)
@@ -94,10 +94,10 @@ fun EnterpriseDashboardScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(48.dp)
                                     .border(1.dp, CADColors.BorderCyan, MaterialTheme.shapes.extraSmall)
-                                    .background(CADColors.PitchBlack)
-                                    .padding(5.dp),
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(4.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Image(
@@ -111,33 +111,32 @@ fun EnterpriseDashboardScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier
-                                            .size(7.dp)
+                                            .size(8.dp)
                                             .background(CADColors.EmeraldGreen.copy(alpha = pulseAlpha))
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "PEGASUS // ARCHITECTURE",
                                         style = MaterialTheme.typography.titleSmall,
                                         color = CADColors.ElectricCyan
                                     )
-                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "· LIVE RLS",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = CADColors.TextDim,
-                                        fontSize = 9.sp
+                                        color = CADColors.TextDim
                                     )
                                 }
                                 Text(
                                     text = "Operator Command Console",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Light,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
 
-                        // Top Controls: Sort Selector & Refresh Button
+                        // Top Controls: Sort Selector & Refresh Button (48dp Touch Targets)
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -150,9 +149,9 @@ fun EnterpriseDashboardScreen(
                                         isSortMenuExpanded = true
                                     },
                                     modifier = Modifier
-                                        .size(44.dp)
+                                        .size(48.dp)
                                         .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                                        .background(CADColors.PitchBlack)
+                                        .background(MaterialTheme.colorScheme.surface)
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Sort,
@@ -166,7 +165,7 @@ fun EnterpriseDashboardScreen(
                                     expanded = isSortMenuExpanded,
                                     onDismissRequest = { isSortMenuExpanded = false },
                                     modifier = Modifier
-                                        .background(CADColors.PanelDark)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
                                         .border(1.dp, CADColors.BorderStroke)
                                 ) {
                                     SortOption.values().forEach { opt ->
@@ -175,7 +174,7 @@ fun EnterpriseDashboardScreen(
                                                 Text(
                                                     opt.label,
                                                     style = MaterialTheme.typography.bodyMedium,
-                                                    color = if (uiState.sortOption == opt) CADColors.ElectricCyan else Color.White
+                                                    color = if (uiState.sortOption == opt) CADColors.ElectricCyan else MaterialTheme.colorScheme.onSurface
                                                 )
                                             },
                                             onClick = {
@@ -200,13 +199,13 @@ fun EnterpriseDashboardScreen(
                                     onRefresh()
                                 },
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(48.dp)
                                     .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                                    .background(CADColors.PitchBlack)
+                                    .background(MaterialTheme.colorScheme.surface)
                             ) {
                                 if (uiState.isRefreshing || uiState.isLoading) {
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                         color = CADColors.ElectricCyan,
                                         strokeWidth = 2.dp
                                     )
@@ -214,7 +213,7 @@ fun EnterpriseDashboardScreen(
                                     Icon(
                                         imageVector = Icons.Default.Refresh,
                                         contentDescription = "Refresh Feed",
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onSurface,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -222,7 +221,7 @@ fun EnterpriseDashboardScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // OPERATIONAL KPI BENTO HUD (4 Tiles)
                     Row(
@@ -262,7 +261,7 @@ fun EnterpriseDashboardScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Material 3 Precision Search Field
+                    // Material 3 Precision Search Field (56dp standard height, 4dp grid)
                     OutlinedTextField(
                         value = uiState.searchQuery,
                         onValueChange = onSearchQueryChanged,
@@ -276,9 +275,9 @@ fun EnterpriseDashboardScreen(
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = null,
+                                contentDescription = "Search Inquiries",
                                 tint = CADColors.ElectricCyan,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         },
                         trailingIcon = {
@@ -288,7 +287,7 @@ fun EnterpriseDashboardScreen(
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         onSearchQueryChanged("")
                                     },
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Close,
@@ -303,20 +302,20 @@ fun EnterpriseDashboardScreen(
                         shape = MaterialTheme.shapes.extraSmall,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp),
+                            .height(56.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = CADColors.PitchBlack,
-                            unfocusedContainerColor = CADColors.PitchBlack,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedBorderColor = CADColors.ElectricCyan,
                             unfocusedBorderColor = CADColors.BorderStroke,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Category Filter Pills (Horizontal Scroll)
+                    // Category Filter Pills (Horizontal Scroll - 4dp grid)
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -346,41 +345,41 @@ fun EnterpriseDashboardScreen(
                                     Icon(
                                         imageVector = icon,
                                         contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 },
                                 shape = MaterialTheme.shapes.extraSmall,
                                 colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = CADColors.PitchBlack,
-                                    selectedContainerColor = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    selectedContainerColor = MaterialTheme.colorScheme.onSurface,
                                     labelColor = CADColors.TextMuted,
-                                    selectedLabelColor = Color.Black,
+                                    selectedLabelColor = MaterialTheme.colorScheme.surface,
                                     iconColor = CADColors.TextDim,
-                                    selectedLeadingIconColor = Color.Black
+                                    selectedLeadingIconColor = MaterialTheme.colorScheme.surface
                                 ),
                                 border = FilterChipDefaults.filterChipBorder(
                                     enabled = true,
                                     selected = isSelected,
                                     borderColor = CADColors.BorderStroke,
-                                    selectedBorderColor = Color.White,
+                                    selectedBorderColor = MaterialTheme.colorScheme.onSurface,
                                     borderWidth = 1.dp
                                 ),
-                                modifier = Modifier.height(34.dp)
+                                modifier = Modifier.height(36.dp)
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Status Workflow Timeline Filter Row
+                    // Status Workflow Timeline Filter Row (4dp grid)
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         val statuses = listOf("all", "new", "in_review", "contacted", "qualified", "closed")
                         items(statuses) { st ->
                             val isSelected = uiState.selectedStatus == st
-                            val stColor = if (st == "all") Color.White else CADColors.statusColor(st)
+                            val stColor = if (st == "all") MaterialTheme.colorScheme.onSurface else CADColors.statusColor(st)
                             val count = if (st == "all") uiState.requests.size else uiState.requests.count { it.status.equals(st, ignoreCase = true) }
 
                             AssistChip(
@@ -393,29 +392,29 @@ fun EnterpriseDashboardScreen(
                                         if (st != "all") {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(6.dp)
+                                                    .size(8.dp)
                                                     .background(stColor)
                                             )
-                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
                                         }
                                         Text(
                                             text = "${st.replace("_", " ").uppercase()} ($count)",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = if (isSelected) Color.Black else CADColors.TextMuted,
+                                            color = if (isSelected) MaterialTheme.colorScheme.surface else CADColors.TextMuted,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                         )
                                     }
                                 },
                                 shape = MaterialTheme.shapes.extraSmall,
                                 colors = AssistChipDefaults.assistChipColors(
-                                    containerColor = if (isSelected) Color.White else CADColors.PitchBlack
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surface
                                 ),
                                 border = AssistChipDefaults.assistChipBorder(
                                     enabled = true,
-                                    borderColor = if (isSelected) Color.White else CADColors.BorderStroke,
+                                    borderColor = if (isSelected) MaterialTheme.colorScheme.onSurface else CADColors.BorderStroke,
                                     borderWidth = 1.dp
                                 ),
-                                modifier = Modifier.height(28.dp)
+                                modifier = Modifier.height(32.dp)
                             )
                         }
                     }
@@ -439,8 +438,8 @@ fun EnterpriseDashboardScreen(
                         modifier = Modifier
                             .size(72.dp)
                             .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                            .background(CADColors.PanelDark)
-                            .padding(14.dp),
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -454,15 +453,15 @@ fun EnterpriseDashboardScreen(
                     Text(
                         text = "NO QUEUED INQUIRIES FOUND",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "No records match '${uiState.searchQuery}' under selected filter presets.",
                         style = MaterialTheme.typography.bodySmall,
                         color = CADColors.TextMuted
                     )
-                    Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     OutlinedButton(
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -474,10 +473,11 @@ fun EnterpriseDashboardScreen(
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = CADColors.ElectricCyan),
                         border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                             brush = Brush.horizontalGradient(listOf(CADColors.BorderCyan, CADColors.ElectricCyan))
-                        )
+                        ),
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     ) {
                         Icon(Icons.Default.ClearAll, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("RESET ALL FILTERS", style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -487,8 +487,8 @@ fun EnterpriseDashboardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
                     // Header Status Summary Line
@@ -496,7 +496,7 @@ fun EnterpriseDashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                            .background(CADColors.PanelDark)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -510,8 +510,7 @@ fun EnterpriseDashboardScreen(
                             Text(
                                 text = "ORDER: ${uiState.sortOption.label.uppercase()}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = CADColors.ElectricCyan,
-                                fontSize = 9.sp
+                                color = CADColors.ElectricCyan
                             )
                         }
                     }
@@ -548,10 +547,10 @@ private fun BentoKpiTile(
     Box(
         modifier = modifier
             .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-            .background(CADColors.CardDark)
-            .padding(vertical = 8.dp, horizontal = 8.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(all = 8.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -560,13 +559,12 @@ private fun BentoKpiTile(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelSmall,
-                    color = CADColors.TextDim,
-                    fontSize = 9.sp
+                    color = CADColors.TextDim
                 )
                 if (isPulse) {
                     Box(
                         modifier = Modifier
-                            .size(5.dp)
+                            .size(8.dp)
                             .background(color)
                     )
                 }
@@ -581,7 +579,6 @@ private fun BentoKpiTile(
                 text = sublabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = CADColors.TextMuted,
-                fontSize = 8.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -589,7 +586,7 @@ private fun BentoKpiTile(
     }
 }
 
-// Insane Precision CAD Request Card
+// Insane Precision CAD Request Card (M3 4dp Grid Compliant)
 @Composable
 private fun InsaneEnterpriseRequestCard(
     request: EnterpriseRequest,
@@ -602,7 +599,7 @@ private fun InsaneEnterpriseRequestCard(
     Card(
         onClick = onClick,
         shape = MaterialTheme.shapes.extraSmall,
-        colors = CardDefaults.cardColors(containerColor = CADColors.CardDark),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = if (request.isUrgent) {
@@ -616,7 +613,7 @@ private fun InsaneEnterpriseRequestCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(16.dp)
         ) {
             // Top Row: Avatar Monogram + Name + Verified Badge + Status Pill
             Row(
@@ -628,24 +625,23 @@ private fun InsaneEnterpriseRequestCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // CAD Monogram Avatar Box
+                    // CAD Monogram Avatar Box (40dp = 4dp x 10)
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(40.dp)
                             .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                            .background(CADColors.PitchBlack),
+                            .background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = request.initials,
-                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = CADColors.ElectricCyan,
-                            fontSize = 12.sp
+                            color = CADColors.ElectricCyan
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -653,7 +649,7 @@ private fun InsaneEnterpriseRequestCard(
                                 text = request.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             if (request.status.equals("qualified", ignoreCase = true)) {
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -661,7 +657,7 @@ private fun InsaneEnterpriseRequestCard(
                                     imageVector = Icons.Default.Verified,
                                     contentDescription = "Verified Lead",
                                     tint = CADColors.EmeraldGreen,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -669,8 +665,7 @@ private fun InsaneEnterpriseRequestCard(
                             text = request.email,
                             style = MaterialTheme.typography.bodySmall,
                             color = CADColors.TextDim,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
+                            fontFamily = FontFamily.Monospace
                         )
                     }
                 }
@@ -680,21 +675,20 @@ private fun InsaneEnterpriseRequestCard(
                     modifier = Modifier
                         .border(1.dp, CADColors.statusBorder(request.status), MaterialTheme.shapes.extraSmall)
                         .background(statusBg)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(6.dp)
+                                .size(8.dp)
                                 .background(statusColor)
                         )
-                        Spacer(modifier = Modifier.width(5.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = request.status.replace("_", " ").uppercase(),
                             style = MaterialTheme.typography.labelSmall,
                             color = statusColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -709,19 +703,23 @@ private fun InsaneEnterpriseRequestCard(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Business,
-                        contentDescription = null,
+                        contentDescription = "Company",
                         tint = CADColors.TextDim,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = request.company,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = Color.White.copy(alpha = 0.9f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("•", color = CADColors.TextDim, fontSize = 10.sp)
+                    Text(
+                        text = "•",
+                        color = CADColors.TextDim,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = request.role ?: "Operations",
@@ -737,22 +735,21 @@ private fun InsaneEnterpriseRequestCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(CADColors.PitchBlack)
+                        .background(MaterialTheme.colorScheme.surface)
                         .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = request.message,
                         style = MaterialTheme.typography.bodySmall,
                         color = CADColors.TextMuted,
                         maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 16.sp
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Footer Specifications Row & Quick Action Buttons
             Row(
@@ -762,20 +759,19 @@ private fun InsaneEnterpriseRequestCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Type Badge
                     Box(
                         modifier = Modifier
-                            .background(CADColors.PanelDark)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = request.inquiry_type.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
-                            color = CADColors.ElectricCyan,
-                            fontSize = 8.5.sp
+                            color = CADColors.ElectricCyan
                         )
                     }
 
@@ -784,22 +780,21 @@ private fun InsaneEnterpriseRequestCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .background(CADColors.PanelDark)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.LocalShipping,
                                 contentDescription = null,
                                 tint = CADColors.TextDim,
-                                modifier = Modifier.size(10.dp)
+                                modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = request.fleet_size.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = CADColors.TextMuted,
-                                fontSize = 8.5.sp
+                                color = CADColors.TextMuted
                             )
                         }
                     }
@@ -814,14 +809,13 @@ private fun InsaneEnterpriseRequestCard(
                         text = "REVIEW & ANSWER",
                         style = MaterialTheme.typography.labelSmall,
                         color = CADColors.ElectricCyan,
-                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = "Review",
                         tint = CADColors.ElectricCyan,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

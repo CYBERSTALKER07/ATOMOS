@@ -55,6 +55,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // Rescue Flow
     var showRescueProposalAlert = false
     var pendingRescueId: String?
+    var pendingBrokenDriverId: String?
 
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
@@ -169,6 +170,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if event.type == "RESCUE_PROPOSED" {
             if let rescueId = event.rescueId {
                 self.pendingRescueId = rescueId
+                self.pendingBrokenDriverId = event.brokenDriverId
                 self.showRescueProposalAlert = true
                 Haptics.heavy()
             }
@@ -526,10 +528,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func acceptRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: true)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: true)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
             await loadMissions(silent: false)
         } catch {
             print("Failed to accept rescue: \(error)")
@@ -538,10 +542,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func rejectRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: false)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: false)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
         } catch {
             print("Failed to reject rescue: \(error)")
         }

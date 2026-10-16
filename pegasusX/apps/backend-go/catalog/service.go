@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -12,6 +13,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
+)
+
+const (
+	catalogCategoriesCacheTTL = 60 * time.Second
+	catalogProductsCacheTTL   = 30 * time.Second
 )
 
 // Service implements catalog business logic. Handlers call service; service
@@ -57,8 +63,26 @@ func NewService(repo Repository, c *cache.Cache, log *slog.Logger, promotions *p
 	return &Service{repo: repo, cache: c, log: log, promotions: promotions, stock: stock}
 }
 
-// ListCategories returns all categories for a supplier.
+// ListCategories returns all categories for a supplier, coalescing concurrent reads via singleflight cache.
 func (s *Service) ListCategories(ctx context.Context, supplierID string) ([]Category, error) {
+	if s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:categories:"+supplierID, catalogCategoriesCacheTTL, func(ctx context.Context) ([]byte, error) {
+			cats, err := s.repo.ListCategories(ctx, supplierID)
+			if err != nil {
+				return nil, err
+			}
+			if cats == nil {
+				cats = []Category{}
+			}
+			return json.Marshal(cats)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached []Category
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return cached, nil
+			}
+		}
+	}
 	cats, err := s.repo.ListCategories(ctx, supplierID)
 	if err != nil {
 		return nil, fmt.Errorf("list categories: %w", err)
@@ -112,7 +136,36 @@ type RetailerProduct struct {
 }
 
 // ListProducts returns products for a supplier, optionally filtered.
+// Active supplier catalogs are cached under "catalog:products:<supplierID>" with singleflight
+// request coalescing so thousands of concurrent retailers do not stampede Spanner.
 func (s *Service) ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
+	if activeOnly && s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:products:"+supplierID, catalogProductsCacheTTL, func(ctx context.Context) ([]byte, error) {
+			allActive, err := s.repo.ListProducts(ctx, supplierID, "", true)
+			if err != nil {
+				return nil, err
+			}
+			if allActive == nil {
+				allActive = []Product{}
+			}
+			return json.Marshal(allActive)
+		})
+		if err == nil && len(raw) > 0 {
+			var allActive []Product
+			if uerr := json.Unmarshal(raw, &allActive); uerr == nil {
+				if categoryID == "" {
+					return allActive, nil
+				}
+				filtered := make([]Product, 0, len(allActive))
+				for _, p := range allActive {
+					if p.CategoryID == categoryID {
+						filtered = append(filtered, p)
+					}
+				}
+				return filtered, nil
+			}
+		}
+	}
 	products, err := s.repo.ListProducts(ctx, supplierID, categoryID, activeOnly)
 	if err != nil {
 		return nil, fmt.Errorf("list products: %w", err)
@@ -153,25 +206,38 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 
 	if s.promotions != nil && retailerID != "" {
 		promosBySupplier := make(map[string][]promotion.Promotion)
+		productIDsBySupplier := make(map[string][]string)
+		for _, p := range products {
+			if p.SupplierID != "" && p.ProductID != "" {
+				productIDsBySupplier[p.SupplierID] = append(productIDsBySupplier[p.SupplierID], p.ProductID)
+			}
+		}
+		overridesBySupplier := make(map[string]map[string]int64, len(productIDsBySupplier))
+		for sid, pids := range productIDsBySupplier {
+			promos, err := s.promotions.ActiveForSupplier(ctx, sid)
+			if err != nil {
+				return nil, fmt.Errorf("active promotions for supplier %s: %w", sid, err)
+			}
+			promosBySupplier[sid] = promos
+
+			overrides, err := s.promotions.ResolveListPrices(ctx, sid, retailerID, pids)
+			if err != nil {
+				return nil, fmt.Errorf("resolve retailer price overrides for supplier %s: %w", sid, err)
+			}
+			overridesBySupplier[sid] = overrides
+		}
+
 		now := s.promotions.Now()
 		for i, p := range products {
-			promos, ok := promosBySupplier[p.SupplierID]
-			if !ok {
-				var err error
-				promos, err = s.promotions.ActiveForSupplier(ctx, p.SupplierID)
-				if err != nil {
-					return nil, fmt.Errorf("active promotions for supplier %s: %w", p.SupplierID, err)
-				}
-				promosBySupplier[p.SupplierID] = promos
-			}
+			promos := promosBySupplier[p.SupplierID]
 			listPrice := p.PriceMinor
 			isOverride := false
-			resolved, overridden, err := s.promotions.ResolveListPrice(ctx, p.SupplierID, retailerID, p.ProductID, p.PriceMinor)
-			if err != nil {
-				return nil, fmt.Errorf("resolve retailer price override: %w", err)
+			if supOverrides, ok := overridesBySupplier[p.SupplierID]; ok {
+				if overridePrice, hasOverride := supOverrides[p.ProductID]; hasOverride && overridePrice > 0 {
+					listPrice = overridePrice
+					isOverride = true
+				}
 			}
-			listPrice = resolved
-			isOverride = overridden
 			var offer promotion.ProductOffer
 			if isOverride && listPrice < p.PriceMinor {
 				sale := listPrice
@@ -207,8 +273,23 @@ func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID stri
 	return out, nil
 }
 
-// GetProduct returns a single product.
+// GetProduct returns a single product, coalescing concurrent reads via singleflight cache.
 func (s *Service) GetProduct(ctx context.Context, productID string) (*Product, error) {
+	if s.cache != nil && productID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "catalog:product:"+productID, catalogProductsCacheTTL, func(ctx context.Context) ([]byte, error) {
+			p, err := s.repo.GetProduct(ctx, productID)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(p)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached Product
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return &cached, nil
+			}
+		}
+	}
 	return s.repo.GetProduct(ctx, productID)
 }
 

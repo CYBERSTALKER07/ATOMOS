@@ -334,6 +334,7 @@ func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base stri
 	dmgReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/report-damage", strings.NewReader(dmgPayload))
 	dmgReq.Header.Set("Authorization", "Bearer "+driverToken)
 	dmgReq.Header.Set("Content-Type", "application/json")
+	dmgReq.Header.Set("Idempotency-Key", "smokecheck-report-damage:"+orderID)
 	dmgResp, err := client.Do(dmgReq)
 	if err != nil {
 		return fmt.Errorf("report damage request: %w", err)

@@ -9,18 +9,22 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 )
 
 type mockCatalogRepo struct {
-	mu         sync.Mutex
-	categories map[string]Category
-	products   map[string]Product
-	events     []outbox.Event
+	mu                sync.Mutex
+	categories        map[string]Category
+	products          map[string]Product
+	events            []outbox.Event
+	listProductsCalls int
 }
 
 func newMockCatalogRepo() *mockCatalogRepo {
@@ -77,6 +81,7 @@ func (m *mockCatalogRepo) CreateCategory(_ context.Context, cat Category, emit f
 func (m *mockCatalogRepo) ListProducts(_ context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.listProductsCalls++
 	var out []Product
 	for _, p := range m.products {
 		if p.SupplierID == supplierID {
@@ -422,3 +427,101 @@ func TestCatalog_CreateCategory_StrictIdempotencyAndEvents(t *testing.T) {
 		t.Fatalf("expected CATEGORY_CREATED outbox event")
 	}
 }
+
+type mockPromoRepo struct {
+	mu            sync.Mutex
+	overrideCalls int
+	activeCalls   int
+	overrides     map[string]int64
+}
+
+func (r *mockPromoRepo) ListActiveBySupplier(_ context.Context, _ string, _ time.Time) ([]promotion.Promotion, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.activeCalls++
+	return []promotion.Promotion{}, nil
+}
+
+func (r *mockPromoRepo) ListBySupplier(_ context.Context, _ string) ([]promotion.Promotion, error) {
+	return nil, nil
+}
+
+func (r *mockPromoRepo) GetByID(_ context.Context, _, _ string) (promotion.Promotion, bool, error) {
+	return promotion.Promotion{}, false, nil
+}
+
+func (r *mockPromoRepo) Upsert(_ context.Context, _ promotion.Promotion, _ func(*promotion.SpannerTxnBuffer) error) error {
+	return nil
+}
+
+func (r *mockPromoRepo) SetActive(_ context.Context, _, _ string, _ bool, _ int64, _ func(*promotion.SpannerTxnBuffer) error) error {
+	return nil
+}
+
+func (r *mockPromoRepo) LookupProductCategories(_ context.Context, _ []string) (map[string]string, error) {
+	return nil, nil
+}
+
+func (r *mockPromoRepo) LookupListPrices(_ context.Context, _ []string) (map[string]int64, error) {
+	return nil, nil
+}
+
+func (r *mockPromoRepo) LookupActivePriceOverrides(_ context.Context, _, _ string, productIDs []string, _ time.Time) (map[string]int64, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.overrideCalls++
+	out := make(map[string]int64, len(productIDs))
+	for _, pid := range productIDs {
+		if price, ok := r.overrides[pid]; ok {
+			out[pid] = price
+		}
+	}
+	return out, nil
+}
+
+func (r *mockPromoRepo) RedeemPromotion(_ context.Context, _ string) error {
+	return nil
+}
+
+func (r *mockPromoRepo) FilterEligibleCampaignPromotions(_ context.Context, _ string, promos []promotion.Promotion) ([]promotion.Promotion, error) {
+	return promos, nil
+}
+
+func TestCatalog_SingleflightCacheAndBatchedRetailerOverrides(t *testing.T) {
+	repo := newMockCatalogRepo()
+	repo.products["p1"] = Product{ProductID: "p1", SupplierID: "sup-1", CategoryID: "cat-a", Name: "SKU 1", PriceMinor: 10000, Currency: "UZS", IsActive: true}
+	repo.products["p2"] = Product{ProductID: "p2", SupplierID: "sup-1", CategoryID: "cat-b", Name: "SKU 2", PriceMinor: 20000, Currency: "UZS", IsActive: true}
+	repo.products["p3"] = Product{ProductID: "p3", SupplierID: "sup-1", CategoryID: "cat-a", Name: "SKU 3", PriceMinor: 30000, Currency: "UZS", IsActive: true}
+
+	c := cache.New(cache.NewInMemoryBackend(), nil)
+	promoRepo := &mockPromoRepo{
+		overrides: map[string]int64{"p2": 17500},
+	}
+	promoSvc := promotion.NewService(promoRepo, c, nil, nil)
+	svc := NewService(repo, c, nil, promoSvc, nil)
+
+	ctx := context.Background()
+	rows, err := svc.ListProductsForRetailer(ctx, "sup-1", "ret-1", "")
+	if err != nil {
+		t.Fatalf("ListProductsForRetailer failed: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want 3", len(rows))
+	}
+	// Verify all 3 products had their price overrides resolved in 1 batched call instead of 3 N+1 queries.
+	if promoRepo.overrideCalls != 1 {
+		t.Fatalf("LookupActivePriceOverrides calls = %d, want 1 batched call", promoRepo.overrideCalls)
+	}
+	// Second retailer call for a specific category should hit the cached supplier catalog without querying repo.ListProducts again.
+	catRows, err := svc.ListProductsForRetailer(ctx, "sup-1", "ret-2", "cat-a")
+	if err != nil {
+		t.Fatalf("ListProductsForRetailer(cat-a) failed: %v", err)
+	}
+	if len(catRows) != 2 {
+		t.Fatalf("got %d rows for cat-a, want 2", len(catRows))
+	}
+	if repo.listProductsCalls != 1 {
+		t.Fatalf("repo.ListProducts calls = %d, want 1 (second call served from cache)", repo.listProductsCalls)
+	}
+}
+

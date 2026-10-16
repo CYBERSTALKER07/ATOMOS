@@ -5,8 +5,12 @@ set -euo pipefail
 # Starts the interactive Cytoscape + Starlette web dashboard on http://localhost:3001
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-PEGASUSX_DIR="${REPO_ROOT}/pegasusX"
+PEGASUSX_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [ -d "${SCRIPT_DIR}/../../pegasusX" ]; then
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+else
+  REPO_ROOT="${PEGASUSX_DIR}"
+fi
 
 PORT="${PORT:-3001}"
 HOST="${HOST:-127.0.0.1}"

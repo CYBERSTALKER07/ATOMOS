@@ -52,6 +52,7 @@ func TestHandleRescueRequest_SpannerNotConfigured(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/driver/ops/rescue/request", nil)
 	req = withDriverClaims(req, auth.Claims{Subject: "drv-broken"})
+	req.Header.Set("Idempotency-Key", "driver-rescue-request:drv-broken")
 	rr := httptest.NewRecorder()
 
 	svc.HandleRescueRequest(rr, req)
@@ -118,6 +119,7 @@ func TestHandleRescueRespond_InvalidPayload(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/v1/driver/ops/rescue/respond", strings.NewReader(tc.body))
 			req = withDriverClaims(req, auth.Claims{Subject: "drv-rescue"})
+			req.Header.Set("Idempotency-Key", "driver-rescue-respond:"+tc.name)
 			rr := httptest.NewRecorder()
 
 			svc.HandleRescueRespond(rr, req)
@@ -137,6 +139,7 @@ func TestHandleRescueRespond_SpannerNotConfigured(t *testing.T) {
 	payload := `{"rescue_id":"resc-123","broken_driver_id":"drv-broken","accept":true}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/driver/ops/rescue/respond", strings.NewReader(payload))
 	req = withDriverClaims(req, auth.Claims{Subject: "drv-rescue"})
+	req.Header.Set("Idempotency-Key", "driver-rescue-respond:drv-rescue:resc-123:true")
 	rr := httptest.NewRecorder()
 
 	svc.HandleRescueRespond(rr, req)
@@ -282,5 +285,28 @@ func TestHandleRescueRespond_IdempotencyReplay(t *testing.T) {
 	}
 	if rr.Body.String() != string(cachedBytes) {
 		t.Fatalf("expected replay body %s, got %s", string(cachedBytes), rr.Body.String())
+	}
+}
+
+func TestRescueMutations_RequireIdempotencyKey(t *testing.T) {
+	svc := newDriverTestService(&driverRepoSpy{}, &driverCacheBackendSpy{})
+	cases := []struct {
+		name string
+		body string
+		call func(http.ResponseWriter, *http.Request)
+	}{
+		{"request", `{"reason":"breakdown","note":"tire"}`, svc.HandleRescueRequest},
+		{"respond", `{"rescue_id":"resc-1","broken_driver_id":"drv-broken","accept":true}`, svc.HandleRescueRespond},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/v1/test", strings.NewReader(tc.body))
+			req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
+			rr := httptest.NewRecorder()
+			tc.call(rr, req)
+			if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
 	}
 }

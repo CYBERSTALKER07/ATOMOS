@@ -46,7 +46,9 @@ data class DriverWSMessage(
     @SerialName("attempt_id") val attemptId: String? = null,
     val status: String? = null,
     val state: String? = null,
-    @SerialName("payment_method") val paymentMethod: String? = null
+    @SerialName("payment_method") val paymentMethod: String? = null,
+    @SerialName("rescue_id") val rescueId: String? = null,
+    @SerialName("broken_driver_id") val brokenDriverId: String? = null
 )
 
 data class DriverOutdatedState(

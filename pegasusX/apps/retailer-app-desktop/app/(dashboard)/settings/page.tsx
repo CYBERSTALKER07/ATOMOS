@@ -282,11 +282,9 @@ export default function SettingsPage() {
         .join("|");
       const res = await apiFetch("/v1/retailer/profile", {
         method: "PUT",
-        headers: retailerId
-          ? {
-              "Idempotency-Key": retailerProfileUpdateKey(retailerId, fingerprint),
-            }
-          : undefined,
+        headers: {
+          "Idempotency-Key": retailerProfileUpdateKey(retailerId || "retailer", fingerprint),
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {

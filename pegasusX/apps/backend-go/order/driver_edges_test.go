@@ -20,6 +20,7 @@ func TestHandleCreditDeliveryDriverSuccess(t *testing.T) {
 
 	body := `{"order_id":"ord-1","photo_proof_url":"https://proof.example.com/photo.jpg"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:ord-1")
 	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
 	rr := httptest.NewRecorder()
 
@@ -81,6 +82,7 @@ func TestHandleCreditDeliveryRejectsMissingOrderID(t *testing.T) {
 
 	body := `{}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:missing-order")
 	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
 	rr := httptest.NewRecorder()
 
@@ -98,6 +100,7 @@ func TestHandleCreditDeliveryRejectsMissingPhoto(t *testing.T) {
 
 	body := `{"order_id":"ord-1"}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/credit-delivery", strings.NewReader(body))
+	req.Header.Set("Idempotency-Key", "driver-credit-delivery:missing-photo")
 	req = req.WithContext(auth.WithClaims(req.Context(), driverClaims()))
 	rr := httptest.NewRecorder()
 

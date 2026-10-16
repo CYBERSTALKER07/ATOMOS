@@ -147,7 +147,7 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
                         eval_cost += return_cost;
 
                         // Original cost of this route
-                        let original_cost_scaled = route_cost_scaled; // This includes return to depot
+                        let _original_cost_scaled = route_cost_scaled; // This includes return to depot
 
                         if eval_cost < best_cost_f64 {
                             // It's strictly better!

@@ -106,13 +106,18 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	// B7 D-P0-6: never fake departed without wired manifest domain fn.
 	if s.depart == nil {
-		s.releaseIdempotency(r.Context(), r)
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
 			"error":   "depart_unwired",
 			"message": "Depart requires Spanner depart fn (bootstrap DepartFn); no silent success",
@@ -158,6 +163,7 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -212,9 +218,15 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	// Soft-freeze cash bag / block shift-end while fiscal is open.
 	if s.openFiscal != nil {
@@ -256,7 +268,6 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 
 	// B7 D-P0-7: never fake returned / flip in-memory availability without durable path.
 	if s.returnComplete == nil {
-		s.releaseIdempotency(r.Context(), r)
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
 			"error":   "return_complete_unwired",
 			"message": "Return-complete requires Spanner ReturnCompleteFn; no silent success",
@@ -318,6 +329,7 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 

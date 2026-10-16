@@ -997,11 +997,17 @@ final class APIClient {
     }
     
     func favoriteSupplier(supplierId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/add")
+        let _: APIResponse<String> = try await post(
+            path: "/v1/retailer/suppliers/\(supplierId)/add",
+            headers: ["Idempotency-Key": RetailerIdempotency.supplierAdd(supplierId: supplierId)]
+        )
     }
     
     func unfavoriteSupplier(supplierId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/remove")
+        let _: APIResponse<String> = try await post(
+            path: "/v1/retailer/suppliers/\(supplierId)/remove",
+            headers: ["Idempotency-Key": RetailerIdempotency.supplierRemove(supplierId: supplierId)]
+        )
     }
 
     struct GlobalAutoOrderRequest: Encodable {

@@ -17,22 +17,16 @@ type LWWInventorySet struct {
 	WorkerNodeID string
 }
 
-// MergeOfflineAdjustments safely merges offline LWW updates into Spanner without blindly overwriting
-// concurrent mutations that occurred with a higher logical clock.
-func MergeOfflineAdjustments(ctx context.Context, txn *spanner.ReadWriteTransaction, updates []LWWInventorySet) error {
-	if len(updates) == 0 {
-		return nil
-	}
-
-	var productIDs []string
+// ResolveLatestUpdates deduplicates a batch of offline updates by ProductID, keeping
+// only the update with the strictly highest logical WriteClock.
+func ResolveLatestUpdates(updates []LWWInventorySet) map[string]LWWInventorySet {
 	updatesByProduct := make(map[string]LWWInventorySet)
 	for _, u := range updates {
 		pid := strings.TrimSpace(u.ProductID)
 		if pid == "" {
 			continue
 		}
-		productIDs = append(productIDs, pid)
-		// If multiple updates for same product in this batch, keep latest clock
+		u.ProductID = pid
 		if existing, ok := updatesByProduct[pid]; ok {
 			if u.WriteClock > existing.WriteClock {
 				updatesByProduct[pid] = u
@@ -41,9 +35,37 @@ func MergeOfflineAdjustments(ctx context.Context, txn *spanner.ReadWriteTransact
 			updatesByProduct[pid] = u
 		}
 	}
+	return updatesByProduct
+}
 
-	if len(productIDs) == 0 {
+// FilterStrictlyNewer filters updates to only those whose WriteClock strictly exceeds
+// the corresponding clock in existingClocks.
+func FilterStrictlyNewer(existingClocks map[string]int64, updatesByProduct map[string]LWWInventorySet) []LWWInventorySet {
+	var newer []LWWInventorySet
+	for pid, update := range updatesByProduct {
+		currentClock := existingClocks[pid]
+		if update.WriteClock > currentClock {
+			newer = append(newer, update)
+		}
+	}
+	return newer
+}
+
+// MergeOfflineAdjustments safely merges offline LWW updates into Spanner without blindly overwriting
+// concurrent mutations that occurred with a higher logical clock.
+func MergeOfflineAdjustments(ctx context.Context, txn *spanner.ReadWriteTransaction, updates []LWWInventorySet) error {
+	if len(updates) == 0 {
 		return nil
+	}
+
+	updatesByProduct := ResolveLatestUpdates(updates)
+	if len(updatesByProduct) == 0 {
+		return nil
+	}
+
+	productIDs := make([]string, 0, len(updatesByProduct))
+	for pid := range updatesByProduct {
+		productIDs = append(productIDs, pid)
 	}
 
 	stmt := spanner.Statement{
@@ -58,7 +80,6 @@ func MergeOfflineAdjustments(ctx context.Context, txn *spanner.ReadWriteTransact
 	it := txn.Query(ctx, stmt)
 	defer it.Stop()
 
-	var mutations []*spanner.Mutation
 	existingClocks := make(map[string]int64)
 
 	for {
@@ -78,15 +99,13 @@ func MergeOfflineAdjustments(ctx context.Context, txn *spanner.ReadWriteTransact
 		existingClocks[pid] = clock
 	}
 
-	for pid, update := range updatesByProduct {
-		currentClock := existingClocks[pid]
-		// LWW merge rule: Only apply if incoming WriteClock is strictly greater
-		if update.WriteClock > currentClock {
-			mutations = append(mutations, spanner.InsertOrUpdate("InventoryCRDT",
-				[]string{"ProductID", "Quantity", "WriteClock", "WorkerNodeID"},
-				[]interface{}{pid, update.Quantity, update.WriteClock, update.WorkerNodeID},
-			))
-		}
+	newer := FilterStrictlyNewer(existingClocks, updatesByProduct)
+	var mutations []*spanner.Mutation
+	for _, update := range newer {
+		mutations = append(mutations, spanner.InsertOrUpdate("InventoryCRDT",
+			[]string{"ProductID", "Quantity", "WriteClock", "WorkerNodeID"},
+			[]interface{}{update.ProductID, update.Quantity, update.WriteClock, update.WorkerNodeID},
+		))
 	}
 
 	if len(mutations) > 0 {

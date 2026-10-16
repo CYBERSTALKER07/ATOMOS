@@ -37,17 +37,13 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -56,6 +52,11 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		OrderID string                    `json:"order_id"`
@@ -186,17 +187,13 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -205,6 +202,11 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		ProposalID string `json:"proposal_id"`

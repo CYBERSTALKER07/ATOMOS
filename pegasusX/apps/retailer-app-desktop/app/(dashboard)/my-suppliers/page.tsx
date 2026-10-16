@@ -15,6 +15,7 @@ import {
 import { PageChrome } from "@/components/PageChrome";
 import { PageSection } from "@/components/PageSection";
 import { useLiveData } from "@/lib/hooks";
+import { retailerSupplierAddKey, retailerSupplierRemoveKey } from "@pegasusx/api-core";
 import { apiFetch } from "@/lib/auth";
 import type { Supplier } from "@/lib/types";
 
@@ -61,7 +62,10 @@ export default function MySuppliersPage() {
   const addSupplier = async (supplierId: string) => {
     setActionMessage(null);
     try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, { method: "POST" });
+      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, {
+        method: "POST",
+        headers: { "Idempotency-Key": retailerSupplierAddKey(supplierId) },
+      });
       if (!res.ok) throw new Error("Add failed");
       setActionMessage({ type: "success", text: "Supplier added successfully." });
       void mutateSuppliers();
@@ -74,7 +78,10 @@ export default function MySuppliersPage() {
   const removeSupplier = async (supplierId: string) => {
     setActionMessage(null);
     try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/remove`, { method: "POST" });
+      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/remove`, {
+        method: "POST",
+        headers: { "Idempotency-Key": retailerSupplierRemoveKey(supplierId) },
+      });
       if (!res.ok) throw new Error("Remove failed");
       setActionMessage({ type: "success", text: "Supplier removed successfully." });
       void mutateSuppliers();

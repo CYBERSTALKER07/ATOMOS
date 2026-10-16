@@ -113,7 +113,7 @@ func runNegotiationE2E(ctx context.Context, client *http.Client, base string, cf
 			{"sku_id": "SSMR-SKU-1", "original_qty": 2, "proposed_qty": 1},
 		},
 	})
-	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/negotiate", negotiateBody, driverToken, "")
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/delivery/negotiate", negotiateBody, driverToken, "smokecheck-negotiate-propose:"+orderID)
 	if err != nil {
 		return err
 	}

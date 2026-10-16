@@ -1,5 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { updateEnterpriseRequestStatus, recordEmailAudit } from '@/app/lib/supabase/server';
+
+const EMAIL_REGEX = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+function authorizeAdmin(request: NextRequest): boolean {
+  const configuredToken = process.env.ADMIN_API_TOKEN?.trim();
+  if (!configuredToken) {
+    return true;
+  }
+  const authHeader = request.headers.get('authorization') || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const candidate = bearer || (request.headers.get('x-admin-token') || '').trim();
+  if (!candidate) {
+    return false;
+  }
+  const expectedBuf = Buffer.from(configuredToken, 'utf8');
+  const candidateBuf = Buffer.from(candidate, 'utf8');
+  if (expectedBuf.length !== candidateBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expectedBuf, candidateBuf);
+}
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -107,6 +129,9 @@ async function sendClientReplyEmail(params: {
 }
 
 export async function POST(request: NextRequest) {
+  if (!authorizeAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json().catch(() => null);
     if (!body) {
@@ -115,9 +140,9 @@ export async function POST(request: NextRequest) {
 
     const { request_id, recipient, subject, message } = body;
 
-    if (!recipient || !subject || !message) {
+    if (!recipient || typeof recipient !== 'string' || !EMAIL_REGEX.test(recipient.trim()) || !subject || !message) {
       return NextResponse.json(
-        { error: 'Recipient email, subject, and reply message are required.' },
+        { error: 'A valid recipient email, subject, and reply message are required.' },
         { status: 400 }
       );
     }

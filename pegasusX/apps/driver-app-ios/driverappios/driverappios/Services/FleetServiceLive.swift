@@ -196,8 +196,8 @@ final class FleetServiceLive: FleetServiceProtocol {
         _ = try await api.requestRescue(reason: reason, note: note)
     }
 
-    func respondRescue(rescueId: String, accept: Bool) async throws {
-        _ = try await api.respondRescue(rescueId: rescueId, accept: accept)
+    func respondRescue(rescueId: String, brokenDriverId: String, accept: Bool) async throws {
+        _ = try await api.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: accept)
     }
 
     func reassignHandshake(orderId: String) async throws {

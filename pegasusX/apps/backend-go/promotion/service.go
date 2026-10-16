@@ -2,6 +2,7 @@ package promotion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -51,6 +52,24 @@ func (s *Service) ListForSupplier(ctx context.Context, supplierID string) ([]Pro
 func (s *Service) ActiveForSupplier(ctx context.Context, supplierID string) ([]Promotion, error) {
 	if s.repo == nil {
 		return []Promotion{}, nil
+	}
+	if s.cache != nil && supplierID != "" {
+		raw, err := s.cache.GetOrLoad(ctx, "promotions:supplier:"+supplierID, 15*time.Second, func(ctx context.Context) ([]byte, error) {
+			items, err := s.repo.ListActiveBySupplier(ctx, supplierID, s.now())
+			if err != nil {
+				return nil, err
+			}
+			if items == nil {
+				items = []Promotion{}
+			}
+			return json.Marshal(items)
+		})
+		if err == nil && len(raw) > 0 {
+			var cached []Promotion
+			if uerr := json.Unmarshal(raw, &cached); uerr == nil {
+				return cached, nil
+			}
+		}
 	}
 	return s.repo.ListActiveBySupplier(ctx, supplierID, s.now())
 }
@@ -107,6 +126,15 @@ func (s *Service) ResolveListPrice(ctx context.Context, supplierID, retailerID, 
 		return price, true, nil
 	}
 	return listPrice, false, nil
+}
+
+// ResolveListPrices batches active per-retailer price override lookups across all productIDs
+// for a supplier in a single Spanner UNNEST query, eliminating N+1 queries on catalog loads.
+func (s *Service) ResolveListPrices(ctx context.Context, supplierID, retailerID string, productIDs []string) (map[string]int64, error) {
+	if s == nil || s.repo == nil || supplierID == "" || retailerID == "" || len(productIDs) == 0 {
+		return map[string]int64{}, nil
+	}
+	return s.repo.LookupActivePriceOverrides(ctx, supplierID, retailerID, productIDs, s.now())
 }
 
 func (s *Service) enrichLines(ctx context.Context, supplierID, retailerID string, lines []LineInput) ([]LineInput, error) {

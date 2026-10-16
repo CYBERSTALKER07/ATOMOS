@@ -313,6 +313,7 @@ final class DriverSocketState {
         let status: String?
         let state: String?
         let rescueId: String?
+        let brokenDriverId: String?
     }
 
     private struct DriverEnvelope: Decodable {
@@ -331,6 +332,7 @@ final class DriverSocketState {
         let status: String?
         let state: String?
         let rescue_id: String?
+        let broken_driver_id: String?
     }
 
     static let shared = DriverSocketState()
@@ -521,7 +523,8 @@ final class DriverSocketState {
             attemptId: envelope.attempt_id,
             status: envelope.status,
             state: envelope.state,
-            rescueId: envelope.rescue_id
+            rescueId: envelope.rescue_id,
+            brokenDriverId: envelope.broken_driver_id
         )
         eventSequence += 1
     }

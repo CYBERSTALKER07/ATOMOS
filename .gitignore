@@ -87,3 +87,6 @@ dist/
 .dynamic_watcher_status.json
 **/.dynamic_watcher_status.json
 
+# === Extracted Standalone Repositories ===
+dist-repos/
+

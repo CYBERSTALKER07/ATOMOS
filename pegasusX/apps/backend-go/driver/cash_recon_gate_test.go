@@ -24,6 +24,7 @@ func TestHandleDriverReturnComplete_CashReconciliationGate(t *testing.T) {
 		log: slog.Default(),
 	}
 	req := httptest.NewRequest(http.MethodPost, "/v1/fleet/driver/return-complete", nil)
+	req.Header.Set("Idempotency-Key", "driver-return-complete:driver-1")
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
 		Subject: "driver-1",
 		Role:    auth.RoleDriver,

@@ -101,3 +101,23 @@ func TestHandleFileOrderClaim_RequiresIdempotencyKey(t *testing.T) {
 		t.Fatalf("status=%d want 400 body=%s", rr.Code, rr.Body.String())
 	}
 }
+
+func TestHandleRejectClaim_RequiresIdempotencyKey(t *testing.T) {
+	svc := NewService(Config{
+		Repo: NewMemoryRepository(),
+		Idem: idempotency.NewInMemoryStore(),
+		Log:  slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("claimID", "clm-1")
+	req := httptest.NewRequest(http.MethodPost, "/v1/claims/clm-1/reject", strings.NewReader(`{"reason":"Invalid"}`))
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "admin-1", Role: auth.RoleAdmin,
+	}))
+	rr := httptest.NewRecorder()
+	svc.HandleRejectClaim(rr, req)
+	if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}

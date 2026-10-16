@@ -94,9 +94,10 @@ export const warehouseOps = {
       { lock_id: lockId },
       warehouseDispatchLockReleaseKey(lockId),
     ),
-  issuePaymentBypass: (orderId: string) => 
+  issuePaymentBypass: (orderId: string) =>
     apiFetch('/v1/warehouse/ops/orders/payment-bypass', {
       method: 'POST',
+      headers: { 'Idempotency-Key': `warehouse-payment-bypass:${orderId}` },
       body: JSON.stringify({ order_id: orderId }),
     }).then((r: Response) => r.json()),
   getEarlyCompleteRequest: (driverId: string) =>
@@ -106,6 +107,7 @@ export const warehouseOps = {
   approveEarlyComplete: (driverId: string, action: 'CANCEL' | 'RESCHEDULE', newWindowStart?: string, newWindowEnd?: string) =>
     apiFetch('/v1/warehouse/ops/orders/early-complete/approve', {
       method: 'POST',
+      headers: { 'Idempotency-Key': `warehouse-approve-early-complete:${driverId}:${action}` },
       body: JSON.stringify({
         driver_id: driverId,
         action,

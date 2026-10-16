@@ -129,7 +129,10 @@ class WarehouseOperationsRepository @Inject constructor(
         )
 
     suspend fun issuePaymentBypass(orderId: String): Response<Map<String, String>> =
-        api.issuePaymentBypass(mapOf("order_id" to orderId))
+        api.issuePaymentBypass(
+            mapOf("order_id" to orderId),
+            "warehouse-payment-bypass:$orderId",
+        )
 
     suspend fun getEarlyCompleteRequest(driverId: String): Response<Map<String, Any>> =
         api.getEarlyCompleteRequest(driverId)
@@ -146,7 +149,7 @@ class WarehouseOperationsRepository @Inject constructor(
         )
         if (newWindowStart != null) map["newWindowStart"] = newWindowStart
         if (newWindowEnd != null) map["newWindowEnd"] = newWindowEnd
-        return api.approveEarlyComplete(map)
+        return api.approveEarlyComplete(map, WarehouseIdempotencyKeys.approveEarlyComplete(driverId, action))
     }
 
     suspend fun recommendReassign(orderId: String): Response<RecommendReassignResponse> =

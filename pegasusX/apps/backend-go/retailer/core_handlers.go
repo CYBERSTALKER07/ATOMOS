@@ -155,7 +155,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -293,17 +293,11 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id_required"})
 		return
 	}
-	if action == "add" {
-		if _, err := s.guardTradingPartner(r.Context(), supplierID); err != nil {
-			writeAttachError(w, err)
-			return
-		}
-	}
 	body, ok := readLimitedBody(w, r, 8*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -312,6 +306,12 @@ func (s *Service) handleSupplierMutation(w http.ResponseWriter, r *http.Request,
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+	if action == "add" {
+		if _, err := s.guardTradingPartner(r.Context(), supplierID); err != nil {
+			writeAttachError(w, err)
+			return
+		}
+	}
 	s.applySupplierFavoriteMutationCtx(r.Context(), rid, supplierID, action)
 	respBytes, err := s.supplierListResponseBytes(r.Context(), rid)
 	if err != nil {
@@ -844,15 +844,15 @@ func (s *Service) HandleConfirmAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -888,15 +888,15 @@ func (s *Service) HandleRejectAIOrder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -932,15 +932,15 @@ func (s *Service) HandleEditPreorder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -976,15 +976,15 @@ func (s *Service) HandleConfirmPreorder(w http.ResponseWriter, r *http.Request) 
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -1020,15 +1020,15 @@ func (s *Service) HandleAcceptDeliveryProposal(w http.ResponseWriter, r *http.Re
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -1064,15 +1064,15 @@ func (s *Service) HandleRejectDeliveryProposal(w http.ResponseWriter, r *http.Re
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -1108,15 +1108,15 @@ func (s *Service) HandleRejectPreorder(w http.ResponseWriter, r *http.Request) {
 		writeRetailerIdentityError(w, err)
 		return
 	}
-	if s.orders == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
-		return
-	}
 	body, ok := readLimitedBody(w, r, 64*1024)
 	if !ok {
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.orders == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "order_lifecycle_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -1627,6 +1627,7 @@ func writeRetailerIdentityError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 	}
 }
+
 // HandleCheckShelfAlerts handles POST /v1/retailer/shelf/check
 func (s *Service) HandleCheckShelfAlerts(w http.ResponseWriter, r *http.Request) {
 	// Stub implementation

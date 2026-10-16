@@ -54,11 +54,14 @@ func (s *relayTestStore) RecordPublishFailures(_ context.Context, eventIDs []str
 }
 
 type relayTestPublisher struct {
+	mu           sync.Mutex
 	errorsByCall []error
 	callCount    int
 }
 
 func (p *relayTestPublisher) Publish(_ context.Context, _ string, _ []byte, _ []byte) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.callCount++
 	idx := p.callCount - 1
 	if idx >= 0 && idx < len(p.errorsByCall) {
@@ -409,4 +412,55 @@ func TestRelayDrainOnce_PoisonPillIsolation_MultiTickQuarantine(t *testing.T) {
 	// --- Tick 4: Post-quarantine drain confirms system is idle and stable ---
 	relay.drainOnce(ctx)
 }
+
+type failingEventIDPublisher struct {
+	mu          sync.Mutex
+	failEventID string
+	published   []string
+}
+
+func (p *failingEventIDPublisher) PublishWithHeaders(_ context.Context, _ string, _ []byte, _ []byte, headers map[string][]byte) error {
+	eid := string(headers["event_id"])
+	if eid == p.failEventID {
+		return errors.New("simulated broker failure for first event of aggregate")
+	}
+	p.mu.Lock()
+	p.published = append(p.published, eid)
+	p.mu.Unlock()
+	return nil
+}
+
+func (p *failingEventIDPublisher) Publish(_ context.Context, _ string, _ []byte, _ []byte) error {
+	return nil
+}
+
+func TestRelayDrainOnce_CausalAggregateOrderingOnFailure(t *testing.T) {
+	t.Parallel()
+
+	// Two events for the same aggregate ("order-causal-1") plus one event for an independent aggregate ("order-other-2").
+	// When evt-1 fails, evt-2 for the same aggregate MUST NOT be published out of order,
+	// whereas evt-3 for "order-other-2" MUST still publish.
+	ev1 := Event{EventID: "evt-1", AggregateType: "Order", AggregateID: "order-causal-1", TopicName: "orders.v1", Payload: []byte(`{"step":1}`)}
+	ev2 := Event{EventID: "evt-2", AggregateType: "Order", AggregateID: "order-causal-1", TopicName: "orders.v1", Payload: []byte(`{"step":2}`)}
+	ev3 := Event{EventID: "evt-3", AggregateType: "Order", AggregateID: "order-other-2", TopicName: "orders.v1", Payload: []byte(`{"step":1}`)}
+
+	store := &relayTestStore{events: []Event{ev1, ev2, ev3}}
+	pub := &failingEventIDPublisher{failEventID: "evt-1"}
+	relay := NewRelay(store, pub, RelayConfig{
+		MaxPublishTries: 1,
+		BaseBackoff:     time.Millisecond,
+		MaxBackoff:      2 * time.Millisecond,
+		PublishShards:   4,
+	}, nil)
+
+	relay.drainOnce(context.Background())
+
+	if !reflect.DeepEqual(store.markIDs, []string{"evt-3"}) {
+		t.Fatalf("marked published = %v, want only [evt-3] (evt-2 must be held behind failed evt-1)", store.markIDs)
+	}
+	if !reflect.DeepEqual(store.recordFailureIDs, []string{"evt-1"}) {
+		t.Fatalf("recorded failures = %v, want [evt-1]", store.recordFailureIDs)
+	}
+}
+
 

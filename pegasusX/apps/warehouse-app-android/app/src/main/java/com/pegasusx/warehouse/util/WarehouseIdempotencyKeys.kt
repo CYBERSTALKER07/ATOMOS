@@ -105,6 +105,9 @@ object WarehouseIdempotencyKeys {
 
     fun orderOverflow(orderId: String): String = "warehouse-order-overflow:$orderId"
 
+    fun approveEarlyComplete(driverId: String, action: String): String =
+        "warehouse-approve-early-complete:$driverId:${action.trim().uppercase()}"
+
     fun orderProposeDelivery(orderId: String, proposedDate: String, reason: String): String {
         val hash = stableHash("$proposedDate:$reason")
         return "warehouse-order-propose-delivery:$orderId:$hash"

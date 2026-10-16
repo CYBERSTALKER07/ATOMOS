@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"cloud.google.com/go/spanner"
+	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -53,17 +53,17 @@ func (s *Service) HandleIssuePaymentBypass(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil || s.cache == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment_bypass_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil || s.cache == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment_bypass_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -162,17 +162,17 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil || s.cache == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment_bypass_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil || s.cache == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "payment_bypass_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -380,17 +380,17 @@ func (s *Service) HandleApproveEarlyComplete(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil || s.cache == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "early_complete_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil || s.cache == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "early_complete_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -572,17 +572,17 @@ func (s *Service) HandleRequestEarlyComplete(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil || s.cache == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "early_complete_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
+		return
+	}
+	if s.spannerClient == nil || s.cache == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "early_complete_unavailable"})
 		return
 	}
 	idemCommitted := false
@@ -647,9 +647,9 @@ func (s *Service) HandleRequestEarlyComplete(w http.ResponseWriter, r *http.Requ
 
 	buf := &spannerTxnBuffer{}
 	_ = outbox.EmitJSON(ctx, buf, events.AggregateWarehouse, warehouseID, events.TopicMain, events.OrderEvent{
-		BaseEvent:  events.BaseEvent{Type: "order.early_complete.requested", Timestamp: s.now().Format(time.RFC3339Nano)},
-		DriverID:   driverID,
-		Reason:     req.Reason,
+		BaseEvent: events.BaseEvent{Type: "order.early_complete.requested", Timestamp: s.now().Format(time.RFC3339Nano)},
+		DriverID:  driverID,
+		Reason:    req.Reason,
 	})
 	if len(buf.events) > 0 {
 		var mutations []*spanner.Mutation
@@ -677,30 +677,30 @@ func (s *Service) HandleGetEarlyCompleteRequest(w http.ResponseWriter, r *http.R
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	
+
 	driverID := chi.URLParam(r, "driverID")
 	if driverID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "driver_id required"})
 		return
 	}
-	
+
 	raw, found, err := s.cache.Get(r.Context(), cacheKeyEarlyCompletePrefix+driverID)
 	if err != nil || !found || len(raw) == 0 {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 		return
 	}
-	
+
 	var rec earlyCompleteRecord
 	if err := json.Unmarshal(raw, &rec); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
 		return
 	}
-	
+
 	if claims.Role == auth.RoleWarehouseAdmin && claims.HomeNodeID != rec.WarehouseID {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "driver_not_in_your_warehouse"})
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(raw)
 }
@@ -713,16 +713,16 @@ func (s *Service) HandleListEarlyCompleteRequests(w http.ResponseWriter, r *http
 		return
 	}
 
-	// In a real production environment, you should avoid SCAN for large datasets, 
+	// In a real production environment, you should avoid SCAN for large datasets,
 	// but since this is for active requests (a very small set), it's acceptable.
-	
+
 	// Assuming redis client is accessible or we can use the cache interface if it supports iteration
 	// But our cache interface might not support iteration.
-	// Let's use the DB instead. 
-	// Wait, we can query Orders for Status != CANCELLED and DriverId assigned, 
-	// but there's no "early_complete" status on the Order until approved. 
+	// Let's use the DB instead.
+	// Wait, we can query Orders for Status != CANCELLED and DriverId assigned,
+	// but there's no "early_complete" status on the Order until approved.
 	// Oh, I can just rely on the UI making the user type the Driver ID if I don't have a backend list, OR we can add a method to cache.
-	
+
 	// Since cache.Get doesn't support list, let's just make the UI accept a DriverID.
 	writeJSON(w, http.StatusNotImplemented, map[string]string{"error": "not_implemented"})
 }

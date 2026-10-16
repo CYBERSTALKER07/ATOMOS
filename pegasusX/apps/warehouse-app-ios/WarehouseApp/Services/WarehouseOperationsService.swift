@@ -137,7 +137,8 @@ enum WarehouseOperationsService {
     static func issuePaymentBypass(orderId: String) async throws -> PaymentBypassResponse {
         try await api.post(
             "v1/warehouse/ops/orders/payment-bypass",
-            body: PaymentBypassRequest(orderId: orderId)
+            body: PaymentBypassRequest(orderId: orderId),
+            idempotencyKey: "warehouse-payment-bypass:\(orderId)"
         )
     }
 
@@ -152,7 +153,11 @@ enum WarehouseOperationsService {
         ]
         if let s = newWindowStart { body["newWindowStart"] = s }
         if let e = newWindowEnd { body["newWindowEnd"] = e }
-        return try await api.post("v1/warehouse/ops/orders/early-complete/approve", body: body)
+        return try await api.post(
+            "v1/warehouse/ops/orders/early-complete/approve",
+            body: body,
+            idempotencyKey: "warehouse-approve-early-complete:\(driverId):\(action.uppercased())"
+        )
     }
 }
 

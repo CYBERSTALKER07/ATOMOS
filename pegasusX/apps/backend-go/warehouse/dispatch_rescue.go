@@ -216,6 +216,18 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 		return
 	}
 
+	if s.driverHub != nil && req.RescueDriverID != "" {
+		wsPayload, _ := json.Marshal(map[string]any{
+			"type":             "RESCUE_PROPOSED",
+			"rescue_id":        req.RescueID,
+			"broken_driver_id": req.BrokenDriverID,
+			"rescue_driver_id": req.RescueDriverID,
+			"warehouse_id":     whID,
+			"supplier_id":      sid,
+		})
+		s.driverHub.Broadcast(r.Context(), "driver:"+req.RescueDriverID, wsPayload)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "proposed",
 	})

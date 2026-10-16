@@ -340,11 +340,13 @@ interface DriverApi {
     @POST("v1/driver/ops/rescue/request")
     suspend fun requestRescue(
         @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
 
     @POST("v1/driver/ops/rescue/respond")
     suspend fun respondRescue(
         @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Map<String, String>
 
     // Edge 33: Report missing items after seal (exception-report alias; DAMAGED needs photo_url)

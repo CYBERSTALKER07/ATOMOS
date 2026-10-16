@@ -139,6 +139,15 @@ fun HomeScreen(
         )
     }
 
+    if (state.pendingRescueId != null) {
+        RescueAcceptanceDialog(
+            rescueId = state.pendingRescueId!!,
+            brokenDriverId = state.pendingBrokenDriverId.orEmpty(),
+            onAccept = { viewModel.respondRescue(accept = true) },
+            onDismiss = { viewModel.respondRescue(accept = false) }
+        )
+    }
+
     LaunchedEffect(Unit) {
         pack = withContext(Dispatchers.IO) {
             MarketPackBinder.fetch(BuildConfig.API_BASE_URL, TokenHolder.token.orEmpty())?.pack

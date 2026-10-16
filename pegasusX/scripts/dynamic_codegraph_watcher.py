@@ -40,8 +40,12 @@ BOLT_PASS = os.getenv("MEMGRAPH_PASSWORD", "")
 auth = (BOLT_USER, BOLT_PASS) if BOLT_USER or BOLT_PASS else None
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
-PEGASUSX_DIR = os.path.join(REPO_ROOT, "pegasusX")
+PEGASUSX_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+REPO_ROOT = (
+    os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
+    if os.path.isdir(os.path.join(SCRIPT_DIR, "../../pegasusX"))
+    else PEGASUSX_DIR
+)
 
 GO_LANGUAGE = Language(tsgo.language())
 parser = Parser(GO_LANGUAGE)

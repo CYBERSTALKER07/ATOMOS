@@ -2717,7 +2717,7 @@ func (s *Service) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -2935,7 +2935,7 @@ func (s *Service) HandleAssignOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -3911,7 +3911,7 @@ func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false

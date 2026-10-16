@@ -80,13 +80,13 @@ fun RequestDetailSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = CADColors.PanelDark,
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.small,
         dragHandle = {
             Box(
                 modifier = Modifier
                     .padding(vertical = 12.dp)
-                    .width(44.dp)
+                    .width(48.dp)
                     .height(4.dp)
                     .background(CADColors.BorderStrong, MaterialTheme.shapes.extraSmall)
             )
@@ -115,7 +115,7 @@ fun RequestDetailSheet(
                         text = request.name,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Light,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -124,7 +124,7 @@ fun RequestDetailSheet(
                     modifier = Modifier
                         .border(1.dp, CADColors.statusBorder(request.status), MaterialTheme.shapes.extraSmall)
                         .background(CADColors.statusBg(request.status))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = request.status.replace("_", " ").uppercase(),
@@ -135,12 +135,12 @@ fun RequestDetailSheet(
                 }
             }
 
-            // Interactive 5-State Visual Pipeline
+            // Interactive 5-State Visual Pipeline (4dp grid)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                    .background(CADColors.CardDark)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
                     .padding(12.dp)
             ) {
                 Text(
@@ -148,7 +148,7 @@ fun RequestDetailSheet(
                     style = MaterialTheme.typography.labelSmall,
                     color = CADColors.TextDim
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 val pipeline = listOf("new", "in_review", "contacted", "qualified", "closed")
                 LazyRow(
@@ -169,37 +169,41 @@ fun RequestDetailSheet(
                             label = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (isCurrent) {
-                                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color.Black)
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.surface
+                                        )
                                         Spacer(modifier = Modifier.width(4.dp))
                                     }
                                     Text(
                                         text = st.replace("_", " ").uppercase(),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (isCurrent) Color.Black else color,
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 9.sp
+                                        color = if (isCurrent) MaterialTheme.colorScheme.surface else color,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium
                                     )
                                 }
                             },
                             shape = MaterialTheme.shapes.extraSmall,
                             colors = AssistChipDefaults.assistChipColors(
-                                containerColor = if (isCurrent) color else CADColors.PitchBlack
+                                containerColor = if (isCurrent) color else MaterialTheme.colorScheme.surface
                             ),
                             border = AssistChipDefaults.assistChipBorder(
                                 enabled = true,
                                 borderColor = if (isCurrent) color else CADColors.BorderStroke,
                                 borderWidth = 1.dp
                             ),
-                            modifier = Modifier.height(30.dp)
+                            modifier = Modifier.height(32.dp)
                         )
                     }
                 }
             }
 
-            // Client Operational Specifications Bento Card
+            // Client Operational Specifications Bento Card (4dp Grid)
             Card(
                 shape = MaterialTheme.shapes.extraSmall,
-                colors = CardDefaults.cardColors(containerColor = CADColors.CardDark),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 border = CardDefaults.outlinedCardBorder().copy(
                     brush = androidx.compose.ui.graphics.SolidColor(CADColors.BorderStroke)
                 ),
@@ -208,8 +212,8 @@ fun RequestDetailSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
                         text = "CLIENT SPECIFICATIONS & TELEMETRY",
@@ -234,7 +238,7 @@ fun RequestDetailSheet(
                         }
                         IconButton(
                             onClick = { copyToClipboard(request.email, "Email") },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = "Copy Email", tint = CADColors.TextMuted, modifier = Modifier.size(16.dp))
                         }
@@ -249,11 +253,11 @@ fun RequestDetailSheet(
                     ) {
                         Column {
                             Text("Company / Organization", style = MaterialTheme.typography.bodySmall, color = CADColors.TextDim)
-                            Text(request.company ?: "Independent / Unspecified", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                            Text(request.company ?: "Independent / Unspecified", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Role", style = MaterialTheme.typography.bodySmall, color = CADColors.TextDim)
-                            Text(request.role ?: "Supplier Operations", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                            Text(request.role ?: "Supplier Operations", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
 
@@ -270,20 +274,20 @@ fun RequestDetailSheet(
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Fleet Scale", style = MaterialTheme.typography.bodySmall, color = CADColors.TextDim)
-                            Text(request.fleet_size ?: "Enterprise", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                            Text(request.fleet_size ?: "Enterprise", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
             }
 
-            // Client Submission Message Box
+            // Client Submission Message Box (4dp grid)
             if (!request.message.isNullOrBlank()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(1.dp, CADColors.BorderStroke, MaterialTheme.shapes.extraSmall)
-                        .background(CADColors.PitchBlack)
-                        .padding(14.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(16.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -297,25 +301,24 @@ fun RequestDetailSheet(
                         )
                         IconButton(
                             onClick = { copyToClipboard(request.message, "Client Message") },
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(48.dp)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = CADColors.TextDim, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy Message", tint = CADColors.TextDim, modifier = Modifier.size(16.dp))
                         }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = request.message,
                         style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 20.sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
-            // ANSWER CLIENT OUTBOUND STUDIO
+            // ANSWER CLIENT OUTBOUND STUDIO (4dp grid)
             Card(
                 shape = MaterialTheme.shapes.extraSmall,
-                colors = CardDefaults.cardColors(containerColor = CADColors.CardDark),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
                 border = CardDefaults.outlinedCardBorder().copy(
                     brush = androidx.compose.ui.graphics.SolidColor(CADColors.BorderCyan)
                 ),
@@ -324,8 +327,8 @@ fun RequestDetailSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -340,8 +343,7 @@ fun RequestDetailSheet(
                         Text(
                             text = "DIRECT RESEND API",
                             style = MaterialTheme.typography.labelSmall,
-                            color = CADColors.TextDim,
-                            fontSize = 9.sp
+                            color = CADColors.TextDim
                         )
                     }
 
@@ -351,9 +353,9 @@ fun RequestDetailSheet(
                         color = CADColors.TextMuted
                     )
 
-                    // 4 Response Blueprints
+                    // 4 Response Blueprints (4dp grid)
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         val templates = listOf(
@@ -373,14 +375,13 @@ fun RequestDetailSheet(
                                     Text(
                                         title.uppercase(),
                                         style = MaterialTheme.typography.labelSmall,
-                                        fontSize = 9.sp,
                                         color = CADColors.ElectricCyan
                                     )
                                 },
                                 shape = MaterialTheme.shapes.extraSmall,
-                                colors = AssistChipDefaults.assistChipColors(containerColor = CADColors.PitchBlack),
+                                colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.surface),
                                 border = AssistChipDefaults.assistChipBorder(enabled = true, borderColor = CADColors.BorderStroke, borderWidth = 1.dp),
-                                modifier = Modifier.height(26.dp)
+                                modifier = Modifier.height(32.dp)
                             )
                         }
                     }
@@ -394,12 +395,12 @@ fun RequestDetailSheet(
                         shape = MaterialTheme.shapes.extraSmall,
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = CADColors.InputDark,
-                            unfocusedContainerColor = CADColors.InputDark,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedBorderColor = CADColors.ElectricCyan,
                             unfocusedBorderColor = CADColors.BorderStroke,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
 
@@ -421,19 +422,19 @@ fun RequestDetailSheet(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = CADColors.InputDark,
-                            unfocusedContainerColor = CADColors.InputDark,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedBorderColor = CADColors.ElectricCyan,
                             unfocusedBorderColor = CADColors.BorderStroke,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
 
                     // Dual Action Buttons (48dp Touch Targets)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Direct Dispatch via API
                         Button(
@@ -447,7 +448,7 @@ fun RequestDetailSheet(
                             shape = MaterialTheme.shapes.extraSmall,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = CADColors.ElectricCyan,
-                                contentColor = Color.Black
+                                contentColor = MaterialTheme.colorScheme.surface
                             ),
                             modifier = Modifier
                                 .weight(1.3f)
@@ -455,13 +456,13 @@ fun RequestDetailSheet(
                         ) {
                             if (isSendingReply) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    color = Color.Black,
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.surface,
                                     strokeWidth = 2.dp
                                 )
                             } else {
                                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text("TRANSMIT REPLY", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                         }
@@ -483,7 +484,7 @@ fun RequestDetailSheet(
                                 }
                             },
                             shape = MaterialTheme.shapes.extraSmall,
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
                             border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                                 brush = androidx.compose.ui.graphics.SolidColor(CADColors.BorderStroke)
                             ),
@@ -492,7 +493,7 @@ fun RequestDetailSheet(
                                 .height(48.dp)
                         ) {
                             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("MAIL APP", style = MaterialTheme.typography.labelSmall)
                         }
                     }
@@ -511,10 +512,10 @@ fun RequestDetailSheet(
                     TextButton(
                         onClick = { showDeleteConfirm = true },
                         colors = ButtonDefaults.textButtonColors(contentColor = CADColors.LaserOrange),
-                        modifier = Modifier.height(44.dp)
+                        modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("DELETE INQUIRY RECORD", style = MaterialTheme.typography.labelSmall)
                     }
                 } else {
@@ -530,14 +531,14 @@ fun RequestDetailSheet(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = CADColors.LaserOrange, contentColor = Color.White),
                             shape = MaterialTheme.shapes.extraSmall,
-                            modifier = Modifier.height(34.dp)
+                            modifier = Modifier.height(36.dp)
                         ) {
                             Text("CONFIRM", style = MaterialTheme.typography.labelSmall)
                         }
                         OutlinedButton(
                             onClick = { showDeleteConfirm = false },
                             shape = MaterialTheme.shapes.extraSmall,
-                            modifier = Modifier.height(34.dp)
+                            modifier = Modifier.height(36.dp)
                         ) {
                             Text("CANCEL", style = MaterialTheme.typography.labelSmall)
                         }
@@ -547,13 +548,13 @@ fun RequestDetailSheet(
                 TextButton(
                     onClick = onDismiss,
                     colors = ButtonDefaults.textButtonColors(contentColor = CADColors.TextMuted),
-                    modifier = Modifier.height(44.dp)
+                    modifier = Modifier.defaultMinSize(minHeight = 48.dp)
                 ) {
                     Text("CLOSE", style = MaterialTheme.typography.labelSmall)
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

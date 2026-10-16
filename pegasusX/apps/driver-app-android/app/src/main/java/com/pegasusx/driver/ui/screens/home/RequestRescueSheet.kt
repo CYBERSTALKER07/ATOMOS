@@ -32,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.pegasusx.driver.data.remote.DriverApi
+import com.pegasusx.driver.util.DriverIdempotencyKeys
 import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
@@ -169,6 +170,7 @@ fun RequestRescueSheet(
                                         "reason" to reason,
                                         "note" to note.trim(),
                                     ),
+                                    DriverIdempotencyKeys.requestRescue(reason, note.trim()),
                                 )
                                 onDismiss()
                             } catch (e: Exception) {

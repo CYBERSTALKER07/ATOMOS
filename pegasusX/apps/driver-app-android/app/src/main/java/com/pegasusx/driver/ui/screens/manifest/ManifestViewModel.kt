@@ -87,6 +87,8 @@ data class ManifestUiState(
     val isRequestingEarlyComplete: Boolean = false,
     val historyRows: List<DriverHistoryRow> = emptyList(),
     val earnings: DriverEarningsResponse? = null,
+    val pendingRescueId: String? = null,
+    val pendingBrokenDriverId: String? = null,
 )
 
 @HiltViewModel
@@ -137,6 +139,13 @@ class ManifestViewModel @Inject constructor(
         viewModelScope.launch {
             driverWebSocket.messages.collect { message ->
                 if (message.type == "SYSTEM_APP_OUTDATED") return@collect
+                if (message.type == "RESCUE_PROPOSED" && message.rescueId != null) {
+                    _state.value = _state.value.copy(
+                        pendingRescueId = message.rescueId,
+                        pendingBrokenDriverId = message.brokenDriverId.orEmpty()
+                    )
+                    return@collect
+                }
                 if (shouldRefreshManifestOnWsEvent(message.type)) {
                     loadManifest(silent = true)
                     _state.value = _state.value.copy(lastWsRefreshAt = System.currentTimeMillis())
@@ -585,6 +594,33 @@ class ManifestViewModel @Inject constructor(
         updatedAt = updatedAt,
         itemsJson = json.encodeToString(items)
     )
+
+    fun respondRescue(accept: Boolean) {
+        val rescueId = _state.value.pendingRescueId ?: return
+        val brokenDriverId = _state.value.pendingBrokenDriverId.orEmpty()
+        viewModelScope.launch {
+            try {
+                api.respondRescue(
+                    body = mapOf(
+                        "rescue_id" to rescueId,
+                        "broken_driver_id" to brokenDriverId,
+                        "accept" to accept
+                    ),
+                    idempotencyKey = DriverIdempotencyKeys.respondRescue(rescueId, accept)
+                )
+                _state.value = _state.value.copy(pendingRescueId = null, pendingBrokenDriverId = null)
+                if (accept) {
+                    loadManifest(silent = false)
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = e.message ?: "Failed to respond to rescue")
+            }
+        }
+    }
+
+    fun dismissRescue() {
+        _state.value = _state.value.copy(pendingRescueId = null, pendingBrokenDriverId = null)
+    }
 
     private fun OrderEntity.toDomain() = Order(
         id = id,

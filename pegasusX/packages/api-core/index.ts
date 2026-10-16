@@ -463,6 +463,13 @@ export {
   payloadInboundConfirmKey,
   payloadManifestExceptionKey,
   claimFileKey,
+  claimApproveKey,
+  claimRejectKey,
+} from "./idempotency";
+import {
+  claimFileKey,
+  claimApproveKey,
+  claimRejectKey,
 } from "./idempotency";
 import {
   dispatchBackpressureFromResponse,
@@ -3156,7 +3163,7 @@ export class ApiClient {
   ): Promise<ApproveClaimResponse> {
     return this.request<ApproveClaimResponse>(`/v1/claims/${encodeURIComponent(claimId)}/approve`, "POST", {
       body: request,
-      idempotencyKey,
+      idempotencyKey: idempotencyKey ?? claimApproveKey(claimId, request),
     });
   }
 
@@ -3168,7 +3175,7 @@ export class ApiClient {
   ): Promise<Claim> {
     return this.request<Claim>(`/v1/claims/${encodeURIComponent(claimId)}/reject`, "POST", {
       body: request,
-      idempotencyKey,
+      idempotencyKey: idempotencyKey ?? claimRejectKey(claimId, request.resolution_note ?? request.reason),
     });
   }
 

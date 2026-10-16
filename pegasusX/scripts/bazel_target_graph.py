@@ -24,19 +24,26 @@ import re
 import sys
 from typing import Any, Dict, List, Set, Tuple
 
-from neo4j import GraphDatabase
-
 BOLT_URL = os.getenv("MEMGRAPH_BOLT_URL", "bolt://localhost:7687")
 BOLT_USER = os.getenv("MEMGRAPH_USER", "")
 BOLT_PASS = os.getenv("MEMGRAPH_PASSWORD", "")
 auth = (BOLT_USER, BOLT_PASS) if BOLT_USER or BOLT_PASS else None
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
-PEGASUSX_DIR = os.path.join(REPO_ROOT, "pegasusX")
+PEGASUSX_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+REPO_ROOT = (
+    os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
+    if os.path.isdir(os.path.join(SCRIPT_DIR, "../../pegasusX"))
+    else PEGASUSX_DIR
+)
 
 
 def get_memgraph_driver():
+    try:
+        from neo4j import GraphDatabase
+    except ImportError:
+        print("ERROR: 'neo4j' Python package is required for Memgraph sync. Install with: pip install neo4j", file=sys.stderr)
+        sys.exit(1)
     return GraphDatabase.driver(BOLT_URL, auth=auth)
 
 
@@ -276,6 +283,10 @@ def main():
             print(f"    Affected Upstream Library Targets ({len(res['affected_library_targets'])}):")
             for l in res["affected_library_targets"][:10]:
                 print(f"      - [Distance {l['distance']}] {l['id']}")
+        return
+
+    if args.json:
+        print(json.dumps({"targets": targets, "dependencies": deps}, indent=2))
         return
 
     # Default: summary

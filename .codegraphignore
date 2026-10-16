@@ -75,6 +75,8 @@ xcodebuild.log
 
 # 7. System & Version Control Artifacts
 .git/
+dist-repos/
 .DS_Store
 **/.DS_Store
 Thumbs.db
+

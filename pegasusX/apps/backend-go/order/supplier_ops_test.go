@@ -51,6 +51,7 @@ func TestHandleIssuePaymentBypass_UnavailableWhenNilSpanner(t *testing.T) {
 		Role:    auth.RoleAdmin,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/orders/payment-bypass", strings.NewReader(`{"order_id":"ord-1"}`)).WithContext(ctx)
+	req.Header.Set("Idempotency-Key", "supplier-payment-bypass:ord-1")
 	rr := httptest.NewRecorder()
 	svc.HandleIssuePaymentBypass(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -96,6 +97,7 @@ func TestHandleConfirmPaymentBypass_UnavailableWhenNilSpanner(t *testing.T) {
 		Role:    auth.RoleDriver,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/delivery/confirm-payment-bypass", strings.NewReader(`{"order_id":"ord-1","bypass_token":"123456"}`)).WithContext(ctx)
+	req.Header.Set("Idempotency-Key", "driver-confirm-payment-bypass:ord-1")
 	rr := httptest.NewRecorder()
 	svc.HandleConfirmPaymentBypass(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -141,6 +143,7 @@ func TestHandleApproveEarlyComplete_UnavailableWhenNilSpanner(t *testing.T) {
 		Role:    auth.RoleAdmin,
 	})
 	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/route/approve-early-complete", strings.NewReader(`{"driver_id":"drv-1"}`)).WithContext(ctx)
+	req.Header.Set("Idempotency-Key", "supplier-approve-early-complete:drv-1")
 	rr := httptest.NewRecorder()
 	svc.HandleApproveEarlyComplete(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {
@@ -180,6 +183,7 @@ func TestHandleRequestEarlyComplete_UnauthorizedAndUnavailable(t *testing.T) {
 		Role:    auth.RoleDriver,
 	})
 	req = httptest.NewRequest(http.MethodPost, "/v1/fleet/route/request-early-complete", strings.NewReader(`{"route_id":"rt-1"}`)).WithContext(driverCtx)
+	req.Header.Set("Idempotency-Key", "driver-request-early-complete:drv-1")
 	rr = httptest.NewRecorder()
 	svc.HandleRequestEarlyComplete(rr, req)
 	if rr.Code != http.StatusServiceUnavailable {

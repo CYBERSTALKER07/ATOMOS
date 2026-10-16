@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from ortools.constraint_solver import pywrapcp
@@ -84,7 +84,7 @@ def _travel_minutes(distance_m: int, speed_kmph: float) -> int:
 
 
 def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
-    started = datetime.utcnow()
+    started = datetime.now(timezone.utc)
     trace_id = str(req.get("trace_id") or "")
     stops_in = list(req.get("stops") or [])
     vehicles_in = list(req.get("vehicles") or [])
@@ -315,7 +315,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         if oid and oid not in assigned_ids and not any(o["order_id"] == oid for o in orphans):
             orphans.append({"order_id": oid, "reason": "unassigned"})
 
-    elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
+    elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     util_sum = sum(float(r["util_pct"]) for r in routes)
     avg_util = util_sum / len(routes) if routes else 0.0
     return {

@@ -543,9 +543,15 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 			return
 		}
-		if s.guardIdempotency(w, r, body) {
+		if s.guardIdempotencyStrict(w, r, body) {
 			return
 		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseIdempotency(r.Context(), r)
+			}
+		}()
 		var req struct {
 			Available bool   `json:"available"`
 			Reason    string `json:"reason"`
@@ -555,7 +561,7 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		s.patchDriverAvailability(w, r, driverID, body, availabilityPatchRequest{
+		idemCommitted = s.patchDriverAvailability(w, r, driverID, body, availabilityPatchRequest{
 			OnShift: req.Available,
 			Reason:  req.Reason,
 			Note:    req.Note,
@@ -566,28 +572,34 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 			return
 		}
-		if s.guardIdempotency(w, r, body) {
+		if s.guardIdempotencyStrict(w, r, body) {
 			return
 		}
+		idemCommitted := false
+		defer func() {
+			if !idemCommitted {
+				s.releaseIdempotency(r.Context(), r)
+			}
+		}()
 		var req availabilityPatchRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		s.patchDriverAvailability(w, r, driverID, body, req)
+		idemCommitted = s.patchDriverAvailability(w, r, driverID, body, req)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
 }
 
-func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request, driverID string, idemBody []byte, req availabilityPatchRequest) {
+func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request, driverID string, idemBody []byte, req availabilityPatchRequest) bool {
 	current, known := s.driverOnShiftKnown(r.Context(), driverID)
 	if known && current == req.OnShift {
 		resp := map[string]any{"driver_id": driverID, "on_shift": req.OnShift, "no_change": true}
 		respBytes, _ := json.Marshal(resp)
 		s.saveIdempotency(r.Context(), r, idemBody, http.StatusOK, respBytes)
 		writeJSONBytes(w, http.StatusOK, respBytes)
-		return
+		return true
 	}
 
 	reason := ""
@@ -618,7 +630,7 @@ func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request
 	if err := s.persistDriverAvailability(r.Context(), driverID, req.OnShift, reason, note, eventPayload); err != nil {
 		s.log.Error("driver availability persist failed", "driver_id", driverID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_availability_failed"})
-		return
+		return false
 	}
 
 	s.mu.Lock()
@@ -655,6 +667,7 @@ func (s *Service) patchDriverAvailability(w http.ResponseWriter, r *http.Request
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, idemBody, http.StatusOK, respBytes)
 	writeJSONBytes(w, http.StatusOK, respBytes)
+	return true
 }
 
 // HandlePendingCollections serves GET /v1/driver/pending-collections.

@@ -12,13 +12,19 @@ out/
 *.exe
 vendor/
 # Local build artifacts (never commit)
+apps/backend-go/backend-go
+apps/backend-go/main
 apps/backend-go/ssmr-smokecheck
 apps/backend-go/ssmr-smokecheck-*
 apps/ai-worker/ai-worker
+apps/ai-worker/*-ai-worker
 apps/handoff-service/handoff-service
 
 # env
 .env
+.env.*
+!.env.example
+!.env*.example
 .env.local
 .env.*.local
 .env.k8s
@@ -41,6 +47,7 @@ yarn-error.log*
 
 # tauri
 src-tauri/target/
+**/target/
 contracts/desktop-updater/*.key
 contracts/desktop-updater/dev.key
 
@@ -53,6 +60,9 @@ captures/
 # ios
 xcuserdata/
 *.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+**/*.xcuserstate
 DerivedData/
 Pods/
 .build/
@@ -63,15 +73,35 @@ Pods/
 .expo-shared/
 web-build/
 
+# python
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
 # terraform
 .terraform/
+**/.terraform/
 *.tfstate
 *.tfstate.*
+**/*.tfstate
+**/*.tfstate.*
 *.tfplan
+**/tfplan
+**/tfplan.*
 *.secret
 *.txt
 !requirements.txt
 !**/requirements.txt
+
+# CodeGraph cache
+.cgr-*
+**/.cgr-*
+.dynamic_watcher_status.json
+**/.dynamic_watcher_status.json
 
 # temporary and agent run artifacts
 .agents/

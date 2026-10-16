@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	errRescueAlreadyAccepted  = errors.New("rescue_already_accepted")
-	errInsufficientCapacity   = errors.New("insufficient_vehicle_capacity")
-	errBrokenDriverNotFound   = errors.New("broken_driver_not_found")
+	errRescueAlreadyAccepted = errors.New("rescue_already_accepted")
+	errInsufficientCapacity  = errors.New("insufficient_vehicle_capacity")
+	errBrokenDriverNotFound  = errors.New("broken_driver_not_found")
 )
 
 // HandleRescueRequest handles a driver reporting that their truck is broken and needs rescue.
@@ -36,9 +36,15 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	spannerRepo, ok := s.repo.(*SpannerRepository)
 	if !ok {
@@ -124,6 +130,7 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]string{"status": "requested", "rescue_id": rescueID}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }
 
@@ -152,9 +159,15 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
+	idemCommitted := false
+	defer func() {
+		if !idemCommitted {
+			s.releaseIdempotency(r.Context(), r)
+		}
+	}()
 
 	var req RescueRespondRequest
 	if err := json.Unmarshal(body, &req); err != nil || strings.TrimSpace(req.BrokenDriverID) == "" || strings.TrimSpace(req.RescueID) == "" {
@@ -313,9 +326,9 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 				      SET DriverId = @newDriverId, VehicleId = @newVehicleId, UpdatedAt = PENDING_COMMIT_TIMESTAMP() 
 				      WHERE DriverId = @oldDriverId AND Status IN ('LOADED', 'IN_TRANSIT', 'ARRIVED', 'DISPATCHED', 'ARRIVING', 'EN_ROUTE', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION')`,
 				Params: map[string]any{
-					"newDriverId":   driverID,
-					"newVehicleId":  rescueVehicleID,
-					"oldDriverId":   req.BrokenDriverID,
+					"newDriverId":  driverID,
+					"newVehicleId": rescueVehicleID,
+					"oldDriverId":  req.BrokenDriverID,
 				},
 			}
 			if _, err := txn.Update(ctx, updateStmt); err != nil {
@@ -448,5 +461,6 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 	}
 	respBytes, _ := json.Marshal(resp)
 	s.saveIdempotency(r.Context(), r, body, http.StatusOK, respBytes)
+	idemCommitted = true
 	writeJSONBytes(w, http.StatusOK, respBytes)
 }

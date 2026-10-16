@@ -6,8 +6,12 @@ set -euo pipefail
 # and starts the stdio MCP server for Cursor, Claude Code, Gemini CLI, Windsurf, Cline, and Zed.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-PEGASUSX_DIR="${REPO_ROOT}/pegasusX"
+PEGASUSX_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+if [ -d "${SCRIPT_DIR}/../../pegasusX" ]; then
+  REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+else
+  REPO_ROOT="${PEGASUSX_DIR}"
+fi
 
 export TARGET_REPO_PATH="${TARGET_REPO_PATH:-${PEGASUSX_DIR}}"
 export MEMGRAPH_BOLT_URL="${MEMGRAPH_BOLT_URL:-bolt://localhost:7687}"

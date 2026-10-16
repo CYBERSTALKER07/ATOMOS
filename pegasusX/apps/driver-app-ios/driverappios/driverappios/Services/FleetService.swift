@@ -54,7 +54,7 @@ protocol FleetServiceProtocol {
     func requestRescue(reason: String, note: String) async throws
 
     /// POST /v1/driver/ops/rescue/respond — Driver responds to a rescue proposal
-    func respondRescue(rescueId: String, accept: Bool) async throws
+    func respondRescue(rescueId: String, brokenDriverId: String, accept: Bool) async throws
 
     /// POST /v1/fleet/orders/{id}/reassign-handshake — Driver handshakes reassigned order
     func reassignHandshake(orderId: String) async throws

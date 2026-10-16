@@ -1,13 +1,17 @@
 package com.pegasusx.enterprise.theme
 
-import androidx.compose.foundation.shape.CutCornerShape
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -61,100 +65,125 @@ object CADColors {
     fun statusBorder(status: String): Color = statusColor(status).copy(alpha = 0.45f)
 }
 
-// Material Design 3 Micro-Chamfered CAD Shapes
+// Material Design 3 Shapes (4dp Grid Compliant)
 val CADShapes = Shapes(
-    extraSmall = RoundedCornerShape(2.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(4.dp),
-    large = RoundedCornerShape(6.dp),
-    extraLarge = RoundedCornerShape(8.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(12.dp),
+    large = RoundedCornerShape(16.dp),
+    extraLarge = RoundedCornerShape(24.dp)
 )
 
-// Material Design 3 Strict Typography Hierarchy
+// Material Design 3 Strict Typography Hierarchy (Roboto / System Font, Type Scale Compliant)
 val CADTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Light,
-        fontSize = 34.sp,
-        letterSpacing = (-0.5).sp,
+        fontSize = 57.sp,
+        lineHeight = 64.sp,
+        letterSpacing = (-0.25).sp,
+        color = CADColors.TextWhite
+    ),
+    displayMedium = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Light,
+        fontSize = 45.sp,
+        lineHeight = 52.sp,
+        color = CADColors.TextWhite
+    ),
+    displaySmall = TextStyle(
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Normal,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
         color = CADColors.TextWhite
     ),
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Light,
-        fontSize = 26.sp,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
         color = CADColors.TextWhite
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 20.sp,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
         color = CADColors.TextWhite
     ),
     headlineSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 17.sp,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
         color = CADColors.TextWhite
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
         color = CADColors.TextWhite
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
         color = CADColors.TextWhite
     ),
     titleSmall = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
         letterSpacing = 0.5.sp,
         color = CADColors.ElectricCyan
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 22.sp,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
         color = CADColors.TextWhite
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 13.sp,
-        lineHeight = 19.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
         color = CADColors.TextWhite
     ),
     bodySmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
         color = CADColors.TextMuted
     ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
-        fontSize = 12.sp,
-        letterSpacing = 1.sp,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.5.sp,
         color = CADColors.TextWhite
     ),
     labelMedium = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        letterSpacing = 0.8.sp,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.5.sp,
         color = CADColors.TextMuted
     ),
     labelSmall = TextStyle(
         fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
-        fontSize = 10.sp,
-        letterSpacing = 1.sp,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.5.sp,
         color = CADColors.TextDim
     )
 )
@@ -201,9 +230,20 @@ val CADColorScheme = darkColorScheme(
 )
 
 @Composable
-fun SwissCADTheme(content: @Composable () -> Unit) {
+fun SwissCADTheme(
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (isSystemInDarkTheme()) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        else -> CADColorScheme
+    }
+
     MaterialTheme(
-        colorScheme = CADColorScheme,
+        colorScheme = colorScheme,
         shapes = CADShapes,
         typography = CADTypography,
         content = content

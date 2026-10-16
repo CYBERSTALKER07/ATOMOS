@@ -565,15 +565,21 @@ final class APIClient: @unchecked Sendable {
         struct Req: Encodable { let reason: String; let note: String }
         return try await post(
             "v1/driver/ops/rescue/request",
-            body: Req(reason: reason, note: note)
+            body: Req(reason: reason, note: note),
+            headers: ["Idempotency-Key": DriverIdempotency.requestRescue(reason: reason, note: note)]
         )
     }
 
-    func respondRescue(rescueId: String, accept: Bool) async throws -> [String: String] {
-        struct Req: Encodable { let rescue_id: String; let accept: Bool }
+    func respondRescue(rescueId: String, brokenDriverId: String, accept: Bool) async throws -> [String: String] {
+        struct Req: Encodable {
+            let rescue_id: String
+            let broken_driver_id: String
+            let accept: Bool
+        }
         return try await post(
             "v1/driver/ops/rescue/respond",
-            body: Req(rescue_id: rescueId, accept: accept)
+            body: Req(rescue_id: rescueId, broken_driver_id: brokenDriverId, accept: accept),
+            headers: ["Idempotency-Key": DriverIdempotency.respondRescue(rescueId: rescueId, accept: accept)]
         )
     }
 

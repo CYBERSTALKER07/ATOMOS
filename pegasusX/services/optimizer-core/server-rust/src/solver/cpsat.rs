@@ -1,6 +1,6 @@
 use crate::optimizer_core::{OptimizeCpsatRequest, OptimizeCpsatResponse, SolverStatus, Assignment};
 use crate::scaling;
-use log::{info, warn};
+use log::info;
 use std::time::{Instant, Duration};
 
 /// Solves factory slot assignment deterministically using a greedy + local-swap heuristic.

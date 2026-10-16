@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import {
   fetchEnterpriseRequests,
   updateEnterpriseRequestStatus,
@@ -6,13 +7,37 @@ import {
 } from '@/app/lib/supabase/server';
 import type { RequestStatus } from '@/app/lib/supabase/types';
 
+function authorizeAdmin(request: NextRequest): boolean {
+  const configuredToken = process.env.ADMIN_API_TOKEN?.trim();
+  if (!configuredToken) {
+    return true;
+  }
+  const authHeader = request.headers.get('authorization') || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const candidate = bearer || (request.headers.get('x-admin-token') || '').trim();
+  if (!candidate) {
+    return false;
+  }
+  const expectedBuf = Buffer.from(configuredToken, 'utf8');
+  const candidateBuf = Buffer.from(candidate, 'utf8');
+  if (expectedBuf.length !== candidateBuf.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expectedBuf, candidateBuf);
+}
+
 export async function GET(request: NextRequest) {
+  if (!authorizeAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || undefined;
     const inquiry_type = searchParams.get('inquiry_type') || undefined;
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : 100;
-    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : 0;
+    const rawLimit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : 100;
+    const rawOffset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : 0;
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 250) : 100;
+    const offset = Number.isFinite(rawOffset) ? Math.max(rawOffset, 0) : 0;
 
     const result = await fetchEnterpriseRequests({
       status,
@@ -38,6 +63,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!authorizeAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json().catch(() => null);
     if (!body || !body.id) {
@@ -85,6 +113,9 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  if (!authorizeAdmin(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     let id = searchParams.get('id');

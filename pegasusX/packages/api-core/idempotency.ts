@@ -526,6 +526,11 @@ export function driverReportDamageKey(driverId: string, orderId: string): string
   return `driver-report-damage:${driverId}:${orderId}`;
 }
 
+export function reportConditionKey(subjectId: string, orderId: string, conditionType: string): string {
+  return `report-condition:${subjectId}:${orderId}:${conditionType.trim().toUpperCase()}`;
+}
+
+
 export function driverNegotiateKey(driverId: string, orderId: string): string {
   return `driver-negotiate:${driverId}:${orderId}`;
 }
@@ -833,4 +838,12 @@ export function payloadManifestExceptionKey(manifestId: string, orderId: string)
 /** Stable file-claim key — same body retries return the same claim_id (G11/G25). */
 export function claimFileKey(orderId: string, body: unknown): string {
   return `claim-file:${orderId}:${stableHash(JSON.stringify(body ?? {}))}`;
+}
+
+export function claimApproveKey(claimId: string, body?: unknown): string {
+  return `claim-approve:${claimId}:${stableHash(JSON.stringify(body ?? {}))}`;
+}
+
+export function claimRejectKey(claimId: string, reason?: string): string {
+  return `claim-reject:${claimId}:${stableHash(reason ?? "")}`;
 }

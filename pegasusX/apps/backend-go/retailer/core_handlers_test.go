@@ -267,12 +267,16 @@ func TestHandleProfileUpdateRejectsInvalidReceivingWindow(t *testing.T) {
 		strings.NewReader(`{"receiving_window_open":"99:99"}`),
 	)
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-profile-update:ret-1:bad-window")
 	rr := httptest.NewRecorder()
 
 	svc.HandleProfile(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "idempotency_key_required") {
+		t.Fatalf("expected receiving-window validation, got %s", rr.Body.String())
 	}
 }
 
@@ -1292,6 +1296,7 @@ func TestHandleConfirmAIOrderDelegatesToOrderLifecycle(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/retailer/orders/confirm-ai", strings.NewReader(`{"order_id":"ord-1"}`))
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-confirm-ai:ord-1")
 	rr := httptest.NewRecorder()
 
 	svc.HandleConfirmAIOrder(rr, req)
@@ -1313,6 +1318,7 @@ func TestHandleEditPreorderMapsConflict(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/orders/edit-preorder", strings.NewReader(`{"order_id":"ord-1","requested_delivery_date":"2026-01-03T12:00:00Z","line_items":[{"sku":"sku-1","quantity":1,"unit_price_minor":500}]}`))
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-edit-preorder:ord-1")
 	rr := httptest.NewRecorder()
 
 	svc.HandleEditPreorder(rr, req)
@@ -1350,5 +1356,34 @@ func TestHandleAIPredictionsReturnsItems(t *testing.T) {
 	items, ok := payload["items"].([]any)
 	if !ok || len(items) != 1 {
 		t.Fatalf("items=%v", payload["items"])
+	}
+}
+
+func TestRetailerOrderLifecycle_RequiresIdempotencyKey(t *testing.T) {
+	svc := NewService(ServiceConfig{Repo: &testRetailerRepo{}, SupplierID: "sup-1", Orders: &testOrderLifecycle{}})
+	claims := auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}
+	cases := []struct {
+		name string
+		path string
+		call func(http.ResponseWriter, *http.Request)
+	}{
+		{"confirm-ai", "/v1/retailer/orders/confirm-ai", svc.HandleConfirmAIOrder},
+		{"reject-ai", "/v1/retailer/orders/reject-ai", svc.HandleRejectAIOrder},
+		{"edit-preorder", "/v1/orders/edit-preorder", svc.HandleEditPreorder},
+		{"confirm-preorder", "/v1/orders/confirm-preorder", svc.HandleConfirmPreorder},
+		{"accept-proposal", "/v1/orders/accept-delivery-proposal", svc.HandleAcceptDeliveryProposal},
+		{"reject-proposal", "/v1/orders/reject-delivery-proposal", svc.HandleRejectDeliveryProposal},
+		{"reject-preorder", "/v1/orders/reject-preorder", svc.HandleRejectPreorder},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(`{"order_id":"ord-1"}`))
+			req = req.WithContext(auth.WithClaims(req.Context(), claims))
+			rr := httptest.NewRecorder()
+			tc.call(rr, req)
+			if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
 	}
 }

@@ -13,7 +13,9 @@ struct PegasusWSEventEnvelope {
     let decidedBy, decision, note, recommendationID: String?
     let status, supplierID, action, actorID: String?
     let actorRole, attemptID, confirmationStatus, currency: String?
-    let driverID, escalatedTo, fromDriverID, fromRouteID: String?
+    let customerProgressPercent: Int?
+    let customerStage, driverID, escalatedTo, fromDriverID: String?
+    let fromRouteID: String?
     let gpsLat, gpsLng: Double?
     let h3Cell: String?
     let lat: Double?
@@ -40,7 +42,10 @@ struct PegasusWSEventEnvelope {
     let selectedGateways: [String]?
     let supplierRole, userID: String?
     let expectedMinor, overageMinor, receivedMinor, shortfallMinor: Int?
-    let traceID, chargebackID, claimID, claimType: String?
+    let traceID, categoryID, iconKey, name: String?
+    let parentCategoryID: String?
+    let sortOrder: Int?
+    let chargebackID, claimID, claimType: String?
     let photoUrls: [String]?
     let resolutionNote, settlementMode, source, commandID: String?
     let actor, campaignID: String?
@@ -58,7 +63,7 @@ struct PegasusWSEventEnvelope {
     let overrideID, polygonGeojson, publishedBy, scenarioID: String?
     let signalID, simulationID: String?
     let transferRecommendations, ttlSeconds: Int?
-    let countryCode, name, phone: String?
+    let countryCode, phone: String?
     let orderCount: Int?
     let orderIDS: [String]?
     let available: Bool?
@@ -90,22 +95,25 @@ struct PegasusWSEventEnvelope {
     let notes: String?
     let quantity: Int?
     let reportID, reporterID, reporterRole, sku: String?
+    let deliveredAt, disputeNote, proofPhotoURL, proofSignature: String?
     let reasonCode: String?
     let cardMinor, cashMinor: Int?
     let executionAction, executionMode, gateway, policySource: String?
     let providerReference, transactionID, batchID: String?
     let netPayoutMinor: Int?
-    let railReference, preOrderID, handlingClass: String?
-    let isHazardous, isPerishable, requiresColdChain: Bool?
+    let railReference, preOrderID, barcode, handlingClass: String?
+    let isActive, isHazardous, isPerishable: Bool?
+    let previousPriceMinor, priceMinor: Int?
+    let requiresColdChain: Bool?
+    let stockQuantity: Int?
     let storageTempMaxC, storageTempMinC: Double?
-    let promotionID: String?
+    let unit, promotionID: String?
     let retailerIDS: [String]?
     let retailerScope: String?
     let creditLimitMinor, currentBalance, requestedAmount: Int?
     let delinquent: Bool?
-    let profileID, riskTier: String?
-    let priceMinor: Int?
-    let setBy, setByRole, assignedFactoryID: String?
+    let profileID, riskTier, setBy, setByRole: String?
+    let assignedFactoryID: String?
     let categories: [String]?
     let country: String?
     let isConfigured, isRegistered: Bool?
@@ -115,9 +123,7 @@ struct PegasusWSEventEnvelope {
     let minOrderMinor: Int?
     let promiseType: String?
     let slaHours: Int?
-    let fromWarehouse, toWarehouse: String?
-    let isActive: Bool?
-    let unavailableNote, unavailableReason: String?
+    let fromWarehouse, toWarehouse, unavailableNote, unavailableReason: String?
 }
 
 enum TotalVolumeVu {
@@ -142,6 +148,8 @@ enum TypeEnum: String {
     case cartSyncUpdated
     case cashOverage
     case cashShortfall
+    case categoryCreated
+    case categoryUpdated
     case claimFiled
     case claimResolved
     case claimUnderReview
@@ -209,6 +217,7 @@ enum TypeEnum: String {
     case orderAssigned
     case orderCapacityOverflow
     case orderConditionReported
+    case orderConflictReconciled
     case orderCreated
     case orderFinalized
     case orderForceCompleted
@@ -247,7 +256,11 @@ enum TypeEnum: String {
     case preOrderEdited
     case preOrderNotified
     case preOrderNudge
+    case productCreated
+    case productDeactivated
     case productHandlingUpdated
+    case productPriceChanged
+    case productUpdated
     case promotionChanged
     case proximityUnlocked
     case pullMatrixCompleted
@@ -289,6 +302,7 @@ enum TypeEnum: String {
     case reverseLogisticsRequired
     case routeCreated
     case routeReordered
+    case routeReplanned
     case servicePolicyUpdated
     case settlementRequired
     case shopClosed

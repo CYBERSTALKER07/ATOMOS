@@ -30,6 +30,7 @@ func TestHandleAvailability_PatchEmitsOutboxCacheWSOnce(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPatch, "/v1/driver/availability", strings.NewReader(`{"on_shift":true}`))
 	req = withDriverClaims(req, auth.Claims{Subject: "drv-1", HomeNodeType: auth.HomeNodeWarehouse, HomeNodeID: "wh-7"})
+	req.Header.Set("Idempotency-Key", "driver-availability:drv-1:on")
 	rr := httptest.NewRecorder()
 
 	svc.HandleAvailability(rr, req)
@@ -224,6 +225,7 @@ func TestHandleAvailability_PatchIdempotentNoOpNoSideEffects(t *testing.T) {
 	// First PATCH lands the durable transition.
 	first := httptest.NewRequest(http.MethodPatch, "/v1/driver/availability", strings.NewReader(`{"on_shift":true}`))
 	first = withDriverClaims(first, auth.Claims{Subject: "drv-1"})
+	first.Header.Set("Idempotency-Key", "driver-availability:drv-1:first")
 	svc.HandleAvailability(httptest.NewRecorder(), first)
 
 	applyCallsAfterFirst := repo.applyCalls
@@ -235,6 +237,7 @@ func TestHandleAvailability_PatchIdempotentNoOpNoSideEffects(t *testing.T) {
 	// Second PATCH with same target state -> idempotent no-op branch.
 	second := httptest.NewRequest(http.MethodPatch, "/v1/driver/availability", strings.NewReader(`{"on_shift":true}`))
 	second = withDriverClaims(second, auth.Claims{Subject: "drv-1"})
+	second.Header.Set("Idempotency-Key", "driver-availability:drv-1:second")
 	rr := httptest.NewRecorder()
 	svc.HandleAvailability(rr, second)
 
@@ -309,6 +312,7 @@ func TestHandleAvailability_PatchInvalidJSONRejectedNoSideEffects(t *testing.T) 
 
 	req := httptest.NewRequest(http.MethodPatch, "/v1/driver/availability", strings.NewReader(`not-json`))
 	req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
+	req.Header.Set("Idempotency-Key", "driver-availability:drv-1:bad-json")
 	rr := httptest.NewRecorder()
 
 	svc.HandleAvailability(rr, req)
@@ -324,6 +328,24 @@ func TestHandleAvailability_PatchInvalidJSONRejectedNoSideEffects(t *testing.T) 
 	}
 	if len(cacheBackend.deletedKeys) != 0 {
 		t.Fatalf("expected 0 cache invalidations on bad request, got %d", len(cacheBackend.deletedKeys))
+	}
+	if !strings.Contains(rr.Body.String(), "invalid_json") {
+		t.Fatalf("expected invalid_json, got %s", rr.Body.String())
+	}
+}
+
+func TestHandleAvailability_RequiresIdempotencyKey(t *testing.T) {
+	svc := newDriverTestService(&driverRepoSpy{}, &driverCacheBackendSpy{})
+	for _, method := range []string{http.MethodPost, http.MethodPatch} {
+		t.Run(method, func(t *testing.T) {
+			req := httptest.NewRequest(method, "/v1/driver/availability", strings.NewReader(`{"on_shift":true}`))
+			req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
+			rr := httptest.NewRecorder()
+			svc.HandleAvailability(rr, req)
+			if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
 	}
 }
 

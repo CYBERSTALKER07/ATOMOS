@@ -487,6 +487,7 @@ interface WarehouseApi {
     @POST("v1/warehouse/ops/orders/payment-bypass")
     suspend fun issuePaymentBypass(
         @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, String>>
 
     @GET("v1/warehouse/ops/orders/early-complete/{driverId}")
@@ -497,6 +498,7 @@ interface WarehouseApi {
     @POST("v1/warehouse/ops/orders/early-complete/approve")
     suspend fun approveEarlyComplete(
         @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String,
     ): Response<Map<String, Any>>
 
     @GET("v1/warehouse/ops/fleet/live-map")
