@@ -21,6 +21,9 @@ type Deps struct {
 //   GET  "/v1/labor-capacity/zone-capacity"
 //   POST "/v1/labor-capacity/driver-availability"
 func RegisterRoutes(r chi.Router, d Deps) {
+	if d.Service == nil {
+		return
+	}
 	r.Route("/v1/labor-capacity", func(lr chi.Router) {
 		lr.Use(auth.RequireRole(
 			auth.RoleAdmin,

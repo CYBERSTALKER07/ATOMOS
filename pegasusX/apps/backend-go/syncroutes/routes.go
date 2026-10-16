@@ -70,8 +70,8 @@ func handleSyncCRDT(deps Deps) http.HandlerFunc {
 
 		if deps.Engine == nil || deps.Engine.Spanner == nil {
 			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(map[string]string{"status": "MOCKED"})
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "sync_unavailable"})
 			return
 		}
 

@@ -16,6 +16,9 @@ type Deps struct {
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
+	if d.Service == nil {
+		return
+	}
 	r.Route("/v1/delivery", func(r chi.Router) {
 		r.Use(auth.RequireRole(auth.RoleDriver))
 

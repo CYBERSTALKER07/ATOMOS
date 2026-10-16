@@ -15,6 +15,9 @@ type Deps struct {
 }
 
 func RegisterRoutes(r chi.Router, d Deps) {
+	if d.Service == nil {
+		return
+	}
 	guard := auth.RequireRole(
 		auth.RoleAdmin,
 		auth.RolePlatformAdmin,

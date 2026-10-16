@@ -22,7 +22,7 @@ type Deps struct {
 
 // RegisterRoutes mounts credit profile + policy + AR endpoints.
 func RegisterRoutes(r chi.Router, d Deps) {
-	if d.Service == nil && d.PolicyService == nil {
+	if d.Service == nil && d.PolicyService == nil && d.ARService == nil && d.DunningWorker == nil {
 		return
 	}
 
