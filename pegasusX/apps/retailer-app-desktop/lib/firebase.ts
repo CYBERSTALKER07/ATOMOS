@@ -19,12 +19,14 @@ const firebaseConfig = {
 };
 
 
-if (!firebaseConfig.apiKey && typeof process !== "undefined" && process.env.NODE_ENV === "development") {
-  firebaseConfig.apiKey = "demo-key";
-  firebaseConfig.authDomain = "demo-pegasus.firebaseapp.com";
-  firebaseConfig.projectId = "demo-pegasus";
-} else if (!firebaseConfig.apiKey) {
-  throw new Error("Firebase config missing in production");
+if (!firebaseConfig.apiKey) {
+  if (typeof window === "undefined" || (typeof process !== "undefined" && process.env.NODE_ENV === "development")) {
+    firebaseConfig.apiKey = "demo-key";
+    firebaseConfig.authDomain = "demo-pegasus.firebaseapp.com";
+    firebaseConfig.projectId = "demo-pegasus";
+  } else {
+    throw new Error("Firebase config missing in production");
+  }
 }
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();

@@ -1,9 +1,9 @@
 "use client";
 
 import { usePortalT } from "@/lib/i18n";
-import type { ForecastProduct } from '@/app/demand-forecast/page'; // Need to export ForecastProduct
+import type { ForecastProduct } from '@/app/demand-forecast/page';
 
-export function ForecastChartPanel({ products }: { products: any[] }) {
+export function ForecastChartPanel({ products }: { products: ForecastProduct[] }) {
   const t = usePortalT();
   const critical = products.filter(p => p.priority === 'CRITICAL');
   const urgent = products.filter(p => p.priority === 'URGENT');

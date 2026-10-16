@@ -819,7 +819,7 @@ function OrdersPageContent() {
                   <div>
                     <h4 className="font-medium text-sm">Offline Sync Conflict Detected</h4>
                     <p className="text-sm opacity-80 mt-1">
-                      This order's state is disputed due to conflicting physical reality reports. It is pending Control Tower manual review.
+                      This order&apos;s state is disputed due to conflicting physical reality reports. It is pending Control Tower manual review.
                     </p>
                   </div>
                 </div>

@@ -1,8 +1,7 @@
 'use client';
 
 import { usePortalT } from "@/lib/i18n";
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useToast } from '@/components/Toast';
@@ -11,37 +10,45 @@ import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import type { WarehouseDispatchDriver } from '@pegasusx/types';
 
+interface RescueOption {
+  driver_id: string;
+  name: string;
+  license_plate?: string;
+  effective_capacity_vu: number;
+  is_capacity_exceeded?: boolean;
+}
+
 export default function RescuesPage() {
   const t = usePortalT();
-  const router = useRouter();
   const { toast } = useToast();
   
-  const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
+  const [warehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [selectedBrokenDriver, setSelectedBrokenDriver] = useState<WarehouseDispatchDriver | null>(null);
-  const [rescueOptions, setRescueOptions] = useState<any[]>([]);
+  const [rescueOptions, setRescueOptions] = useState<RescueOption[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [proposeLoading, setProposeLoading] = useState(false);
 
-  useEffect(() => {
-    loadDrivers();
-  }, [warehouseId]);
-
-  async function loadDrivers() {
+  const loadDrivers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await warehouseApi.previewWarehouseDispatch({ warehouse_id: warehouseId }, {});
       setDrivers(data.drivers || []);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load drivers');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to load drivers';
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }
+  }, [warehouseId]);
+
+  useEffect(() => {
+    loadDrivers();
+  }, [loadDrivers]);
 
   async function handleSelectBrokenDriver(driver: WarehouseDispatchDriver) {
     setSelectedBrokenDriver(driver);
@@ -51,9 +58,10 @@ export default function RescuesPage() {
       const result = await warehouseApi.postWarehousePreviewRescue({
         broken_driver_id: driver.driver_id
       }, { warehouse_id: warehouseId });
-      setRescueOptions(result.rescue_options || []);
-    } catch (e: any) {
-      toast(e.message || 'Failed to preview rescues', 'error');
+      setRescueOptions((result.rescue_options || []) as RescueOption[]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to preview rescues';
+      toast(msg, 'error');
       setSelectedBrokenDriver(null);
     } finally {
       setPreviewLoading(false);
@@ -73,8 +81,9 @@ export default function RescuesPage() {
       setSelectedBrokenDriver(null);
       setRescueOptions([]);
       loadDrivers();
-    } catch (e: any) {
-      toast(e.message || 'Failed to propose rescue', 'error');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to propose rescue';
+      toast(msg, 'error');
     } finally {
       setProposeLoading(false);
     }

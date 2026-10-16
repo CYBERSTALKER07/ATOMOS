@@ -401,17 +401,13 @@ const DrawerContent = memo(function DrawerContent({
 
 /* -- Shell -- */
 
-export default function RetailerShell({
+function RetailerShellInner({
   children,
+  pathname,
 }: {
   children: React.ReactNode;
+  pathname: string;
 }) {
-  const pathname = usePathname();
-  const isAuthOrOnboarding = pathname?.startsWith('/auth') || pathname === '/login' || pathname === '/register';
-  if (isAuthOrOnboarding) {
-    return <>{children}</>;
-  }
-
   const t = usePortalT();
   const router = useRouter();
   const { isConnected } = useWebSocket();
@@ -810,3 +806,18 @@ export default function RetailerShell({
     </div>
   );
 }
+
+export default function RetailerShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const isAuthOrOnboarding = pathname?.startsWith('/auth') || pathname === '/login' || pathname === '/register';
+  if (isAuthOrOnboarding) {
+    return <>{children}</>;
+  }
+
+  return <RetailerShellInner pathname={pathname || ""}>{children}</RetailerShellInner>;
+}
+

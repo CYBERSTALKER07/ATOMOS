@@ -2,8 +2,9 @@
 
 import { usePortalT } from "@/lib/i18n";
 import { ForecastConfidenceView } from '@/components/ForecastConfidenceView';
+import type { ForecastProduct } from '@/app/demand-forecast/page';
 
-export function ForecastSkuTable({ products }: { products: any[] }) {
+export function ForecastSkuTable({ products }: { products: ForecastProduct[] }) {
   const t = usePortalT();
   return (
     <div className="border border-[var(--border)] rounded-xl overflow-hidden">
