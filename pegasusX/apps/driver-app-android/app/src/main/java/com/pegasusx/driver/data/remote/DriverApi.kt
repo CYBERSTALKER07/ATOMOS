@@ -32,6 +32,8 @@ import com.pegasusx.driver.data.model.MissingItemsPayload
 import com.pegasusx.driver.data.model.MissingItemsResponse
 import com.pegasusx.driver.data.model.NegotiationPayload
 import com.pegasusx.driver.data.model.NegotiationProposalResponse
+import com.pegasusx.driver.data.model.OfflinePoDRequest
+import com.pegasusx.driver.data.model.OfflinePoDResponse
 import com.pegasusx.driver.data.model.OpenFiscalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection

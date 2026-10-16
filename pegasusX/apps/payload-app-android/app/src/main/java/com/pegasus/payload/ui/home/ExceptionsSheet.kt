@@ -22,6 +22,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,22 +64,22 @@ fun ManifestExceptionsSheet(
             }
             
             // --- Parity: Report Dock Damage ---
-            androidx.compose.foundation.layout.Box(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
-                    .androidx.compose.foundation.background(androidx.compose.ui.graphics.Color(0xFFFEE2E2), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .background(Color(0xFFFEE2E2), shape = RoundedCornerShape(8.dp))
                     .padding(16.dp)
             ) {
                 Column {
-                    Text("Report Dock Damage", color = androidx.compose.ui.graphics.Color(0xFF991B1B), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    Text("Report Dock Damage", color = Color(0xFF991B1B), fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
-                    androidx.compose.material3.Button(
+                    Button(
                         onClick = { /* ViewModel logic wired later */ },
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFDC2626)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("MARK DAMAGED", color = androidx.compose.ui.graphics.Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text("MARK DAMAGED", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
