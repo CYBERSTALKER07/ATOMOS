@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 var (
@@ -41,14 +42,14 @@ func InitGCS(ctx context.Context, bucket string) error {
 	return nil
 }
 
-// EvidenceFailClosed is true for production / SSMR / staging or when REQUIRE_INFRA_ADAPTERS=true.
+// EvidenceFailClosed is true for production / sandbox / staging or when REQUIRE_INFRA_ADAPTERS=true.
 // Local stacks with REQUIRE_INFRA_ADAPTERS=false may still use placeholders for catalog/dev.
 func EvidenceFailClosed() bool {
 	if envBool("REQUIRE_INFRA_ADAPTERS", true) {
 		return true
 	}
-	switch strings.ToLower(strings.TrimSpace(os.Getenv("PEGASUSX_ENV"))) {
-	case "production", "prod", "ssmr", "staging":
+	switch auth.EnvClass() {
+	case auth.EnvClassProduction, auth.EnvClassSandbox, auth.EnvClassStaging:
 		return true
 	default:
 		return false

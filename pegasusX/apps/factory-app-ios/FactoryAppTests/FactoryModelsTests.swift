@@ -19,6 +19,15 @@ struct FactoryModelsTests {
         #expect(auth.factoryName == "Test Factory")
     }
 
+    @Test func deviceTokenEncodesTokenAndPlatformOnly() throws {
+        let payload = DeviceTokenRequest(token: "fcm-reg-token", platform: "ios")
+        let data = try JSONEncoder().encode(payload)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: String]
+        #expect(json?["token"] == "fcm-reg-token")
+        #expect(json?["platform"] == "ios")
+        #expect(json?["factory_id"] == nil)
+    }
+
     // MARK: - Dashboard
 
     @Test func dashboardStatsEmptyDefaults() {

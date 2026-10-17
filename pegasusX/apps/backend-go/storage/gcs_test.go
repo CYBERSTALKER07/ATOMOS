@@ -43,6 +43,10 @@ func TestEvidenceFailClosed_RequireInfra(t *testing.T) {
 	if !EvidenceFailClosed() {
 		t.Fatal("PEGASUSX_ENV=ssmr must fail closed")
 	}
+	t.Setenv("PEGASUSX_ENV", "sandbox")
+	if !EvidenceFailClosed() {
+		t.Fatal("PEGASUSX_ENV=sandbox must fail closed")
+	}
 	t.Setenv("REQUIRE_INFRA_ADAPTERS", "false")
 	t.Setenv("PEGASUSX_ENV", "local")
 	if EvidenceFailClosed() {

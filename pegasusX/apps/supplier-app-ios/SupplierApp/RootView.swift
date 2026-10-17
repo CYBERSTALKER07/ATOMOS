@@ -48,5 +48,8 @@ struct RootView: View {
                 )
             }
         }
+        .task {
+            await PushNotificationManager.shared.requestAuthorization()
+        }
     }
 }

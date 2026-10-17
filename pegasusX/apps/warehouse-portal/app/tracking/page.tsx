@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { VehicleShipmentCard, PartnerFilterMetric } from "@pegasusx/types";
 import { createWarehouseApi } from "@/lib/api";
@@ -13,6 +14,7 @@ import { CargoPhotoCarousel } from "../../../supplier-portal/components/dispatch
 const api = createWarehouseApi();
 
 export default function WarehouseTrackingPage() {
+  const t = usePortalT();
   const [partnerFilters, setPartnerFilters] = useState<PartnerFilterMetric[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
@@ -49,7 +51,7 @@ export default function WarehouseTrackingPage() {
       setPartnerFilters([]);
       setSelectedShipment(null);
       setCounts({ total: 0, active: 0, inactive: 0 });
-      setError(err instanceof Error ? err.message : "Failed to load warehouse tracking");
+      setError(err instanceof Error ? err.message : t("warehouse_portal.residual.text.failed_to_load_warehouse_tracking"));
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export default function WarehouseTrackingPage() {
         />
 
         {loading && shipments.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-8">Loading warehouse fleet…</p>
+          <p className="text-sm text-gray-500 mt-8">{t("warehouse_portal.tracking.text.loading_warehouse_fleet")}</p>
         ) : error && shipments.length === 0 ? (
           <p className="text-sm text-red-400 mt-8">{error}</p>
         ) : filteredShipments.length === 0 ? (

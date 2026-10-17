@@ -13,11 +13,15 @@ enum OrderState: String, Codable, CaseIterable {
     case PENDING
     case PENDING_REVIEW
     case SCHEDULED
+    case AUTO_ACCEPTED
+    case BACKORDERED
+    case DELAYED
     case LOADED
     case DISPATCHED
     case IN_TRANSIT
     case ARRIVING
     case ARRIVED
+    case SHOP_CLOSED_PENDING
     case ARRIVED_SHOP_CLOSED
     case AWAITING_PAYMENT
     case PENDING_CASH_COLLECTION
@@ -29,17 +33,28 @@ enum OrderState: String, Codable, CaseIterable {
     case CANCELLED
     case QUARANTINE
     case DELIVERED_ON_CREDIT
+    case RECONCILIATION_REQUIRED
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        self = OrderState(rawValue: raw) ?? .PENDING
+    }
 
     var label: String {
         switch self {
         case .PENDING:                  return "Pending"
         case .PENDING_REVIEW:           return "Under Review"
         case .SCHEDULED:                return "Scheduled"
+        case .AUTO_ACCEPTED:            return "Auto-Accepted"
+        case .BACKORDERED:              return "Backordered"
+        case .DELAYED:                  return "Delayed"
         case .LOADED:                   return "Loaded"
         case .DISPATCHED:               return "Dispatched"
         case .IN_TRANSIT:               return "In Transit"
         case .ARRIVING:                 return "Arriving"
         case .ARRIVED:                  return "Arrived"
+        case .SHOP_CLOSED_PENDING:      return "Shop Closed"
         case .ARRIVED_SHOP_CLOSED:      return "Shop Closed"
         case .AWAITING_PAYMENT:         return "Awaiting Payment"
         case .PENDING_CASH_COLLECTION:  return "Cash Collection"
@@ -51,6 +66,26 @@ enum OrderState: String, Codable, CaseIterable {
         case .CANCELLED:                return "Cancelled"
         case .QUARANTINE:               return "Quarantine"
         case .DELIVERED_ON_CREDIT:       return "On Credit"
+        case .RECONCILIATION_REQUIRED:  return "Reconciliation Required"
+        }
+    }
+
+    var customerStage: CustomerStage {
+        switch self {
+        case .SCHEDULED, .AUTO_ACCEPTED, .BACKORDERED, .PENDING_REVIEW:
+            return .PLACED
+        case .PENDING, .DELAYED, .LOADED, .DISPATCHED:
+            return .PROCESSING
+        case .IN_TRANSIT, .ARRIVING, .ARRIVED,
+             .AWAITING_PAYMENT, .PENDING_CASH_COLLECTION:
+            return .OUT_FOR_DELIVERY
+        case .COMPLETED, .DELIVERED_ON_CREDIT, .FISCALIZING:
+            return .DELIVERED
+        case .CANCELLED, .NO_CAPACITY:
+            return .CANCELLED
+        case .SHOP_CLOSED_PENDING, .ARRIVED_SHOP_CLOSED, .CANCEL_REQUESTED,
+             .FISCAL_FAILED, .RECONCILIATION_REQUIRED, .QUARANTINE:
+            return .EXCEPTION_ACTION_REQUIRED
         }
     }
 
@@ -61,6 +96,39 @@ enum OrderState: String, Codable, CaseIterable {
             return true
         default:
             return false
+        }
+    }
+}
+
+// MARK: - Customer Stage (High-level 4-step progress facade matching backend)
+
+enum CustomerStage: String, Codable, CaseIterable {
+    case PLACED
+    case PROCESSING
+    case OUT_FOR_DELIVERY
+    case DELIVERED
+    case CANCELLED
+    case EXCEPTION_ACTION_REQUIRED
+
+    var displayName: String {
+        switch self {
+        case .PLACED:                     return "Order Placed"
+        case .PROCESSING:                 return "Preparing Order"
+        case .OUT_FOR_DELIVERY:           return "Out for Delivery"
+        case .DELIVERED:                  return "Delivered"
+        case .CANCELLED:                  return "Cancelled"
+        case .EXCEPTION_ACTION_REQUIRED:  return "Action Required"
+        }
+    }
+
+    var progressPercent: Int {
+        switch self {
+        case .PLACED:                     return 20
+        case .PROCESSING:                 return 50
+        case .OUT_FOR_DELIVERY:           return 80
+        case .DELIVERED:                  return 100
+        case .CANCELLED:                  return 0
+        case .EXCEPTION_ACTION_REQUIRED:  return 75
         }
     }
 }

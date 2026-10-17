@@ -1,130 +1,116 @@
-output "project_id" {
-  description = "GCP project id passed to this module."
-  value       = var.project_id
+/**
+ * Root Terraform Output Declarations
+ */
+
+# 1. Networking Outputs
+output "vpc_network_id" {
+  description = "The ID of the provisioned VPC network."
+  value       = module.networking.network_id
+}
+
+output "vpc_network_name" {
+  description = "The name of the provisioned VPC network."
+  value       = module.networking.network_name
+}
+
+output "primary_subnet_id" {
+  description = "The ID of the primary subnetwork."
+  value       = module.networking.subnetwork_id
+}
+
+output "cloud_nat_static_ips" {
+  description = "The 2 deterministic static external egress IPs for Soliq OFD & Banking allowlists."
+  value       = module.networking.nat_ip_addresses
+}
+
+# 2. Database & Cache Outputs
+output "spanner_instance_name" {
+  description = "The name of the Cloud Spanner instance."
+  value       = module.database.spanner_instance_name
+}
+
+output "spanner_database_name" {
+  description = "The name of the primary Cloud Spanner database."
+  value       = module.database.spanner_database_name
 }
 
 output "redis_host" {
-  description = "Memorystore Redis host."
-  value       = google_redis_instance.cache.host
-  sensitive   = true
+  description = "The private IP address of the Cloud Memorystore Redis 7.0 HA cluster."
+  value       = module.database.redis_host
 }
 
 output "redis_port" {
-  description = "Memorystore Redis port."
-  value       = google_redis_instance.cache.port
+  description = "The port on which Cloud Memorystore Redis is listening."
+  value       = module.database.redis_port
 }
 
-output "spanner_database_uri" {
-  description = "Spanner URI for runtime SPANNER_* env wiring."
-  value       = "projects/${var.project_id}/instances/${google_spanner_instance.ledger.name}/databases/${google_spanner_database.main.name}"
+output "redis_auth_string" {
+  description = "The AUTH string for the Redis cluster."
+  value       = module.database.redis_auth_string
+  sensitive   = true
 }
 
-output "tenant_slug" {
-  description = "Tenant slug used to namespace the isolated SSMR sandbox resources."
-  value       = local.tenant_slug
+# 3. Messaging Outputs
+output "kafka_cluster_id" {
+  description = "The cluster ID of the Google Managed Service for Apache Kafka cluster."
+  value       = module.messaging.kafka_cluster_id
 }
 
-output "kafka_bootstrap_secret" {
-  description = "Secret Manager secret name storing Kafka bootstrap servers."
-  value       = google_secret_manager_secret.kafka_bootstrap_servers.secret_id
+output "kafka_topics" {
+  description = "The list of canonical partitioned Kafka topic IDs."
+  value       = module.messaging.kafka_topics
 }
 
-output "kafka_topic_main_secret" {
-  description = "Secret Manager secret name storing kafka topic main."
-  value       = google_secret_manager_secret.kafka_topic_main.secret_id
+# 4. Storage & Security Outputs
+output "media_bucket_name" {
+  description = "GCS bucket name for evidence dossiers and media."
+  value       = module.storage_security.media_bucket_name
 }
 
-output "kafka_topic_spatial_secret" {
-  description = "Secret Manager secret name storing kafka topic spatial."
-  value       = google_secret_manager_secret.kafka_topic_spatial.secret_id
+output "updates_bucket_name" {
+  description = "GCS bucket name for OTA mobile APKs and desktop updates."
+  value       = module.storage_security.updates_bucket_name
 }
 
-output "kafka_topic_realtime_secret" {
-  description = "Secret Manager secret name storing kafka topic realtime."
-  value       = google_secret_manager_secret.kafka_topic_realtime.secret_id
+output "imports_bucket_name" {
+  description = "GCS bucket name for bulk imports and compliance exports."
+  value       = module.storage_security.imports_bucket_name
 }
 
-output "kafka_topic_webhooks_secret" {
-  description = "Secret Manager secret name storing kafka topic webhooks."
-  value       = google_secret_manager_secret.kafka_topic_webhooks.secret_id
+output "cloud_armor_policy_id" {
+  description = "The ID of the Cloud Armor Enterprise WAF policy."
+  value       = module.storage_security.cloud_armor_policy_id
 }
 
-output "firebase_project_id_secret" {
-  description = "Secret Manager secret name storing Firebase project id."
-  value       = google_secret_manager_secret.firebase_project_id.secret_id
+output "workload_service_account_emails" {
+  description = "Map of Google Service Account emails bound to Workload Identity."
+  value       = module.storage_security.service_account_emails
 }
 
-output "firebase_auth_enabled_secret" {
-  description = "Secret Manager secret name storing firebase auth toggle."
-  value       = google_secret_manager_secret.firebase_auth_enabled.secret_id
-}
-
+# 5. Compute Outputs
 output "gke_cluster_name" {
-  description = "GKE cluster name when enable_gke=true."
-  value       = var.enable_gke ? google_container_cluster.pegasusx[0].name : ""
+  description = "The name of the GKE cluster."
+  value       = module.compute.cluster_name
 }
 
-output "artifact_registry_repository" {
-  description = "Artifact Registry Docker repository id when enable_gke=true."
-  value       = var.enable_gke ? google_artifact_registry_repository.pegasusx[0].repository_id : ""
+output "gke_cluster_endpoint" {
+  description = "The endpoint IP for the GKE cluster control plane."
+  value       = module.compute.cluster_endpoint
 }
 
-output "backend_runtime_service_account" {
-  description = "GCP service account email for backend-go workload identity."
-  value       = var.enable_gke ? google_service_account.backend_runtime[0].email : ""
+output "gke_ca_certificate" {
+  description = "The public CA certificate of the GKE cluster."
+  value       = module.compute.cluster_ca_certificate
+  sensitive   = true
 }
 
-output "jwt_secret_id" {
-  description = "Secret Manager secret id for JWT signing key."
-  value       = google_secret_manager_secret.jwt_secret.secret_id
+# 6. Monitoring Outputs
+output "monitoring_alert_policy_ids" {
+  description = "Map of created Cloud Monitoring alert policy IDs."
+  value       = module.monitoring.alert_policy_ids
 }
 
-output "global_pay_webhook_secret_id" {
-  description = "Secret Manager secret id for GlobalPay webhook HMAC."
-  value       = google_secret_manager_secret.global_pay_webhook_secret.secret_id
-}
-
-output "adyen_webhook_secret_id" {
-  description = "Secret Manager secret id for Adyen webhook secret."
-  value       = google_secret_manager_secret.adyen_webhook_secret.secret_id
-}
-
-output "stripe_webhook_secret_id" {
-  description = "Secret Manager secret id for Stripe webhook secret."
-  value       = google_secret_manager_secret.stripe_webhook_secret.secret_id
-}
-
-output "google_maps_api_key_secret_id" {
-  description = "Secret Manager secret id for Google Maps Platform API key."
-  value       = google_secret_manager_secret.google_maps_api_key.secret_id
-}
-
-output "app_updates_bucket_name" {
-  description = "GCS bucket for Tauri/mobile OTA update manifests and bundles."
-  value       = google_storage_bucket.app_updates.name
-}
-
-output "tauri_signing_private_key_secret_id" {
-  description = "GSM secret id for Tauri updater signing private key."
-  value       = google_secret_manager_secret.tauri_signing_private_key.secret_id
-}
-
-output "tauri_updater_pubkey_secret_id" {
-  description = "GSM secret id for Tauri updater public key."
-  value       = google_secret_manager_secret.tauri_updater_pubkey.secret_id
-}
-
-output "windows_codesign_pfx_secret_id" {
-  description = "GSM secret id for Windows Authenticode PFX (base64)."
-  value       = google_secret_manager_secret.windows_codesign_pfx.secret_id
-}
-
-output "windows_codesign_password_secret_id" {
-  description = "GSM secret id for Windows codesign PFX password."
-  value       = google_secret_manager_secret.windows_codesign_password.secret_id
-}
-
-output "artifact_registry_url" {
-  description = "Artifact Registry repository URL when enable_gke=true."
-  value = var.enable_gke ? "${google_artifact_registry_repository.pegasusx[0].location}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.pegasusx[0].repository_id}" : ""
+output "monitoring_dashboard_id" {
+  description = "The ID of the unified platform telemetry dashboard."
+  value       = module.monitoring.dashboard_id
 }

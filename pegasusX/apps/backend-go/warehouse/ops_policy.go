@@ -96,7 +96,7 @@ func validateDeliveryFeeRules(rules *DeliveryFeeRules) error {
 	}
 	rules.Currency = strings.TrimSpace(rules.Currency)
 	if rules.Currency == "" {
-		rules.Currency = "UZS"
+		rules.Currency = packCurrencyDefault()
 	}
 	if rules.BaseFeeMinor < 0 {
 		return errors.New("delivery_fee_rules.base_fee_minor must be >= 0")

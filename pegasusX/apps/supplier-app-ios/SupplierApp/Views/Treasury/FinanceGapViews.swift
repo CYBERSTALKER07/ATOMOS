@@ -12,19 +12,19 @@ struct CashReconciliationsView: View {
                 ProgressView("Loading…")
             } else if let error {
                 Text(error).foregroundStyle(.red)
-                Button("Retry") { Task { await load() } }
+                Button("common.action.retry") { Task { await load() } }
             } else if rows.isEmpty {
-                Text("No open cash discrepancies.")
+                Text("mobile_supplier.ui.no_open_cash_discrepancies")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(row.reconciliationId).font(.caption.monospaced())
-                        Text("Driver \(row.driverId) · \(row.status)")
-                        Text("Diff \(row.differenceMinor) minor")
+                        Text(L10n.format("mobile_supplier.ui.driver_driverid_status", "\(row.driverId)", "\(row.status)"))
+                        Text(L10n.format("mobile_supplier.ui.diff_differenceminor_minor", "\(row.differenceMinor)"))
                         let open = row.status.uppercased() == "PENDING" || row.status.uppercased() == "DISPUTED"
                         if open {
-                            Button("Accept") {
+                            Button("mobile_supplier.ui.accept") {
                                 Task { await accept(row.reconciliationId) }
                             }
                             .buttonStyle(.borderedProminent)
@@ -35,7 +35,7 @@ struct CashReconciliationsView: View {
                 }
             }
         }
-        .navigationTitle("Cash reconciliations")
+        .navigationTitle("portal.nav.cash_reconciliations")
         .refreshable { await load() }
         .task { await load() }
     }
@@ -79,18 +79,18 @@ struct CreditNotesListView: View {
                 ProgressView("Loading…")
             } else if let error {
                 Text(error).foregroundStyle(.red)
-                Button("Retry") { Task { await load() } }
+                Button("common.action.retry") { Task { await load() } }
             } else if rows.isEmpty {
-                Text("No draft credit notes.")
+                Text("mobile_supplier.ui.no_draft_credit_notes")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(row.creditNoteId).font(.caption.monospaced())
-                        Text("Order \(row.orderId) · \(row.status)")
-                        Text("\(row.totalGrossMinor) minor")
+                        Text(L10n.format("mobile_supplier.ui.order_orderid_status", "\(row.orderId)", "\(row.status)"))
+                        Text(L10n.format("mobile_supplier.ui.totalgrossminor_minor", "\(row.totalGrossMinor)"))
                         if row.status.uppercased() == "DRAFT" {
-                            Button("Issue") {
+                            Button("mobile_supplier.ui.issue") {
                                 Task { await issue(row.creditNoteId) }
                             }
                             .buttonStyle(.borderedProminent)
@@ -101,7 +101,7 @@ struct CreditNotesListView: View {
                 }
             }
         }
-        .navigationTitle("Credit notes")
+        .navigationTitle("portal.nav.credit_notes")
         .refreshable { await load() }
         .task { await load() }
     }
@@ -145,24 +145,24 @@ struct CreditProfilesView: View {
                 ProgressView("Loading…")
             } else if let error {
                 Text(error).foregroundStyle(.red)
-                Button("Retry") { Task { await load() } }
+                Button("common.action.retry") { Task { await load() } }
             } else if rows.isEmpty {
-                Text("No credit profiles for this supplier.")
+                Text("mobile_supplier.ui.no_credit_profiles_for_this_supplier")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { row in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(row.retailerId).font(.caption.monospaced())
-                        Text("\(row.status) · risk \(row.riskTier.isEmpty ? "—" : row.riskTier)")
-                        Text("Limit \(row.creditLimitMinor) · bal \(row.currentBalanceMinor) · avail \(row.availableCreditMinor)")
+                        Text(L10n.format("mobile_supplier.ui.status_risk_risktier", "\(row.status)", "\(row.riskTier.isEmpty ? "—" : row.riskTier)"))
+                        Text(L10n.format("mobile_supplier.ui.limit_creditlimitminor_bal_currentbalanceminor_avail_availablecreditmino", "\(row.creditLimitMinor)", "\(row.currentBalanceMinor)", "\(row.availableCreditMinor)"))
                         HStack {
                             if row.status.uppercased() == "ACTIVE" {
-                                Button("Freeze") {
+                                Button("mobile_supplier.ui.freeze") {
                                     Task { await setStatus(row, status: "FROZEN") }
                                 }
                                 .disabled(busyId == row.retailerId)
                             } else if row.status.uppercased() == "FROZEN" {
-                                Button("Unfreeze") {
+                                Button("mobile_supplier.ui.unfreeze") {
                                     Task { await setStatus(row, status: "ACTIVE") }
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -174,7 +174,7 @@ struct CreditProfilesView: View {
                 }
             }
         }
-        .navigationTitle("Credit profiles")
+        .navigationTitle("mobile_supplier.ui.credit_profiles")
         .refreshable { await load() }
         .task { await load() }
     }
@@ -214,9 +214,9 @@ struct RoutePerformanceListView: View {
     @State private var rows: [RoutePerformanceRow] = []
     var body: some View {
         List(rows) { row in
-            Text("Route \(row.routeId) · \(row.ordersCompleted) orders")
+            Text(L10n.format("mobile_supplier.ui.route_routeid_orderscompleted_orders", "\(row.routeId)", "\(row.ordersCompleted)"))
         }
-        .navigationTitle("Route performance")
+        .navigationTitle("portal.nav.route_performance")
         .task {
             if let resp = try? await SupplierOperationsService.routePerformance() {
                 rows = resp.routes

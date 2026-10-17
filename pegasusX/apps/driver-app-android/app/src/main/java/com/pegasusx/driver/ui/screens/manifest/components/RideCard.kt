@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,7 @@ import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.formattedAmount
 import com.pegasusx.driver.ui.theme.pressable
+import com.pegasusx.driver.R
 
 @Composable
 fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> Unit) {
@@ -106,7 +109,7 @@ fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> Unit) {
             // Delivery target
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "DELIVERY TARGET",
+                    text = stringResource(R.string.mobile_driver_ui_delivery_target),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
@@ -137,7 +140,7 @@ fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${order.items.size} items",
+                    text = stringResource(R.string.mobile_driver_ui_size_items, order.items.size),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,

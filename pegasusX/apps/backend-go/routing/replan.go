@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -56,13 +57,18 @@ func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error
 }
 
 func outboxMutation(e outbox.Event) *spanner.Mutation {
+	supID := e.SupplierID
+	if strings.TrimSpace(supID) == "" {
+		supID = outbox.ResolveSupplierID("", []byte(e.Payload))
+	}
 	return spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
 		"EventId":       e.EventID,
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
-		"Topic":         e.TopicName,
-		"PayloadJson":   string(e.Payload),
+		"TopicName":     e.TopicName,
+		"Payload":       e.Payload,
 		"CreatedAt":     spanner.CommitTimestamp,
+		"SupplierId":    supID,
 	})
 }
 
@@ -82,15 +88,19 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{routeID},
-			[]string{"State", "ReplanCount", "LastReplannedAt"})
+			[]string{"State", "ReplanCount", "LastReplannedAt", "SupplierId", "WarehouseId", "DriverId", "TruckId"})
 		if err != nil {
 			return err
 		}
 		var state string
 		var replanCount int64
 		var lastReplanned spanner.NullTime
-		if err := row.Columns(&state, &replanCount, &lastReplanned); err != nil {
+		var supID, whIDCol, drvID, truckID spanner.NullString
+		if err := row.Columns(&state, &replanCount, &lastReplanned, &supID, &whIDCol, &drvID, &truckID); err != nil {
 			return err
+		}
+		if whID == "" && whIDCol.StringVal != "" {
+			whID = whIDCol.StringVal
 		}
 
 		if state == "COMPLETED" || state == "CANCELLED" {
@@ -107,7 +117,7 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		}
 
 		stmt := spanner.Statement{
-			SQL: `SELECT mo.OrderId, mo.SequenceIndex, o.Lat, o.Lng
+			SQL: `SELECT mo.OrderId, mo.SequenceIndex, o.Lat, o.Lng, o.Status, mo.State
 			      FROM ManifestOrders mo
 			      JOIN Orders o ON mo.OrderId = o.OrderId
 			      WHERE mo.ManifestId = @rid AND mo.State NOT IN ('DELIVERED', 'COMPLETED', 'CANCELLED', 'RETURN_TO_WAREHOUSE')
@@ -117,37 +127,47 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		iter := txn.Query(ctx, stmt)
 		var stops []StopContext
 		var oldSeq []string
+		var anchored []string
+		var replanCandidates []StopContext
 
 		err = iter.Do(func(r *spanner.Row) error {
 			var sc StopContext
-			if err := r.Columns(&sc.OrderID, &sc.SequenceIndex, &sc.Lat, &sc.Lng); err != nil {
+			var orderStatus, manifestOrderState string
+			if err := r.Columns(&sc.OrderID, &sc.SequenceIndex, &sc.Lat, &sc.Lng, &orderStatus, &manifestOrderState); err != nil {
 				return err
 			}
 			stops = append(stops, sc)
 			oldSeq = append(oldSeq, sc.OrderID)
+
+			st := strings.ToUpper(strings.TrimSpace(orderStatus))
+			mst := strings.ToUpper(strings.TrimSpace(manifestOrderState))
+			if st == "ARRIVED" || st == "AWAITING_PAYMENT" || st == "SHOP_CLOSED_PENDING" || mst == "ARRIVED" {
+				anchored = append(anchored, sc.OrderID)
+			} else {
+				replanCandidates = append(replanCandidates, sc)
+			}
 			return nil
 		})
 		if err != nil {
 			return err
 		}
-		if len(stops) <= 1 {
+		if len(stops) <= 1 || len(replanCandidates) == 0 {
 			return nil
 		}
 
-		problem := ReplanProblem{
-			RouteID:        routeID,
-			RemainingStops: stops,
-			DepotLat:       depotLat,
-			DepotLng:       depotLng,
-		}
-		solver := s.solver
-		if solver == nil {
-			solver = &DispatchLocalSearchSolver{DepotLat: depotLat, DepotLng: depotLng}
-		} else if _, ok := solver.(*DispatchLocalSearchSolver); ok {
-			solver = &DispatchLocalSearchSolver{DepotLat: depotLat, DepotLng: depotLng}
+		startLat, startLng := depotLat, depotLng
+		if len(anchored) > 0 {
+			lastAnchoredID := anchored[len(anchored)-1]
+			for _, s := range stops {
+				if s.OrderID == lastAnchoredID {
+					startLat, startLng = s.Lat, s.Lng
+					break
+				}
+			}
 		}
 
-		newSequence, err := solver.Solve(problem)
+		solver := s.solver
+		newSequence, err := SolveAnchoredReplan(anchored, replanCandidates, startLat, startLng, solver)
 		if err != nil {
 			return err
 		}
@@ -182,10 +202,18 @@ func (s *Service) ReplanRoute(ctx context.Context, routeID, reason string, actor
 		))
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateRoute, routeID, events.TopicMain, events.RouteEvent{
-			BaseEvent: events.BaseEvent{Type: "route.replanned", Timestamp: now.Format(time.RFC3339Nano)},
-			RouteID:   routeID,
-		}); err != nil {
+		routeEv := events.RouteEvent{
+			BaseEvent:   events.BaseEvent{Type: "route.replanned", Timestamp: now.Format(time.RFC3339Nano), Version: 1},
+			RouteID:     routeID,
+			ManifestID:  routeID,
+			SupplierID:  supID.StringVal,
+			WarehouseID: whID,
+			DriverID:    drvID.StringVal,
+			VehicleID:   truckID.StringVal,
+			OrderIDs:    newSequence,
+			OrderCount:  len(newSequence),
+		}
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateRoute, routeID, events.TopicMain, routeEv); err != nil {
 			return err
 		}
 		for _, e := range buf.events {
@@ -249,4 +277,31 @@ func (s *Service) isWarehouseFrozen(ctx context.Context, warehouseID string) (bo
 			return true, "warehouse_dispatch_locked"
 		}
 	}
+}
+
+// SolveAnchoredReplan re-sequences candidates while preserving the prefix of anchored stops.
+func SolveAnchoredReplan(anchored []string, candidates []StopContext, startLat, startLng float64, solver Solver) ([]string, error) {
+	if len(candidates) <= 1 {
+		out := append(make([]string, 0, len(anchored)+len(candidates)), anchored...)
+		for _, c := range candidates {
+			out = append(out, c.OrderID)
+		}
+		return out, nil
+	}
+	if solver == nil {
+		solver = &DispatchLocalSearchSolver{DepotLat: startLat, DepotLng: startLng}
+	} else if dls, ok := solver.(*DispatchLocalSearchSolver); ok {
+		solver = &DispatchLocalSearchSolver{DepotLat: startLat, DepotLng: startLng}
+		_ = dls
+	}
+	solvedCandidates, err := solver.Solve(ReplanProblem{
+		RemainingStops: candidates,
+		DepotLat:       startLat,
+		DepotLng:       startLng,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := append(make([]string, 0, len(anchored)+len(solvedCandidates)), anchored...)
+	return append(out, solvedCandidates...), nil
 }

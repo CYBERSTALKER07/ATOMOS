@@ -103,23 +103,7 @@ func (r *SpannerRepository) CreateClaim(ctx context.Context, c Claim, emit func(
 }
 
 func outboxMutation(e outbox.Event) *spanner.Mutation {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-	return spanner.InsertOrUpdateMap("OutboxEvents", row)
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }
 
 // UpdateClaim patches claim status/resolution fields and emits outbox events.
@@ -133,15 +117,15 @@ func (r *SpannerRepository) UpdateClaim(ctx context.Context, c Claim, emit func(
 	}
 	_, err = r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row := map[string]any{
-			"ClaimId":       c.ClaimID,
-			"Status":        string(c.Status),
-			"Description":   nullableStr(c.Description),
-			"AmountMinor":   c.AmountMinor,
-			"Currency":      nullableStr(c.Currency),
-			"LineItemsJSON": lineJSON,
+			"ClaimId":        c.ClaimID,
+			"Status":         string(c.Status),
+			"Description":    nullableStr(c.Description),
+			"AmountMinor":    c.AmountMinor,
+			"Currency":       nullableStr(c.Currency),
+			"LineItemsJSON":  lineJSON,
 			"ResolutionNote": nullableStr(c.ResolutionNote),
-			"ResolvedBy":    nullableStr(c.ResolvedBy),
-			"UpdatedAt":     spanner.CommitTimestamp,
+			"ResolvedBy":     nullableStr(c.ResolvedBy),
+			"UpdatedAt":      spanner.CommitTimestamp,
 		}
 		if c.ResolvedAt != nil {
 			row["ResolvedAt"] = c.ResolvedAt.UTC()

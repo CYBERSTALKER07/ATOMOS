@@ -19,26 +19,26 @@ struct AnalyticsView: View {
                         .frame(maxWidth: .infinity, minHeight: 200)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else {
                     VStack(spacing: LabTheme.spacingLG) {
                         // Period picker
                         Picker("Period", selection: $period) {
-                            Text("7 Days").tag("7d")
-                            Text("30 Days").tag("30d")
+                            Text("mobile_warehouse.ui.7_days").tag("7d")
+                            Text("mobile_warehouse.ui.30_days").tag("30d")
                         }
                         .pickerStyle(.segmented)
 
                         // KPI grid
                         LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
                             AnalyticsKpiCard(title: "Total Orders", value: "\(data.totalOrders)", icon: "cart", index: 0)
-                            AnalyticsKpiCard(title: "Revenue", value: "\(data.totalRevenue.formatted()) UZS", icon: "banknote", index: 1)
-                            AnalyticsKpiCard(title: "Avg Order", value: "\(Int(data.avgOrderValue.rounded()).formatted()) UZS", icon: "clock", index: 2)
+                            AnalyticsKpiCard(title: "Revenue", value: "\(data.totalRevenue.formatted()) \(packCurrency(MarketPackStore.pack))", icon: "banknote", index: 1)
+                            AnalyticsKpiCard(title: "Avg Order", value: "\(Int(data.avgOrderValue.rounded()).formatted()) \(packCurrency(MarketPackStore.pack))", icon: "clock", index: 2)
                             AnalyticsKpiCard(title: "Fleet Utilization", value: "\(Int(data.fleetUtilizationPct.rounded()))%", icon: "checkmark.circle", index: 3)
                         }
 
@@ -53,11 +53,11 @@ struct AnalyticsView: View {
 
                         if !data.importFreshness.lastSessionId.isEmpty || !data.importFreshness.lastAppliedAt.isEmpty {
                             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                                Text("Last import")
+                                Text("mobile_warehouse.ui.last_import")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 if !data.importFreshness.lastSessionId.isEmpty {
-                                    Text("Session: \(data.importFreshness.lastSessionId)")
+                                    Text(L10n.format("mobile_warehouse.ui.session_lastsessionid", "\(data.importFreshness.lastSessionId)"))
                                         .font(.footnote)
                                 }
                                 if !data.importFreshness.lastAppliedAt.isEmpty {
@@ -73,11 +73,11 @@ struct AnalyticsView: View {
 
                         if !data.importAnomalyQueue.lastDetail.isEmpty || !data.importAnomalyQueue.lastSessionId.isEmpty {
                             VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-                                Text("Latest anomaly")
+                                Text("mobile_warehouse.ui.latest_anomaly")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 if !data.importAnomalyQueue.lastSessionId.isEmpty {
-                                    Text("Session: \(data.importAnomalyQueue.lastSessionId)")
+                                    Text(L10n.format("mobile_warehouse.ui.session_lastsessionid", "\(data.importAnomalyQueue.lastSessionId)"))
                                         .font(.footnote)
                                 }
                                 if !data.importAnomalyQueue.lastDetectedAt.isEmpty {
@@ -103,14 +103,14 @@ struct AnalyticsView: View {
                         // Top products
                         if !data.topProducts.isEmpty {
                             VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
-                                Text("Top Products")
+                                Text("warehouse_portal.analytics.text.top_products")
                                     .font(.title3.bold())
                                 ForEach(Array(data.topProducts.enumerated()), id: \.element.id) { index, product in
                                     HStack {
                                         Text(product.productName)
                                             .font(.body)
                                         Spacer()
-                                        Text("\(product.unitsSold) units · \(product.revenue.formatted()) UZS")
+                                        Text(L10n.format("mobile_warehouse.ui.unitssold_units_formatted_uzs", "\(product.unitsSold)", "\(product.revenue.formatted())"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -124,10 +124,10 @@ struct AnalyticsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Analytics")
+            .navigationTitle("portal.nav.analytics")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

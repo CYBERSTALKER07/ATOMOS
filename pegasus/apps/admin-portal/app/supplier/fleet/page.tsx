@@ -17,7 +17,7 @@ import {
   buildSupplierFleetVehicleDeactivateIdempotencyKey,
 } from "../_shared/idempotency";
 
-/* ── Types ─────────────────────────────────────────────────────────────── */
+/* -- Types --------------------------------------------------------------- */
 
 interface Driver {
   driver_id: string;
@@ -84,7 +84,7 @@ const VEHICLE_CLASSES: { value: string; label: string; vu: number }[] = [
   { value: "CLASS_B", label: "Medium Truck", vu: 150 },
   { value: "CLASS_C", label: "Heavy / Semi", vu: 400 },
 ];
-/* ── Main Page ─────────────────────────────────────────────────────────── */
+/* -- Main Page ----------------------------------------------------------- */
 
 export default function FleetPage() {
   const [activeTab, setActiveTab] = useState<FleetTab>("drivers");
@@ -456,7 +456,7 @@ export default function FleetPage() {
     }
   }
 
-  /* ── Render ──────────────────────────────────────────────────────────── */
+  /* -- Render ------------------------------------------------------------ */
 
   return (
     <div
@@ -669,7 +669,7 @@ export default function FleetPage() {
         </div>
       )}
 
-      {/* ── Vehicles Tab ─────────────────────────────────────────────── */}
+      {/* -- Vehicles Tab ----------------------------------------------- */}
       {activeTab === "vehicles" && (
         <>
           {vehicles.length === 0 ? (
@@ -859,7 +859,7 @@ export default function FleetPage() {
         </>
       )}
 
-      {/* ── Drivers Tab ──────────────────────────────────────────────── */}
+      {/* -- Drivers Tab ------------------------------------------------ */}
       {activeTab === "drivers" && (
         <>
           {/* Driver Table */}
@@ -1041,7 +1041,7 @@ export default function FleetPage() {
         </>
       )}
 
-      {/* ── Slide-out: Add Driver ────────────────────────────────────── */}
+      {/* -- Slide-out: Add Driver -------------------------------------- */}
       <Drawer
         open={showAdd}
         onClose={() => {
@@ -1053,12 +1053,15 @@ export default function FleetPage() {
         <div className="p-6 flex flex-col gap-4">
           <div>
             <label
+              htmlFor="driver-name-input"
               className="md-typescale-label-medium"
               style={{ color: "var(--muted)" }}
             >
               Name *
             </label>
             <input
+              id="driver-name-input"
+              aria-label="Name"
               className="md-input-outlined w-full mt-1"
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
@@ -1068,12 +1071,15 @@ export default function FleetPage() {
 
           <div>
             <label
+              htmlFor="driver-phone-input"
               className="md-typescale-label-medium"
               style={{ color: "var(--muted)" }}
             >
               Phone (+998) *
             </label>
             <input
+              id="driver-phone-input"
+              aria-label="Phone (+998)"
               className="md-input-outlined w-full mt-1 font-mono"
               value={formPhone}
               onChange={(e) => setFormPhone(e.target.value)}
@@ -1150,12 +1156,15 @@ export default function FleetPage() {
 
           <div>
             <label
+              htmlFor="driver-plate-input"
               className="md-typescale-label-medium"
               style={{ color: "var(--muted)" }}
             >
               License Plate / Tracking Number
             </label>
             <input
+              id="driver-plate-input"
+              aria-label="License Plate / Tracking Number"
               className="md-input-outlined w-full mt-1 font-mono"
               value={formPlate}
               onChange={(e) => setFormPlate(e.target.value)}
@@ -1184,7 +1193,7 @@ export default function FleetPage() {
         </div>
       </Drawer>
 
-      {/* ── PIN Reveal Modal ─────────────────────────────────────────── */}
+      {/* -- PIN Reveal Modal ------------------------------------------- */}
       {createdPin && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
@@ -1292,7 +1301,7 @@ export default function FleetPage() {
         </div>
       )}
 
-      {/* ── Driver Detail Slide-out ──────────────────────────────────── */}
+      {/* -- Driver Detail Slide-out ------------------------------------ */}
       <Drawer
         open={!!selectedDriver}
         onClose={() => setSelectedDriver(null)}
@@ -1374,7 +1383,7 @@ export default function FleetPage() {
         )}
       </Drawer>
 
-      {/* ── Slide-out: Add Vehicle ───────────────────────────────────── */}
+      {/* -- Slide-out: Add Vehicle ------------------------------------- */}
       <Drawer
         open={showAddVehicle}
         onClose={() => setShowAddVehicle(false)}
@@ -1469,12 +1478,15 @@ export default function FleetPage() {
                   ).map(([axis, val, setter]) => (
                     <div key={axis}>
                       <label
+                        htmlFor={`veh-axis-${axis.toLowerCase()}`}
                         className="block md-typescale-label-small mb-1"
                         style={{ color: "var(--muted)" }}
                       >
                         {axis} (cm)
                       </label>
                       <input
+                        id={`veh-axis-${axis.toLowerCase()}`}
+                        aria-label={`${axis} (cm)`}
                         type="number"
                         min="0.1"
                         step="0.1"
@@ -1520,12 +1532,15 @@ export default function FleetPage() {
 
           <div>
             <label
+              htmlFor="veh-label-input"
               className="md-typescale-label-medium"
               style={{ color: "var(--muted)" }}
             >
               Label
             </label>
             <input
+              id="veh-label-input"
+              aria-label="Label"
               className="md-input-outlined w-full mt-1"
               value={vehLabel}
               onChange={(e) => setVehLabel(e.target.value)}
@@ -1535,12 +1550,15 @@ export default function FleetPage() {
 
           <div>
             <label
+              htmlFor="veh-plate-input"
               className="md-typescale-label-medium"
               style={{ color: "var(--muted)" }}
             >
               License Plate
             </label>
             <input
+              id="veh-plate-input"
+              aria-label="License Plate"
               className="md-input-outlined w-full mt-1 font-mono"
               value={vehPlate}
               onChange={(e) => setVehPlate(e.target.value)}
@@ -1572,7 +1590,7 @@ export default function FleetPage() {
   );
 }
 
-/* ── Components ────────────────────────────────────────────────────────── */
+/* -- Components ---------------------------------------------------------- */
 
 function DriverTypeBadge({ type }: { type: string }) {
   const isInHouse = type === "IN_HOUSE";

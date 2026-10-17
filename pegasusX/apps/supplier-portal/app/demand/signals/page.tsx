@@ -1,6 +1,8 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useState, useEffect } from "react";
+import { Info } from "lucide-react";
 
 
 type SignalType = "PROMO" | "EVENT" | "PAYDAY" | "EVENT_DENSITY" | "COMPETITOR_PRESSURE";
@@ -21,6 +23,7 @@ interface DemandSignal {
 }
 
 export default function SignalsPage() {
+  const t = usePortalT();
   const [signals, setSignals] = useState<DemandSignal[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -144,7 +147,6 @@ export default function SignalsPage() {
         throw new Error(d.error || "Failed to save signal");
       }
       
-      console.log(editingSignal ? "Signal updated" : "Signal created");
       setIsModalOpen(false);
       fetchSignals();
     } catch (err: any) {
@@ -159,7 +161,6 @@ export default function SignalsPage() {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to deactivate");
-      console.log("Signal created successfully");
       fetchSignals();
     } catch (err: any) {
       console.error(err.message);
@@ -170,8 +171,8 @@ export default function SignalsPage() {
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Demand Signals</h1>
-          <p className="text-gray-500 mt-2">Manage promo and event multipliers for causal demand sensing.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("portal.nav.demand_signals")}</h1>
+          <p className="text-gray-500 mt-2">{t("supplier_portal.demand.signals.text.manage_promo_and_event_multipliers_for_causal_demand_sensing")}</p>
         </div>
         <button 
           onClick={handleOpenCreate}
@@ -187,16 +188,18 @@ export default function SignalsPage() {
           value={filterType} 
           onChange={(e) => setFilterType(e.target.value)}
         >
-          <option value="">All Types</option>
-          <option value="PROMO">Promo</option>
-          <option value="EVENT">Event</option>
-          <option value="PAYDAY">Payday</option>
-          <option value="EVENT_DENSITY">Event Density</option>
-          <option value="COMPETITOR_PRESSURE">Competitor Pressure</option>
+          <option value="">{t("supplier_portal.demand.signals.text.all_types")}</option>
+          <option value="PROMO">{t("supplier_portal.demand.signals.text.promo")}</option>
+          <option value="EVENT">{t("supplier_portal.analytics.demand.signals.text.event")}</option>
+          <option value="PAYDAY">{t("supplier_portal.demand.signals.text.payday")}</option>
+          <option value="EVENT_DENSITY">{t("supplier_portal.demand.signals.text.event_density")}</option>
+          <option value="COMPETITOR_PRESSURE">{t("supplier_portal.demand.signals.text.competitor_pressure")}</option>
         </select>
 
         <label className="flex items-center gap-2 text-sm">
-          <input 
+          <input
+            id="page-checkbox-7"
+            aria-label="Select Page option"
             type="checkbox" 
             checked={filterActive} 
             onChange={(e) => setFilterActive(e.target.checked)}
@@ -211,20 +214,20 @@ export default function SignalsPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200">
               <tr>
-                <th className="px-6 py-4">Title / Type</th>
-                <th className="px-6 py-4">Scope</th>
+                <th className="px-6 py-4">{t("supplier_portal.demand.signals.text.title_type")}</th>
+                <th className="px-6 py-4">{t("supplier_portal.analytics.demand.signals.text.scope")}</th>
                 <th className="px-6 py-4">SKU</th>
-                <th className="px-6 py-4">Multiplier</th>
-                <th className="px-6 py-4">Validity</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4">{t("supplier_portal.analytics.demand.signals.text.multiplier")}</th>
+                <th className="px-6 py-4">{t("supplier_portal.demand.signals.text.validity")}</th>
+                <th className="px-6 py-4">{t("supplier_portal.compliance.text.status")}</th>
+                <th className="px-6 py-4 text-right">{t("supplier_portal.catalog.components.catalog_table.text.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">Loading signals...</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">{t("supplier_portal.demand.signals.text.loading_signals")}</td></tr>
               ) : signals.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">No signals found.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">{t("supplier_portal.demand.signals.text.no_signals_found")}</td></tr>
               ) : signals.map(sig => {
                 const isActive = new Date() >= new Date(sig.startAt) && new Date() <= new Date(sig.endAt);
                 const isExpired = new Date() > new Date(sig.endAt);
@@ -236,7 +239,7 @@ export default function SignalsPage() {
                       <div className="text-xs text-gray-500 font-mono mt-1">{sig.type}</div>
                     </td>
                     <td className="px-6 py-4 font-mono text-xs">{sig.scope}</td>
-                    <td className="px-6 py-4">{sig.sku || <span className="text-gray-400 italic">All</span>}</td>
+                    <td className="px-6 py-4">{sig.sku || <span className="text-gray-400 italic">{t("supplier_portal.demand.signals.text.all")}</span>}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${sig.multiplier > 1 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                         {sig.multiplier.toFixed(2)}x
@@ -253,14 +256,14 @@ export default function SignalsPage() {
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Active
                         </span>
                       ) : isExpired ? (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">Expired</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">{t("supplier_portal.demand.signals.text.expired")}</span>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium">Scheduled</span>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 text-xs font-medium">{t("supplier_portal.demand.signals.text.scheduled")}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right space-x-3">
-                      <button onClick={() => handleOpenEdit(sig)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">Edit</button>
-                      <button onClick={() => handleDeactivate(sig.signalId)} className="text-red-600 hover:text-red-800 font-medium text-xs">Deactivate</button>
+                      <button onClick={() => handleOpenEdit(sig)} className="text-blue-600 hover:text-blue-800 font-medium text-xs">{t("supplier_portal.demand.signals.text.edit")}</button>
+                      <button onClick={() => handleDeactivate(sig.signalId)} className="text-red-600 hover:text-red-800 font-medium text-xs">{t("supplier_portal.demand.signals.text.deactivate")}</button>
                     </td>
                   </tr>
                 );
@@ -280,52 +283,58 @@ export default function SignalsPage() {
             
             <div className="p-6 overflow-y-auto space-y-4">
               <div className="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg flex items-start gap-2">
-                <span className="text-xl">ℹ️</span>
-                <p>This multiplies expected demand by your chosen factor for the selected scope.</p>
+                <Info className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+                <p>{t("supplier_portal.demand.signals.text.this_multiplies_expected_demand_by_your_chosen_factor_for_the_se")}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Type</label>
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.ledger.text.type")}</label>
                   <select 
                     value={form.type} 
                     onChange={e => setForm({...form, type: e.target.value})}
                     className="w-full border rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black outline-none"
                   >
-                    <option value="PROMO">Promo</option>
-                    <option value="EVENT">Event</option>
-                    <option value="PAYDAY">Payday</option>
-                    <option value="EVENT_DENSITY">Event Density</option>
-                    <option value="COMPETITOR_PRESSURE">Competitor Pressure</option>
+                    <option value="PROMO">{t("supplier_portal.demand.signals.text.promo")}</option>
+                    <option value="EVENT">{t("supplier_portal.analytics.demand.signals.text.event")}</option>
+                    <option value="PAYDAY">{t("supplier_portal.demand.signals.text.payday")}</option>
+                    <option value="EVENT_DENSITY">{t("supplier_portal.demand.signals.text.event_density")}</option>
+                    <option value="COMPETITOR_PRESSURE">{t("supplier_portal.demand.signals.text.competitor_pressure")}</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Scope</label>
-                  <input 
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.analytics.demand.signals.text.scope")}</label>
+                  <input
+                    id="scope-input-6"
+                    aria-label="Scope"
                     type="text" 
                     value={form.scope}
                     onChange={e => setForm({...form, scope: e.target.value})}
-                    placeholder="e.g. retailer:123 or city:Tashkent"
+                    placeholder={t("supplier_portal.demand.signals.text.e_g_retailer_123_or_city_tashkent")}
                     className="w-full border rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">SKU (Optional)</label>
-                <input 
+                <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.signals.text.sku_optional")}</label>
+                <input
+                  id="sku-input-5"
+                  aria-label="Sku"
                   type="text" 
                   value={form.sku}
                   onChange={e => setForm({...form, sku: e.target.value})}
-                  placeholder="Leave blank for all SKUs"
+                  placeholder={t("supplier_portal.demand.signals.text.leave_blank_for_all_skus")}
                   className="w-full border rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">Start Time</label>
-                  <input 
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.start_time")}</label>
+                  <input
+                    id="startat-input-4"
+                    aria-label="Start at"
                     type="datetime-local" 
                     value={form.startAt}
                     onChange={e => setForm({...form, startAt: e.target.value})}
@@ -333,8 +342,10 @@ export default function SignalsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-gray-700">End Time</label>
-                  <input 
+                  <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.payday_calendar.text.end_time")}</label>
+                  <input
+                    id="endat-input-3"
+                    aria-label="End at"
                     type="datetime-local" 
                     value={form.endAt}
                     onChange={e => setForm({...form, endAt: e.target.value})}
@@ -345,7 +356,9 @@ export default function SignalsPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-medium text-gray-700">Multiplier ({form.multiplier.toFixed(2)}x)</label>
-                <input 
+                <input
+                  id="multiplier-form-multiplie-input-2"
+                  aria-label="Multiplier ({form.multiplier.toFixed(2)}x)"
                   type="range" 
                   min="0.5" 
                   max="2.5" 
@@ -362,17 +375,19 @@ export default function SignalsPage() {
               </div>
 
               <div className="space-y-1 pt-2 border-t">
-                <label className="text-xs font-medium text-gray-700">Title</label>
-                <input 
+                <label className="text-xs font-medium text-gray-700">{t("supplier_portal.admin.control_center.field.title")}</label>
+                <input
+                  id="title-input-1"
+                  aria-label="Title"
                   type="text" 
                   value={form.title}
                   onChange={e => setForm({...form, title: e.target.value})}
-                  placeholder="e.g. Summer soft-drinks push"
+                  placeholder={t("supplier_portal.demand.signals.text.e_g_summer_soft_drinks_push")}
                   className="w-full border rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black outline-none"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-700">Description (Optional)</label>
+                <label className="text-xs font-medium text-gray-700">{t("supplier_portal.demand.signals.text.description_optional")}</label>
                 <textarea 
                   value={form.description}
                   onChange={e => setForm({...form, description: e.target.value})}

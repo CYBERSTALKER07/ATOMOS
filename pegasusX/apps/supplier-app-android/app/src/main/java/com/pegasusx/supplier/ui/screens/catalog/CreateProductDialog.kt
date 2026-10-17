@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import com.pegasusx.supplier.data.model.CatalogCategory
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +99,7 @@ fun CreateProductDialog(
                 OutlinedTextField(
                     value = createPrice,
                     onValueChange = onPriceChange,
-                    label = { Text("Price ($currency, minor)") },
+                    label = { Text(stringResource(R.string.mobile_supplier_ui_price_currency_minor, currency)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),

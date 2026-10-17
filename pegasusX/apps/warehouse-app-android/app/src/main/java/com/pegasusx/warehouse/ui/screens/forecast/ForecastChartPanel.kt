@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.forecast
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 fun LazyGridScope.forecastChartPanel(
     critical: Int,
@@ -26,21 +29,21 @@ fun LazyGridScope.forecastChartPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             ForecastSummaryCard(
-                title = "Critical",
+                title = stringResource(R.string.mobile_warehouse_ui_critical),
                 count = critical,
                 subtitle = "< 2 days",
                 tint = MaterialTheme.colorScheme.error,
                 modifier = Modifier.weight(1f),
             )
             ForecastSummaryCard(
-                title = "Urgent",
+                title = stringResource(R.string.mobile_warehouse_ui_urgent),
                 count = urgent,
                 subtitle = "< 5 days",
                 tint = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f),
             )
             ForecastSummaryCard(
-                title = "Healthy",
+                title = stringResource(R.string.mobile_warehouse_ui_healthy),
                 count = normal,
                 subtitle = "5+ days",
                 tint = MaterialTheme.colorScheme.primary,

@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.loadingbay
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.layout.*
@@ -22,10 +24,12 @@ import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
 import com.pegasus.design.PegasusLoadingState
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.PulseHonesty
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import com.pegasusx.factory.util.FactoryIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +44,7 @@ fun LoadingBayScreen(
     var dispatching by remember { mutableStateOf(false) }
     var handoffEvents by remember { mutableStateOf<List<PulseEvent>>(emptyList()) }
     var handoffLoading by remember { mutableStateOf(true) }
+    var handoffError by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -56,20 +61,26 @@ fun LoadingBayScreen(
                 } else {
                     error = "Failed (${resp.code()})"
                 }
-                handoffLoading = true
-                val pulseResp = api.getPulse()
-                handoffEvents = if (pulseResp.isSuccessful && pulseResp.body() != null) {
-                    filterHandoffPulseEvents(pulseResp.body()!!.events)
-                } else {
-                    emptyList()
-                }
-                handoffLoading = false
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
-            } finally {
-                if (!silent) {
-                    loading = false
-                }
+            }
+            handoffLoading = true
+            handoffError = null
+            try {
+                val pulseResp = api.getPulse()
+                val result = PulseHonesty.applyHttp(
+                    pulseResp.isSuccessful,
+                    pulseResp.body()?.events?.let { filterHandoffPulseEvents(it) },
+                    handoffEvents,
+                )
+                handoffEvents = result.events
+                handoffError = result.error
+            } catch (_: Exception) {
+                handoffError = PulseHonesty.FAILED
+            }
+            handoffLoading = false
+            if (!silent) {
+                loading = false
             }
         }
     }
@@ -98,7 +109,7 @@ fun LoadingBayScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Loading Bay")
                         Text(
-                            text = "Approved, loading, and dispatched queues",
+                            text = stringResource(R.string.mobile_factory_ui_approved_loading_and_dispatched_queues),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -123,11 +134,17 @@ fun LoadingBayScreen(
                                 try {
                                     val ids = loadingState.map { it.id }
                                     val resp = api.dispatch(
-                                        DispatchRequest(transferIds = ids),
+                                        DispatchRequest(mode = "AUTO", transferIds = ids, reason = "factory-loading-bay"),
                                         FactoryIdempotencyKeys.batchDispatch(ids),
                                     )
                                     if (resp.isSuccessful) {
-                                        snackbarHostState.showSnackbar("Dispatched ${ids.size} transfers")
+                                        val body = resp.body()
+                                        val count = body?.createdManifestCount ?: body?.manifestsCreated ?: ids.size
+                                        val algo = body?.dispatchAlgo?.ifBlank { body.optimizerClass } ?: ""
+                                        snackbarHostState.showSnackbar(
+                                            if (count == 0) "No transfers to dispatch"
+                                            else "Dispatched $count · $algo"
+                                        )
                                         load()
                                     } else {
                                         snackbarHostState.showSnackbar("Dispatch failed (${resp.code()})")
@@ -147,7 +164,7 @@ fun LoadingBayScreen(
     ) { innerPadding ->
         when {
             loading && transfers.isEmpty() -> PegasusLoadingState(
-                title = "Loading bay status",
+                title = stringResource(R.string.mobile_factory_ui_loading_bay_status),
                 body = "Fetching approved, loading, and dispatched transfer groups for the bay.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -169,6 +186,7 @@ fun LoadingBayScreen(
                 dispatched = dispatched,
                 handoffEvents = handoffEvents,
                 handoffLoading = handoffLoading,
+                handoffError = handoffError,
                 onTransferClick = onTransferClick,
                 innerPadding = innerPadding
             )

@@ -41,7 +41,7 @@ struct DispatchPreviewView: View {
 
                         if !warehouses.isEmpty {
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-                                Text("Warehouse scope").font(.headline)
+                                Text("supplier_portal.dispatch.text.warehouse_scope").font(.headline)
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: SupplierTheme.spacingSM) {
                                         ForEach(warehouses) { wh in
@@ -69,10 +69,10 @@ struct DispatchPreviewView: View {
                         if let preview {
                             if preview.planFingerprintMismatch {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Dispatch plan drift")
+                                    Text("mobile_supplier.ui.dispatch_plan_drift")
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(.red)
-                                    Text("Supplier preview differs from warehouse floor plan. Refresh warehouse dispatch before committing.")
+                                    Text("mobile_supplier.ui.supplier_preview_differs_from_warehouse_floor_plan_refresh_wareh")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -92,10 +92,10 @@ struct DispatchPreviewView: View {
                             if dispatchMode == .auto, !preview.proposedRoutes.isEmpty {
                                 VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
                                     HStack {
-                                        Text("Route map").font(.headline)
+                                        Text("mobile_supplier.ui.route_map").font(.headline)
                                         Spacer()
                                         if let source = preview.optimizerSource, !source.isEmpty {
-                                            Text("Source: \(source)")
+                                            Text(L10n.format("mobile_supplier.ui.source_source_2", "\(source)"))
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
@@ -112,19 +112,19 @@ struct DispatchPreviewView: View {
                                 .foregroundStyle(.secondary)
                         }
                         if dispatchMode == .auto {
-                            Button("Execute auto-dispatch") { showAutoConfirm = true }
+                            Button("mobile_supplier.ui.execute_auto_dispatch") { showAutoConfirm = true }
                                 .buttonStyle(.borderedProminent)
                                 .tint(.primary)
                                 .disabled(loading || executing || preview == nil)
                         } else {
-                            Button("Manual dispatch (\(selectedOrderIds.count))") {
+                            Button(L10n.format("mobile_supplier.ui.manual_dispatch_count", "\(selectedOrderIds.count)")) {
                                 Task { await executeManual(forceCapacity: false) }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.primary)
                             .disabled(loading || executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
                         }
-                        Button("Refresh preview") { Task { await load() } }
+                        Button("mobile_supplier.ui.refresh_preview") { Task { await load() } }
                             .disabled(loading || executing)
                     }
                     .padding()
@@ -149,16 +149,16 @@ struct DispatchPreviewView: View {
             }
         }
         .alert("Execute auto-dispatch?", isPresented: $showAutoConfirm) {
-            Button("Confirm", role: .destructive) { Task { await executeAuto() } }
-            Button("Cancel", role: .cancel) {}
+            Button("mobile_supplier.ui.confirm", role: .destructive) { Task { await executeAuto() } }
+            Button("common.action.cancel", role: .cancel) {}
         } message: {
-            Text("Assign pending orders via the optimizer.")
+            Text("mobile_supplier.ui.assign_pending_orders_via_the_optimizer")
         }
         .alert("Capacity exceeded", isPresented: $showCapacityOverride) {
-            Button("Continue", role: .destructive) { Task { await executeManual(forceCapacity: true) } }
-            Button("Adjust", role: .cancel) {}
+            Button("supplier_portal.bulk_import_wizard.text.continue", role: .destructive) { Task { await executeManual(forceCapacity: true) } }
+            Button("retailer_desktop.stock.text.adjust", role: .cancel) {}
         } message: {
-            Text("Selected orders exceed truck capacity. Continue anyway?")
+            Text("mobile_supplier.ui.selected_orders_exceed_truck_capacity_continue_anyway")
         }
     }
 
@@ -173,14 +173,14 @@ struct DispatchPreviewView: View {
         let capacityExceeded = truckEffective > 0 && selectedVolume > truckEffective
 
         VStack(alignment: .leading, spacing: SupplierTheme.spacingSM) {
-            Text("Manual assignment").font(.headline)
+            Text("mobile_supplier.ui.manual_assignment").font(.headline)
             if truckMax > 0 {
                 Text(String(format: "Selected %.1f / %.1f VU", selectedVolume, truckEffective))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             if capacityExceeded {
-                Text("Insufficient truck space for selected orders.")
+                Text("mobile_supplier.ui.insufficient_truck_space_for_selected_orders")
                     .font(.caption)
                     .foregroundStyle(.red)
             }
@@ -188,14 +188,14 @@ struct DispatchPreviewView: View {
                 Picker("Driver", selection: $selectedDriverId) {
                     ForEach(preview.availableDrivers) { d in
                         let vu = d.maxVolumeVu.map { String(format: " · %.0f VU", $0) } ?? ""
-                        Text("\(d.name.isEmpty ? d.driverId : d.name)\(vu)").tag(d.driverId)
+                        Text(L10n.format("mobile_supplier.ui.namevu", "\(d.name.isEmpty ? d.driverId : d.name)", "\(vu)")).tag(d.driverId)
                     }
                 }
             }
             HStack {
-                Text("Orders").font(.subheadline.weight(.semibold))
+                Text("portal.nav.orders").font(.subheadline.weight(.semibold))
                 Spacer()
-                Button("Select all") {
+                Button("supplier_portal.replenishment.suggestions.text.select_all") {
                     selectedOrderIds = Set(preview.undispatchedOrders.map(\.orderId))
                 }
                 .font(.caption)

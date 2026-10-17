@@ -73,6 +73,7 @@ struct CheckoutView: View {
                             .background(AppTheme.surfaceElevated)
                             .clipShape(.circle)
                     }
+                    .accessibilityLabel("Close")
                 }
             }
             .task {
@@ -374,7 +375,7 @@ struct CheckoutView: View {
             }
 
             VStack(spacing: AppTheme.spacingSM) {
-                Text("Order Placed! 🎉")
+                Text("Order Placed!")
                     .font(.system(.title2, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
 

@@ -5,6 +5,10 @@ vi.mock("../pending-pos-sales", () => ({
   clearParkedPosCart: vi.fn(async () => undefined),
 }));
 
+vi.mock("@pegasusx/desktop-cache", () => ({
+  cacheClearAll: vi.fn(async () => undefined),
+}));
+
 describe("clearOrgScopedState", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -37,6 +41,7 @@ describe("clearOrgScopedState", () => {
     expect(localStorage.getItem("retailer_assist_context_v1")).toBeNull();
     expect(sessionStorage.getItem("retailer_pos_session_v1")).toBeNull();
     expect(result.clearedLocalKeys.length).toBeGreaterThan(0);
+    expect(result.kvCacheCleared).toBe(true);
     expect(events.length).toBe(1);
   });
 

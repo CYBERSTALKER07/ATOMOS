@@ -7,6 +7,7 @@ struct LocationSettingsView: View {
     @State private var saving = false
     @State private var error: String?
     @State private var saveMessage: String?
+    @State private var packCountry = ""
 
     var body: some View {
         Group {
@@ -14,19 +15,24 @@ struct LocationSettingsView: View {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let error {
                 ContentUnavailableView {
-                    Label("Error", systemImage: "exclamationmark.triangle")
+                    Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("common.action.retry") { load() }
                 }
             } else {
                 Form {
                     if !warehouseName.isEmpty {
                         Section { Text(warehouseName) }
                     }
+                    if !packCountry.isEmpty {
+                        Section("Pack country") {
+                            Text(packCountry)
+                        }
+                    }
                     Section("Depot address") {
-                        Text("Used for smart dispatch routing. Coordinates stay hidden from daily ops screens.")
+                        Text("mobile_warehouse.ui.used_for_smart_dispatch_routing_coordinates_stay_hidden_from_dai")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                         AddressLocationField(value: $location, label: "Warehouse address")
@@ -41,10 +47,10 @@ struct LocationSettingsView: View {
                 }
             }
         }
-        .navigationTitle("Depot location")
+        .navigationTitle("warehouse_portal.settings.text.depot_location")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
             }
         }
         .task { load() }
@@ -63,6 +69,7 @@ struct LocationSettingsView: View {
                     lng: resp.lng,
                     placeId: resp.placeId
                 )
+                packCountry = resp.packCountryCode.isEmpty ? resp.countryCode : resp.packCountryCode
                 loading = false
             } catch {
                 self.error = error.localizedDescription

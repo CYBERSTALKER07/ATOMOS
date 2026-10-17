@@ -19,7 +19,7 @@ final class APIClient: Sendable {
     // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
     // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
     // for backend reachability over Wi-Fi.
-    private let baseURL: URL = {
+    private let bootstrapURL: URL = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         let s: String
@@ -31,8 +31,18 @@ final class APIClient: Sendable {
         return URL(string: s)!
     }()
     #else
-    private let baseURL = URL(string: "https://api.pegasus.uz/")!
+    private let bootstrapURL: URL = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        let s: String
+        if raw.isEmpty { s = "https://api.pegasusx.app/" }
+        else if raw.hasSuffix("/") { s = raw }
+        else { s = raw + "/" }
+        return URL(string: s)!
+    }()
     #endif
+
+    private var baseURL: URL { pinnedAPIBaseURL(bootstrap: bootstrapURL) }
 
     private let session: URLSession
     private let decoder: JSONDecoder
@@ -56,6 +66,27 @@ final class APIClient: Sendable {
         request.httpMethod = "GET"
         await attachToken(&request)
         return try await execute(request)
+    }
+
+    func getJSONString(_ path: String, query: [String: String] = [:]) async throws -> String {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        await attachToken(&request)
+        let (data, response) = try await dataForRequestWithFallback(request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        guard (200...299).contains(http.statusCode) else {
+            throw APIError.httpError(http.statusCode)
+        }
+        return String(data: data, encoding: .utf8) ?? "{}"
     }
 
     // MARK: - POST
@@ -108,6 +139,28 @@ final class APIClient: Sendable {
     func patch<B: Encodable, T: Decodable>(_ path: String, body: B, idempotencyKey: String? = nil) async throws -> T {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let idempotencyKey {
+            request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
+        request.httpBody = try encoder.encode(body)
+        await attachToken(&request)
+        return try await execute(request)
+    }
+
+    // MARK: - PUT
+    func put<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        query: [String: String] = [:],
+        idempotencyKey: String? = nil
+    ) async throws -> T {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let idempotencyKey {
             request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")

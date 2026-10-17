@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "code-graph": {
+      "command": "bash",
+      "args": [
+        "/Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/run_mcp_server.sh"
+      ],
+      "env": {
+        "TARGET_REPO_PATH": "/Users/shakhzod/Desktop/V.O.I.D/pegasusX",
+        "MEMGRAPH_BOLT_URL": "bolt://localhost:7687",
+        "CYPHER_PROVIDER": "google",
+        "CYPHER_MODEL": "gemini-2.0-flash"
+      }
+    }
+  }
+}

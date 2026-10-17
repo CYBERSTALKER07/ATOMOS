@@ -267,12 +267,16 @@ func TestHandleProfileUpdateRejectsInvalidReceivingWindow(t *testing.T) {
 		strings.NewReader(`{"receiving_window_open":"99:99"}`),
 	)
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-profile-update:ret-1:bad-window")
 	rr := httptest.NewRecorder()
 
 	svc.HandleProfile(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want=%d body=%s", rr.Code, http.StatusBadRequest, rr.Body.String())
+	}
+	if strings.Contains(rr.Body.String(), "idempotency_key_required") {
+		t.Fatalf("expected receiving-window validation, got %s", rr.Body.String())
 	}
 }
 
@@ -1057,6 +1061,56 @@ func TestHandlePendingPaymentsFiltersPaymentStates(t *testing.T) {
 	if first["status"] != "AWAITING_PAYMENT" || second["status"] != "PENDING_CASH_COLLECTION" {
 		t.Fatalf("pending statuses=%v %v", first["status"], second["status"])
 	}
+	for _, raw := range pending {
+		row := raw.(map[string]any)
+		if sid, _ := row["session_id"].(string); strings.HasPrefix(sid, "sess_") {
+			t.Fatalf("invented session_id=%q", sid)
+		}
+		if gw, _ := row["gateway"].(string); strings.EqualFold(gw, "payme") {
+			t.Fatalf("invented gateway=%q", gw)
+		}
+		if _, ok := row["session_id"]; ok {
+			t.Fatalf("session_id must be omitted without a real session: %v", row)
+		}
+		if _, ok := row["gateway"]; ok {
+			t.Fatalf("gateway must be omitted without a real session: %v", row)
+		}
+	}
+}
+
+func TestHandlePendingPaymentsUsesRealSession(t *testing.T) {
+	repo := &testRetailerRepo{tracking: []TrackingOrder{
+		{OrderID: "ord-2", SupplierID: "sup-1", RetailerID: "ret-1", Status: "AWAITING_PAYMENT", TrackingStatus: "assigned", Items: []TrackingLineItem{}},
+	}}
+	svc := NewService(ServiceConfig{
+		Repo:       repo,
+		SupplierID: "sup-1",
+		PaymentSessionByOrder: func(_ context.Context, orderID string) (string, string, bool, error) {
+			if orderID != "ord-2" {
+				t.Fatalf("orderID=%s", orderID)
+			}
+			return "ps_real_1", "GLOBAL_PAY", true, nil
+		},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/v1/retailer/pending-payments", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	rr := httptest.NewRecorder()
+	svc.HandlePendingPayments(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	pending := payload["pending"].([]any)
+	row := pending[0].(map[string]any)
+	if row["session_id"] != "ps_real_1" || row["gateway"] != "GLOBAL_PAY" {
+		t.Fatalf("row=%v", row)
+	}
+	if payload["pending_payments"] == nil {
+		t.Fatal("pending_payments alias missing")
+	}
 }
 
 func TestHandleTrackingIncludesScopedFreshLocation(t *testing.T) {
@@ -1212,8 +1266,12 @@ func TestHandleTrackingSuppressesStaleLocation(t *testing.T) {
 	if first["live_location_available"] != false {
 		t.Fatalf("live_location_available=%v want false", first["live_location_available"])
 	}
-	if _, ok := first["driver_location"]; ok {
-		t.Fatalf("driver_location leaked: %v", first["driver_location"])
+	// G3.C: last-known GPS still returned with honesty freshness.
+	if first["location_freshness"] != "LAST_KNOWN" {
+		t.Fatalf("location_freshness=%v want LAST_KNOWN", first["location_freshness"])
+	}
+	if _, ok := first["driver_location"]; !ok {
+		t.Fatalf("expected last-known driver_location on stale telemetry")
 	}
 }
 
@@ -1238,6 +1296,7 @@ func TestHandleConfirmAIOrderDelegatesToOrderLifecycle(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/retailer/orders/confirm-ai", strings.NewReader(`{"order_id":"ord-1"}`))
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-confirm-ai:ord-1")
 	rr := httptest.NewRecorder()
 
 	svc.HandleConfirmAIOrder(rr, req)
@@ -1259,6 +1318,7 @@ func TestHandleEditPreorderMapsConflict(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/orders/edit-preorder", strings.NewReader(`{"order_id":"ord-1","requested_delivery_date":"2026-01-03T12:00:00Z","line_items":[{"sku":"sku-1","quantity":1,"unit_price_minor":500}]}`))
 	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}))
+	req.Header.Set("Idempotency-Key", "retailer-edit-preorder:ord-1")
 	rr := httptest.NewRecorder()
 
 	svc.HandleEditPreorder(rr, req)
@@ -1296,5 +1356,34 @@ func TestHandleAIPredictionsReturnsItems(t *testing.T) {
 	items, ok := payload["items"].([]any)
 	if !ok || len(items) != 1 {
 		t.Fatalf("items=%v", payload["items"])
+	}
+}
+
+func TestRetailerOrderLifecycle_RequiresIdempotencyKey(t *testing.T) {
+	svc := NewService(ServiceConfig{Repo: &testRetailerRepo{}, SupplierID: "sup-1", Orders: &testOrderLifecycle{}})
+	claims := auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}
+	cases := []struct {
+		name string
+		path string
+		call func(http.ResponseWriter, *http.Request)
+	}{
+		{"confirm-ai", "/v1/retailer/orders/confirm-ai", svc.HandleConfirmAIOrder},
+		{"reject-ai", "/v1/retailer/orders/reject-ai", svc.HandleRejectAIOrder},
+		{"edit-preorder", "/v1/orders/edit-preorder", svc.HandleEditPreorder},
+		{"confirm-preorder", "/v1/orders/confirm-preorder", svc.HandleConfirmPreorder},
+		{"accept-proposal", "/v1/orders/accept-delivery-proposal", svc.HandleAcceptDeliveryProposal},
+		{"reject-proposal", "/v1/orders/reject-delivery-proposal", svc.HandleRejectDeliveryProposal},
+		{"reject-preorder", "/v1/orders/reject-preorder", svc.HandleRejectPreorder},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(`{"order_id":"ord-1"}`))
+			req = req.WithContext(auth.WithClaims(req.Context(), claims))
+			rr := httptest.NewRecorder()
+			tc.call(rr, req)
+			if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+				t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+			}
+		})
 	}
 }

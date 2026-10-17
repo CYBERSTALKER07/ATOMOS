@@ -1,0 +1,22 @@
+# GS-C1 — named UZ cell overlay. Copy of the prod merge pattern; do not fork base/.
+# HOME_CELL / DEFAULT_MARKET_CODE / FISCAL stay as today (UZ + MY_SOLIQ on prod).
+# Env overlays (prod/ssmr/staging) are not cells. EU overlay is overlays/cells/eu.
+# Do not kubectl apply from the global-scale catalog.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: pegasusx
+
+resources:
+  - ../../prod
+
+configMapGenerator:
+  - name: backend-go-config
+    behavior: merge
+    literals:
+      - HOME_CELL=cell-uz
+      - DEFAULT_MARKET_CODE=UZ
+
+labels:
+  - pairs:
+      pegasusx.io/cell: uz

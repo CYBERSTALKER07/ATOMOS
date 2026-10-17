@@ -25,10 +25,11 @@ func NewEventConsumer(svc *Service, log *slog.Logger) *EventConsumer {
 
 // HandleEvent unmarshals Kafka messages and routes them.
 func (c *EventConsumer) HandleEvent(ctx context.Context, msg kafka.Message) error {
-	envelope, err := pegasuskafka.ParseEnvelope(msg.Value)
+	ctx = pegasuskafka.WithTraceFromMessage(ctx, msg)
+	envelope, err := pegasuskafka.EnvelopeFromMessage(msg)
 	if err != nil {
-		c.log.Warn("warehouse consumer payload parsing failed", "err", err, "topic", msg.Topic)
-		return nil
+		c.log.WarnContext(ctx, "warehouse consumer payload parsing failed", "err", err, "topic", msg.Topic, "offset", msg.Offset)
+		return err
 	}
 	if envelope.Type == events.EventSupplyRequestAccepted {
 		return c.svc.HandleSupplyRequestAccepted(ctx, msg.Value)

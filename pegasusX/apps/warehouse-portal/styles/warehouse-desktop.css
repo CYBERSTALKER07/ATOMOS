@@ -119,7 +119,7 @@
 
 /* ── Page chrome typography ─────────────────────────────────────────────── */
 [data-app="warehouse"] .desk-page {
-    max-width: 1600px;
+    max-width: 80rem; /* max-w-7xl responsive container */
     margin-inline: auto;
 }
 

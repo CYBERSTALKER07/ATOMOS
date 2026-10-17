@@ -1,0 +1,13 @@
+packages:
+  - "apps/admin-portal"
+  - "apps/factory-portal"
+  - "apps/warehouse-portal"
+  - "apps/retailer-app-desktop"
+  - "apps/payload-terminal"
+  - "apps/synthetic-tester"
+  - "packages/ai-bridge"
+  - "packages/api-client"
+  - "packages/i18n"
+  - "packages/types"
+  - "packages/ui-kit"
+  - "packages/validation"

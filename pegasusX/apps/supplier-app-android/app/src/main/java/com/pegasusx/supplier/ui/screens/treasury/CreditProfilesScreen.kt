@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,15 +11,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.data.model.CreditProfileRow
 import com.pegasusx.supplier.data.model.RetailerCreditProfilePatchRequest
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import java.util.UUID
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +79,7 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
                 title = { Text("Credit profiles") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -84,7 +87,7 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
     ) { padding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading…",
+                title = stringResource(R.string.warehouse_portal_bins_text_loading),
                 body = "Retailer credit profiles",
                 modifier = Modifier.padding(padding),
             )
@@ -116,9 +119,9 @@ fun CreditProfilesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) 
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Text(row.retailerId, style = MaterialTheme.typography.labelMedium)
-                            Text("${row.status} · risk ${row.riskTier.ifBlank { "—" }}")
+                            Text(stringResource(R.string.mobile_supplier_ui_status_risk_ifblank, row.status, row.riskTier.ifBlank { "—" }))
                             Text(
-                                "Limit ${row.creditLimitMinor} · bal ${row.currentBalanceMinor} · avail ${row.availableCreditMinor}",
+                                stringResource(R.string.mobile_supplier_ui_limit_creditlimitminor_bal_currentbalanceminor_avail_availablecreditmino, row.creditLimitMinor, row.currentBalanceMinor, row.availableCreditMinor),
                             )
                             val busy = busyId == row.retailerId
                             Row(

@@ -52,6 +52,7 @@ fun SettingsSection(
     onPosClick: () -> Unit = {},
     onShiftsClick: () -> Unit = {},
     onSectionsClick: () -> Unit = {},
+    onPlanogramsClick: () -> Unit = {},
     onReportsClick: () -> Unit = {},
     onAssistClick: () -> Unit = {},
 ) {
@@ -78,6 +79,8 @@ fun SettingsSection(
             SettingsListItem(icon = Icons.Outlined.Schedule, title = "Shifts", subtitle = "Clock in and cash recon", onClick = onShiftsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.GridView, title = "Sections", subtitle = "Departments and SKU map", onClick = onSectionsClick)
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
+            SettingsListItem(icon = Icons.Outlined.Layers, title = "Planograms", subtitle = "Shelf layout & vision audits", onClick = onPlanogramsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
             SettingsListItem(icon = Icons.Outlined.Assessment, title = "Reports Pro", subtitle = "Sales and inventory digest", onClick = onReportsClick)
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))

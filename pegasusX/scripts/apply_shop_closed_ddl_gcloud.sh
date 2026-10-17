@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT="${SPANNER_PROJECT:-pegasus-503013}"
+PROJECT="${SPANNER_PROJECT:-pegasusx-prod-uz}"
 INSTANCE="${SPANNER_INSTANCE:-pegasusx-ssmr-spanner}"
 DATABASE="${SPANNER_DATABASE:-pegasusx-ssmr-db}"
 DDL="${DDL_FILE:-$ROOT/apps/backend-go/schema/migrations/20260729_shop_closed_proximity_partial.ddl}"

@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -13,12 +14,14 @@ import (
 )
 
 type Handlers struct {
-	Client     *spanner.Client
-	SupplierID func() string
+	Client *spanner.Client
+	// SupplierID returns request tenant scope (PreferTenantSupplierID). Empty → fail-closed empty list.
+	SupplierID func(ctx context.Context) string
 }
 
 type routePerfWire struct {
 	RouteID            string `json:"route_id"`
+	SupplierID         string `json:"supplier_id,omitempty"`
 	DriverID           string `json:"driver_id,omitempty"`
 	PlannedStops       int64  `json:"planned_stops,omitempty"`
 	ActualStops        int64  `json:"actual_stops,omitempty"`
@@ -34,9 +37,31 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// routePerfListStmt builds a tenant-scoped list query. Empty supplierId → WHERE FALSE (fail-closed).
+func routePerfListStmt(supplierID string, limit int) spanner.Statement {
+	if limit <= 0 {
+		limit = 50
+	}
+	sid := strings.TrimSpace(supplierID)
+	if sid == "" {
+		return spanner.Statement{
+			SQL: `SELECT RouteId, SupplierId, DriverId, PlannedStops, ActualStops, PlannedDurationSec, ActualDurationSec, ReplanCount, ComputedAt
+			      FROM RoutePerformanceAnalytics WHERE FALSE LIMIT @limit`,
+			Params: map[string]any{"limit": limit},
+		}
+	}
+	return spanner.Statement{
+		SQL: `SELECT RouteId, SupplierId, DriverId, PlannedStops, ActualStops, PlannedDurationSec, ActualDurationSec, ReplanCount, ComputedAt
+		      FROM RoutePerformanceAnalytics
+		      WHERE SupplierId = @supplierId
+		      ORDER BY ComputedAt DESC LIMIT @limit`,
+		Params: map[string]any{"supplierId": sid, "limit": limit},
+	}
+}
+
 func (h *Handlers) HandleListRoutePerformance(w http.ResponseWriter, r *http.Request) {
 	claims, ok := auth.FromContext(r.Context())
-	if !ok || claims.Role != auth.RoleAdmin {
+	if !ok || (claims.Role != auth.RoleAdmin && claims.Role != auth.RolePlatformAdmin) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 		return
 	}
@@ -50,11 +75,11 @@ func (h *Handlers) HandleListRoutePerformance(w http.ResponseWriter, r *http.Req
 			limit = n
 		}
 	}
-	iter := h.Client.Single().Query(r.Context(), spanner.Statement{
-		SQL: `SELECT RouteId, DriverId, PlannedStops, ActualStops, PlannedDurationSec, ActualDurationSec, ReplanCount, ComputedAt
-		      FROM RoutePerformanceAnalytics ORDER BY ComputedAt DESC LIMIT @limit`,
-		Params: map[string]any{"limit": limit},
-	})
+	supplierID := ""
+	if h.SupplierID != nil {
+		supplierID = h.SupplierID(r.Context())
+	}
+	iter := h.Client.Single().Query(r.Context(), routePerfListStmt(supplierID, limit))
 	defer iter.Stop()
 
 	rows := make([]routePerfWire, 0)
@@ -68,15 +93,18 @@ func (h *Handlers) HandleListRoutePerformance(w http.ResponseWriter, r *http.Req
 			return
 		}
 		var routeID string
-		var driver spanner.NullString
+		var supplier, driver spanner.NullString
 		var plannedStops, actualStops, plannedDur, actualDur, replan spanner.NullInt64
 		var computedAt time.Time
-		if err := row.Columns(&routeID, &driver, &plannedStops, &actualStops, &plannedDur, &actualDur, &replan, &computedAt); err != nil {
+		if err := row.Columns(&routeID, &supplier, &driver, &plannedStops, &actualStops, &plannedDur, &actualDur, &replan, &computedAt); err != nil {
 			continue
 		}
 		wire := routePerfWire{
 			RouteID:    routeID,
 			ComputedAt: computedAt.UTC().Format(time.RFC3339Nano),
+		}
+		if supplier.Valid {
+			wire.SupplierID = supplier.StringVal
 		}
 		if driver.Valid {
 			wire.DriverID = driver.StringVal

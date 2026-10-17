@@ -37,7 +37,7 @@ final class APIClient: @unchecked Sendable {
     /// Simulator: localhost. Physical iPad: set `PEGASUS_DEV_HOST`
     /// env var (Edit Scheme → Run → Environment Variables)
     /// to your Mac's LAN IP.
-    let baseURL: String = {
+    let bootstrapURL: String = {
         let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8180" }
@@ -45,8 +45,21 @@ final class APIClient: @unchecked Sendable {
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8180"
     }()
     #else
-    let baseURL = "https://api.pegasus.uz"
+    let bootstrapURL: String = {
+        let raw = (ProcessInfo.processInfo.environment["PEGASUSX_API_BASE_URL"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return "https://api.pegasusx.app" }
+        return raw.hasSuffix("/") ? String(raw.dropLast()) : raw
+    }()
     #endif
+
+    var baseURL: String {
+        CellApi.pinApiBaseUrl(
+            bootstrap: bootstrapURL,
+            homeCell: CellApi.homeCellFromJwt(CellTokenCache.token),
+            sessionApiUrl: MarketPackStore.sessionApiUrl
+        )
+    }
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
     var wsBaseURL: String {
@@ -153,16 +166,16 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - Supplier Manifests
     func supplierManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
-        return try await get("v1/supplier/manifests?state=\(state)")
+        return try await get("v1/payloader/manifests?state=\(state)")
     }
 
     func supplierManifestDetail(_ manifestId: String) async throws -> Manifest {
-        return try await get("v1/supplier/manifests/\(manifestId)")
+        return try await get("v1/payloader/manifests/\(manifestId)")
     }
 
     func supplierStartLoading(manifestId: String) async throws -> StatusResponse {
         try await post(
-            "v1/supplier/manifests/\(manifestId)/start-loading",
+            "v1/payloader/manifests/\(manifestId)/start-loading",
             body: [String: String](),
             idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
         )
@@ -170,7 +183,53 @@ final class APIClient: @unchecked Sendable {
 
     func supplierSealManifest(manifestId: String) async throws -> SealManifestResponse {
         let key = PayloadIdempotency.key(action: "supplier-seal-manifest", entityId: manifestId)
-        return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+        return try await post("v1/payloader/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+    }
+
+    // MARK: - Factory loading-bay (P1-18 / P2-25 parity with Expo terminal)
+    func factoryManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
+        try await get("v1/factory/manifests?state=\(state)")
+    }
+
+    func factoryManifestDetail(_ manifestId: String) async throws -> Manifest {
+        try await get("v1/factory/manifests/\(manifestId)")
+    }
+
+    func factoryStartLoading(manifestId: String) async throws -> StatusResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/start-loading",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.supplierStartLoading(manifestId: manifestId)
+        )
+    }
+
+    func factorySealManifest(manifestId: String) async throws -> SealManifestResponse {
+        try await post(
+            "v1/factory/manifests/\(manifestId)/seal",
+            body: [String: String](),
+            idempotencyKey: PayloadIdempotency.sealCompleted(manifestIds: [manifestId])
+        )
+    }
+
+    /// Payloader + factory manifests; payloader wins on id collision.
+    func listLoadingBayManifests(state: String = "DRAFT") async throws -> [Manifest] {
+        var out: [String: Manifest] = [:]
+        let payloaderManifests: [Manifest]
+        do {
+            let primary: ManifestsResponse = try await get("v1/payloader/manifests?state=\(state)")
+            payloaderManifests = primary.manifests
+        } catch {
+            payloaderManifests = (try? await supplierManifests(state: state))?.manifests ?? []
+        }
+        for m in payloaderManifests {
+            out[m.manifestId] = m.withSource("payloader")
+        }
+        if let factory = try? await factoryManifests(state: state) {
+            for m in factory.manifests where out[m.manifestId] == nil {
+                out[m.manifestId] = m.withSource("factory")
+            }
+        }
+        return Array(out.values)
     }
 
     func sealCompletedManifests(manifestIds: [String]) async throws -> SealCompletedManifestsResponse {
@@ -183,14 +242,23 @@ final class APIClient: @unchecked Sendable {
         )
     }
 
+    func sealAllManifests() async throws -> SealCompletedManifestsResponse {
+        try await post(
+            "v1/payloader/manifests/seal-all",
+            body: EmptyBody(),
+            idempotencyKey: PayloadIdempotency.key(action: "seal-all", entityId: "payloader")
+        )
+    }
+
     func loadingManifests() async throws -> ManifestsResponse {
-        try await supplierManifests(state: "LOADING")
+        let manifests = try await listLoadingBayManifests(state: "LOADING")
+        return ManifestsResponse(manifests: manifests)
     }
 
     func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
         let payload = ["order_id": orderId]
         return try await post(
-            "v1/supplier/manifests/\(manifestId)/inject-order",
+            "v1/payloader/manifests/\(manifestId)/inject-order",
             body: payload,
             idempotencyKey: PayloadIdempotency.supplierInjectOrder(manifestId: manifestId, orderId: orderId)
         )
@@ -199,10 +267,10 @@ final class APIClient: @unchecked Sendable {
     // MARK: - Per-order seal / exception
     /// Backend wants {order_id, terminal_id, manifest_cleared}. Per Expo,
     /// terminal_id is the active vehicle/truck id.
-    func sealOrder(orderId: String, terminalId: String) async throws -> SealOrderResponse {
+    func sealOrder(manifestId: String, orderId: String, terminalId: String) async throws -> SealOrderResponse {
         try await post(
             "v1/payload/seal",
-            body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true),
+            body: SealOrderRequest(manifestId: manifestId, orderId: orderId, terminalId: terminalId, manifestCleared: true),
             headers: ["Idempotency-Key": PayloadIdempotency.orderSeal(orderId: orderId)]
         )
     }
@@ -331,11 +399,11 @@ final class APIClient: @unchecked Sendable {
 
     // MARK: - FCM
     func registerDeviceToken(_ token: String) async throws -> StatusResponse {
-        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "IOS"))
+        try await post("v1/user/device-token", body: DeviceTokenRequest(token: token, platform: "ios"))
     }
     func unregisterDeviceToken(_ token: String) async throws -> StatusResponse {
         var req = try buildRequest(path: "v1/user/device-token", method: "DELETE")
-        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "IOS"))
+        req.httpBody = try encoder.encode(DeviceTokenRequest(token: token, platform: "ios"))
         return try await execute(req)
     }
 

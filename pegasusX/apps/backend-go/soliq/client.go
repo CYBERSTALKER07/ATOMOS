@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
 )
 
 type SoliqClient interface {
@@ -39,11 +42,13 @@ type SoliqConfig struct {
 	APIKey     string
 	Timeout    time.Duration
 	TIN        string // taxpayer identification number
+	Breaker    *circuit.Breaker
 }
 
 type client struct {
 	cfg        SoliqConfig
 	httpClient *http.Client
+	breaker    *circuit.Breaker
 }
 
 func NewClient(cfg SoliqConfig) SoliqClient {
@@ -55,7 +60,14 @@ func NewClient(cfg SoliqConfig) SoliqClient {
 		httpClient: &http.Client{
 			Timeout: cfg.Timeout,
 		},
+		breaker: cfg.Breaker,
 	}
+}
+
+// NewClientWithBreaker returns a SoliqClient equipped with an outbound circuit breaker.
+func NewClientWithBreaker(cfg SoliqConfig, breaker *circuit.Breaker) SoliqClient {
+	cfg.Breaker = breaker
+	return NewClient(cfg)
 }
 
 type soliqAPIResponse struct {
@@ -77,6 +89,37 @@ type soliqStatusResponse struct {
 }
 
 func (c *client) Submit(ctx context.Context, signedPayload []byte, idempotencyKey string) (*SoliqResponse, error) {
+	if c.breaker != nil {
+		var out *SoliqResponse
+		err := c.breaker.Do(ctx, func(ctx context.Context) error {
+			resp, err := c.doSubmit(ctx, signedPayload, idempotencyKey)
+			if err != nil {
+				return err
+			}
+			if resp != nil && resp.StatusCode >= 500 {
+				return fmt.Errorf("soliq upstream server error: HTTP %d", resp.StatusCode)
+			}
+			out = resp
+			return nil
+		})
+		if err != nil {
+			if errors.Is(err, circuit.ErrUpstreamUnavailable) {
+				return &SoliqResponse{
+					Success:      false,
+					StatusCode:   http.StatusServiceUnavailable,
+					ErrorCode:    "SOLIQ_CIRCUIT_OPEN",
+					ErrorMessage: "Soliq tax authority gateway temporarily unavailable",
+					Permanent:    false,
+				}, err
+			}
+			return out, err
+		}
+		return out, nil
+	}
+	return c.doSubmit(ctx, signedPayload, idempotencyKey)
+}
+
+func (c *client) doSubmit(ctx context.Context, signedPayload []byte, idempotencyKey string) (*SoliqResponse, error) {
 	url := fmt.Sprintf("%s/v1/ehf/submit", c.cfg.BaseURL)
 	if c.cfg.Operator == "didox" {
 		url = fmt.Sprintf("%s/api/v1/documents", c.cfg.BaseURL)
@@ -118,17 +161,17 @@ func (c *client) Submit(ctx context.Context, signedPayload []byte, idempotencyKe
 
 	if res.StatusCode >= 200 && res.StatusCode < 300 {
 		out.Success = true
-		
+
 		var parsed soliqAPIResponse
 		if err := json.Unmarshal(body, &parsed); err == nil {
 			out.EhfID = parsed.Data.EhfID
 		}
-		
+
 		return out, nil
 	}
 
 	out.Success = false
-	
+
 	// Determine if permanent based on status code
 	if res.StatusCode == http.StatusBadRequest || res.StatusCode == http.StatusUnprocessableEntity {
 		out.Permanent = true
@@ -150,6 +193,22 @@ func (c *client) Submit(ctx context.Context, signedPayload []byte, idempotencyKe
 }
 
 func (c *client) CheckStatus(ctx context.Context, ehfId string) (*DocumentStatus, error) {
+	if c.breaker != nil {
+		var out *DocumentStatus
+		err := c.breaker.Do(ctx, func(ctx context.Context) error {
+			ds, err := c.doCheckStatus(ctx, ehfId)
+			if err != nil {
+				return err
+			}
+			out = ds
+			return nil
+		})
+		return out, err
+	}
+	return c.doCheckStatus(ctx, ehfId)
+}
+
+func (c *client) doCheckStatus(ctx context.Context, ehfId string) (*DocumentStatus, error) {
 	url := fmt.Sprintf("%s/v1/ehf/%s/status", c.cfg.BaseURL, ehfId)
 	if c.cfg.Operator == "didox" {
 		url = fmt.Sprintf("%s/api/v1/documents/%s/status", c.cfg.BaseURL, ehfId)

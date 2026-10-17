@@ -21,19 +21,19 @@ struct EditOrgMemberSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
+                TextField("retailer_desktop.pos.text.name", text: $name)
                 Picker("Role", selection: $role) {
-                    Text("Warehouse admin").tag("WAREHOUSE_ADMIN")
-                    Text("Factory admin").tag("FACTORY_ADMIN")
-                    Text("Payload staff").tag("PAYLOAD")
-                    Text("Supplier operator").tag("ADMIN")
+                    Text("supplier_portal.residual.text.warehouse_admin").tag("WAREHOUSE_ADMIN")
+                    Text("supplier_portal.residual.text.factory_admin").tag("FACTORY_ADMIN")
+                    Text("supplier_portal.residual.text.payload_staff").tag("PAYLOAD")
+                    Text("supplier_portal.residual.text.supplier_operator").tag("ADMIN")
                 }
                 Toggle("Active", isOn: $isActive)
                 if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("Edit member")
+            .navigationTitle("mobile_supplier.ui.edit_member")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("common.action.cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(busy ? "…" : "Save") { Task { await save() } }
                         .disabled(busy || name.isEmpty)

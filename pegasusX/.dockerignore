@@ -1,5 +1,7 @@
 .git
 .github
+**/.git
+**/.DS_Store
 **/.terraform
 **/node_modules
 **/.next
@@ -7,6 +9,17 @@
 **/build
 **/target
 **/.derivedData
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.venv
+**/venv
+**/.coverage
+**/coverage
+**/.turbo
+**/.cache
+**/*.log
 artifacts
 docs
 context
@@ -24,3 +37,5 @@ apps/payload-app-android
 *.md
 .env*
 !.env.example
+!.env.sandbox.example
+!.env.ssmr.example

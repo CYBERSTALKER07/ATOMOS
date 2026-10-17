@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import React from 'react';
 import Link from 'next/link';
 import type { SupplierSupplyLaneRow } from '@pegasusx/types';
@@ -7,6 +10,7 @@ interface SupplyLanesListProps {
 }
 
 export function SupplyLanesList({ lanes }: SupplyLanesListProps) {
+  const t = usePortalT();
   if (lanes.length === 0) return null;
 
   return (
@@ -46,22 +50,22 @@ export function SupplyLanesList({ lanes }: SupplyLanesListProps) {
 
               <div className="grid grid-cols-3 gap-4 py-4 border-t border-[var(--color-md-outline-variant)]">
                 <div>
-                  <div className="text-sm text-[var(--color-md-outline)] mb-1">Active Drivers</div>
+                  <div className="text-sm text-[var(--color-md-outline)] mb-1">{t("supplier_portal.supply_lanes.supply_lanes_list.text.active_drivers")}</div>
                   <div className="md-typescale-title-medium font-medium">{lane.drivers}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-[var(--color-md-outline)] mb-1">Orders Today</div>
+                  <div className="text-sm text-[var(--color-md-outline)] mb-1">{t("supplier_portal.supply_lanes.supply_lanes_list.text.orders_today")}</div>
                   <div className="md-typescale-title-medium font-medium">{lane.orders_today}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-[var(--color-md-outline)] mb-1">Capacity limit</div>
+                  <div className="text-sm text-[var(--color-md-outline)] mb-1">{t("supplier_portal.supply_lanes.supply_lanes_list.text.capacity_limit")}</div>
                   <div className="md-typescale-title-medium font-medium">{lane.capacity}</div>
                 </div>
               </div>
 
               <div className="mt-2">
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-[var(--color-md-outline)]">Lane Utilization</span>
+                  <span className="text-[var(--color-md-outline)]">{t("supplier_portal.supply_lanes.supply_lanes_list.text.lane_utilization")}</span>
                   <span
                     className={`font-medium ${
                       lane.utilization_pct > 85 ? "text-[var(--color-md-error)]" : "text-[var(--color-md-on-surface)]"

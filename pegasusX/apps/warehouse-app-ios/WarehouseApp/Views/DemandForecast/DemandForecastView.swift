@@ -13,15 +13,15 @@ struct DemandForecastView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("View", selection: $selectedSegment) {
-                    Text("Products").tag(0)
-                    Text("Series").tag(1)
+                    Text("portal.nav.products").tag(0)
+                    Text("mobile_warehouse.ui.series").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding()
 
                 forecastBody
             }
-            .navigationTitle("Demand Forecast")
+            .navigationTitle("portal.nav.demand_forecast")
             .toolbar { forecastToolbar }
             .onChange(of: horizon) { _, _ in load() }
             .task { load() }
@@ -33,14 +33,14 @@ struct DemandForecastView: View {
     private var forecastToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Picker("Days", selection: $horizon) {
-                Text("7d").tag(7)
-                Text("14d").tag(14)
-                Text("30d").tag(30)
+                Text("mobile_warehouse.ui.7d").tag(7)
+                Text("mobile_warehouse.ui.14d").tag(14)
+                Text("mobile_warehouse.ui.30d").tag(30)
             }
             .pickerStyle(.menu)
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Refresh", systemImage: "arrow.clockwise") { load() }
+            Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
         }
     }
 
@@ -68,12 +68,12 @@ struct DemandForecastView: View {
             ContentUnavailableView(
                 "No product recommendations",
                 systemImage: "cube.box",
-                description: Text("Try another horizon or switch to Series for daily projection.")
+                description: Text("mobile_warehouse.ui.try_another_horizon_or_switch_to_series_for_daily_projection")
             )
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                    Text("AI-powered stock recommendations from 4 data sources")
+                    Text("mobile_warehouse.ui.ai_powered_stock_recommendations_from_4_data_sources")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -100,7 +100,7 @@ struct DemandForecastView: View {
             ContentUnavailableView(
                 "No series data",
                 systemImage: "chart.line.uptrend.xyaxis",
-                description: Text("No daily demand projection for this window.")
+                description: Text("mobile_warehouse.ui.no_daily_demand_projection_for_this_window")
             )
         } else {
             ResponsiveGridContentWrapper {
@@ -108,9 +108,9 @@ struct DemandForecastView: View {
                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                         Text(day.date)
                             .font(.headline)
-                        Text("Projected units: \(day.projectedUnits)")
+                        Text(L10n.format("mobile_warehouse.ui.projected_units_projectedunits", "\(day.projectedUnits)"))
                             .font(.subheadline)
-                        Text("Committed: \(day.committedUnits) · Pending: \(day.pendingConfirmationUnits)")
+                        Text(L10n.format("mobile_warehouse.ui.committed_committedunits_pending_pendingconfirmationunits", "\(day.committedUnits)", "\(day.pendingConfirmationUnits)"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

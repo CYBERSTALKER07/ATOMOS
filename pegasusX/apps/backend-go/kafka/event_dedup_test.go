@@ -5,6 +5,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	segmentkafka "github.com/segmentio/kafka-go"
 )
 
 func TestInMemoryEventDedupDropsDuplicate(t *testing.T) {
@@ -78,3 +80,104 @@ func TestConcurrentInMemoryEventDedup(t *testing.T) {
 		t.Fatalf("allowed=%d want 1", allowed)
 	}
 }
+
+func TestEnvelopeFromMessage_HeaderFallback(t *testing.T) {
+	t.Parallel()
+
+	// 1. Envelope with type in headers only
+	msg1 := segmentkafka.Message{
+		Value: []byte(`{"order_id": "ord-123", "amount": 500}`),
+		Headers: []segmentkafka.Header{
+			{Key: "type", Value: []byte("ORDER_CREATED")},
+			{Key: "trace_id", Value: []byte("trace-abc")},
+			{Key: "timestamp", Value: []byte("2026-10-09T00:00:00Z")},
+		},
+	}
+	env1, err := EnvelopeFromMessage(msg1)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if env1.Type != "ORDER_CREATED" {
+		t.Fatalf("expected Type 'ORDER_CREATED', got %q", env1.Type)
+	}
+	if env1.TraceID != "trace-abc" {
+		t.Fatalf("expected TraceID 'trace-abc', got %q", env1.TraceID)
+	}
+	if env1.Timestamp != "2026-10-09T00:00:00Z" {
+		t.Fatalf("expected Timestamp '2026-10-09T00:00:00Z', got %q", env1.Timestamp)
+	}
+
+	// 2. Envelope with type in body takes precedence
+	msg2 := segmentkafka.Message{
+		Value: []byte(`{"type": "ORDER_COMPLETED", "trace_id": "trace-body", "v": 2}`),
+		Headers: []segmentkafka.Header{
+			{Key: "type", Value: []byte("ORDER_CREATED")},
+			{Key: "trace_id", Value: []byte("trace-header")},
+		},
+	}
+	env2, err := EnvelopeFromMessage(msg2)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if env2.Type != "ORDER_COMPLETED" {
+		t.Fatalf("expected body Type 'ORDER_COMPLETED', got %q", env2.Type)
+	}
+	if env2.TraceID != "trace-body" {
+		t.Fatalf("expected body TraceID 'trace-body', got %q", env2.TraceID)
+	}
+	if env2.Version != 2 {
+		t.Fatalf("expected Version 2, got %d", env2.Version)
+	}
+}
+
+func TestWithEventDedup_BindsTraceAndHandlesPayloadEventID(t *testing.T) {
+	t.Parallel()
+
+	store := NewInMemoryEventDedup(time.Minute)
+	var capturedTrace string
+	var callCount int
+
+	handler := func(ctx context.Context, msg segmentkafka.Message) error {
+		callCount++
+		capturedTrace = TraceIDFromMessage(msg)
+		return nil
+	}
+
+	wrapped := WithEventDedup(store, "test-group", handler)
+
+	// First call with payload event_id and header trace_id
+	msg := segmentkafka.Message{
+		Topic:     "orders",
+		Partition: 1,
+		Offset:    100,
+		Value:     []byte(`{"event_id": "evt-uuid-999", "amount": 100}`),
+		Headers: []segmentkafka.Header{
+			{Key: "trace_id", Value: []byte("trace-test-123")},
+		},
+	}
+
+	if err := wrapped(context.Background(), msg); err != nil {
+		t.Fatalf("wrapped err: %v", err)
+	}
+	if callCount != 1 {
+		t.Fatalf("expected 1 call, got %d", callCount)
+	}
+	if capturedTrace != "trace-test-123" {
+		t.Fatalf("expected trace-test-123, got %q", capturedTrace)
+	}
+
+	// Second call with same event_id even at different offset should be deduplicated!
+	dupMsg := segmentkafka.Message{
+		Topic:     "orders",
+		Partition: 1,
+		Offset:    101, // different offset, but same logical event_id
+		Value:     []byte(`{"event_id": "evt-uuid-999", "amount": 100}`),
+	}
+	if err := wrapped(context.Background(), dupMsg); err != nil {
+		t.Fatalf("duplicate wrapped err: %v", err)
+	}
+	if callCount != 1 {
+		t.Fatalf("duplicate should be suppressed! calls=%d", callCount)
+	}
+}
+

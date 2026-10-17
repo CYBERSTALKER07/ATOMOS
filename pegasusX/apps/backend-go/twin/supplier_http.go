@@ -256,7 +256,7 @@ func classifyLateness(stops []StopTwin, now time.Time) string {
 }
 
 func (r *SpannerRepository) ListActiveRouteTwinsForSupplier(ctx context.Context, supplierID, zoneH3, driverID string) ([]RouteTwinView, error) {
-	sql := `SELECT rt.RouteId, rt.DriverId, rt.Status, rt.CurrentLat, rt.CurrentLng, rt.CurrentH3,
+	sql := `SELECT rt.RouteId, rt.SupplierId, rt.DriverId, rt.Status, rt.CurrentLat, rt.CurrentLng, rt.CurrentH3,
 	               rt.LocationAt, rt.RemainingStops, rt.CapacityUsedWeight, rt.CapacityUsedVolume,
 	               rt.LastEventAt, rt.UpdatedAt
 	        FROM RouteTwins rt

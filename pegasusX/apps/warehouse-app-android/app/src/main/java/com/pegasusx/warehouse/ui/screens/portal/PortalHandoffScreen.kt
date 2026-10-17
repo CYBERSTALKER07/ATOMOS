@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.portal
 
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
 import com.pegasusx.warehouse.ui.portal.WarehousePortalLinks
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,11 +44,11 @@ fun PortalHandoffScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(feature.title) },
+                title = { Text(stringResource(feature.titleRes)) },
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
@@ -68,7 +71,7 @@ fun PortalHandoffScreen(
             )
             Spacer(Modifier.height(PegasusSpacing.lg))
             Text(
-                text = "Manage on web portal",
+                text = stringResource(R.string.mobile_warehouse_ui_manage_on_web_portal),
                 style = MaterialTheme.typography.titleLarge,
                 textAlign = TextAlign.Center,
             )

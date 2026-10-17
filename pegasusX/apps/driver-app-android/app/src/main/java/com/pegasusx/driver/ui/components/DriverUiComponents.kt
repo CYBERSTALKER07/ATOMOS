@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import java.util.Locale
+import com.pegasusx.driver.R
 
 object DriverSpacing {
     val xs = PegasusSpacing.s4
@@ -298,7 +301,7 @@ fun DriverTodayKpiCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Today",
+                    text = stringResource(R.string.portal_page_dashboard_range_today),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -313,21 +316,21 @@ fun DriverTodayKpiCard(
             Spacer(Modifier.size(14.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 DriverMetricTile(
-                    label = "Pending",
+                    label = stringResource(R.string.supplier_portal_residual_text_pending),
                     value = "$pending",
                     icon = pendingIcon,
                     modifier = Modifier.weight(1f),
                 )
                 DriverKpiDivider()
                 DriverMetricTile(
-                    label = "Done",
+                    label = stringResource(R.string.warehouse_portal_kpi_stat_card_text_done),
                     value = "$completed",
                     icon = completedIcon,
                     modifier = Modifier.weight(1f),
                 )
                 DriverKpiDivider()
                 DriverMetricTile(
-                    label = "Revenue",
+                    label = stringResource(R.string.warehouse_portal_analytics_text_revenue),
                     value = revenueLabel,
                     icon = revenueIcon,
                     modifier = Modifier.weight(1f),

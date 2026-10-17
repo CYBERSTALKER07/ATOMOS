@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { VehicleShipmentCard, PartnerFilterMetric } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
@@ -13,6 +14,7 @@ import { CargoPhotoCarousel } from "../../components/dispatch/CargoPhotoCarousel
 const api = createSupplierApi();
 
 export default function FleetTrackingPage() {
+  const t = usePortalT();
   const [partnerFilters, setPartnerFilters] = useState<PartnerFilterMetric[]>([]);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
@@ -52,7 +54,7 @@ export default function FleetTrackingPage() {
       setPartnerFilters([]);
       setSelectedShipment(null);
       setCounts({ total: 0, active: 0, inactive: 0 });
-      setError(err instanceof Error ? err.message : "Failed to load fleet tracking");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_fleet_tracking"));
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ export default function FleetTrackingPage() {
         />
 
         {loading && shipments.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-8">Loading live fleet…</p>
+          <p className="text-sm text-gray-500 mt-8">{t("supplier_portal.tracking.text.loading_live_fleet")}</p>
         ) : error && shipments.length === 0 ? (
           <p className="text-sm text-red-400 mt-8">{error}</p>
         ) : filteredShipments.length === 0 ? (
@@ -160,7 +162,7 @@ export default function FleetTrackingPage() {
         </div>
 
         <div className="pt-4 border-t border-gray-800 text-xs text-gray-500 flex justify-between items-center">
-          <span>Live fleet from dispatch API</span>
+          <span>{t("supplier_portal.tracking.text.live_fleet_from_dispatch_api")}</span>
           <button type="button" className="text-gray-400 hover:text-white" onClick={() => void load()}>
             Refresh
           </button>

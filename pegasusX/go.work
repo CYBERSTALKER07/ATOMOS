@@ -7,4 +7,5 @@ use (
 	./packages/config
 	./packages/handoff
 	./packages/optimizer-contract
+	./sdk/partner/go
 )

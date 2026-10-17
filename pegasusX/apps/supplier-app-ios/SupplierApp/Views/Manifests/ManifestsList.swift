@@ -11,10 +11,10 @@ struct ManifestsList: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(row.manifestId).font(.headline)
-                        Text("\(row.status) · \(row.state)").font(.subheadline)
-                        Text("\(row.ordersCount) orders · \(row.driverName.isEmpty ? (row.driverId ?? "—") : row.driverName)")
+                        Text(L10n.format("mobile_supplier.ui.status_state", "\(row.status)", "\(row.state)")).font(.subheadline)
+                        Text(L10n.format("mobile_supplier.ui.orderscount_orders_drivername", "\(row.ordersCount)", "\(row.driverName.isEmpty ? (row.driverId ?? "—") : row.driverName)"))
                             .font(.caption)
-                        if let plate = row.vehiclePlate { Text("Vehicle \(plate)").font(.caption) }
+                        if let plate = row.vehiclePlate { Text(L10n.format("mobile_supplier.ui.vehicle_plate_2", "\(plate)")).font(.caption) }
                     }
                 }
             }

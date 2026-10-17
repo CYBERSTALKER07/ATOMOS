@@ -1,4 +1,7 @@
-import { ApiClient, ApiError } from "@pegasusx/api-client";
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
+import { ApiClient, ApiError } from "@pegasusx/api-core";
 import type {
   HomeNodeType,
   Role,

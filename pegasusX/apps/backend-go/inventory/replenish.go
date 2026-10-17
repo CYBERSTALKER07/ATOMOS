@@ -8,14 +8,23 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 )
 
 // ReplenishmentBulkProductID is the synthetic SKU credited when factory transfers arrive.
 const ReplenishmentBulkProductID = "replenishment-bulk-vu"
 
+// ErrLotsEnabledDirectV2 is returned when bag-of-SKU V2 credit is attempted while
+// WMS_LOTS_ENABLED — use stocklots.CreditViaDefaultPutawayInTxn / PutawayInTxn instead.
+var ErrLotsEnabledDirectV2 = fmt.Errorf("inventory credit: WMS_LOTS_ENABLED — use putaway/rollup, not direct SupplierInventoryV2")
+
 // CreditSupplierInventoryV2InTxn increments on-hand stock for a warehouse SKU inside an active txn.
+// Fail-closed when lot inventory is enabled (V2 is roll-up only).
 func CreditSupplierInventoryV2InTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID, productID string, qty int64) error {
+	if stocklots.LotsEnabled() {
+		return ErrLotsEnabledDirectV2
+	}
 	if qty <= 0 {
 		return nil
 	}

@@ -37,11 +37,13 @@ final class TokenStore {
             isRegistered = registered == "1"
         }
         billingGateDismissed = readKeychain(account: "billing_gate_dismissed") == "1"
+        CellTokenCache.token = token ?? ""
     }
 
     func store(auth: LoginResponse) {
         guard let token = auth.token, !token.isEmpty else { return }
         self.token = token
+        CellTokenCache.token = token
         refreshToken = auth.refreshToken
         supplierId = auth.supplierId
         isConfigured = auth.isConfigured
@@ -92,6 +94,8 @@ final class TokenStore {
     }
 
     func clear() {
+        CellTokenCache.token = ""
+        MarketPackStore.clear()
         token = nil
         refreshToken = nil
         supplierId = nil

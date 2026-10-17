@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.setup
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +36,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.GeocodeLocationSupport
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +51,7 @@ fun LocationSetupScreen(
     var loading by remember { mutableStateOf(hasAssignedWarehouse) }
     var submitting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var packCountry by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(hasAssignedWarehouse) {
@@ -58,6 +62,7 @@ fun LocationSetupScreen(
                 val body = resp.body()
                 if (resp.isSuccessful && body != null) {
                     warehouseName = body.name
+                    packCountry = body.packCountryCode.ifBlank { body.countryCode }
                     location = AddressLocationValue(
                         address = body.address,
                         lat = body.lat,
@@ -177,11 +182,20 @@ fun LocationSetupScreen(
             } else if (warehouseName.isNotBlank()) {
                 Text(warehouseName, style = MaterialTheme.typography.titleMedium)
             }
+            if (packCountry.isNotBlank()) {
+                OutlinedTextField(
+                    value = packCountry,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Pack country") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             AddressLocationField(
                 geocodeApi = geocodeApi,
                 value = location,
                 onValueChange = { location = it },
-                label = "Depot address",
+                label = stringResource(R.string.factory_portal_settings_location_text_depot_address),
             )
             if (!error.isNullOrBlank()) {
                 Text(error!!, color = MaterialTheme.colorScheme.error)

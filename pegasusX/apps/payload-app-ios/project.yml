@@ -43,7 +43,7 @@ targets:
 
           mkdir -p "$SRCROOT/payload-app-ios/Generated"
           cd "$BACKEND_DIR"
-          go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
+          go run ./cmd/gen-contracts -source events -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true -strict=true
           quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --out "$OUTPUT_PATH"
         outputFiles:
           - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
@@ -56,22 +56,32 @@ targets:
           - EANBarcodeScannerView.swift
       - path: ../../packages/mobile-ios-design
     resources:
+      # pegasusx-i18n-generated
+      - path: ../../packages/i18n/generated/ios/en.lproj
+      - path: ../../packages/i18n/generated/ios/ru.lproj
+      - path: ../../packages/i18n/generated/ios/uz.lproj
       - path: payload-app-ios/Assets.xcassets
       - path: payload-app-ios/GoogleService-Info.plist
+      - path: payload-app-ios/PrivacyInfo.xcprivacy
     info:
       path: payload-app-ios/Info.plist
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        UIBackgroundModes:
+          - remote-notification
     dependencies:
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist
+        CODE_SIGN_ENTITLEMENTS: payload-app-ios/PayloadApp.entitlements
   payload-app-iosTests:
     type: bundle.unit-test
     platform: iOS

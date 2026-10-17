@@ -20,9 +20,9 @@ struct LoginView: View {
                     Spacer(minLength: proxy.size.height * 0.08)
 
                     VStack(spacing: SupplierTheme.spacingSM) {
-                        Text("Pegasus Supplier")
+                        Text("mobile_supplier.ui.pegasus_supplier")
                             .font(horizontalSizeClass == .regular ? .largeTitle.bold() : .title.bold())
-                        Text("Fleet, orders, and treasury for your operation")
+                        Text("mobile_supplier.ui.fleet_orders_and_treasury_for_your_operation")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -30,7 +30,7 @@ struct LoginView: View {
                     .padding(.horizontal)
 
                     VStack(spacing: SupplierTheme.spacingLG) {
-                        TextField("Phone", text: $phone)
+                        TextField("common.field.phone", text: $phone)
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
                             .textFieldStyle(.roundedBorder)
@@ -53,7 +53,7 @@ struct LoginView: View {
                             if loading {
                                 ProgressView().tint(.white)
                             } else {
-                                Text("Sign In")
+                                Text("common.action.sign_in")
                             }
                         }
                         .frame(maxWidth: formMaxWidth, minHeight: 48)
@@ -64,7 +64,7 @@ struct LoginView: View {
                     NavigationLink {
                         RegisterView()
                     } label: {
-                        Text("Create supplier account")
+                        Text("mobile_supplier.ui.create_supplier_account")
                             .frame(maxWidth: formMaxWidth, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
@@ -91,6 +91,7 @@ struct LoginView: View {
                     return
                 }
                 tokenStore.store(auth: auth)
+                Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
             } catch {
                 self.error = error.localizedDescription
             }

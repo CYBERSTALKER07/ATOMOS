@@ -205,6 +205,7 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 			"TopicName":     events.TopicMain,
 			"Payload":       string(evJSON),
 			"CreatedAt":     spanner.CommitTimestamp,
+			"SupplierId":    sid,
 		})
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
@@ -213,6 +214,18 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 		s.log.ErrorContext(r.Context(), "rescue propose failed", "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "rescue_proposal_failed"})
 		return
+	}
+
+	if s.driverHub != nil && req.RescueDriverID != "" {
+		wsPayload, _ := json.Marshal(map[string]any{
+			"type":             "RESCUE_PROPOSED",
+			"rescue_id":        req.RescueID,
+			"broken_driver_id": req.BrokenDriverID,
+			"rescue_driver_id": req.RescueDriverID,
+			"warehouse_id":     whID,
+			"supplier_id":      sid,
+		})
+		s.driverHub.Broadcast(r.Context(), "driver:"+req.RescueDriverID, wsPayload)
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

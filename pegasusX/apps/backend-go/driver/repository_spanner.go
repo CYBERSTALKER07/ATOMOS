@@ -2,13 +2,15 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 // Repository is the persistence seam for the driver module.
@@ -20,7 +22,7 @@ type Repository interface {
 	ListDrivers(ctx context.Context, supplierID string, limit, offset int) ([]Driver, error)
 	CreateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
 	GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error)
-	UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error
+	UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error
 	ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error)
 	FindSiblingDriversForOrder(ctx context.Context, orderID string) ([]string, error)
 }
@@ -92,24 +94,20 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		return fmt.Errorf("spanner driver repository: nil client")
 	}
 
-	if mutate != nil {
-		if err := mutate(); err != nil {
-			return err
-		}
-	}
-
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
-	}
-
-	if len(buf.events) == 0 {
-		return nil
-	}
-
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if mutate != nil {
+			if err := mutate(); err != nil {
+				return err
+			}
+		}
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
 		var mutations []*spanner.Mutation
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
@@ -133,6 +131,9 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
+		if len(mutations) == 0 {
+			return nil
+		}
 		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
@@ -145,12 +146,6 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd AvailabilityUpdate, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
 		return fmt.Errorf("spanner driver repository: nil client")
-	}
-	buf := &spannerTxnBuffer{}
-	if emit != nil {
-		if err := emit(buf); err != nil {
-			return err
-		}
 	}
 	row := map[string]any{
 		"DriverId":          upd.DriverID,
@@ -168,11 +163,92 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 		}
 	}
 	_, err := r.client.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		mutations := []*spanner.Mutation{spanner.UpdateMap("Drivers", row)}
+
+		// Durable Shift State Machine Tracking
+		if upd.OnShift {
+			// Check if driver already has an ACTIVE shift
+			activeStmt := spanner.Statement{
+				SQL:    `SELECT ShiftId FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
+				Params: map[string]any{"id": upd.DriverID},
+			}
+			iter := txn.Query(txnCtx, activeStmt)
+			_, sErr := iter.Next()
+			iter.Stop()
+			if errors.Is(sErr, iterator.Done) {
+				var supplierID, warehouseID, vehicleID string
+				driverStmt := spanner.Statement{
+					SQL:    `SELECT SupplierId, HomeNodeId, VehicleId FROM Drivers WHERE DriverId = @id`,
+					Params: map[string]any{"id": upd.DriverID},
+				}
+				dIter := txn.Query(txnCtx, driverStmt)
+				if dRow, dErr := dIter.Next(); dErr == nil {
+					var sup, wh, veh spanner.NullString
+					_ = dRow.Columns(&sup, &wh, &veh)
+					supplierID = sup.StringVal
+					warehouseID = wh.StringVal
+					vehicleID = veh.StringVal
+				}
+				dIter.Stop()
+
+				shiftID := uuid.NewString()
+				mutations = append(mutations, spanner.InsertMap("DriverShifts", map[string]any{
+					"DriverId":      upd.DriverID,
+					"ShiftId":       shiftID,
+					"SupplierId":    supplierID,
+					"WarehouseId":   warehouseID,
+					"VehicleId":     vehicleID,
+					"Status":        "ACTIVE",
+					"StartAt":       spanner.CommitTimestamp,
+					"DurationHours": 0.0,
+					"CreatedAt":     spanner.CommitTimestamp,
+					"UpdatedAt":     spanner.CommitTimestamp,
+				}))
+			}
+		} else {
+			// Find active shift and close it
+			activeStmt := spanner.Statement{
+				SQL:    `SELECT ShiftId, StartAt FROM DriverShifts WHERE DriverId = @id AND Status = 'ACTIVE' LIMIT 1`,
+				Params: map[string]any{"id": upd.DriverID},
+			}
+			iter := txn.Query(txnCtx, activeStmt)
+			sRow, sErr := iter.Next()
+			if sErr == nil {
+				var shiftID string
+				var startAt time.Time
+				if err := sRow.Columns(&shiftID, &startAt); err == nil {
+					durationHours := time.Since(startAt).Hours()
+					if durationHours < 0 {
+						durationHours = 0
+					}
+					mutations = append(mutations, spanner.UpdateMap("DriverShifts", map[string]any{
+						"DriverId":      upd.DriverID,
+						"ShiftId":       shiftID,
+						"Status":        "COMPLETED",
+						"EndAt":         spanner.CommitTimestamp,
+						"DurationHours": durationHours,
+						"Notes":         upd.Note,
+						"UpdatedAt":     spanner.CommitTimestamp,
+					}))
+				}
+			}
+			iter.Stop()
+		}
+
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
 			if createdAt.IsZero() {
 				createdAt = time.Now().UTC()
+			}
+			supID := e.SupplierID
+			if strings.TrimSpace(supID) == "" {
+				supID = outbox.ResolveSupplierID("", []byte(e.Payload))
 			}
 			outboxRow := map[string]any{
 				"EventId":       e.EventID,
@@ -180,6 +256,7 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 				"AggregateId":   e.AggregateID,
 				"TopicName":     e.TopicName,
 				"Payload":       e.Payload,
+				"SupplierId":    supID,
 				"CreatedAt":     createdAt,
 				"PublishedAt":   nil,
 			}
@@ -248,7 +325,7 @@ func (r *inMemoryRepository) CreateVehicle(ctx context.Context, v Vehicle, emit 
 func (r *inMemoryRepository) GetVehicle(ctx context.Context, vehicleID string) (Vehicle, error) {
 	return Vehicle{}, nil
 }
-func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, v Vehicle, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryRepository) UpdateVehicle(ctx context.Context, vehicleID string, updates map[string]any, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 func (r *inMemoryRepository) ListVehicles(ctx context.Context, supplierID string, limit, offset int) ([]Vehicle, error) {

@@ -9,6 +9,7 @@ import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasusx.driver.data.remote.DriverApi
 import com.pegasusx.driver.data.remote.DriverWebSocket
+import com.pegasusx.driver.data.remote.TelemetrySocket
 import com.pegasusx.driver.ui.navigation.DriverNavigation
 import com.pegasusx.driver.ui.theme.PegasusDriverTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject lateinit var driverApi: DriverApi
     @Inject lateinit var driverWebSocket: DriverWebSocket
+    @Inject lateinit var telemetrySocket: TelemetrySocket
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +33,7 @@ class MainActivity : ComponentActivity() {
                 DriverNavigation(
                     api = driverApi,
                     driverWebSocket = driverWebSocket,
+                    telemetrySocket = telemetrySocket,
                     windowSizeClass = windowSizeClass,
                 )
             }

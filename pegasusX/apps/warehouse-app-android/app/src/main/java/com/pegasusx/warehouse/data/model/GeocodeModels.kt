@@ -53,6 +53,9 @@ data class WarehouseLocationResponse(
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("updated_at") val updatedAt: String = "",
+    @SerialName("country_code") val countryCode: String = "",
+    @SerialName("pack_country_code") val packCountryCode: String = "",
+    @SerialName("currency_code") val currencyCode: String = "",
 )
 
 @Serializable

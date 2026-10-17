@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -14,6 +15,8 @@ import (
 type Service struct {
 	spanner          *spanner.Client
 	afterSensingHook func(context.Context) error
+	// SupplierID resolves request tenant for HTTP list/create (PreferTenantSupplierID).
+	SupplierID func(ctx context.Context) string
 }
 
 func NewService(spannerClient *spanner.Client) *Service {
@@ -22,24 +25,44 @@ func NewService(spannerClient *spanner.Client) *Service {
 	}
 }
 
+// SetSupplierID wires tenant resolution for HTTP demand surfaces.
+func (s *Service) SetSupplierID(fn func(ctx context.Context) string) {
+	if s != nil {
+		s.SupplierID = fn
+	}
+}
+
+func (s *Service) resolveRequestSupplier(ctx context.Context) string {
+	if s == nil || s.SupplierID == nil {
+		return ""
+	}
+	return strings.TrimSpace(s.SupplierID(ctx))
+}
+
 // SetAfterSensingHook runs after each successful demand sensing batch (e.g. reorder suggestions).
 func (s *Service) SetAfterSensingHook(fn func(context.Context) error) {
 	s.afterSensingHook = fn
 }
 
 func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, to time.Time) ([]DemandAdjustment, error) {
-	stmt := spanner.Statement{
-		SQL: `
-			SELECT RetailerId, Sku, Date, BaseVelocity, Adjustment, AdjustedDemand, FactorsJson, ComputedAt
+	supplierID := s.resolveRequestSupplier(ctx)
+	sql := `
+			SELECT RetailerId, Sku, Date, BaseVelocity, Adjustment, AdjustedDemand, FactorsJson, ComputedAt, SupplierId
 			FROM DemandAdjustments
-			WHERE RetailerId = @RetailerId AND Date >= @From AND Date <= @To
-		`,
-		Params: map[string]interface{}{
-			"RetailerId": retailerId,
-			"From":       from.Format("2006-01-02"),
-			"To":         to.Format("2006-01-02"),
-		},
+			WHERE RetailerId = @RetailerId AND Date >= @From AND Date <= @To`
+	params := map[string]interface{}{
+		"RetailerId": retailerId,
+		"From":       from.Format("2006-01-02"),
+		"To":         to.Format("2006-01-02"),
 	}
+	if supplierID != "" {
+		sql += ` AND (SupplierId = @SupplierId OR SupplierId IS NULL OR SupplierId = '')`
+		params["SupplierId"] = supplierID
+	} else if s.SupplierID != nil {
+		// Fail-closed when tenant resolver is wired but empty.
+		sql += ` AND FALSE`
+	}
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -56,6 +79,7 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 		var adj DemandAdjustment
 		var date spanner.NullDate
 		var factorsJson spanner.NullJSON
+		var supplier spanner.NullString
 		if err := row.Columns(
 			&adj.RetailerId,
 			&adj.Sku,
@@ -65,6 +89,7 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 			&adj.AdjustedDemand,
 			&factorsJson,
 			&adj.ComputedAt,
+			&supplier,
 		); err != nil {
 			return nil, err
 		}
@@ -75,6 +100,9 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 		if factorsJson.Valid {
 			_ = json.Unmarshal([]byte(factorsJson.Value.(string)), &adj.Factors)
 		}
+		if supplier.Valid {
+			adj.SupplierId = supplier.StringVal
+		}
 		adjs = append(adjs, adj)
 	}
 
@@ -82,14 +110,15 @@ func (s *Service) GetAdjustments(ctx context.Context, retailerId string, from, t
 }
 
 type SignalFilter struct {
-	Type   *SignalType
-	Scope  *string
-	Active *bool
+	Type       *SignalType
+	Scope      *string
+	Active     *bool
+	SupplierId *string // nil = use request tenant; explicit "" = no tenant filter (workers)
 }
 
 func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]DemandSignal, error) {
 	query := `
-		SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+		SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy, SupplierId
 		FROM DemandSignals
 		WHERE 1=1
 	`
@@ -105,6 +134,21 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 	}
 	if filter.Active != nil && *filter.Active {
 		query += " AND StartAt <= CURRENT_TIMESTAMP() AND EndAt >= CURRENT_TIMESTAMP()"
+	}
+
+	supplierID := ""
+	if filter.SupplierId != nil {
+		supplierID = strings.TrimSpace(*filter.SupplierId)
+	} else {
+		supplierID = s.resolveRequestSupplier(ctx)
+		if supplierID == "" && s.SupplierID != nil {
+			query += " AND FALSE"
+		}
+	}
+	if supplierID != "" {
+		query += ` AND (SupplierId = @SupplierId OR SupplierId = @PlatformSupplier OR SupplierId IS NULL OR SupplierId = '')`
+		params["SupplierId"] = supplierID
+		params["PlatformSupplier"] = PlatformSupplierID
 	}
 
 	query += " ORDER BY CreatedAt DESC LIMIT 100"
@@ -129,6 +173,7 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 		var sig DemandSignal
 		var sku spanner.NullString
 		var meta spanner.NullJSON
+		var supplier spanner.NullString
 		if err := row.Columns(
 			&sig.SignalId,
 			&sig.Type,
@@ -140,6 +185,7 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 			&meta,
 			&sig.CreatedAt,
 			&sig.CreatedBy,
+			&supplier,
 		); err != nil {
 			return nil, err
 		}
@@ -150,6 +196,9 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 		if meta.Valid {
 			sig.Meta = []byte(meta.Value.(string))
 		}
+		if supplier.Valid {
+			sig.SupplierId = supplier.StringVal
+		}
 		signals = append(signals, sig)
 	}
 	return signals, nil
@@ -158,7 +207,7 @@ func (s *Service) ListSignals(ctx context.Context, filter SignalFilter) ([]Deman
 func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, error) {
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy, SupplierId
 			FROM DemandSignals
 			WHERE SignalId = @Id
 		`,
@@ -178,6 +227,7 @@ func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, erro
 	var sig DemandSignal
 	var sku spanner.NullString
 	var meta spanner.NullJSON
+	var supplier spanner.NullString
 	if err := row.Columns(
 		&sig.SignalId,
 		&sig.Type,
@@ -189,6 +239,7 @@ func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, erro
 		&meta,
 		&sig.CreatedAt,
 		&sig.CreatedBy,
+		&supplier,
 	); err != nil {
 		return nil, err
 	}
@@ -198,6 +249,17 @@ func (s *Service) GetSignal(ctx context.Context, id string) (*DemandSignal, erro
 	}
 	if meta.Valid {
 		sig.Meta = []byte(meta.Value.(string))
+	}
+	if supplier.Valid {
+		sig.SupplierId = supplier.StringVal
+	}
+	if tenant := s.resolveRequestSupplier(ctx); tenant != "" {
+		sid := strings.TrimSpace(sig.SupplierId)
+		if sid != "" && sid != PlatformSupplierID && sid != tenant {
+			return nil, nil // IDOR: hide other tenant
+		}
+	} else if s.SupplierID != nil {
+		return nil, nil
 	}
 	return &sig, nil
 }
@@ -218,6 +280,7 @@ func (s *Service) CreateSignal(ctx context.Context, req CreateSignalRequest, cre
 		Type:       req.Type,
 		Scope:      req.Scope,
 		Sku:        req.Sku,
+		SupplierId: ResolveSupplierID(s.resolveRequestSupplier(ctx)),
 		StartAt:    req.StartAt,
 		EndAt:      req.EndAt,
 		Multiplier: req.Multiplier,
@@ -236,8 +299,8 @@ func (s *Service) CreateSignal(ctx context.Context, req CreateSignalRequest, cre
 	}
 
 	m := spanner.Insert("DemandSignals",
-		[]string{"SignalId", "Type", "Scope", "Sku", "StartAt", "EndAt", "Multiplier", "Meta", "CreatedAt", "CreatedBy"},
-		[]interface{}{sig.SignalId, string(sig.Type), sig.Scope, sku, sig.StartAt, sig.EndAt, sig.Multiplier, meta, sig.CreatedAt, sig.CreatedBy},
+		[]string{"SignalId", "Type", "Scope", "Sku", "StartAt", "EndAt", "Multiplier", "Meta", "CreatedAt", "CreatedBy", "SupplierId"},
+		[]interface{}{sig.SignalId, string(sig.Type), sig.Scope, sku, sig.StartAt, sig.EndAt, sig.Multiplier, meta, sig.CreatedAt, sig.CreatedBy, sig.SupplierId},
 	)
 
 	_, err := s.spanner.Apply(ctx, []*spanner.Mutation{m})

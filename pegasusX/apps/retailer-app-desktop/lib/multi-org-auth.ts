@@ -3,6 +3,7 @@
  * Flag-off backends never return pending_org_select — callers still handle full path.
  */
 import { storeToken, isTauri } from "./bridge";
+import { retailerApiBaseUrl } from "./auth";
 import { clearOrgScopedState } from "./clear-org-scoped-state";
 import { setRetailerProfile } from "./retailer-profile";
 import type {
@@ -10,8 +11,6 @@ import type {
   RetailerMembershipDTO,
   RetailerMembershipsResponse,
 } from "@pegasusx/types";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8180";
 
 const PENDING_TOKEN_COOKIE = "pegasus_retailer_pending_jwt";
 
@@ -134,7 +133,7 @@ export function readActiveOrgId(): string {
 export async function selectOrg(retailerId: string): Promise<RetailerLoginResponse> {
   const pending = readPendingOrgToken();
   if (!pending) throw new Error("pending_org_token_missing");
-  const res = await fetch(`${API}/v1/auth/retailer/select-org`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/select-org`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -157,7 +156,7 @@ export async function switchOrg(retailerId: string): Promise<RetailerLoginRespon
   // Use full session token via cookie-backed get path
   const { getRetailerToken } = await import("./auth");
   const token = await getRetailerToken();
-  const res = await fetch(`${API}/v1/auth/retailer/switch-org`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/switch-org`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -183,7 +182,7 @@ export async function listMemberships(): Promise<RetailerMembershipDTO[]> {
     const { getRetailerToken } = await import("./auth");
     token = await getRetailerToken();
   }
-  const res = await fetch(`${API}/v1/auth/retailer/memberships`, {
+  const res = await fetch(`${retailerApiBaseUrl()}/v1/auth/retailer/memberships`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {

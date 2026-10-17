@@ -23,44 +23,44 @@ struct CreateTransferView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_factory.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await loadFleet() } }
+                        Button("common.action.retry") { Task { await loadFleet() } }
                     }
                 } else {
                     Form {
                         Section {
-                            TextField("Order ID (optional)", text: $orderId)
-                            TextField("Total VU", text: $totalVu)
+                            TextField("mobile_factory.ui.order_id_optional", text: $orderId)
+                            TextField("mobile_factory.ui.total_vu", text: $totalVu)
                                 .keyboardType(.numberPad)
                         } footer: {
-                            Text("Stage a factory-to-warehouse movement. Volume is captured in VU.")
+                            Text("mobile_factory.ui.stage_a_factory_to_warehouse_movement_volume_is_captured_in_vu")
                         }
 
                         Section("Fleet assignment") {
                             Picker("Driver", selection: $driverId) {
-                                Text("Unassigned").tag("")
+                                Text("factory_portal.transfers._id_.text.unassigned").tag("")
                                 ForEach(drivers) { driver in
                                     Text("\(driver.name)\(driver.onShift ? " (on shift)" : "")").tag(driver.driverId)
                                 }
                             }
                             Picker("Vehicle", selection: $vehicleId) {
-                                Text("Unassigned").tag("")
+                                Text("factory_portal.transfers._id_.text.unassigned").tag("")
                                 ForEach(vehicles) { vehicle in
-                                    Text("\(vehicle.plateNo) · \(vehicle.state)").tag(vehicle.vehicleId)
+                                    Text(L10n.format("mobile_factory.ui.plateno_state", "\(vehicle.plateNo)", "\(vehicle.state)")).tag(vehicle.vehicleId)
                                 }
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("Create Transfer")
+            .navigationTitle("mobile_factory.ui.create_transfer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(submitting ? "Creating…" : "Create") {

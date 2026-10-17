@@ -52,7 +52,11 @@
     border-color: #d4d4d4 !important;
 }
 
-/* HeroUI status chips — greyscale only */
+/* HeroUI v2 and v3 status chips — greyscale only */
+.chip,
+.chip--success,
+.chip--warning,
+.chip--danger,
 [data-slot="base"][data-color="success"],
 [data-slot="base"][data-color="warning"],
 [data-slot="base"][data-color="danger"] {
@@ -61,6 +65,7 @@
     border: 1px solid var(--desk-border) !important;
 }
 
+.chip--accent,
 [data-slot="base"][data-color="accent"] {
     background: var(--desk-surface-subtle) !important;
     color: var(--desk-text-primary) !important;

@@ -126,8 +126,10 @@ export default function StaffPage() {
           <h2 className="text-sm font-semibold">Create New Staff Member</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Name</label>
+              <label htmlFor="staff-name-input" className="block text-xs font-medium mb-1.5 text-(--muted)">Name</label>
               <input
+                id="staff-name-input"
+                aria-label="Staff Name"
                 type="text"
                 value={formName}
                 onChange={e => setFormName(e.target.value)}
@@ -137,8 +139,10 @@ export default function StaffPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Phone</label>
+              <label htmlFor="staff-phone-input" className="block text-xs font-medium mb-1.5 text-(--muted)">Phone</label>
               <input
+                id="staff-phone-input"
+                aria-label="Staff Phone"
                 type="tel"
                 value={formPhone}
                 onChange={e => setFormPhone(e.target.value)}

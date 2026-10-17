@@ -10,16 +10,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/segmentio/kafka-go"
 )
 
 // SignalIngestInput is the validated body for planning signal ingestion.
 type SignalIngestInput struct {
-	SignalID   string          `json:"signal_id"`
-	Source     string          `json:"source"`
-	WarehouseID string         `json:"warehouse_id,omitempty"`
-	RetailerID string          `json:"retailer_id,omitempty"`
-	Payload    json.RawMessage `json:"payload"`
+	SignalID    string          `json:"signal_id"`
+	Source      string          `json:"source"`
+	WarehouseID string          `json:"warehouse_id,omitempty"`
+	RetailerID  string          `json:"retailer_id,omitempty"`
+	Payload     json.RawMessage `json:"payload"`
 }
 
 // SignalIngestPublisher publishes planning ingest events to Kafka.
@@ -37,9 +38,18 @@ func NewKafkaSignalPublisher(brokers []string, topic string) SignalIngestPublish
 		return nil
 	}
 	return &kafkaSignalPublisher{writer: &kafka.Writer{
-		Addr:     kafka.TCP(brokers...),
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Addr:                   kafka.TCP(brokers...),
+		Topic:                  topic,
+		RequiredAcks:           kafka.RequireAll,
+		BatchTimeout:           250 * time.Millisecond,
+		BatchSize:              100,
+		Compression:            kafka.Snappy,
+		MaxAttempts:            3,
+		WriteTimeout:           10 * time.Second,
+		ReadTimeout:            10 * time.Second,
+		Balancer:               &kafka.Hash{},
+		Async:                  false,
+		AllowAutoTopicCreation: false,
 	}}
 }
 
@@ -47,7 +57,21 @@ func (p *kafkaSignalPublisher) Publish(ctx context.Context, topic string, key, v
 	if p == nil || p.writer == nil {
 		return errors.New("publisher unavailable")
 	}
-	return p.writer.WriteMessages(ctx, kafka.Message{Key: key, Value: value, Time: time.Now().UTC()})
+	msg := kafka.Message{
+		Key:   key,
+		Value: value,
+		Time:  time.Now().UTC(),
+	}
+	var hdrs []kafka.Header
+	if traceID := outbox.TraceIDFromContext(ctx); traceID != "" {
+		hdrs = append(hdrs, kafka.Header{Key: "trace_id", Value: []byte(traceID)})
+	}
+	hdrs = append(hdrs,
+		kafka.Header{Key: "type", Value: []byte(events.EventPlanningSignalIngest)},
+		kafka.Header{Key: "timestamp", Value: []byte(time.Now().UTC().Format(time.RFC3339Nano))},
+	)
+	msg.Headers = hdrs
+	return p.writer.WriteMessages(ctx, msg)
 }
 
 // IngestSignal validates and publishes planning.signal.ingest.v1 without hot-path Spanner write.

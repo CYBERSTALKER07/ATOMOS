@@ -8,6 +8,7 @@ struct LoadingBayView: View {
     @State private var dispatching = false
     @State private var handoffEvents: [FactoryPulseEvent] = []
     @State private var handoffLoading = true
+    @State private var handoffError: String?
 
     private var approved: [Transfer] { transfers.filter { $0.state == "APPROVED" } }
     private var loadingState: [Transfer] { transfers.filter { $0.state == "LOADING" } }
@@ -40,7 +41,7 @@ struct LoadingBayView: View {
                                 dispatchedCount: dispatched.count
                             )
 
-                            FactoryHandoffTimelineSection(events: handoffEvents, loading: handoffLoading)
+                            FactoryHandoffTimelineSection(events: handoffEvents, loading: handoffLoading, error: handoffError)
 
                             BaySection(
                                 title: "Ready for Loading",
@@ -67,10 +68,10 @@ struct LoadingBayView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Loading Bay")
+            .navigationTitle("portal.nav.loading_bay")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                         Task { await load() }
                     }
                     .labelStyle(.iconOnly)
@@ -90,8 +91,7 @@ struct LoadingBayView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                        guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                         Task { await load() }
                     }
                 )
@@ -110,18 +110,27 @@ struct LoadingBayView: View {
         do {
             let response = try await FactoryService.loadingBayTransfers()
             transfers = response.transfers
-            handoffLoading = true
-            if let pulse = try? await FactoryService.pulse() {
-                handoffEvents = FactoryHandoffPulseSupport.filter(pulse.events)
-            } else {
-                handoffEvents = []
-            }
-            handoffLoading = false
         } catch {
             self.error = error.localizedDescription
-            handoffEvents = []
-            handoffLoading = false
         }
+
+        handoffLoading = true
+        handoffError = nil
+        do {
+            let pulse = try await FactoryService.pulse()
+            let result = PulseHonesty.apply(
+                ok: true,
+                incoming: FactoryHandoffPulseSupport.filter(pulse.events),
+                previous: handoffEvents
+            )
+            handoffEvents = result.events
+            handoffError = result.error
+        } catch {
+            let result = PulseHonesty.apply(ok: false, incoming: nil, previous: handoffEvents)
+            handoffEvents = result.events
+            handoffError = result.error
+        }
+        handoffLoading = false
 
         loading = false
     }
@@ -132,7 +141,10 @@ struct LoadingBayView: View {
 
         do {
             let ids = loadingState.map(\.id)
-            _ = try await FactoryService.dispatch(transferIds: ids)
+            let result = try await FactoryService.dispatch(transferIds: ids)
+            if result.createdManifestCount == 0 {
+                self.error = "No transfers to dispatch"
+            }
             await load()
         } catch {
             self.error = error.localizedDescription

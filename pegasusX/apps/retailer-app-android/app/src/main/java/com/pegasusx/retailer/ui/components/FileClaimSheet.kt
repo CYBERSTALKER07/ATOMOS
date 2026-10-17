@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,11 +54,13 @@ import com.pegasusx.retailer.data.model.FileClaimLineBody
 import com.pegasusx.retailer.data.model.FileClaimRequestBody
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.RetailerClaim
+import com.pegasusx.retailer.data.model.moneyCurrency
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 private val claimTypes = listOf(
     "CONCEALED_DAMAGE", "DAMAGED", "MISSING", "TAMPER", "TEMPERATURE", "OTHER",
@@ -153,7 +157,7 @@ fun FileClaimSheet(
         ) {
             item {
                 Text(
-                    "File claim · #${order.id.takeLast(6)}",
+                    stringResource(R.string.mobile_retailer_ui_file_claim_takelast, order.id.takeLast(6)),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
@@ -164,7 +168,7 @@ fun FileClaimSheet(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                     )
                     eligibility?.eligible == true -> Text(
-                        "Eligible until ${formatClaimEndsAt(eligibility?.endsAt)} (${eligibility?.hoursRemaining}h left). Amounts use order prices.",
+                        stringResource(R.string.mobile_retailer_ui_eligible_until_formatclaimendsat_hoursremainingh_left_amounts_use_order, formatClaimEndsAt(eligibility?.endsAt), eligibility?.hoursRemaining ?: 0),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
                     )
@@ -228,7 +232,7 @@ fun FileClaimSheet(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(item.productName, style = MaterialTheme.typography.bodyMedium)
-                        Text("SKU $sku · ordered ${item.quantity}", style = MaterialTheme.typography.labelSmall)
+                        Text(stringResource(R.string.mobile_retailer_ui_sku_sku_ordered_quantity, sku, item.quantity), style = MaterialTheme.typography.labelSmall)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(
@@ -266,7 +270,7 @@ fun FileClaimSheet(
                 previewUri?.let { uri ->
                     AsyncImage(
                         model = uri,
-                        contentDescription = "Claim proof",
+                        contentDescription = stringResource(R.string.retailer_desktop_residual_text_claim_proof),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(140.dp)
@@ -301,7 +305,7 @@ fun FileClaimSheet(
             }
             successId?.let { id ->
                 item {
-                    Text("Claim filed: $id", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.mobile_retailer_ui_claim_filed_id, id), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -311,7 +315,7 @@ fun FileClaimSheet(
                 }
                 items(existing, key = { it.claimId }) { c ->
                     Text(
-                        "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${c.currency ?: "UZS"}",
+                        "${c.claimType} · ${c.status} · ${c.amountMinor ?: 0} ${moneyCurrency(c.currency)}",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

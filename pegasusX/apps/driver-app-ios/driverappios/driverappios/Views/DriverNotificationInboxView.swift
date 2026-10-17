@@ -177,18 +177,18 @@ struct DriverNotificationInboxView: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("portal.nav.notifications")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Done") { dismiss() }
+                    Button("warehouse_portal.kpi_stat_card.text.done") { dismiss() }
                 }
                 if vm.unreadCount > 0 {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             Task { await vm.markAllRead() }
                         } label: {
-                            Label("Read All", systemImage: "checkmark.circle")
+                            Label("mobile_driver.ui.read_all", systemImage: "checkmark.circle")
                                 .labelStyle(.titleAndIcon)
                                 .font(.caption)
                         }

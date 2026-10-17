@@ -32,7 +32,7 @@ struct TomorrowBoardView: View {
                     }
                     if preorders.isEmpty && deliverBefore.isEmpty {
                         Section {
-                            Text("No orders scheduled for this date.")
+                            Text("warehouse_portal.tomorrow_board.text.no_orders_scheduled_for_this_date")
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -53,7 +53,7 @@ struct TomorrowBoardView: View {
                 }
             }
         }
-        .navigationTitle("Tomorrow board")
+        .navigationTitle("portal.nav.tomorrow_board")
         .task { load() }
         .refreshable { load(silent: false) }
         .silentRealtimeRefresh(refreshEpoch: realtimeHub.refreshEpoch, reconnectEpoch: realtimeHub.reconnectEpoch) { silent in

@@ -34,13 +34,16 @@ function Field({ label, value, editing, onChange, type = 'text' }: {
   label: string; value: string; editing: boolean;
   onChange?: (v: string) => void; type?: string;
 }) {
+  const inputId = `profile-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
   return (
     <div className="w-full relative group">
-      <label className="absolute -top-3 left-4 bg-[var(--background)] px-2 text-xs font-light text-[var(--accent)] tracking-wide uppercase z-10">
+      <label htmlFor={inputId} className="absolute -top-3 left-4 bg-[var(--background)] px-2 text-xs font-light text-[var(--accent)] tracking-wide uppercase z-10">
         {label}
       </label>
       {editing ? (
         <input
+          id={inputId}
+          aria-label={label}
           type={type}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}

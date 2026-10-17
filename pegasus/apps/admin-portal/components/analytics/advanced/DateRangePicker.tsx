@@ -41,6 +41,8 @@ export default function DateRangePicker({ dateRange, onPreset, onCustom }: DateR
       {/* Custom date inputs */}
       <div className="flex items-center gap-1.5 ml-2">
         <input
+          id="from-input-2"
+          aria-label="From"
           type="date"
           value={dateRange.from}
           onChange={(e) =>
@@ -55,6 +57,8 @@ export default function DateRangePicker({ dateRange, onPreset, onCustom }: DateR
         />
         <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>→</span>
         <input
+          id="to-input-1"
+          aria-label="To"
           type="date"
           value={dateRange.to}
           onChange={(e) =>

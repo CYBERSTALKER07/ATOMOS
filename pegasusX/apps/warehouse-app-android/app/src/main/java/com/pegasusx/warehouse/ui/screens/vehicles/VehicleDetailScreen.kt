@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.vehicles
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,14 +33,15 @@ import com.pegasusx.warehouse.data.model.UpdateVehicleRequest
 import com.pegasusx.warehouse.data.model.Vehicle
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.data.remote.WarehouseRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.components.WarehouseStatusChip
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import com.pegasusx.warehouse.util.WarehouseIdempotencyKeys
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,13 +118,13 @@ fun VehicleDetailScreen(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -130,7 +133,7 @@ fun VehicleDetailScreen(
     ) { innerPadding ->
         when {
             loading && vehicle == null -> PegasusLoadingState(
-                title = "Loading truck…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_truck),
                 body = "Fleet vehicle details",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -155,7 +158,7 @@ fun VehicleDetailScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.headlineSmall)
                         Text(
-                            "${v.licensePlate} · ${v.vehicleClass} · ${v.capacityVu} VU",
+                            stringResource(R.string.mobile_warehouse_ui_licenseplate_vehicleclass_capacityvu_vu, v.licensePlate, v.vehicleClass, v.capacityVu),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

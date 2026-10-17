@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
+
+// ErrOptimisticLockConflict indicates that the record version in Spanner does not match the expected version.
+var ErrOptimisticLockConflict = errors.New("optimistic lock conflict: version mismatch")
 
 // HandlingClass classifies product storage/transport requirements.
 type HandlingClass string
@@ -82,9 +86,9 @@ type CategorySupplier struct {
 type Repository interface {
 	ListCategories(ctx context.Context, supplierID string) ([]Category, error)
 	GetCategory(ctx context.Context, categoryID string) (*Category, error)
-	CreateCategory(ctx context.Context, cat Category) error
+	CreateCategory(ctx context.Context, cat Category, emit func(outbox.TxnBuffer) error) error
 	ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error)
-	ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error)
+	ListDiscoverableProducts(ctx context.Context, categoryID, marketCode string, limit, offset int64) ([]Product, error)
 	GetProduct(ctx context.Context, productID string) (*Product, error)
 	CreateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
 	UpdateProduct(ctx context.Context, p Product, emit func(outbox.TxnBuffer) error) error
@@ -196,9 +200,16 @@ func (r *SpannerRepository) GetCategory(ctx context.Context, categoryID string) 
 	return &c, nil
 }
 
-// CreateCategory inserts a new category row inside a ReadWriteTransaction.
-func (r *SpannerRepository) CreateCategory(ctx context.Context, cat Category) error {
+// CreateCategory inserts a new category row inside a ReadWriteTransaction and
+// buffers an outbox event when emit is provided.
+func (r *SpannerRepository) CreateCategory(ctx context.Context, cat Category, emit func(outbox.TxnBuffer) error) error {
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
 		m := spanner.InsertOrUpdateMap("ProductCategories", map[string]any{
 			"CategoryId":       cat.CategoryID,
 			"SupplierId":       cat.SupplierID,
@@ -209,7 +220,11 @@ func (r *SpannerRepository) CreateCategory(ctx context.Context, cat Category) er
 			"CreatedAt":        spanner.CommitTimestamp,
 			"UpdatedAt":        spanner.CommitTimestamp,
 		})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		mutations := []*spanner.Mutation{m}
+		for _, e := range buf.events {
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
+		}
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
 		return fmt.Errorf("create category %s: %w", cat.CategoryID, err)
@@ -253,7 +268,7 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 }
 
 // ListDiscoverableProducts returns active products for retailer browse when no supplier is selected.
-func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error) {
+func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID, marketCode string, limit, offset int64) ([]Product, error) {
 	if limit <= 0 {
 		limit = 500
 	}
@@ -263,13 +278,17 @@ func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, catego
 	if offset < 0 {
 		offset = 0
 	}
-	sql := "SELECT " + productSelectColumns + " FROM Products WHERE IsActive = TRUE"
+	sql := "SELECT " + productSelectColumns + " FROM Products JOIN Suppliers ON Products.SupplierId = Suppliers.SupplierId WHERE Products.IsActive = TRUE"
 	params := map[string]any{"lim": limit, "off": offset}
+	if marketCode != "" {
+		sql += " AND Suppliers.MarketCode = @marketCode"
+		params["marketCode"] = marketCode
+	}
 	if categoryID != "" {
-		sql += " AND CategoryId = @cid"
+		sql += " AND Products.CategoryId = @cid"
 		params["cid"] = categoryID
 	}
-	sql += " ORDER BY UpdatedAt DESC LIMIT @lim OFFSET @off"
+	sql += " ORDER BY Products.UpdatedAt DESC LIMIT @lim OFFSET @off"
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
@@ -345,14 +364,7 @@ func (r *SpannerRepository) CreateProduct(ctx context.Context, p Product, emit f
 		})
 		mutations := []*spanner.Mutation{m}
 		for _, e := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     e.CreatedAt,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		return txn.BufferWrite(mutations)
 	})
@@ -381,7 +393,7 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product, emit f
 			return fmt.Errorf("scan product version %s: %w", p.ProductID, err)
 		}
 		if currentVersion != p.Version {
-			return fmt.Errorf("product %s version conflict: expected %d, got %d", p.ProductID, p.Version, currentVersion)
+			return fmt.Errorf("%w: product %s expected %d, got %d", ErrOptimisticLockConflict, p.ProductID, p.Version, currentVersion)
 		}
 		m := spanner.UpdateMap("Products", map[string]any{
 			"ProductId":         p.ProductID,
@@ -408,14 +420,7 @@ func (r *SpannerRepository) UpdateProduct(ctx context.Context, p Product, emit f
 		})
 		mutations := []*spanner.Mutation{m}
 		for _, e := range buf.events {
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     e.CreatedAt,
-			}))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		return txn.BufferWrite(mutations)
 	})

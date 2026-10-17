@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -12,8 +13,12 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/gs1"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
@@ -110,15 +115,23 @@ type supplierProfileResponse struct {
 	IsConfigured     bool     `json:"is_configured"`
 	SelectedGateways []string `json:"selected_gateways"`
 	PaymentAcceptor  string   `json:"payment_acceptor"`
+	Gln              string   `json:"gln,omitempty"`
+	Gs1CompanyPrefix string   `json:"gs1_company_prefix,omitempty"`
+	MarketCode       string   `json:"market_code"`
+	HomeCell         string   `json:"home_cell"`
 	UpdatedAt        string   `json:"updated_at"`
 }
 
 type supplierProfileUpdateRequest struct {
-	LegalName   string   `json:"legal_name,omitempty"`
-	ContactName string   `json:"contact_name,omitempty"`
-	Email       string   `json:"email,omitempty"`
-	Phone       string   `json:"phone,omitempty"`
-	Categories  []string `json:"categories,omitempty"`
+	LegalName        string   `json:"legal_name,omitempty"`
+	ContactName      string   `json:"contact_name,omitempty"`
+	Email            string   `json:"email,omitempty"`
+	Phone            string   `json:"phone,omitempty"`
+	Categories       []string `json:"categories,omitempty"`
+	Gln              *string  `json:"gln,omitempty"`
+	Gs1CompanyPrefix *string  `json:"gs1_company_prefix,omitempty"`
+	MarketCode       *string  `json:"market_code,omitempty"`
+	HomeCell         *string  `json:"home_cell,omitempty"`
 }
 
 type supplierDashboardResponse struct {
@@ -157,20 +170,25 @@ type supplierPricingRuleUpdateRequest struct {
 }
 
 type topologyWarehouseInput struct {
-	WarehouseID           string                    `json:"warehouse_id,omitempty"`
-	Name                  string                    `json:"name"`
-	Lat                   float64                   `json:"lat"`
-	Lng                   float64                   `json:"lng"`
-	Address               string                    `json:"address,omitempty"`
-	PlaceID               string                    `json:"place_id,omitempty"`
-	CoverageRadiusKm      *float64                  `json:"coverage_radius_km,omitempty"`
-	IsActive              *bool                     `json:"is_active,omitempty"`
-	IsOnShift             *bool                     `json:"is_on_shift,omitempty"`
-	TransferMode          string                    `json:"transfer_mode,omitempty"`
-	CoLocateWithFactoryID string                    `json:"co_locate_with_factory_id,omitempty"`
+	WarehouseID             string                  `json:"warehouse_id,omitempty"`
+	Name                    string                  `json:"name"`
+	Lat                     float64                 `json:"lat"`
+	Lng                     float64                 `json:"lng"`
+	Address                 string                  `json:"address,omitempty"`
+	PlaceID                 string                  `json:"place_id,omitempty"`
+	CoverageRadiusKm        *float64                `json:"coverage_radius_km,omitempty"`
+	IsActive                *bool                   `json:"is_active,omitempty"`
+	IsOnShift               *bool                   `json:"is_on_shift,omitempty"`
+	TransferMode            string                  `json:"transfer_mode,omitempty"`
+	CoLocateWithFactoryID   string                  `json:"co_locate_with_factory_id,omitempty"`
+	PrimaryFactoryID        string                  `json:"primary_factory_id,omitempty"`
+	SecondaryFactoryID      string                  `json:"secondary_factory_id,omitempty"`
+	AssignedFactoryIDs      []string                `json:"assigned_factory_ids,omitempty"`
+	CountryCode             string                  `json:"country_code,omitempty"`
+	CoverageCities          []order.CoverageCity    `json:"coverage_cities,omitempty"`
 	DefaultOutOfStockPolicy string                  `json:"default_out_of_stock_policy,omitempty"`
-	OperatingSchedule     json.RawMessage           `json:"operating_schedule,omitempty"`
-	InitialInventory      []topologyInventorySeed   `json:"initial_inventory,omitempty"`
+	OperatingSchedule       json.RawMessage         `json:"operating_schedule,omitempty"`
+	InitialInventory        []topologyInventorySeed `json:"initial_inventory,omitempty"`
 }
 
 type topologyInventorySeed struct {
@@ -179,13 +197,14 @@ type topologyInventorySeed struct {
 }
 
 type topologyFactoryInput struct {
-	FactoryID string  `json:"factory_id,omitempty"`
-	Name      string  `json:"name"`
-	Lat       float64 `json:"lat"`
-	Lng       float64 `json:"lng"`
-	Address   string  `json:"address,omitempty"`
-	PlaceID   string  `json:"place_id,omitempty"`
-	IsActive  *bool   `json:"is_active,omitempty"`
+	FactoryID   string  `json:"factory_id,omitempty"`
+	Name        string  `json:"name"`
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	Address     string  `json:"address,omitempty"`
+	PlaceID     string  `json:"place_id,omitempty"`
+	CountryCode string  `json:"country_code,omitempty"`
+	IsActive    *bool   `json:"is_active,omitempty"`
 }
 
 type topologyUpdateRequest struct {
@@ -343,6 +362,10 @@ func (s *Service) buildSupplierProfileResponse(current Profile) supplierProfileR
 		IsConfigured:     current.IsConfigured,
 		SelectedGateways: append([]string(nil), current.SelectedGateways...),
 		PaymentAcceptor:  normalizePaymentAcceptor(current.PaymentAcceptor),
+		Gln:              current.Gln,
+		Gs1CompanyPrefix: current.Gs1CompanyPrefix,
+		MarketCode:       current.MarketCode,
+		HomeCell:         current.HomeCell,
 		UpdatedAt:        updated,
 	}
 }
@@ -392,6 +415,47 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Categories) > 0 {
 		current.Categories = append([]string(nil), req.Categories...)
+	}
+	if req.Gln != nil {
+		raw := strings.TrimSpace(*req.Gln)
+		if raw == "" {
+			current.Gln = ""
+		} else {
+			norm, err := gs1.NormalizeGLN(raw)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+				return
+			}
+			current.Gln = norm
+		}
+	}
+	if req.Gs1CompanyPrefix != nil {
+		prefix := digitsOnlyCompanyPrefix(*req.Gs1CompanyPrefix)
+		if prefix != "" && (len(prefix) < 7 || len(prefix) > 10) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_gs1_company_prefix"})
+			return
+		}
+		current.Gs1CompanyPrefix = prefix
+	}
+	if req.MarketCode != nil {
+		code := auth.NormalizeMarketCode(*req.MarketCode)
+		if code == "" {
+			current.MarketCode = ""
+			current.HomeCell = ""
+		} else if _, ok := auth.ResolveMarketPack(code); !ok {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown_market", "code": code})
+			return
+		} else {
+			current.MarketCode = code
+			if req.HomeCell == nil && strings.TrimSpace(current.HomeCell) == "" {
+				if pack, ok := auth.ResolveMarketPack(code); ok {
+					current.HomeCell = pack.HomeCell
+				}
+			}
+		}
+	}
+	if req.HomeCell != nil {
+		current.HomeCell = strings.ToLower(strings.TrimSpace(*req.HomeCell))
 	}
 	now := s.now()
 	current.UpdatedAt = now
@@ -475,6 +539,15 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pack, err := auth.CheckoutPackFromContext(r.Context())
+	if err != nil {
+		if writeMarketLaw(w, err) {
+			return
+		}
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+
 	topology := SupplierTopology{
 		Warehouses: make([]WarehouseNode, 0, len(req.Warehouses)),
 		Factories:  make([]FactoryNode, 0, len(req.Factories)),
@@ -492,6 +565,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 		if wh.Lng < -180 || wh.Lng > 180 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("warehouses[%d].lng_out_of_range", i)})
+			return
+		}
+		geo, stampErr := proximity.StampNodeGeography(pack, wh.Lat, wh.Lng, wh.CountryCode)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
 			return
 		}
 
@@ -517,7 +598,12 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			PlaceID:                 strings.TrimSpace(wh.PlaceID),
 			CoverageRadiusKm:        coverage,
 			TransferMode:            normalizeTransferMode(wh.TransferMode),
-			CoLocateWithFactoryID:     strings.TrimSpace(wh.CoLocateWithFactoryID),
+			CoLocateWithFactoryID:   strings.TrimSpace(wh.CoLocateWithFactoryID),
+			PrimaryFactoryID:        strings.TrimSpace(wh.PrimaryFactoryID),
+			SecondaryFactoryID:      strings.TrimSpace(wh.SecondaryFactoryID),
+			AssignedFactoryIDs:      append([]string(nil), wh.AssignedFactoryIDs...),
+			CountryCode:             geo.CountryCode,
+			CoverageCities:          append([]order.CoverageCity(nil), wh.CoverageCities...),
 			IsActive:                isActive,
 			IsOnShift:               isOnShift,
 			DefaultOutOfStockPolicy: strings.TrimSpace(wh.DefaultOutOfStockPolicy),
@@ -540,6 +626,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("factories[%d].lng_out_of_range", i)})
 			return
 		}
+		geo, stampErr := proximity.StampNodeGeography(pack, fc.Lat, fc.Lng, fc.CountryCode)
+		if stampErr != nil {
+			if writeMarketLaw(w, stampErr) {
+				return
+			}
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": stampErr.Error()})
+			return
+		}
 
 		isActive := true
 		if fc.IsActive != nil {
@@ -547,13 +641,14 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		}
 
 		topology.Factories = append(topology.Factories, FactoryNode{
-			FactoryID: strings.TrimSpace(fc.FactoryID),
-			Name:      name,
-			Lat:       fc.Lat,
-			Lng:       fc.Lng,
-			Address:   strings.TrimSpace(fc.Address),
-			PlaceID:   strings.TrimSpace(fc.PlaceID),
-			IsActive:  isActive,
+			FactoryID:   strings.TrimSpace(fc.FactoryID),
+			Name:        name,
+			Lat:         fc.Lat,
+			Lng:         fc.Lng,
+			Address:     strings.TrimSpace(fc.Address),
+			PlaceID:     strings.TrimSpace(fc.PlaceID),
+			CountryCode: geo.CountryCode,
+			IsActive:    isActive,
 		})
 	}
 
@@ -582,6 +677,7 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			Action:       "TOPOLOGY_UPDATED",
 		})
 	}); err != nil {
+		slog.Error("replace supplier topology", "supplier_id", sid, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_topology_failed"})
 		return
 	}
@@ -823,24 +919,39 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	current, found, _ := s.repo.GetProfile(r.Context(), sid)
-	if !found {
-		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
+	key := cache.DashboardKey("supplier", sid)
+	body, err := cache.LoadDashboard(s.cache, r.Context(), key, func(ctx context.Context) ([]byte, error) {
+		return s.marshalSupplierDashboard(ctx, sid)
+	})
+	if err != nil {
+		s.log.WarnContext(r.Context(), "supplier dashboard marshal failed", "supplier_id", sid, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dashboard_unavailable"})
+		return
+	}
+	cache.WriteJSONWithETag(w, r, body)
+}
+
+func (s *Service) marshalSupplierDashboard(ctx context.Context, sid string) ([]byte, error) {
+	current := Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
+	if s.repo != nil {
+		if profile, found, _ := s.repo.GetProfile(ctx, sid); found {
+			current = profile
+		}
 	}
 	invCount := 0
 	if s.inventorySvc != nil {
-		if levels, err := s.inventorySvc.ListBySupplier(r.Context(), sid); err == nil {
+		if levels, err := s.inventorySvc.ListBySupplier(ctx, sid); err == nil {
 			invCount = len(levels)
 		}
 	}
 
 	pending := 0
 	if s.dashboardQuery != nil {
-		counts, err := s.dashboardQuery(r.Context(), sid)
+		counts, err := s.dashboardQuery(ctx, sid)
 		if err == nil {
 			pending = counts.PendingOrders
 		} else {
-			s.log.WarnContext(r.Context(), "dashboard count query failed, falling back", "err", err)
+			s.log.WarnContext(ctx, "dashboard count query failed, falling back", "err", err)
 		}
 	}
 
@@ -851,13 +962,15 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		PendingOrders: pending,
 		UpdatedAt:     s.now().Format(time.RFC3339Nano),
 	}
-	detail, err := s.buildSupplierDashboardDetail(r.Context(), sid, base)
-	if err != nil {
-		s.log.WarnContext(r.Context(), "supplier dashboard detail failed", "supplier_id", sid, "err", err)
-		writeJSON(w, http.StatusOK, base)
-		return
+	if s.repo == nil {
+		return json.Marshal(base)
 	}
-	writeJSON(w, http.StatusOK, detail)
+	detail, err := s.buildSupplierDashboardDetail(ctx, sid, base)
+	if err != nil {
+		s.log.WarnContext(ctx, "supplier dashboard detail failed", "supplier_id", sid, "err", err)
+		return json.Marshal(base)
+	}
+	return json.Marshal(detail)
 }
 
 // HandleEarnings returns ledger-backed supplier earnings summaries.
@@ -869,13 +982,22 @@ func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
 	now := s.now()
 	if s.earningsLookup == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		// G3.D honesty: machine-readable unavailable (not empty success).
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error":   "earnings_unavailable",
+			"code":    "earnings_lookup_unwired",
+			"message": "Supplier earnings authority is not wired in this process; use ledger/settlement views",
+		})
 		return
 	}
 	resp, err := s.earningsLookup(r.Context(), sid, s.currency, now)
 	if err != nil {
 		s.log.WarnContext(r.Context(), "supplier earnings authority lookup failed", "err", err, "supplier_id", sid)
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "earnings_unavailable"})
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error":   "earnings_unavailable",
+			"code":    "earnings_lookup_failed",
+			"message": "Could not load earnings authority; treasury page may use ledger fallback",
+		})
 		return
 	}
 	if strings.TrimSpace(resp.Currency) == "" {
@@ -982,14 +1104,17 @@ func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(respBytes)
 }
 
-// HandleInventoryAudit returns inventory levels (audit trail replaced by
-// Spanner version history).
+// HandleInventoryAudit is not a product surface (no adjust/stocklot ledger reader).
+// P1: 410 audit_unwired — never silent {entries:[]}.
 func (s *Service) HandleInventoryAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"entries": []any{}})
+	writeJSON(w, http.StatusGone, map[string]string{
+		"error":   "audit_unwired",
+		"message": "GET /v1/supplier/inventory/audit is not wired; use inventory list and adjust",
+	})
 }
 
 // HandleOrders returns supplier queue entries for vetting/review.
@@ -1245,4 +1370,14 @@ func (s *Service) HandleVetOrder(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Deprecation", "true")
 	w.Header().Set("Sunset", "Sun, 31 Dec 2026 23:59:59 GMT")
 	writeJSON(w, http.StatusOK, response)
+}
+
+func digitsOnlyCompanyPrefix(raw string) string {
+	var b strings.Builder
+	for i := 0; i < len(raw); i++ {
+		if raw[i] >= '0' && raw[i] <= '9' {
+			b.WriteByte(raw[i])
+		}
+	}
+	return b.String()
 }

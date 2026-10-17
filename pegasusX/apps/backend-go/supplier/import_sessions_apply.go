@@ -12,6 +12,10 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
@@ -38,16 +42,13 @@ func (r *ImportRepository) ApplyImportSession(ctx context.Context, supplierID, s
 
 	if errors.Is(err, errImportSessionNotFound) ||
 		errors.Is(err, errImportStateConflict) ||
-		errors.Is(err, errImportAccessDenied) {
+		errors.Is(err, errImportAccessDenied) ||
+		errors.Is(err, errImportNoApplicableRows) {
 		return summary, err
 	}
 
 	if markErr := r.markApplyFailure(ctx, supplierID, sessionID, err); markErr != nil && !errors.Is(markErr, errImportSessionNotFound) {
 		return summary, fmt.Errorf("apply import session failed: %w (mark failed: %v)", err, markErr)
-	}
-
-	if errors.Is(err, errImportNoApplicableRows) {
-		return summary, errImportStateConflict
 	}
 
 	return summary, err
@@ -57,6 +58,9 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 	summary := ImportApplySummary{
 		SessionID: sessionID,
 		Status:    "APPLIED",
+	}
+	if stocklots.LotsEnabled() {
+		return summary, fmt.Errorf("inventory import QoH apply forbidden when WMS_LOTS_ENABLED — use putaway / lot adjust instead of absolute SupplierInventoryV2 set")
 	}
 	affectedWarehouses := map[string]struct{}{}
 	affectedProducts := map[string]struct{}{}
@@ -229,8 +233,12 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 					"ProductId", "SupplierId", "CategoryId", "Name", "PriceMinor", "Currency",
 					"StockQuantity", "Unit", "UnitVolumeVU", "IsActive", "Version", "CreatedAt", "UpdatedAt",
 				}
+				currency, curErr := importRowCurrency(ctx, supplierID, cleanedData, rawData)
+				if curErr != nil {
+					return curErr
+				}
 				productVals := []any{
-					productID, supplierID, categoryID, productName, priceMinor, "UZS",
+					productID, supplierID, categoryID, productName, priceMinor, currency,
 					int64(0), "UNIT", 1.0, true, int64(1), spanner.CommitTimestamp, spanner.CommitTimestamp,
 				}
 				if description := strings.TrimSpace(importStringValue(cleanedData, rawData, "description")); description != "" {
@@ -257,17 +265,21 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 
 			rowDeterministicKey := fmt.Sprintf("%s|%s|%s|%d", supplierID, warehouseID, productID, rowIndex)
 			if _, alreadySeen := seenRowKeys[rowDeterministicKey]; alreadySeen {
-				return fmt.Errorf("row %d duplicate deterministic key", rowIndex)
+				// Discovery replay can stage the same row_index twice; one apply is enough.
+				continue
 			}
 			seenRowKeys[rowDeterministicKey] = struct{}{}
 
 			inventoryID := uuid.NewString()
 			existingInventoryID := ""
+			var existingReserved int64 = 0
 			invStmt := spanner.Statement{
-				SQL: `SELECT InventoryId FROM InventoryLevels
-				      WHERE WarehouseId = @warehouseId AND ProductId = @productId
-				      LIMIT 1`,
+				SQL: `SELECT 
+						(SELECT InventoryId FROM InventoryLevels WHERE WarehouseId = @warehouseId AND ProductId = @productId LIMIT 1),
+						(SELECT QuantityReserved FROM SupplierInventoryV2 WHERE SupplierId = @supplierId AND WarehouseId = @warehouseId AND ProductId = @productId LIMIT 1)
+				`,
 				Params: map[string]any{
+					"supplierId":  supplierID,
 					"warehouseId": warehouseID,
 					"productId":   productID,
 				},
@@ -276,13 +288,22 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 			invRow, invErr := invIter.Next()
 			invIter.Stop()
 			if invErr == nil {
-				if err := invRow.Columns(&existingInventoryID); err != nil {
-					return fmt.Errorf("parse inventory id: %w", err)
+				var existingInvID spanner.NullString
+				var existingRes spanner.NullInt64
+				if err := invRow.Columns(&existingInvID, &existingRes); err != nil {
+					return fmt.Errorf("parse inventory state: %w", err)
+				}
+				if existingInvID.Valid {
+					existingInventoryID = existingInvID.StringVal
+				}
+				if existingRes.Valid {
+					existingReserved = existingRes.Int64
 				}
 			} else if invErr != iterator.Done {
 				return fmt.Errorf("lookup inventory level: %w", invErr)
 			}
 			if existingInventoryID != "" {
+
 				inventoryID = existingInventoryID
 			}
 
@@ -295,13 +316,13 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 					},
 					[]any{
 						inventoryID, productID, warehouseID, supplierID,
-						qty, int64(0), reorderThreshold, int64(1), spanner.CommitTimestamp,
+						qty, existingReserved, reorderThreshold, int64(1), spanner.CommitTimestamp,
 					},
 				),
 				spanner.InsertOrUpdate(
 					"SupplierInventoryV2",
 					[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityOnHand", "QuantityReserved", "UpdatedAt"},
-					[]any{supplierID, warehouseID, productID, qty, int64(0), spanner.CommitTimestamp},
+					[]any{supplierID, warehouseID, productID, qty, existingReserved, spanner.CommitTimestamp},
 				),
 			)
 
@@ -329,7 +350,25 @@ func (r *ImportRepository) applyImportSessionTxn(ctx context.Context, supplierID
 		if err := flush(); err != nil {
 			return fmt.Errorf("flush final apply mutations: %w", err)
 		}
-		return nil
+		// B4: one durable bus event per import session (not per-SKU).
+		whList := make([]string, 0, len(affectedWarehouses))
+		for warehouseID := range affectedWarehouses {
+			whList = append(whList, warehouseID)
+		}
+		sort.Strings(whList)
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateSupplier, supplierID, events.TopicMain, map[string]any{
+			"type":          events.EventInventorySyncComplete,
+			"supplier_id":   supplierID,
+			"session_id":    sessionID,
+			"applied_rows":  summary.AppliedRows,
+			"warehouse_ids": whList,
+			"product_count": len(affectedProducts),
+			"timestamp":     time.Now().UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return buf.Flush(ctx)
 	})
 
 	if err != nil {
@@ -471,6 +510,15 @@ func importLookupValue(cleaned, raw map[string]any, keys ...string) (any, bool) 
 		}
 	}
 	return nil, false
+}
+
+func importRowCurrency(ctx context.Context, supplierID string, cleaned, raw map[string]any) (string, error) {
+	fromRow := importStringValue(cleaned, raw, "currency", "currency_code")
+	pack, err := auth.FiscalPackFromContext(ctx, supplierID)
+	if err != nil {
+		return "", err
+	}
+	return auth.ResolveCheckoutCurrency(pack, fromRow)
 }
 
 func importStringValue(cleaned, raw map[string]any, keys ...string) string {

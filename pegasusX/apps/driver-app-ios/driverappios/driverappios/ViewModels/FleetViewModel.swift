@@ -55,6 +55,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // Rescue Flow
     var showRescueProposalAlert = false
     var pendingRescueId: String?
+    var pendingBrokenDriverId: String?
 
     /// Orders that have already been auto-transitioned to ARRIVED (one-shot guard)
     private var arrivedIds: Set<String> = []
@@ -169,6 +170,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if event.type == "RESCUE_PROPOSED" {
             if let rescueId = event.rescueId {
                 self.pendingRescueId = rescueId
+                self.pendingBrokenDriverId = event.brokenDriverId
                 self.showRescueProposalAlert = true
                 Haptics.heavy()
             }
@@ -309,6 +311,16 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         if let cue = navigationCue, shouldAnnounceManeuverAdvance(previousIndex: previousIndex, nextIndex: navigationStepIndex) {
             navigationVoiceAnnouncer.announce(cue)
         }
+
+        let progress = routeSteps.isEmpty ? 0.0 : Double(navigationStepIndex) / Double(routeSteps.count)
+        let etaMinutes = max(1, Int((navigationCue?.distanceM ?? 500) / 400))
+        DriverLiveActivityManager.shared.updateNavigationState(
+            cue: navigationCue,
+            etaMinutes: etaMinutes,
+            progress: progress,
+            currentStepIndex: navigationStepIndex + 1,
+            totalSteps: routeSteps.count
+        )
     }
 
     func startLocationInterpolation() {
@@ -343,6 +355,19 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         refreshPlannedRoute()
         Task { await loadRouteGeometry() }
         showMarkerSheet = true
+
+        let dest = activeOrder?.retailerName ?? "Destination"
+        let items = activeOrder?.items.count ?? 1
+        let amount = Int64(activeOrder?.totalAmount ?? mission.amount)
+        DriverLiveActivityManager.shared.startNavigationActivity(
+            orderId: mission.order_id,
+            routeId: mission.route_id ?? "",
+            destinationName: dest,
+            totalItems: items,
+            totalAmountMinor: amount,
+            initialCue: navigationCue,
+            totalSteps: routeSteps.count
+        )
     }
 
     func markCompleted(_ orderId: String) {
@@ -358,6 +383,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
             activeOrder = nil
             showMarkerSheet = false
             refreshPlannedRoute()
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
         }
     }
 
@@ -423,6 +449,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
                 return
             }
             _ = try await APIClient.shared.returnComplete(truckId: vehicleId)
+            DriverLiveActivityManager.shared.endActivity(status: "COMPLETED")
             truckStatus = "AVAILABLE"
             isReturning = false
             returnGoodsLines = []
@@ -501,10 +528,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func acceptRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: true)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: true)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
             await loadMissions(silent: false)
         } catch {
             print("Failed to accept rescue: \(error)")
@@ -513,10 +542,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     func rejectRescue() async {
         guard let rescueId = pendingRescueId else { return }
+        let brokenDriverId = pendingBrokenDriverId ?? ""
         do {
-            try await fleetService.respondRescue(rescueId: rescueId, accept: false)
+            try await fleetService.respondRescue(rescueId: rescueId, brokenDriverId: brokenDriverId, accept: false)
             self.showRescueProposalAlert = false
             self.pendingRescueId = nil
+            self.pendingBrokenDriverId = nil
         } catch {
             print("Failed to reject rescue: \(error)")
         }
@@ -524,11 +555,17 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Delivery-edge APIs
 
-    func markCreditDelivery(orderId: String, photoProofUrl: String? = nil) async {
+    func markCreditDelivery(
+        orderId: String,
+        photoProofUrl: String? = nil,
+        signatureUrl: String? = nil,
+        photoLocalPath: String? = nil,
+        signatureLocalPath: String? = nil
+    ) async {
         deliveryEdgeError = nil
         deliveryEdgeMessage = nil
         do {
-            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl)
+            let resp = try await fleetService.markCreditDelivery(orderId: orderId, photoProofUrl: photoProofUrl, signatureUrl: signatureUrl)
             if let due = resp["due_at"], !due.isEmpty {
                 deliveryEdgeMessage = "Credit delivery recorded · due \(due)"
             } else {

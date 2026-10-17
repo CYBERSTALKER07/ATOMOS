@@ -1,0 +1,2078 @@
+[
+  {
+    "key": "factory_portal.analytics.text.fulfillment",
+    "en": "Fulfillment %"
+  },
+  {
+    "key": "factory_portal.analytics.text.requested_qty",
+    "en": "Requested Qty"
+  },
+  {
+    "key": "factory_portal.analytics.text.shipped_qty",
+    "en": "Shipped Qty"
+  },
+  {
+    "key": "factory_portal.app.text.cross_role_timeline",
+    "en": "Cross-role timeline"
+  },
+  {
+    "key": "factory_portal.app.text.network_pulse",
+    "en": "Network pulse"
+  },
+  {
+    "key": "factory_portal.auth.text.pegasusx_and_copy_2026",
+    "en": "pegasusX &copy; 2026"
+  },
+  {
+    "key": "factory_portal.dashboard.dashboard_alerts.text.attention_needed",
+    "en": "Attention needed"
+  },
+  {
+    "key": "factory_portal.dashboard.dashboard_alerts.text.operational_health",
+    "en": "Operational health"
+  },
+  {
+    "key": "factory_portal.dashboard.dashboard_alerts.text.shift_support_signals",
+    "en": "Shift support signals"
+  },
+  {
+    "key": "factory_portal.factory_shell.text.breadcrumb",
+    "en": "Breadcrumb"
+  },
+  {
+    "key": "factory_portal.factory_shell.text.desktop_command_ready",
+    "en": "Desktop command ready"
+  },
+  {
+    "key": "factory_portal.fleet.text.capacity_m3",
+    "en": "Capacity (m³)"
+  },
+  {
+    "key": "factory_portal.fleet.text.plate",
+    "en": "Plate"
+  },
+  {
+    "key": "factory_portal.insights.text.days_left",
+    "en": "Days Left"
+  },
+  {
+    "key": "factory_portal.insights.text.reorder_qty",
+    "en": "Reorder Qty"
+  },
+  {
+    "key": "factory_portal.insights.text.replenishment_insights",
+    "en": "Replenishment insights"
+  },
+  {
+    "key": "factory_portal.insights.text.urgency",
+    "en": "Urgency"
+  },
+  {
+    "key": "factory_portal.insights.text.velocity_day",
+    "en": "Velocity/day"
+  },
+  {
+    "key": "factory_portal.insights.text.why",
+    "en": "Why"
+  },
+  {
+    "key": "factory_portal.loading_bay.loading_bay_grid.text.items",
+    "en": "Items"
+  },
+  {
+    "key": "factory_portal.loading_bay.text.handoff_timeline",
+    "en": "Handoff timeline"
+  },
+  {
+    "key": "factory_portal.manifest_exceptions.manifest_exceptions_list.text.exception_inbox",
+    "en": "Exception inbox"
+  },
+  {
+    "key": "factory_portal.manifest_exceptions.text.gate_exceptions",
+    "en": "Gate exceptions"
+  },
+  {
+    "key": "factory_portal.manifests._id_.text.leo_lifecycle",
+    "en": "LEO lifecycle"
+  },
+  {
+    "key": "factory_portal.manifests._id_.text.manifest_detail",
+    "en": "Manifest detail"
+  },
+  {
+    "key": "factory_portal.manifests._id_.text.transitions",
+    "en": "Transitions"
+  },
+  {
+    "key": "factory_portal.manifests.text.manifest_pipeline",
+    "en": "Manifest pipeline"
+  },
+  {
+    "key": "factory_portal.notifications.text.notifications_inbox",
+    "en": "Notifications Inbox"
+  },
+  {
+    "key": "factory_portal.payload_override.payload_list.text.capacity",
+    "en": "Capacity:"
+  },
+  {
+    "key": "factory_portal.payload_override.payload_list.text.transfer",
+    "en": "Transfer"
+  },
+  {
+    "key": "factory_portal.payload_override.payload_list.text.volume_vu",
+    "en": "Volume (VU)"
+  },
+  {
+    "key": "factory_portal.payload_override.payload_override_form.text.move_transfer",
+    "en": "Move transfer"
+  },
+  {
+    "key": "factory_portal.payload_override.text.payload_override",
+    "en": "Payload override"
+  },
+  {
+    "key": "factory_portal.setup.factory.text.assembly",
+    "en": "Assembly"
+  },
+  {
+    "key": "factory_portal.setup.factory.text.general",
+    "en": "General"
+  },
+  {
+    "key": "factory_portal.setup.factory.text.manufacturing",
+    "en": "Manufacturing"
+  },
+  {
+    "key": "factory_portal.setup.factory.text.packaging",
+    "en": "Packaging"
+  },
+  {
+    "key": "factory_portal.setup.factory.text.processing",
+    "en": "Processing"
+  },
+  {
+    "key": "factory_portal.setup.setup_wizard_shell.text.onboarding_progress",
+    "en": "Onboarding progress"
+  },
+  {
+    "key": "factory_portal.setup.setup_wizard_shell.text.setup_progress",
+    "en": "Setup progress"
+  },
+  {
+    "key": "factory_portal.staff._id_.text.joined",
+    "en": "Joined"
+  },
+  {
+    "key": "factory_portal.staff._id_.text.staff_detail",
+    "en": "Staff detail"
+  },
+  {
+    "key": "factory_portal.staff._id_.text.staff_id",
+    "en": "Staff ID"
+  },
+  {
+    "key": "factory_portal.staff.staff_list.text.role",
+    "en": "Role"
+  },
+  {
+    "key": "factory_portal.supply_requests.supply_request_board.text.production_lane_board",
+    "en": "Production lane board"
+  },
+  {
+    "key": "factory_portal.supply_requests.supply_request_list.text.created",
+    "en": "Created"
+  },
+  {
+    "key": "factory_portal.supply_requests.supply_request_list.text.demand_queue",
+    "en": "Demand queue"
+  },
+  {
+    "key": "factory_portal.supply_requests.supply_request_list.text.priority",
+    "en": "Priority"
+  },
+  {
+    "key": "factory_portal.supply_requests.supply_request_list.text.state",
+    "en": "State"
+  },
+  {
+    "key": "factory_portal.supply_requests.text.board",
+    "en": "Board"
+  },
+  {
+    "key": "factory_portal.supply_requests.text.internal",
+    "en": "INTERNAL:"
+  },
+  {
+    "key": "factory_portal.supply_requests.text.supply_requests",
+    "en": "Supply requests"
+  },
+  {
+    "key": "factory_portal.supply_requests.text.table",
+    "en": "Table"
+  },
+  {
+    "key": "factory_portal.supply_requests.text.truck",
+    "en": "TRUCK:"
+  },
+  {
+    "key": "factory_portal.toast.text.dismiss",
+    "en": "Dismiss"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.action_available",
+    "en": "Action available"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.items_in_this_transfer",
+    "en": "Items in this transfer"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.manifest_contents",
+    "en": "Manifest contents"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.qty",
+    "en": "Qty"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.transfer_detail",
+    "en": "Transfer detail"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.unassigned",
+    "en": "Unassigned"
+  },
+  {
+    "key": "factory_portal.transfers._id_.text.volume",
+    "en": "Volume"
+  },
+  {
+    "key": "factory_portal.transfers.create.text.ord",
+    "en": "ord_…"
+  },
+  {
+    "key": "retailer_desktop.assist.text.floor_assist",
+    "en": "Floor assist"
+  },
+  {
+    "key": "retailer_desktop.assist.text.queue",
+    "en": "Queue"
+  },
+  {
+    "key": "retailer_desktop.assist.text.what_help_is_needed",
+    "en": "What help is needed?"
+  },
+  {
+    "key": "retailer_desktop.auth.select_org.text.choose_organization",
+    "en": "Choose organization"
+  },
+  {
+    "key": "retailer_desktop.auth.text.pegasusx_and_copy_2026",
+    "en": "pegasusX &copy; 2026"
+  },
+  {
+    "key": "retailer_desktop.auto_order.auto_order_list.text.units",
+    "en": "units"
+  },
+  {
+    "key": "retailer_desktop.auto_order.auto_order_rules.text.category_level_override",
+    "en": "Category-level override"
+  },
+  {
+    "key": "retailer_desktop.auto_order.auto_order_rules.text.size_variant_override",
+    "en": "Size / variant override"
+  },
+  {
+    "key": "retailer_desktop.auto_order.auto_order_rules.text.size_variant_overrides",
+    "en": "Size / variant Overrides"
+  },
+  {
+    "key": "retailer_desktop.auto_order.text.draft_now",
+    "en": "Draft now"
+  },
+  {
+    "key": "retailer_desktop.auto_order.text.how_it_works",
+    "en": "How It Works"
+  },
+  {
+    "key": "retailer_desktop.auto_order.text.place_now",
+    "en": "Place now"
+  },
+  {
+    "key": "retailer_desktop.cart_drawer.text.operational_subtotal",
+    "en": "Operational Subtotal"
+  },
+  {
+    "key": "retailer_desktop.catalog.text.global_network",
+    "en": "Global Network"
+  },
+  {
+    "key": "retailer_desktop.checkout_modal.text.earliest_t_1_business_day",
+    "en": "Earliest T+1 business day"
+  },
+  {
+    "key": "retailer_desktop.checkout_modal.text.standard_asap",
+    "en": "Standard (ASAP)"
+  },
+  {
+    "key": "retailer_desktop.credit.text.on_hold",
+    "en": "On hold"
+  },
+  {
+    "key": "retailer_desktop.credit.text.relationships",
+    "en": "Relationships"
+  },
+  {
+    "key": "retailer_desktop.dashboard.ai_prediction_section.text.ai_restock",
+    "en": "AI Restock"
+  },
+  {
+    "key": "retailer_desktop.dashboard.quick_reorder_section.text.quick_reorder",
+    "en": "Quick Reorder"
+  },
+  {
+    "key": "retailer_desktop.dock.text.dock_control",
+    "en": "Dock Control"
+  },
+  {
+    "key": "retailer_desktop.hq.text.net",
+    "en": "Net"
+  },
+  {
+    "key": "retailer_desktop.hq.text.sales_by_location",
+    "en": "Sales by location"
+  },
+  {
+    "key": "retailer_desktop.hq.text.sales_by_sku",
+    "en": "Sales by SKU"
+  },
+  {
+    "key": "retailer_desktop.hq.text.sold",
+    "en": "Sold"
+  },
+  {
+    "key": "retailer_desktop.hq.text.voided",
+    "en": "Voided"
+  },
+  {
+    "key": "retailer_desktop.insights.sell_through_panel.text.day",
+    "en": "Day"
+  },
+  {
+    "key": "retailer_desktop.insights.sell_through_panel.text.net_sold",
+    "en": "Net sold"
+  },
+  {
+    "key": "retailer_desktop.insights.sell_through_panel.text.source",
+    "en": "Source"
+  },
+  {
+    "key": "retailer_desktop.insights.text.intelligence_hub",
+    "en": "Intelligence Hub"
+  },
+  {
+    "key": "retailer_desktop.my_suppliers.text.connected_suppliers",
+    "en": "Connected Suppliers"
+  },
+  {
+    "key": "retailer_desktop.pos.text.customer_returns",
+    "en": "Customer returns…"
+  },
+  {
+    "key": "retailer_desktop.pos.text.parked_carts_server",
+    "en": "Parked carts (server)"
+  },
+  {
+    "key": "retailer_desktop.pos.text.qty",
+    "en": "Qty"
+  },
+  {
+    "key": "retailer_desktop.pos.text.sku_barcode",
+    "en": "SKU / barcode"
+  },
+  {
+    "key": "retailer_desktop.pos.text.till_session",
+    "en": "Till session"
+  },
+  {
+    "key": "retailer_desktop.procurement.text.vendor_operations",
+    "en": "Vendor Operations"
+  },
+  {
+    "key": "retailer_desktop.retailer_shell.text.breadcrumb",
+    "en": "Breadcrumb"
+  },
+  {
+    "key": "retailer_desktop.sections.text.aisle_tag",
+    "en": "Aisle tag"
+  },
+  {
+    "key": "retailer_desktop.sections.text.staff_user_ids_comma_separated",
+    "en": "Staff user IDs (comma-separated)"
+  },
+  {
+    "key": "retailer_desktop.sections.text.unassigned_skus",
+    "en": "Unassigned SKUs"
+  },
+  {
+    "key": "retailer_desktop.settings.capabilities.text.always_on",
+    "en": "Always on"
+  },
+  {
+    "key": "retailer_desktop.settings.capabilities.text.store_capabilities",
+    "en": "Store capabilities"
+  },
+  {
+    "key": "retailer_desktop.settings.cards.text.otp_code",
+    "en": "OTP code"
+  },
+  {
+    "key": "retailer_desktop.settings.cards.text.saved_cards",
+    "en": "Saved Cards"
+  },
+  {
+    "key": "retailer_desktop.settings.family.text.family_members",
+    "en": "Family Members"
+  },
+  {
+    "key": "retailer_desktop.settings.family.text.migration_result",
+    "en": "Migration result"
+  },
+  {
+    "key": "retailer_desktop.settings.locations.text.locations",
+    "en": "Locations"
+  },
+  {
+    "key": "retailer_desktop.settings.team.text.998",
+    "en": "+998…"
+  },
+  {
+    "key": "retailer_desktop.settings.team.text.team",
+    "en": "Team"
+  },
+  {
+    "key": "retailer_desktop.settings.text.category_overrides",
+    "en": "Category Overrides"
+  },
+  {
+    "key": "retailer_desktop.settings.text.node_overrides",
+    "en": "Node Overrides"
+  },
+  {
+    "key": "retailer_desktop.setup.setup_wizard_shell.text.onboarding_progress",
+    "en": "Onboarding progress"
+  },
+  {
+    "key": "retailer_desktop.setup.setup_wizard_shell.text.setup_progress",
+    "en": "Setup progress"
+  },
+  {
+    "key": "retailer_desktop.setup.tax.text.business_tax_id",
+    "en": "Business tax ID"
+  },
+  {
+    "key": "retailer_desktop.setup.tax.text.e_g_123456789",
+    "en": "e.g. 123456789"
+  },
+  {
+    "key": "retailer_desktop.shifts.text.cash_shift",
+    "en": "Cash shift"
+  },
+  {
+    "key": "retailer_desktop.shifts.text.recent_shifts",
+    "en": "Recent shifts"
+  },
+  {
+    "key": "retailer_desktop.stock.local_skus.text.barcode",
+    "en": "Barcode"
+  },
+  {
+    "key": "retailer_desktop.stock.text.adjust",
+    "en": "Adjust"
+  },
+  {
+    "key": "retailer_desktop.stock.text.available",
+    "en": "Available"
+  },
+  {
+    "key": "retailer_desktop.stock.text.bin",
+    "en": "Bin"
+  },
+  {
+    "key": "retailer_desktop.stock.text.counted_qty",
+    "en": "Counted qty"
+  },
+  {
+    "key": "retailer_desktop.stock.text.on_hand",
+    "en": "On hand"
+  },
+  {
+    "key": "retailer_desktop.stock.text.qty_delta",
+    "en": "Qty delta (+/-)"
+  },
+  {
+    "key": "retailer_desktop.stock.text.reserved",
+    "en": "Reserved"
+  },
+  {
+    "key": "retailer_desktop.tracking.text.network_pulse",
+    "en": "Network pulse"
+  },
+  {
+    "key": "retailer_desktop.tracking.text.telemetry_control",
+    "en": "Telemetry Control"
+  },
+  {
+    "key": "retailer_desktop.tracking.tracking_status.text.recent_receipts",
+    "en": "Recent receipts"
+  },
+  {
+    "key": "supplier_portal.activity.text.operational_events_will_stream_here",
+    "en": "Operational events will stream here."
+  },
+  {
+    "key": "supplier_portal.activity.text.recent_activity",
+    "en": "Recent Activity"
+  },
+  {
+    "key": "supplier_portal.admin_order_ops_panel.text.force_complete_fiscal_exception",
+    "en": "Force-complete (fiscal exception)"
+  },
+  {
+    "key": "supplier_portal.ai.recommendations.text.ai_recommendation_review",
+    "en": "AI recommendation review"
+  },
+  {
+    "key": "supplier_portal.ai.recommendations.text.evidence",
+    "en": "Evidence"
+  },
+  {
+    "key": "supplier_portal.ai.recommendations.text.reason_codes",
+    "en": "Reason codes"
+  },
+  {
+    "key": "supplier_portal.ai.recommendations.text.score",
+    "en": "Score"
+  },
+  {
+    "key": "supplier_portal.ai.recommendations.text.you_are_offline_showing_the_last_loaded_recommendations",
+    "en": "You are offline. Showing the last loaded recommendations."
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.day",
+    "en": "Day"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.days_window",
+    "en": "Days window"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.flywheel_vs_planning",
+    "en": "Flywheel vs planning:"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.kind",
+    "en": "Kind"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.last_14_days",
+    "en": "Last 14 days"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.last_1_day",
+    "en": "Last 1 day"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.net_sold",
+    "en": "Net sold"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.pos_flywheel_demand",
+    "en": "POS flywheel demand"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.source",
+    "en": "Source"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.flywheel.text.when",
+    "en": "When"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.city",
+    "en": "City"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.event",
+    "en": "Event"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.holiday",
+    "en": "Holiday"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.multiplier",
+    "en": "Multiplier"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.promotion",
+    "en": "Promotion"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.region",
+    "en": "Region"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.scope",
+    "en": "Scope"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.signals.text.weather",
+    "en": "Weather"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.text.baseline_vs_actual_14d",
+    "en": "Baseline vs actual (14d)"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.text.demand_forecast",
+    "en": "Demand forecast"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.text.qty",
+    "en": "Qty"
+  },
+  {
+    "key": "supplier_portal.analytics.demand.text.upcoming_demand_rows",
+    "en": "Upcoming demand rows"
+  },
+  {
+    "key": "supplier_portal.analytics.knowledge_graph.text.enterprise_knowledge_graph",
+    "en": "Enterprise knowledge graph"
+  },
+  {
+    "key": "supplier_portal.analytics.knowledge_graph.text.relation",
+    "en": "Relation"
+  },
+  {
+    "key": "supplier_portal.analytics.route_performance.text.actual_stops",
+    "en": "Actual stops"
+  },
+  {
+    "key": "supplier_portal.analytics.route_performance.text.computed",
+    "en": "Computed"
+  },
+  {
+    "key": "supplier_portal.analytics.route_performance.text.planned_stops",
+    "en": "Planned stops"
+  },
+  {
+    "key": "supplier_portal.analytics.route_performance.text.replans",
+    "en": "Replans"
+  },
+  {
+    "key": "supplier_portal.auth.text.pegasusx_and_copy_2026",
+    "en": "pegasusX &copy; 2026"
+  },
+  {
+    "key": "supplier_portal.catalog._product_id_.text.ean_gtin",
+    "en": "EAN / GTIN"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.barcode",
+    "en": "Barcode"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.case",
+    "en": "Case"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.category",
+    "en": "Category"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.image",
+    "en": "Image"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.sale_unit",
+    "en": "Sale unit"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.unit",
+    "en": "Unit"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.unit_vu",
+    "en": "Unit VU"
+  },
+  {
+    "key": "supplier_portal.catalog.components.catalog_table.text.units_case",
+    "en": "Units/case"
+  },
+  {
+    "key": "supplier_portal.catalog.components.create_product_form.text.8_14_digit_retail_barcode",
+    "en": "8–14 digit retail barcode"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.currency",
+    "en": "Currency"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.e_g_1000",
+    "en": "e.g. 1000"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.enter_chargeback_session_id",
+    "en": "Enter Chargeback Session ID"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.gateway",
+    "en": "Gateway"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.record_chargeback",
+    "en": "Record Chargeback"
+  },
+  {
+    "key": "supplier_portal.chargebacks.text.reverse_chargeback",
+    "en": "Reverse Chargeback"
+  },
+  {
+    "key": "supplier_portal.compliance.metric_card.text.vs_last_week",
+    "en": "vs last week"
+  },
+  {
+    "key": "supplier_portal.compliance.text.ba_rejected",
+    "en": "BA Rejected"
+  },
+  {
+    "key": "supplier_portal.compliance.text.compliance_and_fiscal_audit",
+    "en": "Compliance & Fiscal Audit"
+  },
+  {
+    "key": "supplier_portal.compliance.text.created_at",
+    "en": "Created At"
+  },
+  {
+    "key": "supplier_portal.compliance.text.ehf_id",
+    "en": "EHF ID"
+  },
+  {
+    "key": "supplier_portal.compliance.text.fiscalizing",
+    "en": "Fiscalizing"
+  },
+  {
+    "key": "supplier_portal.control_tower.text.actual_vs_plan",
+    "en": "Actual vs Plan"
+  },
+  {
+    "key": "supplier_portal.control_tower.text.baseline_vs_upside_scenarios",
+    "en": "Baseline vs Upside Scenarios"
+  },
+  {
+    "key": "supplier_portal.control_tower.text.playbook_suggestions",
+    "en": "Playbook suggestions"
+  },
+  {
+    "key": "supplier_portal.control_tower.text.top_scored_exceptions",
+    "en": "Top scored exceptions"
+  },
+  {
+    "key": "supplier_portal.control_tower_command_panel.text.control_tower",
+    "en": "Control tower"
+  },
+  {
+    "key": "supplier_portal.control_tower_command_panel.text.freeze_dispatch",
+    "en": "Freeze dispatch"
+  },
+  {
+    "key": "supplier_portal.control_tower_command_panel.text.priority_boost",
+    "en": "Priority boost"
+  },
+  {
+    "key": "supplier_portal.control_tower_command_panel.text.reroute",
+    "en": "Reroute"
+  },
+  {
+    "key": "supplier_portal.credit.admin_disable.text.program",
+    "en": "Program"
+  },
+  {
+    "key": "supplier_portal.credit.admin_disable.text.relationship",
+    "en": "Relationship"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.available",
+    "en": "Available"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.balance",
+    "en": "Balance"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.limit",
+    "en": "Limit"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.limit_minor",
+    "en": "limit minor"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.reason",
+    "en": "reason"
+  },
+  {
+    "key": "supplier_portal.credit.collections.text.util",
+    "en": "Util %"
+  },
+  {
+    "key": "supplier_portal.credit.policy.text.ret",
+    "en": "ret_…"
+  },
+  {
+    "key": "supplier_portal.credit.policy.text.self_serve_disable_blocked",
+    "en": "Self-serve disable blocked"
+  },
+  {
+    "key": "supplier_portal.credit.policy.text.terms",
+    "en": "Terms"
+  },
+  {
+    "key": "supplier_portal.dashboard.text.dispatch_queue",
+    "en": "Dispatch queue"
+  },
+  {
+    "key": "supplier_portal.dashboard.text.live_event_stream",
+    "en": "Live event stream"
+  },
+  {
+    "key": "supplier_portal.demand.payday_calendar.text.dates",
+    "en": "Dates"
+  },
+  {
+    "key": "supplier_portal.demand.payday_calendar.text.demand_multiplier_expected_lift",
+    "en": "Demand Multiplier (Expected Lift)"
+  },
+  {
+    "key": "supplier_portal.demand.payday_calendar.text.e_g_august_state_pension_payout",
+    "en": "e.g. August State Pension Payout"
+  },
+  {
+    "key": "supplier_portal.demand.payday_calendar.text.schedule_payday_spike",
+    "en": "Schedule Payday Spike"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.competitor_pressure",
+    "en": "Competitor Pressure"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.deactivate",
+    "en": "Deactivate"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.e_g_summer_soft_drinks_push",
+    "en": "e.g. Summer soft-drinks push"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.event_density",
+    "en": "Event Density"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.expired",
+    "en": "Expired"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.payday",
+    "en": "Payday"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.promo",
+    "en": "Promo"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.scheduled",
+    "en": "Scheduled"
+  },
+  {
+    "key": "supplier_portal.demand.signals.text.validity",
+    "en": "Validity"
+  },
+  {
+    "key": "supplier_portal.dispatch.cargo_photo_carousel.text.cargo_photo_reports",
+    "en": "Cargo Photo Reports"
+  },
+  {
+    "key": "supplier_portal.dispatch.cargo_photo_carousel.text.request_photo",
+    "en": "Request Photo"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.cargos",
+    "en": "Cargos"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.repair",
+    "en": "Repair"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.reports",
+    "en": "Reports"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.requests",
+    "en": "Requests"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.right_direction",
+    "en": "Right Direction"
+  },
+  {
+    "key": "supplier_portal.dispatch.dispatch_sidebar_nav.text.since_2022",
+    "en": "Since 2022"
+  },
+  {
+    "key": "supplier_portal.dispatch.text.dispatched",
+    "en": "Dispatched"
+  },
+  {
+    "key": "supplier_portal.dispatch.text.draft",
+    "en": "Draft"
+  },
+  {
+    "key": "supplier_portal.dispatch.text.manual_truck_assignment",
+    "en": "Manual truck assignment"
+  },
+  {
+    "key": "supplier_portal.dispatch.text.vol_units",
+    "en": "Vol. Units"
+  },
+  {
+    "key": "supplier_portal.dispatch.vehicle_capacity_gauge.text.current_truck_capacity",
+    "en": "Current Truck Capacity"
+  },
+  {
+    "key": "supplier_portal.earnings.text.earnings_and_treasury",
+    "en": "Earnings & Treasury"
+  },
+  {
+    "key": "supplier_portal.earnings.text.entries",
+    "en": "Entries"
+  },
+  {
+    "key": "supplier_portal.earnings.text.live_treasury_stream",
+    "en": "Live treasury stream"
+  },
+  {
+    "key": "supplier_portal.earnings.text.net",
+    "en": "Net"
+  },
+  {
+    "key": "supplier_portal.earnings.text.occurred",
+    "en": "Occurred"
+  },
+  {
+    "key": "supplier_portal.earnings.text.recent_dispute_history",
+    "en": "Recent dispute history"
+  },
+  {
+    "key": "supplier_portal.earnings.text.recent_ledger_activity",
+    "en": "Recent ledger activity"
+  },
+  {
+    "key": "supplier_portal.earnings.text.reconciliation_mismatches",
+    "en": "Reconciliation mismatches"
+  },
+  {
+    "key": "supplier_portal.earnings.text.record_chargeback",
+    "en": "Record chargeback"
+  },
+  {
+    "key": "supplier_portal.earnings.text.record_reversal",
+    "en": "Record reversal"
+  },
+  {
+    "key": "supplier_portal.earnings.text.reference",
+    "en": "Reference"
+  },
+  {
+    "key": "supplier_portal.earnings.text.totals_by_currency",
+    "en": "Totals by currency"
+  },
+  {
+    "key": "supplier_portal.error.text.something_went_wrong",
+    "en": "Something went wrong"
+  },
+  {
+    "key": "supplier_portal.exception_weather_map_panel.text.exception_weather",
+    "en": "Exception weather"
+  },
+  {
+    "key": "supplier_portal.exceptions.shop_closed.text.shop_closed_escalations",
+    "en": "Shop closed escalations"
+  },
+  {
+    "key": "supplier_portal.exceptions.text.recommended_playbooks",
+    "en": "Recommended playbooks"
+  },
+  {
+    "key": "supplier_portal.finance.credit_notes.text.reason_code",
+    "en": "Reason code"
+  },
+  {
+    "key": "supplier_portal.finance.credit_notes.text.reason_text",
+    "en": "Reason text"
+  },
+  {
+    "key": "supplier_portal.forecast_confidence_card.text.forecast_confidence",
+    "en": "Forecast confidence"
+  },
+  {
+    "key": "supplier_portal.geo_report.text.geo_report",
+    "en": "Geo report"
+  },
+  {
+    "key": "supplier_portal.handoff_inbox_card.text.handoff",
+    "en": "Handoff"
+  },
+  {
+    "key": "supplier_portal.inventory.import.text.confidence",
+    "en": "Confidence"
+  },
+  {
+    "key": "supplier_portal.inventory.import.text.source_column",
+    "en": "Source column"
+  },
+  {
+    "key": "supplier_portal.inventory.import.text.target_field",
+    "en": "Target field"
+  },
+  {
+    "key": "supplier_portal.inventory.inventory_table.text.accept_backorder",
+    "en": "Accept backorder"
+  },
+  {
+    "key": "supplier_portal.inventory.inventory_table.text.adjust",
+    "en": "Adjust"
+  },
+  {
+    "key": "supplier_portal.inventory.inventory_table.text.qty",
+    "en": "±qty"
+  },
+  {
+    "key": "supplier_portal.inventory.inventory_table.text.reject_when_short",
+    "en": "Reject when short"
+  },
+  {
+    "key": "supplier_portal.inventory.inventory_table.text.stock_policy",
+    "en": "Stock policy"
+  },
+  {
+    "key": "supplier_portal.ledger.text.ledger_entries",
+    "en": "Ledger Entries"
+  },
+  {
+    "key": "supplier_portal.live_ops_map.text.remaining_stops",
+    "en": "Remaining stops"
+  },
+  {
+    "key": "supplier_portal.manifest_exceptions.text.attempts",
+    "en": "Attempts"
+  },
+  {
+    "key": "supplier_portal.manifest_exceptions.text.manifest",
+    "en": "Manifest"
+  },
+  {
+    "key": "supplier_portal.manifest_exceptions.text.manifest_gate_exceptions",
+    "en": "Manifest gate exceptions"
+  },
+  {
+    "key": "supplier_portal.manifests._id_.text.manifest_detail",
+    "en": "Manifest detail"
+  },
+  {
+    "key": "supplier_portal.network_pulse_panel.text.network_pulse",
+    "en": "Network pulse"
+  },
+  {
+    "key": "supplier_portal.operations.operator_broadcast.text.message_body",
+    "en": "Message body"
+  },
+  {
+    "key": "supplier_portal.operations.operator_broadcast.text.operator_broadcast",
+    "en": "Operator broadcast"
+  },
+  {
+    "key": "supplier_portal.operations.replenishment_policies.text.replenishment_policies",
+    "en": "Replenishment policies"
+  },
+  {
+    "key": "supplier_portal.operations.replenishment_policies.text.safety_stock_8_2",
+    "en": "Safety stock (§8.2)"
+  },
+  {
+    "key": "supplier_portal.operations.replenishment_policies.text.target_service_level",
+    "en": "Target service level (%)"
+  },
+  {
+    "key": "supplier_portal.ops.map.text.zone_h3",
+    "en": "Zone H3"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.driver_form.text.assign_vehicle_later",
+    "en": "Assign vehicle later"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.driver_table.text.home_node",
+    "en": "Home node"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.driver_table.text.vehicle",
+    "en": "Vehicle"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.org_member_form.text.org_members",
+    "en": "Org members"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.org_member_table.text.current_org_roster",
+    "en": "Current org roster"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.org_member_table.text.node",
+    "en": "Node"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.org_member_table.text.role",
+    "en": "Role"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.vehicle_form.text.license_plate",
+    "en": "License plate"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.vehicle_form.text.vehicle_label",
+    "en": "Vehicle label"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.vehicle_form.text.vehicles",
+    "en": "Vehicles"
+  },
+  {
+    "key": "supplier_portal.org_fleet.components.vehicle_table.text.vehicle_roster",
+    "en": "Vehicle roster"
+  },
+  {
+    "key": "supplier_portal.payments.text.entry_count",
+    "en": "Entry count"
+  },
+  {
+    "key": "supplier_portal.payments.text.first_occurred",
+    "en": "First occurred"
+  },
+  {
+    "key": "supplier_portal.payments.text.last_occurred",
+    "en": "Last occurred"
+  },
+  {
+    "key": "supplier_portal.payments.text.live_finance_stream",
+    "en": "Live finance stream"
+  },
+  {
+    "key": "supplier_portal.payments.text.net_minor_units",
+    "en": "Net (minor units)"
+  },
+  {
+    "key": "supplier_portal.payments.text.settlement_groups",
+    "en": "Settlement groups"
+  },
+  {
+    "key": "supplier_portal.planning_brain_panel.text.scenario_run",
+    "en": "Scenario run"
+  },
+  {
+    "key": "supplier_portal.pricing._product_id_.text.discount_bps",
+    "en": "Discount (bps)"
+  },
+  {
+    "key": "supplier_portal.pricing._product_id_.text.on_sale",
+    "en": "On sale"
+  },
+  {
+    "key": "supplier_portal.pricing._product_id_.text.preview_pricing_impact",
+    "en": "Preview Pricing Impact"
+  },
+  {
+    "key": "supplier_portal.pricing.retailer_overrides.text.calculating_impact_preview",
+    "en": "Calculating impact preview…"
+  },
+  {
+    "key": "supplier_portal.pricing.retailer_overrides.text.impact_preview",
+    "en": "Impact preview"
+  },
+  {
+    "key": "supplier_portal.pricing.retailer_overrides.text.set_by",
+    "en": "Set by"
+  },
+  {
+    "key": "supplier_portal.promotions.text.ends",
+    "en": "Ends"
+  },
+  {
+    "key": "supplier_portal.promotions.text.margin",
+    "en": "Margin"
+  },
+  {
+    "key": "supplier_portal.promotions.text.margin_2",
+    "en": "Margin Δ"
+  },
+  {
+    "key": "supplier_portal.promotions.text.min_qty",
+    "en": "Min qty"
+  },
+  {
+    "key": "supplier_portal.promotions.text.sandbox_p_and_l_projection",
+    "en": "Sandbox P&L projection"
+  },
+  {
+    "key": "supplier_portal.promotions.text.specific_retailers",
+    "en": "Specific retailers"
+  },
+  {
+    "key": "supplier_portal.promotions.text.starts",
+    "en": "Starts"
+  },
+  {
+    "key": "supplier_portal.promotions.text.volume",
+    "en": "Volume"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.adj_demand_day",
+    "en": "Adj. demand / day"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.base_demand_day",
+    "en": "Base demand / day"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.has_store_pos",
+    "en": "Has Store POS"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.in_flight",
+    "en": "In-flight"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.pos_vel_day",
+    "en": "POS vel / day"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.reorder_suggestions",
+    "en": "Reorder suggestions"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.safety_stock",
+    "en": "Safety stock"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.sources",
+    "en": "Sources"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.suggested_qty",
+    "en": "Suggested qty"
+  },
+  {
+    "key": "supplier_portal.replenishment.suggestions.text.wholesale_only",
+    "en": "Wholesale only"
+  },
+  {
+    "key": "supplier_portal.replenishment_traceability_panel.text.insight",
+    "en": "Insight"
+  },
+  {
+    "key": "supplier_portal.replenishment_traceability_panel.text.replenishment_traceability",
+    "en": "Replenishment traceability"
+  },
+  {
+    "key": "supplier_portal.replenishment_traceability_panel.text.transfer",
+    "en": "Transfer"
+  },
+  {
+    "key": "supplier_portal.returns.text.dispute_and_returns",
+    "en": "Dispute & Returns"
+  },
+  {
+    "key": "supplier_portal.returns.text.gate_resolved",
+    "en": "Gate resolved"
+  },
+  {
+    "key": "supplier_portal.returns.text.write_off",
+    "en": "Write off"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.api_keys",
+    "en": "API keys"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.archive_dir",
+    "en": "Archive dir"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.csv",
+    "en": "csv"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.dead_letter",
+    "en": "Dead letter"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.exports",
+    "en": "Exports"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.grant_type_client_credentials",
+    "en": "grant_type=client_credentials"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.inbound_dir",
+    "en": "Inbound dir"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.invoices",
+    "en": "invoices"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.journals",
+    "en": "journals"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.journals_1c",
+    "en": "journals (1C)"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.json",
+    "en": "json"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.ledger",
+    "en": "ledger"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.outbound_dir",
+    "en": "Outbound dir"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.port",
+    "en": "Port"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.post_partner_v1_oauth_token",
+    "en": "POST /partner/v1/oauth/token"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.pxk",
+    "en": "pxk_…"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.recent_edi_documents",
+    "en": "Recent EDI documents"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.remote_base_directory",
+    "en": "Remote base directory"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.sftp_edi",
+    "en": "SFTP + EDI"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.username",
+    "en": "Username"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.webhooks",
+    "en": "Webhooks"
+  },
+  {
+    "key": "supplier_portal.settings.integrations.text.xml",
+    "en": "xml"
+  },
+  {
+    "key": "supplier_portal.settings.notification_preferences.text.notification_preferences",
+    "en": "Notification preferences"
+  },
+  {
+    "key": "supplier_portal.settings.notification_preferences.text.saved",
+    "en": "Saved."
+  },
+  {
+    "key": "supplier_portal.settings.planning.create_override_form.text.custom",
+    "en": "Custom"
+  },
+  {
+    "key": "supplier_portal.settings.planning.seasonal_overrides_table.text.template",
+    "en": "Template"
+  },
+  {
+    "key": "supplier_portal.settings.planning.seasonal_overrides_table.text.window",
+    "en": "Window"
+  },
+  {
+    "key": "supplier_portal.settings.planning.text.custom_seasons",
+    "en": "Custom seasons"
+  },
+  {
+    "key": "supplier_portal.settings.playbooks.text.auto",
+    "en": "auto"
+  },
+  {
+    "key": "supplier_portal.settings.playbooks.text.control_tower_playbooks",
+    "en": "Control tower playbooks"
+  },
+  {
+    "key": "supplier_portal.settings.return_policy.text.return_policy_saved",
+    "en": "Return policy saved."
+  },
+  {
+    "key": "supplier_portal.settings.return_policy.text.same_as_default",
+    "en": "Same as default"
+  },
+  {
+    "key": "supplier_portal.settings.segmentation_panel.text.sku_velocity_classes",
+    "en": "SKU velocity classes"
+  },
+  {
+    "key": "supplier_portal.settings.segmentation_panel.text.strategic",
+    "en": "Strategic"
+  },
+  {
+    "key": "supplier_portal.settings.tax_regimes.text.tax_regime_history",
+    "en": "Tax Regime History"
+  },
+  {
+    "key": "supplier_portal.setup.billing.text.e_g_chasus33",
+    "en": "e.g. CHASUS33"
+  },
+  {
+    "key": "supplier_portal.setup.billing.text.e_g_hsbc_chase",
+    "en": "e.g. HSBC, Chase"
+  },
+  {
+    "key": "supplier_portal.setup.business.text.building_street_suite",
+    "en": "Building, street, suite"
+  },
+  {
+    "key": "supplier_portal.setup.business.text.e_g_gb123456789",
+    "en": "e.g. GB123456789"
+  },
+  {
+    "key": "supplier_portal.setup.business.text.headquarters_location",
+    "en": "Headquarters location"
+  },
+  {
+    "key": "supplier_portal.setup.business.text.tax_and_registration",
+    "en": "Tax & registration"
+  },
+  {
+    "key": "supplier_portal.setup.setup_wizard_shell.text.onboarding_progress",
+    "en": "Onboarding progress"
+  },
+  {
+    "key": "supplier_portal.setup.setup_wizard_shell.text.setup_progress",
+    "en": "Setup progress"
+  },
+  {
+    "key": "supplier_portal.signal_ingest_ops_panel.text.signal_ingest_ops",
+    "en": "Signal ingest ops"
+  },
+  {
+    "key": "supplier_portal.supplier_shell.text.breadcrumb",
+    "en": "Breadcrumb"
+  },
+  {
+    "key": "supplier_portal.supplier_shell.text.profile_menu",
+    "en": "Profile menu"
+  },
+  {
+    "key": "supplier_portal.supplier_shell.text.single_tenant_control_plane",
+    "en": "Single-tenant control plane"
+  },
+  {
+    "key": "supplier_portal.supplier_shell.text.single_tenant_system_ready",
+    "en": "Single-tenant · System ready"
+  },
+  {
+    "key": "supplier_portal.supply_lanes.supply_lanes_list.text.capacity_limit",
+    "en": "Capacity limit"
+  },
+  {
+    "key": "supplier_portal.supply_lanes.supply_lanes_list.text.lane_utilization",
+    "en": "Lane Utilization"
+  },
+  {
+    "key": "supplier_portal.supply_lanes.text.supply_lanes",
+    "en": "Supply lanes"
+  },
+  {
+    "key": "supplier_portal.topology.text.factories_and_warehouses",
+    "en": "Factories & warehouses"
+  },
+  {
+    "key": "supplier_portal.treasury.text.earnings_and_disputes",
+    "en": "Earnings & disputes"
+  },
+  {
+    "key": "supplier_portal.warehouses.components.warehouse_form.text.coverage_km",
+    "en": "Coverage km"
+  },
+  {
+    "key": "warehouse_portal.analytics.text.affected_sessions_30d",
+    "en": "Affected Sessions (30d)"
+  },
+  {
+    "key": "warehouse_portal.analytics.text.rows_imported_30d",
+    "en": "Rows Imported (30d)"
+  },
+  {
+    "key": "warehouse_portal.analytics.text.skus_updated_30d",
+    "en": "SKUs Updated (30d)"
+  },
+  {
+    "key": "warehouse_portal.analytics.text.units_sold",
+    "en": "Units Sold"
+  },
+  {
+    "key": "warehouse_portal.app.text.network_pulse",
+    "en": "Network pulse"
+  },
+  {
+    "key": "warehouse_portal.auth.text.pegasusx_and_copy_2026",
+    "en": "pegasusX &copy; 2026"
+  },
+  {
+    "key": "warehouse_portal.bins.text.expiry",
+    "en": "Expiry"
+  },
+  {
+    "key": "warehouse_portal.bins.text.lot",
+    "en": "Lot"
+  },
+  {
+    "key": "warehouse_portal.bins.text.lots",
+    "en": "Lots"
+  },
+  {
+    "key": "warehouse_portal.bins.text.on_hand",
+    "en": "On hand"
+  },
+  {
+    "key": "warehouse_portal.bins.text.reserved",
+    "en": "Reserved"
+  },
+  {
+    "key": "warehouse_portal.bins.text.seq",
+    "en": "Seq"
+  },
+  {
+    "key": "warehouse_portal.bins.text.zone",
+    "en": "Zone"
+  },
+  {
+    "key": "warehouse_portal.control_tower.text.actual_vs_plan",
+    "en": "Actual vs Plan"
+  },
+  {
+    "key": "warehouse_portal.control_tower.text.baseline_vs_upside_scenarios",
+    "en": "Baseline vs Upside Scenarios"
+  },
+  {
+    "key": "warehouse_portal.control_tower.text.global_control_tower",
+    "en": "Global Control Tower"
+  },
+  {
+    "key": "warehouse_portal.credit.policy.text.program",
+    "en": "Program"
+  },
+  {
+    "key": "warehouse_portal.credit.policy.text.relationships",
+    "en": "Relationships"
+  },
+  {
+    "key": "warehouse_portal.cycle_counts.text.adjustment",
+    "en": "Adjustment"
+  },
+  {
+    "key": "warehouse_portal.cycle_counts.text.auto",
+    "en": "auto"
+  },
+  {
+    "key": "warehouse_portal.cycle_counts.text.count",
+    "en": "Count"
+  },
+  {
+    "key": "warehouse_portal.cycle_counts.text.delta",
+    "en": "Delta"
+  },
+  {
+    "key": "warehouse_portal.cycle_counts.text.expected",
+    "en": "Expected"
+  },
+  {
+    "key": "warehouse_portal.dispatch.rescues.text.finding_available_trucks",
+    "en": "Finding available trucks..."
+  },
+  {
+    "key": "warehouse_portal.dispatch.rescues.text.insufficient_capacity",
+    "en": "Insufficient Capacity"
+  },
+  {
+    "key": "warehouse_portal.dispatch.rescues.text.needs_rescue",
+    "en": "Needs Rescue"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.capacity_exceeded",
+    "en": "Capacity exceeded"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.custom_reason",
+    "en": "Custom reason"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.handoff_timeline",
+    "en": "Handoff timeline"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.recent_dispatch_commits",
+    "en": "Recent dispatch commits"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.run_smart_dispatch",
+    "en": "Run smart dispatch?"
+  },
+  {
+    "key": "warehouse_portal.dispatch.text.smart_suggest_preview",
+    "en": "Smart suggest preview"
+  },
+  {
+    "key": "warehouse_portal.dispatch_locks.text.lock_id",
+    "en": "Lock ID"
+  },
+  {
+    "key": "warehouse_portal.dispatch_locks.text.locked_at",
+    "en": "Locked At"
+  },
+  {
+    "key": "warehouse_portal.dispatch_locks.text.locked_by",
+    "en": "Locked By"
+  },
+  {
+    "key": "warehouse_portal.dispatch_locks.text.scope",
+    "en": "Scope"
+  },
+  {
+    "key": "warehouse_portal.dispatch_settings.text.auto_dispatch",
+    "en": "Auto dispatch"
+  },
+  {
+    "key": "warehouse_portal.dispatch_settings.text.enabling_auto_dispatch_will_immediately_schedule_available_drive",
+    "en": "Enabling auto dispatch will immediately schedule available drivers. Based on the current queue:"
+  },
+  {
+    "key": "warehouse_portal.dispatch_settings.text.toggle_auto_dispatch",
+    "en": "Toggle auto dispatch"
+  },
+  {
+    "key": "warehouse_portal.drivers.drivers_list.text.assigned_vehicle",
+    "en": "Assigned Vehicle"
+  },
+  {
+    "key": "warehouse_portal.drivers.drivers_list.text.unassigned",
+    "en": "Unassigned"
+  },
+  {
+    "key": "warehouse_portal.exceptions.text.exception_triage",
+    "en": "Exception triage"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_chart_panel.text.critical_items",
+    "en": "Critical Items"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_chart_panel.text.healthy_items",
+    "en": "Healthy Items"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_chart_panel.text.urgent_items",
+    "en": "Urgent Items"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_sku_table.text.ai_pred",
+    "en": "AI Pred"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_sku_table.text.burn_day",
+    "en": "Burn/Day"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_sku_table.text.confidence",
+    "en": "Confidence"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_sku_table.text.incoming",
+    "en": "Incoming"
+  },
+  {
+    "key": "warehouse_portal.forecast.forecast_sku_table.text.stockout",
+    "en": "Stockout"
+  },
+  {
+    "key": "warehouse_portal.forecast_confidence_view.text.forecast_confidence",
+    "en": "Forecast confidence"
+  },
+  {
+    "key": "warehouse_portal.forecast_confidence_view.text.insufficient_history_predictive_forecast_blocked",
+    "en": "Insufficient history — predictive forecast blocked"
+  },
+  {
+    "key": "warehouse_portal.inventory.inventory_stock_list.text.accept_backorder",
+    "en": "Accept backorder"
+  },
+  {
+    "key": "warehouse_portal.inventory.inventory_stock_list.text.oos_policy",
+    "en": "OOS Policy"
+  },
+  {
+    "key": "warehouse_portal.inventory.inventory_stock_list.text.reject_when_oos",
+    "en": "Reject when OOS"
+  },
+  {
+    "key": "warehouse_portal.inventory.inventory_stock_list.text.reorder_at",
+    "en": "Reorder At"
+  },
+  {
+    "key": "warehouse_portal.inventory.text.e_g_cycle_count_damaged_goods",
+    "en": "e.g. cycle count, damaged goods"
+  },
+  {
+    "key": "warehouse_portal.kpi_stat_card.text.done",
+    "en": "Done"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.created",
+    "en": "Created"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.labels",
+    "en": "Labels"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.manifest",
+    "en": "Manifest"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.pick",
+    "en": "Pick"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.stops",
+    "en": "Stops"
+  },
+  {
+    "key": "warehouse_portal.manifests.text.vehicle",
+    "en": "Vehicle"
+  },
+  {
+    "key": "warehouse_portal.network_pulse_panel.text.ops_pulse",
+    "en": "Ops pulse"
+  },
+  {
+    "key": "warehouse_portal.operations.operations_broadcast_form.text.bay_2_closed",
+    "en": "Bay 2 closed"
+  },
+  {
+    "key": "warehouse_portal.operations.operations_broadcast_form.text.broadcast_templates",
+    "en": "Broadcast templates"
+  },
+  {
+    "key": "warehouse_portal.operations.operations_broadcast_form.text.send_depot_broadcast",
+    "en": "Send depot broadcast"
+  },
+  {
+    "key": "warehouse_portal.operations.operations_pricing_preview.text.pricing_impact_preview_read_only",
+    "en": "Pricing impact preview (read-only)"
+  },
+  {
+    "key": "warehouse_portal.operations.text.depot_operations",
+    "en": "Depot operations"
+  },
+  {
+    "key": "warehouse_portal.orders.order_line_items.text.line_items",
+    "en": "Line items"
+  },
+  {
+    "key": "warehouse_portal.orders.order_line_items.text.unit_uzs",
+    "en": "Unit (UZS)"
+  },
+  {
+    "key": "warehouse_portal.payment_config.text.mode",
+    "en": "Mode"
+  },
+  {
+    "key": "warehouse_portal.payment_config.text.provider",
+    "en": "Provider"
+  },
+  {
+    "key": "warehouse_portal.payment_config.text.updated",
+    "en": "Updated"
+  },
+  {
+    "key": "warehouse_portal.pick_waves.text.bin",
+    "en": "Bin"
+  },
+  {
+    "key": "warehouse_portal.pick_waves.text.manifest_uuid",
+    "en": "manifest uuid"
+  },
+  {
+    "key": "warehouse_portal.pick_waves.text.qty",
+    "en": "Qty"
+  },
+  {
+    "key": "warehouse_portal.pick_waves.text.wave",
+    "en": "Wave"
+  },
+  {
+    "key": "warehouse_portal.products.text.category",
+    "en": "Category"
+  },
+  {
+    "key": "warehouse_portal.profile.text.signed_in_as",
+    "en": "Signed in as"
+  },
+  {
+    "key": "warehouse_portal.replenishment.replenishment_list.text.days_left",
+    "en": "Days Left"
+  },
+  {
+    "key": "warehouse_portal.replenishment.replenishment_list.text.reorder_qty",
+    "en": "Reorder Qty"
+  },
+  {
+    "key": "warehouse_portal.replenishment.replenishment_list.text.urgency",
+    "en": "Urgency"
+  },
+  {
+    "key": "warehouse_portal.replenishment.replenishment_list.text.why",
+    "en": "Why"
+  },
+  {
+    "key": "warehouse_portal.replenishment.text.insight_queue",
+    "en": "Insight queue"
+  },
+  {
+    "key": "warehouse_portal.replenishment.text.replenishment_insights",
+    "en": "Replenishment insights"
+  },
+  {
+    "key": "warehouse_portal.returns.text.barcode_ean",
+    "en": "Barcode (EAN)"
+  },
+  {
+    "key": "warehouse_portal.returns.text.gate_queue",
+    "en": "Gate queue"
+  },
+  {
+    "key": "warehouse_portal.returns.text.history",
+    "en": "History"
+  },
+  {
+    "key": "warehouse_portal.returns.text.inbound_returns",
+    "en": "Inbound Returns"
+  },
+  {
+    "key": "warehouse_portal.returns.text.scan",
+    "en": "Scan"
+  },
+  {
+    "key": "warehouse_portal.returns.text.write_off",
+    "en": "Write off"
+  },
+  {
+    "key": "warehouse_portal.settings.ops_settings_form.text.advanced_json",
+    "en": "Advanced JSON"
+  },
+  {
+    "key": "warehouse_portal.settings.return_policy_settings_section.text.return_policy_saved",
+    "en": "Return policy saved."
+  },
+  {
+    "key": "warehouse_portal.settings.return_policy_settings_section.text.returns_and_reverse_sla",
+    "en": "Returns & reverse SLA"
+  },
+  {
+    "key": "warehouse_portal.settings.text.depot_location",
+    "en": "Depot location"
+  },
+  {
+    "key": "warehouse_portal.setup.location.text.central_depot",
+    "en": "Central depot"
+  },
+  {
+    "key": "warehouse_portal.setup.setup_wizard_shell.text.onboarding_progress",
+    "en": "Onboarding progress"
+  },
+  {
+    "key": "warehouse_portal.setup.setup_wizard_shell.text.setup_progress",
+    "en": "Setup progress"
+  },
+  {
+    "key": "warehouse_portal.staff.text.payloader",
+    "en": "Payloader"
+  },
+  {
+    "key": "warehouse_portal.staff.text.role",
+    "en": "Role"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.items",
+    "en": "Items"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.priority",
+    "en": "Priority"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.received",
+    "en": "Received"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.recommended",
+    "en": "Recommended"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.requested",
+    "en": "Requested"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.shipped",
+    "en": "Shipped"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.supply_request",
+    "en": "Supply Request"
+  },
+  {
+    "key": "warehouse_portal.supply_requests._id_.text.unit_volume",
+    "en": "Unit Volume"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.new.text.demand_forecast_7_day",
+    "en": "Demand Forecast (7-day)"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.new.text.manual_items",
+    "en": "Manual Items"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.new.text.stockout_in",
+    "en": "Stockout In"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.new.text.use_ai_demand_forecast",
+    "en": "Use AI demand forecast"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.text.state",
+    "en": "State"
+  },
+  {
+    "key": "warehouse_portal.supply_requests.text.volume",
+    "en": "Volume"
+  },
+  {
+    "key": "warehouse_portal.toast.text.dismiss",
+    "en": "Dismiss"
+  },
+  {
+    "key": "warehouse_portal.transfers.text.transfer_controls",
+    "en": "Transfer controls"
+  },
+  {
+    "key": "warehouse_portal.transfers.text.volume_vu",
+    "en": "Volume (VU)"
+  },
+  {
+    "key": "warehouse_portal.treasury.text.invoices",
+    "en": "Invoices"
+  },
+  {
+    "key": "warehouse_portal.treasury.treasury_transaction_list.text.due",
+    "en": "Due"
+  },
+  {
+    "key": "warehouse_portal.treasury.treasury_transaction_list.text.invoice",
+    "en": "Invoice"
+  },
+  {
+    "key": "warehouse_portal.vehicle_availability_panel.text.availability",
+    "en": "Availability"
+  },
+  {
+    "key": "warehouse_portal.vehicle_availability_panel.text.unavailable_reason",
+    "en": "Unavailable reason"
+  },
+  {
+    "key": "warehouse_portal.vehicles._vehicle_id_.text.capacity",
+    "en": "Capacity"
+  },
+  {
+    "key": "warehouse_portal.vehicles._vehicle_id_.text.class",
+    "en": "Class"
+  },
+  {
+    "key": "warehouse_portal.vehicles._vehicle_id_.text.dispatch_impact",
+    "en": "Dispatch impact"
+  },
+  {
+    "key": "warehouse_portal.vehicles._vehicle_id_.text.hold_reason",
+    "en": "Hold reason"
+  },
+  {
+    "key": "warehouse_portal.vehicles._vehicle_id_.text.license_plate",
+    "en": "License plate"
+  },
+  {
+    "key": "warehouse_portal.vehicles.text.class_a_50_vu",
+    "en": "Class A (50 VU)"
+  },
+  {
+    "key": "warehouse_portal.vehicles.text.class_b_150_vu",
+    "en": "Class B (150 VU)"
+  },
+  {
+    "key": "warehouse_portal.vehicles.text.class_c_400_vu",
+    "en": "Class C (400 VU)"
+  },
+  {
+    "key": "warehouse_portal.vehicles.text.label_e_g_truck_01",
+    "en": "Label (e.g. Truck-01)"
+  },
+  {
+    "key": "warehouse_portal.warehouse_shell.text.breadcrumb",
+    "en": "Breadcrumb"
+  },
+  {
+    "key": "warehouse_portal.warehouse_shell.text.node_ops",
+    "en": "Node ops"
+  },
+  {
+    "key": "warehouse_portal.warehouse_shell.text.profile_menu",
+    "en": "Profile menu"
+  },
+  {
+    "key": "warehouse_portal.warehouse_shell.text.single_tenant_control_plane",
+    "en": "Single-tenant control plane"
+  }
+]

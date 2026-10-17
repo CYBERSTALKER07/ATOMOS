@@ -147,7 +147,7 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
                         eval_cost += return_cost;
 
                         // Original cost of this route
-                        let original_cost_scaled = route_cost_scaled; // This includes return to depot
+                        let _original_cost_scaled = route_cost_scaled; // This includes return to depot
 
                         if eval_cost < best_cost_f64 {
                             // It's strictly better!
@@ -180,10 +180,11 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
         }
     }
 
-    let status = if unassigned.is_empty() {
-        SolverStatus::Optimal
+    let status = if routes.is_empty() && !unassigned.is_empty() {
+        SolverStatus::Infeasible
     } else {
-        SolverStatus::Feasible
+        // Nearest-neighbor greedy never proves optimality — report HEURISTIC (P2-2).
+        SolverStatus::Heuristic
     };
 
     info!("VRP solved with status {:?}, unassigned: {}", status, unassigned.len());

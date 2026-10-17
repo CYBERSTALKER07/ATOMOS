@@ -146,6 +146,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(json: Json): OkHttpClient =
         OkHttpClient.Builder()
+            .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
             .authenticator(TokenRefreshAuthenticator(json, BASE_URL))
             .connectTimeout(30, TimeUnit.SECONDS)

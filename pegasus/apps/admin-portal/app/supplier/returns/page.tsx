@@ -202,7 +202,10 @@ export default function ReturnsPage() {
                           <option value="RETURN_TO_STOCK">Return to Stock</option>
                           <option value="WRITE_OFF">Write Off</option>
                         </select>
+                        <label htmlFor={`return-notes-${item.line_item_id}`} className="sr-only">Resolution Notes</label>
                         <input
+                          id={`return-notes-${item.line_item_id}`}
+                          aria-label="Resolution Notes"
                           type="text"
                           value={notes}
                           onChange={e => setNotes(e.target.value)}

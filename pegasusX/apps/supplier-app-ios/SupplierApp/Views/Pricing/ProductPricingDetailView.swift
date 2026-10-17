@@ -18,18 +18,18 @@ struct ProductPricingDetailView: View {
         Text(product.productId).font(.caption.monospaced()).foregroundStyle(.secondary)
       }
       Section("List price") {
-        TextField("Price (\(product.currency))", text: $priceMajor)
+        TextField(L10n.format("mobile_supplier.ui.price_currency", "\(product.currency)"), text: $priceMajor)
           .keyboardType(.decimalPad)
-        Text("Set the catalog list price retailers see before promotions.")
+        Text("mobile_supplier.ui.set_the_catalog_list_price_retailers_see_before_promotions")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
       Section("Sale") {
         Toggle("On sale", isOn: $saleEnabled)
         if saleEnabled {
-          TextField("Discount (bps)", text: $saleDiscountBps)
+          TextField("supplier_portal.pricing._product_id_.text.discount_bps", text: $saleDiscountBps)
             .keyboardType(.numberPad)
-          Text("100 bps = 1% off list price for this product.")
+          Text("mobile_supplier.ui.100_bps_1_off_list_price_for_this_product")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -42,7 +42,7 @@ struct ProductPricingDetailView: View {
           .disabled(saving)
       }
     }
-    .navigationTitle("Pricing")
+    .navigationTitle("portal.nav.pricing")
     .navigationBarTitleDisplayMode(.inline)
     .task { await bootstrap() }
   }

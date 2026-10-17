@@ -66,7 +66,7 @@ func (l *redisRateLimiter) Allow(key string, max int, window time.Duration, now 
 	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 
-	res, err := redisRateLimitScript.Run(ctx, l.client, []string{"rl:" + key}, max, windowSec, nowMs, reqID).Int64Slice()
+	res, err := redisRateLimitScript.Run(ctx, l.client, []string{"{rl:" + key + "}"}, max, windowSec, nowMs, reqID).Int64Slice()
 	if err != nil || len(res) < 3 {
 		return true, max, 0
 	}

@@ -8,6 +8,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type signalBaselinePayload struct {
@@ -59,30 +62,76 @@ func baselineFromSignalIngest(supplierID string, in SignalIngestInput, now time.
 	}, true
 }
 
-// ProjectSignal persists an ingested planning signal and optionally upserts demand baseline.
-func (s *Service) ProjectSignal(ctx context.Context, supplierID string, in SignalIngestInput) error {
+type planningOutboxBuf struct {
+	events []outbox.Event
+}
+
+func (b *planningOutboxBuf) BufferOutbox(_ context.Context, e outbox.Event) error {
+	b.events = append(b.events, e)
+	return nil
+}
+
+// ProjectSignal persists an ingested planning signal. The Kafka worker uses this
+// path and must not emit another copy of the event it just consumed.
+func (s *Service) ProjectSignal(ctx context.Context, supplierID string, in SignalIngestInput) (string, error) {
+	return s.projectSignal(ctx, supplierID, in, false)
+}
+
+// ProjectSignalWithOutbox persists the signal and the ingest event in one transaction.
+// HTTP ingest uses this so a Kafka outage cannot drop the signal.
+func (s *Service) ProjectSignalWithOutbox(ctx context.Context, supplierID string, in SignalIngestInput) (string, error) {
+	return s.projectSignal(ctx, supplierID, in, true)
+}
+
+func (s *Service) projectSignal(ctx context.Context, supplierID string, in SignalIngestInput, emit bool) (string, error) {
 	if s == nil || s.Spanner == nil {
-		return errors.New("planning unavailable")
+		return "", errors.New("planning unavailable")
 	}
 	signalID := strings.TrimSpace(in.SignalID)
 	if signalID == "" {
-		return errors.New("signal_id_required")
+		signalID = uuid.NewString()
+		in.SignalID = signalID
+	}
+	if strings.TrimSpace(in.Source) == "" {
+		return "", errors.New("source_required")
 	}
 	now := s.Now()
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{spanner.InsertOrUpdateMap("PlanningSignalProjections", map[string]any{
+		muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("PlanningSignalProjections", map[string]any{
 			"SupplierId":  supplierID,
 			"SignalId":    signalID,
 			"Source":      strings.TrimSpace(in.Source),
 			"PayloadJson": string(in.Payload),
 			"IngestedAt":  spanner.CommitTimestamp,
-		})})
+		})}
+		if emit {
+			buf := &planningOutboxBuf{}
+			if err := outbox.EmitJSON(ctx, buf, "PlanningSignal", signalID, events.TopicPlanningSignalIngest, map[string]any{
+				"type":         events.EventPlanningSignalIngest,
+				"supplier_id":  supplierID,
+				"signal_id":    signalID,
+				"source":       strings.TrimSpace(in.Source),
+				"warehouse_id": strings.TrimSpace(in.WarehouseID),
+				"retailer_id":  strings.TrimSpace(in.RetailerID),
+				"payload":      json.RawMessage(in.Payload),
+				"timestamp":    now.UTC().Format(time.RFC3339Nano),
+				"v":            1,
+			}); err != nil {
+				return err
+			}
+			for _, e := range buf.events {
+				muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
+			}
+		}
+		return txn.BufferWrite(muts)
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	if baseline, ok := baselineFromSignalIngest(supplierID, in, now); ok {
-		return WriteBaselineWithOutbox(ctx, s.Spanner, now, baseline)
+		if err := WriteBaselineWithOutbox(ctx, s.Spanner, now, baseline); err != nil {
+			return "", err
+		}
 	}
-	return nil
+	return signalID, nil
 }

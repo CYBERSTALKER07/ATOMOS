@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 // Config holds ai-worker runtime settings without importing backend-go/bootstrap.
@@ -25,7 +28,7 @@ func loadConfig() (*Config, error) {
 		SpannerDatabase:      envOr("SPANNER_DATABASE", "pegasusx-db"),
 		KafkaBrokers:         envOr("KAFKA_BROKERS", "localhost:9092"),
 		InternalAPIKey:       envOr("INTERNAL_API_KEY", "dev-internal-key"),
-		SeedSupplierCurrency: envOr("SEED_SUPPLIER_CURRENCY", "UZS"),
+		SeedSupplierCurrency: envOr("SEED_SUPPLIER_CURRENCY", seedCurrencyFromPack()),
 	}
 	if strings.TrimSpace(cfg.InternalAPIKey) == "" {
 		return nil, fmt.Errorf("INTERNAL_API_KEY required")
@@ -38,4 +41,14 @@ func envOr(key, fallback string) string {
 		return strings.TrimSpace(v)
 	}
 	return fallback
+}
+
+// seedCurrencyFromPack is the same empty-seed law as backend LoadConfig:
+// shipped pack currency, planned/unknown stays empty — never invent UZS.
+func seedCurrencyFromPack() string {
+	c, err := auth.CurrencyFromContext(context.Background(), "")
+	if err != nil {
+		return ""
+	}
+	return c
 }

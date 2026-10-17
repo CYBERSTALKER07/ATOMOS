@@ -1,8 +1,13 @@
 package credit
 
 import (
+	"errors"
+	"cloud.google.com/go/spanner"
+
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -11,10 +16,11 @@ import (
 
 // Service evaluates and mutates retailer credit state.
 type Service struct {
-	repo   Repository
-	policy PolicyGate
-	now    func() time.Time
-	newID  func() string
+	repo         Repository
+	policy       PolicyGate
+	now          func() time.Time
+	newID        func() string
+	scoreMetrics ScoreMetricsProvider // optional AR/payment feed for G3 scoring
 }
 
 // NewService builds a credit service.
@@ -78,6 +84,24 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		return result, nil
 	case StatusInactive, StatusClosed:
 		result.Reason = "credit_not_enabled"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if profile.RiskTier == RiskTierBlock {
+		result.Reason = "risk_tier_blocked"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if profile.DelinquencyCount >= MaxDelinquencyTolerance() {
+		result.Reason = "delinquent_account_hold"
+		result.Shortfall = amountMinor
+		return result, nil
+	}
+
+	if ScoreAutoHoldEnabled() && profile.RiskScore > 0 && profile.RiskScore <= ScoreAutoHoldMax() {
+		result.Reason = "risk_score_critical"
 		result.Shortfall = amountMinor
 		return result, nil
 	}
@@ -183,6 +207,79 @@ func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string)
 	return s.repo.GetProfile(ctx, retailerID, supplierID)
 }
 
+const defaultMaxDelinquencyTolerance = int64(2)
+
+// MaxDelinquencyTolerance returns the delinquency count threshold that triggers auto-freeze and blocks credit.
+func MaxDelinquencyTolerance() int64 {
+	raw := strings.TrimSpace(os.Getenv("CREDIT_MAX_DELINQUENCY_TOLERANCE"))
+	if raw == "" {
+		return defaultMaxDelinquencyTolerance
+	}
+	var n int64
+	for _, c := range raw {
+		if c < '0' || c > '9' {
+			return defaultMaxDelinquencyTolerance
+		}
+		n = n*10 + int64(c-'0')
+	}
+	if n <= 0 {
+		return defaultMaxDelinquencyTolerance
+	}
+	return n
+}
+
+// BumpDelinquency increments DelinquencyCount by 1 for collections (first OVERDUE).
+// When delinquency reaches or exceeds tolerance, it automatically sets the profile to FROZEN.
+func (s *Service) BumpDelinquency(ctx context.Context, retailerID, supplierID string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	p.DelinquencyCount++
+	p.LastEvaluatedAt = s.now()
+	if p.DelinquencyCount >= MaxDelinquencyTolerance() && p.Status == StatusActive {
+		p.Status = StatusFrozen
+	}
+	return s.UpsertProfile(ctx, p, "system:dunning", "delinquency_bump")
+}
+
+// FreezeProfile transitions a profile to FROZEN with reason.
+func (s *Service) FreezeProfile(ctx context.Context, retailerID, supplierID, reason string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrProfileNotFound
+	}
+	if p.Status == StatusFrozen {
+		return nil
+	}
+	p.Status = StatusFrozen
+	p.LastEvaluatedAt = s.now()
+	return s.UpsertProfile(ctx, p, "system:credit_freeze", reason)
+}
+
+// UnfreezeProfile transitions a profile back to ACTIVE from FROZEN.
+func (s *Service) UnfreezeProfile(ctx context.Context, retailerID, supplierID, reason string) error {
+	p, found, err := s.GetProfile(ctx, retailerID, supplierID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrProfileNotFound
+	}
+	if p.Status != StatusFrozen {
+		return nil
+	}
+	p.Status = StatusActive
+	p.LastEvaluatedAt = s.now()
+	return s.UpsertProfile(ctx, p, "system:credit_unfreeze", reason)
+}
+
 // UpsertProfile creates or updates a credit profile.
 func (s *Service) UpsertProfile(ctx context.Context, p Profile, actorID, reason string) error {
 	now := s.now()
@@ -222,20 +319,63 @@ func (s *Service) ListSupplierProfiles(ctx context.Context, supplierID, status s
 	if err != nil {
 		return nil, err
 	}
+	// G3.B: refresh risk scores for desk ordering (in-memory; persist best-effort).
+	if ScoringEnabled() {
+		for i := range list {
+			sc, err := s.EvaluateProfileScore(ctx, list[i])
+			if err != nil {
+				continue
+			}
+			ApplyScoreToProfile(&list[i], sc)
+		}
+	}
 	// Collections-first ordering: open balance / frozen / high risk before idle active lines.
 	sortProfilesForCollections(list)
 	return list, nil
 }
 
+// GetScoresForRetailers returns computed risk scores (G3.B). Empty map when scoring disabled.
+func (s *Service) GetScoresForRetailers(ctx context.Context, supplierID string, retailerIDs []string) (map[string]RetailerCreditScore, error) {
+	out := make(map[string]RetailerCreditScore, len(retailerIDs))
+	if s == nil || s.repo == nil || !ScoringEnabled() {
+		return out, nil
+	}
+	for _, rid := range retailerIDs {
+		rid = strings.TrimSpace(rid)
+		if rid == "" {
+			continue
+		}
+		p, found, err := s.repo.GetProfile(ctx, rid, supplierID)
+		if err != nil || !found {
+			continue
+		}
+		sc, err := s.EvaluateProfileScore(ctx, p)
+		if err != nil {
+			continue
+		}
+		out[rid] = sc
+	}
+	return out, nil
+}
+
 func sortProfilesForCollections(list []Profile) {
-	// Stable priority: BLACKLISTED/FROZEN first, then balance desc, then updated desc.
+	// Priority: BLACKLISTED/FROZEN, then lower risk score (worse), then balance desc.
 	for i := 0; i < len(list); i++ {
 		for j := i + 1; j < len(list); j++ {
-			if profilePriority(list[j]) < profilePriority(list[i]) {
+			pi, pj := profilePriority(list[i]), profilePriority(list[j])
+			if pj < pi {
 				list[i], list[j] = list[j], list[i]
-			} else if profilePriority(list[j]) == profilePriority(list[i]) &&
-				list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
-				list[i], list[j] = list[j], list[i]
+				continue
+			}
+			if pj == pi {
+				// Worse (lower) score first for collections attention.
+				if list[j].RiskScore > 0 && list[i].RiskScore > 0 && list[j].RiskScore < list[i].RiskScore {
+					list[i], list[j] = list[j], list[i]
+					continue
+				}
+				if list[j].CurrentBalanceMinor > list[i].CurrentBalanceMinor {
+					list[i], list[j] = list[j], list[i]
+				}
 			}
 		}
 	}
@@ -250,7 +390,7 @@ func profilePriority(p Profile) int {
 	case StatusClosed:
 		return 4
 	default:
-		if p.CurrentBalanceMinor > 0 {
+		if p.CurrentBalanceMinor > 0 || p.DelinquencyCount > 0 {
 			return 2
 		}
 		return 3
@@ -259,4 +399,18 @@ func profilePriority(p Profile) int {
 
 func profileID(retailerID, supplierID string) string {
 	return fmt.Sprintf("%s:%s", retailerID, supplierID)
+}
+
+func (s *Service) ReserveOrderInTxn(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, supplierID, orderID string, amountMinor int64) error {
+	res := OrderReservation{
+		OrderID:     orderID,
+		RetailerID:  retailerID,
+		SupplierID:  supplierID,
+		AmountMinor: amountMinor,
+		Status:      ReservationReserved,
+	}
+	if r, ok := s.repo.(*SpannerRepository); ok {
+		return r.ReserveOrderInTxn(ctx, txn, res)
+	}
+	return errors.New("not supported")
 }

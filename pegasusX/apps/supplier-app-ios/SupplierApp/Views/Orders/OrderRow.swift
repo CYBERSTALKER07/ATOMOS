@@ -26,10 +26,10 @@ struct OrderRow: View {
         .contextMenu {
             if showWarehouseMenu {
                 if let onDelay {
-                    Button("Delay delivery") { onDelay() }
+                    Button("supplier_portal.orders.propose_delay_dialog.text.delay_delivery") { onDelay() }
                 }
                 if let onReject {
-                    Button("Reject", role: .destructive) { onReject() }
+                    Button("mobile_supplier.ui.reject", role: .destructive) { onReject() }
                 }
             }
         }

@@ -9,7 +9,7 @@ struct AnalyticsChartGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
-            Text("Daily Revenue")
+            Text("warehouse_portal.analytics.analytics_chart_grid.text.daily_revenue")
                 .font(.title3.bold())
             HStack(alignment: .bottom, spacing: 4) {
                 ForEach(daily) { day in
@@ -31,7 +31,7 @@ struct AnalyticsChartGrid: View {
             }
             .frame(maxWidth: .infinity, minHeight: 120, alignment: .bottom)
             if let peak = daily.map(\.revenue).max() {
-                Text("Peak day: \(peak.formatted()) UZS")
+                Text(L10n.format("mobile_warehouse.ui.peak_day_formatted_uzs", "\(peak.formatted())"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

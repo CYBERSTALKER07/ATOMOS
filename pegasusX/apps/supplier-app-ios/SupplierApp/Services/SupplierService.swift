@@ -154,7 +154,7 @@ enum SupplierService {
         } catch {
             let ledger = try await SupplierOperationsService.paymentLedger()
             let total = ledger.items.reduce(Int64(0)) { $0 + $1.amountMinor }
-            let currency = ledger.items.first?.currency ?? "UZS"
+            let currency = displayPackCurrency(ledger.items.first?.currency)
             return SupplierEarnings(
                 currency: currency,
                 todayMinor: 0,

@@ -296,8 +296,11 @@ func TestLocationIngressToRetailerTrackingFreshnessUnderReconnectChurn(t *testin
 	if staleFirst["live_location_available"] != false {
 		t.Fatalf("stale live_location_available=%v want false", staleFirst["live_location_available"])
 	}
-	if staleFirst["driver_latitude"] != nil {
-		t.Fatalf("stale driver_latitude leaked: %v", staleFirst["driver_latitude"])
+	if staleFirst["location_freshness"] != "LAST_KNOWN" {
+		t.Fatalf("stale location_freshness=%v want LAST_KNOWN", staleFirst["location_freshness"])
+	}
+	if staleFirst["driver_latitude"] == nil {
+		t.Fatalf("stale last-known driver_latitude missing: %v", staleFirst)
 	}
 }
 

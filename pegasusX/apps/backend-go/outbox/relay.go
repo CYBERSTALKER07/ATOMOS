@@ -2,9 +2,12 @@ package outbox
 
 import (
 	"context"
-	"encoding/json"
+	"hash/fnv"
 	"log/slog"
 	"math/rand"
+	"runtime"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -20,6 +23,21 @@ type RelayConfig struct {
 	MaxBackoff       time.Duration
 	WatchdogInterval time.Duration
 	StuckThreshold   time.Duration
+	// MaxTotalAttempts is the persistent per-event publish budget across ticks;
+	// on exhaustion the event moves to the dead-letter sink. Default 20.
+	MaxTotalAttempts int64
+	// PublishTimeout bounds one broker produce attempt. Without it a wedged
+	// publish blocks the drain loop indefinitely (observed as multi-minute
+	// system-wide event delays with no logs). Default 10s.
+	PublishTimeout time.Duration
+	// StoreTimeout bounds Fetch/MarkPublished/RecordPublishFailures calls for
+	// the same reason. Default 15s.
+	StoreTimeout time.Duration
+	// PublishShards controls the number of concurrent FNV32(AggregateID) worker
+	// lanes used per drain tick. Events sharing an AggregateID always route to
+	// the same shard to preserve per-aggregate causal order while parallelizing
+	// independent aggregates across brokers. Default: min(max(NumCPU*2, 4), 16).
+	PublishShards int
 }
 
 func (c *RelayConfig) applyDefaults() {
@@ -44,6 +62,34 @@ func (c *RelayConfig) applyDefaults() {
 	if c.StuckThreshold <= 0 {
 		c.StuckThreshold = 60 * time.Second
 	}
+	if c.MaxTotalAttempts <= 0 {
+		c.MaxTotalAttempts = 20
+	}
+	if c.PublishTimeout <= 0 {
+		c.PublishTimeout = 10 * time.Second
+	}
+	if c.StoreTimeout <= 0 {
+		c.StoreTimeout = 15 * time.Second
+	}
+	if c.PublishShards <= 0 {
+		shards := runtime.NumCPU() * 2
+		if shards < 4 {
+			shards = 4
+		}
+		if shards > 16 {
+			shards = 16
+		}
+		c.PublishShards = shards
+	}
+}
+
+func aggregateShard(aggregateID string, numShards int) int {
+	if numShards <= 1 || aggregateID == "" {
+		return 0
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(aggregateID))
+	return int(h.Sum32() % uint32(numShards))
 }
 
 // Relay drains OutboxEvents into Kafka. Construct with NewRelay then call
@@ -68,6 +114,7 @@ func NewRelay(store Store, publisher Publisher, cfg RelayConfig, log *slog.Logge
 // process; do not start multiple instances against the same OutboxEvents
 // partition without coordination.
 func (r *Relay) Start(ctx context.Context) {
+	IncRelayRestart()
 	drainTicker := time.NewTicker(r.cfg.TickInterval)
 	defer drainTicker.Stop()
 	watchdogTicker := time.NewTicker(r.cfg.WatchdogInterval)
@@ -114,6 +161,7 @@ func (r *Relay) watchdogOnce(ctx context.Context) {
 	if stuck == 0 {
 		return
 	}
+	IncStuckEventsDetected()
 	r.log.Error("outbox stuck events detected",
 		"count", stuck,
 		"oldest_event_id", oldestID,
@@ -122,33 +170,138 @@ func (r *Relay) watchdogOnce(ctx context.Context) {
 }
 
 func (r *Relay) drainOnce(ctx context.Context) {
-	events, err := r.store.Fetch(ctx, r.cfg.BatchSize)
+	started := time.Now()
+	fetchCtx, cancelFetch := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+	fetchedEvents, err := r.store.Fetch(fetchCtx, r.cfg.BatchSize)
+	cancelFetch()
 	if err != nil {
 		r.log.Error("outbox fetch failed", "err", err)
 		return
 	}
-	if len(events) == 0 {
+	if len(fetchedEvents) == 0 {
 		return
 	}
-	published := make([]string, 0, len(events))
-	for _, e := range events {
-		if err := r.publishWithRetry(ctx, e); err != nil {
-			r.log.Error("outbox publish exhausted retries",
-				"event_id", e.EventID,
-				"aggregate_type", e.AggregateType,
-				"aggregate_id", e.AggregateID,
-				"topic", e.TopicName,
-				"err", err,
-			)
+
+	numShards := r.cfg.PublishShards
+	if numShards <= 0 {
+		numShards = 1
+	}
+	if numShards > len(fetchedEvents) {
+		numShards = len(fetchedEvents)
+	}
+
+	shards := make([][]Event, numShards)
+	for _, e := range fetchedEvents {
+		idx := aggregateShard(e.AggregateID, numShards)
+		shards[idx] = append(shards[idx], e)
+	}
+
+	var (
+		mu        sync.Mutex
+		published = make([]string, 0, len(fetchedEvents))
+		failed    = make(map[string]error)
+		wg        sync.WaitGroup
+	)
+
+	for shardIdx := range shards {
+		shardEvents := shards[shardIdx]
+		if len(shardEvents) == 0 {
 			continue
 		}
-		published = append(published, e.EventID)
+		wg.Add(1)
+		go func(batch []Event) {
+			defer wg.Done()
+			blockedAggregates := make(map[string]bool)
+			localPublished := make([]string, 0, len(batch))
+			localFailed := make(map[string]error)
+
+			for _, e := range batch {
+				if e.AggregateID != "" && blockedAggregates[e.AggregateID] {
+					// Preserve strict per-aggregate causal ordering: do not publish
+					// a later event for the same AggregateID if an earlier event in
+					// this tick failed to publish.
+					r.log.Warn("outbox skipping subsequent event for failed aggregate to preserve causal order",
+						"event_id", e.EventID,
+						"aggregate_id", e.AggregateID,
+					)
+					continue
+				}
+				if err := r.publishWithRetry(ctx, e); err != nil {
+					r.log.Error("outbox publish exhausted retries",
+						"event_id", e.EventID,
+						"aggregate_type", e.AggregateType,
+						"aggregate_id", e.AggregateID,
+						"topic", e.TopicName,
+						"err", err,
+					)
+					localFailed[e.EventID] = err
+					if e.AggregateID != "" {
+						blockedAggregates[e.AggregateID] = true
+					}
+					continue
+				}
+				localPublished = append(localPublished, e.EventID)
+				if !e.CreatedAt.IsZero() {
+					RecordPublishLag(time.Since(e.CreatedAt).Seconds())
+				}
+			}
+
+			if len(localPublished) > 0 || len(localFailed) > 0 {
+				mu.Lock()
+				published = append(published, localPublished...)
+				for id, ferr := range localFailed {
+					failed[id] = ferr
+				}
+				mu.Unlock()
+			}
+		}(shardEvents)
 	}
-	if len(published) == 0 {
-		return
+	wg.Wait()
+
+	if len(published) > 0 {
+		markCtx, cancelMark := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		err := r.store.MarkPublished(markCtx, published, time.Now().UTC())
+		cancelMark()
+		if err != nil {
+			r.log.Error("outbox mark published failed", "count", len(published), "err", err)
+		}
 	}
-	if err := r.store.MarkPublished(ctx, published, time.Now().UTC()); err != nil {
-		r.log.Error("outbox mark published failed", "count", len(published), "err", err)
+	if len(failed) > 0 {
+		ids := make([]string, 0, len(failed))
+		var firstErr error
+		for id, ferr := range failed {
+			ids = append(ids, id)
+			if firstErr == nil {
+				firstErr = ferr
+			}
+		}
+		errText := "outbox publish failed"
+		if firstErr != nil {
+			errText = firstErr.Error()
+		}
+		recordCtx, cancelRecord := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+		deadLettered, derr := r.store.RecordPublishFailures(recordCtx, ids, errText, r.cfg.MaxTotalAttempts)
+		cancelRecord()
+		if derr != nil {
+			r.log.Error("outbox record publish failures failed", "count", len(ids), "err", derr)
+			return
+		}
+		if len(deadLettered) > 0 {
+			IncDeadLettered(len(deadLettered))
+			r.log.Error("outbox events dead-lettered after exhausting attempts",
+				"event_ids", deadLettered,
+				"max_total_attempts", r.cfg.MaxTotalAttempts,
+				"err", errText,
+			)
+		}
+	}
+	if dur := time.Since(started); dur > 5*time.Second {
+		r.log.Warn("outbox drain slow",
+			"duration", dur.String(),
+			"batch", len(fetchedEvents),
+			"published", len(published),
+			"failed", len(failed),
+		)
 	}
 }
 
@@ -157,17 +310,24 @@ func (r *Relay) drainOnce(ctx context.Context) {
 func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
 	topics := events.RelayPublishTopics(e.TopicName, e.Payload)
 	var lastErr error
+	published := make(map[string]bool)
 	for attempt := 1; attempt <= r.cfg.MaxPublishTries; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		attemptErr := error(nil)
 		for _, topic := range topics {
-			err := r.publisher.Publish(ctx, topic, granularRoutingKey(e), e.Payload)
+			if published[topic] {
+				continue
+			}
+			pubCtx, cancel := context.WithTimeout(ctx, r.cfg.PublishTimeout)
+			err := publishOutboxEvent(pubCtx, r.publisher, topic, []byte(e.AggregateID), e)
+			cancel()
 			if err != nil {
 				attemptErr = err
 				break
 			}
+			published[topic] = true
 		}
 		if attemptErr == nil {
 			return nil
@@ -202,36 +362,30 @@ func backoffWithJitter(base, maxBackoff time.Duration, attempt int) time.Duratio
 	return time.Duration(rand.Int63n(int64(d) + 1))
 }
 
-func granularRoutingKey(e Event) []byte {
-	key := []byte(e.AggregateID)
-
-	// Fast path: if the payload isn't JSON or doesn't have common sub-entities, just return AggregateID.
-	if len(e.Payload) == 0 || e.Payload[0] != '{' {
-		return key
+func publishOutboxEvent(ctx context.Context, pub Publisher, topic string, key []byte, e Event) error {
+	headers := map[string][]byte{
+		"event_id":       []byte(e.EventID),
+		"aggregate_type": []byte(e.AggregateType),
+		"aggregate_id":   []byte(e.AggregateID),
 	}
-
-	var envelope struct {
-		OrderID    string `json:"order_id"`
-		ManifestID string `json:"manifest_id"`
-		RouteID    string `json:"route_id"`
-		DriverID   string `json:"driver_id"`
+	if !e.CreatedAt.IsZero() {
+		headers["timestamp"] = []byte(e.CreatedAt.UTC().Format(time.RFC3339Nano))
 	}
-
-	// Ignore unmarshal errors, fallback to default key
-	if err := json.Unmarshal(e.Payload, &envelope); err == nil {
-		if envelope.OrderID != "" {
-			return append(key, []byte(":"+envelope.OrderID)...)
-		}
-		if envelope.ManifestID != "" {
-			return append(key, []byte(":"+envelope.ManifestID)...)
-		}
-		if envelope.RouteID != "" {
-			return append(key, []byte(":"+envelope.RouteID)...)
-		}
-		if envelope.DriverID != "" {
-			return append(key, []byte(":"+envelope.DriverID)...)
-		}
+	if sid := strings.TrimSpace(e.SupplierID); sid != "" {
+		headers["supplier_id"] = []byte(sid)
 	}
-
-	return key
+	if eventType := events.ExtractEventTypeFromPayload(e.Payload); eventType != "" {
+		headers["type"] = []byte(eventType)
+	} else if e.AggregateType != "" {
+		headers["type"] = []byte(e.AggregateType)
+	}
+	if traceID := TraceIDFromContext(ctx); traceID != "" {
+		headers["trace_id"] = []byte(traceID)
+	}
+	if hp, ok := pub.(HeaderPublisher); ok {
+		return hp.PublishWithHeaders(ctx, topic, key, e.Payload, headers)
+	}
+	return pub.Publish(ctx, topic, key, e.Payload)
 }
+
+

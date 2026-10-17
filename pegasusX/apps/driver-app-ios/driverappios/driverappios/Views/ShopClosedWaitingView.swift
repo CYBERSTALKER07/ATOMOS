@@ -3,10 +3,12 @@
 //  driverappios
 //
 //  Shown when driver reports shop closed.
-//  Subscribes to shared /v1/ws/driver state and waits for retailer response or bypass token.
+//  Requires a storefront photo first, then waits for retailer response or bypass token.
 //
 
+import PhotosUI
 import SwiftUI
+import UIKit
 
 struct ShopClosedWaitingView: View {
 
@@ -15,7 +17,8 @@ struct ShopClosedWaitingView: View {
     let onResolved: () -> Void
     let onCancel: () -> Void
 
-    @State private var isReporting = true
+    @State private var reported = false
+    @State private var isReporting = false
     @State private var reportError: String?
     @State private var retailerResponse: String?
     @State private var bypassToken: String?
@@ -26,63 +29,107 @@ struct ShopClosedWaitingView: View {
     @State private var countdown: Int = 180
     @State private var timer: Timer?
     @State private var driverSocketState = DriverSocketState.shared
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var photoURL = ""
+    @State private var photoLocalPath = ""
+    @State private var isUploadingPhoto = false
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
 
-            // MARK: - Status Icon
             Image(systemName: statusIcon)
                 .font(.system(size: 64))
                 .foregroundStyle(statusColor)
                 .padding(.bottom, LabTheme.s16)
 
-            // MARK: - Title
             Text(statusTitle)
                 .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(LabTheme.fg)
                 .padding(.bottom, LabTheme.s8)
 
-            // MARK: - Order ID
             Text(orderId)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .foregroundStyle(LabTheme.fgSecondary)
                 .padding(.bottom, LabTheme.s16)
 
-            // MARK: - Countdown / Response
-            if isReporting {
+            if !reported {
+                VStack(spacing: 12) {
+                    Text("Photograph the closed storefront, then report.")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(LabTheme.fgSecondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, LabTheme.s24)
+
+                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                        Label(
+                            photoURL.isEmpty && photoLocalPath.isEmpty
+                                ? "Take / choose photo"
+                                : "Photo ready — change",
+                            systemImage: "camera.fill"
+                        )
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(LabTheme.fg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(LabTheme.fg.opacity(0.06), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    }
+                    .disabled(isUploadingPhoto || isReporting)
+                    .onChange(of: pickedPhoto) { _, item in
+                        Task { await uploadPickedPhoto(item) }
+                    }
+
+                    if isUploadingPhoto {
+                        ProgressView("Uploading photo…")
+                    }
+
+                    Button {
+                        Task { await reportShopClosed() }
+                    } label: {
+                        HStack {
+                            if isReporting { ProgressView().tint(LabTheme.buttonFg) }
+                            Text("Report shop closed")
+                                .font(.system(size: 15, weight: .bold))
+                        }
+                        .foregroundStyle(LabTheme.buttonFg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(LabTheme.fg, in: .rect(cornerRadius: LabTheme.buttonRadius))
+                    }
+                    .disabled(isReporting || isUploadingPhoto || (photoURL.isEmpty && photoLocalPath.isEmpty))
+                    .padding(.horizontal, LabTheme.s24)
+                }
+            } else if isReporting {
                 ProgressView()
                     .scaleEffect(1.2)
                     .padding(.bottom, LabTheme.s8)
-                Text("Reporting shop closed...")
+                Text("mobile_driver.ui.reporting_shop_closed")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
             } else if let response = retailerResponse {
                 retailerResponseView(response)
             } else if isEscalated {
-                Text("Escalated to supplier. Awaiting resolution.")
+                Text("mobile_driver.ui.escalated_to_supplier_awaiting_resolution")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(LabTheme.warning)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, LabTheme.s24)
             } else {
-                // Countdown timer
                 Text(countdownFormatted)
                     .font(.system(size: 48, weight: .bold, design: .monospaced))
                     .foregroundStyle(countdown <= 30 ? LabTheme.destructive : LabTheme.fg)
                     .padding(.bottom, LabTheme.s8)
 
-                Text("Waiting for retailer response...")
+                Text("mobile_driver.ui.waiting_for_retailer_response")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
 
-            // MARK: - Bypass Token
             if let token = bypassToken {
                 VStack(spacing: 12) {
                     Divider().padding(.horizontal, LabTheme.s24)
 
-                    Text("Bypass Token Issued")
+                    Text("mobile_driver.ui.bypass_token_issued")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(LabTheme.success)
 
@@ -91,7 +138,7 @@ struct ShopClosedWaitingView: View {
                         .foregroundStyle(LabTheme.fg)
                         .tracking(8)
 
-                    TextField("Enter token", text: $bypassInput)
+                    TextField("mobile_driver.ui.enter_token", text: $bypassInput)
                         .font(.system(size: 18, weight: .semibold, design: .monospaced))
                         .multilineTextAlignment(.center)
                         .keyboardType(.numberPad)
@@ -111,7 +158,7 @@ struct ShopClosedWaitingView: View {
                             if isSubmittingBypass {
                                 ProgressView().tint(LabTheme.buttonFg)
                             }
-                            Text("Confirm Bypass")
+                            Text("mobile_driver.ui.confirm_bypass")
                                 .font(.system(size: 15, weight: .bold))
                         }
                         .foregroundStyle(LabTheme.buttonFg)
@@ -127,7 +174,6 @@ struct ShopClosedWaitingView: View {
 
             Spacer()
 
-            // MARK: - Report Error
             if let error = reportError {
                 Text(error)
                     .font(.system(size: 13, weight: .medium))
@@ -136,11 +182,10 @@ struct ShopClosedWaitingView: View {
                     .padding(.bottom, LabTheme.s8)
             }
 
-            // MARK: - Back Button
             Button {
                 onCancel()
             } label: {
-                Text("Back")
+                Text("common.action.back")
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(LabTheme.fgSecondary)
                     .frame(maxWidth: .infinity)
@@ -151,14 +196,6 @@ struct ShopClosedWaitingView: View {
             .padding(.bottom, LabTheme.s24)
         }
         .background(LabTheme.bg)
-        .task {
-            await reportShopClosed()
-            if let notice = DriverSocketState.shared.outdatedNotice {
-                reportError = notice.message
-                return
-            }
-            startCountdown()
-        }
         .task(id: driverSocketState.eventSequence) {
             handleDriverSocketEvent(driverSocketState.lastEvent)
         }
@@ -178,9 +215,8 @@ struct ShopClosedWaitingView: View {
         }
     }
 
-    // MARK: - Computed
-
     private var statusIcon: String {
+        if !reported { return "camera.fill" }
         if isReporting { return "clock.fill" }
         if retailerResponse != nil { return "bubble.left.fill" }
         if isEscalated { return "exclamationmark.triangle.fill" }
@@ -196,6 +232,7 @@ struct ShopClosedWaitingView: View {
     }
 
     private var statusTitle: String {
+        if !reported { return "Shop Closed" }
         if isReporting { return "Reporting..." }
         if retailerResponse != nil { return "Retailer Responded" }
         if isEscalated { return "Escalated" }
@@ -207,8 +244,6 @@ struct ShopClosedWaitingView: View {
         let s = countdown % 60
         return String(format: "%d:%02d", m, s)
     }
-
-    // MARK: - Retailer Response View
 
     @ViewBuilder
     private func retailerResponseView(_ response: String) -> some View {
@@ -233,31 +268,83 @@ struct ShopClosedWaitingView: View {
         .padding(.vertical, LabTheme.s16)
     }
 
-    // MARK: - API Calls
+    private func uploadPickedPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        isUploadingPhoto = true
+        reportError = nil
+        defer { isUploadingPhoto = false }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data),
+                  let jpeg = image.jpegData(compressionQuality: 0.82) else {
+                reportError = "Could not read photo."
+                return
+            }
+            photoLocalPath = (try? MediaUploadService.savePodJPEG(jpeg, prefix: "shop-closed")) ?? ""
+            do {
+                photoURL = try await MediaUploadService.uploadJPEG(
+                    image: image,
+                    purpose: "credit_proof",
+                    orderId: orderId
+                )
+            } catch {
+                photoURL = ""
+                if photoLocalPath.isEmpty {
+                    reportError = "Photo upload failed: \(error.localizedDescription)"
+                }
+            }
+        } catch {
+            reportError = "Photo upload failed: \(error.localizedDescription)"
+        }
+    }
 
     private func reportShopClosed() async {
+        guard !photoURL.isEmpty || !photoLocalPath.isEmpty else {
+            reportError = "Photo required before reporting shop closed."
+            return
+        }
+        isReporting = true
+        reportError = nil
         let ts = DriverOfflineActionCatalog.nowIso()
         do {
+            if photoURL.isEmpty {
+                throw URLError(.notConnectedToInternet)
+            }
             _ = try await APIClient.shared.reportShopClosed(
                 orderId: orderId,
+                photoURL: photoURL,
                 clientTimestamp: ts
             )
+            reported = true
             isReporting = false
+            if let notice = DriverSocketState.shared.outdatedNotice {
+                reportError = notice.message
+                return
+            }
+            startCountdown()
         } catch {
-            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) {
+            if DriverOfflineActionCatalog.isNetworkEnqueueable(error) || photoURL.isEmpty {
+                var body: [String: Any] = [
+                    "order_id": orderId,
+                    "reason": "CLOSED",
+                    "client_timestamp": ts,
+                ]
+                if !photoURL.isEmpty {
+                    body["photo_url"] = photoURL
+                } else if !photoLocalPath.isEmpty {
+                    body["photo_local_path"] = photoLocalPath
+                }
                 DriverOfflineQueue.shared.enqueueJSONObject(
                     endpoint: DriverOfflineActionCatalog.shopClosed,
-                    body: [
-                        "order_id": orderId,
-                        "reason": "CLOSED",
-                        "client_timestamp": ts,
-                    ],
+                    body: body,
                     idempotencyKey: DriverIdempotency.reportShopClosed(orderId: orderId),
                     orderId: orderId,
                     clientTimestampIso: ts
                 )
+                reported = true
                 isReporting = false
                 reportError = "Offline — shop-closed queued for sync"
+                startCountdown()
             } else {
                 isReporting = false
                 reportError = "Failed to report: \(error.localizedDescription)"
@@ -280,9 +367,8 @@ struct ShopClosedWaitingView: View {
         }
     }
 
-    // MARK: - Countdown
-
     private func startCountdown() {
+        timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if countdown > 0 {
                 countdown -= 1

@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.settings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,11 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
-import com.google.gson.JsonObject
+import kotlinx.serialization.json.JsonObject
 import com.pegasusx.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pegasusx.retailer.R
+import com.pegasusx.retailer.data.json.*
 
 data class TeamMemberUi(
     val userId: String,
@@ -76,7 +80,7 @@ fun TeamScreen(
             error = null
             try {
                 val el = viewModel.api.getOrgMembers()
-                val arr = el.asJsonObject.getAsJsonArray("items")
+                val arr = el.asJsonObject.getAsJsonArray("items").orEmpty()
                 members = arr.map { item ->
                     val o = item.asJsonObject
                     TeamMemberUi(
@@ -104,7 +108,7 @@ fun TeamScreen(
                 title = { Text("Team") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
             )
@@ -174,7 +178,7 @@ fun TeamScreen(
                 Card {
                     Column(Modifier.padding(14.dp)) {
                         Text(m.name, style = MaterialTheme.typography.titleSmall)
-                        Text("${m.phone} · ${m.role}", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.mobile_retailer_ui_phone_role, m.phone, m.role), style = MaterialTheme.typography.bodySmall)
                         if (m.isOwner) Text("Owner", style = MaterialTheme.typography.labelSmall)
                         if (!m.isActive) Text("Inactive", color = MaterialTheme.colorScheme.error)
                         if (!m.isOwner && m.isActive) {

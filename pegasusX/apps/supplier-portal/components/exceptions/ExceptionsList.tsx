@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import React, { useState } from "react";
 import type { SupplierExceptionRow } from "@pegasusx/types";
 import { createSupplierApi } from "@/lib/api";
@@ -13,6 +14,7 @@ interface ExceptionsListProps {
 }
 
 export function ExceptionsList({ exceptions, onResolved }: ExceptionsListProps) {
+  const t = usePortalT();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +31,7 @@ export function ExceptionsList({ exceptions, onResolved }: ExceptionsListProps) 
       await api.resolveSupplierException(row.kind, row.order_id, body);
       onResolved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "resolve_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.resolve_failed"));
     } finally {
       setBusy(null);
     }

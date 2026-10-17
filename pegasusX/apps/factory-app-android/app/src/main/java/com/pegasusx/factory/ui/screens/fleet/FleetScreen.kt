@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.foundation.lazy.grid.items
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.pegasusx.factory.data.model.FactoryFleetLiveRoute
 import com.pegasusx.factory.data.model.Vehicle
 import com.pegasusx.factory.data.remote.FactoryApi
 import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
@@ -30,6 +33,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasusx.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.factory.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +42,7 @@ fun FleetScreen(
     onBack: () -> Unit,
 ) {
     var vehicles by remember { mutableStateOf<List<Vehicle>>(emptyList()) }
+    var liveRoutes by remember { mutableStateOf<List<FactoryFleetLiveRoute>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -54,6 +59,10 @@ fun FleetScreen(
                     vehicles = resp.body()!!.vehicles
                 } else {
                     error = "Failed (${resp.code()})"
+                }
+                val liveResp = api.getFleetLiveMap()
+                if (liveResp.isSuccessful) {
+                    liveRoutes = liveResp.body()?.routes.orEmpty()
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
@@ -86,7 +95,7 @@ fun FleetScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Fleet")
                         Text(
-                            text = "Vehicle roster and assignment status",
+                            text = stringResource(R.string.mobile_factory_ui_vehicle_roster_and_assignment_status),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -103,7 +112,7 @@ fun FleetScreen(
     ) { innerPadding ->
         when {
             loading && vehicles.isEmpty() -> PegasusLoadingState(
-                title = "Loading fleet",
+                title = stringResource(R.string.mobile_factory_ui_loading_fleet),
                 body = "Fetching the current factory vehicle roster and assignments.",
                 modifier = Modifier
                     .fillMaxSize()
@@ -142,8 +151,31 @@ fun FleetScreen(
                         assigned = assigned,
                     )
                 }
+                if (liveRoutes.isNotEmpty()) {
+                    item {
+                        FactorySectionTitle(title = stringResource(R.string.mobile_factory_ui_live_drivers))
+                    }
+                    items(liveRoutes, key = { it.manifestId }) { route ->
+                        val loc = route.driverLocation
+                        val lat = loc?.lat?.takeIf { it != 0.0 } ?: loc?.latitude
+                        val lng = loc?.lng?.takeIf { it != 0.0 } ?: loc?.longitude
+                        FactoryOpsListCard(
+                            headline = route.driverName.ifBlank { route.driverId.ifBlank { route.manifestId } },
+                            supporting = buildString {
+                                append(route.manifestState)
+                                if (lat != null && lng != null) {
+                                    append(" · %.5f, %.5f".format(lat, lng))
+                                } else {
+                                    append(" · waiting for GPS")
+                                }
+                                if (route.locationStale) append(" · stale")
+                            },
+                            status = if (route.liveLocationAvailable) "LIVE" else "OFFLINE",
+                        )
+                    }
+                }
                 item {
-                    FactorySectionTitle(title = "Vehicle roster")
+                    FactorySectionTitle(title = stringResource(R.string.supplier_portal_org_fleet_components_vehicle_table_text_vehicle_roster))
                 }
                 items(vehicles, key = { it.id }) { vehicle ->
                     FactoryOpsListCard(
@@ -177,11 +209,11 @@ private fun FleetSummaryCard(
             verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
-                text = "Fleet capacity",
+                text = stringResource(R.string.mobile_factory_ui_fleet_capacity),
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Track available vehicles and current assignments for outbound dispatch.",
+                text = stringResource(R.string.mobile_factory_ui_track_available_vehicles_and_current_assignments_for_outbound_di),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

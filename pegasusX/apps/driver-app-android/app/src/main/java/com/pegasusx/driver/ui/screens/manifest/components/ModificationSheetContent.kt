@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.manifest.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.driver.data.model.RejectionReason
 import com.pegasusx.driver.ui.components.DriverSectionTitle
 import com.pegasusx.driver.ui.screens.manifest.LineItemAudit
+import com.pegasusx.driver.R
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -70,7 +73,7 @@ fun ModificationSheetContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
-            text = "${audit.item.unitPrice.formatAmount()} / unit · Originally ${audit.item.quantity}",
+            text = stringResource(R.string.mobile_driver_ui_formatamount_unit_originally_quantity, audit.item.unitPrice.formatAmount(), audit.item.quantity),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)
@@ -81,7 +84,7 @@ fun ModificationSheetContent(
         Spacer(modifier = Modifier.height(20.dp))
 
         // ── Quantity Stepper ─────────────────────────────────────────────────
-        DriverSectionTitle(title = "ACCEPTED QUANTITY")
+        DriverSectionTitle(title = stringResource(R.string.mobile_driver_ui_accepted_quantity))
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(
@@ -99,7 +102,7 @@ fun ModificationSheetContent(
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Icon(Icons.Default.Remove, contentDescription = "Decrease")
+                Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mobile_driver_ui_decrease))
             }
 
             Text(
@@ -120,7 +123,7 @@ fun ModificationSheetContent(
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Increase")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mobile_driver_ui_increase))
             }
         }
 
@@ -128,7 +131,7 @@ fun ModificationSheetContent(
         val rejected = audit.item.quantity - audit.acceptedQty
         if (rejected > 0) {
             Text(
-                text = "$rejected of ${audit.item.quantity} will be rejected",
+                text = stringResource(R.string.mobile_driver_ui_rejected_of_quantity_will_be_rejected, rejected, audit.item.quantity),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
                 textAlign = TextAlign.Center,
@@ -143,7 +146,7 @@ fun ModificationSheetContent(
         // ── Rejection Reason Chips ───────────────────────────────────────────
         AnimatedVisibility(visible = rejected > 0) {
             Column {
-                DriverSectionTitle(title = "REJECTION REASON")
+                DriverSectionTitle(title = stringResource(R.string.mobile_driver_ui_rejection_reason))
                 Spacer(modifier = Modifier.height(12.dp))
 
                 FlowRow(
@@ -182,7 +185,7 @@ fun ModificationSheetContent(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Adjusted line total",
+                text = stringResource(R.string.mobile_driver_ui_adjusted_line_total),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -40,6 +40,8 @@ data class ProfileUiState(
     val loadIssue: ProfileLoadIssue? = null,
     val pricingRulesSummary: String? = null,
     val clientPolicyMessage: String? = null,
+    val loyaltyEnrolled: Boolean? = null,
+    val loyaltySummary: String? = null,
 ) {
     val syncMessage: String?
         get() = when (loadIssue) {
@@ -123,6 +125,21 @@ class ProfileViewModel @Inject constructor(
                 }
             } catch (_: Exception) {
                 // Pricing rules are read-only and optional on partial stacks.
+            }
+
+            try {
+                val tier = api.getLoyaltyTier()
+                val summary = if (!tier.enrolled) {
+                    "Not enrolled. No fake Bronze — supplier has not configured a program, or you have no points yet."
+                } else {
+                    val next = if (tier.nextTier.isNotBlank()) " · ${tier.pointsToNext} to ${tier.nextTier}" else ""
+                    "${tier.tier.ifBlank { "Member" }} · ${tier.lifetimePoints} lifetime · ${tier.availablePoints} available$next"
+                }
+                _uiState.update { it.copy(loyaltyEnrolled = tier.enrolled, loyaltySummary = summary) }
+            } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(loyaltyEnrolled = false, loyaltySummary = "Loyalty unavailable")
+                }
             }
 
             try {

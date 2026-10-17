@@ -39,7 +39,7 @@ struct EarningsView: View {
                             )
                         }
                         if !earnings.authoritative {
-                            Text("Scaffold data — treasury authority not connected.")
+                            Text("mobile_supplier.ui.scaffold_data_treasury_authority_not_connected")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .padding(.top, SupplierTheme.spacingSM)
@@ -50,7 +50,7 @@ struct EarningsView: View {
                 .padding()
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Earnings")
+            .navigationTitle("portal.nav.earnings")
             .task { await load() }
             .refreshable { await load(silent: true) }
         }

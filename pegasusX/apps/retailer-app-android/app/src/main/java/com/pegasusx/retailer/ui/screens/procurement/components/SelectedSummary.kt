@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.procurement.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.ui.screens.procurement.ProcurementUiState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @Composable
 fun SelectedSummary(selectedCount: Int, selectedUnits: Int) {
@@ -30,12 +33,12 @@ fun SelectedSummary(selectedCount: Int, selectedUnits: Int) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "$selectedCount items selected",
+                stringResource(R.string.mobile_retailer_ui_selectedcount_items_selected, selectedCount),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                "$selectedUnits units",
+                stringResource(R.string.mobile_retailer_ui_selectedunits_units, selectedUnits),
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary,
             )

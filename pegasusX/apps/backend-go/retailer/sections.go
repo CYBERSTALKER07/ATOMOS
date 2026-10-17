@@ -183,8 +183,22 @@ func (s *Service) HandleSectionByID(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
-		skus, _ := s.listSectionSkus(r.Context(), sectionID)
-		staff, _ := s.listSectionStaff(r.Context(), sectionID)
+		skus, err := s.listSectionSkus(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_detail_failed"})
+			return
+		}
+		staff, err := s.listSectionStaff(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_detail_failed"})
+			return
+		}
+		if skus == nil {
+			skus = []string{}
+		}
+		if staff == nil {
+			staff = []string{}
+		}
 		sec.SkuCount = len(skus)
 		sec.StaffIDs = staff
 		writeJSON(w, http.StatusOK, map[string]any{"section": sec, "skus": skus, "staff_ids": staff})
@@ -264,7 +278,14 @@ func (s *Service) HandleSectionSkus(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
-		skus, _ := s.listSectionSkus(r.Context(), sectionID)
+		skus, err := s.listSectionSkus(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_skus_failed"})
+			return
+		}
+		if skus == nil {
+			skus = []string{}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"section_id": sectionID, "skus": skus})
 	case http.MethodPut:
 		if !auth.HasRetailerPerm(claims, auth.PermSectionManage) && !auth.HasRetailerPerm(claims, auth.PermStockAdjust) {
@@ -276,18 +297,37 @@ func (s *Service) HandleSectionSkus(w http.ResponseWriter, r *http.Request) {
 			Add    []string `json:"add"`
 			Remove []string `json:"remove"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
 		if req.Skus != nil {
-			_ = s.replaceSectionSkus(r.Context(), sec, req.Skus)
+			if err := s.replaceSectionSkus(r.Context(), sec, req.Skus); err != nil {
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_skus_failed"})
+				return
+			}
 		} else {
 			if len(req.Add) > 0 {
-				_ = s.addSectionSkus(r.Context(), sec, req.Add)
+				if err := s.addSectionSkus(r.Context(), sec, req.Add); err != nil {
+					writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_skus_failed"})
+					return
+				}
 			}
 			if len(req.Remove) > 0 {
-				_ = s.removeSectionSkus(r.Context(), sectionID, req.Remove)
+				if err := s.removeSectionSkus(r.Context(), sectionID, req.Remove); err != nil {
+					writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_skus_failed"})
+					return
+				}
 			}
 		}
-		skus, _ := s.listSectionSkus(r.Context(), sectionID)
+		skus, err := s.listSectionSkus(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_skus_failed"})
+			return
+		}
+		if skus == nil {
+			skus = []string{}
+		}
 		_ = s.emitPosEvent(r.Context(), orgID, events.EventRetailerSectionSkuMapped, map[string]any{
 			"section_id": sectionID,
 			"sku_count":  len(skus),
@@ -322,7 +362,14 @@ func (s *Service) HandleSectionStaff(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
-		staff, _ := s.listSectionStaff(r.Context(), sectionID)
+		staff, err := s.listSectionStaff(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_staff_failed"})
+			return
+		}
+		if staff == nil {
+			staff = []string{}
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"section_id": sectionID, "user_ids": staff})
 	case http.MethodPut:
 		if !auth.HasRetailerPerm(claims, auth.PermSectionManage) && !auth.HasRetailerPerm(claims, auth.PermStaffManage) {
@@ -332,9 +379,22 @@ func (s *Service) HandleSectionStaff(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			UserIDs []string `json:"user_ids"`
 		}
-		_ = json.NewDecoder(r.Body).Decode(&req)
-		_ = s.replaceSectionStaff(r.Context(), sec, req.UserIDs)
-		staff, _ := s.listSectionStaff(r.Context(), sectionID)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		if err := s.replaceSectionStaff(r.Context(), sec, req.UserIDs); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_staff_failed"})
+			return
+		}
+		staff, err := s.listSectionStaff(r.Context(), sectionID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "section_staff_failed"})
+			return
+		}
+		if staff == nil {
+			staff = []string{}
+		}
 		_ = s.emitPosEvent(r.Context(), orgID, events.EventRetailerStaffSectionAssigned, map[string]any{
 			"section_id": sectionID,
 			"user_ids":   staff,
@@ -366,12 +426,27 @@ func (s *Service) HandleUnassignedSkus(w http.ResponseWriter, r *http.Request) {
 		locID = strings.TrimSpace(claims.ActiveLocationID)
 	}
 	if locID == "" {
-		if p, e := s.EnsurePrimaryLocation(r.Context(), orgID); e == nil {
+		if p, e := s.EnsurePrimaryLocation(r.Context(), orgID); e != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "unassigned_skus_failed"})
+			return
+		} else {
 			locID = p.LocationID
 		}
 	}
-	balances, _ := s.listStockBalances(r.Context(), orgID, locID)
-	assigned := s.allAssignedSkusAtLocation(r.Context(), orgID, locID)
+	if locID == "" {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "unassigned_skus_failed"})
+		return
+	}
+	balances, err := s.listStockBalances(r.Context(), orgID, locID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "unassigned_skus_failed"})
+		return
+	}
+	assigned, err := s.allAssignedSkusAtLocation(r.Context(), orgID, locID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "unassigned_skus_failed"})
+		return
+	}
 	var unassigned []string
 	seen := map[string]bool{}
 	for _, b := range balances {
@@ -404,8 +479,11 @@ func (s *Service) HandleMySections(w http.ResponseWriter, r *http.Request) {
 	userID := auth.ResolveRetailerUserID(claims)
 	items, err := s.listSectionsForUser(r.Context(), orgID, userID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_failed"})
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "my_sections_failed"})
 		return
+	}
+	if items == nil {
+		items = []SectionDTO{}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
@@ -547,6 +625,9 @@ func (s *Service) listSections(ctx context.Context, retailerID, locationID strin
 }
 
 func (s *Service) listSectionSkus(ctx context.Context, sectionID string) ([]string, error) {
+	if s != nil && s.sectionSkusQuery != nil {
+		return s.sectionSkusQuery(ctx, sectionID)
+	}
 	if s.spannerClient == nil {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
@@ -582,6 +663,9 @@ func (s *Service) listSectionSkus(ctx context.Context, sectionID string) ([]stri
 }
 
 func (s *Service) replaceSectionSkus(ctx context.Context, sec SectionDTO, skus []string) error {
+	if s != nil && s.replaceSectionSkusFn != nil {
+		return s.replaceSectionSkusFn(ctx, sec, skus)
+	}
 	clean := uniqueNonEmpty(skus)
 	if s.spannerClient == nil {
 		s.mu.Lock()
@@ -612,7 +696,9 @@ func (s *Service) replaceSectionSkus(ctx context.Context, sec SectionDTO, skus [
 				return err
 			}
 			var sku string
-			_ = row.Columns(&sku)
+			if err := row.Columns(&sku); err != nil {
+				return err
+			}
 			muts = append(muts, spanner.Delete("RetailerSectionSkus", spanner.Key{sec.SectionID, sku}))
 		}
 		for _, sku := range clean {
@@ -630,6 +716,9 @@ func (s *Service) replaceSectionSkus(ctx context.Context, sec SectionDTO, skus [
 }
 
 func (s *Service) addSectionSkus(ctx context.Context, sec SectionDTO, skus []string) error {
+	if s != nil && s.addSectionSkusFn != nil {
+		return s.addSectionSkusFn(ctx, sec, skus)
+	}
 	clean := uniqueNonEmpty(skus)
 	if s.spannerClient == nil {
 		s.mu.Lock()
@@ -657,6 +746,9 @@ func (s *Service) addSectionSkus(ctx context.Context, sec SectionDTO, skus []str
 }
 
 func (s *Service) removeSectionSkus(ctx context.Context, sectionID string, skus []string) error {
+	if s != nil && s.removeSectionSkusFn != nil {
+		return s.removeSectionSkusFn(ctx, sectionID, skus)
+	}
 	if s.spannerClient == nil {
 		s.mu.Lock()
 		defer s.mu.Unlock()
@@ -679,6 +771,9 @@ func (s *Service) removeSectionSkus(ctx context.Context, sectionID string, skus 
 }
 
 func (s *Service) listSectionStaff(ctx context.Context, sectionID string) ([]string, error) {
+	if s != nil && s.sectionStaffQuery != nil {
+		return s.sectionStaffQuery(ctx, sectionID)
+	}
 	if s.spannerClient == nil {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
@@ -705,13 +800,18 @@ func (s *Service) listSectionStaff(ctx context.Context, sectionID string) ([]str
 			return nil, err
 		}
 		var uid string
-		_ = row.Columns(&uid)
+		if err := row.Columns(&uid); err != nil {
+			return nil, err
+		}
 		out = append(out, uid)
 	}
 	return out, nil
 }
 
 func (s *Service) replaceSectionStaff(ctx context.Context, sec SectionDTO, userIDs []string) error {
+	if s != nil && s.replaceSectionStaffFn != nil {
+		return s.replaceSectionStaffFn(ctx, sec, userIDs)
+	}
 	clean := uniqueNonEmpty(userIDs)
 	if s.spannerClient == nil {
 		s.mu.Lock()
@@ -742,7 +842,9 @@ func (s *Service) replaceSectionStaff(ctx context.Context, sec SectionDTO, userI
 				return err
 			}
 			var uid string
-			_ = row.Columns(&uid)
+			if err := row.Columns(&uid); err != nil {
+				return err
+			}
 			muts = append(muts, spanner.Delete("RetailerStaffSections", spanner.Key{uid, sec.SectionID}))
 		}
 		for _, uid := range clean {
@@ -765,7 +867,10 @@ func (s *Service) listSectionsForUser(ctx context.Context, retailerID, userID st
 	// For simplicity: return sections where user is staff OR role is owner-like (caller filters).
 	var out []SectionDTO
 	for _, sec := range all {
-		staff, _ := s.listSectionStaff(ctx, sec.SectionID)
+		staff, err := s.listSectionStaff(ctx, sec.SectionID)
+		if err != nil {
+			return nil, err
+		}
 		for _, uid := range staff {
 			if uid == userID {
 				out = append(out, sec)
@@ -776,16 +881,22 @@ func (s *Service) listSectionsForUser(ctx context.Context, retailerID, userID st
 	return out, nil
 }
 
-func (s *Service) allAssignedSkusAtLocation(ctx context.Context, retailerID, locationID string) map[string]bool {
+func (s *Service) allAssignedSkusAtLocation(ctx context.Context, retailerID, locationID string) (map[string]bool, error) {
 	out := map[string]bool{}
-	sections, _ := s.listSections(ctx, retailerID, locationID)
+	sections, err := s.listSections(ctx, retailerID, locationID)
+	if err != nil {
+		return nil, err
+	}
 	for _, sec := range sections {
-		skus, _ := s.listSectionSkus(ctx, sec.SectionID)
+		skus, err := s.listSectionSkus(ctx, sec.SectionID)
+		if err != nil {
+			return nil, err
+		}
 		for _, sku := range skus {
 			out[sku] = true
 		}
 	}
-	return out
+	return out, nil
 }
 
 func uniqueNonEmpty(in []string) []string {

@@ -32,11 +32,7 @@ func (h *Hub) recordMetricsLocked() {
 	if h == nil {
 		return
 	}
-	conns := 0
-	for _, room := range h.rooms {
-		conns += len(room)
-	}
-	wsConnections.WithLabelValues(h.name).Set(float64(conns))
+	wsConnections.WithLabelValues(h.name).Set(float64(h.connectionCountLocked()))
 }
 
 func (h *Hub) recordPubFailure() {

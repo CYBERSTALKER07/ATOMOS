@@ -18,7 +18,7 @@ struct SupplyLanesView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Supply lanes")
+        .navigationTitle("supplier_portal.supply_lanes.text.supply_lanes")
         .task { await load() }
     }
 

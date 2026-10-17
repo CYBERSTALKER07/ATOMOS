@@ -30,6 +30,7 @@ enum AppTab: String, CaseIterable {
 
 struct MainTabView: View {
     @State private var selectedTab: AppTab = .dashboard
+    @State private var pendingTransferFilter: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -38,14 +39,19 @@ struct MainTabView: View {
                 onOpenPayloadOverride: { selectedTab = .payloadOverride },
                 onOpenManifestExceptions: { selectedTab = .manifestExceptions },
                 onOpenAnalytics: { selectedTab = .analytics },
-                onOpenInsights: { selectedTab = .insights }
+                onOpenInsights: { selectedTab = .insights },
+                onOpenTransfers: { key in
+                    pendingTransferFilter = key
+                    selectedTab = .transfers
+                },
+                onOpenLoadingBay: { selectedTab = .loadingBay }
             )
                 .tabItem { Label(AppTab.dashboard.rawValue, systemImage: AppTab.dashboard.icon) }
                 .tag(AppTab.dashboard)
             LoadingBayView()
                 .tabItem { Label(AppTab.loadingBay.rawValue, systemImage: AppTab.loadingBay.icon) }
                 .tag(AppTab.loadingBay)
-            TransferListView()
+            TransferListView(initialFilter: pendingTransferFilter)
                 .tabItem { Label(AppTab.transfers.rawValue, systemImage: AppTab.transfers.icon) }
                 .tag(AppTab.transfers)
             SupplyRequestsHubView()

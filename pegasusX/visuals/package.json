@@ -28,8 +28,8 @@
     "lint": "eslint src && tsc",
     "ensure-media-dirs": "bash scripts/ensure-media-dirs.sh",
     "reset-chrome": "bash scripts/reset-chrome.sh",
-    "render:order-lifecycle": "npm run ensure-media-dirs && remotion render OrderLifecycle ../softwareengineercv-main/public/media/platform/order-lifecycle.mp4",
-    "render:ecosystem": "npm run ensure-media-dirs && remotion render PegasusEcosystemFlow ../softwareengineercv-main/public/media/platform/pegasus-ecosystem-flow.mp4"
+    "render:order-lifecycle": "npm run ensure-media-dirs && remotion render OrderLifecycle ../antimater/public/media/platform/order-lifecycle.mp4",
+    "render:ecosystem": "npm run ensure-media-dirs && remotion render PegasusEcosystemFlow ../antimater/public/media/platform/pegasus-ecosystem-flow.mp4"
   },
   "sideEffects": [
     "*.css"

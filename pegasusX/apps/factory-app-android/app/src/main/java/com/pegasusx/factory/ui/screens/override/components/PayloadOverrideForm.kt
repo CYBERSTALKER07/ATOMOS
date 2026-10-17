@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.override.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.factory.data.model.Manifest
 import com.pegasusx.factory.data.model.ManifestTransfer
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun MoveTransferDialog(
@@ -35,7 +38,7 @@ fun MoveTransferDialog(
         title = { Text("Move transfer") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
-                Text("Select the loading manifest that should receive transfer ${transfer.transferId.take(8)}.")
+                Text(stringResource(R.string.mobile_factory_ui_select_the_loading_manifest_that_should_receive_transfer_take, transfer.transferId.take(8)))
                 targetOptions.forEach { manifest ->
                     Row(
                         modifier = Modifier
@@ -52,7 +55,7 @@ fun MoveTransferDialog(
                         Column {
                             Text(manifest.truckPlate.ifBlank { manifest.truckId.take(8) })
                             Text(
-                                text = "${trimDecimal(manifest.totalVolumeVU)} / ${trimDecimal(manifest.maxCapacityVU)} VU",
+                                text = stringResource(R.string.mobile_factory_ui_trimdecimal_trimdecimal_2_vu, trimDecimal(manifest.totalVolumeVU), trimDecimal(manifest.maxCapacityVU)),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -61,7 +64,7 @@ fun MoveTransferDialog(
                 }
                 if (targetOptions.isEmpty()) {
                     Text(
-                        text = "Create or keep another loading manifest active before moving this transfer.",
+                        text = stringResource(R.string.mobile_factory_ui_create_or_keep_another_loading_manifest_active_before_moving_thi),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -91,7 +94,7 @@ fun CancelTransferDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Remove transfer") },
-        text = { Text("Release transfer ${transfer.transferId.take(8)} back to APPROVED so it can be reassigned.") },
+        text = { Text(stringResource(R.string.mobile_factory_ui_release_transfer_take_back_to_approved_so_it_can_be_reassigned, transfer.transferId.take(8))) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
@@ -114,7 +117,7 @@ fun CancelManifestDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Cancel manifest") },
-        text = { Text("Cancel manifest ${manifest.id.take(8)} and return all linked transfers to APPROVED.") },
+        text = { Text(stringResource(R.string.mobile_factory_ui_cancel_manifest_take_and_return_all_linked_transfers_to_approved, manifest.id.take(8))) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,

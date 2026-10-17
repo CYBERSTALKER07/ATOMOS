@@ -22,13 +22,13 @@ var errImportAlreadyClaimed = errors.New("import session already claimed")
 
 // ImportIngestSummary is the durable outcome of discovery + staging for one import body.
 type ImportIngestSummary struct {
-	Status             string
-	RowsStaged         int
-	SuggestedMappings  int
-	ValidRows          int
-	InvalidRows        int
-	DiscoveryModel     string
-	LowConfidence      bool
+	Status            string
+	RowsStaged        int
+	SuggestedMappings int
+	ValidRows         int
+	InvalidRows       int
+	DiscoveryModel    string
+	LowConfidence     bool
 }
 
 // IngestImportBytes runs deterministic discovery and stages rows for an import session.
@@ -232,7 +232,9 @@ func NewImportObjectOpenerFromEnv(ctx context.Context) (*ImportObjectOpener, err
 		bucket:    strings.TrimSpace(os.Getenv("GCS_BUCKET_NAME")),
 		localRoot: strings.TrimSpace(os.Getenv("IMPORT_LOCAL_FILE_ROOT")),
 	}
-	if opener.bucket != "" {
+	// Local root is the sandbox/emulator plane. Skip GCS so discovery cannot
+	// hang on a real bucket that is not the live import path.
+	if opener.localRoot == "" && opener.bucket != "" {
 		client, err := storage.NewClient(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("init gcs client: %w", err)
@@ -260,24 +262,32 @@ func (o *ImportObjectOpener) ReadObject(ctx context.Context, gcsPath string) ([]
 		return nil, errors.New("object path is empty")
 	}
 
+	if o.localRoot != "" {
+		localPath := filepath.Join(o.localRoot, filepath.FromSlash(path))
+		if body, err := os.ReadFile(localPath); err == nil {
+			return body, nil
+		} else if o.client == nil || o.bucket == "" {
+			return nil, err
+		}
+	}
+
 	if o.client != nil && o.bucket != "" {
 		rc, err := o.client.Bucket(o.bucket).Object(path).NewReader(ctx)
 		if err == nil {
 			defer rc.Close()
 			return io.ReadAll(rc)
 		}
-	}
-
-	if o.localRoot != "" {
-		localPath := filepath.Join(o.localRoot, filepath.FromSlash(path))
-		return os.ReadFile(localPath)
+		if o.localRoot == "" {
+			return nil, err
+		}
 	}
 
 	return nil, fmt.Errorf("import object %q is not available (configure GCS_BUCKET_NAME or IMPORT_LOCAL_FILE_ROOT)", path)
 }
 
 // ProcessImportUploaded handles INVENTORY_IMPORT_UPLOADED for async GCS/local discovery.
-func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *ImportObjectOpener, supplierID, sessionID, gcsPath string) error {
+// warehouseIDs is the wizard topology set when the portal already loaded it; empty falls back to Warehouses.
+func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *ImportObjectOpener, supplierID, sessionID, gcsPath string, warehouseIDs map[string]struct{}) error {
 	acquired, err := r.MarkSessionDiscovering(ctx, supplierID, sessionID)
 	if err != nil {
 		return err
@@ -286,27 +296,29 @@ func (r *ImportRepository) ProcessImportUploaded(ctx context.Context, opener *Im
 		return nil
 	}
 
-	body, readErr := opener.ReadObject(ctx, gcsPath)
-	if readErr != nil {
-		reason := fmt.Sprintf("sample read failed: %v", readErr)
+	fail := func(reason string) error {
 		if markErr := r.MarkSessionImportFailed(ctx, supplierID, sessionID, reason); markErr != nil {
 			return markErr
 		}
 		return nil
+	}
+
+	body, readErr := opener.ReadObject(ctx, gcsPath)
+	if readErr != nil {
+		return fail(fmt.Sprintf("sample read failed: %v", readErr))
 	}
 
 	delimiter := detectImportDelimiter(gcsPath, body)
-	warehouseIDs, topoErr := r.LoadWarehouseIDSet(ctx, supplierID)
-	if topoErr != nil {
-		return topoErr
+	if len(warehouseIDs) == 0 {
+		loaded, topoErr := r.LoadWarehouseIDSet(ctx, supplierID)
+		if topoErr != nil {
+			return fail(fmt.Sprintf("load warehouses failed: %v", topoErr))
+		}
+		warehouseIDs = loaded
 	}
 
 	if _, ingestErr := r.IngestImportBytes(ctx, supplierID, sessionID, body, delimiter, warehouseIDs); ingestErr != nil {
-		reason := fmt.Sprintf("discovery failed: %v", ingestErr)
-		if markErr := r.MarkSessionImportFailed(ctx, supplierID, sessionID, reason); markErr != nil {
-			return markErr
-		}
-		return nil
+		return fail(fmt.Sprintf("discovery failed: %v", ingestErr))
 	}
 	return nil
 }

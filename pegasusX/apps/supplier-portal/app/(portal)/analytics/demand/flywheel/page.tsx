@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import type { Route } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +16,7 @@ const api = createSupplierApi();
  * Distinct from planning Demand Signals (holiday/weather/promo multipliers).
  */
 export default function DemandFlywheelPage() {
+  const t = usePortalT();
   const [items, setItems] = useState<FlywheelDemandItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +32,10 @@ export default function DemandFlywheelPage() {
       .then((res) => {
         setItems(Array.isArray(res.items) ? res.items : []);
         if (res.feed_error) {
-          setError("feed_unavailable_apply_ddl_or_wait_for_pos");
+          setError(t("supplier_portal.residual.text.feed_unavailable_apply_ddl_or_wait_for_pos"));
         }
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "load_flywheel_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_flywheel_failed")))
       .finally(() => setLoading(false));
   }, [days]);
 
@@ -48,24 +50,24 @@ export default function DemandFlywheelPage() {
   return (
     <PageChrome
       icon="campaign"
-      title="POS flywheel demand"
-      description="Live retailer floor sell-through (STORE_POS). Kafka DEMAND_SIGNAL feed — not planning multipliers."
+      title={t("supplier_portal.analytics.demand.flywheel.text.pos_flywheel_demand")}
+      description={t("supplier_portal.residual.text.live_retailer_floor_sell_through_store_pos_kafka_demand_signal_f")}
       loading={loading}
       error={error}
       empty={!loading && items.length === 0}
-      emptyMessage="No STORE_POS flywheel events yet. When retailers complete POS sales for your SKUs, rows appear here."
+      emptyMessage={t("supplier_portal.residual.text.no_store_pos_flywheel_events_yet_when_retailers_complete_pos_sal")}
       actions={
         <div className="flex flex-wrap gap-2">
           <select
             className="desk-input h-10"
             value={days}
             onChange={(e) => setDays(Number(e.target.value) || 7)}
-            aria-label="Days window"
+            aria-label={t("supplier_portal.analytics.demand.flywheel.text.days_window")}
           >
-            <option value={1}>Last 1 day</option>
-            <option value={7}>Last 7 days</option>
-            <option value={14}>Last 14 days</option>
-            <option value={30}>Last 30 days</option>
+            <option value={1}>{t("supplier_portal.analytics.demand.flywheel.text.last_1_day")}</option>
+            <option value={7}>{t("portal.page.dashboard.range.last_7d")}</option>
+            <option value={14}>{t("supplier_portal.analytics.demand.flywheel.text.last_14_days")}</option>
+            <option value={30}>{t("portal.page.dashboard.range.last_30d")}</option>
           </select>
           <button type="button" className="md-btn md-btn-outlined h-10 px-4" onClick={() => load()}>
             Refresh
@@ -87,7 +89,7 @@ export default function DemandFlywheelPage() {
     >
       <div className="mb-4 rounded-xl border border-[var(--color-md-outline-variant)] bg-[var(--color-md-surface-container-low)] p-4 text-sm text-[var(--color-md-outline)]">
         <p>
-          <strong className="text-[var(--color-md-on-surface)]">Flywheel vs planning:</strong> this
+          <strong className="text-[var(--color-md-on-surface)]">{t("supplier_portal.analytics.demand.flywheel.text.flywheel_vs_planning")}</strong> this
           page shows POS qty sold/voided at retailer stores. Planning demand signals
           (holiday/weather/promo multipliers) live under{" "}
           <Link href={"/analytics/demand/signals" as Route} className="underline text-[var(--color-md-primary)]">
@@ -108,14 +110,14 @@ export default function DemandFlywheelPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-[var(--color-md-surface-container)] text-xs uppercase tracking-wide text-[var(--color-md-outline)]">
               <tr>
-                <th className="px-3 py-2">When</th>
-                <th className="px-3 py-2">Day</th>
-                <th className="px-3 py-2">Retailer</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.when")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.day")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.retailer")}</th>
                 <th className="px-3 py-2">SKU</th>
-                <th className="px-3 py-2">Kind</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.kind")}</th>
                 <th className="px-3 py-2">Δ qty</th>
-                <th className="px-3 py-2">Net sold</th>
-                <th className="px-3 py-2">Source</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.net_sold")}</th>
+                <th className="px-3 py-2">{t("supplier_portal.analytics.demand.flywheel.text.source")}</th>
               </tr>
             </thead>
             <tbody>

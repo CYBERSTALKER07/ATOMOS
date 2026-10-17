@@ -3,6 +3,7 @@ import SwiftUI
 struct FleetView: View {
     @State private var realtimeClient = FactoryRealtimeClient()
     @State private var vehicles: [Vehicle] = []
+    @State private var liveRoutes: [FactoryFleetLiveRoute] = []
     @State private var loading = true
     @State private var error: String?
 
@@ -24,6 +25,37 @@ struct FleetView: View {
                     )
                 } else {
                     ResponsiveGridContentWrapper {
+                        if !liveRoutes.isEmpty {
+                            Section {
+                                FactorySectionHeader(
+                                    title: "Live drivers",
+                                    subtitle: "\(liveRoutes.count) sealed/dispatched with GPS"
+                                )
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                                .listRowBackground(Color.clear)
+                            }
+                            Section {
+                                ForEach(liveRoutes) { route in
+                                    let lat = route.driverLocation?.lat ?? route.driverLocation?.latitude
+                                    let lng = route.driverLocation?.lng ?? route.driverLocation?.longitude
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(route.driverName?.isEmpty == false ? route.driverName! : (route.driverId ?? route.manifestId))
+                                                .font(.subheadline.bold())
+                                            Text(
+                                                lat != nil && lng != nil
+                                                    ? String(format: "%.5f, %.5f", lat!, lng!)
+                                                    : "Waiting for GPS"
+                                            )
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        FactoryStatusBadge(text: (route.liveLocationAvailable ?? false) ? "LIVE" : "OFFLINE")
+                                    }
+                                }
+                            }
+                        }
                         Section {
                             FactorySectionHeader(
                                 title: "Fleet roster",
@@ -46,7 +78,7 @@ struct FleetView: View {
                                         Text(vehicle.driverName.isEmpty ? "Unassigned" : vehicle.driverName)
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
-                                        Text("\(Int(vehicle.capacityKg))kg · \(Int(vehicle.capacityL))L")
+                                        Text(L10n.format("mobile_factory.ui.capacitykgkg_capacityll", "\(Int(vehicle.capacityKg))", "\(Int(vehicle.capacityL))"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
@@ -60,10 +92,10 @@ struct FleetView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Fleet")
+            .navigationTitle("portal.nav.fleet")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise", action: { load() })
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: { load() })
                         .labelStyle(.iconOnly)
                 }
             }
@@ -72,8 +104,7 @@ struct FleetView: View {
                 realtimeClient.connect(
                     onStateChange: { _ in },
                     onEvent: { event in
-                        guard let eventType = event.eventType else { return }
-                        guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                        guard event.type.hasPrefix("TRANSFER_") || event.type.hasPrefix("MANIFEST_") || event.type.hasPrefix("WAREHOUSE_TRANSFER_") else { return }
                         load(silent: true)
                     }
                 )
@@ -92,6 +123,9 @@ struct FleetView: View {
         Task {
             do {
                 vehicles = try await FactoryService.fleet().vehicles
+                if let live = try? await FactoryService.fleetLiveMap() {
+                    liveRoutes = live.routes
+                }
             } catch {
                 self.error = error.localizedDescription
             }

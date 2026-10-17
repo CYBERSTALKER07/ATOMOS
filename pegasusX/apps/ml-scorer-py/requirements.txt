@@ -1,0 +1,5 @@
+google-cloud-spanner
+psycopg2-binary
+scikit-learn
+pandas
+flask
