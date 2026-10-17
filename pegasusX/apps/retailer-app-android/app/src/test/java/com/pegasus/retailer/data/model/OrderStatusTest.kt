@@ -166,11 +166,13 @@ class OrderStatusTest {
         val stream = javaClass.classLoader?.getResourceAsStream("order-customer-stage.json")
             ?: error("order-customer-stage.json resource not found")
         val jsonStr = stream.bufferedReader().use { it.readText() }
-        val mappingObj = org.json.JSONObject(jsonStr).getJSONObject("mapping")
+        val root = kotlinx.serialization.json.Json.parseToJsonElement(jsonStr) as kotlinx.serialization.json.JsonObject
+        val mappingObj = root["mapping"] as kotlinx.serialization.json.JsonObject
 
         OrderStatus.entries.forEach { status ->
-            if (mappingObj.has(status.name)) {
-                val expectedStageName = mappingObj.getString(status.name)
+            val mappedElement = mappingObj[status.name]
+            if (mappedElement != null) {
+                val expectedStageName = mappedElement.toString().trim('"')
                 assertEquals(
                     "Status ${status.name} mapped to unexpected CustomerStage",
                     expectedStageName,
