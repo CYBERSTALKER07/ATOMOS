@@ -218,7 +218,11 @@ def main() -> None:
     require_release_gates()
     require_platform_evidence()
     require_context_sync()
-    
+
+    anti_theatre = subprocess.run(["bash", "scripts/ci_anti_theatre_gate.sh"], cwd=ROOT)
+    if anti_theatre.returncode != 0:
+        fail("scripts/ci_anti_theatre_gate.sh failed")
+
     run_make_target("parity-contract-full")
     run_make_target("validate-ai-worker-k8s")
     run_make_target("validate-backend-k8s")

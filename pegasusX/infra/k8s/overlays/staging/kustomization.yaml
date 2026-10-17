@@ -131,6 +131,19 @@ configMapGenerator:
       - KAFKA_TOPIC_CONSUME_DOMAIN=false
       - FIREBASE_AUTH_ENABLED=false
       - OPTIMIZER_BASE_URL=http://optimizer-core:8082
+  - name: ai-worker-config
+    behavior: merge
+    literals:
+      - PEGASUSX_ENV=staging
+      - SPANNER_PROJECT=pegasusx-prod-uz
+      - SPANNER_INSTANCE=pegasusx-staging-spanner
+      - SPANNER_DATABASE=main
+      - REDIS_ADDR=10.175.232.20:6378
+      - REDIS_TLS_ENABLED=true
+      - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasusx-prod-uz.cloud.goog:9092
+      - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
+      - KAFKA_SASL_USERNAME=backend-go-sa@pegasusx-prod-uz.iam.gserviceaccount.com
+      - KAFKA_TOPIC_INVENTORY_IMPORT=staging.events.inventory-import
 
 labels:
   - pairs:

@@ -27,14 +27,14 @@ grep -q 'RolePlatformAdmin' apps/backend-go/ws/handler.go
 grep -q 'confirmPickTask' apps/warehouse-app-android/app/src/main/java/com/pegasusx/warehouse/data/remote/WarehouseApi.kt
 echo "platform-admin-routes-ok"
 
-echo "[5/5] SLO docs + observability alert stubs ..."
+echo "[5/5] SLO docs + observability alert policies in active Terraform module ..."
 test -f docs/PLATFORM_SLOS.md
-grep -q 'outbox_lag_high' infra/terraform/legacy/observability.tf
-grep -q 'fiscal_success_low' infra/terraform/legacy/observability.tf
-grep -q 'capture_success_low' infra/terraform/legacy/observability.tf
-grep -q 'outbox_relay_restarts_high' infra/terraform/legacy/observability.tf
-grep -q 'outbox_dlq_depth_nonzero' infra/terraform/legacy/observability.tf
-grep -q 'partner_webhook_success_low' infra/terraform/legacy/observability.tf
+grep -q 'outbox_lag_high' infra/terraform/modules/monitoring/main.tf
+grep -q 'fiscal_success_low' infra/terraform/modules/monitoring/main.tf
+grep -q 'capture_success_low' infra/terraform/modules/monitoring/main.tf
+grep -q 'outbox_relay_restarts_high' infra/terraform/modules/monitoring/main.tf
+grep -q 'outbox_dlq_depth_nonzero' infra/terraform/modules/monitoring/main.tf
+grep -q 'partner_webhook_success_low' infra/terraform/modules/monitoring/main.tf
 echo "slo-stubs-ok"
 
 echo "phase3-gate-ok"

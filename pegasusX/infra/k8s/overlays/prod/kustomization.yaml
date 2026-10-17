@@ -51,6 +51,7 @@ configMapGenerator:
       # G1.D: push must be live in prod (set FCM_ALLOW_NOOP only for emergency degraded).
       # FIREBASE_PROJECT_ID is the ConfigMap value (pegasusx-prod-uz), matching client plists.
       # ExternalSecret does not supply FIREBASE_PROJECT_ID.
+      - SPANNER_PROJECT=pegasusx-prod-uz
       - FORECAST_ACCURACY_ENABLED=true
       - FORECAST_ALGO_ENABLED=true
       - FORECAST_ALGO_REQUIRE_GATE=true
@@ -58,7 +59,14 @@ configMapGenerator:
       - AUTO_ORDER_WORKER_ENABLED=true
       - AUTO_ORDER_PLACE_ENABLED=false
       - SAFETY_STOCK_V2_ENABLED=false
+      - KAFKA_TOPIC_DUAL_WRITE=false
+      - KAFKA_TOPIC_CONSUME_DOMAIN=false
       - OPTIMIZER_BASE_URL=http://optimizer-core:8082
+  - name: ai-worker-config
+    behavior: merge
+    literals:
+      - SPANNER_PROJECT=pegasusx-prod-uz
+      - PEGASUSX_ENV=production
 # Production Kafka = GCP Managed Service for Apache Kafka (same as staging).
 # ACTIVATION (owner-controlled, one-time):
 #   1. terraform apply -var="enable_managed_kafka=true" -var="environment=prod"
@@ -79,7 +87,6 @@ patches:
       kind: Deployment
       name: optimizer-core
     patch: |-
-      # Keep scaled to 0 until a real optimizer-core AR image exists; then raise ≥ 1.
       - op: replace
         path: /spec/replicas
-        value: 0
+        value: 1

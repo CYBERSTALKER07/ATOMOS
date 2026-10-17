@@ -97,3 +97,32 @@ func TestOrderRoutes_RoleGuard(t *testing.T) {
 		t.Fatalf("retailer arriving delivery returned %d, want 403 Forbidden", rr2.Code)
 	}
 }
+
+func TestOrderRoutes_HandlerExecutionAndValidation(t *testing.T) {
+	svc := &order.Service{}
+	r := orderRouter(svc)
+	retailerToken := issueOrderToken(t, auth.RoleRetailer)
+
+	// GET /v1/order/currencies executes handler and returns 200 OK with supported currencies
+	req := httptest.NewRequest(http.MethodGet, "/v1/order/currencies", nil)
+	req.Header.Set("Authorization", "Bearer "+retailerToken)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /v1/order/currencies returned %d, want 200 OK", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "UZS") {
+		t.Fatalf("GET /v1/order/currencies body missing UZS: %s", rr.Body.String())
+	}
+
+	// POST /v1/order/create with malformed JSON returns 400 Bad Request from handler
+	req2 := httptest.NewRequest(http.MethodPost, "/v1/order/create", strings.NewReader(`{bad-json`))
+	req2.Header.Set("Authorization", "Bearer "+retailerToken)
+	rr2 := httptest.NewRecorder()
+	r.ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusBadRequest {
+		t.Fatalf("POST /v1/order/create with malformed JSON returned %d, want 400", rr2.Code)
+	}
+}

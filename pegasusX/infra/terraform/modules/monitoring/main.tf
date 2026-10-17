@@ -409,6 +409,259 @@ resource "google_monitoring_alert_policy" "uptime_check_failure" {
   user_labels           = var.labels
 }
 
+# 2.13 AI Worker Process Down
+resource "google_monitoring_alert_policy" "ai_worker_down" {
+  display_name = "[P1] pegasusX — AI Worker Down (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "ai-worker up metric low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_ai_worker_up/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.5
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "ai-worker process health is below 1 for 5 minutes. Check `/healthz`, container restarts, and recent fetch/commit failures."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.14 AI Worker Not Ready
+resource "google_monitoring_alert_policy" "ai_worker_not_ready" {
+  display_name = "[P2] pegasusX — AI Worker Not Ready (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "ai-worker ready metric low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_ai_worker_ready/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.5
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "ai-worker readiness stayed low for 5 minutes. Check rollout state, shutdown drains, and probe reachability."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.15 AI Worker Kafka Consumer Lag > 10s
+resource "google_monitoring_alert_policy" "ai_worker_consumer_lag" {
+  display_name = "[P1] pegasusX — AI Worker Kafka Lag > 10s (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "ai-worker consumer lag high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_kafka_consumer_lag_seconds/gauge\" resource.type=\"prometheus_target\" metric.labels.consumer=\"pegasusx-ai-worker\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 10
+      duration        = "60s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "ai-worker Kafka lag exceeded 10 seconds. Check broker reachability, commit errors, and Spanner write failures before traffic accumulates."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.16 Phase 3 SLO — Outbox Lag p99 > 30s
+resource "google_monitoring_alert_policy" "outbox_lag_high" {
+  display_name = "[P1] pegasusX — Outbox lag p99 > 30s (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "outbox lag high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_lag_seconds/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 30
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "Outbox publish lag exceeded 30s for 5 minutes. Check Kafka brokers, relay leases, and DLQ depth. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.17 Phase 3 SLO — Fiscal Success Rate < 99%
+resource "google_monitoring_alert_policy" "fiscal_success_low" {
+  display_name = "[P1] pegasusX — Fiscal success rate < 99% (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "fiscal success ratio low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_fiscal_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "Fiscal submit success rate below 99% over 1h. Check Soliq/OFD credentials and OrderFiscalReceipts failures."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.18 Phase 3 SLO — Payment Capture Success Rate < 99%
+resource "google_monitoring_alert_policy" "capture_success_low" {
+  display_name = "[P1] pegasusX — Capture success rate < 99% (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "capture success ratio low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_capture_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "Payment capture success rate below 99% over 1h. Check Global Pay connectivity and CAPTURE_PENDING stuck legs."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.19 Phase 3 SLO — Outbox Relay Restarts > 1/hour
+resource "google_monitoring_alert_policy" "outbox_relay_restarts_high" {
+  display_name = "[P2] pegasusX — Outbox relay restarts > 1/hour (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "relay restarts high"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_relay_restarts_total/counter\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "3600s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "Outbox relay Start() rate exceeded 1/hour. Check pod crash loops / OOM / lease thrash. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.20 Phase 3 SLO — Outbox DLQ Depth > 0 for 5m
+resource "google_monitoring_alert_policy" "outbox_dlq_depth_nonzero" {
+  display_name = "[P1] pegasusX — Outbox DLQ depth > 0 for 5m (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "dlq depth nonzero"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_outbox_dlq_depth/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "OutboxDeadLetters depth stayed > 0 for 5 minutes. Inspect DLQ rows, fix publish cause, then requeue. See docs/PLATFORM_SLOS.md."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.21 Phase 3 SLO — Partner Webhook Success Rate < 99%
+resource "google_monitoring_alert_policy" "partner_webhook_success_low" {
+  display_name = "[P2] pegasusX — Partner webhook success rate < 99% (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "partner webhook success low"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_partner_webhook_success_ratio/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.99
+      duration        = "3600s"
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = var.labels
+  documentation {
+    content   = "Partner webhook SUCCESS ratio below 99% over 1h. Check subscriber URLs, HMAC secrets, and WebhookDeliveryAttempts DEAD rows."
+    mime_type = "text/markdown"
+  }
+}
+
 # 3. Synthetic Uptime Check Configuration (Public Health Endpoint /healthz)
 resource "google_monitoring_uptime_check_config" "api_healthz" {
   display_name = "PegasusX API Healthz Synthetic Probe (${var.environment})"

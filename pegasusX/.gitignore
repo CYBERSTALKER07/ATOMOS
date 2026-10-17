@@ -57,7 +57,7 @@ local.properties
 *.iml
 captures/
 
-# ios
+# ios & ruby gems
 xcuserdata/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
@@ -67,6 +67,12 @@ DerivedData/
 Pods/
 .build/
 .swiftpm/
+.gem/
+**/.gem/
+*.o
+**/*.o
+*.tsbuildinfo
+**/*.tsbuildinfo
 
 # expo
 .expo/

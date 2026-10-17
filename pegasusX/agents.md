@@ -1,197 +1,149 @@
-# PegasusX Autonomous Agent Instructions & Operating Doctrine
+# PegasusX Autonomous Agent Constitution & Operating Doctrine
 
 > **Scope**: PegasusX Enterprise Logistics, Supply Chain & Distribution Ecosystem  
-> **Repository Root**: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX`  
-> **Workspace Configuration**: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/go.work`, `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/pnpm-workspace.yaml`, `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/package.json`  
-> **Primary Operating Mode**: Zero Theatre, Absolute Code Grounding, Production Invariants
+> **Repository Roots**: `/Users/shakhzod/Desktop/pegasusx` & `/Users/shakhzod/Desktop/V.O.I.D/pegasusX` (must remain in strict parity)  
+> **Workspace Configuration**: `go.work`, `pnpm-workspace.yaml`, `package.json`  
+> **Primary Operating Mode**: Zero Theatre, Anti-Reward-Hacking, Production Invariants
 
 ---
 
-## 1. System Goal & Mission
+## 0. Anti-Reward-Hacking Rules (READ FIRST — NON-NEGOTIABLE)
+
+Autonomous coding agents frequently fail by optimizing for *"make the terminal exit 0 as fast as possible"* instead of solving the actual engineering problem. The following five **Anti-Reward-Hacking Laws** supersede all convenience heuristics:
+
+### Law 0.1 — Never Weaken, Redirect, or Game a Gate Script
+- **Forbidden**: Editing `scripts/*_gate.sh`, `scripts/validate_*`, `scripts/ci_*`, or `scripts/parity/*` to weaken a regex, delete an assertion, or redirect a check to `legacy/` or dead code just to make the script exit `0`.
+- **Required**: When a gate fails, the gate is doing its job. Fix the active production code, active Terraform module (`infra/terraform/modules/*`), or active Kubernetes overlay (`infra/k8s/overlays/*`) so the gate passes honestly.
+
+### Law 0.2 — Never Mask Failures with Bypass Flags or `-short`
+- **Forbidden**: Running `ALLOW_DEV_UPDATER_PUBKEY=1`, `PHASE*_SKIP_REGRESSION=1`, `SKIP_*=1`, or `go test -short` and reporting to the user that the system is "production-ready" or "all gates passed."
+- **Required**:
+  - `-short` skips Spanner emulator transactions and only proves compilation/unit helpers. Always state explicitly what was skipped if Docker/Spanner is not running, or boot the emulator (`make sandbox-infra-up`) and run the full integration suite with `-race`.
+  - If a production signing key (e.g., `TAURI_UPDATER_PUBKEY`) or cloud secret is not provisioned, report it transparently as an external provisioning blocker—never hide it behind a dev-only env flag.
+
+### Law 0.3 — Never Write "Coverage Theatre" Tests
+- **Forbidden**: Writing test files (such as route tests against an uninitialized `&Service{}` struct) that only assert `nil` dependency guards (`404`) or missing/wrong auth headers (`401`/`403`) while never executing the actual handler body, payload validation, or business logic.
+- **Required**: Every test suite must exercise real happy-path (`200`/`201`), input validation (`400`/`422`), domain state transition conflict (`409`), and concurrency/idempotency behavior against real or in-memory/emulator backing stores.
+
+### Law 0.4 — Never Duplicate Shared Code to Dodge Build Graph Wiring
+- **Forbidden**: Copy-pasting shared source files into deleted or duplicate directories (e.g., recreating `packages/mobile-ios-design/` instead of wiring `packages/mobile-ios-core/` and `packages/mobile-ios-kit/`, or duplicating shared Kotlin/TypeScript models across apps) to silence a compiler error.
+- **Required**: Maintain a single canonical source of truth. Fix the build definition (`project.yml`, `Package.swift`, `settings.gradle.kts`, `tsconfig.json`, `go.work`) so all apps consume the canonical shared package.
+
+### Law 0.5 — Never Commit Build Artifacts, Vendor Caches, or Local State
+- **Forbidden**: Committing compiled binaries (`ai-worker`, `handoff-service`, `*.o`, `*.a`), language vendor/build caches (`.gem/`, `target/`, `node_modules/`, `.next/`, `out/`, `build/`, `.gradle/`, `*.tsbuildinfo`), or Terraform plans/state (`*.tfplan`, `*.tfstate`) into git.
+- **Required**: Before every commit, inspect `git status --short` and `git diff --cached --stat`. If build outputs appear, untrack them and harden `.gitignore`.
+
+---
+
+## 1. System Architecture & Domain Mission
 
 ### 1.1. Single-Supplier Multi-Retailer (SSMR) Doctrine
-PegasusX is the enterprise logistics distribution engine engineered specifically for wholesale Fast-Moving Consumer Goods (FMCG) distribution in Central Asia (Uzbekistan / Tashkent metropolitan area and regional hubs), designed with multi-region cell scalability.
+PegasusX is an enterprise wholesale Fast-Moving Consumer Goods (FMCG) distribution engine engineered for Central Asia (Uzbekistan / Tashkent and regional hubs) with multi-region cell scalability.
 
-Unlike two-sided open marketplace architectures where disparate sellers compete for consumer carts, PegasusX implements the **Single-Supplier Multi-Retailer (SSMR)** doctrine (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/package.json:5`):
-- **Authoritative Supplier Core**: A unified supplier organization commands the catalog, master pricing policies, bulk packaging units, warehouse distribution centers, factory manufacturing transfers, and company truck fleet.
-- **Retailer Network**: Hundreds to thousands of independent retail stores (convenience stores, supermarkets, neighborhood grocers) interface with the supplier via dedicated ordering apps, desktop POS stations, scheduled replenishment feeds, and automated preorders.
-- **Physical Logistics Chain**: The system manages every operational handoff across physical custody boundaries:
-  1. Factory manufacturing, palletization, and regional inter-warehouse transfers (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/factoryroutes/routes.go`).
-  2. Warehouse inbound receiving, lot tracking, cold-chain temperature thresholds, and batch wave picking (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/warehouseroutes/routes.go`).
-  3. Dock loading, truck capacity bin-packing, tamper-evident security seal validation, and order injection (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/payloaderoutes/routes.go`).
-  4. Turn-by-turn fleet dispatch, OSRM route geometry, and background driver GPS telemetry (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/driverroutes/routes.go`, `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/telemetryroutes/routes.go`).
-  5. Cryptographically authenticated electronic proof of delivery (EPOD), dynamic HMAC QR handoff tokens (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/handoff/engine.go:1-80`), and proximity geofencing.
-  6. Financial settlement, integer Tiyin cash collection reconciliation, Accounts Receivable (AR) dunning, and mandatory fiscal registration with the State Tax Committee of Uzbekistan (**Soliq** EHF electronic invoices) under ADR-009 (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/soliq/client.go:1-60`).
+Unlike open two-sided marketplaces, PegasusX enforces the **Single-Supplier Multi-Retailer (SSMR)** model (`package.json`):
+- **Authoritative Supplier Core**: A single supplier organization controls the master product catalog, pricing tiers, packaging units, factories, distribution warehouses, and delivery fleet.
+- **Retailer Network**: Independent retail stores order via mobile apps, desktop POS terminals, and automated replenishment schedules.
+- **End-to-End Custody & Money Chain**:
+  1. **Factory (`apps/backend-go/factoryroutes/`)**: Production line scheduling, batching, palletization, and inter-warehouse transfers.
+  2. **Warehouse (`apps/backend-go/warehouseroutes/`, `apps/backend-go/warehouseops/`)**: Inbound receiving, FEFO lot tracking, cold-chain monitoring, CRDT offline inventory adjustments, and wave picking.
+  3. **Payload / Dock (`apps/backend-go/payloaderoutes/`)**: 3D truck bin-packing, axle load validation, and tamper-evident seal verification.
+  4. **Dispatch & Driver (`apps/backend-go/driverroutes/`, `services/optimizer-core/`)**: OR-Tools / Rust VRP routing, OSRM/Google geometry, and real-time GPS telemetry.
+  5. **Handoff & EPOD (`packages/handoff/engine.go`, `apps/backend-go/orderroutes/`)**: Cryptographic SHA-256/HMAC QR proof-of-delivery handoff tokens and geofence verification.
+  6. **Financial Settlement & Fiscalization (`apps/backend-go/payment/`, `apps/backend-go/ar/`, `apps/backend-go/soliq/`)**: Integer minor-unit (Tiyin) ledger accounting, Accounts Receivable (AR) credit & dunning, and mandatory Uzbekistan State Tax Committee (**Soliq** EHF/OFD) fiscal receipts under ADR-009.
 
----
-
-## 2. Honesty Commandments ("Zero Theatre")
-
-All autonomous agents and human engineers contributing to PegasusX are bound by the **Zero Theatre Doctrine**. Software must function genuinely against real database transactions, real message brokers, real WebSocket rooms, and genuine solver mathematics. Mock facades, stubbed screens, and fake data are treated as system faults.
-
-### Commandment 1: Zero Tolerance for "TODO: Inject" Placeholders
-- **Rule**: Client screens, ViewModels, and backend handlers must never carry `TODO: Inject` markers. Such placeholders signify orphaned UI components or fake implementations that silently fail to perform work.
-- **Enforcement**: Automated CI gate `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_fail_todo_inject.sh:1-12` scans all files in `apps/` and `packages/` using ripgrep (`rg -e 'TODO: Inject'`). If found, the build fails immediately.
-- **Directive**: Either wire the genuine dependency to the live API client or delete the screen entirely.
-
-### Commandment 2: Zero Placeholder or `:latest` Images in Production Overlays
-- **Rule**: Production Kubernetes deployment manifests must never contain `IMAGE_PLACEHOLDER`, `:latest`, `:local`, or unpinned digest tags. Furthermore, `optimizer-core` must NEVER be remapped onto `backend-go` (a dangerous crash-loop risk).
-- **Enforcement**: Gate `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_fail_placeholder_images.sh:1-44` renders the production Kustomize overlay (`infra/k8s/overlays/prod`) and verifies image immutability and service separation (`lines 26-38`).
-
-### Commandment 3: Zero Mock Strings in Retailer Clients
-- **Rule**: Retailer desktop and mobile production builds must never contain demo strings such as `Mock Data`, `hardcoded BarMark`, `fakeH3Pulse`, or `CONTROL_TOWER_SIMULATOR`.
-- **Enforcement**: Gate `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_no_mock_control_tower.sh:1-15` audits `apps/retailer-app-desktop`, `apps/retailer-app-android`, and `apps/retailer-app-ios`.
-
-### Commandment 4: Inviolable Money Path Correctness
-- **Rule**: Financial transactions must never report false successes or risk duplicate captures. Specifically:
-  1. Payment capture failures must never transition order status to `CAPTURED`.
-  2. Duplicate client idempotency keys must never create duplicate ledger entries.
-  3. Empty payment gateway credentials must produce immediate hard errors, never silent bypasses.
-  4. Shop-closed credit debt must always be committed to the immutable AR ledger.
-- **Enforcement**: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/money_path_gate.sh:1-56` executes integration test suites `TestMoneyPathGate` and `TestWorkerShopClosed` against a live Google Cloud Spanner emulator (`apps/backend-go/order/`, `apps/backend-go/payment/`).
-
-### Commandment 5: Strict Multi-Region Cell Isolation
-- **Rule**: Secondary expansion cells (e.g., `europe-west1` / `cell-eu`) must NEVER be able to open or overwrite the primary live SSMR state prefix (`pegasusx/ssmr`). Workload identity namespaces must be dynamically derived per cell (`local.k8s_namespace`). Restoring an Uzbekistan Spanner backup onto a foreign cell is strictly prohibited.
-- **Enforcement**: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/assert_cell_backend.sh:1-156` inspects Terraform backend files, `infra/terraform/cell.tf`, and K8s overlays to verify complete cryptographic and state separation.
-
-### Commandment 6: Solver Honesty
-- **Rule**: Routing and capacity solvers (`services/optimizer-core/`) must strictly report their true mathematical state. Heuristic approximations (e.g. nearest-neighbor or greedy algorithms) MUST return `SolverStatus.HEURISTIC` (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/services/optimizer-core/proto/optimizer_core.proto:14-16`). Never claim `OPTIMAL` unless mathematically proven by an exact solver (e.g. OR-Tools branch-and-bound / CP-SAT).
-
-### Commandment 7: 3-Way Schema Synchronization Lockstep
-- **Rule**: Whenever a domain event is added or modified, all three authoritative definitions must be updated simultaneously in the same atomic commit:
-  1. Go backend constants: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/events/events.go:33-360`
-  2. JSON Schema contract: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/contracts/events.schema.json`
-  3. TypeScript types: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/packages/types/src/events.ts`
-- **Enforcement**: CI target `make gen-contracts-gate` validates contract parity.
-
-### Commandment 8: Full-Ecosystem & Cross-Platform Tri-Synchronicity (The 360° Matrix Invariant)
-- **Rule**: PegasusX is a unified, multi-platform, multi-role distributed operating system. Never treat any code edit as an isolated backend change or a single-platform patch.
-- **Tri-Platform Lockstep**: Any domain feature, protocol change, payload adjustment, or bug fix affecting a role MUST be synchronized across all three client platform surfaces:
-  1. **Android**: Kotlin + Jetpack Compose (`apps/retailer-app-android`, `apps/driver-app-android`)
-  2. **iOS**: Swift + SwiftUI (`apps/retailer-app-ios`, `apps/driver-app-ios`, `apps/supplier-app-ios`)
-  3. **Web & Desktop**: React/Next.js/Tauri (`apps/retailer-app-desktop`, `apps/supplier-portal`, `apps/admin-portal`)
-- **6-Role Blast-Radius Audit**: Every domain mutation impacts multiple peer roles in the physical custody and financial chain. Any edit to a feature must explicitly trace and verify its impact across all 6 roles:
-  1. **Retailer**: Cart ordering, stock balances, debt credit lines, returns, and dispute claims.
-  2. **Driver**: Manifest assignment, truck axle load limits, turn-by-turn routing, doorstep EPOD, cash collection.
-  3. **Warehouse Operator**: Stock lot allocation (FEFO), picking waves, tamper seals, return inspection.
-  4. **Supplier / Manufacturer**: Factory replenishment, wholesale master pricing, AR settlement, payout batches.
-  5. **Factory Manager**: Production line batches, palletization, inter-warehouse transit lanes.
-  6. **Platform Admin**: Control tower live telemetry, fiscal Soliq audit, fraud anomaly detection.
-- **Proactive Engineering Mandate**: Autonomous agents must NEVER act as passive ticket-closers waiting for user instructions. The agent is expected to think 3 steps ahead, challenge design oversights, proactively identify unhandled technical/non-technical edge cases, flag forgotten platform surfaces, and bring high-level architectural solutions to the table unprompted.
+### 1.2. Authoritative Technology Stack (Do Not Hallucinate Foreign Stacks)
+- **Primary Database**: **Google Cloud Spanner** (`cloud.google.com/go/spanner`) with authoritative schema in `apps/backend-go/schema/spanner.ddl` and incremental migrations in `apps/backend-go/schema/migrations/`. *(Note: Do NOT introduce PostgreSQL/`pgx`/`timescaledb` idioms into `apps/backend-go`—Spanner is the sole transactional store.)*
+- **Cache & Realtime Backplane**: **Redis** (Cloud Memorystore in GCP) for cache-aside reads (`cache:invalidate` post-commit) and fail-open WebSocket Pub/Sub fanout (`ws:<hub>:fanout`).
+- **Event Streaming**: **Apache Kafka** (GCP Managed Service for Apache Kafka in staging/prod) fed exclusively via the Spanner transactional `OutboxEvents` relay (`apps/backend-go/outbox/relay.go`).
+- **Backend & Workers**: Go 1.25+ (`apps/backend-go`, `apps/ai-worker`, `apps/handoff-service`), Python OR-Tools + Rust CP-SAT/VRP (`services/optimizer-core`).
+- **Web & Desktop Portals**: Next.js + React + Tailwind + Tauri v2 (`apps/retailer-portal`, `apps/supplier-portal`, `apps/warehouse-portal`, `apps/factory-portal`, `apps/admin-portal`).
+- **Mobile Fleet**: Native Kotlin + Jetpack Compose (`apps/*-app-android`) and Native Swift + SwiftUI (`apps/*-app-ios`).
 
 ---
 
-## 3. Core Architectural Constraints
+## 2. Production Invariants & Automated Enforcement Gates
 
-Every engineer and AI agent operating in PegasusX must comply with these six architectural invariants:
+Every architectural rule is paired with an executable gate script. All code must satisfy both the spirit of the invariant and the mechanical gate:
 
-### 3.1. Cloud Spanner as Authoritative Ledger
-- The primary storage engine is Google Cloud Spanner, defined in `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/spanner.ddl` (220+ tables) and evolved through 125 migrations in `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/migrations/`.
-- Every mutation must execute inside a `spanner.ReadWriteTransaction`.
-- Schema drift is prohibited: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_schema_drift_gate.sh:1-43` verifies that every migration table and column is reflected in `spanner.ddl`.
+### Invariant 1: Zero Orphaned UI Placeholders
+- **Rule**: Client screens, ViewModels, and backend handlers must never contain `TODO: Inject`, mock toggles, or dead buttons.
+- **Gate**: `scripts/ci_fail_todo_inject.sh` (`rg -e 'TODO: Inject' apps packages`).
 
-### 3.2. Atomic Transactional Outbox Pattern
-- **Rule**: Direct publishing to Apache Kafka from HTTP request handlers is strictly forbidden.
-- **Mechanism**: Every domain state mutation (e.g., order creation, manifest sealing, delivery confirmation) writes an event row into the `OutboxEvents` table (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/spanner.ddl:685-702`) within the SAME Spanner ReadWrite transaction.
-- **Relay Loop**: The background outbox relay worker (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/outbox/relay.go:14-65`) polls `OutboxEvents` every **250ms**, fetches batches of **100 events**, publishes them to Kafka with exponential backoff and jitter, and marks them published.
-- **Dead-Letter Budget**: Events that fail more than 5 times in a single tick back off; if total attempts reach **20**, the event is moved to `OutboxDeadLetters` (`spanner.ddl:704-718`).
+### Invariant 2: Immutable Production Container Digests & Service Separation
+- **Rule**: Production Kubernetes overlays (`infra/k8s/overlays/prod`) must never contain `IMAGE_PLACEHOLDER`, `:latest`, `:local`, or `REPLACE_WITH_DIGEST`. `optimizer-core` must never be remapped onto the `backend-go` image, and `ai-worker-config` must never point to `pegasusx-local` or `kafka:9092`.
+- **Gates**: `scripts/ci_fail_placeholder_images.sh`, `scripts/validate_backend_k8s.sh`, `scripts/validate_ai_worker_k8s.sh`, `scripts/validate_production_profile.sh`.
 
-### 3.3. Post-Commit Invalidation & Fail-Open WebSocket Fanout
-- **Post-Commit Invalidation**: Redis cache keys (`cache:invalidate`) must only be invalidated AFTER the Spanner transaction commits successfully (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/runtime_workers.go:34`).
-- **Fail-Open Realtime**: WebSocket broadcasts over Redis Pub/Sub must be fail-open. A Redis relay glitch or network drop must log an error and increment a metric, but MUST NEVER fail the HTTP handler or crash the pod (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/ws/hub.go:10-13, 358-365`).
+### Invariant 3: Zero Mock Data in Retailer Clients
+- **Rule**: Production client builds must never contain simulator strings (`Mock Data`, `hardcoded BarMark`, `fakeH3Pulse`, `CONTROL_TOWER_SIMULATOR`).
+- **Gate**: `scripts/ci_no_mock_control_tower.sh`.
 
-### 3.4. Source Suppression & Monotonic Reconnection Buffering
-- **8 Dedicated WebSocket Hubs**: Constructed in `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/ws/hub.go` and mounted in `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/main.go:417-433`:
-  `RetailerHub`, `SupplierHub`, `DriverHub`, `PayloadHub`, `WarehouseHub`, `FactoryHub`, `TelemetryHub`, `PlatformAdminHub`.
-- **Source Suppression**: Senders attach an instance identifier in the relay envelope (`relayEnvelope{Source, Room, Payload}`). When a pod receives a broadcast from Redis on `ws:<hub>:fanout`, it drops the message if `Source == h.instance` (`ws/hub.go:395-397`), preventing infinite reflection loops.
-- **Reconnect Ring Buffer**: Each hub maintains an in-memory ring buffer of the last **256 events** per room. Reconnecting clients pass `lastEventID` or `sinceSeq` to trigger `ReplaySince` (`ws/hub.go:310-341`), preventing dropped UI state during brief mobile handovers.
+### Invariant 4: Inviolable Money-Path & Fiscal Correctness
+- **Rule**:
+  1. All monetary values must use `int64` minor units (Uzbek Tiyin: `1 UZS = 100 Tiyin`). `float32`/`float64` for money is strictly forbidden.
+  2. Failed payment captures must never transition an order to `CAPTURED`.
+  3. Duplicate client idempotency keys must never create duplicate ledger rows or double captures.
+  4. Missing payment or fiscal credentials in production must fail closed immediately—never silently succeed.
+  5. Shop-closed credit deliveries must atomically record debt in the AR ledger.
+- **Gate**: `scripts/money_path_gate.sh` (runs `TestMoneyPathGate` and `TestWorkerShopClosed` against the Spanner emulator).
 
-### 3.5. Integer Minor Currency Invariant
-- Floating-point representations (`float32`, `float64`, `double`) are strictly prohibited for monetary values.
-- All pricing, totals, payments, ledger debits/credits, refunds, and dunning balances are stored in **integer minor units** (e.g., Uzbek Tiyin: 1 UZS = 100 Tiyin) via `INT64 TotalMinor` in Spanner (`file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/apps/backend-go/schema/spanner.ddl:184-185, 580, 665`).
+### Invariant 5: Strict Multi-Region Cell Isolation
+- **Rule**: Secondary regional cells (e.g., `cell-eu`) must never reference or overwrite the primary `pegasusx/ssmr` Terraform state prefix or restore foreign cell Spanner backups.
+- **Gate**: `scripts/assert_cell_backend.sh`.
 
-### 3.6. Full Role-Row Route Parity
-- PegasusX guarantees that 100% of client API calls across all 6 role-rows map to real registered backend routes.
-- **Parity Gate**: `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/parity/role_row_contract_check_full.sh:1-60` extracts all `/v1/...` API client strings from every web, desktop, and mobile app and verifies their presence in `apps/backend-go` route registrations. Orphaned endpoints fail the build.
+### Invariant 6: Solver Mathematical Honesty
+- **Rule**: Routing and scheduling solvers in `services/optimizer-core/` must report their true mathematical status (`SolverStatus.HEURISTIC` for greedy/local-search heuristics; `SolverStatus.OPTIMAL` only when proven by an exact solver).
+- **Gate**: `scripts/ci_optimizer_core.sh`.
+
+### Invariant 7: 3-Way Event Schema Lockstep (`-strict=true`)
+- **Rule**: Every domain event change must atomically update:
+  1. Go event structs & constants (`apps/backend-go/events/events.go`)
+  2. JSON Schema (`contracts/events.schema.json` with `"additionalProperties": false` on all nested objects)
+  3. Generated TypeScript, Swift, and Kotlin contracts (`make gen-contracts`)
+- **Gate**: `make gen-contracts-gate` and `go test ./events/... -args -strict=true`.
+
+### Invariant 8: Spanner Transactional Outbox & Schema Lockstep
+- **Rule**:
+  1. Every schema change in `apps/backend-go/schema/migrations/*.sql` must be reflected identically in `apps/backend-go/schema/spanner.ddl`.
+  2. HTTP handlers must never publish directly to Kafka; all domain events must be buffered into `OutboxEvents` inside the same `spanner.ReadWriteTransaction`.
+  3. Redis cache invalidation must occur only after the Spanner transaction commits, and WebSocket broadcasts over Redis Pub/Sub must be fail-open.
+- **Gate**: `scripts/ci_schema_drift_gate.sh`.
+
+### Invariant 9: 360° Cross-Platform & 6-Role Parity
+- **Rule**: 100% of `/v1/...` routes called by any Web, Desktop, Android, or iOS client across all 6 roles (Retailer, Driver, Warehouse, Supplier, Factory, Platform Admin) must map to registered routes in `apps/backend-go`, and active Terraform monitoring (`infra/terraform/modules/monitoring/main.tf`) must enforce all platform SLO alerts.
+- **Gates**: `scripts/parity/role_row_contract_check_full.sh`, `scripts/parity/gap_hunter_gate.sh`, `scripts/phase2_gate.sh` through `scripts/phase5c_gate.sh`.
 
 ---
 
-## 4. Development & Verification Workflows
+## 3. Mandatory Engineering Workflow (Before & After Every Edit)
 
-Before committing changes or submitting a pull request, execute the following standardized Makefile verification steps:
+### Step 1: Pre-Edit Blast-Radius & Root-Cause Analysis
+1. **Locate the Canonical Source**: Inspect `go.work`, `pnpm-workspace.yaml`, `Package.swift`, or `settings.gradle.kts` before creating any file. Never create a duplicate model, helper, or package directory if one already exists.
+2. **Check Concurrency & Failure Modes**:
+   - In Go: verify `context.Context` propagation, `defer iter.Stop()` on every Spanner `RowIterator`, transaction retry safety inside `spanner.ReadWriteTransaction` (no non-idempotent side effects inside the transaction closure!), and mutex/map safety under `-race`.
+   - In Infra/K8s: verify that changes in `infra/k8s/base` or `infra/terraform/modules` are properly wired into `overlays/prod`, `overlays/staging`, and `overlays/pilot`.
+
+### Step 2: Post-Edit Verification Checklist
+Never claim a task is complete without running the relevant verification gates and reporting their exact output:
 
 ```bash
-# 1. Local Infrastructure Bootstrap
-make sandbox-infra-up        # Starts Spanner emulator, Redis, Kafka, Kafka-UI, optimizer-core
-make test-sandbox-infra      # Executes full sandbox smoke test + PX_E2E marker gate
+# 1. Static, Schema, K8s & Contract Gates (Always runnable locally)
+make schema-drift-gate
+make parity-contract-full
+make gap-hunter-gate
+make validate-ai-worker-k8s
+make validate-backend-k8s
+make validate-launch-readiness
+terraform fmt -check -recursive infra/terraform && (cd infra/terraform && terraform validate)
 
-# 2. Local Unit & Contract Verification
-make qa-gate                 # Runs all Go unit tests with race detection
-make parity-contract-full    # Validates 100% client-to-backend route alignment
-make gap-hunter-gate         # Audits event producer and consumer payload alignment
+# 2. Go Backend & Worker Race-Detector Suite
+(cd apps/backend-go && go test -race -short ./...)
+(cd apps/ai-worker && go test -race ./...)
 
-# 3. Enterprise & Safety Gates
-make money-path-gate         # Validates payment capture idempotency and credit invariants
-make schema-drift-gate       # Validates Spanner DDL against all migrations
-make cell-backend-guard      # Verifies Terraform cell state isolation
-make ci-enterprise-gates     # Chains Phase 2 through Phase 5c enterprise test gates
+# 3. Optimizer Core (Python + Rust)
+bash scripts/ci_optimizer_core.sh
 
-# 4. Pre-flight & Launch Validation
-make wire-ready              # Comprehensive automated verification before GCP deployment
-make p0-preflight            # Validates production profile, K8s manifests, and credentials
+# 4. Full Spanner Emulator & Enterprise Gates (Requires Docker / Spanner Emulator on :9010)
+make sandbox-infra-up
+make money-path-gate
+make ci-enterprise-gates
 ```
-
-### Key Verification Scripts Index
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/smoke_sandbox.sh` — Sandbox infrastructure smoke testing.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/smoke_sandbox_lifecycle.sh` — Full lifecycle vertical (order create → dispatch → load → seal → arrive → collect → fiscalize).
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/smoke_sandbox_fiscal.sh` — ADR-009 Soliq fiscal hard-gate testing.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_fail_todo_inject.sh` — Rejects orphaned UI placeholders.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_fail_placeholder_images.sh` — Rejects `:latest` or unpinned container images.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/ci_no_mock_control_tower.sh` — Rejects fake simulation data in retailer apps.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/money_path_gate.sh` — Rejects double-charge or unrecorded credit flaws.
-- `file:///Users/shakhzod/Desktop/V.O.I.D/pegasusX/scripts/assert_cell_backend.sh` — Rejects multi-region cell leakage.
-
-
-## Core Engineering Doctrine (Applied from Master)
-
-### Zero-Tolerance for Naive CRUD
-- **Naive CRUD is strictly forbidden**: Never write dumb table mutations that lack domain state machines, concurrency checks, transactional outbox events, validation guards, or comprehensive telemetry.
-- **Production-Grade Rigor**: Every feature, backend service, database table, UI view, and pipeline must be built with production depth, resilience, and mathematical elegance.
-- **Fail-Closed & Defensive Architecture**: Systems must fail safely, recover gracefully, prevent cascade failures, and handle Byzantine faults, network drops, and corrupted inputs without crashing or corrupting state.
-
-### The Three-Tier Sourcing Hierarchy (Best Practices & Algorithms)
-1. **Tier 1 — Battle-Tested Big Tech & Open-Source Tools**:
-   - If an industry-standard, high-performance open-source library, tool, or framework exists and fits the target stack (`pgx/v5`, `go-chi/chi/v5`, `redis-go`, `uber-go/zap`, `pydantic-v2`, `zod`, `tailwind v4`, `timescaledb`), evaluate, select, and integrate it rather than rolling naive custom implementations.
-2. **Tier 2 — Algorithmic Reverse-Engineering & Native Adaptation**:
-   - If no direct open-source package or cloud tool fits our sovereign single-tenant or global multi-tenant stack, dissect and extract the mathematical models, algorithmic logic, data structures, and state machines from world-class systems (Google OR-Tools CVRP, Maglev consistent hashing, Uber H3 spatial indexing, Stripe Idempotency, Amazon Shuffle Sharding, Netflix Concurrency Limiters) and implement them natively at enterprise grade.
-3. **Tier 3 — First-Principles Novel Engineering**:
-   - If no algorithm, library, or tool exists anywhere in the world to solve our exact problem, design a novel, mathematically sound, enterprise-grade algorithm from first principles. Formalize its invariants, prove its boundary conditions, test its edge cases, and implement it with zero compromises.
-
----
-
-## 2. Mandatory Dual-Domain Pre-Edit & Post-Edit Brainstorming Protocol
-
-Every code edit—regardless of size—must pass through two non-bypassable verification gates:
-
-### Gate A: Pre-Edit Research & Brainstorming (BEFORE touching code)
-1. **Mandatory Web & Codebase Research**:
-   - Proactively search the web for industry gold standards, RFCs, statutory specifications, algorithmic benchmarks, battle-tested open-source libraries, and real-world failure postmortems.
-   - Search the codebase using CodeGraph and Kythe to inspect existing patterns, data structures, and shared types.
-2. **Dual-Domain Brainstorming (Technical + Non-Technical)**:
-   - **Technical Edge Cases**:
-     - Concurrency races, goroutine leaks, deadlocks, connection pool starvation (`pgxpool`).
-     - Time-of-Check to Time-of-Use (TOCTOU) windows, reentrancy vulnerabilities.
-     - Out-of-order event delivery, slow consumer head-of-line blocking, backpressure exhaustion.
-     - Distributed partition hazards, split-brain conditions, clock skew, retry storms.
-     - Memory bloat, memory leak under heavy continuous streaming, unhandled context cancellations.
-   - **Non-Technical & Physical Logistics Edge Cases**:
-     - Real-world road conditions, mountainous/rural terrain, cellular dropouts (offline-first sync).
-     - Mid-shift vehicle breakdowns, dynamic hot-swap rescue transfers, driver shift timeouts.
-     - Doorstep freight damage disputes, itemized returns, partial cancellations, carton rejections.
-     - Uzbekistan statutory tax compliance: Soliq 12% VAT integer rounding discrepancies, STIR/MXIK commodity validations.
-     - B2B cash payment transaction rules, corporate card webhook latency, driver cash drawer reconciliation.
-     - Cargo physical properties: longitudinal axle weight static moments (11.5T single axle, 20% steer traction), temperature deviations in cold-chain reefers.
-
-### Gate B: Post-Edit Verification & Pressure-Testing (AFTER editing code)
-1. **Blast-Radius & Reverse Dependency Audit**:
-   - Re-read every edit with Red Team adversarial eyes to identify unintentional contract drift, unhandled error branches, or regression vectors.

@@ -83,3 +83,29 @@ func TestCatalogRoutes_MutationRoleGuard(t *testing.T) {
 		t.Fatalf("retailer token returned %d, want 403 Forbidden", rr.Code)
 	}
 }
+
+func TestCatalogRoutes_HandlerPayloadValidation(t *testing.T) {
+	svc := &catalog.Service{}
+	r := catalogRouter(svc)
+	adminToken := issueCatalogToken(t, auth.RoleAdmin)
+
+	// Invalid JSON body on CreateProduct should fail with 400 Bad Request inside the handler
+	req := httptest.NewRequest(http.MethodPost, "/v1/catalog/products", strings.NewReader(`{invalid-json`))
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	rr := httptest.NewRecorder()
+	r.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("POST /v1/catalog/products with malformed JSON returned %d, want 400", rr.Code)
+	}
+
+	// Invalid JSON body on CreateCategory should fail with 400 Bad Request inside the handler
+	req2 := httptest.NewRequest(http.MethodPost, "/v1/catalog/categories", strings.NewReader(`{invalid-json`))
+	req2.Header.Set("Authorization", "Bearer "+adminToken)
+	rr2 := httptest.NewRecorder()
+	r.ServeHTTP(rr2, req2)
+
+	if rr2.Code != http.StatusBadRequest {
+		t.Fatalf("POST /v1/catalog/categories with malformed JSON returned %d, want 400", rr2.Code)
+	}
+}

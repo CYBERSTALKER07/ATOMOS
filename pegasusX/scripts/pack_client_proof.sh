@@ -17,7 +17,7 @@ if ! grep -E 'export function PackChip' "$ROOT/packages/ui-kit/src/pack/PackChip
 else
   pass "PackChip splash (currency + receipts)"
 fi
-if ! grep -E 'fun pinApiBaseUrl' "$ROOT/packages/mobile-android-design/src/main/java/com/pegasus/design/CellApi.kt" >/dev/null; then
+if ! grep -E 'fun pinApiBaseUrl' "$ROOT/packages/mobile-android-design/src/main/java/com/pegasus/design/network/CellApi.kt" >/dev/null; then
   die "missing Android pinApiBaseUrl"
 else
   pass "Android CellApi.pinApiBaseUrl + CellPinInterceptor"
@@ -28,13 +28,16 @@ else
   pass "iOS CellApi.pinApiBaseUrl"
 fi
 
+if ! grep -E 'useMarketPack' "$ROOT/packages/ui-kit/src/portal/SessionPackChip.tsx" >/dev/null; then
+  die "packages/ui-kit/src/portal/SessionPackChip.tsx must bind GET /v1/auth/session via useMarketPack"
+fi
 for f in \
   "$ROOT/apps/supplier-portal/components/SessionPackChip.tsx" \
   "$ROOT/apps/warehouse-portal/components/SessionPackChip.tsx" \
   "$ROOT/apps/factory-portal/components/SessionPackChip.tsx" \
   "$ROOT/apps/retailer-app-desktop/components/SessionPackChip.tsx"
 do
-  if ! grep -E 'useMarketPack' "$f" >/dev/null; then
+  if ! grep -E 'useMarketPack|GenericSessionPackChip' "$f" >/dev/null; then
     die "$f must bind GET /v1/auth/session"
   fi
 done
