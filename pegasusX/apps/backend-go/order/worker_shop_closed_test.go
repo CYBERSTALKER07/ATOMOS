@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"google.golang.org/api/option"
 )
 
@@ -77,14 +79,21 @@ func TestWorkerShopClosed_ResolvesTimeout(t *testing.T) {
 		t.Fatalf("failed to insert test data: %v", err)
 	}
 
+	t.Setenv("AR_INVOICES_ENABLED", "1")
 	creditSvc := credit.NewService(credit.NewSpannerRepository(client))
 	creditSvc.SetNow(func() time.Time { return now })
+	seq := 0
 	s := &Service{
-		spannerClient: client,
-		credit:        creditSvc,
-		now:           func() time.Time { return now },
-		newID:         func() string { return "test-evt-id" },
-		log:           slog.New(slog.NewTextHandler(io.Discard, nil)),
+		spannerClient:      client,
+		credit:             creditSvc,
+		ar:                 ar.NewService(ar.NewSpannerRepository(client)),
+		commissionResolver: billing.NewFeeScheduleResolver(client),
+		now:                func() time.Time { return now },
+		newID: func() string {
+			seq++
+			return fmt.Sprintf("test-evt-id-%d-%d", suffix, seq)
+		},
+		log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 
 	err = s.processShopClosedTimeouts(ctx)

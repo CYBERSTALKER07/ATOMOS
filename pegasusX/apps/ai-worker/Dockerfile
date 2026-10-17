@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev g
 WORKDIR /src
 
 COPY go.work go.work.sum ./
+COPY sdk/partner/go/go.mod ./sdk/partner/go/
 COPY packages/config/go.mod ./packages/config/
 COPY apps/backend-go/go.mod apps/backend-go/go.sum ./apps/backend-go/
 COPY apps/ai-worker/go.mod apps/ai-worker/go.sum ./apps/ai-worker/
@@ -18,6 +19,7 @@ WORKDIR /src/apps/ai-worker
 RUN go mod download
 
 WORKDIR /src
+COPY sdk/partner/go ./sdk/partner/go
 COPY packages/config ./packages/config
 COPY packages/handoff ./packages/handoff
 COPY packages/optimizer-contract ./packages/optimizer-contract
@@ -27,7 +29,7 @@ COPY apps/ai-worker ./apps/ai-worker
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+    CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s" \
     -o /pegasusx-ai-worker \
     ./apps/ai-worker

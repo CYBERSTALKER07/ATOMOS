@@ -23,6 +23,7 @@ type inventoryImportRuntime struct {
 
 func newInventoryImportRuntime(
 	brokers []string,
+	dialer *kafka.Dialer,
 	repo *supplier.ImportRepository,
 	opener *supplier.ImportObjectOpener,
 	logger *slog.Logger,
@@ -36,6 +37,7 @@ func newInventoryImportRuntime(
 	return &inventoryImportRuntime{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        brokers,
+			Dialer:         dialer,
 			GroupID:        importWorkerConsumerName,
 			Topic:          events.TopicInventoryImportEvents,
 			MinBytes:       1e3,

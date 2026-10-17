@@ -161,7 +161,7 @@ func TestInvoiceWorker_MonthlyBillingOpensARItem(t *testing.T) {
 			"SupplierId":  supplierID,
 			"OrderId":     fmt.Sprintf("ord-bw-%d-%d", suffix, i),
 			"MeterType":   "ORDER_GMV",
-			"Amount":      100.0,
+			"Amount":      int64(10000),
 			"ProcessedAt": inMonth,
 		}))
 	}

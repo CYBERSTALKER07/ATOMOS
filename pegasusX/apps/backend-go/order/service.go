@@ -31,6 +31,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -503,6 +504,9 @@ func NewService(c ServiceConfig) *Service {
 	}
 	if svc.handoff == nil {
 		svc.handoff = handoff.FromEnv()
+	}
+	if svc.commissionResolver == nil && c.SpannerClient != nil {
+		svc.commissionResolver = billing.NewFeeScheduleResolver(c.SpannerClient)
 	}
 	if svc.returnPolicies == nil {
 		if rp, ok := c.Repo.(ReturnPolicyStore); ok {

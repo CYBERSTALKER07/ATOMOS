@@ -236,6 +236,35 @@ services:
           memory: 128M
     restart: unless-stopped
 
+  backend-setup:
+    profiles: ["backend", "worker", "apps", "all"]
+    build:
+      context: ..
+      dockerfile: apps/backend-go/Dockerfile
+    container_name: pegasusx-backend-setup
+    depends_on:
+      - spanner-emulator
+    entrypoint:
+      - /bin/sh
+      - -lc
+      - |
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          /usr/local/bin/pegasusx-setup && exit 0
+          echo "spanner bootstrap retry $$attempt"
+          sleep 2
+        done
+        exit 1
+    environment:
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+      REQUIRE_INFRA_ADAPTERS: "false"
+      ALLOW_MEMORY_FALLBACK: "true"
+    networks:
+      - pegasusx-net
+    restart: "no"
+
   backend-go:
     profiles: ["backend", "apps", "all"]
     build:
@@ -243,6 +272,8 @@ services:
       dockerfile: apps/backend-go/Dockerfile
     container_name: pegasusx-backend-go
     depends_on:
+      backend-setup:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka:
@@ -287,6 +318,8 @@ services:
       dockerfile: apps/ai-worker/Dockerfile
     container_name: pegasusx-ai-worker
     depends_on:
+      backend-setup:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       kafka:
@@ -298,7 +331,7 @@ services:
       KAFKA_BROKERS: kafka:29092
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
     ports:
-      - "8081:8081"
+      - "8181:8081"
     networks:
       - pegasusx-net
     healthcheck:

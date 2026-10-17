@@ -139,10 +139,7 @@ func (w *InvoiceWorker) activeSuppliers(ctx context.Context, start, end time.Tim
 	}
 }
 
-// monthTotals aggregates metered order count and GMV. The meter stores float
-// major units (legacy); convert to minor by the currency's 100x scale — the
-// only currency in production (UZS) is 2-decimal, and the fee math is exact
-// after rounding to minor units at the source boundary.
+// monthTotals aggregates metered order count and GMV in minor units (INT64).
 func (w *InvoiceWorker) monthTotals(ctx context.Context, supplierID string, start, end time.Time) (orderCount, gmvMinor int64, err error) {
 	iter := w.client.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT COUNT(*), COALESCE(SUM(Amount), 0) FROM BillingMeterEvents
@@ -154,11 +151,10 @@ func (w *InvoiceWorker) monthTotals(ctx context.Context, supplierID string, star
 	if err != nil {
 		return 0, 0, err
 	}
-	var gmvMajor float64
-	if err := row.Columns(&orderCount, &gmvMajor); err != nil {
+	if err := row.Columns(&orderCount, &gmvMinor); err != nil {
 		return 0, 0, err
 	}
-	return orderCount, int64(gmvMajor*100 + 0.5), nil
+	return orderCount, gmvMinor, nil
 }
 
 type PlatformInvoice struct {

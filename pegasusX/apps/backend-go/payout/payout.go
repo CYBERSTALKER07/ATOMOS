@@ -141,6 +141,17 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 		if err != nil {
 			return Batch{}, err
 		}
+		commission := sum.Commission
+		if commission == 0 && s.commission != nil {
+			commission, err = s.commission.CommissionMinor(ctx, supplierID, sum.Captured, currency)
+			if err != nil {
+				return Batch{}, fmt.Errorf("commission: %w", err)
+			}
+		}
+		net := sum.Captured - sum.Refunded - commission
+		if net <= 0 {
+			return Batch{}, ErrNothingPayable
+		}
 
 		return Batch{
 			BatchID:            s.newID(),
@@ -149,8 +160,8 @@ func (s *Service) GenerateBatch(ctx context.Context, supplierID string, periodSt
 			PeriodEnd:          periodEnd,
 			GrossCapturedMinor: sum.Captured,
 			RefundedMinor:      sum.Refunded,
-			CommissionMinor:    sum.Commission,
-			NetPayoutMinor:     sum.NetPayout,
+			CommissionMinor:    commission,
+			NetPayoutMinor:     net,
 			Currency:           currency,
 			Status:             StatusDraft,
 			IdempotencyKey:     fmt.Sprintf("%s-%s", idemKey, currency),

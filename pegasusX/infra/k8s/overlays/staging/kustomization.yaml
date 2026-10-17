@@ -143,6 +143,8 @@ configMapGenerator:
       - KAFKA_BROKERS=bootstrap.pegasusx-staging-kafka.asia-south1.managedkafka.pegasusx-prod-uz.cloud.goog:9092
       - KAFKA_AUTH_MODE=GCP_MANAGED_OAUTH
       - KAFKA_SASL_USERNAME=backend-go-sa@pegasusx-prod-uz.iam.gserviceaccount.com
+      - KAFKA_TOPIC_MAIN=staging.events.orders
+      - KAFKA_TOPIC_FREEZE_LOCKS=staging.events.freeze-locks
       - KAFKA_TOPIC_INVENTORY_IMPORT=staging.events.inventory-import
 
 labels:

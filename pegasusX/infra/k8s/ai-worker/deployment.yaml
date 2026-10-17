@@ -76,6 +76,11 @@ spec:
                 secretKeyRef:
                   name: backend-go-secrets
                   key: redis-password
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: internal-api-key
           volumeMounts:
             - name: tmp
               mountPath: /tmp

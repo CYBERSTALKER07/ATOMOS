@@ -22,6 +22,11 @@ type Runtime struct {
 
 // NewRuntime builds a planning signal ingest consumer.
 func NewRuntime(brokers []string, client *spanner.Client, log *slog.Logger) *Runtime {
+	return NewRuntimeWithDialer(brokers, nil, client, log)
+}
+
+// NewRuntimeWithDialer builds a planning signal ingest consumer with an optional SASL/TLS dialer.
+func NewRuntimeWithDialer(brokers []string, dialer *kafka.Dialer, client *spanner.Client, log *slog.Logger) *Runtime {
 	clean := make([]string, 0, len(brokers))
 	for _, b := range brokers {
 		if t := strings.TrimSpace(b); t != "" {
@@ -37,6 +42,7 @@ func NewRuntime(brokers []string, client *spanner.Client, log *slog.Logger) *Run
 	return &Runtime{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        clean,
+			Dialer:         dialer,
 			GroupID:        "pegasusx-ai-worker-planning-ingest",
 			Topic:          events.TopicPlanningSignalIngest,
 			MinBytes:       1e3,

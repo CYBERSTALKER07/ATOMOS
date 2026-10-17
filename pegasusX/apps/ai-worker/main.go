@@ -28,6 +28,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/ai-worker/predictivepush"
 	"github.com/pegasusx/pegasusx/apps/ai-worker/synthesis"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafkautil"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	contract "github.com/pegasusx/pegasusx/packages/optimizer-contract"
 )
@@ -207,15 +208,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	spannerDB := ""
 	if cfg.SpannerEmulatorHost != "" {
 		os.Setenv("SPANNER_EMULATOR_HOST", cfg.SpannerEmulatorHost)
-		spannerDB = "projects/" + cfg.SpannerProject + "/instances/" + cfg.SpannerInstance + "/databases/" + cfg.SpannerDatabase
+	} else {
+		os.Unsetenv("SPANNER_EMULATOR_HOST")
 	}
-
-	if spannerDB == "" {
-		spannerDB = "projects/my-project/instances/my-instance/databases/my-database"
-	}
+	spannerDB := "projects/" + cfg.SpannerProject + "/instances/" + cfg.SpannerInstance + "/databases/" + cfg.SpannerDatabase
 
 	spannerClient, err := spanner.NewClient(ctx, spannerDB)
 	if err != nil {
@@ -232,13 +230,23 @@ func main() {
 		os.Exit(0)
 	}
 
-	brokers := []string{"localhost:9092"}
-	if cfg.KafkaBrokers != "" {
-		brokers = []string{cfg.KafkaBrokers}
+	brokers := kafkautil.SplitBrokers(cfg.KafkaBrokers)
+	if len(brokers) == 0 {
+		brokers = []string{"localhost:9092"}
+	}
+
+	dialer, err := kafkautil.Dialer(kafkautil.ClientAuth{
+		Mode:     cfg.KafkaAuthMode,
+		Username: cfg.KafkaSASLUsername,
+	})
+	if err != nil {
+		slog.Error("failed to configure kafka dialer", "err", err)
+		os.Exit(1)
 	}
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
+		Dialer:         dialer,
 		GroupID:        aiWorkerConsumerName,
 		Topic:          events.TopicMain,
 		MinBytes:       10e3,
@@ -250,6 +258,7 @@ func main() {
 
 	freezeReader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        brokers,
+		Dialer:         dialer,
 		GroupID:        aiWorkerConsumerName + "-freeze",
 		Topic:          events.TopicFreezeLocks,
 		MinBytes:       1e3,
@@ -286,7 +295,7 @@ func main() {
 	importRepo := supplier.NewImportRepository(spannerClient)
 	if importOpener, importOpenerErr := supplier.NewImportObjectOpenerFromEnv(ctx); importOpenerErr != nil {
 		slog.Warn("inventory import worker disabled", "err", importOpenerErr)
-	} else if importRuntime := newInventoryImportRuntime(brokers, importRepo, importOpener, logger); importRuntime != nil {
+	} else if importRuntime := newInventoryImportRuntime(brokers, dialer, importRepo, importOpener, logger); importRuntime != nil {
 		g.Go(func() error {
 			defer importRuntime.Close()
 			defer importOpener.Close()
@@ -295,7 +304,7 @@ func main() {
 		})
 	}
 
-	if planningIngest := planningingest.NewRuntime(brokers, spannerClient, logger); planningIngest != nil {
+	if planningIngest := planningingest.NewRuntimeWithDialer(brokers, dialer, spannerClient, logger); planningIngest != nil {
 		g.Go(func() error {
 			defer planningIngest.Close()
 			planningIngest.Run(gCtx)

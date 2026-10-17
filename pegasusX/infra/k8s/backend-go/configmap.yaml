@@ -32,6 +32,7 @@ data:
   GLOBAL_PAY_ENV: "production"
   WS_ALLOWED_ORIGINS: "https://supplier.pegasusx.app,https://warehouse.pegasusx.app,https://factory.pegasusx.app,https://retailer.pegasusx.app"
   PUBLIC_BASE_URL: "https://api.pegasusx.app"
+  UPDATES_BASE_URL: "https://storage.googleapis.com/pegasusx-prod-app-updates"
   # Must match GoogleService-Info.plist / google-services.json PROJECT_ID (OTP aud + FCM send).
   FIREBASE_PROJECT_ID: "pegasusx-prod-uz"
   LOG_LEVEL: "info"

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 )
 
@@ -197,18 +198,16 @@ func SupplierIDFromPayload(raw []byte) string {
 }
 
 // EventRowMap builds an OutboxEvents InsertOrUpdateMap including required SupplierId.
+// Uses spanner.CommitTimestamp for CreatedAt (OutboxEvents.CreatedAt has
+// allow_commit_timestamp=true) so outbox writes never fail on client/emulator clock skew.
 func EventRowMap(e Event) map[string]interface{} {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
 	row := map[string]interface{}{
 		"EventId":       ClampEventID(e.EventID),
 		"AggregateType": e.AggregateType,
 		"AggregateId":   e.AggregateID,
 		"TopicName":     e.TopicName,
 		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
+		"CreatedAt":     spanner.CommitTimestamp,
 		"PublishedAt":   nil,
 		"ClaimedBy":     nil,
 		"ClaimedUntil":  nil,

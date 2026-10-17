@@ -112,6 +112,46 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 		}
 		iter.Stop()
 
+		// Fallback to OrderPaymentLegs JOIN Orders when no settlement slices
+		// were recorded for this supplier/period (e.g. legacy legs or direct leg fixtures).
+		if len(sums) == 0 {
+			legIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT l.Method, l.AmountMinor, o.Currency
+				      FROM OrderPaymentLegs l
+				      JOIN Orders o ON o.OrderId = l.OrderId
+				      WHERE o.SupplierId = @sid AND l.Status = 'CAPTURED'
+				        AND l.CapturedAt >= @start AND l.CapturedAt < @end`,
+				Params: map[string]any{"sid": supplierID, "start": start, "end": end},
+			})
+			for {
+				row, e := legIter.Next()
+				if e == iterator.Done {
+					break
+				}
+				if e != nil {
+					legIter.Stop()
+					return e
+				}
+				var method, cur string
+				var amount int64
+				if e := row.Columns(&method, &amount, &cur); e != nil {
+					legIter.Stop()
+					return e
+				}
+				if sums[cur] == nil {
+					sums[cur] = &SumLegsResult{Currency: cur}
+				}
+				if method == "REFUND" {
+					sums[cur].Refunded += amount
+					sums[cur].NetPayout -= amount
+				} else {
+					sums[cur].Captured += amount
+					sums[cur].NetPayout += amount
+				}
+			}
+			legIter.Stop()
+		}
+
 		buf := outbox.NewSpannerTxnBuffer(txn)
 
 		for _, s := range sums {
@@ -120,6 +160,9 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 			}
 			b, err := buildBatch(*s)
 			if err != nil {
+				if err == ErrNothingPayable {
+					continue
+				}
 				return err
 			}
 
@@ -148,17 +191,19 @@ func (r *Repository) GenerateBatchesInTxn(ctx context.Context, supplierID string
 				return err
 			}
 
-			stmt := spanner.Statement{
-				SQL: `UPDATE InvoiceSettlementSlices
-				      SET Status = 'BATCHED', PayoutBatchId = @b
-				      WHERE SliceId IN UNNEST(@slice_ids)`,
-				Params: map[string]any{
-					"b":         b.BatchID,
-					"slice_ids": s.SliceIDs,
-				},
-			}
-			if _, err := txn.Update(ctx, stmt); err != nil {
-				return err
+			if len(s.SliceIDs) > 0 {
+				stmt := spanner.Statement{
+					SQL: `UPDATE InvoiceSettlementSlices
+					      SET Status = 'BATCHED', PayoutBatchId = @b
+					      WHERE SliceId IN UNNEST(@slice_ids)`,
+					Params: map[string]any{
+						"b":         b.BatchID,
+						"slice_ids": s.SliceIDs,
+					},
+				}
+				if _, err := txn.Update(ctx, stmt); err != nil {
+					return err
+				}
 			}
 
 			batches = append(batches, b)

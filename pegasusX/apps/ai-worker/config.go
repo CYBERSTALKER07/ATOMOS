@@ -11,22 +11,26 @@ import (
 
 // Config holds ai-worker runtime settings without importing backend-go/bootstrap.
 type Config struct {
-	SpannerEmulatorHost string
-	SpannerProject      string
-	SpannerInstance     string
-	SpannerDatabase     string
-	KafkaBrokers        string
-	InternalAPIKey      string
+	SpannerEmulatorHost  string
+	SpannerProject       string
+	SpannerInstance      string
+	SpannerDatabase      string
+	KafkaBrokers         string
+	KafkaAuthMode        string
+	KafkaSASLUsername    string
+	InternalAPIKey       string
 	SeedSupplierCurrency string
 }
 
 func loadConfig() (*Config, error) {
 	cfg := &Config{
-		SpannerEmulatorHost:  envOr("SPANNER_EMULATOR_HOST", "localhost:9010"),
+		SpannerEmulatorHost:  resolveSpannerEmulatorHost(),
 		SpannerProject:       envOr("SPANNER_PROJECT", "pegasusx-local"),
 		SpannerInstance:      envOr("SPANNER_INSTANCE", "pegasusx-instance"),
 		SpannerDatabase:      envOr("SPANNER_DATABASE", "pegasusx-db"),
 		KafkaBrokers:         envOr("KAFKA_BROKERS", "localhost:9092"),
+		KafkaAuthMode:        envOr("KAFKA_AUTH_MODE", ""),
+		KafkaSASLUsername:    envOr("KAFKA_SASL_USERNAME", ""),
 		InternalAPIKey:       envOr("INTERNAL_API_KEY", "dev-internal-key"),
 		SeedSupplierCurrency: envOr("SEED_SUPPLIER_CURRENCY", seedCurrencyFromPack()),
 	}
@@ -34,6 +38,17 @@ func loadConfig() (*Config, error) {
 		return nil, fmt.Errorf("INTERNAL_API_KEY required")
 	}
 	return cfg, nil
+}
+
+func resolveSpannerEmulatorHost() string {
+	if v, ok := os.LookupEnv("SPANNER_EMULATOR_HOST"); ok {
+		return strings.TrimSpace(v)
+	}
+	project := strings.TrimSpace(os.Getenv("SPANNER_PROJECT"))
+	if project != "" && project != "pegasusx-local" {
+		return ""
+	}
+	return "localhost:9010"
 }
 
 func envOr(key, fallback string) string {

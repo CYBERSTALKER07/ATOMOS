@@ -156,6 +156,12 @@ spec:
                   name: backend-go-secrets
                   key: fiscal-my-soliq-signer
                   optional: true
+            - name: FISCAL_MY_SOLIQ_PKCS12_FILE
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: fiscal-my-soliq-pkcs12-file
+                  optional: true
             - name: FISCAL_MY_SOLIQ_PKCS12_PASSWORD
               valueFrom:
                 secretKeyRef:

@@ -64,8 +64,8 @@ func TestMeterWorker_ProcessOrderFinalized_Integration(t *testing.T) {
 	defer client.Close()
 
 	worker := NewMeterWorker(client)
-	orderID := "ord_meter_" + uuid.NewString()
-	supplierID := "sup_meter_" + uuid.NewString()
+	orderID := "ord_meter_" + uuid.NewString()[:24]
+	supplierID := "sup_meter_" + uuid.NewString()[:24]
 	const amountMinor int64 = 1500000 // 15,000 UZS in minor tiyin
 
 	// First processing

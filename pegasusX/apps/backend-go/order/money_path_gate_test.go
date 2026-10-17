@@ -15,6 +15,7 @@ import (
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/credit"
+	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 )
 
 // Phase-0 money-path gate: Spanner-emulator proofs that the ledger never
@@ -43,10 +44,11 @@ func newMoneyPathGateService(client *spanner.Client, capturer PaymentCapturer) *
 	creditSvc.SetNow(func() time.Time { return now })
 	seq := 0
 	return &Service{
-		spannerClient:   client,
-		paymentCapturer: capturer,
-		credit:          creditSvc,
-		now:             func() time.Time { return now },
+		spannerClient:      client,
+		paymentCapturer:    capturer,
+		credit:             creditSvc,
+		commissionResolver: billing.NewFeeScheduleResolver(client),
+		now:                func() time.Time { return now },
 		newID: func() string {
 			seq++
 			return fmt.Sprintf("gate-id-%d-%d", now.UnixNano(), seq)
