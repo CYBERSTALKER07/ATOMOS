@@ -140,7 +140,8 @@ for dir in "${CLIENT_DIRS[@]}"; do
   [[ -d "$ROOT/$dir" ]] || continue
   while IFS= read -r -d '' file; do
     is_test_file "$file" && continue
-    grep -hoE '/v1/[a-zA-Z0-9_./{}-]+' "$file" 2>/dev/null \
+    grep -hoE '(^|[^a-zA-Z0-9_/])/v1/[a-zA-Z0-9_./{}-]+' "$file" 2>/dev/null \
+      | sed -E 's/.*(\/v1\/)/\1/' \
       | sed -E 's/[.,;:!?)]+$//' \
       | sed 's/"//g' \
       | sed "s/'//g" \
@@ -148,7 +149,7 @@ for dir in "${CLIENT_DIRS[@]}"; do
   done < <(find "$ROOT/$dir" -type f \( \
     -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \
     -o -name '*.kt' -o -name '*.swift' -o -name '*.go' -o -name '*.dart' \
-  \) ! -path '*/node_modules/*' ! -path '*/.next/*' ! -path '*/build/*' \
+  \) ! -path '*/node_modules/*' ! -path '*/.next/*' ! -path '*/out/*' ! -path '*/build/*' \
     ! -path '*/dist/*' ! -path '*/target/*' ! -path '*/.derivedData/*' \
     -print0 2>/dev/null)
 done | sort -u >"$PATHS_TMP"

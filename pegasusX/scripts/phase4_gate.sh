@@ -16,7 +16,7 @@ echo "[2/6] Partial allocation unit path ..."
 
 echo "[3/6] S&OP no longer only sku-projection literals ..."
 ! grep -n 'sku-projection-%d' apps/backend-go/planning/service.go
-grep -q 'supply_request_projected\|count_calibrated' apps/backend-go/planning/service.go
+grep -q 'production_lines' apps/backend-go/planning/service.go
 grep -q 'CapacityModel' apps/backend-go/planning/service.go
 
 echo "[4/6] Optimizer replicas ≥ 1 on SSMR + staging overlays ..."

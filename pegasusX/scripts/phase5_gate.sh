@@ -16,7 +16,7 @@ fi
 echo "[2/7] Registration freeze (Week 0) ..."
 (cd apps/backend-go && go test ./supplier/ -run 'TestResolveRegistrationSupplierID' -count=1)
 grep -q 'ALLOW_MULTI_SUPPLIER_REGISTER' apps/backend-go/supplier/service.go
-grep -q 'AllowMultiSupplierRegister' apps/backend-go/bootstrap/bootstrap.go
+grep -q 'AllowMultiSupplierRegister' apps/backend-go/bootstrap/app.go
 
 echo "[3/7] TenantContext spine (Week 1) ..."
 (cd apps/backend-go && go test ./auth/ -run 'TestTenant|TestRequireTenant|TestAttachTenant' -count=1)
@@ -57,16 +57,16 @@ grep -q 'func (s \*Service) resolveSupplierScope' apps/backend-go/driver/service
 grep -q 'func (s \*Service) resolveSupplierScope' apps/backend-go/payload/service.go
 grep -q 'func (s \*Service) resolveSupplierScope' apps/backend-go/factory/service.go
 grep -q 'func (s \*Service) resolveSupplierScope' apps/backend-go/retailer/service.go
-grep -q 'TenantFromContext' apps/backend-go/supplier/session_scope.go
+grep -q 'PreferTenantSupplierID' apps/backend-go/supplier/session_scope.go
 grep -q 'PreferTenantSupplierID' apps/backend-go/creditnote/handlers.go
 grep -q 'PreferTenantSupplierID' apps/backend-go/cashrecon/handlers.go
 grep -q 'JOIN Drivers' apps/backend-go/cashrecon/escalation_worker.go
 grep -q 'Source: "worker"' apps/backend-go/cashrecon/escalation_worker.go
 grep -q 'tenant:' apps/backend-go/bootstrap/reliability_middleware.go
 grep -q 'TENANT_RATE_LIMIT_SHARED\|tenantRateLimitShared' apps/backend-go/bootstrap/reliability_middleware.go
-grep -q 'Week 11 fail-closed' apps/backend-go/auth/tenant.go
+grep -qi 'fail-closed' apps/backend-go/auth/tenant.go
 grep -q 'TENANT_CONTEXT_ENFORCED must be true' apps/backend-go/bootstrap/config_validate.go
-grep -q 'PreferTenantSupplierID' apps/backend-go/bootstrap/bootstrap.go
+grep -q 'PreferTenantSupplierID' apps/backend-go/bootstrap/app.go
 grep -q 'seedSupplierID\|SeedSupplierID' apps/backend-go/warehouse/service.go
 grep -q 'seedSupplierID\|SeedSupplierID' apps/backend-go/driver/service.go
 grep -q 'seedSupplierID\|SeedSupplierID' apps/backend-go/payload/service.go

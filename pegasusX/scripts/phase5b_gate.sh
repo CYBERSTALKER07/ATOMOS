@@ -40,8 +40,8 @@ grep -q 'runParentOrderE2E\|PX_E2E_PARENT_ORDER_SPLIT' apps/backend-go/cmd/ssmr-
 grep -q 'case "parent-order"' apps/backend-go/cmd/ssmr-smokecheck/main.go
 grep -q 'runParentOrderE2E' apps/backend-go/cmd/ssmr-smokecheck/e2e_check.go
 
-echo "[6/6] Audit + progress docs ..."
-grep -q 'MULTI_TENANCY_GATE5_PHASE2' PLATFORM_AUDIT.md
-test -f docs/session-2026-08-07/PHASE5_PHASE2_PROGRESS.md
+echo "[6/6] Architecture & ADR verification ..."
+test -f docs/MULTI_TENANCY_GATE5_PHASE2.md
+grep -q 'ParentOrders' docs/MULTI_TENANCY_GATE5_PHASE2.md
 
 echo "phase5b-gate-ok"

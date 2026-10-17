@@ -23,7 +23,7 @@ grep -q 'MatchAndLink' apps/backend-go/globalproducts/service.go
 grep -q 'OnProductUpserted' apps/backend-go/globalproducts/service.go
 grep -q 'SetGlobalProductHook' apps/backend-go/catalog/service.go
 grep -q 'global-products' apps/backend-go/globalproductsroutes/routes.go
-grep -q 'GlobalProductsService' apps/backend-go/bootstrap/bootstrap.go
+grep -q 'GlobalProductsService' apps/backend-go/bootstrap/app.go
 grep -q 'globalproductsroutes.RegisterRoutes' apps/backend-go/main.go
 
 echo "[4/5] Unit tests + smoke wiring ..."
@@ -34,8 +34,8 @@ grep -q 'PX_E2E_GLOBAL_PRODUCT_OFFERS_COMPARE' contracts/ssmr_ecosystem_markers.
 grep -q 'runGlobalProductsSmokeCheck\|PX_E2E_GLOBAL_PRODUCT_GTIN_LINK' apps/backend-go/cmd/ssmr-smokecheck/e2e_global_products.go
 grep -q 'case "global-products"' apps/backend-go/cmd/ssmr-smokecheck/main.go
 
-echo "[5/5] Audit + progress docs ..."
-grep -q 'MULTI_TENANCY_GATE5_PHASE3\|GlobalProducts' PLATFORM_AUDIT.md
-test -f docs/session-2026-08-07/PHASE5_PHASE3_PROGRESS.md
+echo "[5/5] Architecture & ADR verification ..."
+test -f docs/MULTI_TENANCY_GATE5_PHASE3.md
+grep -q 'GlobalProducts' docs/MULTI_TENANCY_GATE5_PHASE3.md
 
 echo "phase5c-gate-ok"

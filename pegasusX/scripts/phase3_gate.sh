@@ -29,12 +29,12 @@ echo "platform-admin-routes-ok"
 
 echo "[5/5] SLO docs + observability alert stubs ..."
 test -f docs/PLATFORM_SLOS.md
-grep -q 'outbox_lag_high' infra/terraform/observability.tf
-grep -q 'fiscal_success_low' infra/terraform/observability.tf
-grep -q 'capture_success_low' infra/terraform/observability.tf
-grep -q 'outbox_relay_restarts_high' infra/terraform/observability.tf
-grep -q 'outbox_dlq_depth_nonzero' infra/terraform/observability.tf
-grep -q 'partner_webhook_success_low' infra/terraform/observability.tf
+grep -q 'outbox_lag_high' infra/terraform/legacy/observability.tf
+grep -q 'fiscal_success_low' infra/terraform/legacy/observability.tf
+grep -q 'capture_success_low' infra/terraform/legacy/observability.tf
+grep -q 'outbox_relay_restarts_high' infra/terraform/legacy/observability.tf
+grep -q 'outbox_dlq_depth_nonzero' infra/terraform/legacy/observability.tf
+grep -q 'partner_webhook_success_low' infra/terraform/legacy/observability.tf
 echo "slo-stubs-ok"
 
 echo "phase3-gate-ok"
