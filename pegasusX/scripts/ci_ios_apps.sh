@@ -27,7 +27,7 @@ build_one() {
     echo "FAIL: missing project $project"
     return 1
   fi
-  xcodebuild \
+  if ! xcodebuild \
     -project "$project" \
     -scheme "$scheme" \
     -sdk "$SDK" \
@@ -35,7 +35,10 @@ build_one() {
     -configuration Debug \
     CODE_SIGNING_ALLOWED=NO \
     CODE_SIGNING_REQUIRED=NO \
-    build
+    build; then
+    echo "FAIL: $name"
+    return 1
+  fi
   echo "OK: $name"
 }
 

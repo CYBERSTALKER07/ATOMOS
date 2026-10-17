@@ -32,7 +32,7 @@ struct DriverServiceTests {
 
     @Test func orderStateAllCases() {
         let all = OrderState.allCases
-        #expect(all.count == 19)
+        #expect(all.count == 24)
     }
 
     @Test func orderStateLabels() {

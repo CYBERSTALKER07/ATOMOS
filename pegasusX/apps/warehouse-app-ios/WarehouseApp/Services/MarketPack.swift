@@ -38,11 +38,21 @@ func packCurrency(_ pack: MarketPack?, fallback: String = "") -> String {
     return code.isEmpty ? fallback : code.uppercased()
 }
 
+/// Empty pack prints the number only. Never invents UZS.
+func formatPackMoney(_ minor: Int64, pack: MarketPack?, decimalPlaces: Int = 2) -> String {
+    let denom = pow(10.0, Double(max(decimalPlaces, 0)))
+    let units = Double(minor) / denom
+    let formatted = units.formatted(.number.precision(.fractionLength(0...max(decimalPlaces, 0))))
+        .replacingOccurrences(of: ",", with: " ")
+    let ccy = packCurrency(pack)
+    return ccy.isEmpty ? formatted : "\(formatted) \(ccy)"
+}
+
+/// Stored/event currency, else session pack. Empty pack does not invent UZS.
 func displayPackCurrency(_ raw: String?, pack: MarketPack? = MarketPackStore.pack) -> String {
-    if let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        return raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-    }
-    return packCurrency(pack, fallback: "")
+    let fromEvent = (raw ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    if !fromEvent.isEmpty { return fromEvent.uppercased() }
+    return packCurrency(pack)
 }
 
 /// Shipped pack camera. Empty/planned pack does not invent Tashkent.

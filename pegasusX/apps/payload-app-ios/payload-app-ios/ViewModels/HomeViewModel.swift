@@ -340,12 +340,13 @@ final class HomeViewModel {
     func sealSelectedOrder() async {
         guard let orderId = selectedOrderId,
               let truckId = selectedTruckId,
+              let manifestId = manifest?.manifestId,
               canSealOrder(orderId) else { return }
         sealingOrderId = orderId
         error = nil
         defer { sealingOrderId = nil }
         do {
-            let resp = try await api.sealOrder(orderId: orderId, terminalId: truckId)
+            let resp = try await api.sealOrder(manifestId: manifestId, orderId: orderId, terminalId: truckId)
             sealedOrderIds.insert(orderId)
             dispatchCodes[orderId] = resp.dispatchCode
             postSealOrderId = orderId

@@ -1,20 +1,5 @@
 import SwiftUI
 
-enum PulseHonesty {
-    static let failed = "pulse_failed"
-
-    struct Result<T> {
-        let events: [T]
-        let error: String?
-    }
-
-    static func apply<T>(ok: Bool, incoming: [T]?, previous: [T]) -> Result<T> {
-        if ok, let incoming {
-            return Result(events: incoming, error: nil)
-        }
-        return Result(events: previous, error: failed)
-    }
-}
 
 struct PulseStrip: View {
     let events: [PulseEvent]
