@@ -39,7 +39,6 @@ export default function Hero() {
  const isLight = resolvedTheme === 'light';
 
  const textRef = useRef<HTMLDivElement>(null);
- const kickerRef = useRef<HTMLDivElement>(null);
  const titleRef = useRef<HTMLDivElement>(null);
  const subtitleRef = useRef<HTMLHeadingElement>(null);
  const descRef = useRef<HTMLParagraphElement>(null);
@@ -61,7 +60,6 @@ export default function Hero() {
    if (isMobile || isLowEnd || prefersReducedMotion) {
     gsap.set(
      [
-      kickerRef.current,
       titleRef.current,
       subtitleRef.current,
       descRef.current,
@@ -77,40 +75,34 @@ export default function Hero() {
 
    timeline
     .fromTo(
-     kickerRef.current,
-     { opacity: 0, y: -12, filter: 'blur(6px)' },
-     { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.65 },
-     0.1
-    )
-    .fromTo(
      titleRef.current,
      { opacity: 0 },
      { opacity: 1, duration: 0.35 },
-     0.15
+     0.05
     )
     .fromTo(
      subtitleRef.current,
      { opacity: 0, y: 24, filter: 'blur(8px)' },
      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.85 },
-     0.4
+     0.3
     )
     .fromTo(
      descRef.current,
      { opacity: 0, y: 18, filter: 'blur(4px)' },
      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.75 },
-     0.65
+     0.55
     )
     .fromTo(
      ctaRef.current?.children ?? [],
      { opacity: 0, y: 16, scale: 0.94 },
      { opacity: 1, y: 0, scale: 1, duration: 0.65, stagger: 0.12 },
-     0.85
+     0.75
     )
     .fromTo(
      scrollRef.current,
      { opacity: 0, y: -10 },
      { opacity: 0.6, y: 0, duration: 0.8 },
-     1.05
+     0.95
     );
   });
 
@@ -209,15 +201,6 @@ export default function Hero() {
     className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 min-h-[80vh] lg:min-h-[85vh]"
    >
     <div className="space-y-4 max-w-3xl">
-    {/* Telemetry / System Status Kicker */}
-    <div
-     ref={kickerRef}
-     className="inline-flex items-center gap-2 px-3 py-1 text-[11px] font-mono tracking-wider uppercase bg-white/5 border border-white/10 text-white/70 backdrop-blur-md w-fit"
-    >
-     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-     <span>{language === 'ru' ? 'ОРБИТАЛЬНАЯ ЛОГИСТИЧЕСКАЯ СЕТЬ // АКТИВНА' : 'GLOBAL LOGISTICS NETWORK // ACTIVE'}</span>
-    </div>
-
     {/* Primary Headline with Interactive ParticleText */}
     <div className="space-y-2">
      <div ref={titleRef} className="w-full h-16 sm:h-20 md:h-24 lg:h-28 max-w-3xl">
