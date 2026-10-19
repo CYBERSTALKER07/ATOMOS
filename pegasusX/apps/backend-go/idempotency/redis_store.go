@@ -9,7 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-const redisKeyPrefix = "idem:"
+func idemKey(key string) string {
+	return "{idem:" + key + "}"
+}
 
 // RedisStore persists idempotency records in Redis for cross-pod replay safety.
 type RedisStore struct {
@@ -26,7 +28,7 @@ func (s *RedisStore) Load(ctx context.Context, key string) (Record, bool, error)
 	if s == nil || s.client == nil || key == "" {
 		return Record{}, false, nil
 	}
-	raw, err := s.client.Get(ctx, redisKeyPrefix+key).Bytes()
+	raw, err := s.client.Get(ctx, idemKey(key)).Bytes()
 	if err == redis.Nil {
 		return Record{}, false, nil
 	}
@@ -52,7 +54,7 @@ func (s *RedisStore) Save(ctx context.Context, key string, rec Record, ttl time.
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	return s.client.Set(ctx, redisKeyPrefix+key, raw, ttl).Err()
+	return s.client.Set(ctx, idemKey(key), raw, ttl).Err()
 }
 
 // Acquire implements Store.
@@ -72,7 +74,7 @@ func (s *RedisStore) Acquire(ctx context.Context, key, bodyHash string, ttl time
 	if err != nil {
 		return fmt.Errorf("idempotency redis acquire encode: %w", err)
 	}
-	ok, err := s.client.SetNX(ctx, redisKeyPrefix+key, raw, ttl).Result()
+	ok, err := s.client.SetNX(ctx, idemKey(key), raw, ttl).Result()
 	if err != nil {
 		return err
 	}
@@ -87,5 +89,5 @@ func (s *RedisStore) Release(ctx context.Context, key string) error {
 	if s == nil || s.client == nil || key == "" {
 		return nil
 	}
-	return s.client.Del(ctx, redisKeyPrefix+key).Err()
+	return s.client.Del(ctx, idemKey(key)).Err()
 }

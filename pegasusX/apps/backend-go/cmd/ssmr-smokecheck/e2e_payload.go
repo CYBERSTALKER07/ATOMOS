@@ -11,7 +11,18 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 )
 
-// e2eTimeout bounds the full multi-role SSMR smoke path (supplier through driver edges).
+// payloadSealBody is the live POST /v1/payload/seal contract: manifest_id is required
+// (order-only seal is 400 manifest_id_required).
+func payloadSealBody(manifestID, orderID, vehicleID string) []byte {
+	body, _ := json.Marshal(map[string]any{
+		"manifest_id":      manifestID,
+		"order_id":         orderID,
+		"terminal_id":      vehicleID,
+		"manifest_cleared": true,
+	})
+	return body
+}
+
 func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID string, dispatch *dispatchManifestHint) error {
 	loginBody, _ := json.Marshal(map[string]string{
 		"phone": envOr("PAYLOAD_DEMO_PHONE", "+998901110022"),
@@ -149,17 +160,12 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	}
 
 	if sealOrder != "" {
-		sealBody, _ := json.Marshal(map[string]any{
-			"order_id":         sealOrder,
-			"terminal_id":      vehicleID,
-			"manifest_cleared": true,
-		})
-		status, _, _, err = clientPost(ctx, client, base+"/v1/payload/seal", sealBody, token, "ssmr-seal-"+sealOrder)
+		status, respBody, _, err = clientPost(ctx, client, base+"/v1/payload/seal", payloadSealBody(manifestID, sealOrder, vehicleID), token, "ssmr-seal-"+sealOrder)
 		if err != nil {
 			return fmt.Errorf("payload seal order: %w", err)
 		}
 		if status != http.StatusOK {
-			return fmt.Errorf("payload seal order status %d", status)
+			return fmt.Errorf("payload seal order status %d body %s", status, string(respBody))
 		}
 	}
 
@@ -180,6 +186,8 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	}
 	fmt.Println("PX_E2E_PAYLOAD_SEAL_FLOWS_OK")
 	fmt.Println("PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK")
+
+	runGS1LabelsE2E(ctx, client, base, token, manifestID)
 
 	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, driverID, manifestID, true); err != nil {
 		return fmt.Errorf("driver manifest-gate post-seal: %w", err)
@@ -327,12 +335,7 @@ func sealPayloaderManifest(ctx context.Context, client *http.Client, base, paylo
 		return fmt.Errorf("start-loading status %d", status)
 	}
 	if strings.TrimSpace(orderID) != "" {
-		sealBody, _ := json.Marshal(map[string]any{
-			"order_id":         orderID,
-			"terminal_id":      vehicleID,
-			"manifest_cleared": true,
-		})
-		status, respBody, _, err := clientPost(ctx, client, base+"/v1/payload/seal", sealBody, payloaderToken, "ssmr-seal-"+orderID)
+		status, respBody, _, err := clientPost(ctx, client, base+"/v1/payload/seal", payloadSealBody(manifestID, orderID, vehicleID), payloaderToken, "ssmr-seal-"+orderID)
 		if err != nil {
 			return fmt.Errorf("payload seal order: %w", err)
 		}

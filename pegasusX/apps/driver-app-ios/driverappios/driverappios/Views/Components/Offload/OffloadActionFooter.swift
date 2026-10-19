@@ -19,7 +19,7 @@ struct OffloadActionFooter: View {
                     HStack(spacing: 8) {
                         Image(systemName: "door.left.hand.closed")
                             .font(.system(size: 14, weight: .semibold))
-                        Text("Shop Closed / No Answer")
+                        Text("mobile_driver.ui.shop_closed_no_answer")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(Color.orange)
@@ -44,7 +44,7 @@ struct OffloadActionFooter: View {
                     HStack(spacing: 8) {
                         Image(systemName: "creditcard.fill")
                             .font(.system(size: 14, weight: .semibold))
-                        Text("Deliver on Credit")
+                        Text("mobile_driver.ui.deliver_on_credit")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(.blue)
@@ -69,7 +69,7 @@ struct OffloadActionFooter: View {
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 14, weight: .semibold))
-                        Text("Report Missing Items")
+                        Text("mobile_driver.ui.report_missing_items")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(LabTheme.destructive)
@@ -94,7 +94,7 @@ struct OffloadActionFooter: View {
                     if isSubmitting {
                         ProgressView().tint(LabTheme.buttonFg)
                     }
-                    Text("Confirm Offload")
+                    Text("mobile_driver.ui.confirm_offload")
                         .font(.system(size: 15, weight: .bold))
                 }
                 .foregroundStyle(LabTheme.buttonFg)

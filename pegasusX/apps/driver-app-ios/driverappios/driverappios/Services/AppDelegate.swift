@@ -1,8 +1,10 @@
 import BackgroundTasks
+import FirebaseMessaging
 import UIKit
+import UserNotifications
 
-/// Bridges APNs callbacks into [PushNotificationManager] and registers offline sync BGTask.
-final class AppDelegate: NSObject, UIApplicationDelegate {
+/// Bridges APNs + Firebase Messaging into [PushNotificationManager] and registers offline sync BGTask.
+final class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate {
     static let syncTaskId = "com.pegasus.driver.sync"
 
     func application(
@@ -10,6 +12,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         FirebaseAuthHelper.shared.configure()
+        Messaging.messaging().delegate = self
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Self.syncTaskId,
             using: nil
@@ -32,9 +35,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
-        Task { @MainActor in
-            PushNotificationManager.shared.didRegisterForRemoteNotifications(deviceToken: deviceToken)
-        }
+        Messaging.messaging().apnsToken = deviceToken
     }
 
     func application(
@@ -43,6 +44,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) {
         Task { @MainActor in
             PushNotificationManager.shared.didFailToRegisterForRemoteNotifications(error: error)
+        }
+    }
+
+    nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        Task { @MainActor in
+            await PushNotificationManager.shared.didReceiveFCMToken(fcmToken)
         }
     }
 

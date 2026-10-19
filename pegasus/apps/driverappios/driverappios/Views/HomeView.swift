@@ -43,6 +43,7 @@ struct HomeView: View {
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
+                    .accessibilityLabel("Notifications")
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, LabTheme.s4)

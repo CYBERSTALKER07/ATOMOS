@@ -112,6 +112,10 @@ enum WarehouseIdempotency {
         "warehouse-ops-settings:\(warehouseId())"
     }
 
+    static func returnPolicyPut(supplierId: String = "") -> String {
+        "warehouse-return-policy:\(warehouseId()):\(supplierId.isEmpty ? "default" : supplierId)"
+    }
+
     static func opsLocation(lat: Double, lng: Double, placeId: String? = nil) -> String {
         let fingerprint = stableHash(String(format: "%.6f:%.6f:%@", lat, lng, placeId ?? ""))
         return "warehouse-ops-location:\(warehouseId()):\(fingerprint)"

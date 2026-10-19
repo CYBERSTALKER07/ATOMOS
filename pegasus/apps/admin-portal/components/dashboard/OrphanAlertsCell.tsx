@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
 import { AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// -- Types -------------------------------------------------------------------
 
 type AuditEntry = {
   audit_id: string;
@@ -17,7 +17,7 @@ type AuditEntry = {
   created_at: string;
 };
 
-// ── Orphan Alerts Cell — The List (1×2) ─────────────────────────────────────
+// -- Orphan Alerts Cell — The List (1×2) -------------------------------------
 // Shows critical dispatch alerts from the DispatchAudit table: retailers whose
 // H3 cell has no warehouse coverage (orphans). Tall cell for scrollable list.
 
@@ -158,7 +158,7 @@ export default function OrphanAlertsCell() {
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// -- Helpers -----------------------------------------------------------------
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

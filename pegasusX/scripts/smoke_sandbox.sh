@@ -1,0 +1,317 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [[ -f "$REPO_ROOT/infra/docker-compose.sandbox.yml" ]]; then
+	COMPOSE_FILE="$REPO_ROOT/infra/docker-compose.sandbox.yml"
+else
+	COMPOSE_FILE="$REPO_ROOT/infra/docker-compose.ssmr.yml"
+fi
+if [[ -n "${SANDBOX_ENV_FILE:-}" ]]; then
+	ENV_FILE="$SANDBOX_ENV_FILE"
+elif [[ -n "${SSMR_ENV_FILE:-}" ]]; then
+	ENV_FILE="$SSMR_ENV_FILE"
+elif [[ -f "$REPO_ROOT/.env.sandbox.example" ]]; then
+	ENV_FILE="$REPO_ROOT/.env.sandbox.example"
+else
+	ENV_FILE="$REPO_ROOT/.env.ssmr.example"
+fi
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+	echo "Missing compose file: $COMPOSE_FILE" >&2
+	exit 1
+fi
+if [[ ! -f "$ENV_FILE" ]]; then
+	echo "Missing env file: $ENV_FILE" >&2
+	exit 1
+fi
+if ! command -v docker >/dev/null 2>&1; then
+	echo "docker is required" >&2
+	exit 1
+fi
+if ! command -v go >/dev/null 2>&1; then
+	echo "go is required" >&2
+	exit 1
+fi
+if ! command -v curl >/dev/null 2>&1; then
+	echo "curl is required" >&2
+	exit 1
+fi
+
+load_env_file() {
+	local env_file=$1
+	local line
+	local key
+	local value
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		line="${line%$'\r'}"
+		if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+			continue
+		fi
+		key=${line%%=*}
+		value=${line#*=}
+		key=${key#export }
+		key="${key%"${key##*[![:space:]]}"}"
+		export "$key=$value"
+	done < "$env_file"
+}
+
+load_env_file "$ENV_FILE"
+
+COMPOSE=(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
+SPANNER_HOST="${SPANNER_EMULATOR_HOST%%:*}"
+SPANNER_PORT="${SPANNER_EMULATOR_HOST##*:}"
+REDIS_PORT="${REDIS_ADDR##*:}"
+REDIS_HOST="${REDIS_ADDR%%:*}"
+KAFKA_HOST="${KAFKA_BROKERS%%,*}"
+KAFKA_HOST="${KAFKA_HOST%%:*}"
+KAFKA_PORT="${KAFKA_BROKERS%%,*}"
+KAFKA_PORT="${KAFKA_PORT##*:}"
+HEALTH_URL="${PUBLIC_BASE_URL%/}/v1/health"
+GO_TMP_ROOT="${TMPDIR:-$REPO_ROOT/.tmp}/sandbox-smoke"
+
+log_step() {
+	printf '==> %s\n' "$1"
+}
+
+CURRENT_STEP="init"
+
+cleanup() {
+	local exit_code=$?
+	trap - EXIT INT TERM
+	if (( exit_code != 0 )); then
+		echo "Smoke-check failed at step: ${CURRENT_STEP} (exit ${exit_code})" >&2
+		echo "Smoke-check failed; dumping compose status and recent logs" >&2
+		"${COMPOSE[@]}" ps >&2 || true
+		"${COMPOSE[@]}" logs --tail 40 spanner-emulator redis zookeeper kafka kafka-init backend-setup backend-go ai-worker >&2 || true
+	fi
+	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+	exit "$exit_code"
+}
+
+trap cleanup EXIT INT TERM
+
+tcp_ready() {
+	local host=$1
+	local port=$2
+	if command -v nc >/dev/null 2>&1; then
+		nc -z "$host" "$port" >/dev/null 2>&1
+		return $?
+	fi
+	(: >"/dev/tcp/$host/$port") >/dev/null 2>&1
+}
+
+wait_for_tcp() {
+	local label=$1
+	local host=$2
+	local port=$3
+	local attempts=${4:-30}
+	local delay=${5:-2}
+	local attempt
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if tcp_ready "$host" "$port"; then
+			return 0
+		fi
+		sleep "$delay"
+	done
+	echo "Timed out waiting for ${label} at ${host}:${port}" >&2
+	return 1
+}
+
+wait_for_http() {
+	local label=$1
+	local url=$2
+	local attempts=${3:-30}
+	local delay=${4:-2}
+	local attempt
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if curl -fsS "$url" >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep "$delay"
+	done
+	echo "Timed out waiting for ${label} at ${url}" >&2
+	return 1
+}
+
+run_go_smokecheck() {
+	local check=$1
+	local goflags="${GOFLAGS:-}"
+	mkdir -p "$GO_TMP_ROOT/go-build"
+	if [[ "$goflags" != *"-buildvcs=false"* ]]; then
+		goflags="${goflags:+$goflags }-buildvcs=false"
+	fi
+	(
+		cd "$REPO_ROOT/apps/backend-go"
+		# Use the host module cache (populated by go test / go mod download). An isolated
+		# GOMODCACHE here caused false "no required module" failures on cold smoke runs.
+		TMPDIR="$GO_TMP_ROOT" \
+		GOCACHE="$GO_TMP_ROOT/go-build" \
+		GOFLAGS="$goflags" \
+		go run ./cmd/ssmr-smokecheck "$check"
+	)
+}
+
+assert_redis() {
+	local pong
+	if command -v redis-cli >/dev/null 2>&1; then
+		pong="$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" PING | tr -d '\r')"
+	else
+		pong="$("${COMPOSE[@]}" exec -T redis redis-cli -p 6379 PING | tr -d '\r')"
+	fi
+	if [[ "$pong" != "PONG" ]]; then
+		echo "redis ping failed: got ${pong}" >&2
+		return 1
+	fi
+	return 0
+}
+
+wait_for_compose_healthy() {
+	local service=$1
+	local attempts=${2:-40}
+	local delay=${3:-3}
+	local attempt
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if "${COMPOSE[@]}" ps --status running --format json "$service" 2>/dev/null | grep -q '"Health":"healthy"'; then
+			return 0
+		fi
+		sleep "$delay"
+	done
+	echo "Timed out waiting for ${service} compose healthcheck" >&2
+	return 1
+}
+
+compose_up_with_retry() {
+	local attempts=${1:-5}
+	local delay=${2:-3}
+	local attempt
+	shift 2
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		if "${COMPOSE[@]}" up -d "$@"; then
+			return 0
+		fi
+		echo "compose up retry ${attempt} for: $*" >&2
+		sleep "$delay"
+	done
+	return 1
+}
+
+log_step "Tearing down any prior sandbox stack (including Kafka/Zookeeper volumes)"
+CURRENT_STEP="compose-down"
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+
+log_step "Starting isolated sandbox compose stack (staged: infra → kafka → apps)"
+CURRENT_STEP="compose-up"
+"${COMPOSE[@]}" up -d spanner-emulator redis optimizer-core
+compose_up_with_retry 5 3 zookeeper
+wait_for_tcp "Zookeeper" "localhost" "22181" 60 2
+wait_for_compose_healthy zookeeper 40 3
+sleep 3
+compose_up_with_retry 8 4 kafka
+# kafka-ui only — do not up -d backend-setup here. That service is run --rm
+# once after Kafka is healthy. A background setup races schema+seed.
+"${COMPOSE[@]}" up -d kafka-ui
+
+log_step "Waiting for Spanner emulator, Redis, Zookeeper, and Kafka"
+CURRENT_STEP="wait-infra"
+wait_for_tcp "Spanner emulator" "$SPANNER_HOST" "$SPANNER_PORT" 60 2
+wait_for_tcp "Redis" "$REDIS_HOST" "$REDIS_PORT" 30 2
+wait_for_tcp "Zookeeper" "localhost" "22181" 30 2
+
+log_step "Waiting for Kafka healthcheck (broker registration in Zookeeper)"
+kafka_attempt=0
+while (( kafka_attempt < 40 )); do
+	kafka_attempt=$((kafka_attempt + 1))
+	if "${COMPOSE[@]}" ps --status running --format json kafka 2>/dev/null | grep -q '"Health":"healthy"'; then
+		break
+	fi
+	if tcp_ready "$KAFKA_HOST" "$KAFKA_PORT" && \
+		"${COMPOSE[@]}" exec -T kafka kafka-topics --bootstrap-server localhost:9094 --list >/dev/null 2>&1; then
+		break
+	fi
+	if (( kafka_attempt >= 40 )); then
+		echo "Timed out waiting for Kafka to become healthy" >&2
+		exit 1
+	fi
+	sleep 3
+done
+
+log_step "Creating isolated Kafka topics"
+CURRENT_STEP="kafka-init"
+"${COMPOSE[@]}" run --rm kafka-init
+
+log_step "Running idempotent bootstrap against isolated Spanner"
+CURRENT_STEP="backend-setup"
+"${COMPOSE[@]}" run --rm backend-setup
+
+log_step "Asserting seeded supplier row and Retailers schema via direct Spanner probe"
+CURRENT_STEP="smokecheck-spanner"
+echo "smokecheck-spanner env: SPANNER_EMULATOR_HOST=${SPANNER_EMULATOR_HOST:-} SPANNER_PROJECT=${SPANNER_PROJECT:-} SPANNER_INSTANCE=${SPANNER_INSTANCE:-} SPANNER_DATABASE=${SPANNER_DATABASE:-} SEED_SUPPLIER_NAME=${SEED_SUPPLIER_NAME:-}"
+run_go_smokecheck spanner
+
+log_step "Pinging isolated Redis"
+CURRENT_STEP="redis-ping"
+assert_redis
+
+log_step "Ensuring backend and ai-worker are running"
+CURRENT_STEP="compose-backend"
+"${COMPOSE[@]}" up -d backend-go ai-worker
+
+log_step "Waiting for backend health"
+CURRENT_STEP="backend-health"
+wait_for_http "backend health" "$HEALTH_URL" 180 2
+# Warm up go run backend after volume-mount compile before e2e traffic.
+wait_for_http "backend health (warmup)" "$HEALTH_URL" 10 3
+
+log_step "Waiting for ai-worker readiness (Kafka consumers joined)"
+CURRENT_STEP="ai-worker-ready"
+AI_WORKER_READY_URL="http://localhost:8181/ready"
+wait_for_http "ai-worker ready" "$AI_WORKER_READY_URL" 180 2
+
+log_step "Warming optimizer-core (OR-Tools cold start)"
+CURRENT_STEP="optimizer-warmup"
+OPTIMIZER_HEALTH_URL="http://localhost:8182/healthz"
+wait_for_http "optimizer-core health" "$OPTIMIZER_HEALTH_URL" 60 2
+OPTIMIZER_WARMUP_BODY='{"v":"v1","trace_id":"ssmr-warmup","supplier_id":"warmup","home_node_id":"ssmr-warehouse-1","departure_time":"2026-06-17T08:00:00Z","stops":[{"order_id":"o1","retailer_id":"r1","lat":41.31,"lng":69.25,"volume_vu":10.0}],"vehicles":[{"vehicle_id":"v1","driver_id":"d1","max_volume_vu":100.0,"start_lat":41.30,"start_lng":69.24,"avg_speed_kmph":30.0}]}'
+warmup_attempt=0
+while (( warmup_attempt < 8 )); do
+	warmup_attempt=$((warmup_attempt + 1))
+	if curl -fsS -X POST "http://localhost:8182/v1/optimizer/solve" \
+		-H "Content-Type: application/json" \
+		-H "X-Internal-Api-Key: dev-internal-key" \
+		--data "$OPTIMIZER_WARMUP_BODY" >/dev/null 2>&1; then
+		break
+	fi
+	sleep 3
+done
+
+log_step "Asserting Redis-backed delivery perimeter key and positive membership path"
+CURRENT_STEP="smokecheck-spatial"
+run_go_smokecheck spatial
+
+log_step "Asserting isolated Kafka topics and round-trip message flow"
+CURRENT_STEP="smokecheck-kafka"
+run_go_smokecheck kafka
+
+log_step "Running end-to-end supplier→retailer→order→tracking flow"
+CURRENT_STEP="smokecheck-e2e"
+# Must match compose bind ../.ssmr/import-uploads -> /data/import-uploads.
+mkdir -p "$REPO_ROOT/.ssmr/import-uploads"
+export SSMR_IMPORT_LOCAL_ROOT="$REPO_ROOT/.ssmr/import-uploads"
+export SANDBOX_IMPORT_LOCAL_ROOT="$REPO_ROOT/.ssmr/import-uploads"
+E2E_LOG="$GO_TMP_ROOT/sandbox-e2e.log"
+run_go_smokecheck e2e 2>&1 | tee "$E2E_LOG"
+
+log_step "Asserting full-ecosystem PX_E2E marker coverage (configuration + lifecycle + realtime)"
+CURRENT_STEP="ecosystem-marker-gate"
+if [[ -x "$REPO_ROOT/scripts/parity/sandbox_ecosystem_marker_gate.sh" || -f "$REPO_ROOT/scripts/parity/sandbox_ecosystem_marker_gate.sh" ]]; then
+	bash "$REPO_ROOT/scripts/parity/sandbox_ecosystem_marker_gate.sh" "$E2E_LOG"
+else
+	bash "$REPO_ROOT/scripts/parity/ssmr_ecosystem_marker_gate.sh" "$E2E_LOG"
+fi
+
+log_step "Sandbox smoke-check completed successfully"
+echo "__SANDBOX_OK__"
+echo "__SSMR_OK__"

@@ -5,8 +5,20 @@ set -euo pipefail
 ssmr_lib_init() {
 	SSMR_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	SSMR_REPO_ROOT="$(cd "$SSMR_LIB_DIR/../.." && pwd)"
-	SSMR_COMPOSE_FILE="${SSMR_COMPOSE_FILE:-$SSMR_REPO_ROOT/infra/docker-compose.ssmr.yml}"
-	SSMR_ENV_FILE="${SSMR_ENV_FILE:-$SSMR_REPO_ROOT/.env.ssmr.example}"
+	if [[ -f "$SSMR_REPO_ROOT/infra/docker-compose.sandbox.yml" ]]; then
+		SSMR_COMPOSE_FILE="${SANDBOX_COMPOSE_FILE:-${SSMR_COMPOSE_FILE:-$SSMR_REPO_ROOT/infra/docker-compose.sandbox.yml}}"
+	else
+		SSMR_COMPOSE_FILE="${SSMR_COMPOSE_FILE:-$SSMR_REPO_ROOT/infra/docker-compose.ssmr.yml}"
+	fi
+	if [[ -n "${SANDBOX_ENV_FILE:-}" ]]; then
+		SSMR_ENV_FILE="$SANDBOX_ENV_FILE"
+	elif [[ -n "${SSMR_ENV_FILE:-}" ]]; then
+		:
+	elif [[ -f "$SSMR_REPO_ROOT/.env.sandbox.example" ]]; then
+		SSMR_ENV_FILE="$SSMR_REPO_ROOT/.env.sandbox.example"
+	else
+		SSMR_ENV_FILE="$SSMR_REPO_ROOT/.env.ssmr.example"
+	fi
 	SSMR_GO_TMP_ROOT="${TMPDIR:-$SSMR_REPO_ROOT/.tmp}/ssmr-stack"
 	SSMR_ARTIFACTS_DIR="${SSMR_ARTIFACTS_DIR:-$SSMR_REPO_ROOT/artifacts}"
 

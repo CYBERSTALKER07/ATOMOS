@@ -18,11 +18,11 @@ struct RescuesView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await loadDrivers() } }
+                        Button("common.action.retry") { Task { await loadDrivers() } }
                     }
                 } else {
                     List {
@@ -33,7 +33,7 @@ struct RescuesView: View {
                                     .foregroundStyle(.secondary)
                             }
                             if brokenDrivers.isEmpty {
-                                Text("No trucks currently require a rescue.")
+                                Text("warehouse_portal.residual.text.no_trucks_currently_require_a_rescue")
                                     .foregroundStyle(.secondary)
                             } else {
                                 ForEach(brokenDrivers) { driver in
@@ -41,12 +41,12 @@ struct RescuesView: View {
                                         VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                             Text(driver.name.isEmpty ? driver.driverId : driver.name)
                                                 .font(.headline)
-                                            Text("\(driver.vehicleLabel.isEmpty ? "—" : driver.vehicleLabel) · \(driver.truckStatus)")
+                                            Text(L10n.format("mobile_warehouse.ui.vehiclelabel_truckstatus", "\(driver.vehicleLabel.isEmpty ? "—" : driver.vehicleLabel)", "\(driver.truckStatus)"))
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
                                         Spacer()
-                                        Button("Find Rescue") {
+                                        Button("mobile_warehouse.ui.find_rescue") {
                                             Task { await findRescue(driver) }
                                         }
                                         .disabled(previewLoading)
@@ -56,11 +56,11 @@ struct RescuesView: View {
                             }
                         }
                         if let selectedBroken {
-                            Section("Rescue Options for \(selectedBroken.name.isEmpty ? selectedBroken.driverId : selectedBroken.name)") {
+                            Section(L10n.format("mobile_warehouse.ui.rescue_options_for_name", "\(selectedBroken.name.isEmpty ? selectedBroken.driverId : selectedBroken.name)")) {
                                 if previewLoading {
                                     ProgressView()
                                 } else if rescueOptions.isEmpty {
-                                    Text("No rescuers available.")
+                                    Text("mobile_warehouse.ui.no_rescuers_available")
                                         .foregroundStyle(.secondary)
                                 } else {
                                     ForEach(rescueOptions) { opt in
@@ -68,17 +68,17 @@ struct RescuesView: View {
                                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                                 Text(opt.name.isEmpty ? opt.driverId : opt.name)
                                                     .font(.headline)
-                                                Text("\(opt.licensePlate) · Capacity: \(String(format: "%.1f", opt.effectiveCapacityVu)) VU")
+                                                Text(L10n.format("mobile_warehouse.ui.licenseplate_capacity_effectivecapacityvu_vu", "\(opt.licensePlate)", "\(String(format: "%.1f", opt.effectiveCapacityVu))"))
                                                     .font(.caption)
                                                     .foregroundStyle(.secondary)
                                                 if opt.isCapacityExceeded {
-                                                    Text("Insufficient capacity")
+                                                    Text("mobile_warehouse.ui.insufficient_capacity")
                                                         .font(.caption)
                                                         .foregroundStyle(.red)
                                                 }
                                             }
                                             Spacer()
-                                            Button("Propose") {
+                                            Button("mobile_warehouse.ui.propose") {
                                                 Task { await propose(opt) }
                                             }
                                             .disabled(opt.isCapacityExceeded || proposeLoading)
@@ -93,10 +93,10 @@ struct RescuesView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Fleet Rescues")
+            .navigationTitle("warehouse_portal.dispatch.rescues.text.fleet_rescues")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await loadDrivers() } }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { Task { await loadDrivers() } }
                 }
             }
             .task { await loadDrivers() }

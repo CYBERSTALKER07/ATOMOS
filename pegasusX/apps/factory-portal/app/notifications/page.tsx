@@ -1,5 +1,6 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useNotifications } from '@/lib/useNotifications';
 import PageTransition from '@/components/PageTransition';
 import { PageChrome } from '@/components/PageChrome';
@@ -30,18 +31,19 @@ const typeIcons: Record<string, string> = {
 };
 
 export default function NotificationInboxPage() {
+  const t = usePortalT();
   const { items, unreadCount, loading, markRead, markAllRead, fetchInbox } = useNotifications();
 
   return (
     <PageTransition>
       <PageChrome
         icon="notifications"
-        title="Notifications Inbox"
-        description="View and manage all your factory notifications and alerts."
+        title={t("factory_portal.notifications.text.notifications_inbox")}
+        description={t("factory_portal.residual.text.view_and_manage_all_your_factory_notifications_and_alerts")}
         loading={loading}
         skeletonVariant="table"
         empty={!loading && items.length === 0}
-        emptyMessage="No notifications in your inbox at this time."
+        emptyMessage={t("factory_portal.residual.text.no_notifications_in_your_inbox_at_this_time")}
         actions={
           <div className="flex gap-3">
             {unreadCount > 0 && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
@@ -16,10 +17,11 @@ const DEFAULT_EVENTS = [
   { event_type: "cash_reconciliation.created", channel: "PUSH" },
   { event_type: "cash_reconciliation.escalation", channel: "PUSH" },
   { event_type: "credit_note.created", channel: "PUSH" },
-  { event_type: "credit.score.updated", channel: "EMAIL" },
+  // G1.C: credit risk scoring product is not live — do not advertise score push prefs.
 ];
 
 export default function NotificationPreferencesPage() {
+  const t = usePortalT();
   const [prefs, setPrefs] = useState<Pref[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function NotificationPreferencesPage() {
       }
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_failed"));
     } finally {
       setLoading(false);
     }
@@ -61,12 +63,12 @@ export default function NotificationPreferencesPage() {
       setSaved(true);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_failed");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.save_failed"));
     }
   };
 
   return (
-    <PageChrome title="Notification preferences" description="Channel and quiet-hour rules per event type." loading={loading} error={error}>
+    <PageChrome title={t("supplier_portal.settings.notification_preferences.text.notification_preferences")} description={t("supplier_portal.residual.text.channel_and_quiet_hour_rules_per_event_type")} loading={loading} error={error}>
       <ul className="md-card divide-y">
         {prefs.map((p, idx) => (
           <li key={`${p.event_type}:${p.channel}`} className="p-4 flex flex-wrap gap-4 items-center">
@@ -74,6 +76,8 @@ export default function NotificationPreferencesPage() {
             <span className="text-xs">{p.channel}</span>
             <label className="flex items-center gap-2 text-sm">
               <input
+                id="page-checkbox-3"
+                aria-label="Select Page option"
                 type="checkbox"
                 checked={p.enabled}
                 onChange={(e) => {
@@ -85,8 +89,10 @@ export default function NotificationPreferencesPage() {
               Enabled
             </label>
             <input
+              id="page-input-2"
+              aria-label="Page input field"
               className="md-input w-24 text-xs"
-              placeholder="quiet from"
+              placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_from")}
               value={p.quiet_from ?? ""}
               onChange={(e) => {
                 const next = [...prefs];
@@ -95,8 +101,10 @@ export default function NotificationPreferencesPage() {
               }}
             />
             <input
+              id="page-input-1"
+              aria-label="Page input field"
               className="md-input w-24 text-xs"
-              placeholder="quiet to"
+              placeholder={t("supplier_portal.settings.notification_preferences.text.quiet_to")}
               value={p.quiet_to ?? ""}
               onChange={(e) => {
                 const next = [...prefs];
@@ -110,7 +118,7 @@ export default function NotificationPreferencesPage() {
       <button type="button" className="md-btn md-btn-filled mt-4" onClick={() => void save()}>
         Save preferences
       </button>
-      {saved ? <p className="mt-2 text-sm text-emerald-700">Saved.</p> : null}
+      {saved ? <p className="mt-2 text-sm text-emerald-700">{t("supplier_portal.settings.notification_preferences.text.saved")}</p> : null}
     </PageChrome>
   );
 }

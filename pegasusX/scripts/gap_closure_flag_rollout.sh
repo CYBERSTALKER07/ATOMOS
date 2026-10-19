@@ -12,8 +12,9 @@ Usage: gap_closure_flag_rollout.sh <flag_name> <true|false>
 Flags (enable in order per docs/gap-closure/STAGING_FLAGS.md):
   CREDIT_NOTE_AUTO_FROM_BUYER_REJECT
   CREDIT_NOTE_AUTO_FROM_CLAIM
-  CREDIT_SCORE_ENFORCEMENT_ENABLED
   CASH_RECONCILIATION_REQUIRED   # last — only after manual driver cash path
+
+Do not use CREDIT_SCORE_ENFORCEMENT_ENABLED — dead flag (Phase A scoring removal).
 
 After each enable:
   export PUBLIC_BASE_URL=<staging>
@@ -29,7 +30,11 @@ if [[ -z "$FLAG" || -z "$VALUE" ]]; then
 fi
 
 case "$FLAG" in
-	CREDIT_NOTE_AUTO_FROM_BUYER_REJECT|CREDIT_NOTE_AUTO_FROM_CLAIM|CREDIT_SCORE_ENFORCEMENT_ENABLED|CASH_RECONCILIATION_REQUIRED) ;;
+	CREDIT_NOTE_AUTO_FROM_BUYER_REJECT|CREDIT_NOTE_AUTO_FROM_CLAIM|CASH_RECONCILIATION_REQUIRED) ;;
+	CREDIT_SCORE_ENFORCEMENT_ENABLED)
+		echo "dead flag: CREDIT_SCORE_ENFORCEMENT_ENABLED (credit risk scoring removed Phase A)" >&2
+		exit 1
+		;;
 	*)
 		echo "unknown flag: $FLAG" >&2
 		usage

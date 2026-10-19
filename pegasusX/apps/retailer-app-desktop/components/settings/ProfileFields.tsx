@@ -16,17 +16,20 @@ export function ProfileField({
   errorMessage?: string;
   onChange: (v: string) => void;
 }) {
+  const inputId = "profile-field-" + label.toLowerCase().replace(/[^a-z0-9]/g, "-");
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
         <Icon size={14} />
-        <span className="md-typescale-label-small font-light uppercase tracking-widest">
+        <label htmlFor={inputId} className="md-typescale-label-small font-light uppercase tracking-widest cursor-pointer">
           {label}
-        </span>
+        </label>
       </div>
       {editing ? (
         <>
           <input
+            id={inputId}
+            aria-label={label}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={Boolean(errorMessage)}
@@ -67,19 +70,22 @@ export function ProfileTimeField({
   errorMessage?: string;
   onChange: (v: string) => void;
 }) {
+  const inputId = "profile-time-field-" + label.toLowerCase().replace(/[^a-z0-9]/g, "-");
   const displayValue = normalizeReceivingWindow(value);
 
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
         <Icon size={14} />
-        <span className="md-typescale-label-small font-light uppercase tracking-widest">
+        <label htmlFor={inputId} className="md-typescale-label-small font-light uppercase tracking-widest cursor-pointer">
           {label}
-        </span>
+        </label>
       </div>
       {editing ? (
         <>
           <input
+            id={inputId}
+            aria-label={label}
             type="time"
             value={displayValue}
             onChange={(e) => onChange(e.target.value)}

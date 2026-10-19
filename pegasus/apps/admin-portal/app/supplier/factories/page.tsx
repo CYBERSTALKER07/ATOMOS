@@ -353,7 +353,7 @@ export default function FactoriesPage() {
   );
 }
 
-// ── Helper components ─────────────────────────────────────────────────────
+// -- Helper components -----------------------------------------------------
 
 function DetailField({ label, value, mono, accent }: { label: string; value: string; mono?: boolean; accent?: string }) {
   return (

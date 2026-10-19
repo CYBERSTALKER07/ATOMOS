@@ -1,14 +1,15 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ExceptionMapCell } from "@pegasusx/types";
 import MapGL, { Layer, NavigationControl, Source } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { createSupplierApi } from "@/lib/api";
+import { mapInitialViewState, readCachedAuthSession } from "@pegasusx/api-core";
 
 const api = createSupplierApi();
-const DEFAULT_CENTER = { longitude: 69.2401, latitude: 41.2995, zoom: 10 };
 
 const SEVERITY_COLOR: Record<string, string> = {
   low: "#64748b",
@@ -21,6 +22,7 @@ type ExceptionWeatherMapPanelProps = {
 };
 
 export default function ExceptionWeatherMapPanel({ className }: ExceptionWeatherMapPanelProps) {
+  const t = usePortalT();
   const [cells, setCells] = useState<ExceptionMapCell[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function ExceptionWeatherMapPanel({ className }: ExceptionWeather
       const data = await api.getSupplierExceptionMap({ window_hours: 24 });
       setCells(data.cells ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load exception map");
+      setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_load_exception_map"));
       setCells([]);
     } finally {
       setLoading(false);
@@ -65,8 +67,8 @@ export default function ExceptionWeatherMapPanel({ className }: ExceptionWeather
     <div className={className}>
       <div className="flex items-center justify-between gap-3 px-5 py-3 border-b" style={{ borderColor: "var(--desk-border)" }}>
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wide opacity-70">Exception weather</h3>
-          <p className="text-xs opacity-60 mt-1">H3 clusters for shop-closed, delays, and manifest gate issues (24h)</p>
+          <h3 className="text-sm font-semibold uppercase tracking-wide opacity-70">{t("supplier_portal.exception_weather_map_panel.text.exception_weather")}</h3>
+          <p className="text-xs opacity-60 mt-1">{t("supplier_portal.exception_weather_map_panel.text.h3_clusters_for_shop_closed_delays_and_manifest_gate_issues_24h")}</p>
         </div>
         <button type="button" className="portal-btn portal-btn--ghost text-xs" onClick={() => void load()}>
           Refresh
@@ -74,16 +76,16 @@ export default function ExceptionWeatherMapPanel({ className }: ExceptionWeather
       </div>
 
       {loading ? (
-        <p className="text-sm text-center py-10 opacity-60">Loading exception map…</p>
+        <p className="text-sm text-center py-10 opacity-60">{t("supplier_portal.exception_weather_map_panel.text.loading_exception_map")}</p>
       ) : error ? (
         <p className="text-sm text-center py-10" style={{ color: "var(--desk-danger)" }}>{error}</p>
       ) : cells.length === 0 ? (
-        <p className="text-sm text-center py-10 opacity-60">No exception hotspots in the last 24 hours.</p>
+        <p className="text-sm text-center py-10 opacity-60">{t("supplier_portal.exception_weather_map_panel.text.no_exception_hotspots_in_the_last_24_hours")}</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] min-h-[320px]">
           <div className="min-h-[280px] rounded-lg overflow-hidden border" style={{ borderColor: "var(--desk-border)" }}>
             <MapGL
-              initialViewState={DEFAULT_CENTER}
+              initialViewState={mapInitialViewState(readCachedAuthSession()?.pack, 10)}
               mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               style={{ width: "100%", height: "100%", minHeight: 280 }}
             >

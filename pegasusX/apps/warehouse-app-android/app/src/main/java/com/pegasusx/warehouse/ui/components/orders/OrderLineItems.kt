@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.components.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +21,7 @@ import com.pegasusx.warehouse.data.model.Order
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 fun LazyGridScope.orderLineItems(
     order: Order,
@@ -44,13 +47,13 @@ fun LazyGridScope.orderLineItems(
                         style = MaterialTheme.typography.titleSmall
                     )
                     Text(
-                        "Qty: ${item.quantity}",
+                        stringResource(R.string.mobile_warehouse_ui_qty_quantity, item.quantity),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Text(
-                    "${fmt.format(item.unitPrice)} UZS",
+                    stringResource(R.string.mobile_warehouse_ui_format_uzs, fmt.format(item.unitPrice)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

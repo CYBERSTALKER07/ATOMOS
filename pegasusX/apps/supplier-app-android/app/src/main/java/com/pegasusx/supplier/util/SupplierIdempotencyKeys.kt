@@ -74,6 +74,22 @@ object SupplierIdempotencyKeys {
 
     fun supplierScopeId(): String = TokenHolder.supplierId?.takeIf { it.isNotBlank() } ?: "supplier"
 
+    fun networkModePut(scopeId: String, mode: String): String =
+        "supplier-network-mode:$scopeId:${mode.trim().uppercase()}"
+
+    fun planningPullMatrix(scopeId: String): String = "supplier-planning-pull-matrix:$scopeId"
+
+    fun planningPredictivePush(scopeId: String): String = "supplier-planning-predictive-push:$scopeId"
+
+    fun loyaltyProgramPatch(scopeId: String, reason: String): String =
+        "supplier-loyalty-program:$scopeId:${stableHash(reason)}"
+
+    fun planningKillSwitch(scopeId: String, reason: String): String =
+        "supplier-planning-kill-switch:$scopeId:${stableHash(reason)}"
+
+    fun payoutGenerate(scopeId: String, periodStart: String, periodEnd: String): String =
+        "supplier-payout-generate:$scopeId:$periodStart:$periodEnd"
+
     fun profileUpdate(scopeId: String, payloadFingerprint: String): String =
         "supplier-profile-update:$scopeId:${stableHash(payloadFingerprint)}"
 
@@ -106,6 +122,9 @@ object SupplierIdempotencyKeys {
 
     fun seasonalOverrideCreate(scopeId: String, startDate: String, endDate: String): String =
         "supplier-seasonal-override:$scopeId:${stableHash("$startDate:$endDate")}"
+
+    fun returnPolicyPut(scopeId: String, hours: Long): String =
+        "supplier-return-policy:$scopeId:$hours"
 
     fun controlTowerZoneOverride(scopeId: String, action: String, polygonFingerprint: String): String =
         "supplier-control-tower-override:$scopeId:${stableHash("$action:$polygonFingerprint")}"

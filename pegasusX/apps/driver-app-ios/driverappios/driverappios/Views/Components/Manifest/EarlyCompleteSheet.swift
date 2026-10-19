@@ -18,7 +18,7 @@ struct EarlyCompleteSheet: View {
         NavigationStack {
             List {
                 Section {
-                    Text("Remaining orders will be returned to the supplier for next-day re-dispatch.")
+                    Text("mobile_driver.ui.remaining_orders_will_be_returned_to_the_supplier_for_next_day_r")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -43,18 +43,18 @@ struct EarlyCompleteSheet: View {
                 }
                 
                 Section("Note (optional)") {
-                    TextField("Add a note", text: $note, axis: .vertical)
+                    TextField("mobile_driver.ui.add_a_note", text: $note, axis: .vertical)
                         .lineLimit(2...4)
                 }
             }
-            .navigationTitle("Request Early Complete")
+            .navigationTitle("mobile_driver.ui.request_early_complete")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Submit") {
+                    Button("warehouse_portal.cycle_counts.text.submit") {
                         onConfirm(selectedReason, note)
                     }
                     .foregroundStyle(LabTheme.destructive)

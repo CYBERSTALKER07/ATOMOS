@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, CheckCheck, RefreshCw, WifiOff } from "lucide-react";
@@ -13,6 +14,7 @@ import { useRetailerNotifications } from "../../../lib/notifications";
 import { useOptionalWebSocket } from "../../../lib/ws";
 
 export default function NotificationsPage() {
+  const t = usePortalT();
   const router = useRouter();
   const {
     items,
@@ -30,6 +32,7 @@ export default function NotificationsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const stopPropagation = (e: React.SyntheticEvent) => e.stopPropagation();
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -37,7 +40,7 @@ export default function NotificationsPage() {
     try {
       await refresh();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Refresh failed");
+      setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.refresh_failed"));
     } finally {
       setIsRefreshing(false);
     }
@@ -48,7 +51,7 @@ export default function NotificationsPage() {
     try {
       await markAllRead();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Mark all read failed");
+      setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.mark_all_read_failed"));
     }
   }, [markAllRead]);
 
@@ -57,7 +60,7 @@ export default function NotificationsPage() {
     try {
       await markRead(notificationId);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Mark read failed");
+      setActionError(err instanceof Error ? err.message : t("retailer_desktop.residual.text.mark_read_failed"));
     }
   }, [markRead]);
 
@@ -102,35 +105,35 @@ export default function NotificationsPage() {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Notifications access restricted for this account.",
+        message: t("retailer_desktop.residual.text.notifications_access_restricted_for_this_account"),
       };
     }
     if (loadIssue === "offline") {
       return {
         kind: "warning" as const,
         icon: WifiOff,
-        message: "Offline mode active. Showing latest cached inbox data.",
+        message: t("retailer_desktop.residual.text.offline_mode_active_showing_latest_cached_inbox_data"),
       };
     }
     if (loadIssue === "error") {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Inbox sync degraded. Retry is available.",
+        message: t("retailer_desktop.residual.text.inbox_sync_degraded_retry_is_available"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. New alerts may be delayed.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_new_alerts_may_be_delayed"),
       };
     }
     if (isRefreshing) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing notifications...",
+        message: t("retailer_desktop.residual.text.syncing_notifications"),
       };
     }
     return null;
@@ -139,27 +142,27 @@ export default function NotificationsPage() {
   const emptyStateConfig = useMemo(() => {
     if (loadIssue === "restricted") {
       return {
-        headline: "Notifications access restricted",
+        headline: t("retailer_desktop.residual.text.notifications_access_restricted"),
         body: "Your account currently cannot load inbox alerts.",
         variant: "restricted" as const,
       };
     }
     if (loadIssue === "offline") {
       return {
-        headline: "Notifications are offline",
+        headline: t("retailer_desktop.residual.text.notifications_are_offline"),
         body: "Reconnect and retry to refresh alert history.",
         variant: "offline" as const,
       };
     }
     if (loadIssue === "error") {
       return {
-        headline: "Notifications unavailable",
+        headline: t("retailer_desktop.residual.text.notifications_unavailable"),
         body: "Inbox data could not be loaded right now.",
         variant: "error" as const,
       };
     }
     return {
-      headline: "No notifications yet",
+      headline: t("retailer_desktop.residual.text.no_notifications_yet"),
       body: "Order status changes, delivery alerts, and preorder updates will appear here.",
       variant: "no-data" as const,
     };
@@ -176,7 +179,7 @@ export default function NotificationsPage() {
     <div className="min-h-full p-6 md:p-8">
       <PageChrome
         icon="notifications"
-        title="Notifications"
+        title={t("portal.nav.notifications")}
         description={headerSubtitle}
         loading={loading && items.length === 0}
         skeletonVariant="table"
@@ -186,7 +189,7 @@ export default function NotificationsPage() {
               type="button"
               onClick={() => void handleRefresh()}
               disabled={isRefreshing}
-              aria-label="Refresh"
+              aria-label={t("portal.page.orders.action.refresh")}
               className="portal-btn portal-btn--ghost desk-icon-btn"
             >
               <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
@@ -286,9 +289,11 @@ export default function NotificationsPage() {
                         </p>
                         {item.handoffMetadata ? (
                           <div
+                            tabIndex={-1}
                             className="mt-3 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-3"
-                            onClick={(e) => e.stopPropagation()}
-                            role="presentation"
+                            onClick={stopPropagation}
+                            role="button"
+                            onKeyDown={stopPropagation}
                           >
                             <HandoffCard
                               metadata={item.handoffMetadata}

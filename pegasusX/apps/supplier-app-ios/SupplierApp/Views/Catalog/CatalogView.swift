@@ -45,7 +45,7 @@ struct CatalogView: View {
                 }
             }
             .background(SupplierTheme.background)
-            .navigationTitle("Catalog")
+            .navigationTitle("portal.nav.catalog")
             .searchable(text: $query, prompt: "Product name")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

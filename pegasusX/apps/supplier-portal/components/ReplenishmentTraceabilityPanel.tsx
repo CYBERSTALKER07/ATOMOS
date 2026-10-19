@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierReplenishmentTraceRow } from "@pegasusx/types";
@@ -7,6 +8,7 @@ import type { SupplierReplenishmentTraceRow } from "@pegasusx/types";
 const api = createSupplierApi();
 
 export default function ReplenishmentTraceabilityPanel() {
+  const t = usePortalT();
   const [rows, setRows] = useState<SupplierReplenishmentTraceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export default function ReplenishmentTraceabilityPanel() {
         if (!cancelled) setRows(resp.rows ?? []);
       })
       .catch(() => {
-        if (!cancelled) setError("traceability_load_failed");
+        if (!cancelled) setError(t("supplier_portal.residual.text.traceability_load_failed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -31,7 +33,7 @@ export default function ReplenishmentTraceabilityPanel() {
 
   return (
     <section className="desk-card p-6 mt-6 overflow-x-auto">
-      <h2 className="bento-card-title">Replenishment traceability</h2>
+      <h2 className="bento-card-title">{t("supplier_portal.replenishment_traceability_panel.text.replenishment_traceability")}</h2>
       <p className="md-typescale-body-small mt-2" style={{ color: "var(--desk-text-secondary)" }}>
         Insight ID → factory transfer ID for touchless and warehouse-approved replenishment loops.
       </p>
@@ -52,12 +54,12 @@ export default function ReplenishmentTraceabilityPanel() {
         <table className="desk-table w-full mt-4">
           <thead>
             <tr style={{ color: "var(--desk-text-secondary)" }}>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Insight</th>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Product</th>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Warehouse</th>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Status</th>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Transfer</th>
-              <th className="md-typescale-label-medium p-3 text-left font-medium">Reason</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.replenishment_traceability_panel.text.insight")}</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.admin.empathy.hierarchy.product.level")}</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.replenishment_traceability_panel.text.warehouse")}</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.compliance.text.status")}</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.replenishment_traceability_panel.text.transfer")}</th>
+              <th className="md-typescale-label-medium p-3 text-left font-medium">{t("supplier_portal.admin.control_center.field.reason")}</th>
             </tr>
           </thead>
           <tbody>

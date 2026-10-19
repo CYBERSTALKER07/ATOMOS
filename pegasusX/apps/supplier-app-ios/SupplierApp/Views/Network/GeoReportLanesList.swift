@@ -9,7 +9,7 @@ struct GeoReportLanesList: View {
         ResponsiveGridContentWrapper {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Estimated H3 cells in service").font(.caption).foregroundStyle(.secondary)
+                    Text("mobile_supplier.ui.estimated_h3_cells_in_service").font(.caption).foregroundStyle(.secondary)
                     Text("\(totalCells)").font(.title2.bold())
                 }
             }
@@ -24,7 +24,7 @@ struct GeoReportLanesList: View {
                 }
             }
             Section {
-                Text("H3 perimeter coverage and lane utilization from live supplier orders.")
+                Text("supplier_portal.residual.text.h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

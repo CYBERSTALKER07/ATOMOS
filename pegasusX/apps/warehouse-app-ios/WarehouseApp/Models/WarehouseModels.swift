@@ -49,6 +49,11 @@ struct FleetStatusEntry: Decodable, Hashable {
     let count: Int64
 }
 
+struct HoldReasonEntry: Decodable, Hashable {
+    let code: String
+    let count: Int
+}
+
 struct DashboardData: Decodable {
     let activeOrders: Int64
     let completedToday: Int64
@@ -58,9 +63,16 @@ struct DashboardData: Decodable {
     let totalDrivers: Int64
     let totalVehicles: Int64
     let todayRevenue: Int64
+    let completedTodayAvailable: Bool
+    let todayRevenueAvailable: Bool
     let lowStockCount: Int64
     let totalStaff: Int64
     let fleetStatus: [FleetStatusEntry]
+    let ordersByStatus: [String: Int]
+    let truckDuty: [String: Int]
+    let holdReasons: [HoldReasonEntry]
+    let demandSource: String
+    let historyAvailable: Bool
 
     enum CodingKeys: String, CodingKey {
         case activeOrders = "active_orders"
@@ -71,9 +83,16 @@ struct DashboardData: Decodable {
         case totalDrivers = "total_drivers"
         case totalVehicles = "total_vehicles"
         case todayRevenue = "today_revenue"
+        case completedTodayAvailable = "completed_today_available"
+        case todayRevenueAvailable = "today_revenue_available"
         case lowStockCount = "low_stock_count"
         case totalStaff = "total_staff"
         case fleetStatus = "fleet_status"
+        case ordersByStatus = "orders_by_status"
+        case truckDuty = "truck_duty"
+        case holdReasons = "hold_reasons"
+        case demandSource = "demand_source"
+        case historyAvailable = "history_available"
     }
 
     init(
@@ -85,9 +104,16 @@ struct DashboardData: Decodable {
         totalDrivers: Int64 = 0,
         totalVehicles: Int64 = 0,
         todayRevenue: Int64 = 0,
+        completedTodayAvailable: Bool = false,
+        todayRevenueAvailable: Bool = false,
         lowStockCount: Int64 = 0,
         totalStaff: Int64 = 0,
-        fleetStatus: [FleetStatusEntry] = []
+        fleetStatus: [FleetStatusEntry] = [],
+        ordersByStatus: [String: Int] = [:],
+        truckDuty: [String: Int] = [:],
+        holdReasons: [HoldReasonEntry] = [],
+        demandSource: String = "empty",
+        historyAvailable: Bool = false
     ) {
         self.activeOrders = activeOrders
         self.completedToday = completedToday
@@ -97,9 +123,16 @@ struct DashboardData: Decodable {
         self.totalDrivers = totalDrivers
         self.totalVehicles = totalVehicles
         self.todayRevenue = todayRevenue
+        self.completedTodayAvailable = completedTodayAvailable
+        self.todayRevenueAvailable = todayRevenueAvailable
         self.lowStockCount = lowStockCount
         self.totalStaff = totalStaff
         self.fleetStatus = fleetStatus
+        self.ordersByStatus = ordersByStatus
+        self.truckDuty = truckDuty
+        self.holdReasons = holdReasons
+        self.demandSource = demandSource
+        self.historyAvailable = historyAvailable
     }
 
     init(from decoder: Decoder) throws {
@@ -112,9 +145,16 @@ struct DashboardData: Decodable {
         totalDrivers = (try? c.decode(Int64.self, forKey: .totalDrivers)) ?? 0
         totalVehicles = (try? c.decode(Int64.self, forKey: .totalVehicles)) ?? 0
         todayRevenue = (try? c.decode(Int64.self, forKey: .todayRevenue)) ?? 0
+        completedTodayAvailable = (try? c.decode(Bool.self, forKey: .completedTodayAvailable)) ?? false
+        todayRevenueAvailable = (try? c.decode(Bool.self, forKey: .todayRevenueAvailable)) ?? false
         lowStockCount = (try? c.decode(Int64.self, forKey: .lowStockCount)) ?? 0
         totalStaff = (try? c.decode(Int64.self, forKey: .totalStaff)) ?? 0
         fleetStatus = (try? c.decode([FleetStatusEntry].self, forKey: .fleetStatus)) ?? []
+        ordersByStatus = (try? c.decode([String: Int].self, forKey: .ordersByStatus)) ?? [:]
+        truckDuty = (try? c.decode([String: Int].self, forKey: .truckDuty)) ?? [:]
+        holdReasons = (try? c.decode([HoldReasonEntry].self, forKey: .holdReasons)) ?? []
+        demandSource = (try? c.decode(String.self, forKey: .demandSource)) ?? "empty"
+        historyAvailable = (try? c.decode(Bool.self, forKey: .historyAvailable)) ?? false
     }
 
     static let empty = DashboardData()
@@ -498,6 +538,21 @@ struct WarehouseOpsSettingsResponse: Decodable {
     }
 }
 
+/// GET/PUT /v1/warehouse/return-policy
+struct WarehouseReturnPolicy: Codable {
+    var supplierId: String
+    var reverseDockSlaHours: Int64?
+    var retailerFileWindowHours: Int64?
+    var canOverrideRetailerWindow: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case supplierId = "supplier_id"
+        case reverseDockSlaHours = "reverse_dock_sla_hours"
+        case retailerFileWindowHours = "retailer_file_window_hours"
+        case canOverrideRetailerWindow = "can_override_retailer_window"
+    }
+}
+
 struct WarehouseOpsSettingsPatchRequest: Encodable {
     let defaultOutOfStockPolicy: String
     let showStockCountsToRetailers: Bool?
@@ -625,6 +680,180 @@ struct InventoryAdjustRequest: Encodable {
     enum CodingKeys: String, CodingKey {
         case productId = "product_id"
         case quantity
+    }
+}
+
+// MARK: - §8.7 Wave 1A bins / lots
+
+struct WarehouseBinCreateRequest: Encodable {
+    var locationId: String?
+    var zone: String?
+    var locationType: String
+    var pickSequence: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case locationId = "location_id"
+        case zone
+        case locationType = "location_type"
+        case pickSequence = "pick_sequence"
+    }
+}
+
+struct WarehouseBinLocation: Decodable {
+    let warehouseId: String?
+    let locationId: String
+    let zone: String?
+    let locationType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case locationId = "location_id"
+        case zone
+        case locationType = "location_type"
+    }
+}
+
+struct StockLotPutawayRequest: Encodable {
+    let productId: String
+    let locationId: String
+    let quantity: Int
+    var lotCode: String?
+    var expiryDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case locationId = "location_id"
+        case quantity
+        case lotCode = "lot_code"
+        case expiryDate = "expiry_date"
+    }
+}
+
+struct StockLotPutawayResponse: Decodable {
+    let lotId: String
+    let productId: String?
+    let locationId: String?
+    let quantityOnHand: Int?
+    let status: String?
+
+    enum CodingKeys: String, CodingKey {
+        case lotId = "lot_id"
+        case productId = "product_id"
+        case locationId = "location_id"
+        case quantityOnHand = "quantity_on_hand"
+        case status
+    }
+}
+
+// MARK: - §8.7 Wave 1B pick waves
+
+struct PickTask: Decodable, Identifiable {
+    var id: String { taskId }
+    let taskId: String
+    let orderId: String?
+    let productId: String
+    let lotId: String
+    let locationId: String?
+    let quantityRequested: Int
+    let quantityPicked: Int?
+    let status: String
+    let pickSequence: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case orderId = "order_id"
+        case productId = "product_id"
+        case lotId = "lot_id"
+        case locationId = "location_id"
+        case quantityRequested = "quantity_requested"
+        case quantityPicked = "quantity_picked"
+        case status
+        case pickSequence = "pick_sequence"
+    }
+}
+
+struct PickWave: Decodable {
+    let waveId: String
+    let warehouseId: String?
+    let manifestId: String
+    let status: String
+    let tasks: [PickTask]?
+
+    enum CodingKeys: String, CodingKey {
+        case waveId = "wave_id"
+        case warehouseId = "warehouse_id"
+        case manifestId = "manifest_id"
+        case status
+        case tasks
+    }
+}
+
+struct PickWaveListResponse: Decodable {
+    let waves: [PickWave]
+    let pickWavesEnabled: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case waves
+        case pickWavesEnabled = "pick_waves_enabled"
+    }
+}
+
+struct PickWaveCreateRequest: Encodable {
+    let manifestId: String
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+    }
+}
+
+struct PickTaskConfirmRequest: Encodable {
+    var quantityPicked: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case quantityPicked = "quantity_picked"
+    }
+}
+
+struct CycleCount: Decodable, Identifiable {
+    var id: String { countId }
+    let countId: String
+    let locationId: String?
+    let productId: String
+    let expectedQty: Int
+    let countedQty: Int?
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case countId = "count_id"
+        case locationId = "location_id"
+        case productId = "product_id"
+        case expectedQty = "expected_qty"
+        case countedQty = "counted_qty"
+        case status
+    }
+}
+
+struct CycleCountListResponse: Decodable {
+    let counts: [CycleCount]
+}
+
+struct CycleCountCreateRequest: Encodable {
+    let locationId: String
+    let productId: String
+    var expectedQty: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case locationId = "location_id"
+        case productId = "product_id"
+        case expectedQty = "expected_qty"
+    }
+}
+
+struct CycleCountSubmitRequest: Encodable {
+    let countedQty: Int
+
+    enum CodingKeys: String, CodingKey {
+        case countedQty = "counted_qty"
     }
 }
 
@@ -903,6 +1132,7 @@ struct Retailer: Decodable, Identifiable {
     let name: String
     let totalOrders: Int
     let totalRevenue: Int
+    let lastOrderDate: String
 
     enum CodingKeys: String, CodingKey {
         case retailerId = "retailer_id"
@@ -912,6 +1142,7 @@ struct Retailer: Decodable, Identifiable {
         case orderCount = "order_count"
         case totalRevenue = "total_revenue"
         case revenueUzs = "revenue_uzs"
+        case lastOrderDate = "last_order_date"
     }
 
     init(from decoder: Decoder) throws {
@@ -923,6 +1154,7 @@ struct Retailer: Decodable, Identifiable {
             ?? (try c.decodeIfPresent(Int.self, forKey: .orderCount)) ?? 0
         totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue)
             ?? (try c.decodeIfPresent(Int.self, forKey: .revenueUzs)) ?? 0
+        lastOrderDate = try c.decodeIfPresent(String.self, forKey: .lastOrderDate) ?? ""
     }
 }
 
@@ -1203,7 +1435,7 @@ struct WarehouseClaim: Decodable, Identifiable {
         claimType = try c.decodeIfPresent(String.self, forKey: .claimType) ?? ""
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         amountMinor = try c.decodeIfPresent(Int.self, forKey: .amountMinor) ?? 0
-        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+        currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? packCurrency(MarketPackStore.pack)
         description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
         lineItems = try c.decodeIfPresent([WarehouseClaimLine].self, forKey: .lineItems) ?? []
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
@@ -1439,7 +1671,7 @@ struct Invoice: Decodable, Identifiable {
         let additiveAmount = try c.decodeIfPresent(Int.self, forKey: .amount)
         let legacyAmount = try c.decodeIfPresent(Int.self, forKey: .amountUzs)
         amountUzs = additiveAmount ?? legacyAmount ?? 0
-        currency = (try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS").uppercased()
+        currency = displayPackCurrency(try c.decodeIfPresent(String.self, forKey: .currency))
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         dueDate = try c.decodeIfPresent(String.self, forKey: .dueDate) ?? ""
         feeAmount = try c.decodeIfPresent(Int.self, forKey: .feeAmount) ?? 0
@@ -1832,6 +2064,7 @@ struct DemandForecastResponse: Decodable {
     let generatedAt: String?
     let series: [DemandForecastDay]
     let products: [DemandForecastProduct]
+    let source: String
 
     enum CodingKeys: String, CodingKey {
         case warehouseId = "warehouse_id"
@@ -1839,6 +2072,7 @@ struct DemandForecastResponse: Decodable {
         case generatedAt = "generated_at"
         case series
         case products
+        case source
     }
 
     init(
@@ -1846,13 +2080,15 @@ struct DemandForecastResponse: Decodable {
         forecastDays: Int = 7,
         generatedAt: String? = nil,
         series: [DemandForecastDay] = [],
-        products: [DemandForecastProduct] = []
+        products: [DemandForecastProduct] = [],
+        source: String = "empty"
     ) {
         self.warehouseId = warehouseId
         self.forecastDays = forecastDays
         self.generatedAt = generatedAt
         self.series = series
         self.products = products
+        self.source = source
     }
 
     init(from decoder: Decoder) throws {
@@ -1862,6 +2098,7 @@ struct DemandForecastResponse: Decodable {
         generatedAt = try container.decodeIfPresent(String.self, forKey: .generatedAt)
         series = try container.decodeIfPresent([DemandForecastDay].self, forKey: .series) ?? []
         products = try container.decodeIfPresent([DemandForecastProduct].self, forKey: .products) ?? []
+        source = try container.decodeIfPresent(String.self, forKey: .source) ?? "empty"
     }
 }
 
@@ -1912,6 +2149,22 @@ struct WarehouseSupplyRequest: Decodable, Identifiable {
         createdBy = try c.decodeIfPresent(String.self, forKey: .createdBy) ?? ""
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+    }
+}
+
+struct SupplyRequestQCResponse: Decodable {
+    let requestId: String
+    let result: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case result
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestId = try c.decodeIfPresent(String.self, forKey: .requestId) ?? ""
+        result = try c.decodeIfPresent(String.self, forKey: .result) ?? ""
     }
 }
 
@@ -2117,29 +2370,133 @@ struct CreateStaffResponse: Decodable {
 // MARK: - Payment Config
 
 struct PaymentGateway: Decodable, Identifiable {
-    var id: String { gatewayId }
-    let gatewayId: String
+    var id: String { code }
+    let code: String
     let name: String
     let provider: String
     let isActive: Bool
+    let status: String
+    let selectable: Bool
 
     enum CodingKeys: String, CodingKey {
-        case gatewayId = "gateway_id"
-        case name, provider
+        case gatewayName = "gateway_name"
+        case code, name, provider, status, selectable
         case isActive = "is_active"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        gatewayId = try c.decode(String.self, forKey: .gatewayId)
-        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? ""
+        let gatewayName = try c.decodeIfPresent(String.self, forKey: .gatewayName) ?? ""
+        code = try c.decodeIfPresent(String.self, forKey: .code) ?? gatewayName
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? gatewayName
+        provider = try c.decodeIfPresent(String.self, forKey: .provider) ?? code
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? false
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        selectable = try c.decodeIfPresent(Bool.self, forKey: .selectable) ?? isActive
     }
+}
+
+struct PSPListing: Decodable, Identifiable {
+    var id: String { code }
+    let code: String
+    let status: String
+    let selectable: Bool
 }
 
 struct PaymentConfigResponse: Decodable {
     let gateways: [PaymentGateway]
+    let catalog: [PSPListing]
+    let currencyCode: String
+    let marketCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case gateways, catalog
+        case currencyCode = "currency_code"
+        case marketCode = "market_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gateways = try c.decodeIfPresent([PaymentGateway].self, forKey: .gateways) ?? []
+        catalog = try c.decodeIfPresent([PSPListing].self, forKey: .catalog) ?? []
+        currencyCode = try c.decodeIfPresent(String.self, forKey: .currencyCode) ?? ""
+        marketCode = try c.decodeIfPresent(String.self, forKey: .marketCode) ?? ""
+    }
+}
+
+struct WarehouseCoverageResponse: Decodable {
+    let warehouseId: String
+    let mode: String
+    let cities: [WarehouseCoverageCity]
+    let pins: [WarehouseServicePin]
+    let countryCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case mode, cities, pins
+        case countryCode = "country_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        mode = try c.decodeIfPresent(String.self, forKey: .mode) ?? "COUNTRY_CLOSEST"
+        cities = try c.decodeIfPresent([WarehouseCoverageCity].self, forKey: .cities) ?? []
+        pins = try c.decodeIfPresent([WarehouseServicePin].self, forKey: .pins) ?? []
+        countryCode = try c.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
+    }
+}
+
+struct WarehouseCoverageCity: Decodable, Identifiable {
+    var id: String { "\(name):\(lat):\(lng)" }
+    let name: String
+    let lat: Double
+    let lng: Double
+}
+
+struct WarehouseServicePin: Decodable, Identifiable {
+    var id: String { "\(targetType):\(targetId)" }
+    let targetType: String
+    let targetId: String
+    let priority: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case targetType = "target_type"
+        case targetId = "target_id"
+        case priority
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        targetType = try c.decodeIfPresent(String.self, forKey: .targetType) ?? ""
+        targetId = try c.decodeIfPresent(String.self, forKey: .targetId) ?? ""
+        priority = try c.decodeIfPresent(Int64.self, forKey: .priority) ?? 0
+    }
+}
+
+struct WarehouseSupplyFactoryResponse: Decodable {
+    let warehouseId: String
+    let factoryId: String
+    let transferMode: String
+    let source: String
+    let countryCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case factoryId = "factory_id"
+        case transferMode = "transfer_mode"
+        case source
+        case countryCode = "country_code"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId) ?? ""
+        transferMode = try c.decodeIfPresent(String.self, forKey: .transferMode) ?? ""
+        source = try c.decodeIfPresent(String.self, forKey: .source) ?? "engine"
+        countryCode = try c.decodeIfPresent(String.self, forKey: .countryCode) ?? ""
+    }
 }
 
 // MARK: - JSON helpers
@@ -2247,4 +2604,203 @@ struct WarehouseOpsBoardResponse: Decodable {
         case preorders
         case deliverBefore = "deliver_before"
     }
+}
+
+// MARK: - Cold chain
+
+struct TemperatureReading: Decodable, Identifiable {
+    var id: String { readingId }
+    let readingId: String
+    let manifestId: String
+    let sensorId: String?
+    let recordedAt: String
+    let tempC: Double
+    let minC: Double?
+    let maxC: Double?
+    let excursion: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case readingId = "reading_id"
+        case manifestId = "manifest_id"
+        case sensorId = "sensor_id"
+        case recordedAt = "recorded_at"
+        case tempC = "temp_c"
+        case minC = "min_c"
+        case maxC = "max_c"
+        case excursion
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        readingId = try c.decodeIfPresent(String.self, forKey: .readingId) ?? ""
+        manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId) ?? ""
+        sensorId = try c.decodeIfPresent(String.self, forKey: .sensorId)
+        recordedAt = try c.decodeIfPresent(String.self, forKey: .recordedAt) ?? ""
+        tempC = try c.decodeIfPresent(Double.self, forKey: .tempC) ?? 0
+        minC = try c.decodeIfPresent(Double.self, forKey: .minC)
+        maxC = try c.decodeIfPresent(Double.self, forKey: .maxC)
+        excursion = try c.decodeIfPresent(Bool.self, forKey: .excursion) ?? false
+    }
+}
+
+struct TemperatureReadingListResponse: Decodable {
+    let readings: [TemperatureReading]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        readings = try c.decodeIfPresent([TemperatureReading].self, forKey: .readings) ?? []
+    }
+
+    enum CodingKeys: String, CodingKey { case readings }
+}
+
+struct TemperatureReadingIngestRequest: Encodable {
+    let manifestId: String
+    let tempC: Double
+    let sensorId: String?
+    let minC: Double?
+    let maxC: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case tempC = "temp_c"
+        case sensorId = "sensor_id"
+        case minC = "min_c"
+        case maxC = "max_c"
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(manifestId, forKey: .manifestId)
+        try c.encode(tempC, forKey: .tempC)
+        if let sensorId, !sensorId.isEmpty { try c.encode(sensorId, forKey: .sensorId) }
+        if let minC { try c.encode(minC, forKey: .minC) }
+        if let maxC { try c.encode(maxC, forKey: .maxC) }
+    }
+}
+
+// MARK: - Labor capacity (camelCase API)
+
+struct LaborZoneCapacity: Decodable, Identifiable {
+    var id: String { "\(zoneH3)-\(date)" }
+    let zoneH3: String
+    let date: String
+    let totalCapacity: Double
+    let usedCapacity: Double
+    let computedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case zoneH3, date, totalCapacity, usedCapacity, computedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        zoneH3 = try c.decodeIfPresent(String.self, forKey: .zoneH3) ?? ""
+        if let s = try? c.decode(String.self, forKey: .date) {
+            date = s
+        } else {
+            date = ""
+        }
+        totalCapacity = try c.decodeIfPresent(Double.self, forKey: .totalCapacity) ?? 0
+        usedCapacity = try c.decodeIfPresent(Double.self, forKey: .usedCapacity) ?? 0
+        if let s = try? c.decode(String.self, forKey: .computedAt) {
+            computedAt = s
+        } else {
+            computedAt = nil
+        }
+    }
+
+    init(zoneH3: String, date: String, totalCapacity: Double, usedCapacity: Double, computedAt: String?) {
+        self.zoneH3 = zoneH3
+        self.date = date
+        self.totalCapacity = totalCapacity
+        self.usedCapacity = usedCapacity
+        self.computedAt = computedAt
+    }
+}
+
+struct LaborZoneCapacityListResponse: Decodable {
+    let zones: [LaborZoneCapacity]
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        if let list = try c.decodeIfPresent([LaborZoneCapacity].self, forKey: .zones), !list.isEmpty {
+            zones = list
+            return
+        }
+        if let h3 = try c.decodeIfPresent(String.self, forKey: .zoneH3), !h3.isEmpty {
+            let date: String
+            if let s = try? c.decode(String.self, forKey: .date) { date = s } else { date = "" }
+            let total = try c.decodeIfPresent(Double.self, forKey: .totalCapacity) ?? 0
+            let used = try c.decodeIfPresent(Double.self, forKey: .usedCapacity) ?? 0
+            let computed: String?
+            if let s = try? c.decode(String.self, forKey: .computedAt) { computed = s } else { computed = nil }
+            zones = [LaborZoneCapacity(zoneH3: h3, date: date, totalCapacity: total, usedCapacity: used, computedAt: computed)]
+            return
+        }
+        zones = []
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case zones, zoneH3, date, totalCapacity, usedCapacity, computedAt
+    }
+}
+
+struct LaborDriverScore: Decodable {
+    let driverId: String
+    let score: Double
+    let onTimeRate: Double
+    let completionRate: Double
+    let damageRate: Double
+    let shopClosedRate: Double
+    let feedbackScore: Double
+    let stopsPerHour: Double
+
+    enum CodingKeys: String, CodingKey {
+        case driverId, score, onTimeRate, completionRate, damageRate, shopClosedRate, feedbackScore, stopsPerHour
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        driverId = try c.decodeIfPresent(String.self, forKey: .driverId) ?? ""
+        score = try c.decodeIfPresent(Double.self, forKey: .score) ?? 0
+        onTimeRate = try c.decodeIfPresent(Double.self, forKey: .onTimeRate) ?? 0
+        completionRate = try c.decodeIfPresent(Double.self, forKey: .completionRate) ?? 0
+        damageRate = try c.decodeIfPresent(Double.self, forKey: .damageRate) ?? 0
+        shopClosedRate = try c.decodeIfPresent(Double.self, forKey: .shopClosedRate) ?? 0
+        feedbackScore = try c.decodeIfPresent(Double.self, forKey: .feedbackScore) ?? 0
+        stopsPerHour = try c.decodeIfPresent(Double.self, forKey: .stopsPerHour) ?? 0
+    }
+}
+
+struct LaborDriverAvailabilityRequest: Encodable {
+    let driverId: String
+    let date: String
+    let availableHours: Double
+    let status: String
+    let zoneH3: String?
+
+    enum CodingKeys: String, CodingKey {
+        case driverId, date, availableHours, status, zoneH3
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(driverId, forKey: .driverId)
+        try c.encode(date, forKey: .date)
+        try c.encode(availableHours, forKey: .availableHours)
+        try c.encode(status, forKey: .status)
+        if let zoneH3, !zoneH3.isEmpty { try c.encode(zoneH3, forKey: .zoneH3) }
+    }
+}
+
+struct LaborDriverAvailabilityResponse: Decodable {
+    let status: String
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+    }
+
+    enum CodingKeys: String, CodingKey { case status }
 }

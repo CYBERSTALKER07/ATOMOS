@@ -125,33 +125,35 @@ export default function CountryConfigsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-code" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.country_code')}</span>
-                <input className="md-input-outlined px-3 py-2" value={draft.country_code} onChange={(e) => setDraft({ ...draft, country_code: e.target.value.toUpperCase() })} />
+                <input id="country-field-code" aria-label={t('supplier_portal.configuration.countries.field.country_code')} className="md-input-outlined px-3 py-2" value={draft.country_code} onChange={(e) => setDraft({ ...draft, country_code: e.target.value.toUpperCase() })} />
               </label>
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-name" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.country_name')}</span>
-                <input className="md-input-outlined px-3 py-2" value={draft.country_name} onChange={(e) => setDraft({ ...draft, country_name: e.target.value })} />
+                <input id="country-field-name" aria-label={t('supplier_portal.configuration.countries.field.country_name')} className="md-input-outlined px-3 py-2" value={draft.country_name} onChange={(e) => setDraft({ ...draft, country_name: e.target.value })} />
               </label>
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-timezone" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.timezone')}</span>
-                <input className="md-input-outlined px-3 py-2" value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })} />
+                <input id="country-field-timezone" aria-label={t('supplier_portal.configuration.countries.field.timezone')} className="md-input-outlined px-3 py-2" value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })} />
               </label>
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-currency" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.currency_code')}</span>
-                <input className="md-input-outlined px-3 py-2" value={draft.currency_code} onChange={(e) => setDraft({ ...draft, currency_code: e.target.value.toUpperCase() })} />
+                <input id="country-field-currency" aria-label={t('supplier_portal.configuration.countries.field.currency_code')} className="md-input-outlined px-3 py-2" value={draft.currency_code} onChange={(e) => setDraft({ ...draft, currency_code: e.target.value.toUpperCase() })} />
               </label>
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-breach-radius" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.breach_radius_meters')}</span>
-                <input className="md-input-outlined px-3 py-2" type="number" min="1" value={draft.breach_radius_meters} onChange={(e) => setDraft({ ...draft, breach_radius_meters: Number(e.target.value) })} />
+                <input id="country-field-breach-radius" aria-label={t('supplier_portal.configuration.countries.field.breach_radius_meters')} className="md-input-outlined px-3 py-2" type="number" min="1" value={draft.breach_radius_meters} onChange={(e) => setDraft({ ...draft, breach_radius_meters: Number(e.target.value) })} />
               </label>
-              <label className="flex flex-col gap-1">
+              <label htmlFor="country-field-sms-provider" className="flex flex-col gap-1">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.sms_provider')}</span>
-                <input className="md-input-outlined px-3 py-2" value={draft.sms_provider} onChange={(e) => setDraft({ ...draft, sms_provider: e.target.value })} />
+                <input id="country-field-sms-provider" aria-label={t('supplier_portal.configuration.countries.field.sms_provider')} className="md-input-outlined px-3 py-2" value={draft.sms_provider} onChange={(e) => setDraft({ ...draft, sms_provider: e.target.value })} />
               </label>
-              <label className="flex flex-col gap-1 md:col-span-2">
+              <label htmlFor="country-field-payment-gateways" className="flex flex-col gap-1 md:col-span-2">
                 <span className="text-xs">{t('supplier_portal.configuration.countries.field.payment_gateways')}</span>
                 <input
+                  id="country-field-payment-gateways"
+                  aria-label={t('supplier_portal.configuration.countries.field.payment_gateways')}
                   className="md-input-outlined px-3 py-2"
                   value={(draft.payment_gateways || []).join(',')}
                   onChange={(e) => setDraft({ ...draft, payment_gateways: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}

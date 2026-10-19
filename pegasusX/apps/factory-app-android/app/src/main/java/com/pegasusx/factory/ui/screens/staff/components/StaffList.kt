@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.screens.staff.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -11,6 +13,7 @@ import com.pegasusx.factory.data.model.StaffMember
 import com.pegasusx.factory.ui.components.FactoryOpsListCard
 import com.pegasusx.factory.ui.components.FactorySectionTitle
 import com.pegasusx.factory.ui.theme.PegasusSpacing
+import com.pegasusx.factory.R
 
 @Composable
 fun StaffList(
@@ -33,7 +36,7 @@ fun StaffList(
             )
         }
         item {
-            FactorySectionTitle(title = "Operator roster")
+            FactorySectionTitle(title = stringResource(R.string.mobile_factory_ui_operator_roster))
         }
         items(staff, key = { it.id }) { member ->
             FactoryOpsListCard(

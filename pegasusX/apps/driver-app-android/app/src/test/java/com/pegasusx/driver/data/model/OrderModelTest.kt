@@ -10,11 +10,14 @@ class OrderModelTest {
     @Test
     fun orderState_allCases() {
         val values = OrderState.values()
-        assertEquals("OrderState should have 17 values", 17, values.size)
+        assertEquals("OrderState should have 24 values", 24, values.size)
         // Verify critical states exist
         assertTrue(values.contains(OrderState.PENDING))
         assertTrue(values.contains(OrderState.PENDING_REVIEW))
         assertTrue(values.contains(OrderState.SCHEDULED))
+        assertTrue(values.contains(OrderState.AUTO_ACCEPTED))
+        assertTrue(values.contains(OrderState.BACKORDERED))
+        assertTrue(values.contains(OrderState.DELAYED))
         assertTrue(values.contains(OrderState.IN_TRANSIT))
         assertTrue(values.contains(OrderState.ARRIVED))
         assertTrue(values.contains(OrderState.COMPLETED))
@@ -68,4 +71,26 @@ class OrderModelTest {
         assertEquals("COMPLETED", OrderState.COMPLETED.name)
         assertEquals("CANCELLED", OrderState.CANCELLED.name)
     }
+
+    @Test
+    fun customerStage_matchesGoldenFixture() {
+        val stream = javaClass.classLoader?.getResourceAsStream("order-customer-stage.json")
+            ?: error("order-customer-stage.json resource not found")
+        val jsonStr = stream.bufferedReader().use { it.readText() }
+        val root = kotlinx.serialization.json.Json.parseToJsonElement(jsonStr) as kotlinx.serialization.json.JsonObject
+        val mappingObj = root["mapping"] as kotlinx.serialization.json.JsonObject
+
+        OrderState.entries.forEach { state ->
+            val mappedElement = mappingObj[state.name]
+            if (mappedElement != null) {
+                val expectedStageName = mappedElement.toString().trim('"')
+                assertEquals(
+                    "OrderState ${state.name} mapped to unexpected CustomerStage",
+                    expectedStageName,
+                    state.customerStage.name
+                )
+            }
+        }
+    }
 }
+

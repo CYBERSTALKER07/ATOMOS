@@ -15,7 +15,7 @@ interface OrderDao {
     @Query("SELECT * FROM orders ORDER BY createdAt DESC")
     fun observeAll(): Flow<List<OrderEntity>>
 
-    @Query("SELECT * FROM orders WHERE state IN ('LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'FISCALIZING', 'FISCAL_FAILED') ORDER BY createdAt ASC")
+    @Query("SELECT * FROM orders WHERE state IN ('LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'FISCALIZING', 'FISCAL_FAILED') ORDER BY createdAt ASC")
     fun observeActive(): Flow<List<OrderEntity>>
 
     @Query("SELECT * FROM orders WHERE id = :orderId")

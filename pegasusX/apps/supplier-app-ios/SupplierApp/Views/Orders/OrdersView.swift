@@ -12,13 +12,13 @@ struct OrdersView: View {
             } else {
                 NavigationStack {
                     phoneContent
-                        .navigationTitle("Orders")
+                        .navigationTitle("portal.nav.orders")
                         .toolbar { ordersToolbar }
                 }
             }
         }
         .background(SupplierTheme.background)
-        .task(id: vm.statusFilter) { await vm.load() }
+        .task(id: vm.loadIdentity) { await vm.load() }
         .onChange(of: realtimeHub.refreshEpoch) { _, _ in
             Task { await vm.load(silent: true) }
         }
@@ -47,7 +47,7 @@ struct OrdersView: View {
                 filterTabs
                 OrdersList(vm: vm)
             }
-            .navigationTitle("Orders")
+            .navigationTitle("portal.nav.orders")
             .toolbar { ordersToolbar }
         } detail: {
             if let selection = vm.selection {
@@ -59,7 +59,10 @@ struct OrdersView: View {
     }
 
     private var filterTabs: some View {
-        Picker("Filter", selection: $vm.statusFilter) {
+        Picker("Filter", selection: Binding(
+            get: { vm.statusFilter },
+            set: { vm.setCoarseFilter($0) }
+        )) {
             ForEach(vm.filters, id: \.id) { filter in
                 Text(filter.label).tag(filter.id)
             }
@@ -72,7 +75,7 @@ struct OrdersView: View {
     @ToolbarContentBuilder
     private var ordersToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Button("Refresh", systemImage: "arrow.clockwise") {
+            Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") {
                 Task { await vm.load(silent: true) }
             }
             .labelStyle(.iconOnly)

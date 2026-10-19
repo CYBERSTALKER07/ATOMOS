@@ -182,7 +182,7 @@ struct OfflineVerifierView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(LabTheme.success)
 
-            Text("✓ Verified")
+            Text("Verified")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(LabTheme.success)
 

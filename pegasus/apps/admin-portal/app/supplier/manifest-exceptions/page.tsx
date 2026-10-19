@@ -7,7 +7,7 @@ import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* --- Types ------------------------------------------------- */
 
 interface ManifestException {
   exception_id: string;
@@ -20,7 +20,7 @@ interface ManifestException {
   created_at: string;
 }
 
-/* ─── Helpers ─────────────────────────────────────────────── */
+/* --- Helpers ----------------------------------------------- */
 
 function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 8)}…` : id;
@@ -46,7 +46,7 @@ function reasonBadge(reason: string) {
   );
 }
 
-/* ─── Page ────────────────────────────────────────────────── */
+/* --- Page -------------------------------------------------- */
 
 export default function ManifestExceptionsPage() {
   const [exceptions, setExceptions] = useState<ManifestException[]>([]);
@@ -69,7 +69,7 @@ export default function ManifestExceptionsPage() {
 
   useSyncHub("POLL", "default", fetchExceptions, 15000);
 
-  /* ─── Render ──────────────────────────────────────────── */
+  /* --- Render -------------------------------------------- */
 
   return (
     <div className="flex flex-col gap-6 p-6">

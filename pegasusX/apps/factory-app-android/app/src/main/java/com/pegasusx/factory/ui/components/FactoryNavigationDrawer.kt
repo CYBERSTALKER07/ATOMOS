@@ -1,5 +1,7 @@
 package com.pegasusx.factory.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Icon
@@ -10,6 +12,7 @@ import com.pegasus.design.PegasusRailItem
 import com.pegasusx.factory.ui.navigation.FactorySection
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.pegasusx.factory.R
 
 @Composable
 fun FactoryNavigationDrawer(
@@ -38,7 +41,7 @@ fun FactoryNavigationDrawer(
         modifier = modifier,
         footer = {
             IconButton(onClick = onSignOut) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Sign out")
+                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.mobile_factory_ui_sign_out))
             }
         },
     )

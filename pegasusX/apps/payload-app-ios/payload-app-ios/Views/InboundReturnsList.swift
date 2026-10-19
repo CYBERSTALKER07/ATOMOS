@@ -30,11 +30,11 @@ struct InboundReturnsList: View {
                 Text("\(row.driverName.isEmpty ? "Driver" : row.driverName) · \(row.reason) · \(row.receivedQty)/\(row.expectedQty)")
                     .font(.subheadline)
                     .foregroundStyle(TermTheme.secondary)
-                Text("\(row.returnId.prefix(8)) · suggest \(row.suggestedDisposition)")
+                Text(L10n.format("mobile_payload.ui.prefix_suggest_suggesteddisposition", "\(row.returnId.prefix(8))", "\(row.suggestedDisposition)"))
                     .font(.caption.monospaced())
                     .foregroundStyle(TermTheme.tertiary)
                 if let barcode = row.barcode, !barcode.isEmpty {
-                    Text("EAN \(barcode)")
+                    Text(L10n.format("mobile_payload.ui.ean_barcode_3", "\(barcode)"))
                         .font(.caption2.monospaced())
                         .foregroundStyle(TermTheme.secondary)
                 }

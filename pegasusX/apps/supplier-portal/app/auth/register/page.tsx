@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
   AuthRegisterShell,
@@ -22,6 +23,7 @@ import {
 } from "./wizard-state";
 
 export default function RegisterPage() {
+  const t = usePortalT();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +63,7 @@ export default function RegisterPage() {
           verification: { otpCode: "", idToken: "" },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Failed to send verification code");
+        setSubmitError(err instanceof Error ? err.message : t("supplier_portal.residual.text.failed_to_send_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -79,7 +81,7 @@ export default function RegisterPage() {
           verification: { ...s.verification, idToken },
         }));
       } catch (err) {
-        setSubmitError(err instanceof Error ? err.message : "Invalid verification code");
+        setSubmitError(err instanceof Error ? err.message : t("supplier_portal.residual.text.invalid_verification_code"));
       } finally {
         setStepBusy(false);
       }
@@ -141,7 +143,7 @@ export default function RegisterPage() {
 
   return (
     <AuthRegisterShell
-      title="Set up your supplier account"
+      title={t("supplier_portal.auth.register.text.set_up_your_supplier_account")}
       subtitle={`Step ${stepIndex + 1} of ${STEP_ORDER.length} — ${STEP_LABELS[state.step]}`}
       stepOrder={STEP_ORDER}
       stepLabels={STEP_LABELS}

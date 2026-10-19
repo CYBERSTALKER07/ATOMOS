@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePortalT } from "@/lib/i18n";
+import { useCallback, useEffect, useState } from 'react';
 import { warehouseApi } from '@/lib/warehouse-api';
 import { warehouseHomeNodeId } from '@/lib/warehouse-scope';
 import { useToast } from '@/components/Toast';
@@ -10,36 +10,45 @@ import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import type { WarehouseDispatchDriver } from '@pegasusx/types';
 
+interface RescueOption {
+  driver_id: string;
+  name: string;
+  license_plate?: string;
+  effective_capacity_vu: number;
+  is_capacity_exceeded?: boolean;
+}
+
 export default function RescuesPage() {
-  const router = useRouter();
+  const t = usePortalT();
   const { toast } = useToast();
   
-  const [warehouseId, setWarehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
+  const [warehouseId] = useState(() => warehouseHomeNodeId() || 'warehouse');
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [selectedBrokenDriver, setSelectedBrokenDriver] = useState<WarehouseDispatchDriver | null>(null);
-  const [rescueOptions, setRescueOptions] = useState<any[]>([]);
+  const [rescueOptions, setRescueOptions] = useState<RescueOption[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [proposeLoading, setProposeLoading] = useState(false);
 
-  useEffect(() => {
-    loadDrivers();
-  }, [warehouseId]);
-
-  async function loadDrivers() {
+  const loadDrivers = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await warehouseApi.previewWarehouseDispatch({ warehouse_id: warehouseId }, {});
       setDrivers(data.drivers || []);
-    } catch (e: any) {
-      setError(e.message || 'Failed to load drivers');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to load drivers';
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  }
+  }, [warehouseId]);
+
+  useEffect(() => {
+    loadDrivers();
+  }, [loadDrivers]);
 
   async function handleSelectBrokenDriver(driver: WarehouseDispatchDriver) {
     setSelectedBrokenDriver(driver);
@@ -49,9 +58,10 @@ export default function RescuesPage() {
       const result = await warehouseApi.postWarehousePreviewRescue({
         broken_driver_id: driver.driver_id
       }, { warehouse_id: warehouseId });
-      setRescueOptions(result.rescue_options || []);
-    } catch (e: any) {
-      toast(e.message || 'Failed to preview rescues', 'error');
+      setRescueOptions((result.rescue_options || []) as RescueOption[]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to preview rescues';
+      toast(msg, 'error');
       setSelectedBrokenDriver(null);
     } finally {
       setPreviewLoading(false);
@@ -71,8 +81,9 @@ export default function RescuesPage() {
       setSelectedBrokenDriver(null);
       setRescueOptions([]);
       loadDrivers();
-    } catch (e: any) {
-      toast(e.message || 'Failed to propose rescue', 'error');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to propose rescue';
+      toast(msg, 'error');
     } finally {
       setProposeLoading(false);
     }
@@ -82,15 +93,15 @@ export default function RescuesPage() {
 
   return (
     <PageChrome
-      title="Fleet Rescues"
-      description="Manage truck breakdowns and propose rescue operations"
+      title={t("warehouse_portal.dispatch.rescues.text.fleet_rescues")}
+      description={t("warehouse_portal.residual.text.manage_truck_breakdowns_and_propose_rescue_operations")}
       icon="dispatch"
       loading={loading}
       error={error}
     >
-      <PageSection title="Needs Rescue">
+      <PageSection title={t("warehouse_portal.dispatch.rescues.text.needs_rescue")}>
         {brokenDrivers.length === 0 ? (
-          <EmptyState headline="All Good" body="No trucks currently require a rescue." icon="check" />
+          <EmptyState headline={t("warehouse_portal.residual.text.all_good")} body={t("warehouse_portal.residual.text.no_trucks_currently_require_a_rescue")} icon="check" />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {brokenDrivers.map(d => (
@@ -114,9 +125,9 @@ export default function RescuesPage() {
       {selectedBrokenDriver && (
         <PageSection title={`Rescue Options for ${selectedBrokenDriver.name}`}>
           {previewLoading ? (
-            <div>Finding available trucks...</div>
+            <div>{t("warehouse_portal.dispatch.rescues.text.finding_available_trucks")}</div>
           ) : rescueOptions.length === 0 ? (
-            <EmptyState headline="No Rescuers Available" body="There are no active drivers with enough capacity." />
+            <EmptyState headline={t("warehouse_portal.residual.text.no_rescuers_available")} body={t("warehouse_portal.residual.text.there_are_no_active_drivers_with_enough_capacity")} />
           ) : (
             <div className="space-y-4">
               {rescueOptions.map(opt => (
@@ -125,7 +136,7 @@ export default function RescuesPage() {
                     <div className="font-semibold">{opt.name}</div>
                     <div className="text-sm text-muted-foreground">
                       {opt.license_plate} · Capacity: {opt.effective_capacity_vu.toFixed(1)} VU
-                      {opt.is_capacity_exceeded && <span className="text-destructive ml-2 font-medium">Insufficient Capacity</span>}
+                      {opt.is_capacity_exceeded && <span className="text-destructive ml-2 font-medium">{t("warehouse_portal.dispatch.rescues.text.insufficient_capacity")}</span>}
                     </div>
                   </div>
                   <button

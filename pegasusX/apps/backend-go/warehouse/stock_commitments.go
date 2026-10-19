@@ -208,13 +208,13 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 
 func (s *Service) productMetaByIDs(ctx context.Context, productIDs []string) map[string]productMeta {
 	out := map[string]productMeta{}
-	if s.spannerClient == nil || len(productIDs) == 0 || s.supplierID == "" {
+	if s.spannerClient == nil || len(productIDs) == 0 || s.resolveSupplierScope(ctx) == "" {
 		return out
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT ProductId, Name, COALESCE(ImageURL, '') FROM Products
 		      WHERE SupplierId = @sid AND ProductId IN UNNEST(@ids)`,
-		Params: map[string]any{"sid": s.supplierID, "ids": productIDs},
+		Params: map[string]any{"sid": s.resolveSupplierScope(ctx), "ids": productIDs},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()

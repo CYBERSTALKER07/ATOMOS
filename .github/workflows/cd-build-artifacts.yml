@@ -1,0 +1,31 @@
+name: 02 - Build and Push to GAR
+on:
+  push:
+    branches: [ main ]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend-go, admin-portal, factory-portal]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Configure Docker authentication
+        run: gcloud auth configure-docker asia-south1-docker.pkg.dev
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/${{ matrix.service }}.Dockerfile
+          push: true
+          tags: ${{ secrets.GAR_LOCATION }}/${{ secrets.GCP_PROJECT_ID }}/pegasus/${{ matrix.service }}:${{ github.sha }}

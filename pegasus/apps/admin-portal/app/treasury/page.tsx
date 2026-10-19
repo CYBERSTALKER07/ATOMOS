@@ -80,7 +80,7 @@ export default function TreasuryDashboard() {
 
     return (
         <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-canvas)', color: 'var(--desk-text-primary)' }}>
-            {/* ── Page Header ── */}
+            {/* -- Page Header -- */}
             <header className="md-page-header">
                 <div>
                     <h1 className="md-typescale-headline-medium">Treasury</h1>
@@ -107,7 +107,7 @@ export default function TreasuryDashboard() {
                 </div>
             </header>
 
-            {/* ── KPI Grid ── */}
+            {/* -- KPI Grid -- */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                 {loading ? (
                     Array.from({ length: 3 }).map((_, i) => (
@@ -157,7 +157,7 @@ export default function TreasuryDashboard() {
                 )}
             </div>
 
-            {/* ── Margin Analysis ── */}
+            {/* -- Margin Analysis -- */}
             {data && data.total_volume > 0 && (
                 <div className="desk-card p-6">
                     <h2 className="md-typescale-title-medium mb-4">Margin Analysis</h2>
@@ -188,7 +188,7 @@ export default function TreasuryDashboard() {
                 </div>
             )}
 
-            {/* ── Billing Meter History ── */}
+            {/* -- Billing Meter History -- */}
             {history.length > 0 && (
                 <div className="desk-card p-6 mt-6">
                     <h2 className="md-typescale-title-medium mb-4">Billing Meter History</h2>
@@ -219,7 +219,7 @@ export default function TreasuryDashboard() {
                 </div>
             )}
 
-            {/* ── Fee Milestone Tracker ── */}
+            {/* -- Fee Milestone Tracker -- */}
             {milestone && (
                 <div className="desk-card p-6 mt-6">
                     <h2 className="md-typescale-title-medium mb-4">Fee Milestone Tracker</h2>
@@ -263,7 +263,7 @@ export default function TreasuryDashboard() {
                 </div>
             )}
 
-            {/* ── Footer ── */}
+            {/* -- Footer -- */}
             {lastRefreshed && (
                 <p className="mt-6 md-typescale-label-small" style={{ color: 'var(--desk-text-tertiary)' }}>
                     Last updated: {lastRefreshed.toLocaleTimeString()} · Auto-refresh every 5s

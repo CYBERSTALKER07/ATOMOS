@@ -94,6 +94,10 @@ enum FactoryIdempotency {
         "factory-supply-accept:\(requestId)"
     }
 
+    static func supplyRequestQC(requestId: String, result: String) -> String {
+        "factory-supply-qc:\(requestId):\(result.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())"
+    }
+
     static func opsLocation(lat: Double, lng: Double, placeId: String? = nil) -> String {
         let fingerprint = stableHash(String(format: "%.6f:%.6f:%@", lat, lng, placeId ?? ""))
         return "factory-ops-location:\(factoryId()):\(fingerprint)"

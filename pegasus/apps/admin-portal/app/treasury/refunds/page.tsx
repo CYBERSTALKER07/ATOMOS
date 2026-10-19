@@ -108,19 +108,28 @@ export default function RefundsPage() {
       </div>
 
       <div className="desk-card p-4 grid grid-cols-1 md:grid-cols-5 gap-3" style={{ background: 'var(--desk-surface)' }}>
+        <label htmlFor="refund-order-id" className="sr-only">Order ID</label>
         <input
+          id="refund-order-id"
+          aria-label="Order ID"
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
           placeholder="Order ID"
           className="md-input-outlined px-3 py-2"
         />
+        <label htmlFor="refund-reason" className="sr-only">Refund reason</label>
         <input
+          id="refund-reason"
+          aria-label="Refund reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Refund reason"
           className="md-input-outlined px-3 py-2"
         />
+        <label htmlFor="refund-amount" className="sr-only">Amount UZS (0=full)</label>
         <input
+          id="refund-amount"
+          aria-label="Amount UZS (0=full)"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Amount UZS (0=full)"
@@ -128,7 +137,10 @@ export default function RefundsPage() {
           type="number"
           min="0"
         />
+        <label htmlFor="refund-currency" className="sr-only">Currency (e.g. UZS)</label>
         <input
+          id="refund-currency"
+          aria-label="Currency (e.g. UZS)"
           value={currency}
           onChange={(e) => setCurrency(e.target.value)}
           placeholder="Currency (e.g. UZS)"

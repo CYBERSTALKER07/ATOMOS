@@ -68,7 +68,7 @@ struct AnalyticsView: View {
                                 HStack {
                                     Text(day.date)
                                     Spacer()
-                                    Text("\(day.transfers) transfers")
+                                    Text(L10n.format("mobile_factory.ui.transfers_transfers", "\(day.transfers)"))
                                         .font(.subheadline.monospacedDigit())
                                 }
                                 .labCard()
@@ -81,10 +81,10 @@ struct AnalyticsView: View {
             }
         }
         .background(LabTheme.background)
-        .navigationTitle("Analytics Overview")
+        .navigationTitle("mobile_factory.ui.analytics_overview")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Refresh", systemImage: "arrow.clockwise", action: load)
+                Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise", action: load)
                     .labelStyle(.iconOnly)
             }
         }

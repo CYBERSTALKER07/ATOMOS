@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.manifests
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -8,15 +10,16 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.pegasus.design.RealtimeRefreshEffect
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.network.RealtimeRefreshEffect
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.data.model.SupplierManifestRow
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
 import com.pegasusx.supplier.data.remote.SupplierRealtimeSignals
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,13 +71,13 @@ fun ManifestsScreen(
                 title = { Text("Manifests") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
                     TextButton(onClick = onOpenGateExceptions) { Text("Gate") }
                     IconButton(onClick = { load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -82,7 +85,7 @@ fun ManifestsScreen(
     ) { padding ->
         when {
             showFullScreenLoading(loading, rows.isNotEmpty()) -> PegasusLoadingState(
-                title = "Loading manifests…",
+                title = stringResource(R.string.mobile_supplier_ui_loading_manifests),
                 body = "Supplier manifest queue",
                 modifier = Modifier.padding(padding),
             )

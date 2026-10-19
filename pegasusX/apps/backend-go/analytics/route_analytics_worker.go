@@ -10,6 +10,7 @@ import (
 
 type RoutePerformance struct {
 	RouteId            string
+	SupplierId         spanner.NullString
 	DriverId           spanner.NullString
 	PlannedStops       spanner.NullInt64
 	ActualStops        spanner.NullInt64
@@ -59,10 +60,10 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 		ComputedAt: time.Now().UTC(),
 	}
 
-	// Manifest metadata for planned stops, driver, replans, duration bounds.
+	// Manifest metadata for supplier, planned stops, driver, replans, duration bounds.
 	manifestIter := w.applier.Query(ctx, spanner.Statement{
 		SQL: `
-			SELECT DriverId, StopCount, ReplanCount, DispatchedAt, CompletedAt
+			SELECT SupplierId, DriverId, StopCount, ReplanCount, DispatchedAt, CompletedAt
 			FROM SupplierTruckManifests
 			WHERE RouteId = @routeId
 			ORDER BY UpdatedAt DESC LIMIT 1`,
@@ -70,10 +71,11 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 	})
 	if manifestIter != nil {
 		if row, err := manifestIter.Next(); err == nil {
-			var driver spanner.NullString
+			var supplier, driver spanner.NullString
 			var stopCount, replan spanner.NullInt64
 			var dispatched, completed spanner.NullTime
-			if err := row.Columns(&driver, &stopCount, &replan, &dispatched, &completed); err == nil {
+			if err := row.Columns(&supplier, &driver, &stopCount, &replan, &dispatched, &completed); err == nil {
+				perf.SupplierId = supplier
 				perf.DriverId = driver
 				perf.PlannedStops = stopCount
 				perf.ReplanCount = replan
@@ -86,6 +88,22 @@ func (w *RouteAnalyticsWorker) ComputeAndSave(ctx context.Context, routeId strin
 			}
 		}
 		manifestIter.Stop()
+	}
+
+	if !perf.SupplierId.Valid || perf.SupplierId.StringVal == "" {
+		sidIter := w.applier.Query(ctx, spanner.Statement{
+			SQL:    `SELECT SupplierId FROM Orders WHERE RouteId = @routeId LIMIT 1`,
+			Params: map[string]any{"routeId": routeId},
+		})
+		if sidIter != nil {
+			if row, err := sidIter.Next(); err == nil {
+				var sid string
+				if err := row.Column(0, &sid); err == nil && sid != "" {
+					perf.SupplierId = spanner.NullString{StringVal: sid, Valid: true}
+				}
+			}
+			sidIter.Stop()
+		}
 	}
 
 	actualIter := w.applier.Query(ctx, spanner.Statement{

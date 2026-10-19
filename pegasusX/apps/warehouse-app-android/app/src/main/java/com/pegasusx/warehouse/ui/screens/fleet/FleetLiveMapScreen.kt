@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.fleet
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -20,6 +22,7 @@ import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,7 +68,7 @@ fun FleetLiveMapScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Live fleet") },
-                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") } } },
+                navigationIcon = { if (onBack != null) { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back)) } } },
                 actions = {
                     TextButton(onClick = { scope.launch { load() } }) { Text("Refresh") }
                 },
@@ -73,21 +76,21 @@ fun FleetLiveMapScreen(
         },
     ) { padding ->
         when {
-            loading && routes.isEmpty() -> com.pegasus.design.PegasusLoadingState(
-                title = "Loading fleet map...",
+            loading && routes.isEmpty() -> com.pegasus.design.ui.PegasusLoadingState(
+                title = stringResource(R.string.mobile_warehouse_ui_loading_fleet_map),
                 body = "Fetching live locations and routes",
                 modifier = Modifier.padding(padding),
             )
-            error != null && routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Error,
+            error != null && routes.isEmpty() -> com.pegasus.design.ui.PegasusStatePane(
+                kind = com.pegasus.design.ui.PegasusStateKind.Error,
                 headline = "Failed to load map",
                 body = error!!,
                 actionLabel = "Retry",
                 onAction = { scope.launch { load() } },
                 modifier = Modifier.padding(padding),
             )
-            routes.isEmpty() -> com.pegasus.design.PegasusStatePane(
-                kind = com.pegasus.design.PegasusStateKind.Empty,
+            routes.isEmpty() -> com.pegasus.design.ui.PegasusStatePane(
+                kind = com.pegasus.design.ui.PegasusStateKind.Empty,
                 headline = "No active routes",
                 body = "There are no fleet routes currently active.",
                 modifier = Modifier.padding(padding),
@@ -122,8 +125,8 @@ private fun FleetLiveRouteCard(route: WarehouseFleetLiveRoute) {
     ElevatedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
             Text(route.driverName ?: route.driverId, style = MaterialTheme.typography.titleMedium)
-            Text("${route.manifestState} · ${route.stopCountLabel(pointCount)}", style = MaterialTheme.typography.bodyMedium)
-            Text("Manifest ${route.manifestId.take(8)}…", style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.mobile_warehouse_ui_manifeststate_stopcountlabel, route.manifestState, route.stopCountLabel(pointCount)), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.mobile_warehouse_ui_manifest_take, route.manifestId.take(8)), style = MaterialTheme.typography.bodySmall)
             if (route.liveLocationAvailable && route.driverLocation != null) {
                 val stale = route.locationStale == true
                 val location = route.driverLocation

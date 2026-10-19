@@ -9,6 +9,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.pegasusx.retailer.R
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.model.moneyCurrency
 import com.pegasusx.retailer.data.local.TokenManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -56,6 +57,7 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
         "ORDER_REASSIGNED" -> "Order Reassigned"
         "SETTLEMENT_REQUIRED" -> "Settlement Required"
+        "SPLIT_PAYMENT_CREATED" -> "Split Payment Processed"
         "DELIVERY_SESSION_UPDATED" -> "Delivery Session Updated"
         "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
         "FISCAL_RECEIPT_REQUESTED", "PAYMENT_CLEARED" -> "Pending Fiscal Receipt"
@@ -76,7 +78,7 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
             "ORDER_REASSIGNED" -> "Order #$orderId has been reassigned. ETA may shift"
             "SETTLEMENT_REQUIRED" -> {
                 val amount = data["amount"]
-                val currency = data["currency"] ?: "UZS"
+                val currency = moneyCurrency(data["currency"])
                 if (!amount.isNullOrBlank()) {
                     "Settlement of $amount $currency is required for order #$orderId"
                 } else {

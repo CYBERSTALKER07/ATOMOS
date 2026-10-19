@@ -1,3 +1,6 @@
+"use client";
+
+import { usePortalT } from "@/lib/i18n";
 import Icon from '@/components/Icon';
 import type { WarehouseStaffMember } from '@pegasusx/types';
 
@@ -7,6 +10,7 @@ interface StaffListProps {
 }
 
 export default function StaffList({ staff, loading }: StaffListProps) {
+  const t = usePortalT();
   if (loading) {
     return (
       <div className="space-y-2">
@@ -21,7 +25,7 @@ export default function StaffList({ staff, loading }: StaffListProps) {
     return (
       <div className="text-center py-20 text-(--muted)">
         <Icon name="staff" size={48} className="mx-auto mb-3 opacity-30" />
-        <p className="text-sm">No staff members registered</p>
+        <p className="text-sm">{t("warehouse_portal.staff.staff_list.text.no_staff_members_registered")}</p>
       </div>
     );
   }
@@ -31,10 +35,10 @@ export default function StaffList({ staff, loading }: StaffListProps) {
       <table className="desk-table w-full text-sm">
         <thead>
           <tr className="border-b border-(--border)" style={{ background: 'var(--surface)' }}>
-            <th className="text-left px-4 py-3 font-semibold text-(--muted)">Name</th>
-            <th className="text-left px-4 py-3 font-semibold text-(--muted)">Phone</th>
-            <th className="text-left px-4 py-3 font-semibold text-(--muted)">Role</th>
-            <th className="text-left px-4 py-3 font-semibold text-(--muted)">Status</th>
+            <th className="text-left px-4 py-3 font-semibold text-(--muted)">{t("warehouse_portal.drivers.text.name")}</th>
+            <th className="text-left px-4 py-3 font-semibold text-(--muted)">{t("common.field.phone")}</th>
+            <th className="text-left px-4 py-3 font-semibold text-(--muted)">{t("warehouse_portal.staff.text.role")}</th>
+            <th className="text-left px-4 py-3 font-semibold text-(--muted)">{t("warehouse_portal.bins.text.status")}</th>
           </tr>
         </thead>
         <tbody>

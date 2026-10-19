@@ -6,29 +6,36 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
-	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
-	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
-	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
-	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/apps/backend-go/compliance"
+	"github.com/pegasusx/pegasusx/apps/backend-go/loyalty"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
+	"github.com/pegasusx/pegasusx/apps/backend-go/orgoidc"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/replenishment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/segment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/staffinvite"
+	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
+	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
 	"github.com/pegasusx/pegasusx/apps/backend-go/twin"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
 	Service           *supplier.Service
+	RetailerService   *retailer.Service
+	StaffInvite       *staffinvite.Handler
 	OrderService      *order.Service
 	PayloadService    *payload.Service
-	NotificationInbox *notifications.InboxHandlers
 	ComplianceHandler *compliance.Handler
 	ExceptionResolve  supplier.ExceptionResolveDeps
 	JWTSecret         string
 	Spanner           *spanner.Client
 	SupplierHub       *ws.Hub
 	WarehouseHub      *ws.Hub
+	TelemetryHub      *ws.Hub
+	OrgOIDC           *orgoidc.Service
 }
 
 // RegisterRoutes mounts:
@@ -42,11 +49,12 @@ type Deps struct {
 //	GET/POST /v1/supplier/org/members  (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/fleet/drivers  (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/fleet/vehicles (requires session cookie, ADMIN role)
+//	GET /v1/supplier/events             (requires session cookie, ADMIN role)
 //	GET /v1/supplier/ws-session         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/dashboard         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/earnings          (requires session cookie, ADMIN role)
 //	GET/PATCH /v1/supplier/inventory   (requires session cookie, ADMIN role)
-//	GET /v1/supplier/inventory/audit   (requires session cookie, ADMIN role)
+//	GET /v1/supplier/inventory/audit   (410 audit_unwired; P1)
 //	GET /v1/supplier/orders            (requires session cookie, ADMIN role)
 //	POST /v1/supplier/orders/vet       (requires session cookie, ADMIN role)
 //	GET/POST /v1/supplier/ai/recommendations (requires session cookie, ADMIN role)
@@ -69,6 +77,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/supplier/register", d.Service.HandleRegister)
 	r.Post("/v1/auth/supplier/login", d.Service.HandleLogin)
 	r.Post("/v1/auth/supplier/refresh", d.Service.HandleSupplierRefresh)
+	if d.OrgOIDC != nil {
+		r.Get("/v1/auth/oidc/discovery", d.OrgOIDC.HandleDiscovery)
+		r.Post("/v1/auth/oidc/exchange", d.OrgOIDC.HandleExchange)
+	}
 
 	warehouseScope := auth.RequireWarehouseScope
 	if d.Spanner != nil {
@@ -97,8 +109,26 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Delete("/v1/supplier/pricing/retailer-overrides/{overrideID}", d.Service.HandleRetailerPricingOverrideDelete)
 		gr.Get("/v1/supplier/topology", d.Service.HandleTopology)
 		gr.Put("/v1/supplier/topology", d.Service.HandleTopology)
+		gr.Get("/v1/supplier/payment-catalog", d.Service.HandlePaymentCatalog)
+		gr.Get("/v1/supplier/regions", d.Service.HandleSupplierRegions)
+		gr.Put("/v1/supplier/regions", d.Service.HandleSupplierRegions)
+		gr.Get("/v1/supplier/warehouses/{warehouseID}/pins", d.Service.HandleWarehousePins)
+		gr.Put("/v1/supplier/warehouses/{warehouseID}/pins", d.Service.HandleWarehousePins)
+		gr.Get("/v1/supplier/warehouses/{warehouseID}/coverage", d.Service.HandleWarehouseCoverage)
+		gr.Put("/v1/supplier/warehouses/{warehouseID}/coverage", d.Service.HandleWarehouseCoverage)
 		gr.Get("/v1/supplier/org/members", d.Service.HandleOrgMembers)
 		gr.Post("/v1/supplier/org/members", d.Service.HandleOrgMembers)
+		if d.RetailerService != nil {
+			gr.Post("/v1/supplier/retailer-invites", d.RetailerService.HandleCreateTradingPartnerInvite)
+		}
+		if d.StaffInvite != nil {
+			gr.Post("/v1/supplier/staff-invites", d.StaffInvite.HandleCreate)
+		}
+		if d.OrgOIDC != nil {
+			gr.Get("/v1/supplier/oidc", d.OrgOIDC.HandleGet)
+			gr.Put("/v1/supplier/oidc", d.OrgOIDC.HandlePut)
+			gr.Delete("/v1/supplier/oidc", d.OrgOIDC.HandleDelete)
+		}
 		gr.Patch("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		gr.Put("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)
 		gr.Delete("/v1/supplier/org/members/{userID}", d.Service.HandleOrgMemberByID)
@@ -106,6 +136,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/fleet/drivers", d.Service.HandleFleetDrivers)
 		gr.Get("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
 		gr.Post("/v1/supplier/fleet/vehicles", d.Service.HandleFleetVehicles)
+		gr.Get("/v1/supplier/events", ws.HandleSupplierEvents(nil, d.JWTSecret, d.SupplierHub, d.WarehouseHub, d.TelemetryHub))
 		gr.Get("/v1/supplier/ws-session", d.Service.HandleWebSocketSession)
 		gr.Get("/v1/supplier/dashboard", d.Service.HandleDashboard)
 		gr.Get("/v1/supplier/manifests", d.Service.HandleManifests)
@@ -115,6 +146,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/dispatch/tracking", d.Service.HandleDispatchTracking)
 		gr.Get("/v1/supplier/activity", d.Service.HandleActivity)
 		gr.Get("/v1/supplier/supply-lanes", d.Service.HandleSupplyLanes)
+		gr.Get("/v1/supplier/crm/retailers", d.Service.HandleCRMRetailers)
+		gr.Get("/v1/supplier/crm/retailers/{retailerId}", d.Service.HandleCRMRetailerDetail)
+		gr.Get("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
+		gr.Patch("/v1/supplier/loyalty/program", (&loyalty.Handlers{Spanner: d.Spanner}).HandleSupplierProgram)
+		gr.Get("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
+		gr.Put("/v1/supplier/network-mode", d.Service.HandleNetworkMode)
+		gr.Post("/v1/supplier/planning/pull-matrix", d.Service.HandlePlanningPullMatrix)
+		gr.Post("/v1/supplier/planning/predictive-push", d.Service.HandlePlanningPredictivePush)
+		gr.Post("/v1/supplier/planning/kill-switch", d.Service.HandlePlanningKillSwitch)
 		gr.Get("/v1/supplier/exceptions", d.Service.HandleExceptions)
 		gr.Post("/v1/supplier/exceptions/{kind}/{id}/resolve", supplier.HandleResolveException(d.ExceptionResolve))
 		gr.Get("/v1/supplier/ops/exception-map", d.Service.HandleExceptionMap)
@@ -123,6 +163,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory", d.Service.HandleInventory)
 		gr.Patch("/v1/supplier/inventory/policy", d.Service.HandleInventoryPolicy)
+		gr.Get("/v1/supplier/service-policy", d.Service.HandleGetServicePolicy)
+		gr.Put("/v1/supplier/service-policy", d.Service.HandleUpsertServicePolicy)
+		gr.Post("/v1/supplier/service-policy", d.Service.HandleUpsertServicePolicy)
+		gr.Get("/v1/supplier/service-promises/breaches", d.Service.HandleListBreachedPromises)
+		gr.Get("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
+		gr.Post("/v1/supplier/recalls", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecalls)
+		gr.Get("/v1/supplier/recalls/{campaignID}", (&stocklots.Handler{Spanner: d.Spanner}).HandleRecallByID)
 		gr.Post("/v1/supplier/inventory/import", d.Service.HandleInventoryImport)
 		supplier.RegisterImportRoutes(gr, supplier.ImportRoutesDeps{
 			Spanner:      d.Spanner,
@@ -135,6 +182,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/analytics/revenue", d.Service.HandleAnalyticsRevenue)
 		gr.Get("/v1/supplier/analytics/demand/today", d.Service.HandleAnalyticsDemandToday)
 		gr.Get("/v1/supplier/analytics/demand/history", d.Service.HandleAnalyticsDemandHistory)
+		gr.Get("/v1/supplier/analytics/demand/accuracy", d.Service.HandleAnalyticsDemandAccuracy)
 		// B4.4 STORE_POS flywheel DEMAND_SIGNAL feed (distinct from planning DemandSignals).
 		gr.Get("/v1/supplier/analytics/demand/flywheel", d.Service.HandleAnalyticsDemandFlywheel)
 		gr.Get("/v1/supplier/orders", d.Service.HandleOrders)
@@ -160,7 +208,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			gr.Get("/v1/compliance/dashboard", d.ComplianceHandler.GetDashboard)
 			gr.Get("/v1/compliance/export", d.ComplianceHandler.ExportCSV)
 		}
-		
+
 		if d.PayloadService != nil {
 			gr.Post("/v1/supplier/reassign-order", d.PayloadService.HandleApplyReassign)
 			gr.Post("/v1/supplier/recommend-reassign", d.PayloadService.HandleRecommendReassign)
@@ -170,6 +218,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/broadcast", d.Service.HandleBroadcast)
 		gr.Post("/v1/supplier/replenishment/trigger", d.Service.HandleReplenishmentTrigger)
 		gr.Get("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
+		gr.Patch("/v1/supplier/replenishment/policies", d.Service.HandleReplenishmentPolicies)
 		gr.Get("/v1/supplier/replenishment/traceability", d.Service.HandleReplenishmentTraceability)
 
 		if d.Spanner != nil && d.OrderService != nil {
@@ -201,11 +250,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)
 		gr.Post("/v1/supplier/control-tower/zone-overrides", d.Service.HandleControlTowerZoneOverrides)
 		gr.Post("/v1/supplier/planning/scenarios/run", d.Service.HandlePlanningScenarioRun)
+		gr.Get("/v1/supplier/planning/scenarios", d.Service.HandlePlanningScenarioList)
+		gr.Post("/v1/supplier/planning/scenarios/compare", d.Service.HandlePlanningScenarioCompare)
+		gr.Post("/v1/supplier/planning/scenarios/{scenarioID}/clone", d.Service.HandlePlanningScenarioClone)
+		gr.Post("/v1/supplier/planning/scenarios/{scenarioID}/publish", d.Service.HandlePlanningScenarioPublish)
 		gr.Get("/v1/supplier/planning/s-and-op", d.Service.HandlePlanningSAndOP)
 		gr.Get("/v1/supplier/knowledge-graph", d.Service.HandleKnowledgeGraph)
 		gr.Post("/v1/supplier/planning/agent/invoke", d.Service.HandleGovernedAgentHook)
 		gr.Get("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
 		gr.Post("/v1/supplier/planning/seasonal-overrides", d.Service.HandlePlanningSeasonalOverrides)
+		gr.Post("/v1/supplier/planning/seasonal-estimate", d.Service.HandlePlanningSeasonalEstimate)
 		gr.Post("/v1/supplier/planning/signals/ingest", d.Service.HandlePlanningSignalIngest)
 		gr.Get("/v1/supplier/planning/signals/status", d.Service.HandlePlanningSignalStatus)
 		gr.Post("/v1/supplier/planning/promotions/simulate", d.Service.HandlePlanningPromoSimulate)
@@ -215,9 +269,5 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Get("/v1/supplier/fleet/live-map", d.Service.HandleSupplierFleetLiveMap)
 		gr.Get("/v1/supplier/returns", d.Service.HandleReturns)
 		gr.Post("/v1/supplier/returns/resolve", d.Service.HandleResolveReturn)
-		if d.NotificationInbox != nil {
-			gr.Get("/v1/user/notifications", d.NotificationInbox.HandleList)
-			gr.Post("/v1/user/notifications/read", d.NotificationInbox.HandleMarkRead)
-		}
 	})
 }

@@ -28,9 +28,9 @@ struct RetailerOverridesView: View {
                     } else {
                         ForEach(overrides) { row in
                             VStack(alignment: .leading, spacing: SupplierTheme.spacingXS) {
-                                Text("Retailer \(row.retailerId.prefix(10))…")
+                                Text(L10n.format("mobile_supplier.ui.retailer_prefix", "\(row.retailerId.prefix(10))"))
                                     .font(.headline)
-                                Text("Product \(row.productId.prefix(10))… · \(row.price)")
+                                Text(L10n.format("mobile_supplier.ui.product_prefix_price", "\(row.productId.prefix(10))", "\(row.price)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -38,7 +38,7 @@ struct RetailerOverridesView: View {
                                 Button(role: .destructive) {
                                     Task { await deleteOverride(row.overrideId) }
                                 } label: {
-                                    Text("Delete")
+                                    Text("mobile_supplier.ui.delete")
                                 }
                             }
                         }
@@ -47,7 +47,7 @@ struct RetailerOverridesView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Retailer overrides")
+        .navigationTitle("supplier_portal.pricing.retailer_overrides.text.retailer_overrides")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showCreate = true } label: { Image(systemName: "plus") }
@@ -61,12 +61,12 @@ struct RetailerOverridesView: View {
     private var createSheet: some View {
         NavigationStack {
             Form {
-                TextField("Retailer ID", text: $retailerId)
-                TextField("Product ID", text: $productId)
-                TextField("Price (minor units)", text: $price)
+                TextField("supplier_portal.chargebacks.text.retailer_id", text: $retailerId)
+                TextField("factory_portal.analytics.text.product_id", text: $productId)
+                TextField("mobile_supplier.ui.price_minor_units", text: $price)
                     .keyboardType(.numberPad)
                 if previewLoading {
-                    Text("Calculating impact preview…")
+                    Text("supplier_portal.pricing.retailer_overrides.text.calculating_impact_preview")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else if let preview {
@@ -78,10 +78,10 @@ struct RetailerOverridesView: View {
                     }
                 }
             }
-            .navigationTitle("New override")
+            .navigationTitle("mobile_supplier.ui.new_override")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showCreate = false }
+                    Button("common.action.cancel") { showCreate = false }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(creating ? "…" : "Create") { Task { await createOverride() } }

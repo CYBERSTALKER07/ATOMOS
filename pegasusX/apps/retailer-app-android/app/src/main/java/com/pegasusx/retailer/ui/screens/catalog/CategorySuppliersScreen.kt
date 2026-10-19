@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.catalog
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 
@@ -52,6 +54,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasusx.retailer.data.model.Supplier
 import com.pegasusx.retailer.ui.components.PegasusEmptyState
 import com.pegasusx.retailer.ui.theme.SoftSquircleShape
+import com.pegasusx.retailer.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +77,7 @@ fun CategorySuppliersScreen(
                 title = { Text(categoryName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -183,7 +186,7 @@ fun CategorySuppliersScreen(
     ) {
                             item {
                                 Text(
-                                    text = "${uiState.suppliers.size} suppliers carry $categoryName",
+                                    text = stringResource(R.string.mobile_retailer_ui_size_suppliers_carry_categoryname, uiState.suppliers.size, categoryName),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                                 )

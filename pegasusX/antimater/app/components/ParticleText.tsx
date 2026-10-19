@@ -1,0 +1,783 @@
+'use client';
+
+import { useEffect, useRef, type CSSProperties } from 'react';
+import { PEGASUS_GLYPHS, PEGASUS_LETTER_OFFSETS } from './visuals/PegasusSciFiLogo';
+
+export interface ParticleTextProps {
+  text?: string;
+  useBrandmark?: boolean;
+  particleSize?: number;
+  density?: number;
+  color?: string;
+  highlightColor?: string;
+  scatter?: number;
+  gatherDuration?: number;
+  stagger?: number;
+  pointerRepel?: number;
+  repelRadius?: number;
+  idleDrift?: number;
+  trigger?: 'mount' | 'view' | 'hover' | 'click' | 'none';
+  fontSize?: number | string;
+  fontWeight?: number | string;
+  fontFamily?: string;
+  letterSpacing?: string;
+  fitContainer?: boolean;
+  fitWidth?: boolean;
+  glow?: boolean;
+  textAlign?: 'left' | 'center' | 'right';
+  className?: string;
+  style?: CSSProperties;
+  maxParticles?: number;
+}
+
+type Rgb = { r: number; g: number; b: number };
+type Target = { x: number; y: number; alpha: number };
+type Particle = {
+  x: number;
+  y: number;
+  startX: number;
+  startY: number;
+  targetX: number;
+  targetY: number;
+  size: number;
+  color: string;
+  seed: number;
+  depth: number;
+  delay: number;
+  sinPhase: number;
+  cosPhase: number;
+};
+
+const hexToRgb = (hex: string): Rgb | null => {
+  const clean = hex.replace('#', '').trim();
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return null;
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16)
+  };
+};
+
+const mixRgb = (from: Rgb, to: Rgb, amount: number): Rgb => ({
+  r: Math.round(from.r + (to.r - from.r) * amount),
+  g: Math.round(from.g + (to.g - from.g) * amount),
+  b: Math.round(from.b + (to.b - from.b) * amount)
+});
+
+const rgbToCss = (rgb: Rgb): string => `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
+const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+
+const resolveFontSize = (
+  value: number | string,
+  container: HTMLDivElement,
+  fontWeight: number | string,
+  fontFamily: string
+): number => {
+  if (typeof value === 'number') return value;
+
+  const probe = document.createElement('span');
+  probe.textContent = 'M';
+  probe.style.position = 'absolute';
+  probe.style.visibility = 'hidden';
+  probe.style.pointerEvents = 'none';
+  probe.style.fontSize = value;
+  probe.style.fontWeight = String(fontWeight);
+  probe.style.fontFamily = fontFamily;
+  container.appendChild(probe);
+  const size = parseFloat(window.getComputedStyle(probe).fontSize) || 96;
+  probe.remove();
+  return size;
+};
+
+const waitForFonts = async (font: string): Promise<void> => {
+  if (typeof document === 'undefined' || !('fonts' in document)) return;
+
+  try {
+    if (document.fonts.check?.(font)) return;
+    await Promise.race([
+      document.fonts.load(font),
+      document.fonts.ready,
+      new Promise(resolve => setTimeout(resolve, 80))
+    ]);
+  } catch {}
+};
+
+const ParticleText = ({
+  text = 'React Bits',
+  useBrandmark = false,
+  particleSize = 2,
+  density = 4,
+  color = '#ffffff',
+  highlightColor = '#8b5cf6',
+  scatter = 180,
+  gatherDuration = 1600,
+  stagger = 420,
+  pointerRepel = 40,
+  repelRadius = 120,
+  idleDrift = 0.7,
+  trigger = 'mount',
+  fontSize = 'clamp(3rem, 12vw, 8rem)',
+  fontWeight = 800,
+  fontFamily = 'inherit',
+  letterSpacing,
+  fitContainer = true,
+  fitWidth = false,
+  glow = true,
+  textAlign = 'left',
+  className = '',
+  style,
+  maxParticles: customMaxParticles
+}: ParticleTextProps) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return undefined;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    let particles: Particle[] = [];
+    let animationFrame: number | null = null;
+    let resizeFrame: number | null = null;
+    let buildId = 0;
+    let gathering = false;
+    let initialGatherDone = false;
+    let gatherStart = 0;
+    let reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let isVisible = true;
+
+    const pointer = {
+      active: false,
+      x: 0,
+      y: 0,
+      smoothX: 0,
+      smoothY: 0
+    };
+
+    const startGather = (fromScatter = true): void => {
+      if (!particles.length) return;
+
+      const now = performance.now();
+      const spread = reducedMotion ? 0 : scatter;
+
+      particles.forEach(particle => {
+        if (fromScatter) {
+          const angle = particle.seed * Math.PI * 2;
+          const distance = spread * (0.35 + particle.depth * 0.75);
+          particle.x = particle.targetX + Math.cos(angle) * distance + (particle.depth - 0.5) * spread * 0.55;
+          particle.y = particle.targetY + Math.sin(angle) * distance + (particle.seed - 0.5) * spread * 0.55;
+        }
+
+        particle.startX = particle.x;
+        particle.startY = particle.y;
+        particle.delay = reducedMotion ? 0 : particle.seed * stagger;
+      });
+
+      gatherStart = now;
+      gathering = true;
+    };
+
+    let lastRenderTime = 0;
+    const targetFps = 60;
+    const frameInterval = 1000 / targetFps;
+
+    const render = (now: number): void => {
+      if (!isVisible) {
+        animationFrame = null;
+        return;
+      }
+
+      // Throttle to 60fps on high-refresh rate displays (e.g. 120Hz ProMotion on Mac/iPad)
+      // to avoid overtaxing Safari compositor and battery.
+      if (now - lastRenderTime < frameInterval - 1) {
+        animationFrame = window.requestAnimationFrame(render);
+        return;
+      }
+      lastRenderTime = now;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // In Safari WebKit, ctx.shadowBlur in 2D canvas draw loops causes CPU software blur convolution passes.
+      // We keep ctx.shadowBlur = 0 and apply the glow via GPU-accelerated CSS drop-shadow on the canvas element!
+      ctx.shadowBlur = 0;
+
+      pointer.smoothX += (pointer.x - pointer.smoothX) * 0.18;
+      pointer.smoothY += (pointer.y - pointer.smoothY) * 0.18;
+
+      let complete = true;
+
+      // Precompute time waves once per frame instead of calculating Math.sin/cos thousands of times
+      const driftTime = now * 0.001;
+      const sinT = Math.sin(driftTime * 0.9);
+      const cosT = Math.cos(driftTime * 0.9);
+      const sinT2 = Math.sin(driftTime * 0.75);
+      const cosT2 = Math.cos(driftTime * 0.75);
+
+      const hasRepel = pointer.active && !reducedMotion && pointerRepel > 0 && repelRadius > 0;
+      const follow = reducedMotion ? 1 : 0.22;
+
+      let currentColor = '';
+      if (!gathering) {
+        ctx.globalAlpha = 1;
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const particle = particles[i];
+        let baseX = particle.targetX;
+        let baseY = particle.targetY;
+        let progress = 1;
+
+        if (gathering) {
+          const local = (now - gatherStart - particle.delay) / Math.max(1, reducedMotion ? 1 : gatherDuration);
+          progress = clamp(local, 0, 1);
+          const eased = easeOutCubic(progress);
+          baseX = particle.startX + (particle.targetX - particle.startX) * eased;
+          baseY = particle.startY + (particle.targetY - particle.startY) * eased;
+          if (progress < 1) complete = false;
+        } else if (!reducedMotion && idleDrift > 0) {
+          baseX += (sinT * particle.cosPhase + cosT * particle.sinPhase) * idleDrift * particle.depth;
+          baseY += (cosT2 * particle.cosPhase - sinT2 * particle.sinPhase) * idleDrift * particle.depth;
+        }
+
+        if (hasRepel) {
+          const dx = baseX - pointer.smoothX;
+          const dy = baseY - pointer.smoothY;
+          const distance = Math.hypot(dx, dy);
+          if (distance > 0 && distance < repelRadius) {
+            const force = Math.pow(1 - distance / repelRadius, 2) * pointerRepel;
+            baseX += (dx / distance) * force;
+            baseY += (dy / distance) * force;
+          }
+        }
+
+        particle.x += (baseX - particle.x) * follow;
+        particle.y += (baseY - particle.y) * follow;
+
+        if (gathering) {
+          ctx.globalAlpha = clamp(0.35 + progress * 0.65, 0, 1);
+        }
+
+        if (particle.color !== currentColor) {
+          ctx.fillStyle = particle.color;
+          currentColor = particle.color;
+        }
+
+        const size = particle.size;
+        if (size <= 2.6) {
+          ctx.fillRect(particle.x - size / 2, particle.y - size / 2, size, size);
+        } else {
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      if (gathering && complete) {
+        gathering = false;
+        initialGatherDone = true;
+      }
+
+      animationFrame = window.requestAnimationFrame(render);
+    };
+
+    const ensureRenderLoop = (): void => {
+      if (isVisible && animationFrame === null) {
+        animationFrame = window.requestAnimationFrame(render);
+      }
+    };
+
+    const sampleText = async (): Promise<void> => {
+      const currentBuild = ++buildId;
+      const rect = container.getBoundingClientRect();
+      width = Math.floor(rect.width);
+      height = Math.floor(rect.height);
+
+      if (width <= 0 || height <= 0) return;
+
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.floor(width * dpr));
+      canvas.height = Math.max(1, Math.floor(height * dpr));
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const offscreen = document.createElement('canvas');
+      const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
+      if (!offCtx) return;
+
+      const targets: Target[] = [];
+      const step = Math.max(1, Math.floor(density));
+
+      if (useBrandmark) {
+        // Precision PEGASUS Sci-Fi Vector Wordmark (772.033 x 55.506)
+        const VECTOR_WIDTH = 772.033;
+        const VECTOR_HEIGHT = 55.506;
+        const maxW = width * 0.98;
+        const maxH = height * 0.92;
+        const scale = Math.min(maxW / VECTOR_WIDTH, maxH / VECTOR_HEIGHT);
+        const renderW = Math.ceil(VECTOR_WIDTH * scale);
+        const renderH = Math.ceil(VECTOR_HEIGHT * scale);
+        const padding = 6;
+
+        offscreen.width = renderW + padding * 2;
+        offscreen.height = renderH + padding * 2;
+        offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+
+        offCtx.save();
+        offCtx.translate(padding, padding);
+        offCtx.scale(scale, scale);
+        offCtx.fillStyle = '#ffffff';
+
+        PEGASUS_LETTER_OFFSETS.forEach(({ char, x }) => {
+          const pathData = PEGASUS_GLYPHS[char as keyof typeof PEGASUS_GLYPHS];
+          if (pathData && typeof Path2D !== 'undefined') {
+            offCtx.save();
+            offCtx.translate(x, 0);
+            const path = new Path2D(pathData);
+            offCtx.fill(path);
+            offCtx.restore();
+          }
+        });
+        offCtx.restore();
+
+        const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+        for (let y = 0; y < offscreen.height; y += step) {
+          const pixelY = Math.min(offscreen.height - 1, Math.floor(y));
+          for (let x = 0; x < offscreen.width; x += step) {
+            const pixelX = Math.min(offscreen.width - 1, Math.floor(x));
+            const alpha = imageData.data[(pixelY * offscreen.width + pixelX) * 4 + 3];
+            if (alpha > 40) {
+              let targetX = x - padding;
+              if (textAlign === 'center') {
+                targetX = width / 2 - renderW / 2 + (x - padding);
+              } else if (textAlign === 'right') {
+                targetX = width - renderW + (x - padding);
+              }
+              targets.push({
+                x: targetX,
+                y: height / 2 - renderH / 2 + (y - padding),
+                alpha: alpha / 255
+              });
+            }
+          }
+        }
+      } else {
+        const computed = window.getComputedStyle(container);
+        const resolvedFamily = fontFamily === 'inherit' ? computed.fontFamily || 'sans-serif' : fontFamily;
+        let resolvedSize = resolveFontSize(fontSize, container, fontWeight, resolvedFamily);
+        let font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+
+        await waitForFonts(font);
+        if (currentBuild !== buildId) return;
+
+        const content = String(text || ' ');
+        const isMultiLineOrStyled = content.includes('\n') || content.includes('*') || content.includes('_');
+        const maxTextWidth = width * 0.98;
+        const maxTextHeight = height * 0.94;
+
+        let startX = 0;
+
+        if (!isMultiLineOrStyled) {
+          offCtx.font = font;
+          if (letterSpacing && 'letterSpacing' in offCtx) {
+            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+          }
+          let metrics = offCtx.measureText(content);
+          let ascent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+          let descent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+          let currentHeight = ascent + descent;
+          let measuredWidth = Math.max(1, metrics.width);
+
+          if (fitWidth) {
+            const targetWidth = Math.floor(width * 0.98);
+            const widthScale = targetWidth / Math.max(1, measuredWidth);
+            resolvedSize = Math.max(16, Math.floor(resolvedSize * widthScale));
+            font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+            await waitForFonts(font);
+            if (currentBuild !== buildId) return;
+            offCtx.font = font;
+            if (letterSpacing && 'letterSpacing' in offCtx) {
+              (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+            }
+            metrics = offCtx.measureText(content);
+            if (Math.abs(metrics.width - targetWidth) > 4 && metrics.width > 0) {
+              const fineScale = targetWidth / metrics.width;
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * fineScale));
+              font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+              offCtx.font = font;
+              if (letterSpacing && 'letterSpacing' in offCtx) {
+                (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+              }
+              metrics = offCtx.measureText(content);
+            }
+          } else if (fitContainer) {
+            const widthScale = measuredWidth > maxTextWidth ? maxTextWidth / measuredWidth : 1;
+            const heightScale = currentHeight > maxTextHeight ? maxTextHeight / currentHeight : 1;
+            const scale = Math.min(widthScale, heightScale);
+
+            if (scale < 1) {
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+              font = `${fontWeight} ${resolvedSize}px ${resolvedFamily}`;
+              await waitForFonts(font);
+              if (currentBuild !== buildId) return;
+              offCtx.font = font;
+              if (letterSpacing && 'letterSpacing' in offCtx) {
+                (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+              }
+              metrics = offCtx.measureText(content);
+            }
+          }
+
+          const left = Math.ceil(metrics.actualBoundingBoxLeft || 0);
+          const right = Math.ceil(metrics.actualBoundingBoxRight || metrics.width);
+          const finalAscent = Math.ceil(metrics.actualBoundingBoxAscent || resolvedSize * 0.78);
+          const finalDescent = Math.ceil(metrics.actualBoundingBoxDescent || resolvedSize * 0.22);
+          const padding = Math.max(4, Math.ceil(resolvedSize * 0.02));
+          const textWidth = Math.max(1, left + right);
+          const textHeight = Math.max(1, finalAscent + finalDescent);
+          startX = padding + Math.max(0, left);
+
+          offscreen.width = textWidth + padding * 2;
+          offscreen.height = textHeight + padding * 2;
+          offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+          offCtx.font = font;
+          if (letterSpacing && 'letterSpacing' in offCtx) {
+            (offCtx as unknown as { letterSpacing: string }).letterSpacing = letterSpacing;
+          }
+          offCtx.textAlign = 'left';
+          offCtx.textBaseline = 'alphabetic';
+          offCtx.fillStyle = '#ffffff';
+          offCtx.fillText(content, startX, padding + finalAscent);
+        } else {
+          const rawLines = content.split('\n');
+          const italicFamily = '"Libre Baskerville", "Times New Roman", Georgia, serif';
+
+          type Segment = { text: string; isItalic: boolean };
+          const parseSegments = (lineStr: string): Segment[] => {
+            const segs: Segment[] = [];
+            const regex = /(\*[^*]+\*|_[^_]+_)/g;
+            let last = 0;
+            let m: RegExpExecArray | null;
+            while ((m = regex.exec(lineStr)) !== null) {
+              if (m.index > last) {
+                segs.push({ text: lineStr.slice(last, m.index), isItalic: false });
+              }
+              segs.push({ text: m[0].slice(1, -1), isItalic: true });
+              last = regex.lastIndex;
+            }
+            if (last < lineStr.length) {
+              segs.push({ text: lineStr.slice(last), isItalic: false });
+            }
+            return segs.length > 0 ? segs : [{ text: lineStr, isItalic: false }];
+          };
+
+          const lineSegs = rawLines.map(parseSegments);
+
+          const measureAll = (sz: number) => {
+            const curFont = `${fontWeight} ${sz}px ${resolvedFamily}`;
+            const curItalic = `italic 400 ${Math.round(sz * 1.05)}px ${italicFamily}`;
+            let maxW = 0;
+            const widths: number[] = [];
+
+            for (const segs of lineSegs) {
+              let lineW = 0;
+              for (const seg of segs) {
+                offCtx.font = seg.isItalic ? curItalic : curFont;
+                lineW += offCtx.measureText(seg.text).width;
+              }
+              widths.push(lineW);
+              if (lineW > maxW) maxW = lineW;
+            }
+            const lineH = Math.ceil(sz * 1.16);
+            const totalH = Math.ceil(sz * 0.82) + (rawLines.length - 1) * lineH + Math.ceil(sz * 0.22);
+            return { maxW, widths, lineH, totalH, curFont, curItalic };
+          };
+
+          let m = measureAll(resolvedSize);
+
+          if (fitContainer) {
+            const wScale = m.maxW > maxTextWidth ? maxTextWidth / m.maxW : 1;
+            const hScale = m.totalH > maxTextHeight ? maxTextHeight / m.totalH : 1;
+            const scale = Math.min(wScale, hScale);
+            if (scale < 1) {
+              resolvedSize = Math.max(16, Math.floor(resolvedSize * scale));
+              m = measureAll(resolvedSize);
+            }
+          }
+
+          const padding = Math.max(6, Math.ceil(resolvedSize * 0.04));
+          const textWidth = Math.ceil(m.maxW);
+          const textHeight = Math.ceil(m.totalH);
+          startX = padding;
+
+          offscreen.width = textWidth + padding * 2;
+          offscreen.height = textHeight + padding * 2;
+          offCtx.clearRect(0, 0, offscreen.width, offscreen.height);
+          offCtx.textAlign = 'left';
+          offCtx.textBaseline = 'alphabetic';
+          offCtx.fillStyle = '#ffffff';
+
+          const ascent = Math.ceil(resolvedSize * 0.78);
+
+          for (let i = 0; i < lineSegs.length; i++) {
+            const segs = lineSegs[i];
+            let curX = startX;
+            if (textAlign === 'right') {
+              curX = startX + (textWidth - m.widths[i]);
+            } else if (textAlign === 'center') {
+              curX = startX + (textWidth - m.widths[i]) * 0.5;
+            }
+            const lineY = padding + ascent + i * m.lineH;
+
+            for (const seg of segs) {
+              offCtx.font = seg.isItalic ? m.curItalic : m.curFont;
+              offCtx.fillText(seg.text, curX, lineY);
+              curX += offCtx.measureText(seg.text).width;
+            }
+          }
+        }
+
+        const imageData = offCtx.getImageData(0, 0, offscreen.width, offscreen.height);
+
+        for (let y = 0; y < offscreen.height; y += step) {
+          for (let x = 0; x < offscreen.width; x += step) {
+            const alpha = imageData.data[(y * offscreen.width + x) * 4 + 3];
+            if (alpha > 40) {
+              let targetX = width / 2 - offscreen.width / 2 + x;
+              if (textAlign === 'left') {
+                targetX = x - startX;
+              } else if (textAlign === 'right') {
+                targetX = width - (offscreen.width - x);
+              }
+              targets.push({
+                x: targetX,
+                y: height / 2 - offscreen.height / 2 + y,
+                alpha: alpha / 255
+              });
+            }
+          }
+        }
+      }
+
+      const defaultMax = useBrandmark || fitWidth
+        ? Math.max(2600, Math.min(3800, targets.length))
+        : Math.max(900, Math.min(3600, Math.floor((width * height) / 90)));
+      const maxAllowed = customMaxParticles ?? defaultMax;
+      let selected: Target[];
+      if (targets.length <= maxAllowed) {
+        selected = targets;
+      } else {
+        const stepRatio = targets.length / maxAllowed;
+        selected = [];
+        for (let i = 0; i < maxAllowed; i++) {
+          selected.push(targets[Math.floor(i * stepRatio)]);
+        }
+      }
+      const baseRgb = hexToRgb(color);
+      const highlightRgb = hexToRgb(highlightColor);
+
+      const noStartAnimation =
+        initialGatherDone ||
+        reducedMotion ||
+        trigger === 'none' ||
+        trigger === 'hover' ||
+        trigger === 'click' ||
+        scatter === 0 ||
+        gatherDuration === 0;
+
+      particles = selected.map((target, index) => {
+        const seed = ((index * 9301 + 49297) % 233280) / 233280;
+        const depth = 0.45 + (((index * 233 + 97) % 1000) / 1000) * 0.9;
+        const blend = baseRgb && highlightRgb ? clamp(target.x / Math.max(1, width) + (seed - 0.5) * 0.35, 0, 1) : 0;
+        const particleColor = baseRgb && highlightRgb ? rgbToCss(mixRgb(baseRgb, highlightRgb, blend)) : color;
+        const angle = seed * Math.PI * 2;
+        const distance = (noStartAnimation ? 0 : scatter) * (0.35 + depth * 0.75);
+        const startX = target.x + Math.cos(angle) * distance + (seed - 0.5) * scatter * 0.45;
+        const startY = target.y + Math.sin(angle) * distance + (depth - 0.9) * scatter * 0.45;
+        const sinPhase = Math.sin(seed * 10);
+        const cosPhase = Math.cos(seed * 10);
+
+        return {
+          x: noStartAnimation ? target.x : startX,
+          y: noStartAnimation ? target.y : startY,
+          startX: noStartAnimation ? target.x : startX,
+          startY: noStartAnimation ? target.y : startY,
+          targetX: target.x,
+          targetY: target.y,
+          size: Math.max(0.6, particleSize * (0.75 + target.alpha * 0.45)),
+          color: particleColor,
+          seed,
+          depth,
+          delay: noStartAnimation ? 0 : seed * stagger,
+          sinPhase,
+          cosPhase
+        };
+      });
+
+      // Sort particles by color so context state changes (ctx.fillStyle) are minimized to a handful of changes per frame
+      particles.sort((a, b) => (a.color > b.color ? 1 : a.color < b.color ? -1 : 0));
+
+      pointer.x = width / 2;
+      pointer.y = height / 2;
+      pointer.smoothX = pointer.x;
+      pointer.smoothY = pointer.y;
+
+      if (noStartAnimation) {
+        particles.forEach(particle => {
+          particle.x = particle.targetX;
+          particle.y = particle.targetY;
+          particle.startX = particle.targetX;
+          particle.startY = particle.targetY;
+          particle.delay = 0;
+        });
+        gathering = false;
+      } else {
+        if (trigger === 'view') {
+          if (isVisible) {
+            startGather(true);
+          } else {
+            gathering = false;
+          }
+        } else if (trigger === 'mount') {
+          startGather(true);
+        } else {
+          startGather(false);
+        }
+      }
+
+      ensureRenderLoop();
+    };
+
+    const queueSample = (): void => {
+      if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(sampleText);
+    };
+
+    const handlePointerMove = (event: PointerEvent): void => {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = event.clientX - rect.left;
+      pointer.y = event.clientY - rect.top;
+      pointer.active = true;
+    };
+
+    const handlePointerLeave = (): void => {
+      pointer.active = false;
+    };
+
+    const handlePointerEnter = (event: PointerEvent): void => {
+      handlePointerMove(event);
+      if (trigger === 'hover') startGather(true);
+    };
+
+    const handleClick = (): void => {
+      startGather(true);
+    };
+
+    const reduceMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const handleReduceMotionChange = (event: MediaQueryListEvent): void => {
+      reducedMotion = event.matches;
+      void sampleText();
+    };
+
+    reduceMotionQuery?.addEventListener('change', handleReduceMotionChange);
+    canvas.addEventListener('pointerenter', handlePointerEnter);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerleave', handlePointerLeave);
+    canvas.addEventListener('click', handleClick);
+
+    const resizeObserver = new ResizeObserver(queueSample);
+    resizeObserver.observe(container);
+
+    let hasTriggeredView = false;
+
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        const wasVisible = isVisible;
+        isVisible = entry?.isIntersecting ?? false;
+
+        if (isVisible && !wasVisible) {
+          ensureRenderLoop();
+          if (trigger === 'view' && !hasTriggeredView) {
+            hasTriggeredView = true;
+            startGather(true);
+          }
+        } else if (!isVisible && wasVisible) {
+          if (animationFrame !== null) {
+            window.cancelAnimationFrame(animationFrame);
+            animationFrame = null;
+          }
+        }
+      },
+      { rootMargin: '80px', threshold: 0.05 }
+    );
+    intersectionObserver.observe(container);
+
+    void sampleText();
+
+    return () => {
+      buildId += 1;
+      resizeObserver.disconnect();
+      intersectionObserver.disconnect();
+      reduceMotionQuery?.removeEventListener('change', handleReduceMotionChange);
+      canvas.removeEventListener('pointerenter', handlePointerEnter);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerleave', handlePointerLeave);
+      canvas.removeEventListener('click', handleClick);
+
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+      if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
+    };
+  }, [
+    text,
+    useBrandmark,
+    particleSize,
+    density,
+    color,
+    highlightColor,
+    scatter,
+    gatherDuration,
+    stagger,
+    pointerRepel,
+    repelRadius,
+    idleDrift,
+    trigger,
+    fontSize,
+    fontWeight,
+    fontFamily,
+    glow,
+    textAlign,
+    letterSpacing,
+    fitContainer,
+    fitWidth,
+    customMaxParticles
+  ]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative block h-full w-full overflow-hidden touch-none ${className}`}
+      style={style}
+      aria-label={text}
+    >
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 block h-full w-full transform-gpu"
+        aria-hidden="true"
+      />
+      <span className="sr-only">{text}</span>
+    </div>
+  );
+};
+
+export default ParticleText;

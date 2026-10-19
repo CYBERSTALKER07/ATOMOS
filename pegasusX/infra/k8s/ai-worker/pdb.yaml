@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ai-worker
+  labels:
+    app: ai-worker
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: ai-worker

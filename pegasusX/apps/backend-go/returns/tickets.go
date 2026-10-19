@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
 )
 
@@ -105,6 +107,21 @@ func (s *Service) OpenTickets(ctx context.Context, in OpenTicketsInput) (returnI
 		}
 		if len(mutations) == 0 {
 			return nil
+		}
+		buf := outbox.NewSpannerTxnBuffer(txn)
+		for _, rid := range returnIDs {
+			if err := outbox.EmitJSON(ctx, buf, "SupplierReturns", rid, events.TopicExceptions, map[string]any{
+				"type":         "RETURN_TICKET_OPENED",
+				"return_id":    rid,
+				"order_id":     orderID,
+				"source":       source,
+				"warehouse_id": warehouseID,
+			}); err != nil {
+				return err
+			}
+		}
+		if err := buf.Flush(ctx); err != nil {
+			return err
 		}
 		return txn.BufferWrite(mutations)
 	})

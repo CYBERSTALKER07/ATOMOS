@@ -10,9 +10,34 @@ resources:
   - frontendconfig.yaml
   - managed-certificate.yaml
   - ingress.yaml
+  # §8.5 — OR-Tools sidecar manifests (patched to replicas 1 below; prod stays 0 until AR)
+  - ../../optimizer-core/configmap.yaml
+  - ../../optimizer-core/deployment.yaml
+  - ../../optimizer-core/service.yaml
+  - ../../planning_forecast_cronjob.yaml
+  - ../../planning_accuracy_cronjob.yaml
+  - ../../planning_training_export_cronjob.yaml
 
 # REST Service BackendConfig/NEG annotations are applied live with kubectl
 # (Service is owned by the Step 9 deploy, not this overlay).
+
+patches:
+  - target:
+      kind: Deployment
+      name: optimizer-core
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+# Backend OPTIMIZER_BASE_URL is owned by the Step 9 / base ConfigMap deploy
+# (http://optimizer-core:8082). Phase 4: replicas ≥ 1 on SSMR (heuristic fallback remains if image unhealthy).
+
+images:
+  # Remap local tag to SSMR Artifact Registry path (ops publishes real digest/tag).
+  - name: pegasusx-optimizer-core
+    newName: asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-ssmr-images/optimizer-core
+    newTag: ssmr
 
 labels:
   - pairs:

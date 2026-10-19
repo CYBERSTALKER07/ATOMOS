@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import android.graphics.Bitmap
 import android.os.Build
 import android.view.WindowManager
@@ -41,6 +43,7 @@ import com.pegasusx.retailer.data.model.Order
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import org.json.JSONObject
+import com.pegasusx.retailer.R
 
 @Composable
 fun QROverlay(
@@ -98,7 +101,7 @@ fun QROverlay(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        "Order #${order.id.takeLast(3)}",
+                        stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -139,13 +142,13 @@ private fun DeliveryQrCode(order: Order) {
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
-            contentDescription = "QR Code",
+            contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
             modifier = Modifier.size(180.dp),
         )
     } else {
         Icon(
             Icons.Outlined.QrCode2,
-            contentDescription = "QR Code",
+            contentDescription = stringResource(R.string.mobile_retailer_ui_qr_code),
             modifier = Modifier.size(180.dp),
             tint = MaterialTheme.colorScheme.onSurface,
         )

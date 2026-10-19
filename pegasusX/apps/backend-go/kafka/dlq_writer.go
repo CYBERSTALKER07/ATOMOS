@@ -38,6 +38,10 @@ func NewDLQWriterFromCSVWithAuth(brokersCSV, topic string, auth kafkautil.Client
 			Topic:                  trimmedTopic,
 			RequiredAcks:           segmentkafka.RequireAll,
 			BatchTimeout:           250 * time.Millisecond,
+			BatchSize:              100,
+			Compression:            segmentkafka.Snappy,
+			WriteBackoffMin:        100 * time.Millisecond,
+			WriteBackoffMax:        1 * time.Second,
 			MaxAttempts:            1 << 20, // high bound; WriteTimeout caps wait
 			WriteTimeout:           30 * time.Second,
 			ReadTimeout:            10 * time.Second,

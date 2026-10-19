@@ -51,6 +51,7 @@ import com.pegasusx.factory.ui.screens.manifest.ManifestListScreen
 import com.pegasusx.factory.ui.screens.exceptions.ManifestExceptionsScreen
 import com.pegasusx.factory.ui.screens.notifications.NotificationInboxScreen
 import com.pegasusx.factory.ui.screens.override.PayloadOverrideScreen
+import com.pegasusx.factory.ui.screens.payload.PayloadLoadScreen
 import com.pegasusx.factory.ui.screens.setup.LocationSetupScreen
 import com.pegasusx.factory.ui.screens.staff.StaffScreen
 import com.pegasusx.factory.ui.screens.staff.StaffDetailScreen
@@ -64,7 +65,11 @@ object FactoryRoutes {
     const val DASHBOARD = "dashboard"
     const val LOADING_BAY = "loading_bay"
     const val TRANSFERS = "transfers"
+    const val TRANSFERS_ROUTE = "transfers?state={state}"
     const val TRANSFER_DETAIL = "transfers/{id}"
+
+    fun transfers(state: String? = null): String =
+        if (state.isNullOrBlank()) TRANSFERS else "$TRANSFERS?state=${android.net.Uri.encode(state)}"
     const val TRANSFER_CREATE = "transfers/create"
     const val FLEET = "fleet"
     const val STAFF = "staff"
@@ -74,6 +79,7 @@ object FactoryRoutes {
     const val ANALYTICS = "analytics"
     const val SUPPLY_REQUESTS = "supply_requests"
     const val PAYLOAD_OVERRIDE = "payload_override"
+    const val PAYLOAD_LOAD = "payload_load"
     const val MANIFEST_EXCEPTIONS = "manifest_exceptions"
     const val MANIFESTS = "manifests"
     const val MANIFEST_DETAIL = "manifests/{id}"
@@ -237,12 +243,22 @@ fun FactoryNavigation(
                 )
             }
 
-            composable(FactoryRoutes.TRANSFERS) {
+            composable(
+                route = FactoryRoutes.TRANSFERS_ROUTE,
+                arguments = listOf(
+                    navArgument("state") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
+                ),
+            ) { entry ->
+                val state = entry.arguments?.getString("state").orEmpty()
                 TransferListScreen(
                     api = api,
                     onTransferClick = { id -> navController.navigate(FactoryRoutes.transferDetail(id)) },
                     onCreateTransfer = { navController.navigate(FactoryRoutes.TRANSFER_CREATE) },
                     onBack = requireBack(FactoryRoutes.TRANSFERS),
+                    initialState = state.takeIf { it.isNotBlank() },
                 )
             }
 
@@ -310,6 +326,13 @@ fun FactoryNavigation(
                     api = api,
                     onManifestClick = { id -> navController.navigate(FactoryRoutes.manifestDetail(id)) },
                     onBack = requireBack(FactoryRoutes.MANIFESTS),
+                )
+            }
+
+            composable(FactoryRoutes.PAYLOAD_LOAD) {
+                PayloadLoadScreen(
+                    api = api,
+                    onBack = requireBack(FactoryRoutes.PAYLOAD_LOAD),
                 )
             }
 

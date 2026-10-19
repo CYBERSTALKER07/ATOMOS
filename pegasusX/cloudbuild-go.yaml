@@ -1,9 +1,9 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-f', 'apps/backend-go/Dockerfile', '-t', 'asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go:staging', '.']
+  args: ['build', '-f', 'apps/backend-go/Dockerfile', '-t', 'asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/backend-go:staging', '.']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/backend-go:staging']
+  args: ['push', 'asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/backend-go:staging']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-f', 'apps/ai-worker/Dockerfile', '-t', 'asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker:staging', '.']
+  args: ['build', '-f', 'apps/ai-worker/Dockerfile', '-t', 'asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/ai-worker:staging', '.']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'asia-south1-docker.pkg.dev/pegasus-503013/pegasusx-staging-images/ai-worker:staging']
+  args: ['push', 'asia-south1-docker.pkg.dev/pegasusx-prod-uz/pegasusx-staging-images/ai-worker:staging']

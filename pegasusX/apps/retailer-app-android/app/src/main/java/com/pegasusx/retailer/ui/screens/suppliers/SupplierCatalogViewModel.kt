@@ -3,6 +3,7 @@ package com.pegasusx.retailer.ui.screens.suppliers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.util.RetailerIdempotencyKeys
 import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.Product
@@ -103,10 +104,10 @@ class SupplierCatalogViewModel @Inject constructor(
             try {
                 val isCurrentlyFav = _uiState.value.isFavorite
                 if (isCurrentlyFav) {
-                    api.removeSupplier(supplierId)
+                    api.removeSupplier(supplierId, RetailerIdempotencyKeys.supplierRemove(supplierId))
                     _uiState.update { it.copy(isFavorite = false, error = null, loadIssue = null) }
                 } else {
-                    api.addSupplier(supplierId)
+                    api.addSupplier(supplierId, RetailerIdempotencyKeys.supplierAdd(supplierId))
                     _uiState.update { it.copy(isFavorite = true, error = null, loadIssue = null) }
                 }
             } catch (e: Exception) {

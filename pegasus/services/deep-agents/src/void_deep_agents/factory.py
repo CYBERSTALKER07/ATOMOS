@@ -1,0 +1,420 @@
+"""Factory helpers for LangChain + Deep Agents in this monorepo."""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Callable, Sequence
+from typing import Any
+
+from deepagents import create_deep_agent
+from deepagents.backends.protocol import BackendProtocol
+from dotenv import load_dotenv
+from langchain.agents import create_agent
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.tools import BaseTool
+from langgraph.graph.state import CompiledStateGraph
+
+from void_deep_agents.findings import FINDING_JSON_HINT, PANEL_NAMES
+from void_deep_agents.fleet import SUPERVISOR_PROMPT, build_fleet_subagents, fleet_names
+from void_deep_agents.paths import (
+    audit_filesystem_permissions,
+    deep_agents_root,
+    default_filesystem_backend,
+    default_memory_paths,
+    default_skill_paths,
+    fleet_filesystem_backend,
+    fleet_filesystem_permissions,
+    pegasusx_root,
+    surfaces_registry_path,
+    to_virtual_path,
+)
+from void_deep_agents.subagents import build_subagents, panel_names
+
+# Load .env from the deep-agents service root first, then cwd/parents.
+load_dotenv(deep_agents_root() / ".env")
+load_dotenv()
+
+DEFAULT_MODEL_NAME = os.getenv("DEEP_AGENTS_MODEL", "grok-4.5")
+
+_FS_HINT = """
+Filesystem: composite virtual root.
+- Code/docs: `/apps/...`, `/docs/...`, `/.agents/...` (pegasusX)
+- Skills: `/skills/<name>/SKILL.md`
+Prefer `read_file` / `grep` with a narrow `path` (e.g. `/apps/backend-go/order`).
+Do NOT glob `/` or entire `/apps` — too large; use package dirs.
+Writes denied (auditor). Never invent file contents.
+""".strip()
+
+DEFAULT_SYSTEM_PROMPT = f"""You are a PegasusX ecosystem quality assistant (Deep Agents).
+
+Scope: pegasusX monorepo — backend-go, Spanner, Kafka, Redis, WS hubs, role apps,
+cloud (k8s/terraform), contracts. Prefer evidence (paths, packages) over prose.
+
+{_FS_HINT}
+
+Laws:
+- Coverage rule: Spanner mutation → same-txn outbox → consumer → clients.
+- No production mocks. Classify Class A/B/C/D. Severity P0–P3.
+- Role-row parity. Money as int64 minor units.
+- Do not invent wired status without emit + consumer + client evidence.
+
+When auditing, load skills as needed and consult surfaces.yaml + gap register.
+"""
+
+ECOSYSTEM_SYSTEM_PROMPT = f"""You are the Chief Orchestrator of the PegasusX
+multi-agent ecosystem audit orchestra.
+
+Mission: track whole-ecosystem quality — per-role business behavior + edge
+cases, gov/regulatory APIs (Soliq OFD/EHF, GS1, AS2), role feature/app parity,
+money/fiscal, data-flow, code quality, architecture, security, cloud —
+so features are Class A wired, not islands.
+
+{_FS_HINT}
+
+You have specialist subagents (panels). Delegate via the task tool:
+{', '.join(PANEL_NAMES)}.
+
+Always cover when relevant (especially on --full):
+- business_logic: order machine + doorstep edge cases + per-role duties
+- role_parity: each role's features vs Android/iOS/portal/desktop/terminal
+- money_fiscal + regulatory-gov skill: Soliq/gov fiscal + trade compliance
+
+Method:
+1. Map blast radius (roles, routes, events, clients, cloud flags, gov rails).
+2. Fan out to relevant panels (all panels when the user asks for a full audit).
+3. Subagents MUST read `/apps/**` and `/docs/**` via filesystem tools —
+   do not stop at surfaces.yaml alone. Use narrow paths (e.g. `/apps/backend-go/order`).
+4. Merge panel reports into one scorecard. Deduplicate; keep highest severity.
+5. Never invent wired status. Never reopen surfaces.yaml resolved_gap_ids
+   without regression evidence.
+6. Propose minimal change sets that close emit + consumer + clients together.
+7. Scorecard sections should include: Business/edges · Regulatory · Role parity.
+
+Output:
+1. Markdown scorecard (P0→P3 sections, panel attribution).
+2. A JSON findings array at the end (fenced ```json) matching the finding schema.
+{FINDING_JSON_HINT}
+
+Desktop stack: keep Next.js + Tauri 2 (do not push Electron rewrites).
+Tree: pegasusX is SoT; pegasus is legacy.
+"""
+
+LANGCHAIN_SYSTEM_PROMPT = """You are a PegasusX LangChain agent (no Deep Agents FS harness).
+Prefer concise, evidence-backed answers. Use tools when they exist.
+Do not invent monorepo paths or wired status.
+"""
+
+
+def resolve_model(
+    model: str | BaseChatModel | None = None,
+    *,
+    temperature: float = 0.2,
+) -> str | BaseChatModel:
+    """Resolve a chat model for agents.
+
+    - ``None`` → default xAI Grok (``ChatXAI``, needs ``XAI_API_KEY``)
+    - ``"provider:model"`` string → passed through to LangChain / Deep Agents
+    - ``BaseChatModel`` instance → used as-is
+    """
+    if isinstance(model, BaseChatModel):
+        return model
+    if isinstance(model, str) and ":" in model:
+        # Provider strings (openai:..., anthropic:..., google_genai:...) —
+        # let create_agent / create_deep_agent resolve via init_chat_model.
+        return model
+    return default_model(model_name=model, temperature=temperature)
+
+
+def default_model(
+    model_name: str | None = None,
+    *,
+    temperature: float = 0.2,
+) -> BaseChatModel:
+    """Build the default chat model (xAI / Grok via langchain-xai).
+
+    Requires ``XAI_API_KEY`` in the environment (or a git-ignored ``.env``).
+    Override the model with ``DEEP_AGENTS_MODEL`` or the ``model_name`` arg.
+    """
+    from langchain_xai import ChatXAI
+
+    name = model_name or DEFAULT_MODEL_NAME
+    if ":" in name:
+        # Accidental provider string into ChatXAI — strip if xai:, else error hint.
+        provider, _, rest = name.partition(":")
+        if provider in {"xai", "grok"}:
+            name = rest
+        else:
+            raise RuntimeError(
+                f"default_model() expects an xAI model id, got {model_name!r}. "
+                "Pass provider strings via create_void_deep_agent(model=...) "
+                "or create_void_langchain_agent(model=...)."
+            )
+
+    api_key = os.getenv("XAI_API_KEY")
+    if not api_key or api_key.strip() in {"", "xai-your-key-here"}:
+        raise RuntimeError(
+            "XAI_API_KEY is not set (or still the .env.example placeholder). "
+            "Export a real key from https://console.x.ai/ or put it in "
+            "pegasus/services/deep-agents/.env — then re-run ./scripts/smoke.sh"
+        )
+
+    return ChatXAI(
+        model=name,
+        temperature=temperature,
+        api_key=api_key,
+    )
+
+
+def default_resilience_middleware() -> list[Any]:
+    """Retries / fallbacks / call limits for enterprise-ish agent runs."""
+    middleware: list[Any] = []
+    try:
+        from langchain.agents.middleware import (
+            ModelCallLimitMiddleware,
+            ModelFallbackMiddleware,
+            ToolRetryMiddleware,
+        )
+
+        middleware.append(ToolRetryMiddleware(max_retries=2))
+        middleware.append(ModelCallLimitMiddleware(run_limit=80))
+        # Optional secondary provider if configured.
+        fallback = os.getenv("DEEP_AGENTS_FALLBACK_MODEL", "").strip()
+        if fallback:
+            middleware.append(ModelFallbackMiddleware(fallback))
+    except Exception:
+        # Older langchain — skip silently; agents still run.
+        return []
+    return middleware
+
+
+def _repo_hint_tools() -> list[Callable[..., Any]]:
+    """Small tools so the agent can orient without hallucinating paths."""
+
+    def get_pegasusx_root() -> str:
+        """Virtual + host paths for the pegasusX tree (source of truth)."""
+        return (
+            f"virtual_root=/\n"
+            f"code_examples=/apps/backend-go /docs /.agents\n"
+            f"skills_route=/skills/\n"
+            f"fleet_route=/fleet/ (E2E confirmation reports)\n"
+            f"host={pegasusx_root()}\n"
+            "Use filesystem tools with paths like "
+            "/apps/backend-go/order/state_machine.go "
+            "and /skills/business-logic/SKILL.md"
+        )
+
+    def get_surfaces_registry() -> str:
+        """Return path + short summary of the ecosystem surface registry."""
+        p = surfaces_registry_path()
+        if not p:
+            return "surfaces.yaml not found under pegasusX/.agents/deep-agents/"
+        text = p.read_text(encoding="utf-8")
+        vpath = to_virtual_path(p)
+        if len(text) > 8000:
+            return f"virtual={vpath}\nhost={p}\n\n{text[:8000]}\n...[truncated]"
+        return f"virtual={vpath}\nhost={p}\n\n{text}"
+
+    def list_ecosystem_skills() -> str:
+        """List available Deep Agent skill directories (virtual paths)."""
+        return "\n".join(default_skill_paths(virtual=True)) or "(no skills found)"
+
+    def list_audit_panels() -> str:
+        """List specialist audit panel names in the orchestra."""
+        return "\n".join(panel_names())
+
+    def list_fleet_agents() -> str:
+        """List E2E fleet specialist agent names."""
+        return "\n".join(fleet_names())
+
+    return [
+        get_pegasusx_root,
+        get_surfaces_registry,
+        list_ecosystem_skills,
+        list_audit_panels,
+        list_fleet_agents,
+    ]
+
+
+def create_void_langchain_agent(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    system_prompt: str | None = None,
+    middleware: list[Any] | None = None,
+    checkpointer: Any | None = None,
+    name: str | None = "void-langchain-agent",
+    resilient: bool = True,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Plain LangChain ``create_agent`` (no Deep Agents FS / task harness).
+
+    Use for short tool loops. Escalate to ``create_void_deep_agent`` when you
+    need filesystem tools, skills, or subagent delegation.
+    """
+    resolved = resolve_model(model)
+    tool_list: list[Any] = list(tools or [])
+    mw = list(middleware or [])
+    if resilient:
+        mw = default_resilience_middleware() + mw
+
+    create_kwargs: dict[str, Any] = dict(kwargs)
+    if checkpointer is not None:
+        create_kwargs["checkpointer"] = checkpointer
+    if name is not None:
+        create_kwargs["name"] = name
+
+    return create_agent(
+        model=resolved,
+        tools=tool_list or None,
+        system_prompt=system_prompt or LANGCHAIN_SYSTEM_PROMPT,
+        middleware=mw,
+        **create_kwargs,
+    )
+
+
+def create_void_deep_agent(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    system_prompt: str | None = None,
+    skills: list[str] | None = None,
+    memory: list[str] | None = None,
+    name: str | None = "void-deep-agent",
+    include_ecosystem_defaults: bool = True,
+    subagents: list[dict[str, Any]] | None = None,
+    backend: BackendProtocol | None = None,
+    read_only: bool = True,
+    resilient: bool = True,
+    middleware: list[Any] | None = None,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Create a Deep Agent configured for this monorepo.
+
+    Parameters
+    ----------
+    model:
+        Provider string, a ``BaseChatModel``, or ``None`` for xAI Grok.
+    tools:
+        Extra tools (functions, LangChain tools, or provider tool dicts).
+    system_prompt:
+        Override default system prompt.
+    skills:
+        Skill directories (virtual paths under VOID_ROOT preferred).
+    memory:
+        Memory files (virtual paths under VOID_ROOT preferred).
+    name:
+        Agent name for tracing.
+    include_ecosystem_defaults:
+        When True, attach default skills, memory, orientation tools, and
+        filesystem backend rooted at pegasusX + ``/skills/``.
+    subagents:
+        Optional Deep Agents subagent specs (forwarded to create_deep_agent).
+    backend:
+        Override filesystem backend. Default: host FS at pegasusX (virtual).
+    read_only:
+        When True (default), deny write tools and block ``.env`` / credential reads.
+    resilient:
+        When True, prepend tool-retry + call-limit middleware.
+    middleware:
+        Extra middleware (appended after resilience defaults).
+    **kwargs:
+        Forwarded to ``deepagents.create_deep_agent``.
+    """
+    resolved_model = resolve_model(model)
+
+    resolved_skills = skills
+    resolved_memory = memory
+    tool_list: list[Any] = list(tools or [])
+
+    if include_ecosystem_defaults:
+        if resolved_skills is None:
+            resolved_skills = default_skill_paths(virtual=True) or None
+        if resolved_memory is None:
+            resolved_memory = default_memory_paths(virtual=True) or None
+        tool_list = _repo_hint_tools() + tool_list
+
+    create_kwargs: dict[str, Any] = dict(kwargs)
+    if subagents is not None:
+        create_kwargs["subagents"] = subagents
+
+    mw = list(middleware or [])
+    if resilient:
+        mw = default_resilience_middleware() + mw
+    if mw:
+        create_kwargs["middleware"] = mw + list(create_kwargs.get("middleware") or [])
+
+    # Default was StateBackend (ephemeral) — that blocked all monorepo reads.
+    if "backend" not in create_kwargs:
+        create_kwargs["backend"] = (
+            backend if backend is not None else default_filesystem_backend()
+        )
+    elif backend is not None:
+        create_kwargs["backend"] = backend
+
+    if read_only and "permissions" not in create_kwargs:
+        create_kwargs["permissions"] = audit_filesystem_permissions()
+
+    return create_deep_agent(
+        model=resolved_model,
+        tools=tool_list or None,
+        system_prompt=system_prompt or DEFAULT_SYSTEM_PROMPT,
+        skills=resolved_skills,
+        memory=resolved_memory,
+        name=name,
+        **create_kwargs,
+    )
+
+
+def create_ecosystem_auditor(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    panels: list[str] | None = None,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Deep Agent orchestrator with specialist audit panels as subagents.
+
+    Parameters
+    ----------
+    panels:
+        Subset of panel names to attach. ``None`` = all 12 panels.
+    """
+    return create_void_deep_agent(
+        model=model,
+        tools=tools,
+        system_prompt=ECOSYSTEM_SYSTEM_PROMPT,
+        name="pegasusx-ecosystem-auditor",
+        include_ecosystem_defaults=True,
+        subagents=build_subagents(panels),
+        read_only=True,
+        **kwargs,
+    )
+
+
+def create_e2e_fleet_agent(
+    *,
+    model: str | BaseChatModel | None = None,
+    tools: Sequence[BaseTool | Callable[..., Any] | dict[str, Any]] | None = None,
+    agents: list[str] | None = None,
+    allow_code_writes: bool = True,
+    system_prompt: str | None = None,
+    **kwargs: Any,
+) -> CompiledStateGraph:
+    """Deep Agent E2E delivery fleet — loop until all specialists CONFIRM.
+
+    Specialists: architect, implementer, wiring, business, technical, verifier.
+    Reports live under ``/fleet/`` (StateBackend by default, or ``FLEET_HOST_DIR``).
+    """
+    return create_void_deep_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt or SUPERVISOR_PROMPT,
+        name="pegasusx-e2e-fleet",
+        include_ecosystem_defaults=True,
+        subagents=build_fleet_subagents(agents),
+        backend=kwargs.pop("backend", None) or fleet_filesystem_backend(),
+        read_only=False,
+        permissions=kwargs.pop("permissions", None)
+        or fleet_filesystem_permissions(allow_code_writes=allow_code_writes),
+        **kwargs,
+    )

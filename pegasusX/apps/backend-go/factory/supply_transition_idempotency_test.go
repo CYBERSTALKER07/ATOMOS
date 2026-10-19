@@ -36,6 +36,7 @@ func TestHandleSupplyRequestTransition_IdempotencyReplay(t *testing.T) {
 
 	svc := &Service{idem: store}
 	req := httptest.NewRequest(http.MethodPatch, "/v1/factory/supply-requests/sr-1", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", "test-key-63")
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("id", "sr-1")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))

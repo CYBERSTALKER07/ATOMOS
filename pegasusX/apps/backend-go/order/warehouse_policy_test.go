@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/stretchr/testify/require"
 )
@@ -23,6 +24,24 @@ func TestValidateLineQuantities_MinMax(t *testing.T) {
 	require.Len(t, errs, 2)
 	require.Contains(t, errs["sku-low"], "minimum")
 	require.Contains(t, errs["sku-high"], "maximum")
+}
+
+func TestParseDeliveryFeeRulesJSON_EmptyUsesPack(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	rules, err := parseDeliveryFeeRulesJSON([]byte(`{"base_fee_minor":0}`))
+	require.NoError(t, err)
+	pack, ok := auth.ResolveShippedMarketPack("UZ")
+	require.True(t, ok)
+	want, err := auth.PackCurrency(pack)
+	require.NoError(t, err)
+	require.Equal(t, want, rules.Currency)
+}
+
+func TestParseDeliveryFeeRulesJSON_PlannedPackDoesNotInvent(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "EU")
+	rules, err := parseDeliveryFeeRulesJSON([]byte(`{"base_fee_minor":0}`))
+	require.NoError(t, err)
+	require.Equal(t, "", rules.Currency)
 }
 
 func TestComputeOrderDeliveryFee_Tiers(t *testing.T) {

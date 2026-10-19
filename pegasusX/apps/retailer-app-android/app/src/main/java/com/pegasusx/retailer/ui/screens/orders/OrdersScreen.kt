@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 
@@ -55,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,9 +79,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.data.model.OrderStatus
+import com.pegasusx.retailer.ui.LocalCommandFilter
+import com.pegasusx.retailer.data.model.RetailerAIPrediction
 import com.pegasusx.retailer.ui.components.CountdownTimer
 import com.pegasus.design.PegasusStateKind
 import com.pegasus.design.PegasusStatePane
@@ -94,6 +98,7 @@ import com.pegasusx.retailer.ui.theme.StatusOrange
 import com.pegasusx.retailer.ui.theme.StatusRed
 import com.pegasusx.retailer.ui.theme.StatusTeal
 import kotlinx.coroutines.launch
+import com.pegasusx.retailer.R
 
 private enum class OrderTab(
     val title: String,
@@ -112,12 +117,15 @@ fun OrdersScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagerState = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
+    val commandFilter = LocalCommandFilter.current
+
+    LaunchedEffect(commandFilter.orderStatus, commandFilter.supplierId) {
+        viewModel.applyCommandFilter(commandFilter.orderStatus, commandFilter.supplierId)
+    }
 
     var selectedOrder by remember { mutableStateOf<Order?>(null) }
     var claimOrder by remember { mutableStateOf<Order?>(null) }
     var qrOrder by remember { mutableStateOf<Order?>(null) }
-    var correctionForecast by remember { mutableStateOf<DemandForecast?>(null) }
-    var correctionAmount by remember { mutableStateOf("") }
 
     selectedOrder?.let { order ->
         OrderDetailSheet(
@@ -151,44 +159,6 @@ fun OrdersScreen(
         onDismiss = { qrOrder = null },
     )
 
-    // RLHF Correction Dialog
-    correctionForecast?.let { forecast ->
-        AlertDialog(
-            onDismissRequest = { correctionForecast = null; correctionAmount = "" },
-            title = { Text("Correct Prediction") },
-            text = {
-                Column {
-                    Text("${forecast.productName} — AI predicted ${forecast.predictedQuantity} units")
-                    Spacer(modifier = Modifier.height(12.dp))
-                    androidx.compose.material3.OutlinedTextField(
-                        value = correctionAmount,
-                        onValueChange = { correctionAmount = it.filter { c -> c.isDigit() } },
-                        label = { Text("Correct amount") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    correctionAmount.toLongOrNull()?.let { amt ->
-                        viewModel.correctPrediction(forecast.id, amt)
-                    }
-                    correctionForecast = null; correctionAmount = ""
-                }) { Text("Submit") }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        viewModel.rejectPrediction(forecast.id)
-                        correctionForecast = null; correctionAmount = ""
-                    }) { Text("Reject", color = StatusRed) }
-                    TextButton(onClick = { correctionForecast = null; correctionAmount = "" }) { Text("Cancel") }
-                }
-            },
-        )
-    }
-
     PullToRefreshBox(
         isRefreshing = uiState.isLoading,
         onRefresh = viewModel::refresh,
@@ -208,6 +178,34 @@ fun OrdersScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     onRetry = viewModel::refresh,
                 )
+            }
+
+            if (uiState.commandStatus != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Filtered by ${uiState.commandStatus?.replace('_', ' ')}",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = {
+                            commandFilter.clear()
+                            viewModel.clearCommandFilter()
+                        },
+                    ) { Text("Clear") }
+                }
+                ActiveOrdersList(
+                    orders = uiState.commandOrders,
+                    isLoading = uiState.isLoading,
+                    onDetailsCash = { selectedOrder = it },
+                    onQRCash = { qrOrder = it },
+                )
+                return@Column
             }
 
             // ── M3 Icon Tabs ──
@@ -273,9 +271,8 @@ fun OrdersScreen(
                     2 -> AiPlannedList(
                         predictions = uiState.predictions,
                         isLoading = uiState.isLoading,
-                        onPreorder = viewModel::requestPreorder,
-                        onCorrect = { correctionForecast = it },
-                        onReject = { viewModel.rejectPrediction(it.id) },
+                        onConfirm = { viewModel.confirmAiOrder(it.orderId) },
+                        onReject = { viewModel.rejectAiOrder(it.orderId) },
                     )
                 }
             }
@@ -371,18 +368,17 @@ private fun OrderedList(
 
 @Composable
 private fun AiPlannedList(
-    predictions: List<DemandForecast>,
+    predictions: List<RetailerAIPrediction>,
     isLoading: Boolean = false,
-    onPreorder: (DemandForecast) -> Unit,
-    onCorrect: (DemandForecast) -> Unit,
-    onReject: (DemandForecast) -> Unit,
+    onConfirm: (RetailerAIPrediction) -> Unit,
+    onReject: (RetailerAIPrediction) -> Unit,
 ) {
     if (isLoading && predictions.isEmpty()) {
         ShimmerOrderList(count = 3)
         return
     }
     if (predictions.isEmpty()) {
-        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No AI Predictions", body = "AI-predicted orders based on your history will appear here")
+        PegasusStatePane(kind = PegasusStateKind.Empty, headline = "No pending AI preorders", body = "AI restock preorders waiting for confirm or reject will appear here")
         return
     }
     LazyVerticalGrid(
@@ -390,12 +386,11 @@ private fun AiPlannedList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        itemsIndexed(predictions, key = { _, f -> f.id }) { _, forecast ->
+        itemsIndexed(predictions, key = { _, f -> f.orderId }) { _, item ->
             AiPlannedCard(
-                forecast = forecast,
-                onPreorder = { onPreorder(forecast) },
-                onCorrect = { onCorrect(forecast) },
-                onReject = { onReject(forecast) },
+                item = item,
+                onConfirm = { onConfirm(item) },
+                onReject = { onReject(item) },
             )
         }
         item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
@@ -438,7 +433,7 @@ private fun ActiveOrderCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Order #${order.id.takeLast(3)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (order.isAiGenerated) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -451,7 +446,7 @@ private fun ActiveOrderCard(
                             )
                         }
                     }
-                    Text("${order.itemCount} items · ${order.displayTotal}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 OrderStatusBadge(order.status)
             }
@@ -568,7 +563,7 @@ private fun OrderedCard(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Order #${order.id.takeLast(3)}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.mobile_retailer_ui_order_takelast, order.id.takeLast(3)), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (order.isAiGenerated) {
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -581,7 +576,7 @@ private fun OrderedCard(
                             )
                         }
                     }
-                    Text("${order.itemCount} items · ${order.displayTotal}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(stringResource(R.string.mobile_retailer_ui_itemcount_items_displaytotal, order.itemCount, order.displayTotal), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 OrderStatusBadge(order.status)
             }
@@ -603,7 +598,7 @@ private fun OrderedCard(
                     order.proposedDeliveryDate?.let { date ->
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "Proposed: $date",
+                            stringResource(R.string.mobile_retailer_ui_proposed_date_2, date),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         )
@@ -732,20 +727,15 @@ private fun OrderedCard(
     }
 }
 
-// ── AI Planned Card (Future forecasts with execution date) ──
+// ── AI Planned Card (pending AI preorder confirm/reject) ──
 @Composable
 internal fun AiPlannedCard(
-    forecast: DemandForecast,
-    onPreorder: () -> Unit,
-    onCorrect: () -> Unit,
+    item: RetailerAIPrediction,
+    onConfirm: () -> Unit,
     onReject: () -> Unit,
 ) {
-    val color = when {
-        forecast.confidence >= 0.8 -> StatusGreen
-        forecast.confidence >= 0.6 -> StatusOrange
-        else -> StatusRed
-    }
     val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+    val statusShort = item.statusLabel.take(7)
 
     Surface(
         modifier = Modifier.fillMaxWidth().shadow(3.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
@@ -754,67 +744,47 @@ internal fun AiPlannedCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Confidence ring
                 Box(
                     modifier = Modifier.size(40.dp).drawBehind {
                         val sw = 3.dp.toPx()
                         val arcSize = Size(size.width - sw, size.height - sw)
                         val tl = Offset(sw / 2, sw / 2)
                         drawArc(trackColor, 0f, 360f, false, topLeft = tl, size = arcSize, style = Stroke(sw))
-                        drawArc(color, -90f, (forecast.confidence * 360).toFloat(), false, topLeft = tl, size = arcSize, style = Stroke(sw, cap = StrokeCap.Round))
                     },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(forecast.confidencePercent, style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold), color = color)
+                    Text(statusShort, style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold), color = StatusOrange)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            forecast.productName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (forecast.isBlocked) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Insufficient history",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
-                                color = StatusOrange,
-                                modifier = Modifier
-                                    .clip(PillShape)
-                                    .background(StatusOrange.copy(alpha = 0.12f), PillShape)
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                            )
-                        }
-                    }
-                    Text("${forecast.predictedQuantity} units", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Text(
+                        item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${item.quantity} units · ${item.statusLabel}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Execution date + pre-order
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        forecast.suggestedOrderDate,
+                        item.deliveryLabel,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Pre-Order",
+                        item.formattedTotal,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        modifier = Modifier
-                            .clip(PillShape)
-                            .clickable { onPreorder() }
-                            .background(MaterialTheme.colorScheme.primary, PillShape)
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
-            // Execution date banner
             Spacer(modifier = Modifier.height(8.dp))
             Row(
                 modifier = Modifier
@@ -826,21 +796,20 @@ internal fun AiPlannedCard(
                 Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    "AI will place on ${forecast.suggestedOrderDate}",
+                    item.orderId,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 )
             }
-            // RLHF action row
             Spacer(modifier = Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Correct",
+                    "Confirm",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onCorrect() }
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), PillShape)
+                        .clickable { onConfirm() }
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
                 Text(

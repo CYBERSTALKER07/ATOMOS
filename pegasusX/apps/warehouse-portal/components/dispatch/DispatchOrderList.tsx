@@ -1,11 +1,13 @@
 'use client';
 
+import { usePortalT } from "@/lib/i18n";
 import { useRouter } from 'next/navigation';
 import type { WarehouseDispatchOrder } from '@pegasusx/types';
 import { VirtualScrollList } from '@pegasusx/ui-kit/desktop';
 import { PageSection } from '@/components/PageSection';
 import EmptyState from '@/components/EmptyState';
 import { OrderOpsCard } from '@/components/orders';
+import { moneyCurrency } from '@pegasusx/api-core';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('uz-UZ').format(n);
@@ -44,21 +46,22 @@ export default function DispatchOrderList({
   onProposeDate,
   onReject,
 }: DispatchOrderListProps) {
+  const t = usePortalT();
   return (
     <PageSection
       title={`Undispatched orders (${orders.length})`}
-      description="Select for dispatch. Double-click a card for order detail."
+      description={t("warehouse_portal.residual.text.select_for_dispatch_double_click_a_card_for_order_detail")}
       actions={
         orders.length > 0 ? (
           <label className="flex items-center gap-2 text-xs text-(--muted) cursor-pointer">
-            <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+            <input id="dispatchorderlist-checkbox-2" aria-label="Select Dispatchorderlist option" type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
             Select all
           </label>
         ) : undefined
       }
     >
       {orders.length === 0 ? (
-        <EmptyState variant="no-data" headline="All orders dispatched" body="No pending orders need assignment right now." />
+        <EmptyState variant="no-data" headline={t("warehouse_portal.residual.text.all_orders_dispatched")} body={t("warehouse_portal.residual.text.no_pending_orders_need_assignment_right_now")} />
       ) : (
         <VirtualScrollList
           className="-mx-5 px-5"
@@ -69,6 +72,8 @@ export default function DispatchOrderList({
             <div className="flex items-start gap-2 pb-3">
               <label className="flex items-center pt-4 shrink-0 cursor-pointer">
                 <input
+                  id="dispatchorderlist-checkbox-1"
+                  aria-label="Select Dispatchorderlist option"
                   type="checkbox"
                   checked={selectedOrderIds.has(order.order_id)}
                   onChange={() => toggleOrder(order.order_id)}
@@ -79,7 +84,7 @@ export default function DispatchOrderList({
                   orderId={order.order_id}
                   retailerName={order.retailer_name || 'Unknown'}
                   state="PENDING"
-                  amountLabel={`${fmt(order.total_uzs)} UZS · ${formatVU(order.volume_vu ?? 0)} VU`}
+                  amountLabel={`${fmt(order.total_uzs)} ${moneyCurrency()} · ${formatVU(order.volume_vu ?? 0)} VU`.trim()}
                   index={index}
                   disabled={opsActingId === order.order_id}
                   detailOpenMode="double"

@@ -18,11 +18,11 @@ struct ManifestsView: View {
                 ManifestsList(items: rows)
             }
         }
-        .navigationTitle("Manifests")
+        .navigationTitle("portal.nav.manifests")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { ManifestExceptionsView() } label: {
-                    Text("Gate")
+                    Text("mobile_supplier.ui.gate")
                 }
             }
         }

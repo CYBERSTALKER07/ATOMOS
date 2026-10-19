@@ -87,6 +87,20 @@ func ensureSpannerSchema(ctx context.Context, cfg *bootstrap.Config) error {
 		return err
 	}
 
+	migrationFiles, _ := filepath.Glob(filepath.Join(filepath.Dir(schemaPath), "migrations", "*.ddl"))
+	for _, migPath := range migrationFiles {
+		migStatements, err := loadDDLStatements(migPath)
+		if err != nil {
+			return fmt.Errorf("load migration %s: %w", migPath, err)
+		}
+		if len(migStatements) == 0 {
+			continue
+		}
+		if err := applyDDLStatements(ctx, databaseAdmin, spannerDatabasePath(cfg), migStatements); err != nil {
+			return fmt.Errorf("apply migration %s: %w", filepath.Base(migPath), err)
+		}
+	}
+
 	return nil
 }
 

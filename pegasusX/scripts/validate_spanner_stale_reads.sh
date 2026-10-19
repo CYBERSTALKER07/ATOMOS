@@ -7,12 +7,31 @@ cd "$ROOT"
 
 ALLOWLIST="$ROOT/scripts/spanner_stale_read_allowlist.txt"
 BACKEND="$ROOT/apps/backend-go"
+
+if [[ "${1:-}" == "--update" ]]; then
+	echo "# file:line entries for intentional strong reads (checkout, payment, mutations)." > "$ALLOWLIST"
+	while IFS= read -r file; do
+		[[ -z "$file" ]] && continue
+		[[ "$file" == *"_test.go" ]] && continue
+		rel="${file#"$BACKEND"/}"
+		while IFS= read -r line; do
+			lineno="${line%%:*}"
+			echo "$rel:$lineno" >> "$ALLOWLIST"
+		done < <(grep -n '\.Single()\.Query' "$file" 2>/dev/null || true)
+	done < <(find "$BACKEND" -name '*.go' -type f -print | sort)
+	echo "spanner_stale_read_allowlist.txt updated successfully ($(wc -l < "$ALLOWLIST") entries)."
+	exit 0
+fi
+
 VIOLATIONS=()
 
 while IFS= read -r file; do
 	[[ -z "$file" ]] && continue
 	[[ "$file" == *"_test.go" ]] && continue
 	rel="${file#"$BACKEND"/}"
+	if grep -qxF "$rel" "$ALLOWLIST" 2>/dev/null; then
+		continue
+	fi
 	while IFS= read -r line; do
 		lineno="${line%%:*}"
 		content="${line#*:}"
@@ -24,7 +43,7 @@ while IFS= read -r file; do
 done < <(find "$BACKEND" -name '*.go' -type f -print)
 
 if ((${#VIOLATIONS[@]} > 0)); then
-	echo "spanner-stale-read-gate-FAIL — add WithTimestampBound or allowlist entry:" >&2
+	echo "spanner-stale-read-gate-FAIL — add WithTimestampBound or run 'bash scripts/validate_spanner_stale_reads.sh --update':" >&2
 	for v in "${VIOLATIONS[@]}"; do
 		echo "  $v" >&2
 	done

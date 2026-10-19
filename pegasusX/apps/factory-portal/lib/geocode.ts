@@ -16,7 +16,7 @@ export type AutocompletePrediction = {
 export async function autocompleteAddress(input: string): Promise<AutocompletePrediction[]> {
   const q = encodeURIComponent(input.trim());
   if (!q) return [];
-  const res = await fetch(`${factoryApiBaseUrl}/v1/platform/geocode/autocomplete?input=${q}`);
+  const res = await fetch(`${factoryApiBaseUrl()}/v1/platform/geocode/autocomplete?input=${q}`);
   if (!res.ok) return [];
   const data = (await res.json()) as { predictions?: AutocompletePrediction[] };
   return data.predictions ?? [];
@@ -25,14 +25,14 @@ export async function autocompleteAddress(input: string): Promise<AutocompletePr
 export async function resolvePlace(placeId: string): Promise<ResolvedLocation | null> {
   const id = placeId.trim();
   if (!id) return null;
-  const res = await fetch(`${factoryApiBaseUrl}/v1/platform/geocode/place?place_id=${encodeURIComponent(id)}`);
+  const res = await fetch(`${factoryApiBaseUrl()}/v1/platform/geocode/place?place_id=${encodeURIComponent(id)}`);
   if (!res.ok) return null;
   return (await res.json()) as ResolvedLocation;
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedLocation | null> {
   const res = await fetch(
-    `${factoryApiBaseUrl}/v1/platform/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    `${factoryApiBaseUrl()}/v1/platform/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
   );
   if (!res.ok) return null;
   return (await res.json()) as ResolvedLocation;
@@ -41,7 +41,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<Resolved
 export async function forwardGeocode(address: string): Promise<ResolvedLocation | null> {
   const trimmed = address.trim();
   if (!trimmed) return null;
-  const res = await fetch(`${factoryApiBaseUrl}/v1/platform/geocode/forward`, {
+  const res = await fetch(`${factoryApiBaseUrl()}/v1/platform/geocode/forward`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ address: trimmed }),

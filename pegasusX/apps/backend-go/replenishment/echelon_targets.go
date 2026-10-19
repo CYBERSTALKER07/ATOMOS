@@ -47,8 +47,26 @@ func ComputeEchelonTarget(burnRate float64, horizonDays int64, serviceLevelBps i
 	}
 	factor := float64(serviceLevelBps) / 10000.0
 	target := math.Ceil(burnRate * float64(horizonDays) * factor)
-	safety := math.Ceil(burnRate * float64(defaultLeadTimeDays) * safetyBufferMultiplier)
-	return int64(target), int64(safety)
+	lead := float64(defaultLeadTimeDays)
+	var safety float64
+	if SafetyStockV2Enabled() {
+		sl := factor
+		if sl <= 0 {
+			sl = 0.95
+		}
+		safety = ComputeReorderPoint(SafetyStockInputs{
+			DBar:             burnRate,
+			SigmaD:           math.Max(burnRate*0.25, 1),
+			SigmaDAssumed:    true,
+			L:                lead,
+			SigmaL:           1.0,
+			LeadSigmaAssumed: true,
+			ServiceLevel:     sl,
+		}).SafetyStock
+	} else {
+		safety = math.Ceil(burnRate * lead * safetyBufferMultiplier)
+	}
+	return int64(target), int64(math.Ceil(safety))
 }
 
 // SuggestedQtyFromTarget returns reorder suggestion from echelon target when enabled.

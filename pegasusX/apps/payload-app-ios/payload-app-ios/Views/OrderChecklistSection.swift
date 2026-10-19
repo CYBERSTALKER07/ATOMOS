@@ -55,7 +55,7 @@ struct OrderChecklistSection: View {
                                     .font(.system(size: 11, weight: .bold, design: .monospaced))
                             }
                             .buttonStyle(.bordered)
-                            Text("ORD-\(selected.orderId.suffix(6).uppercased())")
+                            Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(selected.orderId.suffix(6).uppercased())"))
                                 .font(.system(size: 12, weight: .black, design: .monospaced))
                                 .foregroundStyle(TermTheme.accent)
                         }
@@ -83,7 +83,7 @@ struct OrderChecklistSection: View {
                         if viewModel.sealedOrderIds.contains(selected.orderId) {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                Text("ORDER_SEALED: \(viewModel.dispatchCodes[selected.orderId] ?? "")")
+                                Text(L10n.format("mobile_payload.ui.order_sealed_orderid", "\(viewModel.dispatchCodes[selected.orderId] ?? "")"))
                             }
                             .font(.system(size: 14, weight: .black, design: .monospaced))
                             .foregroundStyle(TermTheme.live)
@@ -159,11 +159,11 @@ struct OrderChip: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ORD-\(order.orderId.suffix(6).uppercased())")
+                    Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(order.orderId.suffix(6).uppercased())"))
                         .font(.system(size: 14, weight: .black, design: .monospaced))
                         .foregroundStyle(TermTheme.accent)
                     
-                    Text("\((order.items ?? []).count) UNITS")
+                    Text(L10n.format("mobile_payload.ui.count_units", "\((order.items ?? []).count)"))
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(TermTheme.secondary)
                 }
@@ -231,7 +231,7 @@ struct ItemRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(checked ? TermTheme.accent : TermTheme.secondary)
                 
-                Text("QTY: \(quantity)")
+                Text(L10n.format("mobile_payload.ui.qty_quantity_2", "\(quantity)"))
                     .font(.system(size: 13, weight: .black, design: .monospaced))
                     .foregroundStyle(TermTheme.accent)
                     .padding(.horizontal, 10)

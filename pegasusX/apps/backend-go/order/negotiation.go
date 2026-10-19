@@ -37,17 +37,13 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -56,6 +52,11 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		OrderID string                    `json:"order_id"`
@@ -186,17 +187,13 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	if s.spannerClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
-		return
-	}
 
 	body, err := readLimitedBody(r, 64*1024)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "read_body_error"})
 		return
 	}
-	if s.guardIdempotency(w, r, body) {
+	if s.guardIdempotencyStrict(w, r, body) {
 		return
 	}
 	idemCommitted := false
@@ -205,6 +202,11 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			s.releaseIdempotency(r.Context(), r)
 		}
 	}()
+
+	if s.spannerClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "negotiation_unavailable"})
+		return
+	}
 
 	var req struct {
 		ProposalID string `json:"proposal_id"`
@@ -248,15 +250,15 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		}
 
 		orderRow, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-			[]string{"SupplierId", "RetailerId", "Version", "LineItemsJson", "Currency"})
+			[]string{"SupplierId", "RetailerId", "WarehouseId", "Source", "Version", "LineItemsJson", "Currency", "TotalMinor"})
 		if err != nil {
 			return err
 		}
-		var version int64
-		var currency string
+		var version, oldTotal int64
+		var currency, source, warehouseID string
 		var lineItemsRaw []byte
 		var supplierCol, retailerCol spanner.NullString
-		if err := orderRow.Columns(&supplierCol, &retailerCol, &version, &lineItemsRaw, &currency); err != nil {
+		if err := orderRow.Columns(&supplierCol, &retailerCol, &warehouseID, &source, &version, &lineItemsRaw, &currency, &oldTotal); err != nil {
 			return err
 		}
 		if supplierCol.Valid {
@@ -301,6 +303,19 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			if err != nil {
 				return err
 			}
+
+			if err := ReleaseReservationsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, OrderSource(source), lineItems); err != nil {
+				return fmt.Errorf("release inventory for negotiation: %w", err)
+			}
+			if err := ReserveLineItemsForOrderInTxn(ctx, txn, supplierID, warehouseID, orderID, retailerID, time.Time{}, updated); err != nil {
+				return fmt.Errorf("re-reserve inventory for negotiation: %w", err)
+			}
+			if s.credit != nil {
+				if err := s.credit.AdjustReserveInTxn(ctx, txn, orderID, total); err != nil {
+					return fmt.Errorf("adjust credit reserve: %w", err)
+				}
+			}
+
 			mutations = append(mutations, spanner.UpdateMap("Orders", map[string]any{
 				"OrderId":       orderID,
 				"LineItemsJson": updatedRaw,

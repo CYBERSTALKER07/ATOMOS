@@ -16,7 +16,7 @@ import (
 
 const (
 	importDiscoveryConfidenceThreshold = 0.80
-	importDiscoveryMaxRows           = 10000
+	importDiscoveryMaxRows             = 10000
 )
 
 type importFieldDefinition struct {
@@ -129,8 +129,8 @@ func buildImportStagedRows(
 
 	staged := make([]ImportStagedRowRecord, 0, len(rows))
 	summary := map[string]any{
-		"staged_rows": len(rows),
-		"valid_rows":  0,
+		"staged_rows":  len(rows),
+		"valid_rows":   0,
 		"invalid_rows": 0,
 	}
 
@@ -140,25 +140,25 @@ func buildImportStagedRows(
 		cleaned["supplier_id"] = supplierID
 
 		var validationErrors []string
-		warehouseID := strings.TrimSpace(fmt.Sprint(cleaned["warehouse_id"]))
+		warehouseID := importCleanedString(cleaned, "warehouse_id")
 		if warehouseID == "" {
 			validationErrors = append(validationErrors, "warehouse_id_required")
 		} else if _, ok := warehouseIDs[warehouseID]; !ok {
 			validationErrors = append(validationErrors, "warehouse_not_in_topology")
 		}
 
-		productID := strings.TrimSpace(fmt.Sprint(cleaned["product_id"]))
+		productID := importCleanedString(cleaned, "product_id")
 		isNewProduct := false
 		if productID == "" {
 			validationErrors = append(validationErrors, "product_id_required")
 		} else if !productExists(productID) {
 			isNewProduct = true
-			if strings.TrimSpace(fmt.Sprint(cleaned["product_name"])) == "" {
+			if importCleanedString(cleaned, "product_name") == "" {
 				cleaned["product_name"] = fmt.Sprintf("Imported product %d", idx+1)
 			}
 		}
 
-		qtyRaw := strings.TrimSpace(fmt.Sprint(cleaned["quantity_on_hand"]))
+		qtyRaw := importCleanedString(cleaned, "quantity_on_hand")
 		if qtyRaw == "" {
 			validationErrors = append(validationErrors, "quantity_on_hand_required")
 		} else if qty, err := strconv.ParseInt(strings.ReplaceAll(qtyRaw, ",", ""), 10, 64); err != nil || qty < 0 {
@@ -167,7 +167,7 @@ func buildImportStagedRows(
 			cleaned["quantity_on_hand"] = qty
 		}
 
-		if rawThreshold := strings.TrimSpace(fmt.Sprint(cleaned["reorder_threshold"])); rawThreshold != "" {
+		if rawThreshold := importCleanedString(cleaned, "reorder_threshold"); rawThreshold != "" {
 			if threshold, err := strconv.ParseInt(strings.ReplaceAll(rawThreshold, ",", ""), 10, 64); err != nil || threshold < 0 {
 				validationErrors = append(validationErrors, "invalid_reorder_threshold")
 			} else {
@@ -192,6 +192,14 @@ func buildImportStagedRows(
 		})
 	}
 	return staged, summary
+}
+
+func importCleanedString(cleaned map[string]any, key string) string {
+	value, ok := cleaned[key]
+	if !ok || value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
 }
 
 func applyImportMappings(raw map[string]any, sourceByTarget map[string]string) map[string]any {

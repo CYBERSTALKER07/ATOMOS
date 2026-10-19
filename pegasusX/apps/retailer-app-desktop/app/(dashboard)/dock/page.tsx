@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Chip } from "@heroui/react";
 import { PageChrome } from "@/components/PageChrome";
@@ -29,8 +30,9 @@ import {
 } from "../../../lib/dock-pending-patches";
 import { useRetailerSessionReconcile } from "../../../lib/use-retailer-session-reconcile";
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
+import { moneyCurrency } from "../../../lib/payment-catalog";
 
-/* ── Config ── */
+/* -- Config -- */
 
 const chipCfg: Record<
   string,
@@ -44,19 +46,26 @@ const chipCfg: Record<
   ARRIVING: { color: "accent", label: "Arriving" },
   ARRIVED: { color: "success", label: "Arrived" },
   ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
+  SHOP_CLOSED_PENDING: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "danger", label: "Awaiting Payment" },
   PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   PENDING: { color: "default", label: "Pending" },
   PENDING_REVIEW: { color: "default", label: "Pending Review" },
   LOADED: { color: "default", label: "Loaded" },
   COMPLETED: { color: "success", label: "Completed" },
+  FISCALIZING: { color: "warning", label: "Pending fiscal" },
+  FISCAL_FAILED: { color: "danger", label: "Fiscal failed" },
   CANCELLED: { color: "danger", label: "Cancelled" },
   CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
   NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  BACKORDERED: { color: "default", label: "Backordered" },
+  DELAYED: { color: "default", label: "Delayed" },
   QUARANTINE: { color: "danger", label: "Quarantined" },
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
+  RECONCILIATION_REQUIRED: { color: "warning", label: "Reconciliation Required" },
+  SYNC_CONFLICT: { color: "danger", label: "Disputed - Pending Review" },
 };
 
 const EXPANDED_SUPPLIERS_KEY = "retailer_dock_expanded_suppliers";
@@ -82,7 +91,7 @@ function buildDeliveryQrPayload(order: TrackingOrder): string {
   });
 }
 
-/* ── Types ── */
+/* -- Types -- */
 
 interface SupplierGroup {
   supplierId: string;
@@ -93,9 +102,10 @@ interface SupplierGroup {
   hasArrived: boolean;
 }
 
-/* ── Page ── */
+/* -- Page -- */
 
 export default function DockPage() {
+  const t = usePortalT();
   const { data, loading, error, isRefreshing, mutate } = useLiveData<TrackingResponse>(
     "/v1/retailer/tracking",
     15_000,
@@ -123,28 +133,28 @@ export default function DockPage() {
       return {
         kind: "offline" as const,
         icon: WifiOff,
-        message: "Network offline. Showing the latest cached dock queue.",
+        message: t("retailer_desktop.residual.text.network_offline_showing_the_latest_cached_dock_queue"),
       };
     }
     if (ws && !ws.isConnected) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Live socket reconnecting. Updates may arrive with delay.",
+        message: t("retailer_desktop.residual.text.live_socket_reconnecting_updates_may_arrive_with_delay"),
       };
     }
     if (error) {
       return {
         kind: "warning" as const,
         icon: AlertTriangle,
-        message: "Queue refresh failed. Retrying in the background.",
+        message: t("retailer_desktop.residual.text.queue_refresh_failed_retrying_in_the_background"),
       };
     }
     if (isRefreshing && !loading) {
       return {
         kind: "refreshing" as const,
         icon: RefreshCw,
-        message: "Syncing live dock updates...",
+        message: t("retailer_desktop.residual.text.syncing_live_dock_updates"),
       };
     }
     return null;
@@ -249,7 +259,12 @@ export default function DockPage() {
           "IN_TRANSIT",
           "ARRIVING",
           "ARRIVED",
+          "ARRIVED_SHOP_CLOSED",
+          "SHOP_CLOSED_PENDING",
           "AWAITING_PAYMENT",
+          "PENDING_CASH_COLLECTION",
+          "DELIVERED_ON_CREDIT",
+          "FISCALIZING",
         ].includes(o.state),
       ),
     [orders],
@@ -275,7 +290,14 @@ export default function DockPage() {
       group.totalAmount += order.total_amount;
       if (order.is_approaching || order.state === "ARRIVING")
         group.hasApproaching = true;
-      if (order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT")
+      if (
+        order.state === "ARRIVED" ||
+        order.state === "AWAITING_PAYMENT" ||
+        order.state === "PENDING_CASH_COLLECTION" ||
+        order.state === "DELIVERED_ON_CREDIT" ||
+        order.state === "ARRIVED_SHOP_CLOSED" ||
+        order.state === "SHOP_CLOSED_PENDING"
+      )
         group.hasArrived = true;
     }
     return Array.from(map.values()).sort(
@@ -313,7 +335,10 @@ export default function DockPage() {
       orders
         .filter(
           (order) =>
-            order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT",
+            order.state === "ARRIVED" ||
+            order.state === "AWAITING_PAYMENT" ||
+            order.state === "PENDING_CASH_COLLECTION" ||
+            order.state === "DELIVERED_ON_CREDIT",
         )
         .map((order) => order.order_id),
     );
@@ -422,8 +447,8 @@ export default function DockPage() {
 
       <PageChrome
         icon="dock"
-        title="Dock Control"
-        description="Real-time arrival queue and proximity-locked secure verification."
+        title={t("retailer_desktop.dock.text.dock_control")}
+        description={t("retailer_desktop.residual.text.real_time_arrival_queue_and_proximity_locked_secure_verification")}
         loading={loading}
         skeletonVariant="table"
       >
@@ -481,7 +506,7 @@ export default function DockPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between mb-2">
               <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                Arrived
+                {t("retailer_desktop.residual.text.arrived")}
               </span>
               <MapPin size={18} style={{ color: "var(--desk-success)" }} />
             </div>
@@ -499,7 +524,7 @@ export default function DockPage() {
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between mb-2">
               <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
-                In Transit
+                {t("retailer_desktop.residual.text.in_transit")}
               </span>
               <Truck size={18} style={{ color: "var(--desk-info)" }} />
             </div>
@@ -572,7 +597,7 @@ export default function DockPage() {
                       </h3>
                       <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-light uppercase tracking-widest">
                         {group.orders.length} ACTIVE NODES ·{" "}
-                        {formatAmount(group.totalAmount)} UZS
+                        {formatAmount(group.totalAmount)} {moneyCurrency()}
                       </p>
                     </div>
                   </div>
@@ -635,14 +660,16 @@ export default function DockPage() {
                                 </Chip>
                               </div>
                               <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-light">
-                                {formatAmount(order.total_amount)} UZS ·{" "}
+                                {formatAmount(order.total_amount)} {moneyCurrency()} ·{" "}
                                 {order.items.length} SKUS
                               </p>
                             </div>
 
                             <div className="flex items-center gap-4">
                               {order.state === "ARRIVED" ||
-                              order.state === "AWAITING_PAYMENT" ? (
+                              order.state === "AWAITING_PAYMENT" ||
+                              order.state === "PENDING_CASH_COLLECTION" ||
+                              order.state === "DELIVERED_ON_CREDIT" ? (
                                 <>
                                   <button
                                     onClick={() => toggleToken(order.order_id)}

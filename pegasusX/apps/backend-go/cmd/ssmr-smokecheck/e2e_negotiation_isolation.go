@@ -42,7 +42,7 @@ func runNegotiationIsolationCheck(ctx context.Context, cfg *bootstrap.Config) er
 	}
 	fmt.Println("PX_E2E_HEALTH_OK")
 
-	supplierID := envOr("SSMR_SMOKE_SUPPLIER_ID", "ssmr-supplier-1")
+	supplierID := smokeSupplierID()
 	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
 
 	driverTok, err := auth.Issue(auth.Claims{

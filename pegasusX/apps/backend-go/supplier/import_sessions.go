@@ -183,7 +183,7 @@ func RegisterImportRoutes(r chi.Router, d ImportRoutesDeps) {
 	r.Route(supplierImportRoutePrefix, func(imports chi.Router) {
 		imports.Post("/", handleCreateImportSession(repo, d.Service))
 		imports.Get("/{id}", handleGetImportSession(repo))
-		imports.Post("/{id}/uploaded", handlePostImportUploaded(repo))
+		imports.Post("/{id}/uploaded", handlePostImportUploaded(repo, d.Service))
 		imports.Post("/{id}/ingest", handlePostImportIngest(repo, d.Service))
 		imports.Get("/{id}/rows", handleGetImportRows(repo))
 		imports.Get("/{id}/mapping", handleGetImportMapping(repo))
@@ -313,23 +313,7 @@ func importOutboxMutations(buf *spannerTxnBuffer) []*spanner.Mutation {
 	}
 	mutations := make([]*spanner.Mutation, 0, len(buf.events))
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		if e.PublishedAt != nil {
-			row["PublishedAt"] = e.PublishedAt.UTC()
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, portalOutboxMutation(e))
 	}
 	return mutations
 }

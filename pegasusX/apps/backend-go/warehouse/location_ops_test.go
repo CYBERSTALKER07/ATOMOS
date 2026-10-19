@@ -70,6 +70,18 @@ func TestHandleOpsLocationPatch_IdempotencyReplay(t *testing.T) {
 	}
 }
 
+func TestDecorateLocationWithPack_LocksCountry(t *testing.T) {
+	t.Setenv("DEFAULT_MARKET_CODE", "UZ")
+	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/ops/location", nil)
+	req = req.WithContext(auth.WithClaims(req.Context(), auth.Claims{
+		Subject: "ops-1", Role: auth.RoleWarehouseAdmin, HomeNodeID: "wh-1", SupplierID: "sup-1", MarketCode: "UZ",
+	}))
+	got := decorateLocationWithPack(req.Context(), warehouseLocationResponse{WarehouseID: "wh-1"})
+	if got.CountryCode != "UZ" || got.PackCountryCode != "UZ" || got.CurrencyCode != "UZS" {
+		t.Fatalf("got=%+v", got)
+	}
+}
+
 func TestHandleOpsLocationPatch_InvalidJSON(t *testing.T) {
 	svc := &Service{idem: idempotency.NewInMemoryStore()}
 	req := httptest.NewRequest(http.MethodPatch, "/v1/warehouse/ops/location", bytes.NewReader([]byte(`{`)))

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.network
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,11 +37,12 @@ import com.pegasusx.supplier.data.model.SupplierTopologyResponse
 import com.pegasusx.supplier.data.model.SupplierTopologyUpdateRequest
 import com.pegasusx.supplier.data.model.SupplierTopologyWarehouseInput
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 
 
@@ -119,6 +122,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 }
                 val request = SupplierTopologyUpdateRequest(
                     warehouses = warehouseDrafts.map { draft ->
+                        val existing = topology?.warehouses?.firstOrNull { it.warehouseId == draft.warehouseId }
                         SupplierTopologyWarehouseInput(
                             warehouseId = draft.warehouseId,
                             name = draft.name.trim(),
@@ -128,15 +132,23 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                             isActive = draft.isActive,
                             isOnShift = draft.isOnShift,
                             transferMode = draft.transferMode,
+                            coLocateWithFactoryId = existing?.coLocateWithFactoryId,
+                            primaryFactoryId = existing?.primaryFactoryId,
+                            secondaryFactoryId = existing?.secondaryFactoryId,
+                            assignedFactoryIds = existing?.assignedFactoryIds?.takeIf { it.isNotEmpty() },
+                            countryCode = existing?.countryCode?.takeIf { it.isNotBlank() },
+                            coverageCities = existing?.coverageCities?.takeIf { it.isNotEmpty() },
                         )
                     },
                     factories = factoryDrafts.map { draft ->
+                        val existing = topology?.factories?.firstOrNull { it.factoryId == draft.factoryId }
                         SupplierTopologyFactoryInput(
                             factoryId = draft.factoryId,
                             name = draft.name.trim(),
                             lat = draft.lat.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid latitude"),
                             lng = draft.lng.toDoubleOrNull() ?: throw IllegalArgumentException("Invalid longitude"),
                             isActive = draft.isActive,
+                            countryCode = existing?.countryCode?.takeIf { it.isNotBlank() },
                         )
                     },
                 )
@@ -165,7 +177,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 title = { Text("Factories & warehouses") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_action_back))
                     }
                 },
                 actions = {
@@ -234,8 +246,8 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 key = "new-wh-${System.currentTimeMillis()}",
                                 warehouseId = null,
                                 name = "Warehouse ${warehouseDrafts.size + 1}",
-                                lat = "41.2995",
-                                lng = "69.2401",
+                                lat = com.pegasus.design.network.sessionMapCenter()?.lat?.toString() ?: "",
+                                lng = com.pegasus.design.network.sessionMapCenter()?.lng?.toString() ?: "",
                                 coverageRadiusKm = "50",
                                 isActive = true,
                                 isOnShift = true,
@@ -270,8 +282,8 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                                 key = "new-fc-${System.currentTimeMillis()}",
                                 factoryId = null,
                                 name = "Factory ${factoryDrafts.size + 1}",
-                                lat = "41.3111",
-                                lng = "69.2797",
+                                lat = com.pegasus.design.network.sessionMapCenter()?.lat?.toString() ?: "",
+                                lng = com.pegasus.design.network.sessionMapCenter()?.lng?.toString() ?: "",
                                 isActive = true,
                             ),
                         )

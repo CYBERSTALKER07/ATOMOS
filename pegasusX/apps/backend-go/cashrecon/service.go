@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 type Service struct {
@@ -32,6 +34,23 @@ func (s *Service) SubmitReconciliation(ctx context.Context, req SubmitReconcilia
 	if driverID == "" {
 		return nil, fmt.Errorf("driver_id required")
 	}
+	supplierID := strings.TrimSpace(req.SupplierId)
+	if supplierID == "" && s.repo != nil {
+		if sid, err := s.repo.ResolveDriverSupplierID(ctx, driverID); err == nil && strings.TrimSpace(sid) != "" {
+			supplierID = strings.TrimSpace(sid)
+		}
+	}
+	if supplierID == "" {
+		supplierID = auth.PreferTenantSupplierID(ctx, "")
+	}
+	if supplierID == "" {
+		if sid, ok := auth.ResolveSupplierID(ctx); ok {
+			supplierID = strings.TrimSpace(sid)
+		}
+	}
+	if supplierID == "" {
+		supplierID = "sup_61d822c6ab9714ca11f20db9"
+	}
 	shiftDate := req.ShiftDate
 	if shiftDate.IsZero() {
 		shiftDate = s.now()
@@ -56,8 +75,14 @@ func (s *Service) SubmitReconciliation(ctx context.Context, req SubmitReconcilia
 		status = ReconciliationStatusAccepted
 	}
 
+	reconID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(fmt.Sprintf("%s:%s:%d", driverID, civil.DateOf(shiftDate.UTC()).String(), req.DeclaredCashMinor))).String()
+	if existing, err := s.repo.GetReconciliation(ctx, reconID); err == nil && existing != nil {
+		return existing, nil
+	}
+
 	cr := CashReconciliation{
-		ReconciliationId:  uuid.New().String(),
+		ReconciliationId:  reconID,
+		SupplierId:        supplierID,
 		DriverId:          driverID,
 		RouteId:           req.RouteId,
 		ShiftDate:         shiftDate,

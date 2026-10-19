@@ -33,6 +33,7 @@ run_gate "gap-hunter-gate" make gap-hunter-gate
 run_gate "gen-contracts-gate" make gen-contracts-gate
 run_gate "validate-backend-k8s" make validate-backend-k8s
 run_gate "validate-ai-worker-k8s" make validate-ai-worker-k8s
+run_gate "validate-all-k8s" make validate-all-k8s
 run_gate "geocode cache unit test" bash -c 'cd apps/backend-go && go test ./geolocation -run TestForwardGeocodeCacheHitMiss -count=1'
 run_gate "geocode cache autocomplete test" bash -c 'cd apps/backend-go && go test ./geolocation -run TestAutocompleteCacheRoundTrip -count=1'
 run_gate "spanner stale-read gate" bash scripts/validate_spanner_stale_reads.sh

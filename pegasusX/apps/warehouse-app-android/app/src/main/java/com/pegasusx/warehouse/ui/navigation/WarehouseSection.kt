@@ -33,11 +33,16 @@ enum class WarehouseSection(
     DEMAND_FORECAST(WarehouseRoutes.DEMAND_FORECAST, "Demand forecast", Icons.Default.ShowChart),
     RETAILERS(WarehouseRoutes.CRM, "Retailers", Icons.Default.Store),
     RETURNS(WarehouseRoutes.RETURNS, "Returns", Icons.AutoMirrored.Filled.Undo),
+    COLD_CHAIN(WarehouseRoutes.COLD_CHAIN, "Cold chain", Icons.Default.Thermostat),
+    LABOR_CAPACITY(WarehouseRoutes.LABOR_CAPACITY, "Labor capacity", Icons.Default.Groups),
     EXCEPTIONS(WarehouseRoutes.EXCEPTIONS, "Exceptions", Icons.Default.Warning),
+    CONTROL_TOWER(WarehouseRoutes.CONTROL_TOWER, "Control tower", Icons.Default.Hub),
     CLAIMS(WarehouseRoutes.CLAIMS, "Claims", Icons.Default.Report),
     RESCUES(WarehouseRoutes.RESCUES, "Rescues", Icons.Default.Build),
     PAYMENT_CONFIG(WarehouseRoutes.PAYMENT_CONFIG, "Payment config", Icons.Default.Payment),
+    COVERAGE(WarehouseRoutes.COVERAGE, "Coverage and supply", Icons.Default.Place),
     OPS_SETTINGS(WarehouseRoutes.OPS_SETTINGS, "Ops settings", Icons.Default.Settings),
+    RETURN_POLICY(WarehouseRoutes.RETURN_POLICY, "Returns & reverse SLA", Icons.AutoMirrored.Filled.Undo),
     LOCATION_SETTINGS(WarehouseRoutes.LOCATION_SETTINGS, "Depot location", Icons.Default.Place),
     NOTIFICATIONS(WarehouseRoutes.NOTIFICATIONS, "Notifications", Icons.Default.Notifications),
     PORTAL_SETUP(WarehouseRoutes.portalHandoff("setup"), "Warehouse setup", Icons.Default.Business),
@@ -47,11 +52,9 @@ enum class WarehouseSection(
     ;
 
     companion object {
-        val compactTabs: List<WarehouseSection> = listOf(DASHBOARD, ORDERS, DISPATCH, MORE)
+        val compactTabs: List<WarehouseSection> = listOf(DASHBOARD, DISPATCH, INVENTORY, DEMAND_FORECAST, MORE)
 
-        val primarySections: List<WarehouseSection> = listOf(
-            DASHBOARD, ORDERS, DRIVERS, VEHICLES, INVENTORY, DISPATCH, ANALYTICS, TREASURY, STAFF,
-        )
+        val primarySections: List<WarehouseSection> = compactTabs.filter { it != MORE }
 
         val fulfillmentSections: List<WarehouseSection> = listOf(
             MANIFESTS, DISPATCH_SETTINGS, FLEET_LIVE_MAP, TRANSFER_ACTIONS,
@@ -63,14 +66,16 @@ enum class WarehouseSection(
             TOMORROW_BOARD,
             STOCK_COMMITMENTS,
             SUPPLY_REQUESTS,
+            COVERAGE,
             REPLENISHMENT,
-            DEMAND_FORECAST,
             OPS_SETTINGS,
+            RETURN_POLICY,
             LOCATION_SETTINGS,
         )
 
         val operationsSections: List<WarehouseSection> = listOf(
-            RETAILERS, RETURNS, EXCEPTIONS, CLAIMS, RESCUES, PAYMENT_CONFIG, NOTIFICATIONS,
+            ORDERS, DRIVERS, VEHICLES, ANALYTICS, TREASURY, STAFF,
+            RETAILERS, RETURNS, COLD_CHAIN, LABOR_CAPACITY, EXCEPTIONS, CONTROL_TOWER, CLAIMS, RESCUES, PAYMENT_CONFIG, NOTIFICATIONS,
         )
 
         val portalSections: List<WarehouseSection> = listOf(

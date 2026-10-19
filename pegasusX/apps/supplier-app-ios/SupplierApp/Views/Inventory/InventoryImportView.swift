@@ -33,7 +33,7 @@ struct InventoryImportView: View {
 
             if step == 0 {
                 Section("CSV payload") {
-                    TextField("File name", text: $fileName)
+                    TextField("mobile_supplier.ui.file_name", text: $fileName)
                     TextEditor(text: $csvText)
                         .frame(minHeight: 160)
                         .font(.caption.monospaced())
@@ -54,27 +54,27 @@ struct InventoryImportView: View {
             if step == 1 {
                 Section("Column mapping") {
                     if mappings.isEmpty {
-                        Text("No mappings suggested yet.")
+                        Text("mobile_supplier.ui.no_mappings_suggested_yet")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(mappings) { mapping in
                             VStack(alignment: .leading) {
                                 Text(mapping.sourceColumn).font(.headline)
-                                Text("→ \(mapping.targetField) (\(Int(mapping.confidence * 100))%)")
+                                Text(L10n.format("mobile_supplier.ui.targetfield_confidence_100", "\(mapping.targetField)", "\(Int(mapping.confidence * 100))"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                     }
                     if sessionId != nil {
-                        Button("Continue to review") { step = 2 }
+                        Button("mobile_supplier.ui.continue_to_review") { step = 2 }
                     }
                 }
             }
 
             if step == 2, let sessionId {
-                Section("Review session \(sessionId.prefix(8))…") {
-                    Text("Status: \(sessionStatus)")
+                Section(L10n.format("mobile_supplier.ui.review_session_prefix", "\(sessionId.prefix(8))")) {
+                    Text(L10n.format("mobile_supplier.ui.status_sessionstatus_2", "\(sessionStatus)"))
                     Button(busy ? "Approving…" : "Approve & apply") {
                         Task { await approveAndApply(sessionId) }
                     }
@@ -85,11 +85,11 @@ struct InventoryImportView: View {
             if step == 3 {
                 Section("Result") {
                     if let applyResult {
-                        Text("Applied \(applyResult.appliedRows) rows (\(applyResult.status))")
+                        Text(L10n.format("mobile_supplier.ui.applied_appliedrows_rows_status", "\(applyResult.appliedRows)", "\(applyResult.status)"))
                     } else if let directResult {
-                        Text("Direct import applied \(directResult.applied), skipped \(directResult.skipped)")
+                        Text(L10n.format("mobile_supplier.ui.direct_import_applied_applied_skipped_skipped", "\(directResult.applied)", "\(directResult.skipped)"))
                     } else {
-                        Text("Import complete.")
+                        Text("mobile_supplier.ui.import_complete")
                     }
                 }
             }
@@ -98,7 +98,7 @@ struct InventoryImportView: View {
                 Section { Text(error).foregroundStyle(SupplierTheme.destructive) }
             }
         }
-        .navigationTitle("Import inventory")
+        .navigationTitle("mobile_supplier.ui.import_inventory")
     }
 
     private func directImport() async {

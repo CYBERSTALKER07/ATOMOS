@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
@@ -13,6 +14,7 @@ import { ManifestsTable } from "@/components/manifests";
 const api = createSupplierApi();
 
 export default function ManifestsPage() {
+  const t = usePortalT();
   const [manifests, setManifests] = useState<SupplierManifestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function ManifestsPage() {
     api
       .getSupplierManifests()
       .then((resp) => setManifests(resp.manifests))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_manifests_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_manifests_failed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,13 +32,13 @@ export default function ManifestsPage() {
   return (
     <PageChrome
       icon="manifests"
-      title="Manifests"
-      description="Loading manifests, seal, and dispatch lifecycle. Use Dispatch for active queue operations."
+      title={t("portal.nav.manifests")}
+      description={t("supplier_portal.residual.text.loading_manifests_seal_and_dispatch_lifecycle_use_dispatch_for_a")}
       loading={loading}
       skeletonVariant="table"
       error={error}
       empty={!loading && !error && manifests.length === 0}
-      emptyMessage="No manifests in the current window."
+      emptyMessage={t("supplier_portal.residual.text.no_manifests_in_the_current_window")}
       emptyIcon="manifests"
     >
       <ListToolbar

@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +31,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.pressable
+import com.pegasusx.driver.R
 
 @Composable
 fun QuickActions(
@@ -40,25 +43,25 @@ fun QuickActions(
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         ActionRow(
             icon = Icons.Default.ShieldMoon,
-            title = "Offline Verifier",
+            title = stringResource(R.string.mobile_driver_ui_offline_verifier),
             subtitle = "Hash manifest protocol",
             onClick = onOfflineVerifier,
         )
         ActionRow(
             icon = Icons.Default.Sync,
-            title = "Sync Queue",
+            title = stringResource(R.string.mobile_driver_ui_sync_queue),
             subtitle = if (pendingCount > 0) "$pendingCount pending offline actions" else "Upload pending actions",
             onClick = onSyncQueue,
         )
         ActionRow(
             icon = Icons.Default.Settings,
-            title = "Settings",
+            title = stringResource(R.string.portal_nav_settings),
             subtitle = "App configuration",
             onClick = {}
         )
         ActionRow(
             icon = Icons.AutoMirrored.Filled.ExitToApp,
-            title = "End Session",
+            title = stringResource(R.string.mobile_driver_ui_end_session),
             subtitle = "Go offline and sign out",
             destructive = true,
             onClick = onEndSession

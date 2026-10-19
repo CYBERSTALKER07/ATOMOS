@@ -43,7 +43,7 @@ struct DispatchOrderList: View {
         ResponsiveGridContentWrapper {
             // ── Fleet trucks ──
             if !fleetVehicles.isEmpty {
-                Section("Fleet trucks (\(fleetVehicles.count))") {
+                Section(L10n.format("mobile_warehouse.ui.fleet_trucks_count", "\(fleetVehicles.count)")) {
                     ForEach(fleetVehicles) { vehicle in
                         let reasonBinding = Binding<String>(
                             get: { vehicleReasons[vehicle.vehicleId] ?? vehicle.unavailableReason ?? "MANUAL_HOLD" },
@@ -68,7 +68,7 @@ struct DispatchOrderList: View {
             // ── Empty state ──
             if preview.undispatchedOrders.isEmpty {
                 Section {
-                    ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("No pending orders"))
+                    ContentUnavailableView("All Dispatched", systemImage: "checkmark.circle", description: Text("mobile_warehouse.ui.no_pending_orders"))
                 }
             } else {
                 // ── Dispatch mode selector ──
@@ -81,13 +81,13 @@ struct DispatchOrderList: View {
                     .pickerStyle(.segmented)
                     if dispatchMode == .manual {
                     Picker("Truck / driver", selection: $selectedDriverId) {
-                        Text("Select truck / driver").tag("")
+                        Text("mobile_warehouse.ui.select_truck_driver").tag("")
                         ForEach(preview.availableDrivers) { driver in
                             Text(driverPickerLabel(driver)).tag(driver.driverId)
                         }
                     }
                     if selectedDriver != nil {
-                        Text("Loaded \(selectedVolume, specifier: "%.1f") / \(effectiveMax, specifier: "%.1f") VU effective")
+                        Text(L10n.format("mobile_warehouse.ui.loaded_n_1f_n_1f_2_vu_effective", String(format: "%.1f", selectedVolume), String(format: "%.1f", effectiveMax)))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -100,20 +100,20 @@ struct DispatchOrderList: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(executing || selectedDriverId.isEmpty || selectedOrderIds.isEmpty)
                     } else {
-                    Text("Trucks are assigned automatically across the fleet.")
+                    Text("mobile_warehouse.ui.trucks_are_assigned_automatically_across_the_fleet")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Button {
                         onSmartDispatch()
                     } label: {
-                        Text("Smart Dispatch")
+                        Text("mobile_warehouse.ui.smart_dispatch")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(executing || preview.undispatchedOrders.isEmpty || preview.availableDrivers.isEmpty)
                     }
                     if preview.fleetEffectiveCapacityVu > 0 {
-                        Text("Fleet \(preview.fleetEffectiveCapacityVu, specifier: "%.1f") VU effective")
+                        Text(L10n.format("mobile_warehouse.ui.fleet_n_1f_vu_effective", String(format: "%.1f", preview.fleetEffectiveCapacityVu)))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -138,16 +138,16 @@ struct DispatchOrderList: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(order.retailerName.isEmpty ? String(order.orderId.prefix(8)) : order.retailerName)
                                     .font(.headline)
-                                Text("\(order.totalUzs.formatted()) UZS · \(order.volumeVu, specifier: "%.1f") VU")
+                                Text(L10n.format("mobile_warehouse.ui.formatted_uzs_n_1f_vu", "\(order.totalUzs.formatted())", String(format: "%.1f", order.volumeVu ?? 0)))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                 HStack(spacing: LabTheme.spacingSM) {
-                                    Button("Propose date") {
+                                    Button("mobile_warehouse.ui.propose_date") {
                                         onProposeDate(order.orderId)
                                     }
                                     .buttonStyle(.bordered)
                                     .controlSize(.small)
-                                    Button("Cancel", role: .destructive) {
+                                    Button("common.action.cancel", role: .destructive) {
                                         onReject(order.orderId)
                                     }
                                     .buttonStyle(.bordered)
@@ -168,12 +168,12 @@ struct DispatchOrderList: View {
                 if !preview.proposedRoutes.isEmpty || !preview.optimizerWarnings.isEmpty || preview.windowConstrainedCount > 0 {
                     Section("Smart suggest preview") {
                         if preview.windowConstrainedCount > 0 {
-                            Text("\(preview.windowConstrainedCount) order(s) constrained by receiving window")
+                            Text(L10n.format("mobile_warehouse.ui.windowconstrainedcount_order_s_constrained_by_receiving_window", "\(preview.windowConstrainedCount)"))
                                 .font(.caption)
                                 .foregroundStyle(.orange)
                         }
                         if let source = preview.optimizerSource, !source.isEmpty {
-                            Text("Source: \(source)")
+                            Text(L10n.format("mobile_warehouse.ui.source_source_2", "\(source)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -187,7 +187,7 @@ struct DispatchOrderList: View {
 
                 // ── Proposed routes ──
                 if !preview.proposedRoutes.isEmpty {
-                    Section("Smart suggest routes (\(preview.proposedRoutes.count))") {
+                    Section(L10n.format("mobile_warehouse.ui.smart_suggest_routes_count", "\(preview.proposedRoutes.count)")) {
                         DispatchPreviewMapView(routes: preview.proposedRoutes)
                             .listRowInsets(EdgeInsets())
                         ForEach(preview.proposedRoutes) { route in
@@ -196,7 +196,7 @@ struct DispatchOrderList: View {
                                     Text(route.driverName ?? route.driverId ?? "Driver")
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(route.stopCount ?? route.orderIds.count) stops · \((route.volumeVu ?? route.loadedVolume ?? 0), specifier: "%.1f") VU")
+                                    Text(L10n.format("mobile_warehouse.ui.count_stops_n_1f_vu", "\(route.stopCount ?? route.orderIds.count)", String(format: "%.1f", route.volumeVu ?? route.loadedVolume ?? 0)))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

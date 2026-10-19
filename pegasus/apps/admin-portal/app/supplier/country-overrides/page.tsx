@@ -10,7 +10,7 @@ import {
   buildSupplierCountryOverrideSaveIdempotencyKey,
 } from '../_shared/idempotency';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 interface CountryConfig {
   country_code: string;
@@ -64,7 +64,7 @@ interface OverrideEntryResponse {
   effective: CountryConfigResponse;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const BLANK_OVERRIDE: Omit<SupplierOverride, 'country_code'> = {
   breach_radius_meters: null,
@@ -105,7 +105,7 @@ function overrideFromEntry(entry: OverrideEntry | null, code: string): SupplierO
   return { ...entry.override };
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// -- Component -----------------------------------------------------------------
 
 export default function CountryOverridesPage() {
   const token = useToken();
@@ -120,7 +120,7 @@ export default function CountryOverridesPage() {
   const [deleting, setDeleting] = useState(false);
   const [nullFields, setNullFields] = useState<Set<keyof SupplierOverride>>(new Set());
 
-  // ── Fetch all country configs (for picker) and any existing supplier overrides ──
+  // -- Fetch all country configs (for picker) and any existing supplier overrides --
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
@@ -151,7 +151,7 @@ export default function CountryOverridesPage() {
 
   useEffect(() => { load(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Derive selected entry and reset draft when country changes ──
+  // -- Derive selected entry and reset draft when country changes --
   const selectedEntry = useMemo(
     () => entries.find((e) => e.override.country_code === selectedCode) ?? null,
     [entries, selectedCode],
@@ -176,7 +176,7 @@ export default function CountryOverridesPage() {
     [countries, selectedCode],
   );
 
-  // ── Save (PUT) ──────────────────────────────────────────────────────────────
+  // -- Save (PUT) --------------------------------------------------------------
   const save = useCallback(async () => {
     if (!token || !draft) return;
     setSaving(true);
@@ -211,7 +211,7 @@ export default function CountryOverridesPage() {
     }
   }, [token, draft, nullFields, selectedCode, load, toast]);
 
-  // ── Delete (revert to platform defaults) ───────────────────────────────────
+  // -- Delete (revert to platform defaults) -----------------------------------
   const revert = useCallback(async () => {
     if (!token || !selectedCode) return;
     setDeleting(true);
@@ -237,7 +237,7 @@ export default function CountryOverridesPage() {
     }
   }, [token, selectedCode, load, toast]);
 
-  // ── Field helpers ──────────────────────────────────────────────────────────
+  // -- Field helpers ----------------------------------------------------------
   function setNullable<K extends keyof SupplierOverride>(key: K, value: SupplierOverride[K]) {
     setDraft((prev) => prev ? { ...prev, [key]: value } : prev);
     setNullFields((prev) => {
@@ -262,7 +262,7 @@ export default function CountryOverridesPage() {
 
   const isNull = (k: keyof SupplierOverride) => nullFields.has(k);
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // -- Render helpers ---------------------------------------------------------
   const labelClass = 'md-typescale-label-small block mb-1';
   const inputClass = 'md-input-outlined w-full font-mono';
   const mutedColor = { color: 'var(--muted)' };
@@ -270,7 +270,7 @@ export default function CountryOverridesPage() {
     <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>Platform: {val}</span>
   );
 
-  // ── States ─────────────────────────────────────────────────────────────────
+  // -- States -----------------------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-full p-6 md:p-10 flex items-center justify-center" style={{ background: 'var(--background)' }}>
@@ -394,7 +394,7 @@ export default function CountryOverridesPage() {
               </div>
 
               <div className="space-y-5">
-                {/* ── Operational Timings ──────────────────────────────── */}
+                {/* -- Operational Timings -------------------------------- */}
                 <section>
                   <h3 className="md-typescale-label-large mb-3" style={mutedColor}>Operational Timings</h3>
 
@@ -459,13 +459,13 @@ export default function CountryOverridesPage() {
                   />
                 </section>
 
-                {/* ── Payment Gateways ──────────────────────────────────── */}
+                {/* -- Payment Gateways ------------------------------------ */}
                 <section>
                   <h3 className="md-typescale-label-large mb-3" style={mutedColor}>GlobalPaynt & Notifications</h3>
 
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <label className={labelClass} style={mutedColor}>Payment Gateways (comma-separated)</label>
+                      <label htmlFor="override-payment-gateways" className={labelClass} style={mutedColor}>Payment Gateways (comma-separated)</label>
                       <UseDefaultToggle
                         isNull={isNull('payment_gateways')}
                         onToggle={() => toggleNull('payment_gateways')}
@@ -474,6 +474,8 @@ export default function CountryOverridesPage() {
                     </div>
                     {!isNull('payment_gateways') && (
                       <input
+                        id="override-payment-gateways"
+                        aria-label="Payment Gateways (comma-separated)"
                         type="text"
                         className={inputClass}
                         value={(draft.payment_gateways || []).join(', ')}
@@ -494,7 +496,7 @@ export default function CountryOverridesPage() {
 
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <label className={labelClass} style={mutedColor}>Notification Fallback Order (comma-separated)</label>
+                      <label htmlFor="override-notification-fallback" className={labelClass} style={mutedColor}>Notification Fallback Order (comma-separated)</label>
                       <UseDefaultToggle
                         isNull={isNull('notification_fallback_order')}
                         onToggle={() => toggleNull('notification_fallback_order')}
@@ -503,6 +505,8 @@ export default function CountryOverridesPage() {
                     </div>
                     {!isNull('notification_fallback_order') && (
                       <input
+                        id="override-notification-fallback"
+                        aria-label="Notification Fallback Order (comma-separated)"
                         type="text"
                         className={inputClass}
                         value={(draft.notification_fallback_order || []).join(', ')}
@@ -522,7 +526,7 @@ export default function CountryOverridesPage() {
                   </div>
                 </section>
 
-                {/* ── Provider Overrides (Advanced) ─────────────────────── */}
+                {/* -- Provider Overrides (Advanced) ----------------------- */}
                 <details>
                   <summary
                     className="md-typescale-label-large cursor-pointer select-none py-2"
@@ -564,7 +568,7 @@ export default function CountryOverridesPage() {
                   </div>
                 </details>
 
-                {/* ── Save button ───────────────────────────────────────── */}
+                {/* -- Save button ----------------------------------------- */}
                 <div className="pt-4 flex justify-end">
                   <Button
                     variant="primary"
@@ -643,7 +647,7 @@ export default function CountryOverridesPage() {
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// -- Sub-components ------------------------------------------------------------
 
 interface UseDefaultToggleProps {
   isNull: boolean;
@@ -690,14 +694,17 @@ function NullableNumberField({
 }: NullableNumberFieldProps) {
   const labelClass = 'md-typescale-label-small block mb-1';
   const inputClass = 'md-input-outlined w-full font-mono';
+  const inputId = `override-num-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1">
-        <label className={labelClass} style={{ color: 'var(--muted)' }}>{label}</label>
+        <label htmlFor={inputId} className={labelClass} style={{ color: 'var(--muted)' }}>{label}</label>
         <UseDefaultToggle isNull={isNull} onToggle={onToggleNull} platformDefault={platformDefault} />
       </div>
       {!isNull ? (
         <input
+          id={inputId}
+          aria-label={label}
           type="number"
           className={inputClass}
           value={value ?? platformDefault ?? ''}
@@ -738,14 +745,17 @@ function NullableStringField({
 }: NullableStringFieldProps) {
   const labelClass = 'md-typescale-label-small block mb-1';
   const inputClass = 'md-input-outlined w-full font-mono';
+  const inputId = `override-str-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1">
-        <label className={labelClass} style={{ color: 'var(--muted)' }}>{label}</label>
+        <label htmlFor={inputId} className={labelClass} style={{ color: 'var(--muted)' }}>{label}</label>
         <UseDefaultToggle isNull={isNull} onToggle={onToggleNull} platformDefault={platformDefault} />
       </div>
       {!isNull ? (
         <input
+          id={inputId}
+          aria-label={label}
           type="text"
           className={inputClass}
           value={value ?? ''}

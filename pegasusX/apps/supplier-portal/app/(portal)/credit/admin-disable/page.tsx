@@ -1,11 +1,13 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useState } from "react";
 import { supplierFetch } from "@/lib/auth";
 import { PageChrome } from "@/components/PageChrome";
 
 /** Pegaus support/admin console surface: permanent disable with ticket linkage. */
 export default function CreditAdminDisablePage() {
+  const t = usePortalT();
   const [supplierId, setSupplierId] = useState("");
   const [retailerId, setRetailerId] = useState("");
   const [ticketId, setTicketId] = useState("");
@@ -31,7 +33,7 @@ export default function CreditAdminDisablePage() {
       if (!res.ok) throw new Error(body.error || `status_${res.status}`);
       setMsg("disabled_ok");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "failed");
+      setMsg(e instanceof Error ? e.message : t("supplier_portal.residual.text.failed"));
     } finally {
       setBusy(false);
     }
@@ -39,30 +41,30 @@ export default function CreditAdminDisablePage() {
 
   return (
     <PageChrome
-      title="Admin: disable credit"
-      description="Support-only permanent disable. Requires ticket id + reason. Open AR remains collectible."
+      title={t("supplier_portal.credit.admin_disable.text.admin_disable_credit")}
+      description={t("supplier_portal.residual.text.support_only_permanent_disable_requires_ticket_id_reason_open_ar")}
     >
       <div className="space-y-3 max-w-lg text-sm">
         <label className="block">
           Mode
           <select className="ml-2 border rounded px-2 py-1" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>
-            <option value="relationship">Relationship</option>
-            <option value="program">Program</option>
+            <option value="relationship">{t("supplier_portal.credit.admin_disable.text.relationship")}</option>
+            <option value="program">{t("supplier_portal.credit.admin_disable.text.program")}</option>
           </select>
         </label>
         <label className="block">
           Supplier ID
-          <input className="mt-1 w-full border rounded px-2 py-1" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} />
+          <input id="supplier-id-input-3" aria-label="Supplier ID" className="mt-1 w-full border rounded px-2 py-1" value={supplierId} onChange={(e) => setSupplierId(e.target.value)} />
         </label>
         {mode === "relationship" ? (
           <label className="block">
             Retailer ID
-            <input className="mt-1 w-full border rounded px-2 py-1" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
+            <input id="retailer-id-input-2" aria-label="Retailer ID" className="mt-1 w-full border rounded px-2 py-1" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
           </label>
         ) : null}
         <label className="block">
           Ticket ID
-          <input className="mt-1 w-full border rounded px-2 py-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} />
+          <input id="ticket-id-input-1" aria-label="Ticket ID" className="mt-1 w-full border rounded px-2 py-1" value={ticketId} onChange={(e) => setTicketId(e.target.value)} />
         </label>
         <label className="block">
           Reason

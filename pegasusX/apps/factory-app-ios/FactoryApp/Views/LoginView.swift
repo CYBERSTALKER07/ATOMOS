@@ -20,7 +20,7 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: LabTheme.spacingSM) {
-                Text("Pegasus Factory")
+                Text("mobile_factory.ui.pegasus_factory")
                     .font(.largeTitle.bold())
                 Text(mode == .otp
                      ? "Sign in with your registered phone number."
@@ -31,14 +31,14 @@ struct LoginView: View {
             }
 
             VStack(spacing: LabTheme.spacingLG) {
-                TextField("Phone", text: $phone)
+                TextField("common.field.phone", text: $phone)
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
                     .disabled(loading || (mode == .otp && otpSent))
 
                 if mode == .otp, otpSent {
-                    TextField("Verification Code", text: $otpCode)
+                    TextField("mobile_factory.ui.verification_code", text: $otpCode)
                         .textContentType(.oneTimeCode)
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
@@ -71,7 +71,7 @@ struct LoginView: View {
                         Button {
                             sendOtp()
                         } label: {
-                            Text("Send Code")
+                            Text("mobile_factory.ui.send_code")
                                 .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
@@ -81,14 +81,14 @@ struct LoginView: View {
                         Button {
                             verifyOtp()
                         } label: {
-                            Text("Sign In")
+                            Text("common.action.sign_in")
                                 .frame(maxWidth: 360, minHeight: 44)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.primary)
                         .disabled(loading || otpCode.count < 6)
 
-                        Button("Resend code") {
+                        Button("mobile_factory.ui.resend_code") {
                             otpSent = false
                             otpCode = ""
                             FirebaseAuthHelper.shared.resetFlow()
@@ -100,7 +100,7 @@ struct LoginView: View {
                     Button {
                         passwordLogin()
                     } label: {
-                        Text("Sign In")
+                        Text("common.action.sign_in")
                             .frame(maxWidth: 360, minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
@@ -133,6 +133,7 @@ struct LoginView: View {
 
     private func storeAuth(_ auth: AuthResponse) {
         tokenStore.store(auth: auth)
+        Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
     }
 
     private func switchMode() {

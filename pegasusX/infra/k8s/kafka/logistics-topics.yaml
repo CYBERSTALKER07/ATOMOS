@@ -1,6 +1,5 @@
 # Strimzi topics for logistics exceptions + telemetry.
-# Live cluster: namespace kafka, cluster pegasusx (SSMR).
-# API version matches existing topics (kafka.strimzi.io/v1).
+# Matches HA cluster defaults: RF=3, min.insync.replicas=2.
 # Apply: kubectl apply -f infra/k8s/kafka/logistics-topics.yaml
 apiVersion: kafka.strimzi.io/v1
 kind: KafkaTopic
@@ -13,8 +12,9 @@ metadata:
 spec:
   topicName: logistics.exceptions.v1
   partitions: 3
-  replicas: 1
+  replicas: 3
   config:
+    min.insync.replicas: "2"
     cleanup.policy: delete
     retention.ms: "604800000" # 7d
     retention.bytes: "1073741824"
@@ -30,8 +30,9 @@ metadata:
 spec:
   topicName: logistics.telemetry.v1
   partitions: 3
-  replicas: 1
+  replicas: 3
   config:
+    min.insync.replicas: "2"
     cleanup.policy: delete
     retention.ms: "259200000" # 3d
     retention.bytes: "2147483648"

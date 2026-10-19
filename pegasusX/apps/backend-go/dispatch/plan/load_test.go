@@ -22,12 +22,17 @@ func TestLoad_Fallback_1000Orders_20Trucks(t *testing.T) {
 		t.Skip("load test skipped in -short mode")
 	}
 
+	runs := 50
+	latencyCap := 2500 * time.Millisecond
+	if raceDetectorEnabled {
+		runs = 10
+		latencyCap = 5000 * time.Millisecond
+	}
+
 	const (
-		runs          = 50
 		orderCount    = 1000
 		truckCount    = 20
 		clusterCount  = 4
-		latencyP95Cap = 2500 * time.Millisecond
 		orphanRateCap = 0.05
 	)
 
@@ -89,8 +94,8 @@ func TestLoad_Fallback_1000Orders_20Trucks(t *testing.T) {
 	t.Logf("latency: p50=%s p95=%s p99=%s", p50, p95, p99)
 	t.Logf("orphans: avg=%.1f rate=%.2f%%", avgOrphans, 100*orphanRate)
 
-	if p95 > latencyP95Cap {
-		t.Errorf("p95 latency %s exceeds cap %s", p95, latencyP95Cap)
+	if p95 > latencyCap {
+		t.Errorf("p95 latency %s exceeds cap %s (race detector enabled: %v)", p95, latencyCap, raceDetectorEnabled)
 	}
 	if orphanRate > orphanRateCap {
 		t.Errorf("orphan rate %.2f%% exceeds cap %.2f%%", 100*orphanRate, 100*orphanRateCap)

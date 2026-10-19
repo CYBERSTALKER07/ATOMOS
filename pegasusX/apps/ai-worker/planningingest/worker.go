@@ -22,6 +22,11 @@ type Runtime struct {
 
 // NewRuntime builds a planning signal ingest consumer.
 func NewRuntime(brokers []string, client *spanner.Client, log *slog.Logger) *Runtime {
+	return NewRuntimeWithDialer(brokers, nil, client, log)
+}
+
+// NewRuntimeWithDialer builds a planning signal ingest consumer with an optional SASL/TLS dialer.
+func NewRuntimeWithDialer(brokers []string, dialer *kafka.Dialer, client *spanner.Client, log *slog.Logger) *Runtime {
 	clean := make([]string, 0, len(brokers))
 	for _, b := range brokers {
 		if t := strings.TrimSpace(b); t != "" {
@@ -37,6 +42,7 @@ func NewRuntime(brokers []string, client *spanner.Client, log *slog.Logger) *Run
 	return &Runtime{
 		reader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:        clean,
+			Dialer:         dialer,
 			GroupID:        "pegasusx-ai-worker-planning-ingest",
 			Topic:          events.TopicPlanningSignalIngest,
 			MinBytes:       1e3,
@@ -68,6 +74,11 @@ func (r *Runtime) Run(ctx context.Context) {
 		}
 		if err := r.handle(ctx, svc, msg.Value); err != nil {
 			r.log.Warn("planning ingest project failed", "err", err)
+			if ctx.Err() != nil {
+				return
+			}
+			time.Sleep(2 * time.Second)
+			continue // Do not commit, let it be retried
 		}
 		if err := r.reader.CommitMessages(ctx, msg); err != nil {
 			r.log.Warn("planning ingest commit failed", "err", err)
@@ -83,7 +94,8 @@ func (r *Runtime) handle(ctx context.Context, svc *planning.Service, value []byt
 	if supplierID == "" {
 		return nil
 	}
-	return svc.ProjectSignal(ctx, supplierID, in)
+	_, err = svc.ProjectSignal(ctx, supplierID, in)
+	return err
 }
 
 // Close releases the kafka reader.

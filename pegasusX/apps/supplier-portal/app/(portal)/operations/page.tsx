@@ -1,8 +1,9 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-client";
+import { ApiError, supplierBroadcastKey, supplierPaymentBypassKey } from "@pegasusx/api-core";
 import { KpiStatCard, KpiStatGrid } from "@/components/KpiStatCard";
 import { createSupplierApi } from "@/lib/api";
 import { OperatorBroadcast, broadcastRoles, ReplenishmentAction, PaymentBypass } from "@/components/operations";
@@ -22,6 +23,7 @@ function supplierScopeId(): string {
 }
 
 export default function OperationsPage() {
+  const t = usePortalT();
   const [empathy, setEmpathy] = useState<Awaited<ReturnType<typeof api.getSupplierEmpathyAdoption>> | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -43,7 +45,7 @@ export default function OperationsPage() {
       setBroadcasting(false);
       setReplenishing(false);
       setBypassing(false);
-      setError("Connection restored — verify status before retrying.");
+      setError(t("supplier_portal.residual.text.connection_restored_verify_status_before_retrying"));
     }
   });
 
@@ -57,7 +59,7 @@ export default function OperationsPage() {
 
   const onBroadcast = async () => {
     if (!title.trim() || !body.trim()) {
-      setError("title_and_body_required");
+      setError(t("supplier_portal.residual.text.title_and_body_required"));
       return;
     }
     setMessage(null);
@@ -97,7 +99,7 @@ export default function OperationsPage() {
   const onPaymentBypass = async () => {
     const trimmed = orderId.trim();
     if (!trimmed) {
-      setError("order_id required");
+      setError(t("supplier_portal.residual.text.order_id_required"));
       return;
     }
     setMessage(null);
@@ -125,19 +127,19 @@ export default function OperationsPage() {
   return (
     <PageChrome
       icon="operations"
-      title="Operations"
-      description="Empathy adoption, operator broadcast, replenishment trigger, and payment bypass."
+      title={t("portal.nav.operations")}
+      description={t("supplier_portal.residual.text.empathy_adoption_operator_broadcast_replenishment_trigger_and_pa")}
       loading={loading}
       skeletonVariant="form"
       error={error && !empathy ? error : null}
     >
       {empathy ? (
         <KpiStatGrid columns={3}>
-          <KpiStatCard label="Predictions" value={empathy.total_predictions} />
-          <KpiStatCard label="Waiting" value={empathy.predictions_waiting} />
-          <KpiStatCard label="Fired" value={empathy.predictions_fired} />
-          <KpiStatCard label="Dormant" value={empathy.predictions_dormant} />
-          <KpiStatCard label="Rejected" value={empathy.predictions_rejected} />
+          <KpiStatCard label={t("supplier_portal.residual.text.predictions")} value={empathy.total_predictions} />
+          <KpiStatCard label={t("supplier_portal.admin.empathy.pipeline.waiting")} value={empathy.predictions_waiting} />
+          <KpiStatCard label={t("supplier_portal.admin.empathy.pipeline.fired")} value={empathy.predictions_fired} />
+          <KpiStatCard label={t("supplier_portal.admin.empathy.pipeline.dormant")} value={empathy.predictions_dormant} />
+          <KpiStatCard label={t("supplier_portal.admin.empathy.pipeline.rejected")} value={empathy.predictions_rejected} />
         </KpiStatGrid>
       ) : null}
 

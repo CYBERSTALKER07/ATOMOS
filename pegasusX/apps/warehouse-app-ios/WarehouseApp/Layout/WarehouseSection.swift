@@ -23,12 +23,17 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
     case demandForecast = "Demand forecast"
     case retailers = "Retailers"
     case returns = "Returns"
+    case coldChain = "Cold chain"
+    case laborCapacity = "Labor capacity"
     case exceptions = "Exceptions"
     case claims = "Claims"
     case rescues = "Rescues"
     case paymentConfig = "Payment config"
+    case coverage = "Coverage and supply"
     case opsSettings = "Ops settings"
+    case returnPolicy = "Returns & reverse SLA"
     case notifications = "Notifications"
+    case controlTower = "Control tower"
     case portalSetup = "Warehouse setup"
     case portalProfile = "Profile"
     case portalSearch = "Global search"
@@ -37,7 +42,7 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .dashboard: "square.grid.2x2"
+        case .dashboard: "antenna.radiowaves.left.and.right"
         case .orders: "cart"
         case .drivers: "person.badge.key"
         case .vehicles: "truck.box"
@@ -59,44 +64,48 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
         case .demandForecast: "chart.line.uptrend.xyaxis"
         case .retailers: "person.crop.rectangle"
         case .returns: "arrow.uturn.backward"
+        case .coldChain: "thermometer.snowflake"
+        case .laborCapacity: "person.3"
         case .exceptions: "exclamationmark.triangle"
         case .claims: "doc.text"
         case .rescues: "wrench.and.screwdriver"
         case .paymentConfig: "creditcard"
+        case .coverage: "mappin.and.ellipse"
         case .opsSettings: "gearshape"
+        case .returnPolicy: "arrow.uturn.backward.circle"
         case .notifications: "bell"
+        case .controlTower: "shield.lefthalf.filled"
         case .portalSetup: "gearshape.2"
         case .portalProfile: "person.crop.circle"
         case .portalSearch: "magnifyingglass"
         }
     }
 
-    /// Primary iPhone tabs (compact shell).
+    /// Primary iPhone tabs: Command · Inbound · Floor · Dispatch · More.
     static var compactTabs: [WarehouseSection] {
-        [.dashboard, .orders, .dispatch]
+        [.dashboard, .manifests, .inventory, .dispatch]
     }
 
     static var primarySections: [WarehouseSection] {
-        compactTabs + [.drivers, .vehicles, .inventory, .analytics, .treasury, .staff]
+        [.dashboard, .dispatch, .inventory, .demandForecast]
     }
 
     static var fulfillmentSections: [WarehouseSection] {
-        [.manifests, .dispatchSettings, .fleetLiveMap, .transferActions]
+        [.manifests, .fleetLiveMap, .dispatchSettings, .transferActions]
     }
 
     static var inventorySections: [WarehouseSection] {
-        [.products, .supplyRequests, .preorders, .stockCommitments, .tomorrowBoard, .replenishment, .demandForecast, .opsSettings]
+        [.products, .supplyRequests, .preorders, .stockCommitments, .tomorrowBoard, .replenishment, .coverage, .returnPolicy]
     }
 
     static var operationsSections: [WarehouseSection] {
-        [.retailers, .returns, .exceptions, .claims, .rescues, .paymentConfig, .notifications]
+        [.orders, .drivers, .vehicles, .coldChain, .controlTower, .exceptions, .rescues, .claims, .retailers, .returns, .laborCapacity, .analytics, .treasury, .staff, .paymentConfig, .opsSettings, .notifications]
     }
 
     static var portalSections: [WarehouseSection] {
         [.portalSetup, .portalProfile, .portalSearch]
     }
 
-    /// iPad sidebar: mirrors warehouse-portal nav groups.
     static var sidebarSections: [WarehouseSection] {
         primarySections + fulfillmentSections + inventorySections + operationsSections + portalSections
     }
@@ -113,7 +122,9 @@ enum WarehouseSection: String, CaseIterable, Identifiable {
 
 enum WarehouseCompactTab: Hashable {
     case dashboard
-    case orders
+    case inbound
+    case floor
     case dispatch
+    case plan
     case more
 }

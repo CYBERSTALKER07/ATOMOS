@@ -378,7 +378,10 @@ export default function CatalogPage() {
               className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)] group-focus-within:text-[var(--desk-accent)] transition-colors"
               size={18}
             />
+            <label htmlFor="catalog-search-input" className="sr-only">Search assets and suppliers</label>
             <input
+              id="catalog-search-input"
+              aria-label="Search assets and suppliers"
               type="text"
               placeholder="Search assets and suppliers..."
               className="w-full h-11 pl-11 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium text-[var(--desk-text-primary)]"

@@ -1,4 +1,27 @@
-import type { ForecastConfidence, SupplierDemandSummaryResponse } from "./index";
+import type { ForecastConfidence, HistorySeries, SupplierDemandSummaryResponse } from "./index";
+
+export type PlanBrainTab = "planning" | "brain";
+
+export function planBrainTabFromQuery(raw?: string | null): PlanBrainTab {
+  return String(raw || "").trim().toLowerCase() === "brain" ? "brain" : "planning";
+}
+
+/** Never invent a forecast line when belief is blocked or accuracy is short. */
+export function brainForecastLine(
+  confidence?: ForecastConfidence | null,
+  accuracyPoints?: number[] | null,
+): HistorySeries | null {
+  if (isForecastBlocked(confidence)) return null;
+  const points = (accuracyPoints ?? []).filter((n) => Number.isFinite(n));
+  if (points.length < 2) return null;
+  return { points, source: "live", available: true };
+}
+
+export function factoryPlanningDisabledCode(status: number, body?: unknown): string | null {
+  if (status !== 409) return null;
+  const text = typeof body === "string" ? body : JSON.stringify(body ?? "");
+  return text.includes("factory_planning_disabled") ? "factory_planning_disabled" : null;
+}
 
 const STALE_MS = 30 * 60 * 1000;
 

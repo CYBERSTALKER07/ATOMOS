@@ -44,6 +44,27 @@ func TestPosHolds_DisabledReturns404(t *testing.T) {
 	}
 }
 
+func TestPosHolds_PilotDefaultOnWhenEnvUnset(t *testing.T) {
+	t.Setenv("POS_HOLDS_ENABLED", "")
+	svc := NewService(ServiceConfig{
+		Now: time.Now, NewID: func() string { return "h-default" },
+		// PosHoldsEnabled nil → env (empty) → pilot default on
+	})
+	if !svc.posHoldsEnabled() {
+		t.Fatal("expected pilot default ON when POS_HOLDS_ENABLED unset")
+	}
+}
+
+func TestPosHolds_ExplicitOffViaEnv(t *testing.T) {
+	t.Setenv("POS_HOLDS_ENABLED", "false")
+	svc := NewService(ServiceConfig{
+		Now: time.Now, NewID: func() string { return "h-off" },
+	})
+	if svc.posHoldsEnabled() {
+		t.Fatal("expected OFF when POS_HOLDS_ENABLED=false")
+	}
+}
+
 func TestPosHolds_ParkListResumeVoid_NoStockTouch(t *testing.T) {
 	t.Parallel()
 	ids := []string{"hold-1", "hold-x"}

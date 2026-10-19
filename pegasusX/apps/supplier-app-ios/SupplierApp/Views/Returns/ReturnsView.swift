@@ -27,18 +27,18 @@ struct ReturnsView: View {
                     ForEach(items) { row in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(row.productName).font(.headline)
-                            Text("Qty \(row.quantity) · \(row.reason)")
+                            Text(L10n.format("mobile_supplier.ui.qty_quantity_reason", "\(row.quantity)", "\(row.reason)"))
                                 .font(.subheadline)
-                            Text("Physical: \(row.physicalStatus)")
+                            Text(L10n.format("mobile_supplier.ui.physical_physicalstatus", "\(row.physicalStatus)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if !row.driverName.isEmpty {
-                                Text("Driver: \(row.driverName)")
+                                Text(L10n.format("mobile_supplier.ui.driver_drivername", "\(row.driverName)"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             if row.receivedQty > 0 {
-                                Text("Scanned: \(row.receivedQty)")
+                                Text(L10n.format("mobile_supplier.ui.scanned_receivedqty", "\(row.receivedQty)"))
                                     .font(.caption2)
                                     .foregroundStyle(.orange)
                             }
@@ -50,7 +50,7 @@ struct ReturnsView: View {
                                     }
                                 }
                                 .pickerStyle(.menu)
-                                TextField("Notes (optional)", text: $notes)
+                                TextField("supplier_portal.returns.text.notes_optional", text: $notes)
                                     .textInputAutocapitalization(.sentences)
                                 HStack {
                                     Button(actionLoading == row.returnId ? "…" : "Confirm") {
@@ -58,15 +58,15 @@ struct ReturnsView: View {
                                     }
                                     .buttonStyle(.borderedProminent)
                                     .disabled(actionLoading == row.returnId)
-                                    Button("Cancel") { resolvingId = nil }
+                                    Button("common.action.cancel") { resolvingId = nil }
                                         .buttonStyle(.bordered)
                                 }
                             } else if row.physicalStatus == "RESTOCKED" || row.physicalStatus == "WRITTEN_OFF" {
-                                Text("Gate resolved")
+                                Text("supplier_portal.returns.text.gate_resolved")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             } else {
-                                Button("Dispute / override") {
+                                Button("mobile_supplier.ui.dispute_override") {
                                     resolvingId = row.returnId
                                     resolution = "RETURN_TO_STOCK"
                                     notes = ""
@@ -80,7 +80,7 @@ struct ReturnsView: View {
             }
         }
         .background(SupplierTheme.background)
-        .navigationTitle("Returns")
+        .navigationTitle("portal.nav.returns")
         .task { await load() }
         .refreshable { await load() }
     }

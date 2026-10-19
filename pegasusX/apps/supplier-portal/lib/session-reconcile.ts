@@ -1,4 +1,4 @@
-import { reconcileSession } from "@pegasusx/api-client";
+import { reconcileSession } from '@pegasusx/api-core';
 import { readTokenFromCookie, supplierApiBaseUrl, supplierSessionFetch } from "@/lib/auth";
 import { getSupplierReconcileScope, notifySupplierSessionReconciled } from "@/lib/supplier-reconnect";
 

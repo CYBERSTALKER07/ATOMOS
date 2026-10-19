@@ -75,13 +75,13 @@ struct ManifestWorkflow: View {
                     Button {
                         Task { await viewModel.startLoading() }
                     } label: {
-                        Text("Start Loading")
+                        Text("mobile_payload.ui.start_loading")
                             .font(.headline)
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(viewModel.startingLoading)
-                    Text("Tap Start Loading to open the manifest for tap-check and per-order seal.")
+                    Text("mobile_payload.ui.tap_start_loading_to_open_the_manifest_for_tap_check_and_per_ord")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 } else if manifest.state == "LOADING" || manifest.state == "SEALED" {
@@ -111,7 +111,7 @@ struct ManifestWorkflow: View {
                         } label: {
                             HStack {
                                 Image(systemName: "lock.fill")
-                                Text("Seal Manifest").font(.headline)
+                                Text("mobile_payload.ui.seal_manifest").font(.headline)
                             }
                             .frame(maxWidth: .infinity, minHeight: 48)
                         }
@@ -154,7 +154,7 @@ struct PostSealCountdownView: View {
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(TermTheme.secondary)
                 Spacer()
-                Text("ORD-\(orderId.suffix(6).uppercased())")
+                Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(orderId.suffix(6).uppercased())"))
                     .font(.system(size: 12, weight: .black, design: .monospaced))
                     .foregroundStyle(TermTheme.accent)
             }
@@ -170,7 +170,7 @@ struct PostSealCountdownView: View {
             }
             
             HStack {
-                Text("DOUBLE_CHECK_WINDOW: \(secondsLeft)s")
+                Text(L10n.format("mobile_payload.ui.double_check_window_secondslefts_2", "\(secondsLeft)"))
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .foregroundStyle(TermTheme.accent)
                 Spacer()
@@ -244,7 +244,7 @@ struct AllSealedSuccessView: View {
                     VStack(spacing: 8) {
                         ForEach(dispatchCodes.sorted(by: { $0.key < $1.key }), id: \.key) { id, code in
                             HStack {
-                                Text("ORD-\(id.suffix(6).uppercased())")
+                                Text(L10n.format("mobile_payload.ui.ord_uppercased", "\(id.suffix(6).uppercased())"))
                                     .font(.system(size: 14, weight: .black, design: .monospaced))
                                     .foregroundStyle(TermTheme.accent)
                                 Spacer()

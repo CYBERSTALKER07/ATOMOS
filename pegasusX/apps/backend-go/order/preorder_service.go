@@ -11,7 +11,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
-	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 )
 
 // ConfirmAIOrder confirms an AI-created future order for the retailer.
@@ -121,6 +120,13 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 	if current.Source != OrderSourceAIPreorder || current.ConfirmationStatus != ConfirmationStatusPending {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
+	previousStatus := current.Status
+	if err := ValidateStatusTransition(string(previousStatus), string(StatusCancelled), TransitionOpts{
+		Actor:  strings.TrimSpace(retailerID),
+		Reason: strings.TrimSpace(req.Reason),
+	}); err != nil {
+		return RetailerOrderLifecycleResponse{}, err
+	}
 	current.ConfirmationStatus = ConfirmationStatusRejected
 	current.Status = StatusCancelled
 	decisionAt := s.now()
@@ -134,7 +140,7 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
-			PreviousStatus:        string(StatusPending),
+			PreviousStatus:        string(previousStatus),
 			Status:                string(current.Status),
 			Reason:                strings.TrimSpace(req.Reason),
 			ActorRole:             string(auth.RoleRetailer),
@@ -180,11 +186,9 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	if current.Source != OrderSourceManualPreorder || current.Status != StatusScheduled {
 		return RetailerOrderLifecycleResponse{}, ErrInvalidStatusTransition
 	}
-	loc := proximity.TashkentLocation
-	if current.Timezone != "" {
-		if l, err := time.LoadLocation(current.Timezone); err == nil {
-			loc = l
-		}
+	loc, locErr := resolveCalendarLocation(ctx, current.SupplierID, current.Timezone)
+	if locErr != nil {
+		return RetailerOrderLifecycleResponse{}, locErr
 	}
 	if PreorderEditLocked(s.now(), loc, current) {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("%w: preorder edit locked within %d days of delivery", ErrInvalidStatusTransition, PreorderEditLockDays)
@@ -195,8 +199,8 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
 	toSave := current
-	updated, err := s.updatePreorderLines(ctx, toSave, lineItems, func(txn outbox.TxnBuffer) error {
-		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, toSave, string(auth.RoleRetailer), retailerID)
+	updated, err := s.updatePreorderLines(ctx, toSave, lineItems, func(txn outbox.TxnBuffer, updated Order) error {
+		return emitPreorderEvent(ctx, txn, events.EventPreOrderEdited, updated, string(auth.RoleRetailer), retailerID)
 	})
 	if err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)

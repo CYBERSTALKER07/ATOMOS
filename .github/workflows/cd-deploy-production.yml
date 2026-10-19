@@ -1,0 +1,31 @@
+name: 04 - Deploy to Production (GKE)
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Git SHA to deploy'
+        required: true
+        type: string
+jobs:
+  deploy-production:
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ vars.GKE_CLUSTER }}
+          location: ${{ vars.GKE_ZONE }}
+      - name: Deploy Canary (Production)
+        run: echo "Deploying canary..."
+      - name: Promote to Stable
+        run: echo "Promoting..."

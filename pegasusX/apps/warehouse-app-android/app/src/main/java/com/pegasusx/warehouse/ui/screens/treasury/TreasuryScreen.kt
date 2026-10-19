@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.treasury
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -15,16 +17,17 @@ import androidx.compose.ui.unit.dp
 import com.pegasusx.warehouse.data.model.Invoice
 import com.pegasusx.warehouse.data.model.TreasuryOverview
 import com.pegasusx.warehouse.data.remote.WarehouseApi
-import com.pegasus.design.PegasusLoadingState
+import com.pegasus.design.ui.PegasusLoadingState
 import com.pegasusx.warehouse.ui.components.WarehouseMetricTile
 import com.pegasusx.warehouse.ui.components.WarehouseOpsListCard
 import com.pegasusx.warehouse.ui.components.WarehouseSectionTitle
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import com.pegasusx.warehouse.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +82,7 @@ fun TreasuryScreen(
     ) { innerPadding ->
         when {
             loading -> PegasusLoadingState(
-                title = "Loading treasury…",
+                title = stringResource(R.string.mobile_warehouse_ui_loading_treasury),
                 body = "Financial overview and invoices",
                 modifier = Modifier.padding(innerPadding),
             )
@@ -94,7 +97,7 @@ fun TreasuryScreen(
             else -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Overview") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Invoices (${invoices.size})") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_invoices_size, invoices.size)) })
                 }
                 when (tab) {
                     0 -> overview?.let { o ->
@@ -111,39 +114,32 @@ fun TreasuryScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     WarehouseMetricTile(
-                                        label = "Outstanding",
-                                        value = "${fmt.format(o.totalOutstanding)} UZS",
+                                        label = stringResource(R.string.warehouse_portal_residual_text_outstanding),
+                                        value = "${fmt.format(o.totalOutstanding)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                     WarehouseMetricTile(
-                                        label = "Invoiced",
-                                        value = "${fmt.format(o.totalInvoiced)} UZS",
+                                        label = stringResource(R.string.mobile_warehouse_ui_invoiced),
+                                        value = "${fmt.format(o.totalInvoiced)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
                             }
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 WarehouseMetricTile(
-                                    label = "Paid",
-                                    value = "${fmt.format(o.totalPaid)} UZS",
+                                    label = stringResource(R.string.warehouse_portal_residual_text_paid),
+                                    value = "${fmt.format(o.totalPaid)} ${com.pegasus.design.network.sessionPackCurrency()}",
                                     modifier = Modifier.fillMaxWidth(0.5f),
                                 )
                             }
                         }
                     }
-<<<<<<< HEAD
-                    1 -> TreasuryTransactionList(
-                        invoices = invoices,
-                        fmt = fmt
-                    )
-=======
                     1 -> {
                         TreasuryTransactionList(
                             invoices = invoices,
                             fmt = fmt
                         )
                     }
->>>>>>> 5fbd72145092e2ede05adb999b291e8ffbaa19a8
                 }
             }
         }

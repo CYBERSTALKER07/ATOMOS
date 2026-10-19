@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.orders
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -8,12 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
-import com.pegasus.design.showFullScreenLoading
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
+import com.pegasus.design.network.showFullScreenLoading
 import com.pegasusx.supplier.ui.viewmodel.OrderFilterTab
 import com.pegasusx.supplier.ui.viewmodel.OrdersViewModel
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +40,7 @@ fun OrdersScreen(
                 title = { Text("Orders") },
                 actions = {
                     IconButton(onClick = { viewModel.load() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.portal_page_orders_action_refresh))
                     }
                 },
             )
@@ -55,7 +58,7 @@ fun OrdersScreen(
             }
             when {
                 showFullScreenLoading(state.loading, state.orders.isNotEmpty()) -> PegasusLoadingState(
-                    title = "Loading orders…",
+                    title = stringResource(R.string.mobile_supplier_ui_loading_orders),
                     body = "Supplier order queue",
                 )
                 state.error != null -> PegasusStatePane(

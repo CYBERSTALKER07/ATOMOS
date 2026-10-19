@@ -1,5 +1,7 @@
 package com.pegasusx.retailer.ui.components
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -29,6 +31,7 @@ import com.pegasusx.retailer.ui.theme.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.GridView
@@ -38,6 +41,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.DeviceHub
+import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pegasusx.retailer.ui.components.modifiers.bounceCash
 import com.pegasusx.retailer.ui.theme.StatusRed
+import com.pegasusx.retailer.R
 
 enum class SidebarDestination(val label: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Outlined.GridView),
@@ -68,6 +73,8 @@ enum class SidebarDestination(val label: String, val icon: ImageVector) {
     AUTO_ORDER("Auto-Order", Icons.Outlined.AutoAwesome),
     AI_PREDICTIONS("Reorder suggestions", Icons.Outlined.AutoAwesome),
     CONTROL_TOWER("Control Tower", Icons.Outlined.DeviceHub),
+    CREDIT("Credit & AR", Icons.Outlined.AccountBalance),
+    HQ("HQ multi-store", Icons.Outlined.Store),
     DOCK("Dock Queue", Icons.Outlined.LocalShipping),
     INBOX("Inbox", Icons.Outlined.Inbox),
     PROFILE("Profile", Icons.Outlined.Person),
@@ -211,7 +218,7 @@ fun SidebarMenu(
                     Spacer(modifier = Modifier.height(16.dp))
                     SidebarMenuItem(
                         icon = Icons.AutoMirrored.Outlined.ExitToApp,
-                        label = "Log Out",
+                        label = stringResource(R.string.mobile_retailer_ui_log_out),
                         tint = StatusRed,
                         onClick = { onDismiss() },
                     )

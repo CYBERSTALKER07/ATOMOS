@@ -37,7 +37,10 @@ export default function ManifestsPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-light tracking-tight">Manifests</h1>
         <div className="flex gap-2 items-center">
+          <label htmlFor="manifest-date-input" className="sr-only">Manifest Date</label>
           <input
+            id="manifest-date-input"
+            aria-label="Manifest Date"
             type="date"
             value={date}
             onChange={e => { setDate(e.target.value); setLoading(true); }}

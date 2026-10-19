@@ -105,6 +105,7 @@ final class OnboardingViewModel {
             ]
             let response = try await SupplierService.register(body: body)
             tokenStore.storeRegister(response)
+            Task { await PushNotificationManager.shared.uploadStoredTokenIfPossible() }
             return true
         } catch {
             self.error = error.localizedDescription

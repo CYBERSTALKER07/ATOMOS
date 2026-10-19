@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/schemadrift"
+	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
@@ -24,7 +26,7 @@ import (
 
 func main() {
 	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|negotiation-isolation|loadtokens|planning-baseline-seed]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|tenant|parent-order|global-products|gap-closure|lifecycle-vertical|fiscal|payment|shop-closed|manifest-seal|claims|negotiation-isolation|loadtokens|planning-baseline-seed]")
 		os.Exit(1)
 	}
 
@@ -43,6 +45,12 @@ func main() {
 		timeout = loadTokensTimeout()
 	case "e2e":
 		timeout = e2eTimeout()
+	case "tenant":
+		timeout = 2 * time.Minute
+	case "parent-order":
+		timeout = 3 * time.Minute
+	case "global-products":
+		timeout = 2 * time.Minute
 	case "gap-closure":
 		timeout = 3 * time.Minute
 	case "lifecycle-vertical":
@@ -80,6 +88,12 @@ func main() {
 		checkErr = runSpatialCheck(ctx, cfg)
 	case "e2e":
 		checkErr = runE2ECheck(ctx, cfg)
+	case "tenant":
+		checkErr = runTenantSmokeCheck(ctx, cfg)
+	case "parent-order":
+		checkErr = runParentOrderSmokeCheck(ctx, cfg)
+	case "global-products":
+		checkErr = runGlobalProductsSmokeCheck(ctx, cfg)
 	case "gap-closure":
 		checkErr = runGapClosureSmokeCheck(ctx, cfg)
 	case "lifecycle-vertical":
@@ -135,12 +149,14 @@ func runSpannerCheck(ctx context.Context, cfg *bootstrap.Config) error {
 }
 
 func assertSeedSupplier(ctx context.Context, client *spanner.Client, cfg *bootstrap.Config) error {
+	// Identity is DefaultSupplierID. EnsureDemoScopeLinks rewrites Name to
+	// "SSMR Smoke Supplier" after cmd/setup upserts SEED_SUPPLIER_NAME.
 	stmt := spanner.Statement{
 		SQL: `SELECT SupplierId, CountryCode, Currency
 FROM Suppliers
-WHERE Name = @name
+WHERE SupplierId = @id
 LIMIT 1`,
-		Params: map[string]any{"name": cfg.SeedSupplierName},
+		Params: map[string]any{"id": seed.DefaultSupplierID},
 	}
 
 	iter := client.Single().Query(ctx, stmt)
@@ -149,7 +165,7 @@ LIMIT 1`,
 	row, err := iter.Next()
 	if err != nil {
 		if err == iterator.Done {
-			return fmt.Errorf("seed supplier %q missing", cfg.SeedSupplierName)
+			return fmt.Errorf("seed supplier %q missing", seed.DefaultSupplierID)
 		}
 		return fmt.Errorf("query seeded supplier: %w", err)
 	}
@@ -390,6 +406,7 @@ func expectedTopics(cfg *bootstrap.Config) []string {
 		envOr("KAFKA_TOPIC_FREEZE_LOCKS", "pegasusx-freeze-locks"),
 		envOr("KAFKA_TOPIC_INVENTORY_IMPORT", events.TopicInventoryImportEvents),
 		envOr("KAFKA_TOPIC_DEMAND", events.TopicDemand),
+		envOr("KAFKA_TOPIC_EXCEPTIONS", events.TopicExceptions),
 		events.TopicPlanningSignalIngest,
 		events.TopicPlanningForecastRequest,
 		events.TopicPlanningForecastResult,
@@ -435,9 +452,29 @@ func spannerDatabasePath(cfg *bootstrap.Config) string {
 }
 
 func envOr(key string, fallback string) string {
-	value := strings.TrimSpace(os.Getenv(key))
-	if value == "" {
-		return fallback
+	if strings.HasPrefix(key, "SSMR_") {
+		sandboxKey := "SANDBOX_" + strings.TrimPrefix(key, "SSMR_")
+		if v := strings.TrimSpace(os.Getenv(sandboxKey)); v != "" {
+			return v
+		}
 	}
-	return value
+	value := strings.TrimSpace(os.Getenv(key))
+	if value != "" {
+		return value
+	}
+	if auth.IsSandbox() && sandboxIdentityKey(key) {
+		return ""
+	}
+	return fallback
+}
+
+func sandboxIdentityKey(key string) bool {
+	switch key {
+	case "SSMR_SMOKE_DRIVER_ID", "SSMR_SMOKE_WAREHOUSE_ID",
+		"SSMR_SMOKE_SUPPLIER_PASSWORD", "SSMR_SMOKE_SUPPLIER_PHONE",
+		"SSMR_SMOKE_RETAILER_PHONE", "SSMR_SMOKE_SUPPLIER_ID":
+		return true
+	default:
+		return false
+	}
 }

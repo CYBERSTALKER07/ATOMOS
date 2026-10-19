@@ -47,7 +47,7 @@ struct DeliveryCorrectionView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             // Section header
-                            Text("MANIFEST ITEMS")
+                            Text("mobile_driver.ui.manifest_items")
                                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                                 .foregroundStyle(LabTheme.fgTertiary)
                                 .padding(.horizontal, LabTheme.s16)
@@ -95,26 +95,26 @@ struct DeliveryCorrectionView: View {
             }
         }
         .alert("Start Transit?", isPresented: $showStartTransitAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Confirm") {
+            Button("common.action.cancel", role: .cancel) { }
+            Button("mobile_driver.ui.confirm") {
                 Task {
                     let success = await vm.startTransitForPartialOrder(orderId: orderId)
                     if success { onAmended() }
                 }
             }
         } message: {
-            Text("Notify the other driver that you are heading to this route?")
+            Text("mobile_driver.ui.notify_the_other_driver_that_you_are_heading_to_this_route")
         }
         .alert("Confirm Amendment", isPresented: $showConfirmAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Submit", role: .destructive) {
+            Button("common.action.cancel", role: .cancel) { }
+            Button("warehouse_portal.cycle_counts.text.submit", role: .destructive) {
                 Task {
                     let success = await vm.submitAmendment(orderId: orderId, driverId: driverId)
                     if success { onAmended() }
                 }
             }
         } message: {
-            Text("\(vm.rejectedCount) item(s) rejected. Refund: \(vm.refundDelta.formattedAmount). Proceed?")
+            Text(L10n.format("mobile_driver.ui.rejectedcount_item_s_rejected_refund_formattedamount_proceed", "\(vm.rejectedCount)", "\(vm.refundDelta.formattedAmount)"))
         }
     }
 

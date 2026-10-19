@@ -131,10 +131,12 @@ export default function ConfigurationPage() {
                     ) : (
                         <>
                             <div className="mb-6">
-                                <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
+                                <label htmlFor="config-geofence-radius" className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
                                     {t(CONFIG_KEYS.geofence_radius.label_key)}
                                 </label>
                                 <input
+                                    id="config-geofence-radius"
+                                    aria-label={t(CONFIG_KEYS.geofence_radius.label_key)}
                                     type="number"
                                     min="10"
                                     max="5000"
@@ -149,10 +151,12 @@ export default function ConfigurationPage() {
                             </div>
 
                             <div className="mb-6">
-                                <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
+                                <label htmlFor="config-delivery-fee" className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
                                     {t(CONFIG_KEYS.delivery_fee.label_key)}
                                 </label>
                                 <input
+                                    id="config-delivery-fee"
+                                    aria-label={t(CONFIG_KEYS.delivery_fee.label_key)}
                                     type="number"
                                     min="0"
                                     value={config.delivery_fee ?? CONFIG_KEYS.delivery_fee.default}
@@ -178,10 +182,12 @@ export default function ConfigurationPage() {
                             </Button>
 
                             <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
-                                <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
+                                <label htmlFor="config-platform-fee" className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
                                     {t('supplier_portal.configuration.system.platform_fee.label')}
                                 </label>
                                 <input
+                                    id="config-platform-fee"
+                                    aria-label={t('supplier_portal.configuration.system.platform_fee.label')}
                                     type="number"
                                     min="0"
                                     max="50"
@@ -213,10 +219,12 @@ export default function ConfigurationPage() {
                     </h2>
 
                     <div className="mb-6">
-                        <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
+                        <label htmlFor="config-click-merchant-id" className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
                             {t('supplier_portal.configuration.system.gateway.click_up_merchant_id')}
                         </label>
                         <input
+                            id="config-click-merchant-id"
+                            aria-label={t('supplier_portal.configuration.system.gateway.click_up_merchant_id')}
                             type="text"
                             placeholder={t('supplier_portal.configuration.system.gateway.configured_via_secret_manager')}
                             disabled
@@ -228,10 +236,12 @@ export default function ConfigurationPage() {
                     </div>
 
                     <div className="mb-2">
-                        <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
+                        <label htmlFor="config-payme-secret-key" className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
                             {t('supplier_portal.configuration.system.gateway.payme_secret_key')}
                         </label>
                         <input
+                            id="config-payme-secret-key"
+                            aria-label={t('supplier_portal.configuration.system.gateway.payme_secret_key')}
                             type="password"
                             placeholder={t('supplier_portal.configuration.system.gateway.configured_via_secret_manager')}
                             disabled

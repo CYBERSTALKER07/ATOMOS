@@ -13,14 +13,14 @@ struct ProductsView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if products.isEmpty {
-                    ContentUnavailableView("No Products", systemImage: "shippingbox", description: Text("Product catalog is empty"))
+                    ContentUnavailableView("No Products", systemImage: "shippingbox", description: Text("mobile_warehouse.ui.product_catalog_is_empty"))
                 } else {
                     ResponsiveGridContentWrapper {
                         ForEach(products) { product in
@@ -33,7 +33,7 @@ struct ProductsView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text("\(product.priceUzs.formatted()) UZS")
+                                Text(L10n.format("mobile_warehouse.ui.formatted_uzs", "\(product.priceUzs.formatted())"))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -42,10 +42,10 @@ struct ProductsView: View {
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Products")
+            .navigationTitle("portal.nav.products")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
             .task { load() }

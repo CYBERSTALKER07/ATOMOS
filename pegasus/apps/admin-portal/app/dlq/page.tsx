@@ -8,7 +8,7 @@ import Dialog from '@/components/Dialog';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
 
-// ─── Type Definitions ─────────────────────────────────────────────────────────
+// --- Type Definitions ---------------------------------------------------------
 
 interface DLQPayload {
   failed_at?: string;
@@ -28,7 +28,7 @@ interface DLQMessage {
   payload: DLQPayload;
 }
 
-// ─── DLQ Admin Console ────────────────────────────────────────────────────────
+// --- DLQ Admin Console --------------------------------------------------------
 
 export default function DLQPage() {
   const [messages, setMessages] = useState<DLQMessage[]>([]);

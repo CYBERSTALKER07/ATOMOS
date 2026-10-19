@@ -1,5 +1,7 @@
 package com.pegasusx.driver.ui.screens.profile
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +45,7 @@ import com.pegasusx.driver.ui.components.PegasusCard
 import com.pegasusx.driver.ui.theme.PegasusSpacing
 import com.pegasusx.driver.ui.theme.LocalPegasusColors
 import com.pegasusx.driver.ui.theme.pressable
+import com.pegasusx.driver.R
 
 enum class OfflineReason(val code: String, val label: String, val icon: ImageVector) {
     SHIFT_COMPLETE("SHIFT_COMPLETE", "Shift Complete", Icons.Default.NightsStay),
@@ -95,13 +98,13 @@ fun EndSessionSheet(
         ) {
             // Title
             Text(
-                text = "End Session",
+                text = stringResource(R.string.mobile_driver_ui_end_session),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = lab.fg
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Go offline and end your driving session",
+                text = stringResource(R.string.mobile_driver_ui_go_offline_and_end_your_driving_session),
                 style = MaterialTheme.typography.bodyMedium,
                 color = lab.fgSecondary
             )
@@ -125,7 +128,7 @@ fun EndSessionSheet(
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "You have active orders. Complete or return them before ending your session.",
+                        text = stringResource(R.string.mobile_driver_ui_you_have_active_orders_complete_or_return_them_before_ending_you),
                         style = MaterialTheme.typography.bodySmall,
                         color = lab.destructive
                     )
@@ -232,7 +235,7 @@ fun EndSessionSheet(
                         )
                     } else {
                         Text(
-                            text = "End Session",
+                            text = stringResource(R.string.mobile_driver_ui_end_session),
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             color = if (canConfirm) lab.buttonFg else lab.fgTertiary
                         )

@@ -1,0 +1,20 @@
+{
+  "amount_minor": 125000,
+  "attempt_id": "att-contract-1",
+  "currency": "UZS",
+  "idempotency_key": "att-contract-1",
+  "line_items": [
+    {
+      "name": "Water 1.5L",
+      "quantity": 10,
+      "sku": "SKU-1",
+      "unit_price_minor": 12500
+    }
+  ],
+  "order_id": "ord-contract-1",
+  "payment_method": "CARD",
+  "retailer_id": "ret-contract",
+  "signature": "DEVHMAC.84a+uq9SBIga0DHEzpLXzeq4ZLw/60+JlAob5vphPtc=",
+  "supplier_id": "sup-contract",
+  "tin": "300000000"
+}

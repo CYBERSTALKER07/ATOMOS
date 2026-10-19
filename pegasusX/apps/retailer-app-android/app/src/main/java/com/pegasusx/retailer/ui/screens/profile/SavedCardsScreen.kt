@@ -1,16 +1,9 @@
 package com.pegasusx.retailer.ui.screens.profile
 
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
-
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-
-import androidx.compose.foundation.lazy.grid.GridCells
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
@@ -39,27 +32,12 @@ fun SavedCardsScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.cardJustAdded) {
-        if (uiState.cardJustAdded && returnTo == "delivery_payment") {
-            viewModel.clearCardJustAdded()
-            onReturnToDeliveryPayment?.invoke()
-        }
-    }
-
-    val handleBack: () -> Unit = {
-        if (returnTo == "delivery_payment") {
-            onReturnToDeliveryPayment?.invoke()
-        } else {
-            onNavigateBack()
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Saved Cards") },
                 navigationIcon = {
-                    IconButton(onClick = handleBack) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -76,29 +54,6 @@ fun SavedCardsScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (returnTo == "delivery_payment") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clip(MaterialTheme.shapes.medium)
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "Add a card, then return to complete delivery payment.",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    TextButton(onClick = handleBack) {
-                        Text("Return", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    }
-                }
-            }
-
             val syncMessage = when {
                 uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
                 uiState.isLoading && uiState.cards.isNotEmpty() -> "Syncing saved cards..."
@@ -159,14 +114,11 @@ fun SavedCardsScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
-                    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 340.dp),
-        
+                    LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         items(uiState.cards) { card ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),

@@ -1,5 +1,7 @@
 package com.pegasusx.supplier.ui.screens.earnings
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -7,11 +9,13 @@ import androidx.compose.ui.Modifier
 import com.pegasusx.supplier.data.model.SupplierEarnings
 import com.pegasusx.supplier.data.remote.SupplierApi
 import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
-import com.pegasus.design.PegasusLoadingState
-import com.pegasus.design.PegasusStateKind
-import com.pegasus.design.PegasusStatePane
+import com.pegasus.design.ui.PegasusLoadingState
+import com.pegasus.design.ui.PegasusStateKind
+import com.pegasus.design.ui.PegasusStatePane
+import com.pegasus.design.network.moneyCurrency
 import com.pegasusx.supplier.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.supplier.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +36,7 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                     if (ledger.isSuccessful && ledger.body() != null) {
                         val items = ledger.body()!!.items
                         val total = items.sumOf { it.amountMinor }
-                        val currency = items.firstOrNull()?.currency ?: "UZS"
+                        val currency = moneyCurrency(items.firstOrNull()?.currency)
                         earnings = SupplierEarnings(
                             currency = currency,
                             todayMinor = 0,
@@ -72,9 +76,9 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                         Modifier.padding(PegasusSpacing.lg),
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     ) {
-                        Text("Today: ${e.currency} ${e.todayMinor}", style = MaterialTheme.typography.titleLarge)
-                        Text("Week: ${e.currency} ${e.weekMinor}")
-                        Text("Month: ${e.currency} ${e.monthMinor}")
+                        Text(stringResource(R.string.mobile_supplier_ui_today_currency_todayminor, e.currency, e.todayMinor), style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.mobile_supplier_ui_week_currency_weekminor, e.currency, e.weekMinor))
+                        Text(stringResource(R.string.mobile_supplier_ui_month_currency_monthminor, e.currency, e.monthMinor))
                         if (!e.authoritative) {
                             Text("Indicative only", style = MaterialTheme.typography.labelSmall)
                         }

@@ -1,5 +1,7 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +39,7 @@ import com.pegasus.design.PegasusStatePane
 import com.pegasus.payload.data.model.ManifestExceptionRow
 import com.pegasus.payload.ui.components.PayloadSpacing
 import com.pegasus.payload.ui.components.PayloadStatusChip
+import com.pegasus.payload.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,13 +59,36 @@ fun ManifestExceptionsSheet(
             ) {
                 Text("Manifest exceptions", style = MaterialTheme.typography.titleLarge)
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Filled.Refresh, contentDescription = "Refresh exceptions")
+                    Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.mobile_payload_ui_refresh_exceptions))
                 }
             }
+            
+            // --- Parity: Report Dock Damage ---
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .background(Color(0xFFFEE2E2), shape = RoundedCornerShape(8.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Text("Report Dock Damage", color = Color(0xFF991B1B), fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { /* ViewModel logic wired later */ },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("MARK DAMAGED", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            // ----------------------------------
+            
             HorizontalDivider()
             when {
                 loading && items.isEmpty() -> com.pegasus.design.PegasusLoadingState(
-                    title = "Loading exceptions",
+                    title = stringResource(R.string.mobile_payload_ui_loading_exceptions),
                     body = "Fetching overflow, damaged, and manual removals.",
                     modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
                 )
@@ -86,11 +119,11 @@ fun ManifestExceptionsSheet(
                                 }
                             }
                             Text(
-                                "Order ${row.orderId.take(8)} · Manifest ${row.manifestId.take(8)}",
+                                stringResource(R.string.mobile_payload_ui_order_take_manifest_take_2, row.orderId.take(8), row.manifestId.take(8)),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                             Text(
-                                "Attempts ${row.attemptCount}",
+                                stringResource(R.string.mobile_payload_ui_attempts_attemptcount, row.attemptCount),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

@@ -23,23 +23,33 @@ final class DriverOfflineQueue {
         idempotencyKey: String,
         orderId: String = "",
         clientTimestampIso: String = DriverOfflineActionCatalog.nowIso(),
-        method: String = "POST"
+        method: String = "POST",
+        capturedLat: Double? = nil,
+        capturedLng: Double? = nil,
+        capturedAtMs: Double? = nil
     ) {
         guard let context else { return }
         let ep = DriverOfflineActionCatalog.normalize(endpoint)
         guard DriverOfflineActionCatalog.isOfflineEligible(ep) else { return }
+        let fromBody = Self.coords(from: bodyJSON)
+        let lat = capturedLat ?? fromBody.lat
+        let lng = capturedLng ?? fromBody.lng
+        let at = capturedAtMs ?? ((lat != nil && lng != nil) ? Date().timeIntervalSince1970 * 1000 : nil)
         let action = QueuedDriverAction(
             id: idempotencyKey,
             endpoint: ep,
             method: method,
-            bodyJSON: bodyJSON,
+            bodyJSON: Self.ensureCoords(in: bodyJSON, lat: lat, lng: lng),
             priority: DriverOfflineActionCatalog.priority(for: ep),
             clientTimestampIso: clientTimestampIso,
-            orderId: orderId.isEmpty ? (extractOrderId(bodyJSON) ?? "") : orderId
+            orderId: orderId.isEmpty ? (extractOrderId(bodyJSON) ?? "") : orderId,
+            capturedLat: lat,
+            capturedLng: lng,
+            capturedAtMs: at
         )
         context.insert(action)
         try? context.save()
-        print("[DriverOfflineQueue] enqueued \(ep) order=\(action.orderId)")
+        print("[DriverOfflineQueue] enqueued \(ep) order=\(action.orderId) lat=\(String(describing: lat))")
     }
 
     func enqueueJSONObject(
@@ -47,12 +57,16 @@ final class DriverOfflineQueue {
         body: [String: Any],
         idempotencyKey: String,
         orderId: String = "",
-        clientTimestampIso: String = DriverOfflineActionCatalog.nowIso()
+        clientTimestampIso: String = DriverOfflineActionCatalog.nowIso(),
+        capturedLat: Double? = nil,
+        capturedLng: Double? = nil
     ) {
         var payload = body
         if payload["client_timestamp"] == nil {
             payload["client_timestamp"] = clientTimestampIso
         }
+        let lat = capturedLat ?? (payload["latitude"] as? Double) ?? (payload["latitude"] as? NSNumber)?.doubleValue
+        let lng = capturedLng ?? (payload["longitude"] as? Double) ?? (payload["longitude"] as? NSNumber)?.doubleValue
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let json = String(data: data, encoding: .utf8) else { return }
         enqueue(
@@ -60,7 +74,9 @@ final class DriverOfflineQueue {
             bodyJSON: json,
             idempotencyKey: idempotencyKey,
             orderId: orderId,
-            clientTimestampIso: clientTimestampIso
+            clientTimestampIso: clientTimestampIso,
+            capturedLat: lat,
+            capturedLng: lng
         )
     }
 
@@ -136,10 +152,19 @@ final class DriverOfflineQueue {
                 }
             }
             do {
+                let body = try await resolvePodLocalFiles(
+                    endpoint: action.endpoint,
+                    bodyJSON: action.bodyJSONForFlush(),
+                    orderId: action.orderId
+                )
+                guard let body else {
+                    recordAttempt(action, error: "pod_upload_pending")
+                    continue
+                }
                 let (status, _) = try await api.rawRequest(
                     endpoint: action.endpoint,
                     method: action.method,
-                    body: action.bodyJSON,
+                    body: body,
                     idempotencyKey: action.id
                 )
                 if DriverOfflineActionCatalog.isSuccessHTTP(status) {
@@ -161,6 +186,54 @@ final class DriverOfflineQueue {
             }
         }
         return (sent, pending().count)
+    }
+
+    /// Upload local PoD JPEGs before credit / shop-closed flush. Returns nil to keep pending.
+    private func resolvePodLocalFiles(endpoint: String, bodyJSON: String, orderId: String) async throws -> String? {
+        let ep = DriverOfflineActionCatalog.normalize(endpoint)
+        guard ep == DriverOfflineActionCatalog.credit || ep == DriverOfflineActionCatalog.shopClosed else {
+            return bodyJSON
+        }
+        guard let data = bodyJSON.data(using: .utf8),
+              var obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return bodyJSON
+        }
+        let photoLocal = (obj["photo_local_path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigLocal = (obj["signature_local_path"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoProof = (obj["photo_proof_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoUrl = (obj["photo_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let sigUrl = (obj["signature_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if !photoLocal.isEmpty && photoProof.isEmpty && photoUrl.isEmpty {
+            let bytes = try MediaUploadService.readLocalJPEG(photoLocal)
+            let url = try await MediaUploadService.uploadJPEGData(bytes, purpose: "credit_proof", orderId: orderId)
+            if ep == DriverOfflineActionCatalog.credit {
+                obj["photo_proof_url"] = url
+            } else {
+                obj["photo_url"] = url
+            }
+            obj.removeValue(forKey: "photo_local_path")
+        }
+        if !sigLocal.isEmpty && sigUrl.isEmpty {
+            let bytes = try MediaUploadService.readLocalJPEG(sigLocal)
+            let url = try await MediaUploadService.uploadJPEGData(bytes, purpose: "credit_proof", orderId: orderId)
+            obj["signature_url"] = url
+            obj.removeValue(forKey: "signature_local_path")
+        }
+
+        let proofAfter = (obj["photo_proof_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let photoAfter = (obj["photo_url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if ep == DriverOfflineActionCatalog.credit && proofAfter.isEmpty {
+            return nil
+        }
+        if ep == DriverOfflineActionCatalog.shopClosed && photoAfter.isEmpty {
+            return nil
+        }
+        guard let out = try? JSONSerialization.data(withJSONObject: obj),
+              let str = String(data: out, encoding: .utf8) else {
+            return nil
+        }
+        return str
     }
 
     private func flushDeliverBatch(_ actions: [QueuedDriverAction], api: APIClient) async -> Int {
@@ -236,6 +309,29 @@ final class DriverOfflineQueue {
         guard let data = json.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         return obj["order_id"] as? String
+    }
+
+    private static func coords(from json: String) -> (lat: Double?, lng: Double?) {
+        guard let data = json.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return (nil, nil)
+        }
+        let lat = (obj["latitude"] as? Double) ?? (obj["latitude"] as? NSNumber)?.doubleValue
+        let lng = (obj["longitude"] as? Double) ?? (obj["longitude"] as? NSNumber)?.doubleValue
+        return (lat, lng)
+    }
+
+    private static func ensureCoords(in json: String, lat: Double?, lng: Double?) -> String {
+        guard let lat, let lng,
+              let data = json.data(using: .utf8),
+              var obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return json
+        }
+        if obj["latitude"] == nil { obj["latitude"] = lat }
+        if obj["longitude"] == nil { obj["longitude"] = lng }
+        guard let out = try? JSONSerialization.data(withJSONObject: obj),
+              let str = String(data: out, encoding: .utf8) else { return json }
+        return str
     }
 
     private func isoToEpoch(_ iso: String) -> TimeInterval? {

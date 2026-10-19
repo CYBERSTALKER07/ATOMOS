@@ -16,5 +16,8 @@ struct RootView: View {
         .buttonStyle(PressableButtonStyle())
         .animation(.smooth, value: tokenStore.isAuthenticated)
         .animation(.smooth, value: tokenStore.isConfigured)
+        .task {
+            await PushNotificationManager.shared.requestAuthorization()
+        }
     }
 }

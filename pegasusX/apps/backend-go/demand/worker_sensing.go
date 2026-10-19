@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -54,13 +56,27 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 		return fmt.Errorf("compute base velocities: %w", err)
 	}
 
-	// Group signals for fast lookup
-	// For simplicity, we just iterate, but grouping by scope/sku is better for large datasets.
+	// Retailer geo for REGION/CITY fail-closed matching (G6.A2).
+	retailerIDs := make([]string, 0, len(retailerSkuVelocities))
+	seenRetailer := map[string]struct{}{}
+	for _, item := range retailerSkuVelocities {
+		if _, ok := seenRetailer[item.RetailerId]; ok {
+			continue
+		}
+		seenRetailer[item.RetailerId] = struct{}{}
+		retailerIDs = append(retailerIDs, item.RetailerId)
+	}
+	geoByRetailer, geoErr := s.loadRetailerGeo(ctx, retailerIDs)
+	if geoErr != nil {
+		slog.Warn("demand sensing geo load failed; regional scopes fail-closed", "err", geoErr)
+		geoByRetailer = map[string]RetailerGeo{}
+	}
 
 	var mutations []*spanner.Mutation
 	var outboxEvents []emitData
 
 	for _, item := range retailerSkuVelocities {
+		geo := geoByRetailer[item.RetailerId]
 		// Calculate adjustments for the next 14 days
 		for dayOffset := 0; dayOffset < 14; dayOffset++ {
 			today := now.AddDate(0, 0, dayOffset)
@@ -68,6 +84,7 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 			adj := DemandAdjustment{
 				RetailerId:   item.RetailerId,
 				Sku:          item.Sku,
+				SupplierId:   item.SupplierId,
 				Date:         time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC),
 				BaseVelocity: item.BaseVelocity,
 				Factors:      make(map[string]float64),
@@ -83,23 +100,9 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 					continue
 				}
 
-				// Check scope applicability
-				// Scope formats: legacy = "country:UZ" | "city:Tashkent" | "retailer:uuid"
-				//                 new    = "GLOBAL" | "REGION" | "CITY" | "RETAILER" | "RETAILER_SKU"
-				// GLOBAL and country-level scopes apply to all retailers.
-				// RETAILER scope requires the signal's Meta or scope to encode the retailer id.
-				scopeMatch := false
-				switch sig.Scope {
-				case "GLOBAL", "country:UZ":
-					scopeMatch = true
-				case "REGION", "CITY", "city:Tashkent":
-					scopeMatch = true // Phase 1: all retailers assumed same region
-				case "RETAILER", "RETAILER_SKU":
-					scopeMatch = sig.Scope == fmt.Sprintf("retailer:%s", adj.RetailerId)
-				default:
-					scopeMatch = sig.Scope == fmt.Sprintf("retailer:%s", adj.RetailerId)
-				}
-				if !scopeMatch {
+				// Scope: GLOBAL/country always; REGION/CITY geo-matched (fail-closed);
+				// retailer:uuid / RETAILER Meta only for that retailer (G6.A2).
+				if !signalScopeMatches(sig.Scope, sig.Meta, adj.RetailerId, geo) {
 					continue
 				}
 
@@ -114,16 +117,23 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 				adj.Factors[string(sig.Type)] = sig.Multiplier
 			}
 
-			// Day-of-week factor (static rules from Phase 1 spec)
-			dowFactor := dayOfWeekFactor(today.Weekday())
-			adj.Adjustment *= dowFactor
-			adj.Factors["DAY_OF_WEEK"] = dowFactor
-
-			// Payday factor: 1st and 15th of month (common salary dates in UZ)
-			pdFactor := paydayFactor(today.Day())
-			if pdFactor != 1.0 {
-				adj.Adjustment *= pdFactor
-				adj.Factors["PAYDAY"] = pdFactor
+			// Day-of-week / payday: prefer DemandSignals when present (P2-6);
+			// otherwise keep static UZ retail calendar as fallback.
+			if _, ok := adj.Factors[string(SignalPayday)]; !ok {
+				if _, hasDOW := adj.Factors["DAY_OF_WEEK"]; !hasDOW {
+					dowFactor := dayOfWeekFactor(today.Weekday())
+					adj.Adjustment *= dowFactor
+					adj.Factors["DAY_OF_WEEK"] = dowFactor
+				}
+				pdFactor := paydayFactor(today.Day())
+				if pdFactor != 1.0 {
+					adj.Adjustment *= pdFactor
+					adj.Factors["PAYDAY"] = pdFactor
+				}
+			} else if _, hasDOW := adj.Factors["DAY_OF_WEEK"]; !hasDOW {
+				dowFactor := dayOfWeekFactor(today.Weekday())
+				adj.Adjustment *= dowFactor
+				adj.Factors["DAY_OF_WEEK"] = dowFactor
 			}
 
 			// Clamp final adjustment to [0.6, 1.8]
@@ -136,6 +146,7 @@ func (s *Service) RunDemandSensing(ctx context.Context) error {
 				"RetailerId":     adj.RetailerId,
 				"Sku":            adj.Sku,
 				"Date":           spanner.NullDate{Valid: true, Date: civil.DateOf(today)},
+				"SupplierId":     adj.SupplierId,
 				"BaseVelocity":   adj.BaseVelocity,
 				"Adjustment":     adj.Adjustment,
 				"AdjustedDemand": adj.AdjustedDemand,
@@ -220,7 +231,7 @@ func (s *Service) flushMutations(ctx context.Context, mutations []*spanner.Mutat
 func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end time.Time) ([]DemandSignal, error) {
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy
+			SELECT SignalId, Type, Scope, Sku, StartAt, EndAt, Multiplier, Meta, CreatedAt, CreatedBy, SupplierId
 			FROM DemandSignals
 			WHERE StartAt <= @End AND EndAt >= @Start
 		`,
@@ -244,7 +255,8 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 		var sig DemandSignal
 		var sku spanner.NullString
 		var meta spanner.NullJSON
-		if err := row.Columns(&sig.SignalId, &sig.Type, &sig.Scope, &sku, &sig.StartAt, &sig.EndAt, &sig.Multiplier, &meta, &sig.CreatedAt, &sig.CreatedBy); err != nil {
+		var supplier spanner.NullString
+		if err := row.Columns(&sig.SignalId, &sig.Type, &sig.Scope, &sku, &sig.StartAt, &sig.EndAt, &sig.Multiplier, &meta, &sig.CreatedAt, &sig.CreatedBy, &supplier); err != nil {
 			return nil, err
 		}
 		if sku.Valid {
@@ -253,6 +265,9 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 		if meta.Valid {
 			sig.Meta = []byte(meta.Value.(string))
 		}
+		if supplier.Valid {
+			sig.SupplierId = supplier.StringVal
+		}
 		signals = append(signals, sig)
 	}
 	return signals, nil
@@ -260,21 +275,23 @@ func (s *Service) loadActiveSignals(ctx context.Context, start time.Time, end ti
 
 type retailerSkuVelocity struct {
 	RetailerId   string
+	SupplierId   string
 	Sku          string
 	BaseVelocity float64
 }
 
-// computeBaseVelocities computes BaseVelocity from the last 28 days of order lines.
+// computeBaseVelocities computes BaseVelocity from the last 28 days of order lines,
+// blended with STORE_POS FlywheelDemandFeed daily averages when present (P2-6).
 func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]retailerSkuVelocity, error) {
 	twentyEightDaysAgo := now.Add(-28 * 24 * time.Hour)
 
 	stmt := spanner.Statement{
 		SQL: `
-			SELECT o.RetailerId, l.Sku, SUM(l.DeliveredQty) / 28.0 as BaseVelocity
+			SELECT o.RetailerId, o.SupplierId, l.Sku, SUM(l.DeliveredQty) / 28.0 as BaseVelocity
 			FROM Orders o
 			JOIN OrderLines l ON o.OrderId = l.OrderId
 			WHERE o.Status = 'DELIVERED' AND o.CreatedAt >= @Start
-			GROUP BY o.RetailerId, l.Sku
+			GROUP BY o.RetailerId, o.SupplierId, l.Sku
 			HAVING SUM(l.DeliveredQty) > 0
 		`,
 		Params: map[string]interface{}{
@@ -284,7 +301,7 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 	iter := s.spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	var results []retailerSkuVelocity
+	byKey := map[velocityKey]retailerSkuVelocity{}
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
@@ -293,13 +310,143 @@ func (s *Service) computeBaseVelocities(ctx context.Context, now time.Time) ([]r
 		if err != nil {
 			return nil, err
 		}
-		var rsv retailerSkuVelocity
-		if err := row.Columns(&rsv.RetailerId, &rsv.Sku, &rsv.BaseVelocity); err != nil {
+		var v retailerSkuVelocity
+		if err := row.Columns(&v.RetailerId, &v.SupplierId, &v.Sku, &v.BaseVelocity); err != nil {
 			return nil, err
 		}
-		results = append(results, rsv)
+		byKey[velocityKey{v.RetailerId, v.SupplierId, v.Sku}] = v
 	}
-	return results, nil
+
+	flywheel, err := s.loadFlywheelDailyAvg(ctx, now)
+	if err != nil {
+		slog.Warn("flywheel velocity blend skipped", "err", err)
+	} else {
+		for k, fw := range flywheel {
+			if existing, ok := byKey[k]; ok {
+				existing.BaseVelocity = 0.65*existing.BaseVelocity + 0.35*fw
+				byKey[k] = existing
+				continue
+			}
+			// POS-only SKUs still enter planning.
+			byKey[k] = retailerSkuVelocity{
+				RetailerId:   k.retailer,
+				SupplierId:   k.supplier,
+				Sku:          k.sku,
+				BaseVelocity: fw,
+			}
+		}
+	}
+
+	out := make([]retailerSkuVelocity, 0, len(byKey))
+	for _, v := range byKey {
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+type velocityKey struct{ retailer, supplier, sku string }
+
+func (s *Service) loadFlywheelDailyAvg(ctx context.Context, now time.Time) (map[velocityKey]float64, error) {
+	if s == nil || s.spanner == nil {
+		return nil, nil
+	}
+	start := now.AddDate(0, 0, -7)
+	stmt := spanner.Statement{
+		SQL: `
+			SELECT RetailerId, IFNULL(SupplierId, '') AS SupplierId, SkuId, SUM(NetSold) / 7.0 AS DailyAvg
+			FROM FlywheelDemandFeed
+			WHERE Day >= @Start AND NetSold > 0
+			GROUP BY RetailerId, SupplierId, SkuId
+		`,
+		Params: map[string]any{"Start": start},
+	}
+	iter := s.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := map[velocityKey]float64{}
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var retailer, supplier, sku string
+		var avg float64
+		if err := row.Columns(&retailer, &supplier, &sku, &avg); err != nil {
+			return nil, err
+		}
+		out[velocityKey{retailer, supplier, sku}] = avg
+	}
+	return out, nil
+}
+
+// loadRetailerGeo loads RegionId + DeliveryAddress for CITY/REGION sensing match.
+// City is not a first-class column; address is used for contains match (fail-closed when empty).
+func (s *Service) loadRetailerGeo(ctx context.Context, retailerIDs []string) (map[string]RetailerGeo, error) {
+	out := make(map[string]RetailerGeo, len(retailerIDs))
+	if s == nil || s.spanner == nil || len(retailerIDs) == 0 {
+		return out, nil
+	}
+	// Chunk to stay under Spanner IN-list practical limits.
+	const chunk = 200
+	for i := 0; i < len(retailerIDs); i += chunk {
+		end := i + chunk
+		if end > len(retailerIDs) {
+			end = len(retailerIDs)
+		}
+		batch := retailerIDs[i:end]
+		stmt := spanner.Statement{
+			SQL: `
+				SELECT RetailerId, COALESCE(RegionId, ''), COALESCE(DeliveryAddress, ''), COALESCE(Name, '')
+				FROM Retailers
+				WHERE RetailerId IN UNNEST(@ids)
+			`,
+			Params: map[string]interface{}{"ids": batch},
+		}
+		iter := s.spanner.Single().Query(ctx, stmt)
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				iter.Stop()
+				return out, err
+			}
+			var id, region, addr, name string
+			if err := row.Columns(&id, &region, &addr, &name); err != nil {
+				iter.Stop()
+				return out, err
+			}
+			// Prefer city token from trailing ", City" patterns when present; else leave City empty
+			// and rely on Address contains for CITY:{name} scopes.
+			out[id] = RetailerGeo{
+				RegionID: strings.TrimSpace(region),
+				Address:  strings.TrimSpace(addr + " " + name),
+				City:     cityHintFromAddress(addr),
+			}
+		}
+		iter.Stop()
+	}
+	return out, nil
+}
+
+func cityHintFromAddress(addr string) string {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return ""
+	}
+	// Common "Street, District, City" → last non-empty comma segment.
+	parts := strings.Split(addr, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		p := strings.TrimSpace(parts[i])
+		if p != "" {
+			return p
+		}
+	}
+	return ""
 }
 
 // dayOfWeekFactor returns a static demand multiplier for the given weekday.

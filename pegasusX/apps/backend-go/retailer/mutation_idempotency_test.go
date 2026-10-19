@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -190,4 +191,45 @@ func TestHandleRetailerSetup_IdempotencyReplay(t *testing.T) {
 	if rr.Body.String() != string(cachedBytes) {
 		t.Fatalf("replay body = %s want %s", rr.Body.String(), string(cachedBytes))
 	}
+}
+
+func TestRetailerProfileAndSupplier_RequireIdempotencyKey(t *testing.T) {
+	svc := NewService(ServiceConfig{Repo: &testRetailerRepo{found: true, retailer: Retailer{RetailerID: "ret-1"}}, SupplierID: "sup-1"})
+	claims := auth.Claims{Role: auth.RoleRetailer, Subject: "ret-1"}
+
+	t.Run("profile", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPut, "/v1/retailer/profile", strings.NewReader(`{"name":"Shop"}`))
+		req = req.WithContext(auth.WithClaims(req.Context(), claims))
+		rr := httptest.NewRecorder()
+		svc.HandleProfile(rr, req)
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+			t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+		}
+	})
+
+	t.Run("supplier-add", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/v1/retailer/suppliers/sup-2/add", strings.NewReader(`{}`))
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("supplierID", "sup-2")
+		ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+		req = req.WithContext(auth.WithClaims(ctx, claims))
+		rr := httptest.NewRecorder()
+		svc.HandleSupplierAdd(rr, req)
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+			t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+		}
+	})
+
+	t.Run("supplier-remove", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/v1/retailer/suppliers/sup-2/remove", strings.NewReader(`{}`))
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("supplierID", "sup-2")
+		ctx := context.WithValue(req.Context(), chi.RouteCtxKey, rctx)
+		req = req.WithContext(auth.WithClaims(ctx, claims))
+		rr := httptest.NewRecorder()
+		svc.HandleSupplierRemove(rr, req)
+		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "idempotency_key_required") {
+			t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+		}
+	})
 }

@@ -1,3 +1,4 @@
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from "@/lib/bridge";
 
 const SUPPLIER_JWT_COOKIE = "supplier_jwt";
@@ -24,7 +25,7 @@ function usesApiProxy(base: string): boolean {
   return base === "/api" || base.endsWith("/api");
 }
 
-export function supplierApiBaseUrl(): string {
+function supplierBootstrapUrl(): string {
   if (typeof window !== "undefined") {
     if (isTauri()) {
       const { hostname, port, origin } = window.location;
@@ -37,6 +38,16 @@ export function supplierApiBaseUrl(): string {
     return "/api";
   }
   return "http://localhost:8180";
+}
+
+/** GS-C5: pin to JWT home_cell API URL. Local /api and localhost stay on bootstrap. */
+export function supplierApiBaseUrl(): string {
+  const token = typeof window !== "undefined" ? getSupplierToken() : "";
+  return pinApiBaseUrl({
+    bootstrap: supplierBootstrapUrl(),
+    homeCell: token ? homeCellFromJwt(token) : "",
+    sessionApiUrl: readCachedAuthSession()?.api_url,
+  });
 }
 
 export function readTokenFromCookie(): string {
@@ -152,6 +163,12 @@ export async function supplierFetch(path: string, init?: RequestInit): Promise<R
     "Content-Type": "application/json",
     ...(init?.headers as Record<string, string>),
   };
+  const method = (init?.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (!headers["Idempotency-Key"] && !headers["idempotency-key"] && !headers["X-Idempotency-Key"] && !headers["x-idempotency-key"]) {
+      headers["Idempotency-Key"] = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+    }
+  }
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }

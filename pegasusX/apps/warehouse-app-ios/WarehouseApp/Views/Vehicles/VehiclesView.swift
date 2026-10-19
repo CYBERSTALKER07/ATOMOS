@@ -15,26 +15,26 @@ struct VehiclesView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let error, vehicles.isEmpty {
                     ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
+                        Label("mobile_warehouse.ui.error", systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("common.action.retry") { load() }
                     }
                 } else if vehicles.isEmpty {
-                    ContentUnavailableView("No Trucks", systemImage: "truck.box", description: Text("Add a truck to get started"))
+                    ContentUnavailableView("No Trucks", systemImage: "truck.box", description: Text("mobile_warehouse.ui.add_a_truck_to_get_started"))
                 } else {
                     VehiclesList(vehicles: vehicles)
                 }
             }
             .background(LabTheme.background)
-            .navigationTitle("Trucks")
+            .navigationTitle("portal.nav.trucks")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Refresh", systemImage: "arrow.clockwise") { load() }
+                    Button("portal.page.orders.action.refresh", systemImage: "arrow.clockwise") { load() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Add Truck", systemImage: "plus") { showCreate = true }
+                    Button("mobile_warehouse.ui.add_truck", systemImage: "plus") { showCreate = true }
                 }
             }
             .task { load() }
@@ -82,12 +82,12 @@ private struct CreateVehicleSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Label", text: $label)
-                TextField("License Plate", text: $plate)
+                TextField("mobile_warehouse.ui.label", text: $label)
+                TextField("mobile_warehouse.ui.license_plate", text: $plate)
                 Section("Vehicle Class") {
                     Picker("Class", selection: $selectedClass) {
                         ForEach(vehicleClasses, id: \.0) { cls, cap in
-                            Text("\(cls) (\(cap))").tag(cls)
+                            Text(L10n.format("mobile_warehouse.ui.cls_cap", "\(cls)", "\(cap)")).tag(cls)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -96,13 +96,13 @@ private struct CreateVehicleSheet: View {
                     Text(error).foregroundStyle(.red).font(.caption)
                 }
             }
-            .navigationTitle("Add Truck")
+            .navigationTitle("mobile_warehouse.ui.add_truck")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.action.cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
+                    Button("mobile_warehouse.ui.create") { create() }
                         .disabled(submitting || label.isEmpty || plate.isEmpty)
                 }
             }

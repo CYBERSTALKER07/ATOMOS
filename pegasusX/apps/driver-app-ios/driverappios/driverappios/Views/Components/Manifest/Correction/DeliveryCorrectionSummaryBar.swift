@@ -39,7 +39,7 @@ struct DeliveryCorrectionSummaryBar: View {
 
             // Original total
             HStack {
-                Text("Original total")
+                Text("mobile_driver.ui.original_total")
                     .font(.subheadline)
                     .foregroundStyle(LabTheme.fgSecondary)
                 Spacer()
@@ -51,11 +51,11 @@ struct DeliveryCorrectionSummaryBar: View {
             // Refund delta
             if vm.refundDelta > 0 {
                 HStack {
-                    Text("Refund delta")
+                    Text("mobile_driver.ui.refund_delta")
                         .font(.subheadline)
                         .foregroundStyle(LabTheme.destructive)
                     Spacer()
-                    Text("−\(vm.refundDelta.formattedAmount)")
+                    Text(L10n.format("mobile_driver.ui.formattedamount", "\(vm.refundDelta.formattedAmount)"))
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(LabTheme.destructive)
                 }
@@ -67,7 +67,7 @@ struct DeliveryCorrectionSummaryBar: View {
 
             // Adjusted total
             HStack {
-                Text("Adjusted total")
+                Text("mobile_driver.ui.adjusted_total")
                     .font(.headline)
                     .foregroundStyle(LabTheme.fg)
                 Spacer()

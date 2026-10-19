@@ -8,6 +8,29 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	streamProcessorOrdersTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "stream_processor_orders_total",
+		Help:      "Total aggregated orders processed by stream processor",
+	})
+	streamProcessorRevenueTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "stream_processor_revenue_minor_total",
+		Help:      "Total aggregated revenue in minor units processed by stream processor",
+	})
+	streamProcessorCancelsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "void",
+		Subsystem: "kafka",
+		Name:      "stream_processor_cancellations_total",
+		Help:      "Total aggregated cancellations processed by stream processor",
+	})
 )
 
 // StreamProcessor defines an interface for continuous stream analytics and transformations.
@@ -121,6 +144,16 @@ func (s *AnalyticsStreamProcessor) flushMetrics(ctx context.Context) {
 	s.mu.Unlock()
 
 	// In a real enterprise system, you would flush this to Datadog metrics, a Time-Series DB, or Spanner.
+	if orders > 0 {
+		streamProcessorOrdersTotal.Add(float64(orders))
+	}
+	if revenue > 0 {
+		streamProcessorRevenueTotal.Add(float64(revenue))
+	}
+	if cancels > 0 {
+		streamProcessorCancelsTotal.Add(float64(cancels))
+	}
+
 	slog.InfoContext(ctx, "Stream Window Aggregation Complete",
 		"new_orders", orders,
 		"revenue_minor", revenue,

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePortalT } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierSupplyLaneRow } from "@pegasusx/types";
@@ -10,6 +11,7 @@ import { GeoReportLanesList } from "@/components/geo-report";
 const api = createSupplierApi();
 
 export default function GeoReportPage() {
+  const t = usePortalT();
   const [lanes, setLanes] = useState<SupplierSupplyLaneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,15 +20,15 @@ export default function GeoReportPage() {
     api
       .getSupplierSupplyLanes()
       .then((resp) => setLanes(resp.lanes))
-      .catch((err) => setError(err instanceof Error ? err.message : "load_geo_report_failed"))
+      .catch((err) => setError(err instanceof Error ? err.message : t("supplier_portal.residual.text.load_geo_report_failed")))
       .finally(() => setLoading(false));
   }, []);
 
 
   return (
     <PageChrome
-      title="Geo report"
-      description="H3 perimeter coverage and lane utilization from live supplier orders."
+      title={t("supplier_portal.geo_report.text.geo_report")}
+      description={t("supplier_portal.residual.text.h3_perimeter_coverage_and_lane_utilization_from_live_supplier_or")}
       icon="hexagon"
       loading={loading}
       error={error}
@@ -37,14 +39,14 @@ export default function GeoReportPage() {
         <HubCard
           href="/topology"
           icon="topology"
-          title="Topology"
-          description="Manage warehouse coordinates and coverage radius."
+          title={t("portal.nav.topology")}
+          description={t("supplier_portal.residual.text.manage_warehouse_coordinates_and_coverage_radius")}
         />
         <HubCard
           href="/delivery-zones"
           icon="pin"
-          title="Delivery zones"
-          description="Review H3 perimeter and warehouse coverage."
+          title={t("supplier_portal.delivery_zones.text.delivery_zones")}
+          description={t("supplier_portal.residual.text.review_h3_perimeter_and_warehouse_coverage")}
         />
       </div>
     </PageChrome>

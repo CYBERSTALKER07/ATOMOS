@@ -1,5 +1,7 @@
 package com.pegasusx.warehouse.ui.screens.claims
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +42,7 @@ import com.pegasusx.warehouse.data.model.WarehouseClaim
 import com.pegasusx.warehouse.data.remote.WarehouseApi
 import com.pegasusx.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
+import com.pegasusx.warehouse.R
 
 private val STATUS_FILTERS = listOf("OPEN", "UNDER_REVIEW", "RESOLVED", "REJECTED", "")
 
@@ -150,25 +153,23 @@ fun ClaimsScreen(
                     items(claims, key = { it.claimId }) { c ->
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(PegasusSpacing.lg)) {
-                                Text(
-                                    "${c.claimType} · ${c.status}",
+                                Text(stringResource(R.string.mobile_warehouse_ui_claimtype_status, c.claimType, c.status),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 Text(c.claimId, style = MaterialTheme.typography.titleSmall)
                                 if (c.orderId.isNotBlank()) {
                                     TextButton(onClick = { onOrderClick(c.orderId) }) {
-                                        Text("Order ${c.orderId}")
+                                        Text(stringResource(R.string.mobile_warehouse_ui_order_orderid, c.orderId))
                                     }
                                 }
                                 Text(
-                                    "Retailer ${c.retailerId} · ${c.amountMinor} ${c.currency}",
+                                    stringResource(R.string.mobile_warehouse_ui_retailer_retailerid_amountminor_currency, c.retailerId, c.amountMinor, c.currency),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 c.lineItems.forEach { li ->
-                                    Text(
-                                        "${li.sku} × ${li.quantity}" +
+                                    Text(stringResource(R.string.mobile_warehouse_ui_sku_quantity, li.sku, li.quantity) +
                                             if (li.reason.isNotBlank()) " (${li.reason})" else "",
                                         style = MaterialTheme.typography.bodySmall,
                                     )
