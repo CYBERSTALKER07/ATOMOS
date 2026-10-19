@@ -346,8 +346,9 @@ export default function Footer() {
             fitWidth={true}
             color="#ffffff"
             highlightColor="#ffffff"
-            particleSize={2.4}
-            density={4}
+            particleSize={1.8}
+            density={2}
+            maxParticles={7200}
             scatter={0}
             gatherDuration={0}
             stagger={0}

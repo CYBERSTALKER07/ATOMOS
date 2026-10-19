@@ -39,10 +39,12 @@ export default function Hero() {
  const isLight = resolvedTheme === 'light';
 
  const textRef = useRef<HTMLDivElement>(null);
+ const kickerRef = useRef<HTMLDivElement>(null);
  const titleRef = useRef<HTMLDivElement>(null);
  const subtitleRef = useRef<HTMLHeadingElement>(null);
  const descRef = useRef<HTMLParagraphElement>(null);
  const ctaRef = useRef<HTMLDivElement>(null);
+ const scrollRef = useRef<HTMLDivElement>(null);
  const [activeVideoIdx, setActiveVideoIdx] = useState(0);
  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
  const isIntersectingRef = useRef(true);
@@ -58,8 +60,15 @@ export default function Hero() {
   const ctx = gsap.context(() => {
    if (isMobile || isLowEnd || prefersReducedMotion) {
     gsap.set(
-     [titleRef.current, subtitleRef.current, descRef.current, ctaRef.current],
-     { opacity: 1, x: 0, y: 0 }
+     [
+      kickerRef.current,
+      titleRef.current,
+      subtitleRef.current,
+      descRef.current,
+      ctaRef.current,
+      scrollRef.current,
+     ],
+     { opacity: 1, x: 0, y: 0, filter: 'none', scale: 1 }
     );
     return;
    }
@@ -68,28 +77,40 @@ export default function Hero() {
 
    timeline
     .fromTo(
+     kickerRef.current,
+     { opacity: 0, y: -12, filter: 'blur(6px)' },
+     { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.65 },
+     0.1
+    )
+    .fromTo(
      titleRef.current,
-     { opacity: 0, y: 16 },
-     { opacity: 1, y: 0, duration: 0.55 },
-     0
+     { opacity: 0 },
+     { opacity: 1, duration: 0.35 },
+     0.15
     )
     .fromTo(
      subtitleRef.current,
-     { opacity: 0, y: 16 },
-     { opacity: 1, y: 0, duration: 0.45 },
-     0.08
+     { opacity: 0, y: 24, filter: 'blur(8px)' },
+     { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.85 },
+     0.4
     )
     .fromTo(
      descRef.current,
-     { opacity: 0, y: 12 },
-     { opacity: 1, y: 0, duration: 0.45 },
-     0.18
+     { opacity: 0, y: 18, filter: 'blur(4px)' },
+     { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.75 },
+     0.65
     )
     .fromTo(
-     ctaRef.current,
-     { opacity: 0, y: 12 },
-     { opacity: 1, y: 0, duration: 0.45 },
-     0.28
+     ctaRef.current?.children ?? [],
+     { opacity: 0, y: 16, scale: 0.94 },
+     { opacity: 1, y: 0, scale: 1, duration: 0.65, stagger: 0.12 },
+     0.85
+    )
+    .fromTo(
+     scrollRef.current,
+     { opacity: 0, y: -10 },
+     { opacity: 0.6, y: 0, duration: 0.8 },
+     1.05
     );
   });
 
@@ -188,6 +209,15 @@ export default function Hero() {
     className="flex flex-col justify-end p-8 sm:p-12 lg:p-16 xl:p-24 min-h-[80vh] lg:min-h-[85vh]"
    >
     <div className="space-y-4 max-w-3xl">
+    {/* Telemetry / System Status Kicker */}
+    <div
+     ref={kickerRef}
+     className="inline-flex items-center gap-2 px-3 py-1 text-[11px] font-mono tracking-wider uppercase bg-white/5 border border-white/10 text-white/70 backdrop-blur-md w-fit"
+    >
+     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+     <span>{language === 'ru' ? 'ОРБИТАЛЬНАЯ ЛОГИСТИЧЕСКАЯ СЕТЬ // АКТИВНА' : 'GLOBAL LOGISTICS NETWORK // ACTIVE'}</span>
+    </div>
+
     {/* Primary Headline with Interactive ParticleText */}
     <div className="space-y-2">
      <div ref={titleRef} className="w-full h-16 sm:h-20 md:h-24 lg:h-28 max-w-3xl">
@@ -198,13 +228,13 @@ export default function Hero() {
        density={isMobile ? 3.2 : isLowEnd ? 2.8 : 2.2}
        color="#10b981"
        highlightColor="#34d399"
-       scatter={120}
-       gatherDuration={1200}
-       stagger={260}
+       scatter={140}
+       gatherDuration={1300}
+       stagger={280}
        pointerRepel={38}
        repelRadius={95}
        idleDrift={isLowEnd ? 0.12 : 0.25}
-       trigger="none"
+       trigger="mount"
        textAlign="left"
       />
      </div>
@@ -262,7 +292,10 @@ export default function Hero() {
 
 
    {/* ── Bottom scroll indicator ── */}
-   <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-60">
+   <div
+    ref={scrollRef}
+    className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-60"
+   >
    <div className="w-[1px] h-8 bg-gradient-to-b from-transparent to-white/60" />
    <button
     onClick={scrollToNext}

@@ -27,6 +27,7 @@ export interface ParticleTextProps {
   textAlign?: 'left' | 'center' | 'right';
   className?: string;
   style?: CSSProperties;
+  maxParticles?: number;
 }
 
 type Rgb = { r: number; g: number; b: number };
@@ -126,7 +127,8 @@ const ParticleText = ({
   glow = true,
   textAlign = 'left',
   className = '',
-  style
+  style,
+  maxParticles: customMaxParticles
 }: ParticleTextProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -146,6 +148,7 @@ const ParticleText = ({
     let resizeFrame: number | null = null;
     let buildId = 0;
     let gathering = false;
+    let initialGatherDone = false;
     let gatherStart = 0;
     let reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     let width = 0;
@@ -281,6 +284,7 @@ const ParticleText = ({
 
       if (gathering && complete) {
         gathering = false;
+        initialGatherDone = true;
       }
 
       animationFrame = window.requestAnimationFrame(render);
@@ -312,7 +316,7 @@ const ParticleText = ({
       if (!offCtx) return;
 
       const targets: Target[] = [];
-      const step = useBrandmark ? Math.max(1, density) : Math.max(2, Math.floor(density));
+      const step = Math.max(1, Math.floor(density));
 
       if (useBrandmark) {
         // Precision PEGASUS Sci-Fi Vector Wordmark (772.033 x 55.506)
@@ -566,15 +570,31 @@ const ParticleText = ({
         }
       }
 
-      const maxParticles = useBrandmark || fitWidth
+      const defaultMax = useBrandmark || fitWidth
         ? Math.max(2600, Math.min(3800, targets.length))
         : Math.max(900, Math.min(3600, Math.floor((width * height) / 90)));
-      const stride = Math.max(1, Math.ceil(targets.length / maxParticles));
+      const maxAllowed = customMaxParticles ?? defaultMax;
+      let selected: Target[];
+      if (targets.length <= maxAllowed) {
+        selected = targets;
+      } else {
+        const stepRatio = targets.length / maxAllowed;
+        selected = [];
+        for (let i = 0; i < maxAllowed; i++) {
+          selected.push(targets[Math.floor(i * stepRatio)]);
+        }
+      }
       const baseRgb = hexToRgb(color);
       const highlightRgb = hexToRgb(highlightColor);
-      const selected = targets.filter((_, index) => index % stride === 0);
 
-      const noStartAnimation = reducedMotion || trigger === 'none' || scatter === 0 || gatherDuration === 0;
+      const noStartAnimation =
+        initialGatherDone ||
+        reducedMotion ||
+        trigger === 'none' ||
+        trigger === 'hover' ||
+        trigger === 'click' ||
+        scatter === 0 ||
+        gatherDuration === 0;
 
       particles = selected.map((target, index) => {
         const seed = ((index * 9301 + 49297) % 233280) / 233280;
@@ -629,6 +649,8 @@ const ParticleText = ({
           } else {
             gathering = false;
           }
+        } else if (trigger === 'mount') {
+          startGather(true);
         } else {
           startGather(false);
         }
@@ -736,7 +758,9 @@ const ParticleText = ({
     glow,
     textAlign,
     letterSpacing,
-    fitContainer
+    fitContainer,
+    fitWidth,
+    customMaxParticles
   ]);
 
   return (
