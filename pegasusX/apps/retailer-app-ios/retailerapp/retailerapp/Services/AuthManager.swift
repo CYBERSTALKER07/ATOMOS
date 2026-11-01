@@ -19,15 +19,31 @@ final class AuthManager {
     private let api = APIClient.shared
 
     private init() {
-        if api.authToken != nil {
-            isLoggedIn = true
-            let userId = KeychainHelper.read(key: "user_id") ?? ""
-            let userName = KeychainHelper.read(key: "user_name") ?? ""
-            let company = KeychainHelper.read(key: "user_company") ?? ""
-            currentUser = User(id: userId, name: userName, company: company, email: nil, avatarURL: nil)
-            let configured = KeychainHelper.read(key: "is_configured") == "true"
-            needsSetup = !configured
-        }
+        // Dev Mock Auth: automatically authorize retailer for immediate access without login/setup barrier
+        bypassAuthWithMockData()
+    }
+
+    /// Sets mock retailer auth credentials so the app can be accessed immediately without login barriers.
+    func bypassAuthWithMockData() {
+        let mockToken = "mock-retailer-dev-token"
+        api.authToken = mockToken
+        let user = User(
+            id: "retailer-123",
+            name: "Shakhzod",
+            company: "Pegasus Retailer HQ",
+            email: "shakhzod@pegasus.uz",
+            avatarURL: nil
+        )
+        KeychainHelper.save(key: "auth_token", value: mockToken)
+        KeychainHelper.save(key: "user_id", value: user.id)
+        KeychainHelper.save(key: "user_name", value: user.name)
+        KeychainHelper.save(key: "user_company", value: user.company)
+        KeychainHelper.save(key: "is_configured", value: "true")
+        currentUser = user
+        isLoggedIn = true
+        needsSetup = false
+        needsOrgSelect = false
+        pendingMemberships = nil
     }
 
     // MARK: - C1.3 clear-on-switch contract

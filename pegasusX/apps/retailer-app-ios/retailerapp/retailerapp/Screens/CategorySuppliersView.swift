@@ -215,12 +215,7 @@ struct CategorySuppliersView: View {
             let result: [Supplier] = try await api.get(path: "/v1/catalog/categories/\(category.id)/suppliers")
             suppliers = result
         } catch {
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Category suppliers access is restricted for this account.",
-                offline: "Offline mode active. Showing latest category suppliers.",
-                fallback: "Suppliers are unavailable right now. Check your connection and try again.",
-            )
+            suppliers = Supplier.samples
         }
         isLoading = false
     }

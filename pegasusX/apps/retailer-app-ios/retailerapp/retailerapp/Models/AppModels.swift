@@ -195,6 +195,41 @@ struct RetailerAIPredictionsResponse: Codable {
     let items: [RetailerAIPrediction]
 }
 
+extension RetailerAIPrediction {
+    static let samples: [RetailerAIPrediction] = [
+        RetailerAIPrediction(
+            orderId: "pred-101",
+            supplierId: "sup-tashkent-dairy",
+            orderSource: "PREDICTIVE_REPLENISHMENT",
+            confirmationStatus: "PENDING_CONFIRMATION",
+            requestedDeliveryDate: "2026-11-04T08:00:00Z",
+            autoConfirmAt: "2026-11-03T18:00:00Z",
+            totalMinor: 45000000,
+            currency: "UZS",
+            derivedFromOrderId: "ord-883",
+            updatedAt: "2026-11-01T10:00:00Z",
+            lineItems: [
+                RetailerAILineItem(sku: "DAIRY-MILK-32", name: "Premium Fresh Milk 3.2%", quantity: 24, unitPriceMinor: 1200000)
+            ]
+        ),
+        RetailerAIPrediction(
+            orderId: "pred-102",
+            supplierId: "sup-samarkand-bread",
+            orderSource: "PREDICTIVE_REPLENISHMENT",
+            confirmationStatus: "PENDING_CONFIRMATION",
+            requestedDeliveryDate: "2026-11-05T09:00:00Z",
+            autoConfirmAt: "2026-11-04T18:00:00Z",
+            totalMinor: 28000000,
+            currency: "UZS",
+            derivedFromOrderId: "ord-884",
+            updatedAt: "2026-11-01T10:00:00Z",
+            lineItems: [
+                RetailerAILineItem(sku: "BAKERY-TANDIR-01", name: "Traditional Tandir Flatbread", quantity: 50, unitPriceMinor: 560000)
+            ]
+        )
+    ]
+}
+
 // MARK: - Cart Item
 
 struct CartItem: Identifiable, Hashable {

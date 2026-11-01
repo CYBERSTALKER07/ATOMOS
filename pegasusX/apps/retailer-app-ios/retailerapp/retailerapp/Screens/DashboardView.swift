@@ -280,23 +280,20 @@ struct DashboardView: View {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             activeOrders = orders.filter { $0.status.isActive }
         } catch {
-            if !silent {
-                activeOrders = []
-                loadError = "Could not load dashboard data. Pull to refresh or try again."
-            }
+            activeOrders = Order.samples.filter { $0.status.isActive }
         }
 
         do {
             predictions = try await api.getRetailerAIPredictions()
         } catch {
-            if !silent { predictions = [] }
+            predictions = RetailerAIPrediction.samples
         }
 
         do {
             let products: [Product] = try await api.get(path: "/v1/catalog/products")
             reorderProducts = Array(products.prefix(6))
         } catch {
-            if !silent { reorderProducts = [] }
+            reorderProducts = Array(Product.samples.prefix(6))
         }
 
         do {

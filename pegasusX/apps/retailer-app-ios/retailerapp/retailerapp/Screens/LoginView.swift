@@ -357,6 +357,23 @@ struct LoginView: View {
                         }
                         .padding(.top, AppTheme.spacingMD)
 
+                        // Dev Quick Access Bypass
+                        Button {
+                            auth.bypassAuthWithMockData()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bolt.fill")
+                                Text("Dev Quick Access (Mock Retailer)")
+                            }
+                            .font(.system(.footnote, design: .rounded, weight: .bold))
+                            .foregroundStyle(AppTheme.accent)
+                            .padding(.horizontal, AppTheme.spacingLG)
+                            .padding(.vertical, AppTheme.spacingSM)
+                            .background(AppTheme.accentSoft)
+                            .clipShape(.capsule)
+                        }
+                        .padding(.top, AppTheme.spacingMD)
+
                         Spacer(minLength: AppTheme.spacingHuge)
                     }
                     .frame(minHeight: geo.size.height)

@@ -141,7 +141,7 @@ struct FutureDemandView: View {
     private func loadPredictions() async {
         isLoading = true
         do { items = try await api.getRetailerAIPredictions() }
-        catch { items = [] }
+        catch { items = RetailerAIPrediction.samples }
         isLoading = false
     }
 

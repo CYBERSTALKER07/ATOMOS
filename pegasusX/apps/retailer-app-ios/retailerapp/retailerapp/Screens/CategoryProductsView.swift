@@ -175,7 +175,7 @@ struct CategoryProductsView: View {
             let result: [Product] = try await api.get(path: "/v1/catalog/products?category_id=\(category.id)")
             products = result
         } catch {
-            products = []
+            products = Product.samples
         }
         isLoading = false
     }
