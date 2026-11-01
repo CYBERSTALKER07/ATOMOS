@@ -228,7 +228,7 @@ fun ProductDetailScreen(
                 Text("Product not found.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         } else {
-            val product = uiState.product!!
+            val product = uiState.product ?: return@Scaffold
 
         val settings = uiState.settings
         val productAutoOrderEnabled = settings?.productOverrides

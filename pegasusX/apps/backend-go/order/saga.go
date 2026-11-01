@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,7 +43,9 @@ func (s *Service) RecordSagaChildCreated(ctx context.Context, parentID, childID 
 		}
 		var existingIDs []string
 		_ = row.Columns(&existingIDs)
-		existingIDs = append(existingIDs, childID)
+		if !slices.Contains(existingIDs, childID) {
+			existingIDs = append(existingIDs, childID)
+		}
 
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ParentOrders", map[string]any{

@@ -368,6 +368,13 @@ resource "google_service_account_iam_member" "workload_identity_binding" {
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.k8s_namespace}/${each.key}]"
 }
 
+# Bind canonical K8s backend-go ServiceAccount to backend-go-sa
+resource "google_service_account_iam_member" "workload_identity_binding_backend_go" {
+  service_account_id = google_service_account.workload_sa["backend-go-sa"].name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.k8s_namespace}/backend-go]"
+}
+
 # 4.3 Assign Project-Level IAM Roles to Service Accounts
 locals {
   sa_role_pairs = flatten([

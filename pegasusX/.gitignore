@@ -64,6 +64,8 @@ xcuserdata/
 *.xcuserstate
 **/*.xcuserstate
 DerivedData/
+**/.derivedData/
+**/.derivedData/**
 Pods/
 .build/
 .swiftpm/
@@ -73,6 +75,14 @@ Pods/
 **/*.o
 *.tsbuildinfo
 **/*.tsbuildinfo
+*.tfplan
+**/*.tfplan
+tfplan
+**/tfplan
+__pycache__/
+**/*.pyc
+kustomize
+.bin/
 
 # expo
 .expo/

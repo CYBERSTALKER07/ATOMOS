@@ -159,16 +159,21 @@ struct OrderDetailPanel: View {
         }
     }
 
+    private static let tashkentIsoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
+        return formatter
+    }()
+
     private func isoDeliveryDate(from date: Date) -> String {
-        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
+        let tz = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
+        var components = Calendar.current.dateComponents(in: tz, from: date)
         components.hour = 12
         components.minute = 0
         components.second = 0
         let noon = Calendar.current.date(from: components) ?? date
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        return formatter.string(from: noon)
+        return Self.tashkentIsoFormatter.string(from: noon)
     }
 
     private func loadWarehouseDetail() async {

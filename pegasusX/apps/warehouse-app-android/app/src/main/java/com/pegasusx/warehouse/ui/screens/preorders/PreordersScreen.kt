@@ -202,7 +202,7 @@ fun PreordersScreen(
             error != null && rows.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Pre-orders unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding)

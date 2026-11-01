@@ -13,27 +13,71 @@ export type AutocompletePrediction = {
   description: string;
 };
 
+const GEOCODE_CACHE_TTL_MS = 60_000;
+const autocompleteCache = new Map<string, { expiresAt: number; data: AutocompletePrediction[] }>();
+const placeCache = new Map<string, { expiresAt: number; data: ResolvedLocation }>();
+const reverseCache = new Map<string, { expiresAt: number; data: ResolvedLocation }>();
+let activeAutocompleteController: AbortController | null = null;
+
 export async function autocompleteAddress(input: string): Promise<AutocompletePrediction[]> {
-  const q = encodeURIComponent(input.trim());
-  if (!q) return [];
-  const res = await fetch(`${API_BASE}/v1/platform/geocode/autocomplete?input=${q}`);
-  if (!res.ok) return [];
-  const data = (await res.json()) as { predictions?: AutocompletePrediction[] };
-  return data.predictions ?? [];
+  const trimmed = input.trim();
+  if (!trimmed) return [];
+  const cacheKey = trimmed.toLowerCase();
+  const cached = autocompleteCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
+  activeAutocompleteController?.abort();
+  const controller = new AbortController();
+  activeAutocompleteController = controller;
+
+  const q = encodeURIComponent(trimmed);
+  try {
+    const res = await fetch(`${API_BASE}/v1/platform/geocode/autocomplete?input=${q}`, {
+      signal: controller.signal,
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { predictions?: AutocompletePrediction[] };
+    const predictions = data.predictions ?? [];
+    autocompleteCache.set(cacheKey, { expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS, data: predictions });
+    return predictions;
+  } catch {
+    return [];
+  } finally {
+    if (activeAutocompleteController === controller) {
+      activeAutocompleteController = null;
+    }
+  }
 }
 
 export async function resolvePlace(placeId: string): Promise<ResolvedLocation | null> {
-  const res = await fetch(`${API_BASE}/v1/platform/geocode/place?place_id=${encodeURIComponent(placeId)}`);
+  const id = placeId.trim();
+  if (!id) return null;
+  const cached = placeCache.get(id);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+  const res = await fetch(`${API_BASE}/v1/platform/geocode/place?place_id=${encodeURIComponent(id)}`);
   if (!res.ok) return null;
-  return (await res.json()) as ResolvedLocation;
+  const resolved = (await res.json()) as ResolvedLocation;
+  placeCache.set(id, { expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS, data: resolved });
+  return resolved;
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<ResolvedLocation | null> {
+  const coordKey = `${lat.toFixed(5)}:${lng.toFixed(5)}`;
+  const cached = reverseCache.get(coordKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
   const res = await fetch(
     `${API_BASE}/v1/platform/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
   );
   if (!res.ok) return null;
-  return (await res.json()) as ResolvedLocation;
+  const resolved = (await res.json()) as ResolvedLocation;
+  reverseCache.set(coordKey, { expiresAt: Date.now() + GEOCODE_CACHE_TTL_MS, data: resolved });
+  return resolved;
 }
 
 export async function forwardGeocode(address: string): Promise<ResolvedLocation | null> {

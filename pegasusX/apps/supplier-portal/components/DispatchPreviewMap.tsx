@@ -89,8 +89,8 @@ export default function DispatchPreviewMap({ routes, className }: DispatchPrevie
   return (
     <div className={className}>
       <MapGL
-        ref={(ref: any) => {
-          mapRef.current = ref?.getMap() ?? null;
+        ref={(ref: { getMap?: () => maplibregl.Map | null } | null) => {
+          mapRef.current = ref?.getMap?.() ?? null;
         }}
         initialViewState={{
           ...mapInitialViewState(readCachedAuthSession()?.pack),

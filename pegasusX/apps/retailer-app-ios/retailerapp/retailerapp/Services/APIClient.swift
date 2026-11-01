@@ -1,14 +1,82 @@
 import Foundation
 
+// MARK: - Single-Flight HTTP Coalescer & Token Refresh Coordinator
+
+private actor RetailerHTTPCoalescer {
+    private struct CacheEntry {
+        let data: Data
+        let response: URLResponse
+        let timestamp: Date
+    }
+
+    private var inFlightGets: [String: Task<(Data, URLResponse), Error>] = [:]
+    private var microCache: [String: CacheEntry] = [:]
+    private let microCacheTTL: TimeInterval = 2.0
+    private var refreshTask: Task<String?, Never>?
+
+    func fetchGet(
+        key: String,
+        operation: @Sendable @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        let now = Date()
+        if let cached = microCache[key], now.timeIntervalSince(cached.timestamp) < microCacheTTL {
+            return (cached.data, cached.response)
+        }
+        if let existing = inFlightGets[key] {
+            return try await existing.value
+        }
+        let task = Task<(Data, URLResponse), Error> {
+            try await operation()
+        }
+        inFlightGets[key] = task
+        do {
+            let result = try await task.value
+            inFlightGets.removeValue(forKey: key)
+            if let http = result.1 as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                microCache[key] = CacheEntry(data: result.0, response: result.1, timestamp: Date())
+            }
+            return result
+        } catch {
+            inFlightGets.removeValue(forKey: key)
+            throw error
+        }
+    }
+
+    func invalidateCache() {
+        microCache.removeAll()
+    }
+
+    func refreshSingleFlight(
+        operation: @Sendable @escaping () async -> String?
+    ) async -> String? {
+        if let existing = refreshTask {
+            return await existing.value
+        }
+        let task = Task<String?, Never> {
+            await operation()
+        }
+        refreshTask = task
+        let token = await task.value
+        refreshTask = nil
+        if token != nil {
+            microCache.removeAll()
+        }
+        return token
+    }
+}
+
 // MARK: - API Client
 
 @Observable
 final class APIClient {
     static let shared = APIClient()
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let coalescer = RetailerHTTPCoalescer()
 
     #if DEBUG
     // Simulator: localhost. Physical device: set LAB_DEV_HOST
@@ -68,9 +136,6 @@ final class APIClient {
 
     // MARK: - Generic Request
 
-    /// Flag to prevent recursive refresh loops
-    private var isRefreshing = false
-
     func request<T: Decodable>(
         method: String = "GET",
         path: String,
@@ -99,13 +164,17 @@ final class APIClient {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
-        let (data, response) = try await dataForRequestWithFallback(request)
+        if method != "GET" {
+            await coalescer.invalidateCache()
+        }
+
+        let (data, response) = try await performTransport(request, isRetry: isRetry)
 
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
 
-        if http.statusCode == 401 && !isRetry && !isRefreshing {
+        if http.statusCode == 401 && !isRetry {
             if let _ = await attemptTokenRefresh() {
                 return try await self.request(method: method, path: path, body: body, headers: headers, isRetry: true)
             }
@@ -129,33 +198,75 @@ final class APIClient {
     // MARK: - Token Refresh
 
     private func attemptTokenRefresh() async -> String? {
-        guard let currentToken = authToken else { return nil }
-        isRefreshing = true
-        defer { isRefreshing = false }
+        await coalescer.refreshSingleFlight { [weak self] in
+            guard let self, let currentToken = self.authToken else { return nil }
+            guard let url = URL(string: "\(self.baseURL)/v1/auth/retailer/refresh") else { return nil }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
+            req.httpBody = "{}".data(using: .utf8)
 
-        guard let url = URL(string: "\(baseURL)/v1/auth/retailer/refresh") else { return nil }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
-        req.httpBody = "{}".data(using: .utf8)
-
-        do {
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            do {
+                let (data, response) = try await self.session.data(for: req)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    return nil
+                }
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let newToken = json?["token"] as? String else { return nil }
+                self.authToken = newToken
+                return newToken
+            } catch {
                 return nil
             }
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let newToken = json?["token"] as? String else { return nil }
-            authToken = newToken
-            return newToken
-        } catch {
-            return nil
         }
     }
 
+    private func performTransport(_ request: URLRequest, isRetry: Bool) async throws -> (Data, URLResponse) {
+        let method = (request.httpMethod ?? "GET").uppercased()
+        if method == "GET" && !isRetry, let key = request.url?.absoluteString {
+            return try await coalescer.fetchGet(key: key) { [weak self] in
+                guard let self else { throw APIError.invalidResponse }
+                return try await self.dataForRequestWithFallback(request)
+            }
+        }
+        return try await dataForRequestWithFallback(request)
+    }
+
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let method = (request.httpMethod ?? "GET").uppercased()
+        let isIdempotent = method == "GET"
+            || request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+            || request.value(forHTTPHeaderField: "X-Idempotency-Key") != nil
+        let maxAttempts = isIdempotent ? 3 : 1
+        var lastError: Error?
+
+        for attempt in 0..<maxAttempts {
+            try Task.checkCancellation()
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse,
+                   (http.statusCode == 502 || http.statusCode == 503 || http.statusCode == 504 || http.statusCode == 429),
+                   attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+                return (data, response)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                if attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+            }
+        }
+        throw lastError ?? APIError.invalidResponse
     }
 
     // MARK: - Convenience Methods
@@ -193,11 +304,15 @@ final class APIClient {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
-        let (data, response) = try await dataForRequestWithFallback(request)
+        if method != "GET" {
+            await coalescer.invalidateCache()
+        }
+
+        let (data, response) = try await performTransport(request, isRetry: isRetry)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
-        if http.statusCode == 401 && !isRetry && !isRefreshing {
+        if http.statusCode == 401 && !isRetry {
             if let _ = await attemptTokenRefresh() {
                 return try await requestData(method: method, path: path, body: body, headers: headers, isRetry: true)
             }
@@ -727,7 +842,7 @@ final class APIClient {
                 tenders: [PosTenderWire(method: "CASH", amount_minor: totalMinor)],
                 client_sale_id: clientSaleId,
                 origin: origin,
-                client_created_at: clientCreatedAt ?? ISO8601DateFormatter().string(from: Date())
+                client_created_at: clientCreatedAt ?? Self.isoFormatter.string(from: Date())
             ),
             headers: ["Idempotency-Key": "pos-sale:\(clientSaleId)"]
         )

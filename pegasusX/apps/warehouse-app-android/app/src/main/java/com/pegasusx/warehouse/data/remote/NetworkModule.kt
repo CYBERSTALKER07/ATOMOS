@@ -85,13 +85,27 @@ private class TokenRefreshAuthenticator(
     private val json: Json,
     private val baseUrl: String,
 ) : okhttp3.Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+    @Synchronized
     override fun authenticate(route: okhttp3.Route?, response: Response): Request? {
         if (response.code != 401) return null
+        if (response.request.header("X-Refresh-Attempted") != null) {
+            TokenHolder.clear()
+            return null
+        }
+        val currentToken = TokenHolder.token
+        val requestToken = response.request.header("Authorization")?.removePrefix("Bearer ")?.trim()
+        if (!currentToken.isNullOrBlank() && !requestToken.isNullOrBlank() && currentToken != requestToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
         val refresh = TokenHolder.refreshToken ?: return null
-
-        val refreshClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .build()
 
         val body = json.encodeToString(
             com.pegasusx.warehouse.data.model.RefreshTokenRequest.serializer(),
@@ -106,6 +120,7 @@ private class TokenRefreshAuthenticator(
         return try {
             val refreshResponse = refreshClient.newCall(refreshRequest).execute()
             if (!refreshResponse.isSuccessful) {
+                refreshResponse.close()
                 TokenHolder.clear()
                 return null
             }
@@ -119,9 +134,9 @@ private class TokenRefreshAuthenticator(
 
             response.request.newBuilder()
                 .header("Authorization", "Bearer ${auth.token}")
+                .header("X-Refresh-Attempted", "true")
                 .build()
         } catch (_: Exception) {
-            TokenHolder.clear()
             null
         }
     }
@@ -146,10 +161,12 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(com.pegasus.design.network.CellPinInterceptor(BuildConfig.API_BASE_URL) { TokenHolder.token })
             .addInterceptor(AuthInterceptor())
+            .addInterceptor(com.pegasus.design.network.PegasusHttpResilienceInterceptor())
             .authenticator(TokenRefreshAuthenticator(json, baseUrl))
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(25, TimeUnit.SECONDS)
             .build()
     }
 

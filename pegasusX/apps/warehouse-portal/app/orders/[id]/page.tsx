@@ -91,8 +91,7 @@ export default function OrderDetailPage() {
     }
     setActing(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resp: any = await fn();
+      const resp = (await fn()) as { status?: string; state?: string } | null | undefined;
       toast(`${label} · ${resp?.status ?? resp?.state ?? 'ok'}`, 'success');
       setReason('');
       await load();

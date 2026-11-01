@@ -66,6 +66,10 @@ spec:
             - name: http
               containerPort: 8082
               protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sleep", "5"]
           envFrom:
             - configMapRef:
                 name: optimizer-core-config

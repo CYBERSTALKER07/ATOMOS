@@ -44,7 +44,7 @@ fun LocationSettingsScreen(
             try {
                 val resp = api.getWarehouseLocation()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     warehouseName = body.name
                     packCountry = body.packCountryCode.ifBlank { body.countryCode }
                     location = AddressLocationValue(
@@ -116,7 +116,7 @@ fun LocationSettingsScreen(
                 CircularProgressIndicator(Modifier.padding(PegasusSpacing.lg))
             }
             error != null -> Column(Modifier.padding(padding).padding(PegasusSpacing.lg)) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 TextButton(onClick = { load() }) { Text("Retry") }
             }
             else -> Column(
@@ -151,8 +151,8 @@ fun LocationSettingsScreen(
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(
-                        saveMessage!!,
-                        color = if (saveMessage!!.contains("saved", ignoreCase = true)) {
+                        saveMessage.orEmpty(),
+                        color = if (saveMessage.orEmpty().contains("saved", ignoreCase = true)) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.error

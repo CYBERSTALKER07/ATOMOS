@@ -21,8 +21,8 @@ export function useLiveData<T>(path: string) {
       }
       const json = await res.json();
       setData(json);
-    } catch (err: any) {
-      setError(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
       setIsRefreshing(false);

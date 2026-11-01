@@ -75,7 +75,7 @@ fun AnalyticsScreen(
             try {
                 val resp = api.getFactoryAnalyticsOverview()
                 if (resp.isSuccessful && resp.body() != null) {
-                    overview = resp.body()!!
+                    resp.body()?.let { overview = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -126,19 +126,22 @@ fun AnalyticsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load analytics overview",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
             )
-            overview != null -> AnalyticsContent(
-                overview = overview!!,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            )
+            overview != null -> {
+                val o = overview ?: return@Scaffold
+                AnalyticsContent(
+                    overview = o,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                )
+            }
         }
     }
 }

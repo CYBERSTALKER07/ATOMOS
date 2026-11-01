@@ -28,7 +28,12 @@ final class LocationManager: NSObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        lastLocation = locations.last?.coordinate
+        guard let latest = locations.last(where: {
+            $0.horizontalAccuracy >= 0 && $0.horizontalAccuracy <= 100 && abs($0.timestamp.timeIntervalSinceNow) <= 30
+        }) ?? locations.last(where: { $0.horizontalAccuracy >= 0 }) else {
+            return
+        }
+        lastLocation = latest.coordinate
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {

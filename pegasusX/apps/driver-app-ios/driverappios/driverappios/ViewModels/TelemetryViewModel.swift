@@ -39,7 +39,7 @@ final class TelemetryViewModel {
     // MARK: - Connect / Disconnect
 
     func start() async {
-        let wsBase = APIClient.shared.apiBaseURL
+        let wsBase = APIClient.shared.resolvedBaseURL
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
         guard TokenStore.shared.token != nil,
@@ -80,6 +80,10 @@ final class TelemetryViewModel {
     // MARK: - Send Telemetry
 
     func sendLocation(_ coordinate: CLLocationCoordinate2D, accuracy: Double?) {
+        // Filter out invalid or coarse cell-tower fixes before streaming to Kafka/Redis
+        if let acc = accuracy, (acc < 0 || acc > 65) {
+            return
+        }
         // Only send if moved ≥ 10m from last sent location
         if let last = lastSentLocation {
             let dist = haversineDistance(from: last, to: coordinate)

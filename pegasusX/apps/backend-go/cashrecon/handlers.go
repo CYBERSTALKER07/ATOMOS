@@ -201,7 +201,14 @@ func (h *Handlers) HandleDriverList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := make([]wireReconciliation, 0, len(list))
 	for _, cr := range list {
-		rows = append(rows, toWire(cr))
+		wRow := toWire(cr)
+		// Zero-Trust Blind Turn-In: Mask expected amounts for pending reconciliations
+		// so drivers cannot inspect JSON network payloads before physically declaring cash.
+		if cr.Status == ReconciliationStatusPending {
+			wRow.ExpectedCashMinor = 0
+			wRow.DifferenceMinor = 0
+		}
+		rows = append(rows, wRow)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"reconciliations": rows})
 }

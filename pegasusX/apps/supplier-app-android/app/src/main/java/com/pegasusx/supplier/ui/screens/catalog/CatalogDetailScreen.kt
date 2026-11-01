@@ -67,7 +67,7 @@ fun CatalogDetailScreen(
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Product unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 product == null -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,
@@ -75,7 +75,7 @@ fun CatalogDetailScreen(
                     body = "No product for this ID.",
                 )
                 else -> {
-                    val p = product!!
+                    val p = product ?: return@Box
                     Column(
                         modifier = Modifier
                             .fillMaxSize()

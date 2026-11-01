@@ -59,7 +59,7 @@ fun PayloadLoadScreen(
             try {
                 val resp = api.getManifests()
                 if (resp.isSuccessful && resp.body() != null) {
-                    manifests = resp.body()!!.manifests.filter { it.state == "DRAFT" || it.state == "LOADING" }
+                    resp.body()?.let { body -> manifests = body.manifests.filter { it.state == "DRAFT" || it.state == "LOADING" } }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -107,7 +107,7 @@ fun PayloadLoadScreen(
             error != null && manifests.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load payloads",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

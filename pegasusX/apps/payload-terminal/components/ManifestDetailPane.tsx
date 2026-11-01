@@ -5,19 +5,38 @@ import * as Haptics from 'expo-haptics';
 import PayloadStatePanel from './PayloadStatePanel';
 import WorkflowSectionHeader from './WorkflowSectionHeader';
 import { ExplainStatusBanner, type StatusExplain } from '../explainBanner';
+import type { AppTheme } from '../theme';
+
+export interface ManifestOrder {
+  order_id: string;
+  retailer_id?: string;
+  payment_gateway?: string;
+  amount?: number;
+  delivery_lat?: number;
+  delivery_lng?: number;
+  [key: string]: unknown;
+}
+
+export interface ManifestItem {
+  id: string;
+  title?: string;
+  quantity?: number;
+  scanned?: boolean;
+  [key: string]: unknown;
+}
 
 export interface ManifestDetailPaneProps {
-  selectedOrder: any | null;
+  selectedOrder: ManifestOrder | null;
   selectedOrderId: string | null;
   isIOS: boolean;
-  theme: any;
+  theme: AppTheme;
   activeTruck: string | null;
   openReDispatch: (orderId: string) => void;
   manifestState: string | null;
   handleException: (orderId: string, reason: "OVERFLOW" | "DAMAGED" | "MANUAL") => void;
   exceptionLoading: string | null;
   setShowProductScanner: (show: boolean) => void;
-  selectedManifest: any[];
+  selectedManifest: ManifestItem[];
   toggleCheck: (itemId: string) => void;
   manifestId: string | null;
   handleSeal: () => void;

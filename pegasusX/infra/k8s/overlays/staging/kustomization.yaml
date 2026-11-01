@@ -72,6 +72,13 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/resources/requests/memory
         value: 100Mi
+  - target:
+      kind: PodDisruptionBudget
+      name: backend-go
+    patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 0
 
 configMapGenerator:
   - name: backend-go-config

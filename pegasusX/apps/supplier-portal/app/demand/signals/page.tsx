@@ -62,8 +62,8 @@ export default function SignalsPage() {
       if (!res.ok) throw new Error("Failed to load signals");
       const data = await res.json();
       setSignals(data || []);
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -149,8 +149,8 @@ export default function SignalsPage() {
       
       setIsModalOpen(false);
       fetchSignals();
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -162,8 +162,8 @@ export default function SignalsPage() {
       });
       if (!res.ok) throw new Error("Failed to deactivate");
       fetchSignals();
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     }
   };
 

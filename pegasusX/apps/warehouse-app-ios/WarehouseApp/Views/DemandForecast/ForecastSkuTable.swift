@@ -20,10 +20,15 @@ struct ForecastSkuTable: View {
         }
     }
 
-    private func formattedGeneratedAt(_ raw: String) -> String {
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: raw) ?? ISO8601DateFormatter().date(from: raw) {
+        return formatter
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+
+    private func formattedGeneratedAt(_ raw: String) -> String {
+        if let date = Self.isoFractionalFormatter.date(from: raw) ?? Self.isoStandardFormatter.date(from: raw) {
             return date.formatted(date: .abbreviated, time: .shortened)
         }
         return raw

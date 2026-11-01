@@ -139,17 +139,19 @@ struct CheckoutView: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private var scheduledMinDate: String {
         let lead = Int(preview?.preorderMinLeadDays ?? 3)
         return Calendar.current.date(byAdding: .day, value: max(1, lead), to: Date())
-            .map { ISO8601DateFormatter().string(from: $0).prefix(10) }
+            .map { Self.isoFormatter.string(from: $0).prefix(10) }
             .map(String.init) ?? ""
     }
 
     private var scheduledMaxDate: String? {
         guard let maxLead = preview?.preorderMaxLeadDays, maxLead > 0 else { return nil }
         return Calendar.current.date(byAdding: .day, value: Int(maxLead), to: Date())
-            .map { ISO8601DateFormatter().string(from: $0).prefix(10) }
+            .map { Self.isoFormatter.string(from: $0).prefix(10) }
             .map(String.init)
     }
 

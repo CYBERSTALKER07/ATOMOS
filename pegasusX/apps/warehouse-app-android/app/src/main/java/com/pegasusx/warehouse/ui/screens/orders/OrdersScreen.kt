@@ -80,7 +80,7 @@ fun OrdersScreen(
                 val state = if (selectedState == "ALL") null else selectedState
                 val resp = api.getOrders(state = state)
                 if (resp.isSuccessful && resp.body() != null) {
-                    orders = resp.body()!!.orders
+                    resp.body()?.let { orders = it.orders }
                 } else if (!silent) {
                     error = "Failed (${resp.code()})"
                 }

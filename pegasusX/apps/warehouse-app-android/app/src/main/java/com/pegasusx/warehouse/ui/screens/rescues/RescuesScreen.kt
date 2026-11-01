@@ -70,7 +70,7 @@ fun RescuesScreen(
             try {
                 val resp = api.getDispatchPreview()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     brokenDrivers = (body.availableDrivers + body.unavailableDrivers)
                         .filter { it.truckStatus.equals("NEEDS_RESCUE", ignoreCase = true) }
                 } else {
@@ -93,7 +93,7 @@ fun RescuesScreen(
             try {
                 val resp = api.previewRescue(RescuePreviewRequest(brokenDriverId = driver.driverId))
                 if (resp.isSuccessful && resp.body() != null) {
-                    rescueOptions = resp.body()!!.rescueOptions
+                    resp.body()?.let { rescueOptions = it.rescueOptions }
                 } else {
                     statusMessage = "Preview failed (${resp.code()})"
                     selectedBroken = null
@@ -169,7 +169,7 @@ fun RescuesScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { loadDrivers() }) { Text("Retry") }
                 }

@@ -926,11 +926,7 @@ func (s *Service) ForceCompleteOrder(ctx context.Context, claims auth.Claims, or
 	s.afterOrderMutation(ctx, orderRecord)
 	if orderRecord.ManifestID != "" {
 		_ = s.tryCompleteManifest(ctx, orderRecord.ManifestID)
-		if s.replanner != nil {
-			go func(rID, act string) {
-				_ = s.replanner.ReplanRoute(context.Background(), rID, "force_skip", act)
-			}(orderRecord.ManifestID, claims.Subject)
-		}
+		s.replanAsync(orderRecord.ManifestID, "force_skip", claims.Subject)
 	}
 
 	return CollectCashResponse{

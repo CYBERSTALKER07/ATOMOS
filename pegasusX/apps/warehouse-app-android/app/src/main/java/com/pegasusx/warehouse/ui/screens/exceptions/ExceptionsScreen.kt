@@ -61,7 +61,7 @@ fun ExceptionsScreen(
             try {
                 val resp = api.getOpsExceptions()
                 if (resp.isSuccessful && resp.body() != null) {
-                    rows = resp.body()!!.exceptions
+                    resp.body()?.let { rows = it.exceptions }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -100,7 +100,7 @@ fun ExceptionsScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }

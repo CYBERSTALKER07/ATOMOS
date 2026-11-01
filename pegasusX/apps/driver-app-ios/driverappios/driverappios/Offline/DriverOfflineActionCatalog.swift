@@ -100,7 +100,9 @@ enum DriverOfflineActionCatalog {
         return false
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     static func nowIso() -> String {
-        ISO8601DateFormatter().string(from: Date())
+        isoFormatter.string(from: Date())
     }
 }

@@ -45,6 +45,7 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .pingInterval(25, TimeUnit.SECONDS)
             .addInterceptor(com.pegasus.design.CellPinInterceptor(BuildConfig.BASE_URL) { tokenManager.getPreferredToken() })
             .addInterceptor { chain ->
                 val token = tokenManager.getPreferredToken()
@@ -55,6 +56,7 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .authenticator(TokenRefreshAuthenticator(tokenManager, json))
+            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(ProblemDetailInterceptor(json))
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) {
@@ -95,6 +97,12 @@ private class TokenRefreshAuthenticator(
     private val tokenManager: TokenManager,
     private val json: Json,
 ) : Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+    @Synchronized
     override fun authenticate(route: Route?, response: Response): Request? {
         // Prevent infinite loops
         if (response.request.header("X-Refresh-Attempted") != null) {
@@ -102,6 +110,15 @@ private class TokenRefreshAuthenticator(
             return null
         }
         val currentToken = tokenManager.getToken() ?: return null
+        val requestToken = response.request.header("Authorization")
+            ?.removePrefix("Bearer ")
+            ?.trim()
+        if (!requestToken.isNullOrBlank() && requestToken != currentToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
 
         val refreshUrl = "${BuildConfig.BASE_URL}v1/auth/retailer/refresh"
         val body = "{}".toRequestBody("application/json".toMediaType())
@@ -113,11 +130,7 @@ private class TokenRefreshAuthenticator(
             .build()
 
         return try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(10, TimeUnit.SECONDS)
-                .readTimeout(10, TimeUnit.SECONDS)
-                .build()
-            val refreshResponse = client.newCall(refreshRequest).execute()
+            val refreshResponse = refreshClient.newCall(refreshRequest).execute()
             if (refreshResponse.isSuccessful) {
                 val responseBody = refreshResponse.body?.string() ?: return null
                 val jsonElement = json.parseToJsonElement(responseBody)

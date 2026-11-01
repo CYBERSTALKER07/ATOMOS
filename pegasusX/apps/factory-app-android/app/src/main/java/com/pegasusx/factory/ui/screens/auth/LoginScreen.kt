@@ -114,7 +114,7 @@ fun LoginScreen(
                 val idToken = FirebaseAuthHelper.verifySmsCode(otpCode)
                 val resp = api.login(LoginRequest(idToken = idToken))
                 if (resp.isSuccessful && resp.body() != null) {
-                    val auth = resp.body()!!
+                    val auth = resp.body() ?: return@launch
                     applyAuth(auth.token, auth.refreshToken, auth.factoryId)
                 } else {
                     handleLoginFailure(resp.code())
@@ -167,7 +167,7 @@ fun LoginScreen(
             try {
                 val resp = api.login(LoginRequest(phone = phone.trim(), password = password))
                 if (resp.isSuccessful && resp.body() != null) {
-                    val auth = resp.body()!!
+                    val auth = resp.body() ?: return@launch
                     applyAuth(auth.token, auth.refreshToken, auth.factoryId)
                 } else {
                     handleLoginFailure(resp.code())
@@ -293,7 +293,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(PegasusSpacing.sm))
                 PegasusRuntimeBanner(
                     tone = PegasusRuntimeTone.Warning,
-                    message = error!!,
+                    message = error.orEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

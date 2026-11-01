@@ -19,7 +19,7 @@ spec:
           - name: ai-worker
             image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/ai-worker:latest
             command:
-            - "/app/ai-worker"
+            - "/usr/local/bin/pegasusx-ai-worker"
             env:
             - name: AI_WORKER_MODE
               value: "predictive-push-cron"

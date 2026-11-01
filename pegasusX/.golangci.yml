@@ -39,8 +39,9 @@ linters:
       - '.*_string\.go$'
 
 issues:
-  max-issues-per-linter: 50
-  max-same-issues: 10
+  # 0 disables the cap. Every finding fails the lint job.
+  max-issues-per-linter: 0
+  max-same-issues: 0
 
 severity:
   default: error

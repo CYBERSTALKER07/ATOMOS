@@ -88,7 +88,7 @@ fun TreasuryHubScreen(
             state.error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Treasury unavailable",
-                body = state.error!!,
+                body = state.error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { viewModel.loadHub() },

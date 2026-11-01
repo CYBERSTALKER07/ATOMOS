@@ -16,3 +16,4 @@ export * from "./src/market";
 export * from "./src/admin";
 export * from "./src/order-lifecycle-graph";
 export * from "./src/order-lifecycle-facade";
+export * from "./src/foundry";

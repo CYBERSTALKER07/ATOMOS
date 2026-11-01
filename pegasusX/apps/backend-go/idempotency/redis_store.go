@@ -91,3 +91,29 @@ func (s *RedisStore) Release(ctx context.Context, key string) error {
 	}
 	return s.client.Del(ctx, idemKey(key)).Err()
 }
+
+// Hold implements Store.
+func (s *RedisStore) Hold(ctx context.Context, key string, ttl time.Duration) error {
+	if s == nil || s.client == nil || key == "" {
+		return nil
+	}
+	if ttl <= 0 {
+		ttl = 10 * time.Second
+	}
+	ok, err := s.client.Expire(ctx, idemKey(key), ttl).Result()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		rec := Record{
+			StatusCode: inProgressStatusCode,
+			StoredAt:   time.Now(),
+		}
+		raw, err := json.Marshal(rec)
+		if err != nil {
+			return err
+		}
+		return s.client.Set(ctx, idemKey(key), raw, ttl).Err()
+	}
+	return nil
+}

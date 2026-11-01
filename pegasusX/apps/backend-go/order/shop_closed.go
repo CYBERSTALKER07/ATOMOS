@@ -594,10 +594,8 @@ func (s *Service) executeShopClosedRetailerResponse(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if s.replanner != nil && manifestID != "" {
-		go func(rID, act string) {
-			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
-		}(manifestID, retailerID)
+	if manifestID != "" {
+		s.replanAsync(manifestID, "shop_closed_resolved", retailerID)
 	}
 
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
@@ -772,10 +770,8 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if s.replanner != nil && manifestID != "" {
-		go func(rID, act string) {
-			_ = s.replanner.ReplanRoute(context.Background(), rID, "shop_closed_resolved", act)
-		}(manifestID, adminID)
+	if manifestID != "" {
+		s.replanAsync(manifestID, "shop_closed_resolved", adminID)
 	}
 
 	payload := events.OrderEvent{

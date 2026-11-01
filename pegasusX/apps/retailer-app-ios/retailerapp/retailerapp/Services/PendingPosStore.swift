@@ -39,6 +39,8 @@ final class PendingPosStore {
         active().filter { $0.sessionId == sessionId }.count
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     func enqueue(sessionId: String, lines: [PosSaleLineWire], totalMinor: Int64) throws -> Entry {
         let clientSaleId = UUID().uuidString
         let short = String(Int(Date().timeIntervalSince1970), radix: 36).uppercased()
@@ -48,7 +50,7 @@ final class PendingPosStore {
             "stock_bin": "FLOOR",
             "origin": "offline",
             "client_sale_id": clientSaleId,
-            "client_created_at": ISO8601DateFormatter().string(from: Date()),
+            "client_created_at": Self.isoFormatter.string(from: Date()),
             "lines": lines.map { [
                 "sku": $0.sku,
                 "name": $0.name,

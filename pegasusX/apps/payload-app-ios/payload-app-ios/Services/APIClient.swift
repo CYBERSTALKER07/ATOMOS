@@ -30,6 +30,74 @@ struct ProblemDetail: Decodable {
     let retryable: Bool?
 }
 
+private actor PayloadHTTPCoalescer {
+    private struct CacheEntry {
+        let data: Data
+        let response: URLResponse
+        let timestamp: Date
+    }
+
+    private var inFlightGets: [String: Task<(Data, URLResponse), Error>] = [:]
+    private var microCache: [String: CacheEntry] = [:]
+    private let microCacheTTL: TimeInterval = 2.0
+    private var refreshTask: Task<Bool, Error>?
+
+    func fetchGet(
+        key: String,
+        operation: @Sendable @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        let now = Date()
+        if let cached = microCache[key], now.timeIntervalSince(cached.timestamp) < microCacheTTL {
+            return (cached.data, cached.response)
+        }
+        if let existing = inFlightGets[key] {
+            return try await existing.value
+        }
+        let task = Task<(Data, URLResponse), Error> {
+            try await operation()
+        }
+        inFlightGets[key] = task
+        do {
+            let result = try await task.value
+            inFlightGets.removeValue(forKey: key)
+            if let http = result.1 as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                microCache[key] = CacheEntry(data: result.0, response: result.1, timestamp: Date())
+            }
+            return result
+        } catch {
+            inFlightGets.removeValue(forKey: key)
+            throw error
+        }
+    }
+
+    func invalidateCache() {
+        microCache.removeAll()
+    }
+
+    func refreshSingleFlight(
+        operation: @Sendable @escaping () async throws -> Bool
+    ) async throws -> Bool {
+        if let existing = refreshTask {
+            return try await existing.value
+        }
+        let task = Task<Bool, Error> {
+            try await operation()
+        }
+        refreshTask = task
+        do {
+            let ok = try await task.value
+            refreshTask = nil
+            if ok {
+                microCache.removeAll()
+            }
+            return ok
+        } catch {
+            refreshTask = nil
+            throw error
+        }
+    }
+}
+
 final class APIClient: @unchecked Sendable {
     static let shared = APIClient()
 
@@ -75,6 +143,7 @@ final class APIClient: @unchecked Sendable {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let coalescer = PayloadHTTPCoalescer()
 
     private init() {
         let cfg = URLSessionConfiguration.default
@@ -213,18 +282,21 @@ final class APIClient: @unchecked Sendable {
 
     /// Payloader + factory manifests; payloader wins on id collision.
     func listLoadingBayManifests(state: String = "DRAFT") async throws -> [Manifest] {
+        async let primaryTask: ManifestsResponse? = try? get("v1/payloader/manifests?state=\(state)")
+        async let factoryTask: ManifestsResponse? = try? factoryManifests(state: state)
+        let (primaryOpt, factoryOpt) = await (primaryTask, factoryTask)
+
         var out: [String: Manifest] = [:]
         let payloaderManifests: [Manifest]
-        do {
-            let primary: ManifestsResponse = try await get("v1/payloader/manifests?state=\(state)")
+        if let primary = primaryOpt {
             payloaderManifests = primary.manifests
-        } catch {
+        } else {
             payloaderManifests = (try? await supplierManifests(state: state))?.manifests ?? []
         }
         for m in payloaderManifests {
             out[m.manifestId] = m.withSource("payloader")
         }
-        if let factory = try? await factoryManifests(state: state) {
+        if let factory = factoryOpt {
             for m in factory.manifests where out[m.manifestId] == nil {
                 out[m.manifestId] = m.withSource("factory")
             }
@@ -297,8 +369,9 @@ final class APIClient: @unchecked Sendable {
 
     /// Best-effort GET drain after WS reconnect — matches Android/Expo session reconcile.
     func reconcileSession() async {
-        _ = try? await trucks()
-        let _: ManifestsResponse? = try? await get("v1/payloader/manifests")
+        async let t = try? trucks()
+        async let m: ManifestsResponse? = try? get("v1/payloader/manifests")
+        _ = await (t, m)
     }
 
     // MARK: - Fleet reassign
@@ -466,16 +539,32 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let data: Data; let response: URLResponse
-        do { (data, response) = try await dataForRequestWithFallback(request) }
-        catch { throw APIError.networkError }
+        let method = (request.httpMethod ?? "GET").uppercased()
+        if method != "GET" {
+            await coalescer.invalidateCache()
+        }
+        let data: Data
+        let response: URLResponse
+        do {
+            if method == "GET", let key = request.url?.absoluteString {
+                (data, response) = try await coalescer.fetchGet(key: key) { [self] in
+                    try await self.dataForRequestWithFallback(request)
+                }
+            } else {
+                (data, response) = try await dataForRequestWithFallback(request)
+            }
+        } catch {
+            throw APIError.networkError
+        }
 
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
         switch http.statusCode {
         case 200...299:
             if T.self == StatusResponse.self, data.isEmpty {
                 // Backend may return empty body on no-content success.
-                return StatusResponse(status: "ok") as! T
+                if let status = StatusResponse(status: "ok") as? T {
+                    return status
+                }
             }
             do { return try decoder.decode(T.self, from: data) }
             catch { throw APIError.decodingError }
@@ -490,7 +579,9 @@ final class APIClient: @unchecked Sendable {
                 guard let retryHttp = retryResponse as? HTTPURLResponse else { throw APIError.networkError }
                 if (200...299).contains(retryHttp.statusCode) {
                     if T.self == StatusResponse.self, retryData.isEmpty {
-                        return StatusResponse(status: "ok") as! T
+                        if let status = StatusResponse(status: "ok") as? T {
+                            return status
+                        }
                     }
                     do { return try decoder.decode(T.self, from: retryData) }
                     catch { throw APIError.decodingError }
@@ -515,24 +606,59 @@ final class APIClient: @unchecked Sendable {
     }
 
     private func attemptRefresh() async throws -> Bool {
-        let refresh = await MainActor.run { TokenStore.shared.refreshToken }
-        guard let refresh, !refresh.isEmpty else { return false }
-        var request = URLRequest(url: URL(string: "\(baseURL)/v1/auth/payloader/refresh")!)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(RefreshTokenRequest(refreshToken: refresh))
-        let (data, response) = try await dataForRequestWithFallback(request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            await MainActor.run { TokenStore.shared.logout() }
-            return false
+        try await coalescer.refreshSingleFlight { [self] in
+            let refresh = await MainActor.run { TokenStore.shared.refreshToken }
+            guard let refresh, !refresh.isEmpty else { return false }
+            guard let url = URL(string: "\(self.baseURL)/v1/auth/payloader/refresh") else { return false }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try self.encoder.encode(RefreshTokenRequest(refreshToken: refresh))
+            let (data, response) = try await self.session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                await MainActor.run { TokenStore.shared.logout() }
+                return false
+            }
+            let auth = try self.decoder.decode(RefreshTokenResponse.self, from: data)
+            let nextRefresh = auth.refreshToken ?? refresh
+            await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: nextRefresh) }
+            return true
         }
-        let auth = try decoder.decode(RefreshTokenResponse.self, from: data)
-        let nextRefresh = auth.refreshToken ?? refresh
-        await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: nextRefresh) }
-        return true
     }
 
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let method = (request.httpMethod ?? "GET").uppercased()
+        let isIdempotent = method == "GET"
+            || request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+            || request.value(forHTTPHeaderField: "X-Idempotency-Key") != nil
+        let maxAttempts = isIdempotent ? 3 : 1
+        var lastError: Error?
+
+        for attempt in 0..<maxAttempts {
+            try Task.checkCancellation()
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse,
+                   (http.statusCode == 502 || http.statusCode == 503 || http.statusCode == 504 || http.statusCode == 429),
+                   attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+                return (data, response)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let urlError as URLError where urlError.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                if attempt + 1 < maxAttempts {
+                    let delayMs = UInt64(300 * (1 << attempt) + Int.random(in: 0...120))
+                    try? await Task.sleep(nanoseconds: delayMs * 1_000_000)
+                    continue
+                }
+            }
+        }
+        throw lastError ?? APIError.networkError
     }
 }

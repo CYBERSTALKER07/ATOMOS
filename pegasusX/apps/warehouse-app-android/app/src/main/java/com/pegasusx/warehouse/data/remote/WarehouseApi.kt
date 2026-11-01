@@ -576,4 +576,70 @@ interface WarehouseApi {
 
     @GET("v1/control-tower/exceptions/scored")
     suspend fun scoredControlTower(@Query("limit") limit: Int = 50): Response<ScoredExceptionsResponse>
+
+    // ── Foundry Role 7: Cashier & AML Vault Endpoints ──
+
+    @POST("/v1/foundry/cashier/sessions")
+    suspend fun startCashierSession(@Body req: com.pegasusx.mobilekit.foundry.StartCashierSessionRequest): Response<com.pegasusx.mobilekit.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/sessions/{sessionID}/blind-count")
+    suspend fun submitBlindCount(
+        @Path("sessionID") sessionID: String,
+        @Body req: com.pegasusx.mobilekit.foundry.BlindCountRequest,
+    ): Response<com.pegasusx.mobilekit.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/reclassify-tender")
+    suspend fun reclassifyTender(@Body req: com.pegasusx.mobilekit.foundry.RRNTenderReclassificationRequest): Response<com.pegasusx.mobilekit.foundry.CashierSessionView>
+
+    @POST("/v1/foundry/cashier/vault/cit-handover")
+    suspend fun executeCITHandover(@Body req: com.pegasusx.mobilekit.foundry.CITHandoverRequest): Response<com.pegasusx.mobilekit.foundry.DepotVaultLedgerEntry>
+
+    @POST("/v1/foundry/guards/aml-check")
+    suspend fun checkAML(@Body req: com.pegasusx.mobilekit.foundry.AMLCheckRequest): Response<com.pegasusx.mobilekit.foundry.AMLCheckResponse>
+
+    // ── Foundry Role 9: Fleet & Yard Endpoints ──
+
+    @POST("/v1/foundry/fleet/dvir")
+    suspend fun submitDVIR(@Body req: com.pegasusx.mobilekit.foundry.FleetDVIRInspection): Response<com.pegasusx.mobilekit.foundry.FleetDVIRInspection>
+
+    @POST("/v1/foundry/fleet/gate-events")
+    suspend fun recordGateEvent(@Body req: com.pegasusx.mobilekit.foundry.YardGateCheckEvent): Response<com.pegasusx.mobilekit.foundry.YardGateCheckEvent>
+
+    @POST("/v1/foundry/fleet/mid-route-rescue")
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.mobilekit.foundry.MidRouteRescueRequest): Response<com.pegasusx.mobilekit.foundry.MidRouteRescueResult>
+
+    @POST("/v1/foundry/fleet/predictive-reefer")
+    suspend fun checkPredictiveReefer(@Body req: com.pegasusx.mobilekit.foundry.PredictiveReeferRequest): Response<com.pegasusx.mobilekit.foundry.PredictiveReeferResponse>
+
+    @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.mobilekit.foundry.DispatchCheckResponse>
+
+    // ── Foundry Triad: Semantic, Kinetic & Dynamic ──
+
+    @POST("/v1/foundry/ontology/search-around")
+    suspend fun searchAround(@Body req: com.pegasusx.mobilekit.foundry.SearchAroundRequest): Response<com.pegasusx.mobilekit.foundry.SearchAroundResponse>
+
+    @POST("/v1/foundry/ontology/lot-recall")
+    suspend fun triggerLotRecall(@Body req: com.pegasusx.mobilekit.foundry.LotRecallRequest): Response<com.pegasusx.mobilekit.foundry.RecallBlastRadiusReport>
+
+    @POST("/v1/foundry/kinetic/actions/execute")
+    suspend fun executeAction(@Body req: com.pegasusx.mobilekit.foundry.ActionExecutionRequest): Response<com.pegasusx.mobilekit.foundry.ActionExecutionRecord>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/patches")
+    suspend fun applyScenarioPatch(
+        @Path("scenarioID") scenarioID: String,
+        @Body req: com.pegasusx.mobilekit.foundry.ScenarioPatchRequest,
+    ): Response<Map<String, kotlinx.serialization.json.JsonElement>>
+
+    @GET("/v1/foundry/scenarios/{scenarioID}/resolve/{cellID}/{objectType}/{objectID}")
+    suspend fun resolveScenarioObject(
+        @Path("scenarioID") scenarioID: String,
+        @Path("cellID") cellID: String,
+        @Path("objectType") objectType: String,
+        @Path("objectID") objectID: String,
+    ): Response<com.pegasusx.mobilekit.foundry.OntologyObjectDto>
+
+    @POST("/v1/foundry/scenarios/{scenarioID}/commit")
+    suspend fun commitScenario(@Path("scenarioID") scenarioID: String): Response<com.pegasusx.mobilekit.foundry.ScenarioCommitResult>
 }
+

@@ -268,7 +268,11 @@ fun MapScreen(
         if (!isCameraLocked && activeOrders.isNotEmpty() && mapPhase != MapPhase.NAVIGATING) {
             val boundsBuilder = LatLngBounds.builder()
             activeOrders.forEach { order ->
-                boundsBuilder.include(LatLng(order.latitude!!, order.longitude!!))
+                val lat = order.latitude
+                val lng = order.longitude
+                if (lat != null && lng != null) {
+                    boundsBuilder.include(LatLng(lat, lng))
+                }
             }
             try {
                 val bounds = boundsBuilder.build()
@@ -278,12 +282,14 @@ fun MapScreen(
                 )
             } catch (_: Exception) {
                 // Single point — just zoom to it
-                val first = activeOrders.first()
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(first.latitude!!, first.longitude!!), 14f
+                val first = activeOrders.firstOrNull { it.latitude != null && it.longitude != null }
+                if (first != null) {
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(first.latitude ?: 0.0, first.longitude ?: 0.0), 14f
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -345,23 +351,27 @@ fun MapScreen(
                 )
             }
             activeOrders.forEach { order ->
-                val position = LatLng(order.latitude!!, order.longitude!!)
-                val hue = when (order.state) {
-                    OrderState.IN_TRANSIT -> BitmapDescriptorFactory.HUE_AZURE
-                    OrderState.ARRIVING, OrderState.ARRIVED -> BitmapDescriptorFactory.HUE_GREEN
-                    OrderState.LOADED -> BitmapDescriptorFactory.HUE_ORANGE
-                    else -> BitmapDescriptorFactory.HUE_RED
-                }
-                Marker(
-                    state = MarkerState(position = position),
-                    title = order.retailerName,
-                    snippet = order.state.name,
-                    icon = BitmapDescriptorFactory.defaultMarker(hue),
-                    onClick = {
-                        selectedOrder = order
-                        true
+                val lat = order.latitude
+                val lng = order.longitude
+                if (lat != null && lng != null) {
+                    val position = LatLng(lat, lng)
+                    val hue = when (order.state) {
+                        OrderState.IN_TRANSIT -> BitmapDescriptorFactory.HUE_AZURE
+                        OrderState.ARRIVING, OrderState.ARRIVED -> BitmapDescriptorFactory.HUE_GREEN
+                        OrderState.LOADED -> BitmapDescriptorFactory.HUE_ORANGE
+                        else -> BitmapDescriptorFactory.HUE_RED
                     }
-                )
+                    Marker(
+                        state = MarkerState(position = position),
+                        title = order.retailerName,
+                        snippet = order.state.name,
+                        icon = BitmapDescriptorFactory.defaultMarker(hue),
+                        onClick = {
+                            selectedOrder = order
+                            true
+                        }
+                    )
+                }
             }
         }
 
@@ -376,9 +386,10 @@ fun MapScreen(
             )
         }
 
-        if (mapPhase == MapPhase.NAVIGATING && uiState.navigationCue != null) {
+        val cue = uiState.navigationCue
+        if (mapPhase == MapPhase.NAVIGATING && cue != null) {
             NavigationCueBanner(
-                cue = uiState.navigationCue!!,
+                cue = cue,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 88.dp)

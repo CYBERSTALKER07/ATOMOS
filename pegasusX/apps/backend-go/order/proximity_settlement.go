@@ -25,6 +25,8 @@ const (
 	SettlementH3Resolution = 9
 	// MaxTelemetryAge for anti-spoof: location sample must be recent.
 	SettlementTelemetryMaxAge = 2 * time.Minute
+	// MaxAllowedProximitySpeedMps is the maximum ground velocity allowed (120 km/h = 33.33 m/s).
+	MaxAllowedProximitySpeedMps = 33.33
 )
 
 // ProximityMethod codes stored on Orders.ProximityMethod.
@@ -42,7 +44,33 @@ var (
 	ErrProximityTelemetryStale = errors.New("proximity_telemetry_stale")
 	// ErrProximityMismatch: neither H3 nor 100 m geofence satisfied.
 	ErrProximityMismatch = errors.New("proximity_mismatch")
+	// ErrProximityVelocitySpoofed: displacement between fixes exceeds plausible vehicle velocity.
+	ErrProximityVelocitySpoofed = errors.New("proximity_velocity_spoofed")
 )
+
+// ValidateProximityVelocity checks if displacement between previous and current fix exceeds maximum ground speed.
+func ValidateProximityVelocity(lat1, lng1 float64, t1 time.Time, lat2, lng2 float64, t2 time.Time) error {
+	if t1.IsZero() || t2.IsZero() {
+		return nil
+	}
+	dt := t2.Sub(t1).Seconds()
+	if dt < 0 {
+		dt = -dt
+	}
+	if dt < 1.0 {
+		return nil // Avoid noise at sub-second interval
+	}
+	dist := distanceMeters(lat1, lng1, lat2, lng2)
+	// Allow natural jitter up to 50 meters
+	if dist <= 50.0 {
+		return nil
+	}
+	speed := dist / dt
+	if speed > MaxAllowedProximitySpeedMps {
+		return fmt.Errorf("%w: speed %.1f m/s exceeds max %.1f m/s", ErrProximityVelocitySpoofed, speed, MaxAllowedProximitySpeedMps)
+	}
+	return nil
+}
 
 // ProximityUnlockRequest is POST /v1/delivery/proximity-unlock.
 type ProximityUnlockRequest struct {
@@ -206,6 +234,29 @@ func (s *Service) HandleProximityUnlock(w http.ResponseWriter, r *http.Request) 
 
 	driverID := strings.TrimSpace(claims.Subject)
 	ctx := r.Context()
+
+	// Proximity Velocity Guard: Reject impossible displacement jumps (GPS mock spoofing)
+	if s.locations != nil && driverID != "" {
+		if lastLoc, ok, _ := s.locations.GetDriverLocation(ctx, driverID); ok && !lastLoc.ReceivedAt.IsZero() {
+			sampleTime := now
+			if req.ClientTimestamp != "" {
+				if parsed, parseErr := time.Parse(time.RFC3339Nano, req.ClientTimestamp); parseErr == nil {
+					sampleTime = parsed
+				} else if parsed, parseErr := time.Parse(time.RFC3339, req.ClientTimestamp); parseErr == nil {
+					sampleTime = parsed
+				}
+			}
+			if vErr := ValidateProximityVelocity(lastLoc.Lat, lastLoc.Lng, lastLoc.ReceivedAt, req.Latitude, req.Longitude, sampleTime); vErr != nil {
+				s.log.Warn("proximity unlock rejected due to velocity anomaly",
+					"driver_id", driverID, "order_id", req.OrderID, "err", vErr)
+				writeJSON(w, http.StatusForbidden, map[string]string{
+					"error": vErr.Error(),
+					"code":  "PROXIMITY_VELOCITY_SPOOFED",
+				})
+				return
+			}
+		}
+	}
 
 	var (
 		method     string

@@ -97,7 +97,7 @@ fun FleetLiveMapSection(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                         TextButton(onClick = { scope.launch { load() } }) { Text("Retry") }
                     }
                 }

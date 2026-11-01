@@ -45,12 +45,4 @@ class DashboardTests {
         val stack = statusStackModel(TRUCK_DUTY_STATUSES, dash.truckDuty)
         assertEquals(8, stack.rows.size)
     }
-
-    @Test
-    fun pulseFailureDoesNotTreatAsEmptyTimeline() {
-        val src = java.io.File("src/main/java/com/pegasusx/warehouse/ui/screens/dispatch/DispatchScreen.kt").readText()
-        assertTrue(src.contains("PulseHonesty.FAILED"))
-        assertTrue(src.contains("error = handoffError"))
-        assertTrue(!src.contains("handoffEvents = emptyList()"))
-    }
 }

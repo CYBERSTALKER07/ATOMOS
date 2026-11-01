@@ -23,6 +23,10 @@ import (
 // PKCS#12 container, so the signer is exercised against genuine key material.
 // Returns the .p12 bytes.
 func buildTestP12(t *testing.T, password string) []byte {
+	return buildTestP12WithDates(t, password, time.Now().Add(-time.Hour), time.Now().Add(24*time.Hour))
+}
+
+func buildTestP12WithDates(t *testing.T, password string, notBefore, notAfter time.Time) []byte {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -31,8 +35,8 @@ func buildTestP12(t *testing.T, password string) []byte {
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject:      pkix.Name{CommonName: "PegasusX Test", SerialNumber: "TEST-123"},
-		NotBefore:    time.Now().Add(-time.Hour),
-		NotAfter:     time.Now().Add(24 * time.Hour),
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
@@ -107,6 +111,18 @@ func TestPKCS12Signer_FailClosed(t *testing.T) {
 	}
 	if _, err := NewPKCS12SignerFromFile("/nonexistent/key.p12", "x"); err == nil {
 		t.Fatal("expected error for missing file")
+	}
+
+	// Expired certificate must fail closed
+	expiredP12 := buildTestP12WithDates(t, "pwd", time.Now().Add(-48*time.Hour), time.Now().Add(-24*time.Hour))
+	if _, err := NewPKCS12Signer(expiredP12, "pwd"); err == nil || !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("expected certificate expired error, got: %v", err)
+	}
+
+	// Not-yet-valid certificate must fail closed
+	futureP12 := buildTestP12WithDates(t, "pwd", time.Now().Add(24*time.Hour), time.Now().Add(48*time.Hour))
+	if _, err := NewPKCS12Signer(futureP12, "pwd"); err == nil || !strings.Contains(err.Error(), "not yet valid") {
+		t.Fatalf("expected certificate not yet valid error, got: %v", err)
 	}
 }
 

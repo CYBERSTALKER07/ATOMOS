@@ -2,11 +2,17 @@ package com.pegasus.design.network
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.launch
 
 /**
  * Collects WebSocket refresh ticks and invokes [onRefresh] without remounting the host.
- * Pass `silent = true` via [onRefresh] to keep stale data visible during background reload.
+ * Coalesces rapid bursts (e.g. simultaneous refreshTick + reconnectTick or Kafka/Redis
+ * event storms) within a 120ms window so the screen only reloads once per burst.
  */
 @Composable
 fun RealtimeRefreshEffect(
@@ -14,12 +20,23 @@ fun RealtimeRefreshEffect(
     reconnectTick: SharedFlow<Long>? = null,
     onRefresh: (silent: Boolean) -> Unit,
 ) {
-    LaunchedEffect(refreshTick) {
-        refreshTick.collect { onRefresh(true) }
-    }
-    if (reconnectTick != null) {
-        LaunchedEffect(reconnectTick) {
-            reconnectTick.collect { onRefresh(true) }
+    val currentOnRefresh by rememberUpdatedState(onRefresh)
+    LaunchedEffect(refreshTick, reconnectTick) {
+        var coalesceJob: Job? = null
+        fun scheduleCoalescedRefresh() {
+            coalesceJob?.cancel()
+            coalesceJob = launch {
+                delay(120L)
+                currentOnRefresh(true)
+            }
+        }
+        launch {
+            refreshTick.collect { scheduleCoalescedRefresh() }
+        }
+        if (reconnectTick != null) {
+            launch {
+                reconnectTick.collect { scheduleCoalescedRefresh() }
+            }
         }
     }
 }

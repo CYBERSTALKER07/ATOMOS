@@ -105,8 +105,9 @@ fun DashboardScreen(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     clientPolicyMessage = state.message
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
@@ -132,7 +133,7 @@ fun DashboardScreen(
             try {
                 val resp = api.getDashboard()
                 if (resp.isSuccessful && resp.body() != null) {
-                    stats = resp.body()!!
+                    resp.body()?.let { stats = it }
                 } else {
                     error = "Failed to load (${resp.code()})"
                 }
@@ -207,7 +208,7 @@ fun DashboardScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load dashboard",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

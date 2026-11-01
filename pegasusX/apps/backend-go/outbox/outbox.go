@@ -85,6 +85,20 @@ type Store interface {
 	RecordPublishFailures(ctx context.Context, eventIDs []string, lastErr string, maxAttempts int64) (deadLettered []string, err error)
 }
 
+// ClaimReleaser is an optional capability interface on outbox stores. It releases
+// claims on skipped events (such as causal ordering skips) without incrementing
+// the publish attempt count.
+type ClaimReleaser interface {
+	Unclaim(ctx context.Context, eventIDs []string) error
+}
+
+// StuckInspector is an optional capability interface on outbox stores. It allows
+// read-only inspection queries of unpublished events in the watchdog without
+// acquiring leases or mutating ClaimedBy/ClaimedUntil.
+type StuckInspector interface {
+	InspectStuck(ctx context.Context, limit int) ([]Event, error)
+}
+
 // WithTraceID attaches request trace context used by outbox emitters.
 func WithTraceID(ctx context.Context, traceID string) context.Context {
 	if ctx == nil {

@@ -40,6 +40,17 @@ var RequiredProductTables = []string{
 	"RetailerStockCountForceAudits",
 	"OrderShopClosedLog",
 	"PlanningScenarios",
+	"OntologyObjects",
+	"OntologyGraphEdges",
+	"KineticActionExecutions",
+	"ScenarioObjectPatches",
+	"CashierBlindCountSessions",
+	"DepotVaultLedgerEntries",
+	"MerchantDailyCashExposure",
+	"FleetDVIRInspections",
+	"YardGateCheckEvents",
+	"ReturnableContainerLedger",
+	"OfflineQuotaLeases",
 }
 
 // MigrationTables returns CREATE TABLE names from all *.ddl files in dir.

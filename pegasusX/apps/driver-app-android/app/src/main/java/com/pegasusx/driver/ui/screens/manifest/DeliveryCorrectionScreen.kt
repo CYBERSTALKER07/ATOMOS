@@ -190,7 +190,7 @@ fun DeliveryCorrectionScreen(
         when {
             state.isLoading -> LoadingState(Modifier.padding(padding))
             state.error != null && state.audits.isEmpty() -> ErrorState(
-                message = state.error!!,
+                message = state.error.orEmpty(),
                 modifier = Modifier.padding(padding)
             )
             else -> {

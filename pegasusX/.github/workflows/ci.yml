@@ -8,13 +8,13 @@ on:
 
 defaults:
   run:
-    working-directory: pegasusX
+    working-directory: .
 
 jobs:
   backend-unit:
     uses: ./.github/workflows/ci-unit-tests-go.yml
     with:
-      working-directory: pegasusX/apps/backend-go
+      working-directory: apps/backend-go
       go-version: "1.25"
 
   backend:
@@ -84,7 +84,7 @@ jobs:
         with:
           version: v1.64.6
           working-directory: apps/backend-go
-          args: --config=${{ github.workspace }}/pegasusX/.golangci.yml --timeout=8m
+          args: --config=${{ github.workspace }}/.golangci.yml --timeout=8m
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -101,7 +101,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: pegasusX/.gitleaks.toml
+          GITLEAKS_CONFIG: .gitleaks.toml
 
   backend-spanner:
     runs-on: ubuntu-latest
@@ -153,7 +153,6 @@ jobs:
       - name: Enterprise gates (phase2→5c + analytics-tenancy)
         env:
           SPANNER_EMULATOR_HOST: localhost:9010
-          PHASE2_SKIP_REGRESSION: "1"
         run: bash scripts/ci_enterprise_gates.sh
 
   ai-worker:
@@ -163,11 +162,44 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - name: Build ai-worker
+      - name: Build and test ai-worker
         run: |
           cd apps/ai-worker
           go build ./...
           go vet ./...
+          go test -v ./...
+
+  handoff-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+      - name: Build and test handoff-service
+        run: |
+          cd apps/handoff-service
+          go build ./...
+          go vet ./...
+          go test -v ./...
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive infra/terraform
+      - name: Terraform validate modules
+        run: |
+          for dir in infra/terraform/modules/*; do
+            if [ -d "$dir" ]; then
+              echo "Validating $dir"
+              (cd "$dir" && terraform init -backend=false && terraform validate)
+            fi
+          done
 
   optimizer-core:
     runs-on: ubuntu-latest
@@ -188,17 +220,17 @@ jobs:
         uses: aquasecurity/trivy-action@0.29.0
         with:
           scan-type: 'config'
-          scan-ref: 'pegasusX/infra/k8s'
+          scan-ref: 'infra/k8s'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
       - name: Run Trivy Dockerfile scanner
         uses: aquasecurity/trivy-action@0.29.0
         with:
           scan-type: 'config'
-          scan-ref: 'pegasusX/apps/backend-go/Dockerfile'
+          scan-ref: 'apps/backend-go/Dockerfile'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
   android-apps:
@@ -221,16 +253,8 @@ jobs:
           java-version: "17"
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-      - name: Compile ${{ matrix.app }}
-        working-directory: pegasusX/apps/${{ matrix.app }}
-        run: |
-          chmod +x ./gradlew
-          if ./gradlew --no-daemon --stacktrace compileStoreDebugKotlin; then
-            echo "OK storeDebug"
-          else
-            echo "storeDebug missing or failed — trying enterpriseDebug"
-            ./gradlew --no-daemon --stacktrace compileEnterpriseDebugKotlin
-          fi
+      - name: Unit test ${{ matrix.app }}
+        run: bash scripts/ci_android_unit_tests.sh "${{ matrix.app }}"
 
   ios-apps:
     runs-on: macos-14
@@ -242,26 +266,32 @@ jobs:
             project: apps/supplier-app-ios/SupplierAppIOS.xcodeproj
             scheme: SupplierAppIOS
             xcodegen_dir: apps/supplier-app-ios
+            unit_test: SupplierAppTests
           - name: warehouse
             project: apps/warehouse-app-ios/WarehouseAppIOS.xcodeproj
             scheme: WarehouseAppIOS
             xcodegen_dir: apps/warehouse-app-ios
+            unit_test: WarehouseAppTests
           - name: factory
             project: apps/factory-app-ios/FactoryAppIOS.xcodeproj
             scheme: FactoryAppIOS
             xcodegen_dir: apps/factory-app-ios
+            unit_test: FactoryAppTests
           - name: payload
             project: apps/payload-app-ios/payload-app-ios.xcodeproj
             scheme: payload-app-ios
             xcodegen_dir: apps/payload-app-ios
+            unit_test: ""
           - name: driver
             project: apps/driver-app-ios/driverappios/driverappios.xcodeproj
             scheme: driverappios
             xcodegen_dir: ""
+            unit_test: driverappiosTests
           - name: retailer
             project: apps/retailer-app-ios/retailerapp/retailerapp.xcodeproj
             scheme: retailerapp
             xcodegen_dir: ""
+            unit_test: retailerappTests
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
@@ -271,10 +301,10 @@ jobs:
         run: brew install xcodegen
       - name: Generate project
         if: matrix.xcodegen_dir != ''
-        working-directory: pegasusX/${{ matrix.xcodegen_dir }}
+        working-directory: ${{ matrix.xcodegen_dir }}
         run: xcodegen generate
       - name: Build ${{ matrix.name }} (simulator)
-        working-directory: pegasusX
+        working-directory: .
         run: |
           xcodebuild \
             -project "${{ matrix.project }}" \
@@ -285,6 +315,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             build
+      - name: Unit test ${{ matrix.name }}
+        if: matrix.unit_test != ''
+        run: |
+          set -euo pipefail
+          SIM_ID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ && $0 !~ /unavailable/ { print $2; exit }')"
+          if [[ -z "${SIM_ID}" ]]; then
+            echo "no available iPhone simulator"
+            exit 1
+          fi
+          xcodebuild test \
+            -project "${{ matrix.project }}" \
+            -scheme "${{ matrix.scheme }}" \
+            -destination "platform=iOS Simulator,id=${SIM_ID}" \
+            -only-testing:"${{ matrix.unit_test }}" \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
 
   supplier-portal:
     runs-on: ubuntu-latest

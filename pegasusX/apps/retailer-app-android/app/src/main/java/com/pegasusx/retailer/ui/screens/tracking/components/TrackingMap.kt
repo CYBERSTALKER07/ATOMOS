@@ -23,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,35 +81,43 @@ fun TrackingMap(
                 onMapClick = { onOrderSelected(null) },
             ) {
                 for (order in visibleOrders) {
-                    val routePoints = order.routeGeometry?.coordinates
-                        ?.map { LatLng(it.lat, it.lng) }
-                        .orEmpty()
-                    if (routePoints.size >= 2) {
-                        Polyline(
-                            points = routePoints,
-                            color = Color(0xFF2563EB),
-                            width = 10f,
-                        )
+                    key(order.orderId) {
+                        val routePoints = remember(order.routeGeometry) {
+                            order.routeGeometry?.coordinates
+                                ?.map { LatLng(it.lat, it.lng) }
+                                .orEmpty()
+                        }
+                        if (routePoints.size >= 2) {
+                            Polyline(
+                                points = routePoints,
+                                color = Color(0xFF2563EB),
+                                width = 10f,
+                            )
+                        }
+
+                        val driverLat = order.driverLatitude
+                        val driverLng = order.driverLongitude
+                        if (driverLat != null && driverLng != null) {
+                            val position = LatLng(driverLat, driverLng)
+                            val markerState = remember(order.orderId) { MarkerState(position = position) }
+                                .also { it.position = position }
+
+                            val isGreen = order.isApproaching || order.state == "ARRIVED"
+                            val markerColor = if (isGreen) BitmapDescriptorFactory.HUE_GREEN
+                            else BitmapDescriptorFactory.HUE_VIOLET
+
+                            Marker(
+                                state = markerState,
+                                title = order.supplierName,
+                                snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
+                                icon = BitmapDescriptorFactory.defaultMarker(markerColor),
+                                onClick = {
+                                    onOrderSelected(order)
+                                    true
+                                },
+                            )
+                        }
                     }
-
-                    val driverLat = order.driverLatitude ?: continue
-                    val driverLng = order.driverLongitude ?: continue
-                    val position = LatLng(driverLat, driverLng)
-
-                    val isGreen = order.isApproaching || order.state == "ARRIVED"
-                    val markerColor = if (isGreen) BitmapDescriptorFactory.HUE_GREEN
-                    else BitmapDescriptorFactory.HUE_VIOLET
-
-                    Marker(
-                        state = MarkerState(position = position),
-                        title = order.supplierName,
-                        snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
-                        icon = BitmapDescriptorFactory.defaultMarker(markerColor),
-                        onClick = {
-                            onOrderSelected(order)
-                            true
-                        },
-                    )
                 }
             }
 

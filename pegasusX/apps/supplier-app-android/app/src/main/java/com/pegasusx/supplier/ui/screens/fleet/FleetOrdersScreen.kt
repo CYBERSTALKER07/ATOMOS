@@ -68,7 +68,7 @@ fun FleetOrdersScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Fleet orders unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

@@ -50,11 +50,11 @@ fun TreasuryScreen(
                 val oResp = api.getTreasuryOverview()
                 val iResp = api.getInvoices()
                 if (oResp.isSuccessful && oResp.body() != null) {
-                    overview = oResp.body()!!
+                    oResp.body()?.let { overview = it }
                 } else {
                     val fResp = api.getOpsFinancials()
                     if (fResp.isSuccessful && fResp.body() != null) {
-                        val financials = fResp.body()!!
+                        val financials = fResp.body() ?: return@launch
                         overview = TreasuryOverview(
                             totalInvoiced = financials.totalRevenue,
                             totalPaid = financials.netPayout,
@@ -62,7 +62,7 @@ fun TreasuryScreen(
                         )
                     }
                 }
-                if (iResp.isSuccessful && iResp.body() != null) invoices = iResp.body()!!.invoices
+                iResp.body()?.invoices?.let { invoices = it }
                 if (overview == null) error = "Failed to load"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -89,7 +89,7 @@ fun TreasuryScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Treasury unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),

@@ -282,9 +282,13 @@ struct OrderDetailView: View {
         }
     }
 
-    private func isoDeliveryDate(from date: Date) -> String {
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private func isoDeliveryDate(from date: Date) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
         let components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -297,7 +301,7 @@ struct OrderDetailView: View {
         merged.second = 0
         merged.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
         let normalized = calendar.date(from: merged) ?? date
-        return formatter.string(from: normalized)
+        return Self.isoFractionalFormatter.string(from: normalized)
     }
 
     private func loadRecommendations() {

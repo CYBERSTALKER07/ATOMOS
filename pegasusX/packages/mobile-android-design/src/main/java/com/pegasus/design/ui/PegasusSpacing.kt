@@ -12,4 +12,7 @@ object PegasusSpacing {
     val xl = 24.dp
     val xxl = 32.dp
     val xxxl = 48.dp
+
+    /** Material 3 & WCAG minimum accessible touch target. */
+    val touchTargetMin = 48.dp
 }

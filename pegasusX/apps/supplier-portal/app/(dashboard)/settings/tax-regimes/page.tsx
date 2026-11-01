@@ -24,7 +24,7 @@ type TaxRegimeVersion = {
   currency: string;
   vat_rate_bps: number;
   simplified: boolean;
-  rules_json?: any;
+  rules_json?: Record<string, unknown>;
   created_at: string;
 };
 
@@ -77,7 +77,7 @@ export default function TaxRegimesPage() {
         simplified: false
       });
       mutate();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       alert("Error creating tax regime");
     } finally {

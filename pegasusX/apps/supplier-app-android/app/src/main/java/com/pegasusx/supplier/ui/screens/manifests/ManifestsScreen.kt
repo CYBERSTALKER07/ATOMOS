@@ -92,7 +92,7 @@ fun ManifestsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Manifests unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

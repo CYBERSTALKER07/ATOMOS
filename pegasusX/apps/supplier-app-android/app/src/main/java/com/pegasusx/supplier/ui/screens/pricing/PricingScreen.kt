@@ -71,7 +71,7 @@ fun PricingScreen(api: SupplierApi, onBack: () -> Unit) {
             error != null && products.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Pricing unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -218,14 +218,15 @@ private fun ProductPricingDialog(
                                     scopeProductId = product.productId,
                                     retailerScope = "ALL",
                                 )
-                                val promoResp = if (activeSale != null) {
-                                    api.updatePromotion(activeSale!!.promotionId, request)
+                                val sale = activeSale
+                                val promoResp = if (sale != null) {
+                                    api.updatePromotion(sale.promotionId, request)
                                 } else {
                                     api.createPromotion(request)
                                 }
                                 if (!promoResp.isSuccessful) error("promotion_failed_${promoResp.code()}")
-                            } else if (activeSale != null) {
-                                api.deactivatePromotion(activeSale!!.promotionId)
+                            } else {
+                                activeSale?.let { api.deactivatePromotion(it.promotionId) }
                             }
                             onSaved()
                         } catch (e: Exception) {

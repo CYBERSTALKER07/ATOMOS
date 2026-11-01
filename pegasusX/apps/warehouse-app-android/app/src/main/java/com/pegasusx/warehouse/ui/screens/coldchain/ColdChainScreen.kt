@@ -80,7 +80,7 @@ fun ColdChainScreen(
                     }
                     resp.isSuccessful && resp.body() != null -> {
                         enabled = true
-                        readings = resp.body()!!.readings
+                        resp.body()?.let { readings = it.readings }
                     }
                     else -> error = "Failed (${resp.code()})"
                 }
@@ -244,12 +244,12 @@ fun ColdChainScreen(
             }
             if (error != null) {
                 item {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 }
             }
             if (statusMessage != null) {
                 item {
-                    Text(statusMessage!!, color = MaterialTheme.colorScheme.primary)
+                    Text(statusMessage.orEmpty(), color = MaterialTheme.colorScheme.primary)
                 }
             }
             if (!loading && readings.isEmpty()) {

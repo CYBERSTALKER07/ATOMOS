@@ -66,7 +66,7 @@ fun ReplenishmentPoliciesScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Policies unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -77,59 +77,64 @@ fun ReplenishmentPoliciesScreen(
                 body = "Replenishment policy has not been configured.",
                 modifier = Modifier.padding(padding),
             )
-            else -> Column(
-                modifier = Modifier
-                    .padding(padding)
-                    .padding(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
-                    SupplierKpiTile(
-                        "Auto stable",
-                        if (policy!!.autoApproveStable) "On" else "Off",
-                        Icons.Default.ToggleOn,
-                        Modifier.weight(1f),
-                    )
-                    SupplierKpiTile(
-                        "Predictive push",
-                        if (policy!!.autoApprovePredictivePush) "On" else "Off",
-                        Icons.Default.TrendingUp,
-                        Modifier.weight(1f),
-                    )
+            else -> {
+                val p = policy
+                if (p != null) {
+                    Column(
+                        modifier = Modifier
+                            .padding(padding)
+                            .padding(PegasusSpacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
+                            SupplierKpiTile(
+                                "Auto stable",
+                                if (p.autoApproveStable) "On" else "Off",
+                                Icons.Default.ToggleOn,
+                                Modifier.weight(1f),
+                            )
+                            SupplierKpiTile(
+                                "Predictive push",
+                                if (p.autoApprovePredictivePush) "On" else "Off",
+                                Icons.Default.TrendingUp,
+                                Modifier.weight(1f),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
+                            SupplierKpiTile(
+                                "Max daily units",
+                                p.maxDailyTransferUnits.toString(),
+                                Icons.Default.Speed,
+                                Modifier.weight(1f),
+                            )
+                            SupplierKpiTile(
+                                "Min confidence",
+                                p.minConfidenceScore.toString(),
+                                Icons.Default.Policy,
+                                Modifier.weight(1f),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
+                            SupplierKpiTile(
+                                "Service level",
+                                "${(p.targetServiceLevel * 100).toInt()}%",
+                                Icons.Default.Policy,
+                                Modifier.weight(1f),
+                            )
+                            SupplierKpiTile(
+                                "Lead days / σ",
+                                "${p.leadTimeDays} / ${p.leadTimeSigmaDays}",
+                                Icons.Default.Speed,
+                                Modifier.weight(1f),
+                            )
+                        }
+                        Text(
+                            "Lead σ is assumed until ≥10 transfers have ReceivedAt history.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
-                    SupplierKpiTile(
-                        "Max daily units",
-                        policy!!.maxDailyTransferUnits.toString(),
-                        Icons.Default.Speed,
-                        Modifier.weight(1f),
-                    )
-                    SupplierKpiTile(
-                        "Min confidence",
-                        policy!!.minConfidenceScore.toString(),
-                        Icons.Default.Policy,
-                        Modifier.weight(1f),
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm), modifier = Modifier.fillMaxWidth()) {
-                    SupplierKpiTile(
-                        "Service level",
-                        "${(policy!!.targetServiceLevel * 100).toInt()}%",
-                        Icons.Default.Policy,
-                        Modifier.weight(1f),
-                    )
-                    SupplierKpiTile(
-                        "Lead days / σ",
-                        "${policy!!.leadTimeDays} / ${policy!!.leadTimeSigmaDays}",
-                        Icons.Default.Speed,
-                        Modifier.weight(1f),
-                    )
-                }
-                Text(
-                    "Lead σ is assumed until ≥10 transfers have ReceivedAt history.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         }
     }

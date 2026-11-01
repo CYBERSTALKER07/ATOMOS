@@ -100,7 +100,7 @@ fun ScoredExceptionsScreen(
             error != null && rows.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Scored exceptions unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

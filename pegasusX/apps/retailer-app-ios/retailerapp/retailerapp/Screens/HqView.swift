@@ -6,10 +6,13 @@ struct HqView: View {
     @State private var loadError: String?
     @State private var summaryReady = false
     private let api = APIClient.shared
-    private var day: String {
+    private static let dayFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withFullDate]
-        return String(f.string(from: Date()).prefix(10))
+        return f
+    }()
+    private var day: String {
+        String(Self.dayFormatter.string(from: Date()).prefix(10))
     }
 
     var body: some View {

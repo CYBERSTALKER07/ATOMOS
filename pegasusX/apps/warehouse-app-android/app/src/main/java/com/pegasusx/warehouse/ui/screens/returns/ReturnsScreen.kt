@@ -93,14 +93,18 @@ fun ReturnsScreen(
         scope.launch {
             try {
                 val inbound = api.getInboundReturns(physicalStatus = "OPEN")
-                if (inbound.isSuccessful && inbound.body() != null) items = inbound.body()!!.data
-                else error = "Failed (${inbound.code()})"
+                val inboundBody = inbound.body()?.data
+                if (inbound.isSuccessful && inboundBody != null) {
+                    items = inboundBody
+                } else {
+                    error = "Failed (${inbound.code()})"
+                }
                 val hist = api.getReturnsHistory()
-                if (hist.isSuccessful && hist.body() != null) history = hist.body()!!.data
+                hist.body()?.data?.let { history = it }
                 val wh = TokenHolder.warehouseId?.takeIf { it.isNotBlank() }
                 val reverse = api.getReverseLogistics(status = "OPEN", warehouseId = wh)
                 if (reverse.isSuccessful && reverse.body() != null) {
-                    reverseTasks = reverse.body()!!.tasks
+                    reverse.body()?.tasks?.let { reverseTasks = it }
                 }
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
@@ -198,7 +202,7 @@ fun ReturnsScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }

@@ -57,7 +57,7 @@ fun LoadingBayScreen(
             try {
                 val resp = api.getLoadingBayTransfers()
                 if (resp.isSuccessful && resp.body() != null) {
-                    transfers = resp.body()!!.transfers
+                    resp.body()?.let { transfers = it.transfers }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -173,7 +173,7 @@ fun LoadingBayScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load loading bay",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

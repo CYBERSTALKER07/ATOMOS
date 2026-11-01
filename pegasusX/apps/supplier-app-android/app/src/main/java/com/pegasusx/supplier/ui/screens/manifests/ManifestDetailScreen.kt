@@ -106,7 +106,7 @@ fun ManifestDetailScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Manifest unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -175,7 +175,7 @@ fun ManifestDetailScreen(
                         }
                     }
                     if (actionError != null) {
-                        item { Text(actionError!!, color = MaterialTheme.colorScheme.error) }
+                        item { Text(actionError.orEmpty(), color = MaterialTheme.colorScheme.error) }
                     }
                     if (state == "DRAFT") {
                         item {

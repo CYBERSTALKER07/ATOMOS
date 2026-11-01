@@ -41,7 +41,7 @@ fun ProfileScreen(api: SupplierApi) {
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Profile unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 profile == null -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,
@@ -49,7 +49,7 @@ fun ProfileScreen(api: SupplierApi) {
                     body = "",
                 )
                 else -> {
-                    val p = profile!!
+                    val p = profile ?: return@Box
                     SupplierIdentityCard(
                         p = p,
                         modifier = Modifier.padding(PegasusSpacing.lg),

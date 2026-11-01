@@ -128,7 +128,7 @@ fun PayloadOverrideScreen(
             try {
                 val resp = api.getManifests(state = "LOADING")
                 if (resp.isSuccessful && resp.body() != null) {
-                    manifests = resp.body()!!.manifests.filter { it.state == "LOADING" }
+                    resp.body()?.let { body -> manifests = body.manifests.filter { it.state == "LOADING" } }
                     staleMessage = null
                     error = null
                     lastSyncedAt = System.currentTimeMillis()
@@ -276,7 +276,7 @@ fun PayloadOverrideScreen(
     }
 
     val runtimeStatus = when {
-        staleMessage != null -> staleMessage!!
+        staleMessage != null -> staleMessage.orEmpty()
         realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to live manifests…"
@@ -318,7 +318,7 @@ fun PayloadOverrideScreen(
             error != null -> PegasusStatePane(
                 kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Payload override unavailable offline" else "Unable to load loading manifests",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

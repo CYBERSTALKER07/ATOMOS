@@ -28,6 +28,7 @@ import javax.inject.Singleton
 @Serializable
 data class SupplierWSMessage(
     val type: String,
+    @SerialName("event_id") val eventId: String? = null,
     @SerialName("trace_id") val traceId: String? = null,
     @SerialName("minimum_version") val minimumVersion: String? = null,
 )
@@ -42,7 +43,6 @@ class SupplierWebSocket @Inject constructor(
         private const val TAG = "SupplierWebSocket"
         private const val BASE_RECONNECT_DELAY_MS = 2_000L
         private const val MAX_RECONNECT_DELAY_MS = 60_000L
-        private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -58,13 +58,15 @@ class SupplierWebSocket @Inject constructor(
 
     private var currentBaseUrl: String? = null
     private var pendingRetryAfterMs: Long? = null
+    @Volatile private var lastEventId: String? = null
 
     fun connect(baseUrl: String) {
         if (!TokenHolder.isLoggedIn) return
         reconnectTask?.cancel(false)
         intentionalClose.set(false)
-        currentBaseUrl = baseUrl.trimEnd('/')
-        scope.launch { openSocket(currentBaseUrl!!) }
+        val cleanUrl = baseUrl.trimEnd('/')
+        currentBaseUrl = cleanUrl
+        scope.launch { openSocket(cleanUrl) }
     }
 
     fun disconnect() {
@@ -86,16 +88,25 @@ class SupplierWebSocket @Inject constructor(
         socket?.close(1000, "reconnect")
         socket = null
         val wsUrl = buildWsUrl(base, session.token)
-        val request = Request.Builder().url(wsUrl)
+        val reqBuilder = Request.Builder().url(wsUrl)
             .header("X-App-Version", BuildConfig.VERSION_NAME)
-            .build()
-        socket = client.newWebSocket(request, listener)
+        val currentLastId = lastEventId
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.header("Last-Event-ID", currentLastId)
+        }
+        socket = client.newWebSocket(reqBuilder.build(), listener)
     }
 
     private fun buildWsUrl(base: String, token: String): String {
         val http = base.replace("https://", "wss://").replace("http://", "ws://")
+        val currentLastId = lastEventId
+        val lastEventParam = if (!currentLastId.isNullOrBlank()) {
+            "&last_event_id=${java.net.URLEncoder.encode(currentLastId, "UTF-8")}"
+        } else {
+            ""
+        }
         return "$http/v1/ws?token=${java.net.URLEncoder.encode(token, "UTF-8")}" +
-            "&platform=android&version=${BuildConfig.VERSION_NAME}"
+            "&platform=android&version=${BuildConfig.VERSION_NAME}$lastEventParam"
     }
 
     private val listener = object : WebSocketListener() {
@@ -111,6 +122,9 @@ class SupplierWebSocket @Inject constructor(
             runCatching {
                 json.decodeFromString<SupplierWSMessage>(text)
             }.onSuccess { msg ->
+                if (!msg.eventId.isNullOrBlank()) {
+                    lastEventId = msg.eventId
+                }
                 if (msg.type == "SYSTEM_APP_OUTDATED") {
                     Log.w(TAG, "app outdated minimum=${msg.minimumVersion}")
                 }
@@ -132,7 +146,6 @@ class SupplierWebSocket @Inject constructor(
     private fun scheduleReconnect() {
         if (intentionalClose.get()) return
         val attempt = reconnectAttempt.incrementAndGet()
-        if (attempt > MAX_RECONNECT_ATTEMPTS) return
         val delay = ReconnectBackoff.delayMs(
             attempt,
             BASE_RECONNECT_DELAY_MS,

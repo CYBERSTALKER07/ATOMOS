@@ -90,6 +90,9 @@ import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestsScreen
 import com.pegasusx.warehouse.ui.screens.supply.SupplyRequestDetailScreen
 import com.pegasusx.warehouse.ui.screens.transfers.TransferActionsScreen
 import com.pegasusx.warehouse.ui.screens.treasury.TreasuryScreen
+import com.pegasusx.warehouse.ui.screens.cashier.CashierBlindCountScreen
+import com.pegasusx.warehouse.ui.screens.cashier.CashierViewModel
+import com.pegasusx.warehouse.ui.screens.yard.YardGateScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehicleDetailScreen
 import com.pegasusx.warehouse.ui.screens.vehicles.VehiclesScreen
 import com.pegasusx.warehouse.ui.portal.WarehousePortalFeature
@@ -119,6 +122,8 @@ object WarehouseRoutes {
     const val CLAIMS = "claims"
     const val RESCUES = "rescues"
     const val TREASURY = "treasury"
+    const val CASHIER_BLIND_COUNT = "cashier_blind_count"
+    const val YARD_GATE = "yard_gate"
     const val DISPATCH = "dispatch"
     const val FLEET_LIVE_MAP = "fleet_live_map"
     const val STAFF = "staff"
@@ -199,8 +204,9 @@ fun WarehouseNavigation(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     clientPolicyMessage = state.message
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
@@ -465,6 +471,21 @@ fun WarehouseNavigation(
 
                 composable(WarehouseRoutes.TREASURY) {
                     TreasuryScreen(api = api, onBack = backFor(WarehouseRoutes.TREASURY))
+                }
+
+                composable(WarehouseRoutes.CASHIER_BLIND_COUNT) {
+                    val cashierVm = remember(api) { CashierViewModel(api) }
+                    CashierBlindCountScreen(
+                        viewModel = cashierVm,
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+
+                composable(WarehouseRoutes.YARD_GATE) {
+                    YardGateScreen(
+                        api = api,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
 
                 composable(WarehouseRoutes.DISPATCH) {

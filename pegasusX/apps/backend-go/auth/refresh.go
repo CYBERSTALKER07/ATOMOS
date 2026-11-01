@@ -51,14 +51,21 @@ func HandleTokenRefresh(secret, issuer string) http.HandlerFunc {
 			writeRefreshJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden", "code": "ORG_SELECT_REQUIRED"})
 			return
 		}
+
+		// Enforce maximum refresh window: tokens expired > 7 days cannot be refreshed.
+		const maxRefreshWindow = 7 * 24 * time.Hour
+		if claims.ExpiresAt.IsZero() || time.Since(claims.ExpiresAt) > maxRefreshWindow {
+			writeRefreshJSON(w, http.StatusUnauthorized, map[string]string{"error": "token_expired_beyond_refresh_window"})
+			return
+		}
 		
 		jti := strings.TrimSpace(claims.JTI)
 		if jti != "" {
-			ttl := time.Until(claims.ExpiresAt)
-			if ttl < time.Second {
-				ttl = time.Second
+			revokeTTL := 24 * time.Hour
+			if rem := time.Until(claims.ExpiresAt.Add(maxRefreshWindow)); rem > revokeTTL {
+				revokeTTL = rem
 			}
-			if err := GetRevocationStore().Revoke(r.Context(), jti, ttl); err != nil {
+			if err := GetRevocationStore().Revoke(r.Context(), jti, revokeTTL); err != nil {
 				writeRefreshJSON(w, http.StatusInternalServerError, map[string]string{"error": "revoke_failed"})
 				return
 			}

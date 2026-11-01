@@ -24,8 +24,14 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
     let cancelled = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: number | undefined;
+    let signalDebounceTimer: number | undefined;
     let attempts = 0;
     let lastEventId: string | null = null;
+
+    const jitteredDelay = (attempt: number) => {
+      const exp = Math.min(10_000, 1_000 * 2 ** Math.min(attempt, 4));
+      return exp + Math.floor(Math.random() * (exp / 2 + 1));
+    };
 
     const closeSocket = () => {
       if (!socket) return;
@@ -57,7 +63,16 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
               lastEventId = msg.id;
             }
             if (msg.type === "PLATFORM_ADMIN_AUDIT") {
-              onSignalRef.current(msg.type, msg.action || "");
+              const eventType = msg.type;
+              const action = msg.action || "";
+              if (signalDebounceTimer !== undefined) {
+                window.clearTimeout(signalDebounceTimer);
+              }
+              signalDebounceTimer = window.setTimeout(() => {
+                if (!cancelled) {
+                  onSignalRef.current(eventType, action);
+                }
+              }, 150);
             }
           } catch {
             /* ignore non-json */
@@ -68,14 +83,14 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
         };
         socket.onclose = () => {
           if (cancelled) return;
+          const delay = jitteredDelay(attempts);
           attempts += 1;
-          const delay = Math.min(10_000, 1000 * 2 ** Math.min(attempts, 4));
           reconnectTimer = window.setTimeout(() => void connect(), delay);
         };
       } catch {
         if (cancelled) return;
+        const delay = jitteredDelay(attempts);
         attempts += 1;
-        const delay = Math.min(10_000, 1000 * 2 ** Math.min(attempts, 4));
         reconnectTimer = window.setTimeout(() => void connect(), delay);
       }
     };
@@ -84,6 +99,7 @@ export function useAdminWsRefresh(token: string, onSignal: (eventType: string, a
     return () => {
       cancelled = true;
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
+      if (signalDebounceTimer !== undefined) window.clearTimeout(signalDebounceTimer);
       closeSocket();
     };
   }, [token, enabled]);

@@ -91,7 +91,7 @@ fun SupplierPortalFeedScreen(
             error != null && body == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

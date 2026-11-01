@@ -33,8 +33,9 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                     earnings = resp.body()
                 } else {
                     val ledger = ops.getPaymentLedger()
-                    if (ledger.isSuccessful && ledger.body() != null) {
-                        val items = ledger.body()!!.items
+                    val ledgerBody = ledger.body()
+                    if (ledger.isSuccessful && ledgerBody != null) {
+                        val items = ledgerBody.items
                         val total = items.sumOf { it.amountMinor }
                         val currency = moneyCurrency(items.firstOrNull()?.currency)
                         earnings = SupplierEarnings(
@@ -63,7 +64,7 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Earnings unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 earnings == null -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,
@@ -71,7 +72,7 @@ fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
                     body = "Earnings not available.",
                 )
                 else -> {
-                    val e = earnings!!
+                    val e = earnings ?: return@Box
                     Column(
                         Modifier.padding(PegasusSpacing.lg),
                         verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),

@@ -70,8 +70,9 @@ fun ClaimsScreen(
                     status = status.takeIf { it.isNotBlank() },
                     limit = 50,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    claims = resp.body()!!.claims
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) {
+                    claims = body.claims
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -138,7 +139,7 @@ fun ClaimsScreen(
                 }
                 error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(PegasusSpacing.lg))
                         Button(onClick = { load() }) { Text("Retry") }
                     }

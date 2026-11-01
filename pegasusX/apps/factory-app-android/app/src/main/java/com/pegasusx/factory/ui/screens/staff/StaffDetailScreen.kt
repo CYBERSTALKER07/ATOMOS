@@ -58,7 +58,7 @@ fun StaffDetailScreen(
             try {
                 val resp = api.getStaffDetail(staffId)
                 if (resp.isSuccessful && resp.body() != null) {
-                    staff = resp.body()!!
+                    resp.body()?.let { staff = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -93,24 +93,26 @@ fun StaffDetailScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load staff",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             )
-            staff != null -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                Text(staff!!.name, style = MaterialTheme.typography.headlineSmall)
-                Text(staff!!.role, style = MaterialTheme.typography.bodyLarge)
-                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_staff_id), value = staff!!.id)
-                DetailRow(label = stringResource(R.string.common_field_phone), value = staff!!.phone.ifBlank { "—" })
-                DetailRow(label = stringResource(R.string.factory_portal_fleet_text_status), value = staff!!.status.ifBlank { "ACTIVE" })
-                DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_joined), value = staff!!.joinedAt.ifBlank { "—" })
+            staff != null -> {
+                val s = staff ?: return@Scaffold
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    Text(s.name, style = MaterialTheme.typography.headlineSmall)
+                    Text(s.role, style = MaterialTheme.typography.bodyLarge)
+                    DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_staff_id), value = s.id)
+                    DetailRow(label = stringResource(R.string.common_field_phone), value = s.phone.ifBlank { "—" })
+                    DetailRow(label = stringResource(R.string.factory_portal_fleet_text_status), value = s.status.ifBlank { "ACTIVE" })
+                    DetailRow(label = stringResource(R.string.factory_portal_staff_id_text_joined), value = s.joinedAt.ifBlank { "—" })
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it },
@@ -140,8 +142,9 @@ fun StaffDetailScreen(
                     enabled = !setting && pin.trim().length >= 4,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(if (setting) "Saving…" else "Set login PIN") }
-                if (setMsg != null) {
-                    Text(setMsg!!, style = MaterialTheme.typography.bodySmall)
+                setMsg?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
                 }
             }
         }

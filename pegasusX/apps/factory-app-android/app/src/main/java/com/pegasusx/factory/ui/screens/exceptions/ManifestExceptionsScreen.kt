@@ -80,7 +80,7 @@ fun ManifestExceptionsScreen(
                     escalated = if (escalatedOnly) "true" else null,
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    exceptions = resp.body()!!.exceptions
+                    resp.body()?.let { exceptions = it.exceptions }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -151,7 +151,7 @@ fun ManifestExceptionsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load exceptions",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

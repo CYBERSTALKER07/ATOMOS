@@ -226,7 +226,7 @@ fun OrderDetailScreen(
                                                     try {
                                                         val resp = ops.issuePaymentBypass(com.pegasusx.supplier.data.model.PaymentBypassRequest(orderId = orderId), java.util.UUID.randomUUID().toString())
                                                         if (resp.isSuccessful && resp.body() != null) {
-                                                            error = "Token: ${resp.body()!!.bypassToken}"
+                                                            error = "Token: ${resp.body()?.bypassToken.orEmpty()}"
                                                         } else {
                                                             error = "Failed to issue token (${resp.code()})"
                                                         }

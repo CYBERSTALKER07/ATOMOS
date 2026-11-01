@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { SupplierOrder, WarehouseOrderDetail } from '@pegasusx/types';
-import { ApiError, moneyCurrency } from '@pegasusx/api-core';
+import { ApiError, moneyCurrency, supplierPaymentBypassKey } from '@pegasusx/api-core';
 import Icon from '@/components/Icon';
 import { OrderTimelinePanel } from '@/components/OrderTimelinePanel';
 import { PageChrome } from '@/components/PageChrome';
@@ -223,8 +223,10 @@ export default function SupplierOrderDetailPage() {
                 disabled={acting}
                 onClick={() =>
                   runMutation('Payment bypass token generated', async () => {
-                    // @ts-ignore
-                    const res = await supplierApi.issueSupplierPaymentBypass(orderId);
+                    const res = await supplierApi.issueSupplierPaymentBypass(
+                      { order_id: orderId },
+                      supplierPaymentBypassKey(orderId, 'emergency_pos_failure'),
+                    );
                     toast(`Token: ${res.bypass_token}`, 'success');
                     return res;
                   })

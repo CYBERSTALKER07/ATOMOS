@@ -44,6 +44,22 @@ func supplierID(r *http.Request, fallback string) string {
 	return strings.TrimSpace(fallback)
 }
 
+// bindCallerSupplier resolves the caller tenant and rejects any requested
+// supplier id that does not match it. An empty request is not a different tenant.
+// The error code is empty when sid is usable.
+func bindCallerSupplier(r *http.Request, fallback string, requested ...string) (string, string) {
+	sid := supplierID(r, fallback)
+	if sid == "" {
+		return "", "supplier_id_required"
+	}
+	for _, raw := range requested {
+		if got := strings.TrimSpace(raw); got != "" && got != sid {
+			return "", "supplier_scope_forbidden"
+		}
+	}
+	return sid, ""
+}
+
 // assertResourceWarehouse enforces B7 WH-P0-4: by-id resources must belong to
 // EffectiveWarehouseID. Empty resource warehouse is treated as unknown → forbid.
 func assertResourceWarehouse(w http.ResponseWriter, r *http.Request, resourceWarehouseID string) bool {
@@ -899,16 +915,26 @@ func (h *Handler) HandleTraceLot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, genealogy)
 }
 
-// HandleRecalls GET/POST /v1/supplier/recalls or /v1/warehouse/ops/recalls
+// HandleRecalls GET/POST /v1/supplier/recalls or /v1/warehouse/ops/recalls.
+// SupplierId is taken from the token (or warehouse-ops scope). A body or query
+// supplier_id that names a different tenant is rejected before any write.
 func (h *Handler) HandleRecalls(w http.ResponseWriter, r *http.Request) {
-	if h == nil || h.Spanner == nil {
+	if h == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
 		return
 	}
-	sid := supplierID(r, h.SupplierID)
 
 	switch r.Method {
 	case http.MethodGet:
+		sid, code := bindCallerSupplier(r, h.SupplierID, r.URL.Query().Get("supplier_id"))
+		if code != "" {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
+			return
+		}
+		if h.Spanner == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+			return
+		}
 		status := r.URL.Query().Get("status")
 		campaigns, err := ListRecallCampaigns(r.Context(), h.Spanner, sid, status, 50)
 		if err != nil {
@@ -922,11 +948,18 @@ func (h *Handler) HandleRecalls(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		if req.SupplierID == "" {
-			req.SupplierID = sid
+		sid, code := bindCallerSupplier(r, h.SupplierID, r.URL.Query().Get("supplier_id"), req.SupplierID)
+		if code != "" {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": code})
+			return
 		}
+		req.SupplierID = sid
 		if req.InitiatedBy == "" {
 			req.InitiatedBy = auth.ActorFromContext(r.Context())
+		}
+		if h.Spanner == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "unavailable"})
+			return
 		}
 
 		var campaign *RecallCampaignView

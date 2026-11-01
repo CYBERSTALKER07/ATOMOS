@@ -22,6 +22,21 @@ type relayTestStore struct {
 	recordFailureLastErr     string
 	recordFailureMaxAttempts int64
 	mockDeadLettered         []string
+
+	unclaimedIDs []string
+	unclaimCalls int
+	inspectCalls int
+}
+
+func (s *relayTestStore) Unclaim(_ context.Context, eventIDs []string) error {
+	s.unclaimCalls++
+	s.unclaimedIDs = append(s.unclaimedIDs, eventIDs...)
+	return nil
+}
+
+func (s *relayTestStore) InspectStuck(ctx context.Context, limit int) ([]Event, error) {
+	s.inspectCalls++
+	return s.Fetch(ctx, limit)
 }
 
 func (s *relayTestStore) Fetch(_ context.Context, limit int) ([]Event, error) {
@@ -288,6 +303,14 @@ func (s *statefulOutboxStore) RecordPublishFailures(_ context.Context, eventIDs 
 	return dled, nil
 }
 
+func (s *statefulOutboxStore) Unclaim(_ context.Context, _ []string) error {
+	return nil
+}
+
+func (s *statefulOutboxStore) InspectStuck(ctx context.Context, limit int) ([]Event, error) {
+	return s.Fetch(ctx, limit)
+}
+
 type selectiveErrorPublisher struct {
 	failingAggregateID string
 	err                error
@@ -460,6 +483,24 @@ func TestRelayDrainOnce_CausalAggregateOrderingOnFailure(t *testing.T) {
 	}
 	if !reflect.DeepEqual(store.recordFailureIDs, []string{"evt-1"}) {
 		t.Fatalf("recorded failures = %v, want [evt-1]", store.recordFailureIDs)
+	}
+	if !reflect.DeepEqual(store.unclaimedIDs, []string{"evt-2"}) {
+		t.Fatalf("unclaimed IDs = %v, want [evt-2] (skipped causal event must be unclaimed)", store.unclaimedIDs)
+	}
+}
+
+func TestRelayWatchdog_UsesStuckInspectorWithoutClaiming(t *testing.T) {
+	ev := Event{EventID: "evt-stuck", AggregateType: "Order", AggregateID: "order-1", TopicName: "orders.v1", CreatedAt: time.Now().Add(-10 * time.Minute)}
+	store := &relayTestStore{events: []Event{ev}}
+	relay := NewRelay(store, nil, RelayConfig{
+		BatchSize:      10,
+		StuckThreshold: 5 * time.Minute,
+	}, nil)
+
+	relay.watchdogOnce(context.Background())
+
+	if store.inspectCalls != 1 {
+		t.Fatalf("expected 1 call to InspectStuck, got %d", store.inspectCalls)
 	}
 }
 

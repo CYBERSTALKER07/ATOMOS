@@ -71,7 +71,7 @@ fun WarehousesScreen(
             error != null && warehouses.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Warehouses unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

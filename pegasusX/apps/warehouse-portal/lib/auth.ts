@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconcileSession } from '@pegasusx/api-core';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconcileSession, reconnectDelayMs } from '@pegasusx/api-core';
 import { clearStoredToken, getStoredToken, isTauri, storeToken } from '@/lib/bridge';
 import { notifyWarehouseSessionReconciled } from '@/lib/warehouse-reconnect';
 
@@ -184,14 +184,15 @@ export const warehouseSessionFetch: typeof fetch = (input, init) =>
   apiFetch(toApiPath(input), init);
 
 /** Mint a short-lived token_use=ws ticket, then open /v1/ws (browsers cannot set Authorization). */
-export async function connectWarehouseWS(): Promise<WebSocket> {
+export async function connectWarehouseWS(lastEventId?: string | null): Promise<WebSocket> {
   const session = await apiFetch('/v1/warehouse/ws-session', { method: 'GET', cache: 'no-store' });
   const payload = (await session.json().catch(() => null)) as { token?: string } | null;
   if (!session.ok || typeof payload?.token !== 'string' || !payload.token) {
     throw new Error('Failed to mint warehouse WebSocket session');
   }
   const wsBase = warehouseApiBaseUrl().replace(/^http/, 'ws');
-  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(payload.token)}`);
+  const lastIdParam = lastEventId ? `&last_event_id=${encodeURIComponent(lastEventId)}` : '';
+  return new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(payload.token)}${lastIdParam}`);
 }
 
 export type WarehouseSocketStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'offline';
@@ -204,6 +205,7 @@ export function subscribeWarehouseWS(options: {
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
   let hasConnectedOnce = false;
+  let lastEventId: string | null = null;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -211,6 +213,24 @@ export function subscribeWarehouseWS(options: {
       window.clearTimeout(reconnectTimer);
       reconnectTimer = null;
     }
+  };
+
+  const scheduleReconnect = () => {
+    if (disposed) {
+      options.onStatusChange?.('idle');
+      return;
+    }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      options.onStatusChange?.('offline');
+      return;
+    }
+    const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
+    reconnectAttempt += 1;
+    options.onStatusChange?.('reconnecting');
+    clearReconnect();
+    reconnectTimer = window.setTimeout(() => {
+      openSocket(true);
+    }, delay);
   };
 
   const openSocket = (isReconnect: boolean) => {
@@ -221,53 +241,60 @@ export function subscribeWarehouseWS(options: {
     }
 
     options.onStatusChange?.(isReconnect ? 'reconnecting' : 'connecting');
-    void connectWarehouseWS().then((ws) => {
-      if (disposed) {
-        ws.close();
-        return;
-      }
-      socket = ws;
-
-      socket.onopen = () => {
-        const wasReconnect = hasConnectedOnce;
-        hasConnectedOnce = true;
-        reconnectAttempt = 0;
-        options.onStatusChange?.('live');
-        if (wasReconnect) {
-          void reconcileSession({
-            role: 'warehouse',
-            baseUrl: warehouseApiBaseUrl(),
-            getAuthToken: () => readTokenFromCookie() || null,
-            fetchImpl: warehouseSessionFetch,
-          }).then(() => notifyWarehouseSessionReconciled());
-        }
-      };
-
-      socket.onmessage = (event) => {
-        options.onMessage(String(event.data));
-      };
-
-      socket.onerror = () => {
-        socket?.close();
-      };
-
-      socket.onclose = () => {
-        socket = null;
+    void connectWarehouseWS(lastEventId)
+      .then((ws) => {
         if (disposed) {
-          options.onStatusChange?.('idle');
+          ws.close();
           return;
         }
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          options.onStatusChange?.('offline');
-          return;
-        }
-        reconnectAttempt += 1;
-        options.onStatusChange?.('reconnecting');
-        reconnectTimer = window.setTimeout(() => {
-          openSocket(true);
-        }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
-      };
-    });
+        socket = ws;
+
+        socket.onopen = () => {
+          const wasReconnect = hasConnectedOnce;
+          hasConnectedOnce = true;
+          reconnectAttempt = 0;
+          options.onStatusChange?.('live');
+          if (wasReconnect) {
+            void reconcileSession({
+              role: 'warehouse',
+              baseUrl: warehouseApiBaseUrl(),
+              getAuthToken: () => readTokenFromCookie() || null,
+              fetchImpl: warehouseSessionFetch,
+            }).then(() => notifyWarehouseSessionReconciled());
+          }
+        };
+
+        socket.onmessage = (event) => {
+          const raw = String(event.data);
+          try {
+            const parsed = JSON.parse(raw) as { event_id?: unknown; id?: unknown };
+            const eid = typeof parsed?.event_id === 'string' && parsed.event_id.trim()
+              ? parsed.event_id.trim()
+              : typeof parsed?.id === 'string' && parsed.id.trim()
+                ? parsed.id.trim()
+                : null;
+            if (eid) {
+              lastEventId = eid;
+            }
+          } catch {
+            // non-JSON frame
+          }
+          options.onMessage(raw);
+        };
+
+        socket.onerror = () => {
+          socket?.close();
+        };
+
+        socket.onclose = () => {
+          socket = null;
+          scheduleReconnect();
+        };
+      })
+      .catch(() => {
+        socket = null;
+        scheduleReconnect();
+      });
   };
 
   const handleOnline = () => {

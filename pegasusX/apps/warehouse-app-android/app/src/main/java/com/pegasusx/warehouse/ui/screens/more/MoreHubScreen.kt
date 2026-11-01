@@ -56,6 +56,8 @@ private val inventory = listOf(
 
 private val operations = listOf(
     MoreDestination("Depot operations", "Broadcasts & pricing preview", Icons.Default.Send, WarehouseRoutes.OPERATIONS),
+    MoreDestination("Cashier blind count", "Role 7 vault & denomination reconciliation", Icons.Default.AccountBalanceWallet, WarehouseRoutes.CASHIER_BLIND_COUNT),
+    MoreDestination("Yard gate control", "Role 9 ALPR & bolt-seal verification", Icons.Default.LocalShipping, WarehouseRoutes.YARD_GATE),
     MoreDestination("Retailers", "CRM", Icons.Default.Store, WarehouseRoutes.CRM),
     MoreDestination("Returns", "Inbound + credit-note reverse", Icons.AutoMirrored.Filled.Undo, WarehouseRoutes.RETURNS),
     MoreDestination("Cold chain", "Manifest temp readings + ingest", Icons.Default.Thermostat, WarehouseRoutes.COLD_CHAIN),

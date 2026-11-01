@@ -69,7 +69,7 @@ fun ReturnPolicySettingsScreen(
             try {
                 val resp = api.getReturnPolicy(warehouseId = warehouseQueryId())
                 if (resp.isSuccessful && resp.body() != null) {
-                    val p = resp.body()!!
+                    val p = resp.body() ?: return@launch
                     supplierId = p.supplierId
                     reverseSla = p.reverseDockSlaHours?.takeIf { it > 0 }?.toString() ?: "24"
                     canOverride = p.canOverrideRetailerWindow
@@ -157,7 +157,7 @@ fun ReturnPolicySettingsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -176,7 +176,7 @@ fun ReturnPolicySettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (error != null) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 }
                 if (saved) {
                     Text("Return policy saved.", color = MaterialTheme.colorScheme.primary)

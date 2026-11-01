@@ -6,12 +6,16 @@ struct CreditProfileSection: View {
     let missing: Bool
     let error: String?
 
-    private func formatMinor(_ value: Int64) -> String {
+    private static let minorFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
         formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return formatter
+    }()
+
+    private func formatMinor(_ value: Int64) -> String {
+        Self.minorFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     var body: some View {

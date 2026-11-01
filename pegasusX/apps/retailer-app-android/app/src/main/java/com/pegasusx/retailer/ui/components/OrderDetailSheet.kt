@@ -405,7 +405,7 @@ fun OrderDetailSheetContent(
                                 Text("File claim / report damage", fontWeight = FontWeight.SemiBold)
                             }
                         }
-                        claimElig != null && !claimElig!!.eligible -> {
+                        claimElig?.eligible == false -> {
                             Text(
                                 "Window closed — claim filing unavailable" +
                                     (claimElig?.endsAt?.let { " (ended ${formatClaimEndsAt(it)})" } ?: ""),

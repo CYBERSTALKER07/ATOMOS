@@ -35,10 +35,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/entityresolutionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/etaroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/foundryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/geolocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproductsroutes"
-	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/internal/services/billing"
 	"github.com/pegasusx/pegasusx/apps/backend-go/laborcapacityroutes"
@@ -129,6 +129,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
 	r.Use(telemetry.HTTPMetricsMiddleware)
+	r.Use(bootstrap.MaxBytesMiddleware(0))
 	r.Use(bootstrap.DevCORSMiddleware())
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
 	// Partner API keys (pxk_*) and OAuth access tokens — attach principal before rate limiting.
@@ -150,7 +151,7 @@ func main() {
 		r.Use(app.Reliability.Middleware)
 	}
 	if app.Idempotency != nil {
-		r.Use(idempotency.Middleware(app.Idempotency))
+		r.Use(app.IdempotencyMiddleware())
 	}
 	infraroutes.RegisterRoutes(r, app.InfraHealth)
 	// SLO metrics (void_outbox_lag_seconds, void_fiscal_success_ratio,
@@ -331,6 +332,9 @@ func main() {
 	cashreconroutes.RegisterRoutes(r, cashreconroutes.Deps{
 		Handlers:        app.CashReconHandlers,
 		AllowAuthBypass: cfg.AllowAuthBypass,
+	})
+	foundryroutes.RegisterRoutes(r, foundryroutes.Deps{
+		Engine: app.FoundryEngine,
 	})
 	creditnoteroutes.RegisterRoutes(r, creditnoteroutes.Deps{
 		Handlers:        app.CreditNoteHandlers,

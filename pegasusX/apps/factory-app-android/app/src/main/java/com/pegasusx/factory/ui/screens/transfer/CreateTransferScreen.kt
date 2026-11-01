@@ -118,7 +118,7 @@ fun CreateTransferScreen(
                     ),
                 )
                 if (resp.isSuccessful && resp.body() != null) {
-                    onCreated(resp.body()!!.transferId)
+                    resp.body()?.transferId?.let(onCreated)
                 } else {
                     snackbarHostState.showSnackbar("Create failed (${resp.code()})")
                 }
@@ -170,7 +170,7 @@ fun CreateTransferScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load fleet",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { loadFleet() },
                 modifier = Modifier

@@ -64,7 +64,7 @@ fun LocationSettingsScreen(
             try {
                 val resp = api.getFactoryLocation()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     factoryName = body.name
                     location = AddressLocationValue(
                         address = body.address,
@@ -139,7 +139,7 @@ fun LocationSettingsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Update Failed",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(padding).fillMaxSize()
@@ -167,8 +167,8 @@ fun LocationSettingsScreen(
                 )
                 if (!saveMessage.isNullOrBlank()) {
                     Text(
-                        saveMessage!!,
-                        color = if (saveMessage!!.contains("saved", ignoreCase = true)) {
+                        saveMessage.orEmpty(),
+                        color = if (saveMessage.orEmpty().contains("saved", ignoreCase = true)) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.error

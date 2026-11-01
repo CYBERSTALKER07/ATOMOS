@@ -178,14 +178,17 @@ class TelemetryService : Service() {
 
                 if (timeSinceLastMs > 15000) {
                     shouldTransmit = true
-                } else if (lastSentLocation != null) {
-                    val distanceDeviation = location.distanceTo(lastSentLocation!!)
-                    val bearingDeviation = Math.abs(location.bearing - lastSentLocation!!.bearing)
-                    if (distanceDeviation > 20f || bearingDeviation > 15f) {
+                } else {
+                    val last = lastSentLocation
+                    if (last != null) {
+                        val distanceDeviation = location.distanceTo(last)
+                        val bearingDeviation = Math.abs(location.bearing - last.bearing)
+                        if (distanceDeviation > 20f || bearingDeviation > 15f) {
+                            shouldTransmit = true
+                        }
+                    } else {
                         shouldTransmit = true
                     }
-                } else {
-                    shouldTransmit = true
                 }
 
                 if (shouldTransmit) {
@@ -232,7 +235,8 @@ class TelemetryService : Service() {
             }
         }
 
-        fusedClient.requestLocationUpdates(locationRequest, locationCallback!!, mainLooper)
+        val callback = locationCallback ?: return
+        fusedClient.requestLocationUpdates(locationRequest, callback, mainLooper)
         Log.d(TAG, "Telemetry tracking started")
     }
 

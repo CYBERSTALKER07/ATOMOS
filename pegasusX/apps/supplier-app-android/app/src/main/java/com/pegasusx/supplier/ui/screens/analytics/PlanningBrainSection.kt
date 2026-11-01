@@ -73,7 +73,7 @@ fun PlanningBrainSection(ops: SupplierOperationsRepository) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
         if (loading) {
             Text("Loading S&OP…", style = MaterialTheme.typography.bodySmall)

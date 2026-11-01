@@ -106,7 +106,7 @@ fun TomorrowBoardScreen(
                     com.pegasus.design.ui.PegasusStatePane(
                         kind = com.pegasus.design.ui.PegasusStateKind.Error,
                         headline = "Failed to load board",
-                        body = error!!,
+                        body = error.orEmpty(),
                         actionLabel = "Retry",
                         onAction = { load() }
                     )

@@ -157,6 +157,7 @@ typealias MarketPack = com.pegasus.design.network.MarketPack
 typealias MarketPackBinder = com.pegasus.design.network.MarketPackBinder
 typealias MarketPackStore = com.pegasus.design.network.MarketPackStore
 typealias CellPinInterceptor = com.pegasus.design.network.CellPinInterceptor
+typealias PegasusHttpResilienceInterceptor = com.pegasus.design.network.PegasusHttpResilienceInterceptor
 typealias PackMapCenter = com.pegasus.design.network.PackMapCenter
 
 fun sessionMapCenter(): com.pegasus.design.network.PackMapCenter? =

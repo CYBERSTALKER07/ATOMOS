@@ -409,8 +409,8 @@ fun TransferActionsScreen(
                 Text(
                     stringResource(
                         R.string.mobile_warehouse_ui_wave_take_status,
-                        activeWave!!.waveId.take(8),
-                        activeWave!!.status,
+                        activeWave?.waveId.orEmpty().take(8),
+                        activeWave?.status.orEmpty(),
                     ),
                     style = MaterialTheme.typography.bodyMedium,
                 )

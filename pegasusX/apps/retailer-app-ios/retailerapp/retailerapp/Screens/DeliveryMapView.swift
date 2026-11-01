@@ -20,6 +20,7 @@ struct DeliveryMapView: View {
     @State private var activeFulfillmentCount = 0
     @State private var loadIssue: TrackingLoadIssue?
     @State private var selectedOrder: TrackingOrder?
+    @State private var hasFittedInitialCamera = false
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: packMapCoordinate().lat, longitude: packMapCoordinate().lng),
@@ -214,7 +215,12 @@ struct DeliveryMapView: View {
         .task { await startPolling() }
         .task { await observeWebSocket() }
         .task(id: refreshCenter.refreshToken) { await refreshTrackingState() }
-        .onChange(of: visibleOrders.count) { fitCamera() }
+        .onChange(of: visibleOrders.count) {
+            if !hasFittedInitialCamera {
+                fitCamera()
+            }
+        }
+        .onChange(of: selectedSupplierIds) { fitCamera() }
         .sheet(item: $fiscalQRReceipt) { receipt in
             NavigationStack {
                 VStack(spacing: AppTheme.spacingLG) {
@@ -289,8 +295,9 @@ struct DeliveryMapView: View {
     }
 
     private func refreshTrackingState() async {
-        await fetchTracking()
-        await fetchActiveFulfillments()
+        async let trackingTask: Void = fetchTracking()
+        async let fulfillmentsTask: Void = fetchActiveFulfillments()
+        _ = await (trackingTask, fulfillmentsTask)
     }
 
     private func fetchTracking() async {
@@ -386,6 +393,7 @@ struct DeliveryMapView: View {
             return CLLocationCoordinate2D(latitude: lat, longitude: lng)
         }
         guard !points.isEmpty else { return }
+        hasFittedInitialCamera = true
         if points.count == 1 {
             withAnimation {
                 cameraPosition = .region(MKCoordinateRegion(

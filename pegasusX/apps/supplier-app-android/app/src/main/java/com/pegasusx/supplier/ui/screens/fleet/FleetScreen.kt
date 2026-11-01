@@ -98,7 +98,7 @@ fun FleetScreen(
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Fleet unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { load() },
                 )

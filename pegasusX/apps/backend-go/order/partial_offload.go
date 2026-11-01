@@ -316,10 +316,8 @@ func (s *Service) HandlePartialOffload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.replanner != nil && current.ManifestID != "" {
-		go func(rID, act string) {
-			_ = s.replanner.ReplanRoute(context.Background(), rID, "partial_offload", act)
-		}(current.ManifestID, claims.Subject)
+	if current.ManifestID != "" {
+		s.replanAsync(current.ManifestID, "partial_offload", claims.Subject)
 	}
 
 	s.invalidateOrderCache(ctx, orderID)

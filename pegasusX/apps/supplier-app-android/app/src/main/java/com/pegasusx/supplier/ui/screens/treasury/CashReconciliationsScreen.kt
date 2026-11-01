@@ -85,7 +85,7 @@ fun CashReconciliationsScreen(ops: SupplierOperationsRepository, onBack: () -> U
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

@@ -111,7 +111,7 @@ fun OpsSettingsScreen(
             try {
                 val resp = api.getOpsSettings()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val body = resp.body()!!
+                    val body = resp.body() ?: return@launch
                     policy = body.defaultOutOfStockPolicy
                     showStockCounts = body.showStockCountsToRetailers
                     preorderMinLeadDays = body.preorderMinLeadDays.toString()
@@ -261,7 +261,7 @@ fun OpsSettingsScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.md))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
@@ -326,7 +326,7 @@ fun OpsSettingsScreen(
                 )
 
                 if (saveMessage != null) {
-                    Text(saveMessage!!, style = MaterialTheme.typography.bodySmall)
+                    Text(saveMessage.orEmpty(), style = MaterialTheme.typography.bodySmall)
                 }
 
                 Button(

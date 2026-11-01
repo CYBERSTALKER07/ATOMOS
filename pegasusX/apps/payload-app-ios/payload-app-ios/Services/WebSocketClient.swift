@@ -22,9 +22,13 @@ final class WebSocketClient {
     private var task: URLSessionWebSocketTask?
     private var session: URLSession
     private var token: String?
+    private var lastEventId: String?
     private var receiveTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
+    private var syncCoalesceTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
     private var reconnectAttempt = 0
+    private let decoder = JSONDecoder()
 
     init() {
         let cfg = URLSessionConfiguration.default
@@ -40,6 +44,8 @@ final class WebSocketClient {
 
     func disconnect() {
         token = nil
+        syncCoalesceTask?.cancel(); syncCoalesceTask = nil
+        heartbeatTask?.cancel(); heartbeatTask = nil
         reconnectTask?.cancel(); reconnectTask = nil
         receiveTask?.cancel(); receiveTask = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -50,16 +56,40 @@ final class WebSocketClient {
     private func openSocket() {
         guard let token else { return }
         let base = APIClient.shared.wsBaseURL
-        guard let url = URL(string: "\(base)/v1/ws") else { return }
+        var components = URLComponents(string: "\(base)/v1/ws")
+        if let lastId = lastEventId, !lastId.isEmpty {
+            components?.queryItems = [URLQueryItem(name: "last_event_id", value: lastId)]
+        }
+        guard let url = components?.url ?? URL(string: "\(base)/v1/ws") else { return }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let lastId = lastEventId, !lastId.isEmpty {
+            request.setValue(lastId, forHTTPHeaderField: "Last-Event-ID")
+        }
         let t = session.webSocketTask(with: request)
         task = t
         t.resume()
         reconnectAttempt = 0
         online = true
         onReconnect?()
+        startHeartbeat(t)
         startReceiving(t)
+    }
+
+    private func startHeartbeat(_ t: URLSessionWebSocketTask) {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled, let self, self.online {
+                try? await Task.sleep(nanoseconds: 25_000_000_000)
+                guard !Task.isCancelled, self.online else { return }
+                t.sendPing { [weak self] error in
+                    guard error != nil else { return }
+                    Task { @MainActor in
+                        self?.handleDisconnect()
+                    }
+                }
+            }
+        }
     }
 
     private func startReceiving(_ t: URLSessionWebSocketTask) {
@@ -76,10 +106,19 @@ final class WebSocketClient {
                         }
                     }()
                     guard let text, let data = text.data(using: .utf8) else { continue }
-                    if let frame = try? JSONDecoder().decode(WsMessage.self, from: data) {
+                    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let eid = (json["event_id"] as? String ?? json["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       !eid.isEmpty {
+                        self.lastEventId = eid
+                    }
+                    if let frame = try? self.decoder.decode(WsMessage.self, from: data) {
                         let hasContent = !(frame.title ?? "").isEmpty || !(frame.body ?? "").isEmpty
                         let isPayloadSync = frame.type == "PAYLOAD_SYNC" || (frame.type?.hasPrefix("MANIFEST_") ?? false)
-                        if hasContent || isPayloadSync { self.onFrame?(frame) }
+                        if hasContent {
+                            self.onFrame?(frame)
+                        } else if isPayloadSync {
+                            self.emitCoalescedSync(frame)
+                        }
                     }
                 } catch {
                     self.handleDisconnect()
@@ -89,8 +128,18 @@ final class WebSocketClient {
         }
     }
 
+    private func emitCoalescedSync(_ frame: WsMessage) {
+        syncCoalesceTask?.cancel()
+        syncCoalesceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.onFrame?(frame)
+        }
+    }
+
     private func handleDisconnect() {
         online = false
+        heartbeatTask?.cancel(); heartbeatTask = nil
         task = nil
         guard token != nil else { return }
         reconnectAttempt += 1

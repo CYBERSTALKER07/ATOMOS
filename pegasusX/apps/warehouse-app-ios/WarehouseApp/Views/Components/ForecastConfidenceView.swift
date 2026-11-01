@@ -170,9 +170,13 @@ struct ForecastConfidenceView: View {
         return LabTheme.destructive
     }
 
-    private func formatUnits(_ value: Int64) -> String {
+    private static let decimalFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        return formatter
+    }()
+
+    private func formatUnits(_ value: Int64) -> String {
+        Self.decimalFormatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }

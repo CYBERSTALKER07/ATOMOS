@@ -120,7 +120,7 @@ fun AIRecommendationsScreen(ops: SupplierOperationsRepository, onBack: () -> Uni
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Recommendations unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { load() },
                 )

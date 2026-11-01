@@ -54,7 +54,7 @@ const chipCfg: Record<
 };
 
 function formatAmount(amount: number): string {
-  return amount.toLocaleString("en-US").replace(/,/g, " ");
+  return (amount / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/,/g, " ");
 }
 
 interface TrackingMapProps {

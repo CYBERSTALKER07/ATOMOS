@@ -28,13 +28,17 @@ final class InsightsViewModel {
         predictions = []
     }
 
-    func loadDetailedAnalytics() async {
+    private static let fullDateFormatter: ISO8601DateFormatter = {
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withFullDate]
+        return fmt
+    }()
+
+    func loadDetailedAnalytics() async {
         let to = Date()
         let from = Calendar.current.date(byAdding: .day, value: -selectedRange.days, to: to) ?? to
-        let fromStr = fmt.string(from: from)
-        let toStr = fmt.string(from: to)
+        let fromStr = Self.fullDateFormatter.string(from: from)
+        let toStr = Self.fullDateFormatter.string(from: to)
         do {
             detailed = try await api.get(path: "/v1/retailer/analytics/detailed?from=\(fromStr)&to=\(toStr)")
         } catch {

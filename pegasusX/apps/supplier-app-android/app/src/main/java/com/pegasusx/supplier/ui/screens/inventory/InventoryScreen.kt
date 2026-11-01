@@ -28,7 +28,7 @@ fun InventoryScreen(
                 state.error != null && state.items.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Inventory unavailable",
-                    body = state.error!!,
+                    body = state.error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { viewModel.load() },
                 )

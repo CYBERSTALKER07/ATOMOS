@@ -28,7 +28,7 @@ struct DispatchPreviewMapView: View {
                     .clipShape(RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
             } else {
                 Map(position: $cameraPosition) {
-                    ForEach(Array(routableRoutes.enumerated()), id: \.offset) { index, route in
+                    ForEach(Array(routableRoutes.enumerated()), id: \.element.id) { index, route in
                         if let geometry = route.routeGeometry, geometry.coordinates.count >= 2 {
                             let coordinates = geometry.coordinates.map {
                                 CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lng)

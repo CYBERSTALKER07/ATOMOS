@@ -408,4 +408,22 @@ interface DriverApi {
         @Header("Idempotency-Key") idempotencyKey: String,
         @Body body: ArriveSupplyTransferRequest,
     ): ArriveSupplyTransferResponse
+
+    // ── Role 9: Fleet, DVIR & Mid-Route Rescue ──
+
+    @POST("/v1/foundry/fleet/dvir")
+    suspend fun submitDVIR(@Body req: com.pegasusx.mobilekit.foundry.FleetDVIRInspection): Response<com.pegasusx.mobilekit.foundry.FleetDVIRInspection>
+
+    @GET("/v1/foundry/fleet/vehicles/{vehicleID}/dispatch-check")
+    suspend fun checkVehicleDispatch(@Path("vehicleID") vehicleID: String): Response<com.pegasusx.mobilekit.foundry.DispatchCheckResponse>
+
+    @POST("/v1/foundry/fleet/gate-events")
+    suspend fun recordGateEvent(@Body req: com.pegasusx.mobilekit.foundry.YardGateCheckEvent): Response<com.pegasusx.mobilekit.foundry.YardGateCheckEvent>
+
+    @POST("/v1/foundry/fleet/mid-route-rescue")
+    suspend fun executeMidRouteRescue(@Body req: com.pegasusx.mobilekit.foundry.MidRouteRescueRequest): Response<com.pegasusx.mobilekit.foundry.MidRouteRescueResult>
+
+    @POST("/v1/foundry/fleet/predictive-reefer")
+    suspend fun checkPredictiveReefer(@Body req: com.pegasusx.mobilekit.foundry.PredictiveReeferRequest): Response<com.pegasusx.mobilekit.foundry.PredictiveReeferResponse>
 }
+

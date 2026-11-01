@@ -67,6 +67,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     private let maxTrailPoints = 60
     private let locationInterpolator = LocationInterpolator()
     private var interpolationTask: Task<Void, Never>?
+    private var socketRefreshTask: Task<Void, Never>?
 
     // MARK: - Services
 
@@ -149,16 +150,13 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func loadEarningsAndHistory() async {
-        do {
-            earnings = try await APIClient.shared.getEarnings()
-        } catch {
-            print("[FleetViewModel] earnings load failed: \(error)")
+        async let earningsTask = APIClient.shared.getEarnings()
+        async let historyTask = APIClient.shared.getDriverHistory()
+        if let fetchedEarnings = try? await earningsTask {
+            earnings = fetchedEarnings
         }
-        do {
-            let history = try await APIClient.shared.getDriverHistory()
-            historyRows = history.rows
-        } catch {
-            print("[FleetViewModel] history load failed: \(error)")
+        if let fetchedHistory = try? await historyTask {
+            historyRows = fetchedHistory.rows
         }
     }
 
@@ -178,9 +176,12 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         guard DriverWsRefresh.shouldRefreshManifest(eventType: event.type) else { return }
-        Task {
-            await loadMissions(silent: true)
-            lastRealtimeRefreshAt = Date()
+        socketRefreshTask?.cancel()
+        socketRefreshTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 180_000_000) // 180ms burst coalescing window
+            guard !Task.isCancelled, let self else { return }
+            await self.loadMissions(silent: true)
+            self.lastRealtimeRefreshAt = Date()
         }
     }
 
@@ -725,7 +726,10 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
+        guard let loc = locations.last,
+              loc.horizontalAccuracy >= 0,
+              loc.horizontalAccuracy <= 65,
+              abs(loc.timestamp.timeIntervalSinceNow) <= 30 else { return }
         Task { @MainActor in
             self.location = loc.coordinate
             if loc.course >= 0 {

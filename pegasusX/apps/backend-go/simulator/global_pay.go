@@ -104,13 +104,13 @@ var defaultCards = []SimCard{
 	},
 	{
 		ID:        "sim-card-05",
-		Label:     "Visa Classic · Bobur Mirzo (25,000,000 UZS)",
+		Label:     "Visa Classic · Bobur Mirzo (Uncapped Tier)",
 		PAN:       "4242424242424242",
 		Last4:     "4242",
 		Expiry:    "05/29",
 		Holder:    "BOBUR MIRZO",
 		Scheme:    "VISA",
-		Balance:   2_500_000_000, // 25,000,000 UZS
+		Balance:   10_000_000_000, // 100,000,000 UZS Uncapped
 		Declined:  false,
 		PhoneMask: "+998 97 *** ** 42",
 		BankName:  "Kapitalbank",

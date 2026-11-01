@@ -115,7 +115,7 @@ fun RetailerOverridesScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Overrides unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -176,7 +176,7 @@ fun RetailerOverridesScreen(
                     when {
                         previewLoading -> Text("Calculating impact preview…", style = MaterialTheme.typography.bodySmall)
                         preview != null -> {
-                            val p = preview!!
+                            val p = preview ?: return@Column
                             ElevatedCard(Modifier.fillMaxWidth()) {
                                 Column(Modifier.padding(PegasusSpacing.md), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                     Text("Impact preview", style = MaterialTheme.typography.titleSmall)

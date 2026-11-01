@@ -538,6 +538,8 @@ export class ApiError extends Error {
 }
 
 export class ApiClient {
+  private readonly inFlightGets = new Map<string, Promise<unknown>>();
+
   constructor(public readonly config: ApiClientConfig) {}
 
   async registerSupplier(request: SupplierRegisterRequest, idempotencyKey: string): Promise<SupplierRegisterResponse> {
@@ -3483,14 +3485,40 @@ export class ApiClient {
     );
   }
 
-  private async request<TResponse>(
+  async request<TResponse>(
     path: string,
     method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     options: RequestOptions = {},
   ): Promise<TResponse> {
+    const resolvedUrl = this.resolveURL(path);
+    const requiresAuth = options.requiresAuth ?? true;
+    const tokenKey = requiresAuth && this.config.getAuthToken ? (this.config.getAuthToken() ?? "") : "";
+
+    if (method === "GET") {
+      const coalesceKey = `${tokenKey}|${resolvedUrl}|${options.ifNoneMatch ?? ""}`;
+      const existing = this.inFlightGets.get(coalesceKey);
+      if (existing) {
+        return existing as Promise<TResponse>;
+      }
+      const task = this.executeRequest<TResponse>(resolvedUrl, method, options).finally(() => {
+        this.inFlightGets.delete(coalesceKey);
+      });
+      this.inFlightGets.set(coalesceKey, task);
+      return task;
+    }
+
+    this.inFlightGets.clear();
+    return this.executeRequest<TResponse>(resolvedUrl, method, options);
+  }
+
+  private async executeRequest<TResponse>(
+    resolvedUrl: string,
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    options: RequestOptions,
+  ): Promise<TResponse> {
     const fetchImpl = this.config.fetchImpl ?? fetch;
     const requiresAuth = options.requiresAuth ?? true;
-    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey, options.rawBody !== undefined);
+    const headers = this.buildHeaders(options.headers, requiresAuth, options.idempotencyKey, options.rawBody !== undefined, method);
 
     const init: RequestInit = {
       method,
@@ -3503,7 +3531,7 @@ export class ApiClient {
       init.body = JSON.stringify(options.body);
     }
 
-    const response = await fetchImpl(this.resolveURL(path), init);
+    const response = await fetchImpl(resolvedUrl, init);
     dispatchBackpressureFromResponse(response);
     const payload = await parseResponsePayload(response);
     if (!response.ok) {
@@ -3597,11 +3625,19 @@ export class ApiClient {
     return this.request<import("@pegasusx/types").PoDPhotoReport[]>(`/v1/delivery/proof-photos/${shipmentId}`, "GET");
   }
 
-  private buildHeaders(extra: HeadersInit | undefined, requiresAuth: boolean, idempotencyKey: string | undefined, hasRawBody: boolean): Headers {
-
+  private buildHeaders(
+    extra: HeadersInit | undefined,
+    requiresAuth: boolean,
+    idempotencyKey: string | undefined,
+    hasRawBody: boolean,
+    method = "GET",
+  ): Headers {
     const headers = new Headers(extra);
     if (!hasRawBody) {
       headers.set("Content-Type", "application/json");
+    }
+    if (!headers.has("X-Trace-Id") && typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      headers.set("X-Trace-Id", crypto.randomUUID());
     }
 
     if (requiresAuth && this.config.getAuthToken) {
@@ -3612,6 +3648,13 @@ export class ApiClient {
     }
     if (idempotencyKey) {
       headers.set("Idempotency-Key", idempotencyKey);
+    } else if (
+      method === "POST" &&
+      !headers.has("Idempotency-Key") &&
+      typeof crypto !== "undefined" &&
+      typeof crypto.randomUUID === "function"
+    ) {
+      headers.set("Idempotency-Key", crypto.randomUUID());
     }
 
     return headers;
@@ -3673,3 +3716,5 @@ function appendQuery(path: string, query: Record<string, unknown>): string {
   }
   return `${path}?${params.toString()}`;
 }
+
+export * from "./src/foundry";

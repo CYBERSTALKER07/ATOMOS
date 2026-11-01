@@ -19,10 +19,15 @@ package ws
 
 import (
 	"context"
+	cryptorand "crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	mrand "math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,13 +38,21 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 )
 
-const defaultRingBufferSize = 256
+const (
+	defaultRingBufferSize = 256
+	maxHistoryRooms       = 2048
+)
 
 type bufferedEvent struct {
 	Seq       int64
 	EventID   string
 	Payload   []byte
 	Timestamp time.Time
+}
+
+type roomEnvelope struct {
+	payload []byte
+	eventID string
 }
 
 // Connection is the per-socket write seam. Production wraps a real WebSocket
@@ -61,6 +74,7 @@ type Hub struct {
 	relay    cache.Backend // Pub/Sub seam; nil disables cross-pod fan-out.
 	log      *slog.Logger
 	instance string
+	podID    string
 	limits   HubLimits
 
 	mu          sync.RWMutex
@@ -68,9 +82,13 @@ type Hub struct {
 	joinedAt    map[string]time.Time             // connectionID -> first subscribe time
 	socketRooms map[string]int                   // connectionID -> rooms still joined
 
-	historyMu sync.RWMutex
-	history   map[string][]bufferedEvent // room -> ring buffer of recent events
-	globalSeq int64
+	historyMu    sync.RWMutex
+	history      map[string][]bufferedEvent // room -> ring buffer of recent events
+	historyRooms []string                   // FIFO order of rooms for bounding to 2048
+	globalSeq    int64
+
+	roomWorkersMu sync.Mutex
+	roomWorkers   map[string]chan roomEnvelope
 
 	// failureCount is bumped on every Publish failure. Exposed for metrics.
 	failureCount uint64
@@ -86,21 +104,39 @@ func NewHub(name string, relay cache.Backend, log *slog.Logger) *Hub {
 
 var hubInstanceCounter atomic.Uint64
 
+func newPodEventID(podID string) string {
+	b := make([]byte, 4)
+	if _, err := cryptorand.Read(b); err != nil {
+		binary.LittleEndian.PutUint32(b, mrand.Uint32())
+	}
+	randHex := hex.EncodeToString(b)
+	return fmt.Sprintf("%s-%d-%s", podID, time.Now().UnixNano(), randHex)
+}
+
 // NewHubWithLimits constructs a Hub with explicit shedding/capacity limits.
 func NewHubWithLimits(name string, relay cache.Backend, log *slog.Logger, limits HubLimits) *Hub {
 	if log == nil {
 		log = slog.Default()
+	}
+	podID := strings.TrimSpace(os.Getenv("POD_NAME"))
+	if podID == "" {
+		podID = strings.TrimSpace(os.Getenv("HOSTNAME"))
+	}
+	if podID == "" {
+		podID = fmt.Sprintf("%s-%d", name, hubInstanceCounter.Add(1))
 	}
 	return &Hub{
 		name:        name,
 		relay:       relay,
 		log:         log,
 		instance:    fmt.Sprintf("%s-%d-%d", name, time.Now().UnixNano(), hubInstanceCounter.Add(1)),
+		podID:       podID,
 		limits:      limits,
 		rooms:       make(map[string]map[string]Connection),
 		joinedAt:    make(map[string]time.Time),
 		socketRooms: make(map[string]int),
 		history:     make(map[string][]bufferedEvent),
+		roomWorkers: make(map[string]chan roomEnvelope),
 	}
 }
 
@@ -166,6 +202,7 @@ func (h *Hub) forgetRoomLocked(room, connID string) {
 	delete(conns, connID)
 	if len(conns) == 0 {
 		delete(h.rooms, room)
+		h.closeRoomWorker(room)
 	}
 	h.noteLeaveLocked(connID)
 }
@@ -191,10 +228,20 @@ func (h *Hub) dropSocketLocked(connID string) {
 		delete(conns, connID)
 		if len(conns) == 0 {
 			delete(h.rooms, room)
+			h.closeRoomWorker(room)
 		}
 	}
 	delete(h.socketRooms, connID)
 	delete(h.joinedAt, connID)
+}
+
+func (h *Hub) closeRoomWorker(room string) {
+	h.roomWorkersMu.Lock()
+	if ch, ok := h.roomWorkers[room]; ok {
+		delete(h.roomWorkers, room)
+		close(ch)
+	}
+	h.roomWorkersMu.Unlock()
 }
 
 func (h *Hub) connectionCountLocked() int {
@@ -295,12 +342,18 @@ func (h *Hub) Broadcast(ctx context.Context, room string, payload []byte) {
 	if h == nil || room == "" || len(payload) == 0 {
 		return
 	}
-	h.fanoutLocal(ctx, room, payload)
-	h.publishCrossPod(ctx, room, payload)
+	_, eventID := parseSSEEventMetadata(payload)
+	if eventID == "" {
+		eventID = newPodEventID(h.podID)
+		payload = enrichWSEventPayload(payload, 0, eventID)
+	}
+	h.fanoutLocal(ctx, room, payload, eventID)
+	h.publishCrossPod(ctx, room, payload, eventID)
 }
 
-func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
-	deliveredPayload := h.recordHistory(room, payload)
+func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte, eventID string) {
+	detachedCtx := context.WithoutCancel(ctx)
+	deliveredPayload := h.recordHistory(room, payload, eventID)
 
 	h.mu.RLock()
 	conns := make([]Connection, 0, len(h.rooms[room]))
@@ -309,17 +362,33 @@ func (h *Hub) fanoutLocal(ctx context.Context, room string, payload []byte) {
 	}
 	h.mu.RUnlock()
 
-	var dead []string
-	for _, c := range conns {
-		writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		err := c.Send(writeCtx, deliveredPayload)
-		cancel()
-		if err != nil {
-			dead = append(dead, c.ID())
-			h.log.Debug("ws send failed; reaping connection",
-				"hub", h.name, "room", room, "conn_id", c.ID(), "err", err)
-		}
+	if len(conns) == 0 {
+		return
 	}
+
+	var (
+		deadMu sync.Mutex
+		dead   []string
+		wg     sync.WaitGroup
+	)
+	wg.Add(len(conns))
+	for _, c := range conns {
+		go func(conn Connection) {
+			defer wg.Done()
+			writeCtx, cancel := context.WithTimeout(detachedCtx, 2500*time.Millisecond)
+			err := conn.Send(writeCtx, deliveredPayload)
+			cancel()
+			if err != nil {
+				deadMu.Lock()
+				dead = append(dead, conn.ID())
+				deadMu.Unlock()
+				h.log.Debug("ws send failed; reaping connection",
+					"hub", h.name, "room", room, "conn_id", conn.ID(), "err", err)
+			}
+		}(c)
+	}
+	wg.Wait()
+
 	if len(dead) > 0 {
 		h.mu.Lock()
 		for _, id := range dead {
@@ -340,7 +409,8 @@ func enrichWSEventPayload(payload []byte, seq int64, eventID string) []byte {
 		object["event_id"] = eventID
 		modified = true
 	}
-	if _, ok := object["seq"]; !ok && seq > 0 {
+	if seq > 0 {
+		// decouple pod-local sequence numbers: always stamp or override with pod-local seq
 		object["seq"] = seq
 		modified = true
 	}
@@ -354,18 +424,30 @@ func enrichWSEventPayload(payload []byte, seq int64, eventID string) []byte {
 	return patched
 }
 
-func (h *Hub) recordHistory(room string, payload []byte) []byte {
+func (h *Hub) recordHistory(room string, payload []byte, eventID string) []byte {
 	if h == nil || room == "" || len(payload) == 0 {
 		return payload
 	}
 	h.historyMu.Lock()
 	defer h.historyMu.Unlock()
 	h.globalSeq++
-	_, eventID := parseSSEEventMetadata(payload)
 	if eventID == "" {
-		eventID = strconv.FormatInt(h.globalSeq, 10)
+		_, eventID = parseSSEEventMetadata(payload)
+		if eventID == "" {
+			eventID = strconv.FormatInt(h.globalSeq, 10)
+		}
 	}
 	enriched := enrichWSEventPayload(payload, h.globalSeq, eventID)
+
+	if _, ok := h.history[room]; !ok {
+		if len(h.history) >= maxHistoryRooms && len(h.historyRooms) > 0 {
+			oldest := h.historyRooms[0]
+			h.historyRooms = h.historyRooms[1:]
+			delete(h.history, oldest)
+		}
+		h.historyRooms = append(h.historyRooms, room)
+	}
+
 	buf := h.history[room]
 	evt := bufferedEvent{
 		Seq:       h.globalSeq,
@@ -382,6 +464,7 @@ func (h *Hub) recordHistory(room string, payload []byte) []byte {
 }
 
 // ReplaySince delivers buffered events for room to conn, starting after sinceSeq or lastEventID.
+// If lastEventID is unknown or the ring buffer is empty, it emits WS_RESYNC_REQUIRED (UA-7).
 func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, lastEventID string, conn Connection) int {
 	if h == nil || conn == nil || room == "" {
 		return 0
@@ -391,6 +474,24 @@ func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, last
 	h.historyMu.RUnlock()
 
 	lastEventID = strings.TrimSpace(lastEventID)
+	if lastEventID != "" {
+		if len(events) == 0 {
+			h.emitResyncRequired(ctx, room, lastEventID, conn)
+			return 0
+		}
+		foundMarker := false
+		for _, evt := range events {
+			if evt.EventID == lastEventID {
+				foundMarker = true
+				break
+			}
+		}
+		if !foundMarker {
+			h.emitResyncRequired(ctx, room, lastEventID, conn)
+			return 0
+		}
+	}
+
 	replayed := 0
 	foundMarker := false
 	for _, evt := range events {
@@ -403,7 +504,7 @@ func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, last
 		if sinceSeq > 0 && evt.Seq <= sinceSeq {
 			continue
 		}
-		writeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2500*time.Millisecond)
 		err := conn.Send(writeCtx, evt.Payload)
 		cancel()
 		if err != nil {
@@ -414,11 +515,24 @@ func (h *Hub) ReplaySince(ctx context.Context, room string, sinceSeq int64, last
 	return replayed
 }
 
-func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) {
+func (h *Hub) emitResyncRequired(ctx context.Context, room string, lastEventID string, conn Connection) {
+	resyncPayload, _ := json.Marshal(map[string]string{
+		"type":          "WS_RESYNC_REQUIRED",
+		"room":          room,
+		"last_event_id": lastEventID,
+	})
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2500*time.Millisecond)
+	_ = conn.Send(writeCtx, resyncPayload)
+	cancel()
+}
+
+func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte, eventID string) {
 	if h.relay == nil {
 		return
 	}
+	detachedCtx := context.WithoutCancel(ctx)
 	envelope := relayEnvelope{
+		EventID: eventID,
 		Source:  h.instance,
 		Room:    room,
 		Payload: append([]byte(nil), payload...),
@@ -429,7 +543,9 @@ func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) 
 		return
 	}
 	channel := h.relayChannel()
-	if err := h.relay.Publish(ctx, channel, raw); err != nil {
+	pubCtx, cancel := context.WithTimeout(detachedCtx, 2*time.Second)
+	defer cancel()
+	if err := h.relay.Publish(pubCtx, channel, raw); err != nil {
 		h.mu.Lock()
 		h.failureCount++
 		h.mu.Unlock()
@@ -439,10 +555,37 @@ func (h *Hub) publishCrossPod(ctx context.Context, room string, payload []byte) 
 	}
 }
 
+func (h *Hub) dispatchToRoom(room string, payload []byte, eventID string) {
+	h.roomWorkersMu.Lock()
+	ch, ok := h.roomWorkers[room]
+	if !ok {
+		ch = make(chan roomEnvelope, defaultRingBufferSize)
+		h.roomWorkers[room] = ch
+		go h.roomWorkerLoop(room, ch)
+	}
+	h.roomWorkersMu.Unlock()
+
+	select {
+	case ch <- roomEnvelope{payload: payload, eventID: eventID}:
+	default:
+		h.log.Warn("ws room channel backpressure: dropping incoming cross-pod event",
+			"hub", h.name, "room", room)
+	}
+}
+
+func (h *Hub) roomWorkerLoop(room string, ch <-chan roomEnvelope) {
+	for env := range ch {
+		detachedCtx := context.Background()
+		h.fanoutLocal(detachedCtx, room, env.payload, env.eventID)
+	}
+}
+
 // StartRelaySubscriber consumes one hub-scoped fanout channel and relays
 // decoded room payloads to local subscribers. Messages from the same instance
 // are ignored to avoid self-echo duplication. It features an exponential backoff
 // reconnection loop so temporary Redis disconnects do not terminate relay fanout permanently.
+// Incoming envelopes are dispatched to room channels asynchronously so slow room workers
+// do not backpressure the Redis subscription.
 func (h *Hub) StartRelaySubscriber(ctx context.Context) {
 	if h == nil || h.relay == nil {
 		return
@@ -495,7 +638,7 @@ func (h *Hub) StartRelaySubscriber(ctx context.Context) {
 				if envelope.Source == h.instance || envelope.Room == "" || len(envelope.Payload) == 0 {
 					continue
 				}
-				h.fanoutLocal(ctx, envelope.Room, envelope.Payload)
+				h.dispatchToRoom(envelope.Room, envelope.Payload, envelope.EventID)
 			}
 		}
 		cancel()
@@ -507,6 +650,7 @@ func (h *Hub) relayChannel() string {
 }
 
 type relayEnvelope struct {
+	EventID string `json:"event_id,omitempty"`
 	Source  string `json:"source"`
 	Room    string `json:"room"`
 	Payload []byte `json:"payload"`

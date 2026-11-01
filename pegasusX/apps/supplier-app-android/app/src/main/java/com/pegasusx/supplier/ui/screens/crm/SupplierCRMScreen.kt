@@ -112,7 +112,7 @@ fun SupplierCRMScreen(
             error != null && retailers.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "CRM unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

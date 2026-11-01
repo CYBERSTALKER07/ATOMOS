@@ -92,6 +92,8 @@ enum AppTheme {
 
     // MARK: Layout
     static let readableMaxWidth: CGFloat = 960
+    /// Minimum touch target size adhering to Apple HIG (44x44 pt).
+    static let minTouchTarget: CGFloat = 44
 
     /// Maps order/ops status strings to semantic badge tints (aligned with supplier/warehouse native).
     static func statusTint(for status: String) -> Color {
@@ -304,5 +306,11 @@ extension View {
     func retailerReadableWidth() -> some View {
         frame(maxWidth: AppTheme.readableMaxWidth)
             .frame(maxWidth: .infinity)
+    }
+
+    /// Enforces the Apple HIG minimum interactive hit target dimension (44x44 pt).
+    func pegasusMinimumHitTarget(minWidth: CGFloat = AppTheme.minTouchTarget, minHeight: CGFloat = AppTheme.minTouchTarget) -> some View {
+        frame(minWidth: minWidth, minHeight: minHeight)
+            .contentShape(Rectangle())
     }
 }

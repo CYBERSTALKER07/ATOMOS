@@ -177,13 +177,13 @@ fun DashboardScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Dashboard unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(padding),
             )
             dashboard != null -> {
-                val d = dashboard!!
+                val d = dashboard ?: return@Scaffold
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

@@ -200,7 +200,7 @@ fun InboundReturnsScreen(
             error != null -> com.pegasus.design.PegasusStatePane(
                 kind = com.pegasus.design.PegasusStateKind.Error,
                 headline = "Failed to load",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 actionLabel = "Retry",
                 onAction = { load() }

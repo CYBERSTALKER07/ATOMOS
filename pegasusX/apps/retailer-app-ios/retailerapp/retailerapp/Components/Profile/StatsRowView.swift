@@ -5,12 +5,16 @@ struct StatsRowView: View {
     var totalSpent: Int64
     var totalSpentCurrency: String
 
-    private func formatSpent(_ amount: Int64, currency: String) -> String {
+    private static let spentFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
         formatter.maximumFractionDigits = 0
-        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        return formatter
+    }()
+
+    private func formatSpent(_ amount: Int64, currency: String) -> String {
+        let formatted = Self.spentFormatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
         return "\(formatted) \(currency.isEmpty ? packCurrency(MarketPackStore.pack) : currency)"
     }
 

@@ -6,36 +6,48 @@ struct ShelfAlertModal: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppTheme.spacingLG) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
-                .foregroundColor(.red)
+                .font(.system(size: 44))
+                .foregroundColor(AppTheme.destructive)
+                .accessibilityHidden(true)
             
-            Text("RESTOCK NEEDED")
+            Text("Restock Needed")
                 .font(.title2)
                 .bold()
-                .foregroundColor(Color(red: 0.6, green: 0.1, blue: 0.1)) // Dark red
+                .foregroundColor(AppTheme.destructive)
             
-            Text("Product: \(productId) has dropped to \(currentStock) items on the floor.")
+            Text("Product \(productId) has dropped to \(currentStock) items on the floor.")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
-                .foregroundColor(Color(red: 0.5, green: 0.1, blue: 0.1))
+                .foregroundColor(AppTheme.textSecondary)
+                .monospacedDigit()
             
-            Button(action: onDismiss) {
-                Text("ACKNOWLEDGE")
+            Button(action: {
+                Haptics.selection()
+                onDismiss()
+            }) {
+                Text("Acknowledge")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.cardBackground)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .cornerRadius(8)
+                    .pegasusMinimumHitTarget(minHeight: AppTheme.minTouchTarget)
+                    .background(AppTheme.destructive)
+                    .cornerRadius(AppTheme.radiusSM)
             }
-            .padding(.top, 8)
+            .accessibilityLabel("Acknowledge Restock Alert for Product \(productId)")
+            .accessibilityHint("Dismisses the low stock alert")
+            .padding(.top, AppTheme.spacingSM)
         }
-        .padding(24)
-        .background(Color(red: 1.0, green: 0.9, blue: 0.9)) // Light red background
-        .cornerRadius(16)
-        .shadow(radius: 10)
-        .padding(24)
+        .padding(AppTheme.spacingXL)
+        .background(AppTheme.secondaryBackground)
+        .cornerRadius(AppTheme.radiusLG)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.radiusLG)
+                .stroke(AppTheme.destructive.opacity(0.3), lineWidth: 1)
+        )
+        .shadow(color: AppTheme.shadowColorLG, radius: 10, y: 4)
+        .padding(AppTheme.spacingXL)
+        .accessibilityElement(children: .contain)
     }
 }

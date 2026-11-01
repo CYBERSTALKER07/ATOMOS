@@ -160,8 +160,8 @@ fun SavedCardsScreen(
             title = { Text("Add Card") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (uiState.addError != null) {
-                        Text(uiState.addError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    uiState.addError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     Text(
                         "This will initiate tokenization securely via GlobalPay.",
@@ -192,8 +192,8 @@ fun SavedCardsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Sent to ${uiState.otpPhone ?: "phone"}")
-                    if (uiState.addError != null) {
-                        Text(uiState.addError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    uiState.addError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     OutlinedTextField(
                         value = otp,

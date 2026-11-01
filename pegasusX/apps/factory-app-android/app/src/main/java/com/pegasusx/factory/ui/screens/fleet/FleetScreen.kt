@@ -56,7 +56,7 @@ fun FleetScreen(
             try {
                 val resp = api.getFleet()
                 if (resp.isSuccessful && resp.body() != null) {
-                    vehicles = resp.body()!!.vehicles
+                    resp.body()?.let { vehicles = it.vehicles }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -121,7 +121,7 @@ fun FleetScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load fleet",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

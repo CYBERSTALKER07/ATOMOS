@@ -9,7 +9,9 @@ import Foundation
 
 enum SupplierSessionReconcile {
     static func run() async {
-        _ = try? await SupplierOperationsService.dispatchPreview()
-        _ = try? await SupplierOperationsService.manifests()
+        async let previewTask = SupplierOperationsService.dispatchPreview()
+        async let manifestsTask = SupplierOperationsService.manifests()
+        _ = try? await previewTask
+        _ = try? await manifestsTask
     }
 }

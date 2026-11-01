@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
@@ -88,7 +89,7 @@ func NewService(repo Repository) *Service {
 	return &Service{
 		repo:  repo,
 		now:   func() time.Time { return time.Now().UTC() },
-		newID: func() string { return fmt.Sprintf("ari_%d", time.Now().UnixNano()) },
+		newID: func() string { return fmt.Sprintf("ari_%s", uuid.NewString()) },
 	}
 }
 

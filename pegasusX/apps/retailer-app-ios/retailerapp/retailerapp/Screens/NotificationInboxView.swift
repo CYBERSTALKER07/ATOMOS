@@ -256,8 +256,10 @@ private struct NotificationRow: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private var timeAgo: String {
-        guard let date = ISO8601DateFormatter().date(from: notification.createdAt) else { return "" }
+        guard let date = Self.isoFormatter.date(from: notification.createdAt) else { return "" }
         let diff = Date().timeIntervalSince(date)
         let mins = Int(diff / 60)
         if mins < 1 { return "now" }

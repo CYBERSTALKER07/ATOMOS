@@ -84,7 +84,7 @@ fun FleetLiveMapScreen(
             error != null && routes.isEmpty() -> com.pegasus.design.ui.PegasusStatePane(
                 kind = com.pegasus.design.ui.PegasusStateKind.Error,
                 headline = "Failed to load map",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { scope.launch { load() } },
                 modifier = Modifier.padding(padding),

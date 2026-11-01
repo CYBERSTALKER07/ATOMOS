@@ -24,6 +24,9 @@ struct MoreHubView: View {
                 NavigationLink { PlanningBrainView() } label: {
                     Label("mobile_supplier.ui.planning_sandbox", systemImage: "brain.head.profile")
                 }
+                NavigationLink { FoundrySandboxView(onBack: {}) } label: {
+                    Label("Foundry Sandbox & Lot Recall", systemImage: "cube.transparent.fill")
+                }
                 NavigationLink { KnowledgeGraphView() } label: {
                     Label("mobile_supplier.ui.knowledge_graph", systemImage: "point.3.connected.trianglepath.dotted")
                 }

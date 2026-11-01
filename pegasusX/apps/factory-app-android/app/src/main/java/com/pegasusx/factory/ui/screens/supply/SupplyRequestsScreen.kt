@@ -117,7 +117,7 @@ fun SupplyRequestsScreen(
             try {
                 val resp = api.getSupplyRequests()
                 if (resp.isSuccessful && resp.body() != null) {
-                    requests = resp.body()!!.requests
+                    resp.body()?.let { requests = it.requests }
                     lastSyncedAt = System.currentTimeMillis()
                     staleMessage = null
                     error = null
@@ -257,7 +257,7 @@ fun SupplyRequestsScreen(
 
     val filteredRequests = if (filter == "ALL") requests else requests.filter { it.state == filter }
     val runtimeStatus = when {
-        staleMessage != null -> staleMessage!!
+        staleMessage != null -> staleMessage.orEmpty()
         realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live queue — last sync ${formatSyncTime(lastSyncedAt)}"
         realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to the live supply queue…"
@@ -344,7 +344,7 @@ fun SupplyRequestsScreen(
             error != null -> PegasusStatePane(
                 kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) PegasusStateKind.Offline else PegasusStateKind.Error,
                 headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Supply queue unavailable offline" else "Unable to load supply requests",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

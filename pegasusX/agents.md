@@ -37,19 +37,25 @@ Autonomous coding agents frequently fail by optimizing for *"make the terminal e
 
 ## 1. System Architecture & Domain Mission
 
-### 1.1. Single-Supplier Multi-Retailer (SSMR) Doctrine
-PegasusX is an enterprise wholesale Fast-Moving Consumer Goods (FMCG) distribution engine engineered for Central Asia (Uzbekistan / Tashkent and regional hubs) with multi-region cell scalability.
+### 1.1. Single-Supplier Multi-Retailer (SSMR) & 9-Role Ecosystem Doctrine
+PegasusX is an enterprise wholesale Fast-Moving Consumer Goods (FMCG) distribution and commercial operating system engineered for Central Asia (Uzbekistan / Tashkent and regional hubs) with multi-region cell scalability (`cell-uz`, `cell-eu`, `cell-kz`).
 
-Unlike open two-sided marketplaces, PegasusX enforces the **Single-Supplier Multi-Retailer (SSMR)** model (`package.json`):
-- **Authoritative Supplier Core**: A single supplier organization controls the master product catalog, pricing tiers, packaging units, factories, distribution warehouses, and delivery fleet.
-- **Retailer Network**: Independent retail stores order via mobile apps, desktop POS terminals, and automated replenishment schedules.
-- **End-to-End Custody & Money Chain**:
-  1. **Factory (`apps/backend-go/factoryroutes/`)**: Production line scheduling, batching, palletization, and inter-warehouse transfers.
-  2. **Warehouse (`apps/backend-go/warehouseroutes/`, `apps/backend-go/warehouseops/`)**: Inbound receiving, FEFO lot tracking, cold-chain monitoring, CRDT offline inventory adjustments, and wave picking.
-  3. **Payload / Dock (`apps/backend-go/payloaderoutes/`)**: 3D truck bin-packing, axle load validation, and tamper-evident seal verification.
-  4. **Dispatch & Driver (`apps/backend-go/driverroutes/`, `services/optimizer-core/`)**: OR-Tools / Rust VRP routing, OSRM/Google geometry, and real-time GPS telemetry.
-  5. **Handoff & EPOD (`packages/handoff/engine.go`, `apps/backend-go/orderroutes/`)**: Cryptographic SHA-256/HMAC QR proof-of-delivery handoff tokens and geofence verification.
-  6. **Financial Settlement & Fiscalization (`apps/backend-go/payment/`, `apps/backend-go/ar/`, `apps/backend-go/soliq/`)**: Integer minor-unit (Tiyin) ledger accounting, Accounts Receivable (AR) credit & dunning, and mandatory Uzbekistan State Tax Committee (**Soliq** EHF/OFD) fiscal receipts under ADR-009.
+Unlike open two-sided marketplaces, PegasusX enforces the **Single-Supplier Multi-Retailer (SSMR)** model across **9 Operational Roles** and a **Palantir Foundry-Grade Semantic-Kinetic-Dynamic Architecture**:
+- **Role 1 — Supplier / Brand Manufacturer (`apps/backend-go/supplierroutes/`, `apps/backend-go/pricing/`, `apps/backend-go/promotion/`, `apps/backend-go/payout/`)**: Commercial HQ, GTIN/GS1 & GlobalProducts catalog sovereignty, multi-tier price matrix & promo contract budgets, bilateral trade credit underwriting & dunning ladder, reverse factoring / immutable `InvoiceSettlementSlices` payouts, and S&OP demand forecasting.
+- **Role 2 — Factory (`apps/backend-go/factoryroutes/`)**: BOM explosion, raw material lot locking, production line scheduling, in-line quality control, SSCC-18 pallet serialization, and inter-facility FTL transfers.
+- **Role 3 — Warehouse (`apps/backend-go/warehouseroutes/`, `apps/backend-go/warehouseops/`, `apps/backend-go/stocklots/`)**: Regional DC inbound receiving, ABC velocity putaway, FEFO lot rotation, cold-chain monitoring, CRDT offline inventory adjustments, dynamic wave picking, and probabilistic cycle counts.
+- **Role 4 — Payloader (`apps/backend-go/payloaderoutes/`)**: Reverse-stop LIFO loading, 3D volumetric & crushability bin-packing, front/rear axle weight scaling, returnable transport item (RTI) reverse-space accounting, and cryptographic bolt seal binding.
+- **Role 5 — Driver (`apps/backend-go/driverroutes/`, `services/optimizer-core/`)**: Mandatory pre-trip DVIR clearance, dynamic CVRPTW turn-by-turn routing, 150m/50m doorstep geofence verification, cryptographic ePOD handshake, split-tender collection, and mid-route fleet rescue custody transfers.
+- **Role 6 — Retailer (`apps/backend-go/retailerroutes/`)**: Store POS, Shelf AI gap detection, autonomous S&OP replenishment cart, multi-supplier `ParentOrders` checkout saga, stock receiving sessions, and 48-hour concealed damage claims tribunal.
+- **Role 7 — Depot Cashier & Vault Ops (`apps/backend-go/cashreconroutes/`, `apps/backend-go/foundry/`)**: Tamper-evident cash bag ingestion, Dual-Blind Denomination Counting Ritual (expected total hidden until recount ratchet completes), RRN-verified tender reclassification, Perpetual Depot Vault Ledger, CIT armored bank courier handover, and uncapped multi-tender settlement tracking aggregated across Legal Entity `TIN/PINFL`.
+- **Role 8 — Platform Admin & Global Control Tower (`apps/backend-go/platformadmin/`, `apps/backend-go/controltowerroutes/`)**: Multi-region cell federation & zero cross-cell leakage, declarative Market Packs (zero hardcoded currency literals), Soliq EHF/OFD PKCS#12 fiscal gateway, immutable `AuditEvents` & SHA-256 `EvidenceDossiers`.
+- **Role 9 — Fleet, Yard & Maintenance Manager (`apps/backend-go/foundry/`, `apps/backend-go/driverroutes/`)**: ALPR gate check-in/out, dynamic yard bay slotting (`INBOUND_STAGING`, `CROSS_DOCK`, `OUTBOUND_LOADING`, `MECHANICAL_SERVICE`), mandatory 8-point Pre-Trip DVIR walkaround, automatic **Red-Tag Grounding Gate** (`OUT_OF_SERVICE`), telemetry-linked predictive maintenance holds, and post-trip preventative servicing.
+
+### 1.1.1. Foundry-Grade Semantic-Kinetic-Dynamic Triad (Pre-Execution Architecture)
+Every execution across PegasusX operates on three foundational layers (`apps/backend-go/foundry/` & `docs/roles/FOUNDRY_ONTOLOGY_AND_EDGE_CASES.md`):
+1. **Semantic Layer (The Ontology Graph)**: Every domain entity (`RawMaterialLot`, `WorkOrder`, `SSCCPallet`, `PickWave`, `Tote`, `Vehicle`, `RouteManifest`, `Order`, `CashBag`, `InvoiceSettlementSlice`, `SoliqFactura`) is indexed as a strongly-typed Ontology Object connected by directed `OntologyGraphEdges` with propagating `SecurityMarkings` (`MARKING:AML_INVESTIGATION`, `MARKING:DISCREPANT_QUARANTINE`, `MARKING:THERMAL_QUARANTINE_SPOILED`), enabling millisecond multi-hop `SearchAround` blast-radius traversals.
+2. **Kinetic Layer (Pre-Execution Action Engine)**: State transitions execute through validated **Kinetic Action Contracts** that enforce deterministic pre-condition rubrics, multi-party approvals, and atomic audit diff logging before committing to Cloud Spanner.
+3. **Dynamic Layer (Copy-on-Write Scenario Sandbox / Digital Twin)**: Planners and operators fork live state into isolated `ScenarioId` overlays (`ResolvedState = BaseSpannerState ⊕ ScenarioPatches - ScenarioDeletions`), run deterministic solvers without triggering external fiscal/SMS side effects, and commit back to production via optimistic concurrency watermark checks (`BaseVersion`).
 
 ### 1.2. Authoritative Technology Stack (Do Not Hallucinate Foreign Stacks)
 - **Primary Database**: **Google Cloud Spanner** (`cloud.google.com/go/spanner`) with authoritative schema in `apps/backend-go/schema/spanner.ddl` and incremental migrations in `apps/backend-go/schema/migrations/`. *(Note: Do NOT introduce PostgreSQL/`pgx`/`timescaledb` idioms into `apps/backend-go`—Spanner is the sole transactional store.)*
@@ -108,9 +114,25 @@ Every architectural rule is paired with an executable gate script. All code must
   3. Redis cache invalidation must occur only after the Spanner transaction commits, and WebSocket broadcasts over Redis Pub/Sub must be fail-open.
 - **Gate**: `scripts/ci_schema_drift_gate.sh`.
 
-### Invariant 9: 360° Cross-Platform & 6-Role Parity
-- **Rule**: 100% of `/v1/...` routes called by any Web, Desktop, Android, or iOS client across all 6 roles (Retailer, Driver, Warehouse, Supplier, Factory, Platform Admin) must map to registered routes in `apps/backend-go`, and active Terraform monitoring (`infra/terraform/modules/monitoring/main.tf`) must enforce all platform SLO alerts.
+### Invariant 9: 360° Cross-Platform & 9-Role Parity
+- **Rule**: 100% of `/v1/...` routes called by any Web, Desktop, Android, or iOS client across all 9 operational roles (Supplier, Factory, Warehouse, Payloader, Driver, Retailer, Depot Cashier, Platform Admin, Fleet & Yard Manager) must map to registered routes in `apps/backend-go`, and active Terraform monitoring (`infra/terraform/modules/monitoring/main.tf`) must enforce all platform SLO alerts.
 - **Gates**: `scripts/parity/role_row_contract_check_full.sh`, `scripts/parity/gap_hunter_gate.sh`, `scripts/phase2_gate.sh` through `scripts/phase5c_gate.sh`.
+
+### Invariant 10: Mandatory Pre-Execution Kinetic & 12 Edge-Case Guards
+- **Rule**: Before any domain mutation executes across the 10-step operational cascade, the backend must evaluate and enforce the 12 cross-role edge-case pre-execution guards (`apps/backend-go/foundry/` & `docs/roles/FOUNDRY_ONTOLOGY_AND_EDGE_CASES.md`):
+  1. **Split-Tender Doorstep Partial Rejection**: Fault-attributed volume-break tier protection (`DAMAGED_IN_TRANSIT`/`SHORT_SHIPPED` preserves original volume discount tier; `BUYER_REMORSE_REFUSAL` recalculates tier) + deterministic tender reduction waterfall (reduces `CREDIT` draw before `CASH`).
+  2. **Multi-Tender Tracking & Uncapped Policy**: Aggregate daily settlements across the parent Legal Entity `TIN/PINFL` + `SupplierId` for transparent audit logging under an uncapped payment and credit policy (no artificial ceilings or credit limit blocks).
+  3. **Two-Phase Soliq Fiscal Pre-Flight & Payout Gate**: Block pick-wave release if any SKU lacks a valid IKPU/MXIK code or if the Supplier's `.p12` signing certificate expires within `< 72h`; block `InvoiceSettlementSlices` from `BATCHED` unless `FiscalState == REGISTERED_SOLIQ`.
+  4. **Mid-Route Breakdown Rescue & Cold-Chain Thermal Quarantine**: Split driver cash liability at the exact handover stop (`1..K` vs `K+1..N`), quarantine chilled/frozen totes if thermal excursion exceeds tolerance, and bind the new rescue bolt seal.
+  5. **Zero-Destructive RRN Tender Reclassification**: Require a verified gateway RRN within `±15m` of the ePOD timestamp to post compensating ledger entries when reclassifying Cash to Card.
+  6. **3D Volumetric Crushability & Returnable Container (`RTI`) Space Accounting**: Enforce `Ti/Hi` crushability rules and track reverse-logistics empty crate/pallet volume and deposits in `ReturnableContainerLedger`.
+  7. **Scenario Optimistic Concurrency Watermark**: Verify `BaseVersion` on every object touched by a Copy-on-Write Scenario before committing to production; surface structured merge conflicts on drift.
+  8. **Post-Settlement Clawback Slices & Rolling Reserve Escrow**: Never mutate `BATCHED` settlement slices; append negative `CONCEALED_DAMAGE_CLAIM_APPROVED` slices backed by rolling reserve holdbacks.
+  9. **FX Volatility Corridor & Wave Price Freeze**: Enforce `LOCK_AT_CHECKOUT` vs `FLOAT_WITH_CORRIDOR_CAP` before wave release and hard-freeze minor unit prices once a pick wave is released.
+  10. **Abandoned Pick-Wave Tote Heartbeat Takeover**: Detect `PICKER_IN_HAND` totes stalled `> 20m` without scan activity and allow atomic picker takeover without double-picking FEFO lots.
+  11. **Dual-Blind Cashier Recount Ratchet & Tolerance-Skimming Detection**: Never expose `ExpectedCashMinor` to the Depot Cashier during input or first variance; require a blind Recount #2 before supervisor reveal, and flag systematic micro-skimming patterns.
+  12. **Pre-Trip 8-Point DVIR Red-Tag Grounding Gate**: Automatically transition any vehicle with a critical DVIR defect to `OUT_OF_SERVICE`, uncouple driver-vehicle pairing, block Payloader/Dispatch selection, and issue a workshop maintenance order.
+- **Gate**: `(cd apps/backend-go && go test -race ./foundry/...)` and `make schema-drift-gate`.
 
 ---
 

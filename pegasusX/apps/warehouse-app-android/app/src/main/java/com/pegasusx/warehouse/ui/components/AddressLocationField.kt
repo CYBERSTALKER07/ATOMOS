@@ -78,8 +78,9 @@ fun AddressLocationField(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
         val top = runCatching { geocodeApi.autocomplete(trimmed).predictions.firstOrNull() }.getOrNull()
-        if (!top?.placeId.isNullOrBlank()) {
-            val byPlace = runCatching { geocodeApi.resolvePlace(top!!.placeId) }.getOrNull()
+        val placeId = top?.placeId
+        if (!placeId.isNullOrBlank()) {
+            val byPlace = runCatching { geocodeApi.resolvePlace(placeId) }.getOrNull()
             if (byPlace != null && GeocodeLocationSupport.hasValidCoordinates(byPlace.lat, byPlace.lng)) {
                 applyResolved(byPlace.address.ifBlank { trimmed }, byPlace.lat, byPlace.lng, byPlace.placeId)
                 return true
@@ -199,8 +200,9 @@ fun AddressLocationField(
                 )
             }
         }
-        if (!error.isNullOrBlank()) {
-            Text(text = error!!, color = MaterialTheme.colorScheme.error)
+        val currentError = error
+        if (!currentError.isNullOrBlank()) {
+            Text(text = currentError, color = MaterialTheme.colorScheme.error)
         }
     }
 }

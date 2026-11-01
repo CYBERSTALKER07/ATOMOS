@@ -61,8 +61,8 @@ export default function ChargebacksPage() {
       setOrderId("");
       setRetailerId("");
       setAmount("");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setBusy(false);
     }
@@ -88,8 +88,8 @@ export default function ChargebacksPage() {
       const data = await res.json();
       setReversalMessage(`Reversal recorded (${data.status || 'Success'}).`);
       setSessionId("");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setBusy(false);
     }

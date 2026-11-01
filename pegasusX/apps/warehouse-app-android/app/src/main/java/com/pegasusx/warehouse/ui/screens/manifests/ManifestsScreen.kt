@@ -36,7 +36,8 @@ fun ManifestsScreen(
         scope.launch {
             try {
                 val resp = api.getManifests()
-                if (resp.isSuccessful && resp.body() != null) manifests = resp.body()!!.manifests
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) manifests = respBody.manifests
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -58,7 +59,7 @@ fun ManifestsScreen(
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }

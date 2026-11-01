@@ -4,14 +4,15 @@ import SwiftUI
 /// Canonical mapper — keep aligned with packages/types/forecast-confidence.ts
 enum ForecastConfidenceSupport {
     private static let staleMinutes: Int64 = 30
+    private static let isoFormatter = ISO8601DateFormatter()
 
     static func isForecastStale(generatedAt: String?) -> Bool {
-        guard let generatedAt, let date = ISO8601DateFormatter().date(from: generatedAt) else { return false }
+        guard let generatedAt, let date = isoFormatter.date(from: generatedAt) else { return false }
         return Int64(Date().timeIntervalSince(date) / 60) > staleMinutes
     }
 
     static func formatForecastUpdatedAt(generatedAt: String?) -> String? {
-        guard let generatedAt, let date = ISO8601DateFormatter().date(from: generatedAt) else {
+        guard let generatedAt, let date = isoFormatter.date(from: generatedAt) else {
             return generatedAt
         }
         let mins = Int64(Date().timeIntervalSince(date) / 60)

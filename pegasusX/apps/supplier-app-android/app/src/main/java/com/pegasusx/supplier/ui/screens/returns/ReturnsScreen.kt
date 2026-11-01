@@ -100,7 +100,7 @@ fun ReturnsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null && items.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Returns unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -118,7 +118,7 @@ fun ReturnsScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             ) {
                 if (error != null) {
                     item {
-                        Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 items(items, key = { it.returnId }) { row ->

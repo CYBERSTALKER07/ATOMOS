@@ -83,7 +83,7 @@ fun DashboardScreen(
             try {
                 val resp = api.getDashboard()
                 if (resp.isSuccessful && resp.body() != null) {
-                    data = resp.body()!!
+                    resp.body()?.let { data = it }
                     hasData = true
                 } else if (!silent) {
                     error = "Failed to load (${resp.code()})"
@@ -139,7 +139,7 @@ fun DashboardScreen(
             error != null && !hasData -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Dashboard unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),

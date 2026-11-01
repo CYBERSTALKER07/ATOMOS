@@ -44,15 +44,19 @@ function resolveAuthEmulatorHost(): string {
   return "http://127.0.0.1:9099";
 }
 
+interface EmulatorAwareAuth {
+  _emulatorConnected?: boolean;
+}
+
+const emulatorAuth = auth as unknown as EmulatorAwareAuth;
+
 if (
   typeof window !== "undefined" &&
   shouldUseAuthEmulator() &&
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  !(auth as any)._emulatorConnected
+  !emulatorAuth._emulatorConnected
 ) {
   connectAuthEmulator(auth, resolveAuthEmulatorHost(), { disableWarnings: true });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (auth as any)._emulatorConnected = true;
+  emulatorAuth._emulatorConnected = true;
 }
 
 export async function firebaseSignOut(): Promise<void> {
@@ -69,8 +73,7 @@ export async function firebaseSignOut(): Promise<void> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let phoneConfirmation: any = null;
+let phoneConfirmation: ConfirmationResult | null = null;
 
 class EmulatorRecaptchaVerifier {
   type = "recaptcha" as const;

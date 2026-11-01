@@ -171,8 +171,10 @@ struct FileClaimView: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func formatEndsAt(_ raw: String?) -> String {
-        guard let raw, let date = ISO8601DateFormatter().date(from: raw) else {
+        guard let raw, let date = Self.isoFormatter.date(from: raw) else {
             return raw ?? "window end"
         }
         return date.formatted(date: .abbreviated, time: .shortened)

@@ -3,7 +3,7 @@ package billing
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"cloud.google.com/go/spanner"
@@ -34,14 +34,14 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 		return nil
 	}
 	if amount <= 0 {
-		log.Printf("Metering skip ORDER_FINALIZED non-positive amount: orderID=%s amount=%d", orderID, amount)
+		slog.DebugContext(ctx, "metering skip ORDER_FINALIZED non-positive amount", "order_id", orderID, "amount", amount)
 		return nil
 	}
 	if w == nil || w.client == nil {
 		return fmt.Errorf("billing meter: nil spanner client")
 	}
 
-	log.Printf("Metering ORDER_FINALIZED: orderID=%s amount=%d supplierID=%s", orderID, amount, supplierID)
+	slog.InfoContext(ctx, "metering ORDER_FINALIZED", "order_id", orderID, "amount", amount, "supplier_id", supplierID)
 
 	_, err := w.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Idempotency: skip when this order was already metered.
@@ -54,7 +54,7 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 		if _, err := iter.Next(); err == nil {
-			log.Printf("Order %s already metered, skipping", orderID)
+			slog.DebugContext(ctx, "order already metered, skipping", "order_id", orderID)
 			return nil
 		} else if err != iterator.Done {
 			return fmt.Errorf("billing meter idempotency lookup: %w", err)
@@ -104,7 +104,7 @@ func (w *MeterWorker) ProcessOrderFinalized(ctx context.Context, orderID string,
 	})
 
 	if err != nil {
-		log.Printf("Failed to process billing for order %s: %v", orderID, err)
+		slog.ErrorContext(ctx, "failed to process billing for order", "order_id", orderID, "err", err)
 		return err
 	}
 	return nil

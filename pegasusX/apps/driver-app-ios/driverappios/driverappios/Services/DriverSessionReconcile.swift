@@ -8,12 +8,18 @@
 import Foundation
 
 enum DriverSessionReconcile {
-    static func run() async {
-        _ = try? await APIClient.shared.getAssignedOrders()
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        let today = formatter.string(from: Date())
-        _ = try? await APIClient.shared.getManifest(date: today)
+        return formatter
+    }()
+
+    static func run() async {
+        let today = dateFormatter.string(from: Date())
+        async let ordersTask = APIClient.shared.getAssignedOrders()
+        async let manifestTask = APIClient.shared.getManifest(date: today)
+        _ = try? await ordersTask
+        _ = try? await manifestTask
     }
 }

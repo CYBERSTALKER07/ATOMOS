@@ -139,7 +139,12 @@ func (r *Relay) watchdogOnce(ctx context.Context) {
 	} else {
 		SetUnpublishedCount(count)
 	}
-	events, err := r.store.Fetch(ctx, r.cfg.BatchSize)
+	var events []Event
+	if inspector, ok := r.store.(StuckInspector); ok {
+		events, err = inspector.InspectStuck(ctx, r.cfg.BatchSize)
+	} else {
+		events, err = r.store.Fetch(ctx, r.cfg.BatchSize)
+	}
 	if err != nil {
 		r.log.Error("outbox watchdog fetch failed", "err", err)
 		return
@@ -200,6 +205,7 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		mu        sync.Mutex
 		published = make([]string, 0, len(fetchedEvents))
 		failed    = make(map[string]error)
+		skipped   = make([]string, 0)
 		wg        sync.WaitGroup
 	)
 
@@ -211,9 +217,15 @@ func (r *Relay) drainOnce(ctx context.Context) {
 		wg.Add(1)
 		go func(batch []Event) {
 			defer wg.Done()
+			defer func() {
+				if rec := recover(); rec != nil {
+					r.log.Error("outbox worker shard panic recovered", "panic", rec)
+				}
+			}()
 			blockedAggregates := make(map[string]bool)
 			localPublished := make([]string, 0, len(batch))
 			localFailed := make(map[string]error)
+			localSkipped := make([]string, 0)
 
 			for _, e := range batch {
 				if e.AggregateID != "" && blockedAggregates[e.AggregateID] {
@@ -224,6 +236,7 @@ func (r *Relay) drainOnce(ctx context.Context) {
 						"event_id", e.EventID,
 						"aggregate_id", e.AggregateID,
 					)
+					localSkipped = append(localSkipped, e.EventID)
 					continue
 				}
 				if err := r.publishWithRetry(ctx, e); err != nil {
@@ -246,17 +259,28 @@ func (r *Relay) drainOnce(ctx context.Context) {
 				}
 			}
 
-			if len(localPublished) > 0 || len(localFailed) > 0 {
+			if len(localPublished) > 0 || len(localFailed) > 0 || len(localSkipped) > 0 {
 				mu.Lock()
 				published = append(published, localPublished...)
 				for id, ferr := range localFailed {
 					failed[id] = ferr
 				}
+				skipped = append(skipped, localSkipped...)
 				mu.Unlock()
 			}
 		}(shardEvents)
 	}
 	wg.Wait()
+
+	if len(skipped) > 0 {
+		if releaser, ok := r.store.(ClaimReleaser); ok {
+			unclaimCtx, cancelUnclaim := context.WithTimeout(ctx, r.cfg.StoreTimeout)
+			if err := releaser.Unclaim(unclaimCtx, skipped); err != nil {
+				r.log.Error("outbox unclaim skipped events failed", "count", len(skipped), "err", err)
+			}
+			cancelUnclaim()
+		}
+	}
 
 	if len(published) > 0 {
 		markCtx, cancelMark := context.WithTimeout(ctx, r.cfg.StoreTimeout)

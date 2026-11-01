@@ -139,9 +139,10 @@ fun HomeScreen(
         )
     }
 
-    if (state.pendingRescueId != null) {
+    val pendingRescue = state.pendingRescueId
+    if (pendingRescue != null) {
         RescueAcceptanceDialog(
-            rescueId = state.pendingRescueId!!,
+            rescueId = pendingRescue,
             brokenDriverId = state.pendingBrokenDriverId.orEmpty(),
             onAccept = { viewModel.respondRescue(accept = true) },
             onDismiss = { viewModel.respondRescue(accept = false) }

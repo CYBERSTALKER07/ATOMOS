@@ -3,6 +3,14 @@
 import { usePortalT } from "@/lib/i18n";
 import { useState, useRef } from 'react';
 
+export interface BulkImportProductRow {
+  name: string;
+  price: string;
+  barcode: string;
+  category: string;
+  vu: string;
+}
+
 export function BulkImportWizard({
   isOpen,
   onClose,
@@ -10,13 +18,13 @@ export function BulkImportWizard({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (rows: any[]) => void;
+  onImport: (rows: BulkImportProductRow[]) => void;
 }) {
   const t = usePortalT();
   const [step, setStep] = useState<'upload' | 'map' | 'review'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
-  const [rows, setRows] = useState<any[][]>([]);
+  const [rows, setRows] = useState<string[][]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   
   const fileInputRef = useRef<HTMLInputElement>(null);

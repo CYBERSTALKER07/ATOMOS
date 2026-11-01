@@ -22,6 +22,7 @@ export const NAV: NavSection[] = [
       { href: "/dispatch-settings", icon: "settings", labelKey: "portal.nav.dispatch_settings" },
       { href: "/dispatch-locks", icon: "lock", labelKey: "portal.nav.dispatch_locks" },
       { href: "/manifests", icon: "manifests", labelKey: "portal.nav.manifests" },
+      { href: "/foundry", icon: "global", labelKey: "portal.nav.foundry" },
     ],
   },
   {
@@ -42,6 +43,7 @@ export const NAV: NavSection[] = [
       { href: "/drivers", icon: "fleet", labelKey: "portal.nav.drivers" },
       { href: "/labor-capacity", icon: "fleet", labelKey: "portal.nav.labor_capacity" },
       { href: "/vehicles", icon: "fleet", labelKey: "portal.nav.trucks" },
+      { href: "/fleet", icon: "fleet", labelKey: "portal.nav.fleet_yard" },
       { href: "/fleet-live-map", icon: "map", labelKey: "portal.nav.live_fleet" },
     ],
   },
@@ -69,6 +71,7 @@ export const NAV: NavSection[] = [
     labelKey: "portal.nav.section.finance",
     items: [
       { href: "/treasury", icon: "treasury", labelKey: "portal.nav.treasury" },
+      { href: "/cashier", icon: "treasury", labelKey: "portal.nav.cashier" },
       { href: "/payment-config", icon: "payment", labelKey: "portal.nav.payment_config" },
     ],
   },

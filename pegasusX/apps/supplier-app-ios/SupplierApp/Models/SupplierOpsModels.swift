@@ -2145,6 +2145,14 @@ struct ComplianceSummary: Decodable {
         case generatedAt = "generated_at"
     }
 
+    init(openFiscalCount: Int = 0, forceCompleteCount: Int = 0, claimMismatchCount: Int = 0, creditFreezeCount: Int = 0, generatedAt: String = "") {
+        self.openFiscalCount = openFiscalCount
+        self.forceCompleteCount = forceCompleteCount
+        self.claimMismatchCount = claimMismatchCount
+        self.creditFreezeCount = creditFreezeCount
+        self.generatedAt = generatedAt
+    }
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         openFiscalCount = try c.decodeIfPresent(Int.self, forKey: .openFiscalCount) ?? 0
@@ -2289,8 +2297,9 @@ struct ComplianceDashboardResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        summary = try c.decodeIfPresent(ComplianceSummary.self, forKey: .summary)
-            ?? ComplianceSummary(from: try decoder.singleValueContainer() as! Decoder)
+        summary = (try? c.decode(ComplianceSummary.self, forKey: .summary))
+            ?? (try? ComplianceSummary(from: decoder))
+            ?? ComplianceSummary()
         // Fallback empty if decode fails for optional arrays
         openFiscal = (try? c.decode([ComplianceFiscalOpenRow].self, forKey: .openFiscal)) ?? []
         forceCompletes = (try? c.decode([ComplianceForceCompleteRow].self, forKey: .forceCompletes)) ?? []

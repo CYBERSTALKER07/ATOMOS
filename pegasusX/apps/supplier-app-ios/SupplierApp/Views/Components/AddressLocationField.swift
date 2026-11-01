@@ -16,13 +16,23 @@ struct AddressLocationField: View {
   @State private var suggestions: [GeocodePrediction] = []
   @State private var error: String?
   @State private var locating = false
+  @State private var searchTask: Task<Void, Never>?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
       TextField(label, text: $query)
         .textInputAutocapitalization(.words)
         .onChange(of: query) { _, text in
-          Task { await search(text) }
+          searchTask?.cancel()
+          searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000) // 280ms keystroke debounce
+            guard !Task.isCancelled else { return }
+            await search(text)
+          }
+        }
+        .onDisappear {
+          searchTask?.cancel()
+          searchTask = nil
         }
       if !suggestions.isEmpty {
         ForEach(suggestions.prefix(5), id: \.placeId) { item in
@@ -49,8 +59,13 @@ struct AddressLocationField: View {
   @MainActor
   private func search(_ text: String) async {
     error = nil
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+      suggestions = []
+      return
+    }
     do {
-      suggestions = try await GeocodeService.autocomplete(text)
+      suggestions = try await GeocodeService.autocomplete(trimmed)
     } catch {
       suggestions = []
     }

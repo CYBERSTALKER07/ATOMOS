@@ -113,3 +113,13 @@ func (s *OutboxStore) RecordPublishFailures(_ context.Context, eventIDs []string
 	}
 	return deadLettered, nil
 }
+
+// Unclaim implements outbox.ClaimReleaser.
+func (s *OutboxStore) Unclaim(_ context.Context, _ []string) error {
+	return nil
+}
+
+// InspectStuck implements outbox.StuckInspector.
+func (s *OutboxStore) InspectStuck(ctx context.Context, limit int) ([]outbox.Event, error) {
+	return s.Fetch(ctx, limit)
+}

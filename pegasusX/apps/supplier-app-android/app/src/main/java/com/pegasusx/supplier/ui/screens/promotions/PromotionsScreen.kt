@@ -106,7 +106,7 @@ fun PromotionsScreen(api: SupplierApi, realtimeSignals: SupplierRealtimeSignals)
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Promotions unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 promotions.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,

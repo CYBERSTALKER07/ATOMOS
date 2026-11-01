@@ -47,6 +47,10 @@ spec:
             - name: health
               containerPort: 8081
               protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sleep", "5"]
           envFrom:
             - configMapRef:
                 name: backend-go-config

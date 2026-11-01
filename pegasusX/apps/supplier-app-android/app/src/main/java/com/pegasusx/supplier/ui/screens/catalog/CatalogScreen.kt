@@ -349,7 +349,7 @@ fun CatalogScreen(
                 error != null && products.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Catalog unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                 )
                 products.isEmpty() -> PegasusStatePane(
                     kind = PegasusStateKind.Empty,

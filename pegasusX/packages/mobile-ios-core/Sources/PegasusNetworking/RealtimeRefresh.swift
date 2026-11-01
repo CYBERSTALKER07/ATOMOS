@@ -9,6 +9,8 @@ public struct SilentRefreshModifier: ViewModifier {
     private let reconnectEpoch: Int
     private let reload: (_ silent: Bool) -> Void
 
+    @State private var coalesceTask: Task<Void, Never>?
+
     public init(
         refreshEpoch: Int,
         reconnectEpoch: Int = 0,
@@ -21,8 +23,21 @@ public struct SilentRefreshModifier: ViewModifier {
 
     public func body(content: Content) -> some View {
         content
-            .onChange(of: refreshEpoch) { _, _ in reload(true) }
-            .onChange(of: reconnectEpoch) { _, _ in reload(true) }
+            .onChange(of: refreshEpoch) { _, _ in scheduleCoalescedReload() }
+            .onChange(of: reconnectEpoch) { _, _ in scheduleCoalescedReload() }
+            .onDisappear {
+                coalesceTask?.cancel()
+                coalesceTask = nil
+            }
+    }
+
+    private func scheduleCoalescedReload() {
+        coalesceTask?.cancel()
+        coalesceTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 120_000_000) // 120ms burst coalescing window
+            guard !Task.isCancelled else { return }
+            reload(true)
+        }
     }
 }
 

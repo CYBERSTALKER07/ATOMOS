@@ -38,6 +38,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
   const listenersRef = useRef<Map<string, Set<WsEventHandler>>>(new Map());
   const hasConnectedOnceRef = useRef(false);
+  const lastEventIdRef = useRef<string | null>(null);
   
   const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8180/v1/ws';
 
@@ -58,9 +59,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       const token = readToken();
       if (!token) return;
 
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) return;
 
-      const ws = new WebSocket(`${WS_URL}?token=${token}`);
+      const lastIdParam = lastEventIdRef.current ? `&last_event_id=${encodeURIComponent(lastEventIdRef.current)}` : '';
+      const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(token)}${lastIdParam}`);
       
       ws.onopen = () => {
         reconnectAttempt = 0;
@@ -75,7 +77,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
       ws.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data) as WsMessage;
+          const msg = JSON.parse(event.data) as WsMessage & { event_id?: string; id?: string };
+          const eventId = msg.event_id || msg.id;
+          if (typeof eventId === 'string' && eventId.trim() !== '') {
+            lastEventIdRef.current = eventId.trim();
+          }
           const type = typeof msg.type === 'string' ? msg.type : undefined;
           setLastMessage(msg);
           if (type) {
@@ -106,8 +112,30 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     connect();
 
+    const onOnline = () => {
+      reconnectAttempt = 0;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      connect();
+    };
+
+    const onOffline = () => {
+      setIsConnected(false);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', onOnline);
+      window.addEventListener('offline', onOffline);
+    }
+
     return () => {
       disposed = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', onOnline);
+        window.removeEventListener('offline', onOffline);
+      }
       if (reconnectTimer) {
         clearTimeout(reconnectTimer);
       }

@@ -18,6 +18,12 @@ type SpannerStore struct {
 	client *spanner.Client
 }
 
+var (
+	_ Store          = (*SpannerStore)(nil)
+	_ ClaimReleaser  = (*SpannerStore)(nil)
+	_ StuckInspector = (*SpannerStore)(nil)
+)
+
 // NewSpannerStore constructs a Spanner-backed outbox store.
 func NewSpannerStore(client *spanner.Client) *SpannerStore {
 	return &SpannerStore{client: client}
@@ -215,7 +221,8 @@ func (s *SpannerStore) CountUnpublished(ctx context.Context) (int64, error) {
 	return count, nil
 }
 
-// MarkPublished marks event IDs as published at the given timestamp.
+// MarkPublished marks event IDs as published at the given timestamp and clears
+// active leases (ClaimedBy/ClaimedUntil) so published rows leave the claimed pool.
 func (s *SpannerStore) MarkPublished(ctx context.Context, eventIDs []string, at time.Time) error {
 	if len(eventIDs) == 0 {
 		return nil
@@ -233,8 +240,10 @@ func (s *SpannerStore) MarkPublished(ctx context.Context, eventIDs []string, at 
 				continue
 			}
 			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
-				"EventId":     trimmed,
-				"PublishedAt": publishedAt,
+				"EventId":      trimmed,
+				"PublishedAt":  publishedAt,
+				"ClaimedBy":    spanner.NullString{},
+				"ClaimedUntil": spanner.NullTime{},
 			}))
 		}
 		if len(mutations) == 0 {
@@ -246,6 +255,109 @@ func (s *SpannerStore) MarkPublished(ctx context.Context, eventIDs []string, at 
 		return fmt.Errorf("outbox spanner store: mark published: %w", err)
 	}
 	return nil
+}
+
+// Unclaim releases claimed leases on the given event IDs without incrementing
+// PublishAttempts (e.g. for causal ordering skips), returning them to the pool immediately.
+func (s *SpannerStore) Unclaim(ctx context.Context, eventIDs []string) error {
+	if len(eventIDs) == 0 {
+		return nil
+	}
+	if s == nil || s.client == nil {
+		return fmt.Errorf("outbox spanner store: nil client")
+	}
+
+	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutations := make([]*spanner.Mutation, 0, len(eventIDs))
+		for _, id := range eventIDs {
+			trimmed := strings.TrimSpace(id)
+			if trimmed == "" {
+				continue
+			}
+			mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]interface{}{
+				"EventId":      trimmed,
+				"ClaimedBy":    spanner.NullString{},
+				"ClaimedUntil": spanner.NullTime{},
+			}))
+		}
+		if len(mutations) == 0 {
+			return nil
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("outbox spanner store: unclaim: %w", err)
+	}
+	return nil
+}
+
+// InspectStuck queries unpublished events in read-only mode without claiming leases,
+// allowing the watchdog to inspect backlog staleness without locking out relay workers.
+func (s *SpannerStore) InspectStuck(ctx context.Context, limit int) ([]Event, error) {
+	if s == nil || s.client == nil {
+		return nil, fmt.Errorf("outbox spanner store: nil client")
+	}
+	if limit <= 0 {
+		limit = 100
+	}
+	stmt := spanner.Statement{
+		SQL: `
+SELECT EventId, AggregateType, AggregateId, TopicName, Payload, CreatedAt, PublishedAt, SupplierId
+FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished}
+WHERE PublishedAt IS NULL
+ORDER BY CreatedAt
+LIMIT @limit`,
+		Params: map[string]interface{}{
+			"limit": int64(limit),
+		},
+	}
+	iter := s.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var events []Event
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("outbox spanner store: inspect stuck: %w", err)
+		}
+
+		var (
+			eventID       string
+			aggregateType string
+			aggregateID   string
+			topicName     string
+			payload       []byte
+			createdAt     time.Time
+			publishedAt   spanner.NullTime
+			supplierID    spanner.NullString
+		)
+		if err := row.Columns(&eventID, &aggregateType, &aggregateID, &topicName, &payload, &createdAt, &publishedAt, &supplierID); err != nil {
+			return nil, fmt.Errorf("outbox spanner store: inspect stuck scan: %w", err)
+		}
+
+		stored := ""
+		if supplierID.Valid {
+			stored = supplierID.StringVal
+		}
+		e := Event{
+			EventID:       eventID,
+			AggregateType: aggregateType,
+			AggregateID:   aggregateID,
+			TopicName:     topicName,
+			Payload:       payload,
+			CreatedAt:     createdAt.UTC(),
+			SupplierID:    ResolveSupplierID(stored, payload),
+		}
+		if publishedAt.Valid {
+			ts := publishedAt.Time.UTC()
+			e.PublishedAt = &ts
+		}
+		events = append(events, e)
+	}
+	return events, nil
 }
 
 // RecordPublishFailures increments PublishAttempts per event and atomically moves

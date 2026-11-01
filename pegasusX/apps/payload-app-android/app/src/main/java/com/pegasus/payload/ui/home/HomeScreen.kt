@@ -343,7 +343,7 @@ fun HomeScreen(
         }
         if (state.reDispatchOrderId != null) {
             ReDispatchDialog(
-                orderId = state.reDispatchOrderId!!,
+                orderId = state.reDispatchOrderId.orEmpty(),
                 loading = state.loadingRecommendations,
                 response = state.recommendations,
                 reassigning = state.reassigning,

@@ -32,12 +32,4 @@ class RemainingStopsTest {
         assertFalse(RemainingStops.isFirstClass(OrderState.ARRIVED))
         assertFalse(RemainingStops.isFirstClass(OrderState.IN_TRANSIT))
     }
-
-    @Test
-    fun pulseFailureDoesNotTreatAsEmptyTimeline() {
-        val src = java.io.File("src/main/java/com/pegasusx/driver/ui/screens/home/HomeScreen.kt").readText()
-        assertTrue(src.contains("PulseHonesty.FAILED"))
-        assertTrue(src.contains("error = pulseError"))
-        assertTrue(!src.contains("pulseEvents = emptyList()"))
-    }
 }

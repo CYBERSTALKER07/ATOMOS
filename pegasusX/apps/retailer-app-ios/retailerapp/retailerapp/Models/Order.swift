@@ -1,11 +1,15 @@
 import Foundation
 
-private func formatRetailerMoney(_ amount: Int64, currency: String) -> String {
+private let retailerMoneyFormatter: NumberFormatter = {
     let formatter = NumberFormatter()
     formatter.numberStyle = .decimal
     formatter.groupingSeparator = " "
     formatter.maximumFractionDigits = 0
-    let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+    return formatter
+}()
+
+private func formatRetailerMoney(_ amount: Int64, currency: String) -> String {
+    let formatted = retailerMoneyFormatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
     let normalizedCurrency = currency.isEmpty ? packCurrency(MarketPackStore.pack) : currency
     return "\(formatted) \(normalizedCurrency)"
 }

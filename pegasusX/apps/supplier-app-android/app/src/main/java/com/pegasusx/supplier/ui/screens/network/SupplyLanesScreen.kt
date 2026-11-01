@@ -60,7 +60,7 @@ fun SupplyLanesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Supply lanes unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

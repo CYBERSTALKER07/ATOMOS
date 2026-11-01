@@ -51,7 +51,8 @@ fun VehiclesScreen(
         scope.launch {
             try {
                 val resp = api.getVehicles()
-                if (resp.isSuccessful && resp.body() != null) vehicles = resp.body()!!.vehicles
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) vehicles = respBody.vehicles
                 else if (!silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -89,7 +90,7 @@ fun VehiclesScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Trucks unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
@@ -163,7 +164,7 @@ private fun CreateVehicleDialog(
                         )
                     }
                 }
-                if (error != null) Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                if (error != null) Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {

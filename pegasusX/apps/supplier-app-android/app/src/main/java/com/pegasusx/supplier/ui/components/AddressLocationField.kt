@@ -128,7 +128,7 @@ fun AddressLocationField(
             )
         }
         if (!error.isNullOrBlank()) {
-            Text(text = error!!, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+            Text(text = error.orEmpty(), color = androidx.compose.material3.MaterialTheme.colorScheme.error)
         }
     }
 }

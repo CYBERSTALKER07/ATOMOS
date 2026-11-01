@@ -84,10 +84,8 @@ func (s *Service) cancelOrderWithReason(ctx context.Context, current *Order, act
 			s.log.Warn("credit reserve release on cancel failed", "order_id", current.OrderID, "err", err)
 		}
 	}
-	if s.replanner != nil && current.ManifestID != "" {
-		go func(rID, act string) {
-			_ = s.replanner.ReplanRoute(context.Background(), rID, "cancel_order", act)
-		}(current.ManifestID, actorID)
+	if current.ManifestID != "" {
+		s.replanAsync(current.ManifestID, "cancel_order", actorID)
 	}
 	return lifecycleResponse(*current, current.Version, false), nil
 }

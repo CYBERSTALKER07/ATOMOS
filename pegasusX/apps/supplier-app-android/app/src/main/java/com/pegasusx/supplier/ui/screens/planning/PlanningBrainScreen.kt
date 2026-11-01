@@ -137,7 +137,7 @@ fun PlanningBrainScreen(
                         PegasusStatePane(
                             kind = PegasusStateKind.Error,
                             headline = "Planning unavailable",
-                            body = error!!,
+                            body = error.orEmpty(),
                         )
                     }
                 }

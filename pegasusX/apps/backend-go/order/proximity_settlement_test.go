@@ -72,3 +72,35 @@ func TestEvaluateSettlementProximity_H3Match(t *testing.T) {
 	}
 }
 
+func TestValidateProximityVelocity(t *testing.T) {
+	t1 := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	lat1, lng1 := 41.3111, 69.2797
+
+	// 1. Valid driving speed: ~500 m in 60s ≈ 8.3 m/s (30 km/h)
+	// 0.0045 deg lat ≈ 500m
+	t2Valid := t1.Add(60 * time.Second)
+	lat2Valid, lng2Valid := 41.3156, 69.2797
+	if err := ValidateProximityVelocity(lat1, lng1, t1, lat2Valid, lng2Valid, t2Valid); err != nil {
+		t.Fatalf("expected plausible velocity to pass, got: %v", err)
+	}
+
+	// 2. Impossible jump (GPS spoofing): 5 km in 10s ≈ 500 m/s (1800 km/h)
+	// 0.045 deg lat ≈ 5 km
+	t2Spoof := t1.Add(10 * time.Second)
+	lat2Spoof, lng2Spoof := 41.3561, 69.2797
+	err := ValidateProximityVelocity(lat1, lng1, t1, lat2Spoof, lng2Spoof, t2Spoof)
+	if err == nil {
+		t.Fatal("expected impossible velocity to be rejected")
+	}
+	if !errors.Is(err, ErrProximityVelocitySpoofed) {
+		t.Fatalf("expected ErrProximityVelocitySpoofed, got: %v", err)
+	}
+
+	// 3. Sub-50m jitter at short interval passes without false positive
+	t2Jitter := t1.Add(2 * time.Second)
+	lat2Jitter, lng2Jitter := 41.3112, 69.2797 // ~11m away
+	if err := ValidateProximityVelocity(lat1, lng1, t1, lat2Jitter, lng2Jitter, t2Jitter); err != nil {
+		t.Fatalf("expected natural GPS jitter to pass, got: %v", err)
+	}
+}
+

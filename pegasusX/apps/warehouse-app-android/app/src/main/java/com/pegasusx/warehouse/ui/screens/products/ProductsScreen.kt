@@ -39,7 +39,8 @@ fun ProductsScreen(
         scope.launch {
             try {
                 val resp = api.getProducts()
-                if (resp.isSuccessful && resp.body() != null) products = resp.body()!!.products
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) products = respBody.products
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -61,7 +62,7 @@ fun ProductsScreen(
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }

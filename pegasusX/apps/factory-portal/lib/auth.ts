@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession } from '@pegasusx/api-core';
+import { homeCellFromJwt, pinApiBaseUrl, readCachedAuthSession, reconnectDelayMs } from '@pegasusx/api-core';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { runFactorySessionReconcile } from './session-reconcile';
 
@@ -228,6 +228,7 @@ export function subscribeFactoryWS(options: {
   let reconnectTimer: number | null = null;
   let reconnectAttempt = 0;
   let hasConnectedOnce = false;
+  let lastEventId: string | null = null;
   let disposed = false;
 
   const clearReconnect = () => {
@@ -254,16 +255,19 @@ export function subscribeFactoryWS(options: {
     }
     if (disposed) return;
     if (!token) {
+      const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
       reconnectAttempt += 1;
       options.onStatusChange?.('reconnecting');
+      clearReconnect();
       reconnectTimer = window.setTimeout(() => {
         void openSocket(true);
-      }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
+      }, delay);
       return;
     }
 
     const wsBase = toWSBaseUrl(factoryApiBaseUrl());
-    socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}`);
+    const lastIdParam = lastEventId ? `&last_event_id=${encodeURIComponent(lastEventId)}` : '';
+    socket = new WebSocket(`${wsBase}/v1/ws?token=${encodeURIComponent(token)}${lastIdParam}`);
 
     socket.onopen = () => {
       const wasReconnect = hasConnectedOnce;
@@ -276,7 +280,21 @@ export function subscribeFactoryWS(options: {
     };
 
     socket.onmessage = event => {
-      options.onMessage(String(event.data));
+      const raw = String(event.data);
+      try {
+        const parsed = JSON.parse(raw) as { event_id?: unknown; id?: unknown };
+        const eid = typeof parsed?.event_id === 'string' && parsed.event_id.trim()
+          ? parsed.event_id.trim()
+          : typeof parsed?.id === 'string' && parsed.id.trim()
+            ? parsed.id.trim()
+            : null;
+        if (eid) {
+          lastEventId = eid;
+        }
+      } catch {
+        // ignore non-json
+      }
+      options.onMessage(raw);
     };
 
     socket.onerror = () => {
@@ -293,11 +311,13 @@ export function subscribeFactoryWS(options: {
         options.onStatusChange?.('offline');
         return;
       }
+      const delay = reconnectDelayMs(reconnectAttempt, { baseMs: 1_000, maxMs: 30_000 });
       reconnectAttempt += 1;
       options.onStatusChange?.('reconnecting');
+      clearReconnect();
       reconnectTimer = window.setTimeout(() => {
         void openSocket(true);
-      }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
+      }, delay);
     };
   };
 

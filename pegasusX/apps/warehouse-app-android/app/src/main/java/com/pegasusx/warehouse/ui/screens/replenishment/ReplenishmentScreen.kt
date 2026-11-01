@@ -130,7 +130,7 @@ fun ReplenishmentScreen(
             error != null && insights.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Replenishment unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

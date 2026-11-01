@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { supplierApiBaseUrl } from "@/lib/auth";
+import { getSupplierToken, supplierApiBaseUrl } from "@/lib/auth";
 import { runSupplierSessionReconcile } from "@/lib/session-reconcile";
 import { parseSupplierWsEventType } from "@/lib/supplier-ws-events";
 import { SSE_SUPPLIER_ENDPOINT } from "@pegasusx/ws-refresh-contract";
@@ -70,8 +70,12 @@ export function useSupplierWsRefresh(
 
     try {
       const apiBase = supplierApiBaseUrl();
-      const sseUrl = `${apiBase}${SSE_SUPPLIER_ENDPOINT}`;
-      eventSource = new EventSource(sseUrl, { withCredentials: true });
+      const token = getSupplierToken();
+      const url = new URL(`${apiBase}${SSE_SUPPLIER_ENDPOINT}`, window.location.href);
+      if (token) {
+        url.searchParams.set("token", token);
+      }
+      eventSource = new EventSource(url.toString(), { withCredentials: true });
 
       eventSource.onopen = () => {
         if (hasConnectedOnce) {

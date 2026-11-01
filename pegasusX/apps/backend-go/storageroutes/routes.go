@@ -27,9 +27,10 @@ type CreateDossierRequest struct {
 
 func Mount(r chi.Router, vault *storage.Vault) {
 	r.Route("/dossiers", func(r chi.Router) {
-		r.Use(auth.RequireAnyAuthenticated()) // Requires a valid user token
+		r.Use(auth.RequireRole(auth.RoleAdmin, auth.RoleWarehouseAdmin, auth.RoleWarehouse, auth.RoleDriver, auth.RolePlatformAdmin))
 
 		r.Post("/", func(w http.ResponseWriter, req *http.Request) {
+			req.Body = http.MaxBytesReader(w, req.Body, 1<<20)
 			var body CreateDossierRequest
 			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
 				web.JSONError(w, "invalid request", http.StatusBadRequest)
@@ -66,6 +67,7 @@ func Mount(r chi.Router, vault *storage.Vault) {
 		})
 
 		r.Post("/{dossier_id}/items", func(w http.ResponseWriter, req *http.Request) {
+			req.Body = http.MaxBytesReader(w, req.Body, 1<<20)
 			id := chi.URLParam(req, "dossier_id")
 			var body AddItemRequest
 			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {

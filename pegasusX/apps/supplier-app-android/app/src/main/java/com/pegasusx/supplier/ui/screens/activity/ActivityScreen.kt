@@ -62,7 +62,7 @@ fun ActivityScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Activity unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

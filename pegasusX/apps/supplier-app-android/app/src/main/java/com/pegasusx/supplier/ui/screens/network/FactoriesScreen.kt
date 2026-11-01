@@ -71,7 +71,7 @@ fun FactoriesScreen(
             error != null && factories.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Factories unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

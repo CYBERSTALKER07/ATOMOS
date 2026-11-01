@@ -114,8 +114,9 @@ class RootViewModel @Inject constructor(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     _clientPolicyMessage.value = state.message
                     _clientPolicyForce.value = state.force
                     pendingManifest = state.manifest

@@ -199,6 +199,13 @@ func runFallbackWithDeadline(ctx context.Context, job Job) *dispatch.AssignmentR
 	}
 	ch := make(chan result, 1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				ch <- result{res: &dispatch.AssignmentResult{
+					Warnings: []string{fmt.Sprintf("fallback panicked: %v", r)},
+				}}
+			}
+		}()
 		ch <- result{res: runFallback(job)}
 	}()
 

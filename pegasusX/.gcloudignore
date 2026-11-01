@@ -1,3 +1,8 @@
+.env*
+!.env*.example
+*.secret
+*.key
+.bin/
 .git/
 node_modules/
 .next/

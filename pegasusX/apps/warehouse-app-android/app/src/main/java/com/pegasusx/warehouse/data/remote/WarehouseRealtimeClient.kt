@@ -42,6 +42,7 @@ class WarehouseRealtimeClient(
     },
     private val client: OkHttpClient = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(25, TimeUnit.SECONDS)
         .build(),
 ) {
     private val appContext = context.applicationContext
@@ -84,6 +85,7 @@ class WarehouseRealtimeClient(
     private var eventHandler: ((WarehouseLiveEvent) -> Unit)? = null
     private var onReconnectHandler: (() -> Unit)? = null
     private var hasConnectedOnce = false
+    @Volatile private var lastEventId: String? = null
 
     init {
         val request = NetworkRequest.Builder()
@@ -135,12 +137,21 @@ class WarehouseRealtimeClient(
             notifyState(WarehouseRealtimeStatus.OFFLINE)
             return
         }
-        val wsUrl = baseUrl.newBuilder()
+        val currentLastId = lastEventId
+        val wsUrlBuilder = baseUrl.newBuilder()
             .scheme(if (baseUrl.isHttps) "wss" else "ws")
             .encodedPath("/v1/ws")
             .addQueryParameter("token", token)
-            .build()
-        val request = Request.Builder().url(wsUrl).build()
+        if (!currentLastId.isNullOrBlank()) {
+            wsUrlBuilder.addQueryParameter("last_event_id", currentLastId)
+        }
+        val reqBuilder = Request.Builder()
+            .url(wsUrlBuilder.build())
+            .addHeader("Authorization", "Bearer $token")
+        if (!currentLastId.isNullOrBlank()) {
+            reqBuilder.addHeader("Last-Event-ID", currentLastId)
+        }
+        val request = reqBuilder.build()
 
         notifyState(if (isReconnect) WarehouseRealtimeStatus.RECONNECTING else WarehouseRealtimeStatus.CONNECTING)
         webSocket?.cancel()
@@ -156,6 +167,13 @@ class WarehouseRealtimeClient(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                runCatching {
+                    val obj = org.json.JSONObject(text)
+                    val eid = obj.optString("event_id").ifBlank { obj.optString("id") }.trim()
+                    if (eid.isNotEmpty()) {
+                        lastEventId = eid
+                    }
+                }
                 runCatching { json.decodeFromString<WarehouseLiveEvent>(text) }
                     .getOrNull()
                     ?.let { event ->

@@ -88,6 +88,8 @@ import com.pegasusx.supplier.ui.screens.planning.KnowledgeGraphScreen
 import com.pegasusx.supplier.ui.screens.planning.PlanningBrainScreen
 import com.pegasusx.supplier.ui.screens.planning.PlanningSettingsScreen
 import com.pegasusx.supplier.ui.screens.planning.ReplenishmentPoliciesScreen
+import com.pegasusx.supplier.ui.screens.foundry.FoundrySandboxScreen
+import com.pegasusx.supplier.ui.viewmodel.FoundrySandboxViewModel
 import com.pegasusx.supplier.ui.screens.ai.AIRecommendationsScreen
 import com.pegasusx.supplier.ui.screens.network.DeliveryZonesScreen
 import com.pegasusx.supplier.ui.screens.network.FactoriesScreen
@@ -136,6 +138,7 @@ object SupplierRoutes {
     const val TREASURY_HUB = "treasury_hub"
     const val DEMAND_HISTORY = "demand_history"
     const val PLANNING_BRAIN = "planning_brain"
+    const val FOUNDRY_SANDBOX = "foundry_sandbox"
     const val PLANNING_SETTINGS = "planning_settings"
     const val RETURN_POLICY = "return_policy"
     const val KNOWLEDGE_GRAPH = "knowledge_graph"
@@ -265,8 +268,9 @@ fun SupplierNavigation(
                     version = BuildConfig.VERSION_NAME,
                     channel = EnterpriseUpdateConfig.CHANNEL,
                 )
-                if (resp.isSuccessful && resp.body() != null) {
-                    val state = autoUpdater.checkFromPolicy(resp.body()!!, autoDownload = false)
+                val policy = resp.body()
+                if (resp.isSuccessful && policy != null) {
+                    val state = autoUpdater.checkFromPolicy(policy, autoDownload = false)
                     clientPolicyMessage = state.message
                     clientPolicyForce = state.force
                     pendingManifest = state.manifest
@@ -438,6 +442,7 @@ fun SupplierNavigation(
                     onEntityResolution = { navController.navigate(SupplierRoutes.ENTITY_RESOLUTION) },
                     onPayouts = { navController.navigate(SupplierRoutes.PAYOUTS) },
                     onControlTower = { navController.navigate(SupplierRoutes.CONTROL_TOWER) },
+                    onFoundrySandbox = { navController.navigate(SupplierRoutes.FOUNDRY_SANDBOX) },
                     onPlaybooks = { navController.navigate(SupplierRoutes.PLAYBOOKS) },
                     onSegmentation = { navController.navigate(SupplierRoutes.SEGMENTATION) },
                     onTaxRegimes = { navController.navigate(SupplierRoutes.TAX_REGIMES) },
@@ -659,6 +664,13 @@ fun SupplierNavigation(
             }
             composable(SupplierRoutes.PLANNING_BRAIN) {
                 PlanningBrainScreen(ops) { navController.popBackStack() }
+            }
+            composable(SupplierRoutes.FOUNDRY_SANDBOX) {
+                val foundryVm = remember(api) { FoundrySandboxViewModel(api) }
+                FoundrySandboxScreen(
+                    viewModel = foundryVm,
+                    onBack = { navController.popBackStack() },
+                )
             }
             composable(SupplierRoutes.PLANNING_SETTINGS) {
                 PlanningSettingsScreen(ops) { navController.popBackStack() }

@@ -143,7 +143,7 @@ func main() {
 	}
 
 	if emitSchema {
-		schemaBytes, err := emitJSONSchema(registry, *pretty)
+		schemaBytes, err := emitJSONSchema(registry, *pretty, *strict)
 		if err != nil {
 			log.Fatalf("emit schema: %v", err)
 		}
@@ -824,7 +824,7 @@ func marshalRegistry(reg Registry, pretty bool) ([]byte, error) {
 	return json.Marshal(reg)
 }
 
-func emitJSONSchema(reg Registry, pretty bool) ([]byte, error) {
+func emitJSONSchema(reg Registry, pretty bool, strict bool) ([]byte, error) {
 	payloadByName := make(map[string]Payload, len(reg.Payloads))
 	for _, payload := range reg.Payloads {
 		payloadByName[payload.Name] = payload
@@ -843,7 +843,7 @@ func emitJSONSchema(reg Registry, pretty bool) ([]byte, error) {
 		if payload, ok := payloadByName[evt.Payload]; ok && evt.Payload != "" {
 			defName := tsPayloadName(payload.Name)
 			if _, exists := defs[defName]; !exists {
-				defs[defName] = payloadJSONSchema(payload)
+				defs[defName] = payloadJSONSchema(payload, strict)
 			}
 			mappings = append(mappings, eventSchemaMapping{EventValue: evt.Value, PayloadDefID: defName})
 			continue
@@ -923,7 +923,7 @@ func emitJSONSchema(reg Registry, pretty bool) ([]byte, error) {
 	return json.Marshal(doc)
 }
 
-func payloadJSONSchema(payload Payload) map[string]any {
+func payloadJSONSchema(payload Payload, strict bool) map[string]any {
 	properties := make(map[string]any)
 	required := make([]string, 0, len(payload.Fields))
 
@@ -944,11 +944,16 @@ func payloadJSONSchema(payload Payload) map[string]any {
 
 	sort.Strings(required)
 
+	additionalProps := true
+	if strict {
+		additionalProps = false
+	}
+
 	schema := map[string]any{
 		"title":                tsPayloadName(payload.Name),
 		"type":                 "object",
 		"properties":           properties,
-		"additionalProperties": true,
+		"additionalProperties": additionalProps,
 	}
 	if len(required) > 0 {
 		schema["required"] = required

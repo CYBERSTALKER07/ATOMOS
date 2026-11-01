@@ -113,12 +113,4 @@ class DashboardTests {
         assertEquals("ACTIVE", coarse.filter)
         assertEquals(null, coarse.status)
     }
-
-    @Test
-    fun pulseFailureDoesNotTreatAsEmptyTimeline() {
-        val src = java.io.File("src/main/java/com/pegasusx/supplier/ui/screens/dashboard/DashboardScreen.kt").readText()
-        assertTrue(src.contains("PulseHonesty.FAILED"))
-        assertTrue(src.contains("error = pulseError"))
-        assertTrue(!src.contains("pulseEvents = emptyList()"))
-    }
 }

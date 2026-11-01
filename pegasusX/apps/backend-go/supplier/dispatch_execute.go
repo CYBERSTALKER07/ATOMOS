@@ -391,8 +391,14 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		}
 		routes := assignment.Routes[i:end]
 
-		var chunkSkipped []string
+		var localCommitted []DispatchExecuteRoute
+		var localSkipped []string
+		localAssignedCount := 0
+
 		chunkErr := spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			localCommitted = nil
+			localSkipped = nil
+			localAssignedCount = 0
 			batch := &manifest.SupplierWriteBatch{}
 			var chunkQueued []pendingEvent
 
@@ -419,7 +425,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 						continue
 					}
 					if err := order.ValidateFulfillmentForManifestTxn(ctx, txn, orderID, warehouseID); err != nil {
-						chunkSkipped = append(chunkSkipped, orderID)
+						localSkipped = append(localSkipped, orderID)
 						continue
 					}
 					manifestOrders = append(manifestOrders, manifest.SupplierManifestOrderRow{
@@ -511,7 +517,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					},
 				)
 
-				committed = append(committed, DispatchExecuteRoute{
+				localCommitted = append(localCommitted, DispatchExecuteRoute{
 					ManifestID: manifestID,
 					RouteID:    routeID,
 					DriverID:   driverID,
@@ -520,7 +526,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 					VolumeVU:   route.LoadedVolume,
 					MaxVolume:  route.MaxVolume,
 				})
-				out.OrdersAssigned += len(orderIDs)
+				localAssignedCount += len(orderIDs)
 			}
 
 			if len(batch.Manifests) == 0 {
@@ -562,8 +568,10 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 			}
 			return DispatchExecuteResult{}, chunkErr
 		}
-		if len(chunkSkipped) > 0 {
-			out.Orphans = append(out.Orphans, chunkSkipped...)
+		committed = append(committed, localCommitted...)
+		out.OrdersAssigned += localAssignedCount
+		if len(localSkipped) > 0 {
+			out.Orphans = append(out.Orphans, localSkipped...)
 			out.Warnings = append(out.Warnings, "allocation_warehouse_mismatch")
 		}
 	}

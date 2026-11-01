@@ -78,7 +78,7 @@ fun ReturnPolicySettingsScreen(
             try {
                 val resp = ops.getReturnPolicy()
                 if (resp.isSuccessful && resp.body() != null) {
-                    val p = resp.body()!!
+                    val p = resp.body() ?: return@launch
                     applyHours(p.defaultWindowHours.takeIf { it > 0 } ?: 48L)
                     concealed = p.concealedDamageWindowHours?.takeIf { it > 0 }?.toString().orEmpty()
                     requirePhoto = p.requirePhoto
@@ -159,7 +159,7 @@ fun ReturnPolicySettingsScreen(
             error != null && hoursText.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Policy unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -185,7 +185,7 @@ fun ReturnPolicySettingsScreen(
                     )
                 }
                 if (error != null) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                 }
                 if (saved) {
                     Text("Return policy saved.", color = MaterialTheme.colorScheme.primary)

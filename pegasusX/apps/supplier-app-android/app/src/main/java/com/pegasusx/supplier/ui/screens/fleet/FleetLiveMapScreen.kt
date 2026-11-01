@@ -158,7 +158,7 @@ fun FleetLiveMapScreen(
             error != null && routes.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Live fleet unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { scope.launch { load() } },

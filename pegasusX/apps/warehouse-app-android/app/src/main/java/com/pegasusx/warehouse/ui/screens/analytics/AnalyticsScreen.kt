@@ -44,7 +44,8 @@ fun AnalyticsScreen(
         scope.launch {
             try {
                 val resp = api.getAnalytics(period = period)
-                if (resp.isSuccessful && resp.body() != null) data = resp.body()!!
+                val body = resp.body()
+                if (resp.isSuccessful && body != null) data = body
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -70,88 +71,91 @@ fun AnalyticsScreen(
             loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
-            data != null -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = 340.dp),
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                // KPI row
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Total Orders", data!!.totalOrders.toString(), Modifier.weight(1f))
-                        KpiCard("Revenue", "${fmt.format(data!!.totalRevenue)} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+            data != null -> {
+                val d = data ?: return@Scaffold
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 340.dp),
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    // KPI row
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                            KpiCard("Total Orders", d.totalOrders.toString(), Modifier.weight(1f))
+                            KpiCard("Revenue", "${fmt.format(d.totalRevenue)} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+                        }
                     }
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Avg Order", "${fmt.format(data!!.avgOrderValue.roundToLong())} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
-                        KpiCard("Utilization", "${data!!.fleetUtilizationPct.roundToLong()}%", Modifier.weight(1f))
-                    }
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Imported Rows", data!!.importFreshness.appliedRows30d.toString(), Modifier.weight(1f))
-                        KpiCard("Imported SKUs", data!!.importFreshness.appliedSkus30d.toString(), Modifier.weight(1f))
-                    }
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Qty Delta", data!!.importFreshness.quantityDelta30d.toString(), Modifier.weight(1f))
-                        KpiCard("Anomaly Rows", data!!.importAnomalyQueue.openRows30d.toString(), Modifier.weight(1f))
-                    }
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Anomaly Sessions", data!!.importAnomalyQueue.affectedSessions30d.toString(), Modifier.weight(1f))
-                        KpiCard("Completed", data!!.completedOrders.toString(), Modifier.weight(1f))
-                    }
-                }
-                val freshness = data!!.importFreshness
-                if (freshness.lastSessionId.isNotBlank() || freshness.lastAppliedAt.isNotBlank()) {
                     item {
-                        ImportMetaCard(
-                            title = stringResource(R.string.mobile_warehouse_ui_last_import),
-                            sessionId = freshness.lastSessionId,
-                            timestamp = freshness.lastAppliedAt,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                            KpiCard("Avg Order", "${fmt.format(d.avgOrderValue.roundToLong())} ${com.pegasus.design.network.sessionPackCurrency()}", Modifier.weight(1f))
+                            KpiCard("Utilization", "${d.fleetUtilizationPct.roundToLong()}%", Modifier.weight(1f))
+                        }
                     }
-                }
-                val anomaly = data!!.importAnomalyQueue
-                if (anomaly.lastSessionId.isNotBlank() || anomaly.lastDetail.isNotBlank()) {
                     item {
-                        ImportMetaCard(
-                            title = stringResource(R.string.mobile_warehouse_ui_latest_anomaly),
-                            sessionId = anomaly.lastSessionId,
-                            timestamp = anomaly.lastDetectedAt,
-                            detail = anomaly.lastDetail,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                            KpiCard("Imported Rows", d.importFreshness.appliedRows30d.toString(), Modifier.weight(1f))
+                            KpiCard("Imported SKUs", d.importFreshness.appliedSkus30d.toString(), Modifier.weight(1f))
+                        }
                     }
-                }
-                if (data!!.chartDaily.isNotEmpty()) {
                     item {
-                        AnalyticsChartGrid(
-                            daily = data!!.chartDaily,
-                            formatter = fmt,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                            KpiCard("Qty Delta", d.importFreshness.quantityDelta30d.toString(), Modifier.weight(1f))
+                            KpiCard("Anomaly Rows", d.importAnomalyQueue.openRows30d.toString(), Modifier.weight(1f))
+                        }
                     }
-                }
-                // Top products
-                item {
-                    Spacer(Modifier.height(PegasusSpacing.sm))
-                    Text("Top Products", style = MaterialTheme.typography.titleMedium)
-                }
-                items(data!!.topProducts) { tp ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                            Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text(stringResource(R.string.mobile_warehouse_ui_displayunits_units_format_uzs, tp.displayUnits, fmt.format(tp.revenue)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    item {
+                        Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                            KpiCard("Anomaly Sessions", d.importAnomalyQueue.affectedSessions30d.toString(), Modifier.weight(1f))
+                            KpiCard("Completed", d.completedOrders.toString(), Modifier.weight(1f))
+                        }
+                    }
+                    val freshness = d.importFreshness
+                    if (freshness.lastSessionId.isNotBlank() || freshness.lastAppliedAt.isNotBlank()) {
+                        item {
+                            ImportMetaCard(
+                                title = stringResource(R.string.mobile_warehouse_ui_last_import),
+                                sessionId = freshness.lastSessionId,
+                                timestamp = freshness.lastAppliedAt,
+                            )
+                        }
+                    }
+                    val anomaly = d.importAnomalyQueue
+                    if (anomaly.lastSessionId.isNotBlank() || anomaly.lastDetail.isNotBlank()) {
+                        item {
+                            ImportMetaCard(
+                                title = stringResource(R.string.mobile_warehouse_ui_latest_anomaly),
+                                sessionId = anomaly.lastSessionId,
+                                timestamp = anomaly.lastDetectedAt,
+                                detail = anomaly.lastDetail,
+                            )
+                        }
+                    }
+                    if (d.chartDaily.isNotEmpty()) {
+                        item {
+                            AnalyticsChartGrid(
+                                daily = d.chartDaily,
+                                formatter = fmt,
+                            )
+                        }
+                    }
+                    // Top products
+                    item {
+                        Spacer(Modifier.height(PegasusSpacing.sm))
+                        Text("Top Products", style = MaterialTheme.typography.titleMedium)
+                    }
+                    items(d.topProducts) { tp ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                                Text(stringResource(R.string.mobile_warehouse_ui_displayunits_units_format_uzs, tp.displayUnits, fmt.format(tp.revenue)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

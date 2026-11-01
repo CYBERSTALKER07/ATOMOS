@@ -193,6 +193,8 @@ final class RetailerWebSocket {
     private var reconnectAttempts = 0
     private let maxReconnectDelay: TimeInterval = 60.0
     private let initialReconnectDelay: TimeInterval = 2.0
+    private var lastEventId: String? = nil
+    private var heartbeatTask: Task<Void, Never>? = nil
 
     private init() {}
 
@@ -225,11 +227,25 @@ final class RetailerWebSocket {
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
 
-        guard let url = URL(string: "\(base)/v1/ws") else { return }
+        var components = URLComponents(string: "\(base)/v1/ws")
+        var queryItems: [URLQueryItem] = []
+        if let token = api.authToken, !token.isEmpty {
+            queryItems.append(URLQueryItem(name: "token", value: token))
+        }
+        if let lastId = lastEventId, !lastId.isEmpty {
+            queryItems.append(URLQueryItem(name: "last_event_id", value: lastId))
+        }
+        if !queryItems.isEmpty {
+            components?.queryItems = queryItems
+        }
+        guard let url = components?.url ?? URL(string: "\(base)/v1/ws") else { return }
 
         var request = URLRequest(url: url)
         if let token = api.authToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let lastId = lastEventId, !lastId.isEmpty {
+            request.setValue(lastId, forHTTPHeaderField: "Last-Event-ID")
         }
         
         let config = URLSessionConfiguration.default
@@ -250,6 +266,7 @@ final class RetailerWebSocket {
             reconnectEpoch += 1
             emit(.transportReconnected)
         }
+        startHeartbeat()
         receiveNext()
     }
 
@@ -257,6 +274,8 @@ final class RetailerWebSocket {
 
     func disconnect() {
         shouldReconnect = false
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -264,6 +283,21 @@ final class RetailerWebSocket {
         session?.invalidateAndCancel()
         session = nil
         isConnected = false
+    }
+
+    private func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 25_000_000_000)
+                guard !Task.isCancelled, let self, self.shouldReconnect, let socket = self.task else { return }
+                socket.sendPing { [weak self] error in
+                    guard let self, error != nil else { return }
+                    self.isConnected = false
+                    self.scheduleReconnect()
+                }
+            }
+        }
     }
 
     // MARK: - Read Loop
@@ -298,6 +332,10 @@ final class RetailerWebSocket {
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String else { return }
+
+        if let eventId = (json["event_id"] as? String ?? json["id"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !eventId.isEmpty {
+            self.lastEventId = eventId
+        }
 
         let decoder = JSONDecoder()
 
@@ -414,6 +452,8 @@ final class RetailerWebSocket {
 
     private func scheduleReconnect() {
         guard shouldReconnect, let retailerId else { return }
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         task = nil
         session?.invalidateAndCancel()
         session = nil

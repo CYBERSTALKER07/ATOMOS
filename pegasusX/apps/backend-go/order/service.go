@@ -24,6 +24,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/allocation"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ar"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -41,6 +42,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 	"github.com/pegasusx/pegasusx/apps/backend-go/tax"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
@@ -391,6 +393,7 @@ type Service struct {
 	proximityCfg       ProximityConfig
 	allocator          Allocator
 	allocationRequired bool
+	locations          telemetry.LastLocationReader
 	returnPolicies     ReturnPolicyStore
 	doorstepShortfall  func(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID, driverID, currency string, expectedMinor, receivedMinor int64, occurredAt time.Time) error
 
@@ -436,6 +439,7 @@ type ServiceConfig struct {
 	Handoff         *handoff.Engine
 	Idem            idempotency.Store
 	Allocator       Allocator
+	Locations       telemetry.LastLocationReader
 	ReturnPolicies  ReturnPolicyStore
 
 	// CurrencyPickerEnabled + CurrencyAllowlist gate CreateRequest.currency (theatre #13 Wave 2+).
@@ -498,6 +502,7 @@ func NewService(c ServiceConfig) *Service {
 		previewRateLimiter:    newSimpleRateLimiter(100 * time.Millisecond),
 		allocator:             c.Allocator,
 		allocationRequired:    false,
+		locations:             c.Locations,
 		returnPolicies:        c.ReturnPolicies,
 		currencyPickerEnabled: c.CurrencyPickerEnabled,
 		currencyAllowlist:     allow,
@@ -527,6 +532,13 @@ func (s *Service) SetDoorstepShortfall(fn func(ctx context.Context, txn *spanner
 func (s *Service) SetReturnPolicyStore(store ReturnPolicyStore) {
 	if s != nil {
 		s.returnPolicies = store
+	}
+}
+
+// SetLocationReader wires the telemetry driver location store for anti-spoofing velocity verification.
+func (s *Service) SetLocationReader(r telemetry.LastLocationReader) {
+	if s != nil {
+		s.locations = r
 	}
 }
 
@@ -1520,6 +1532,9 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 				return ErrCreditLimitBreached
 			}
 			if rerr := s.credit.ReserveOrderInTxn(ctx, txn, retailerID, supplierID, o.OrderID, total); rerr != nil {
+				if errors.Is(rerr, credit.ErrLimitBreached) || errors.Is(rerr, credit.ErrCreditNotEnabled) {
+					return ErrCreditLimitBreached
+				}
 				return fmt.Errorf("credit reserve failed: %w", rerr)
 			}
 		}
@@ -1899,17 +1914,11 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 
 	s.afterOrderMutation(ctx, current)
 
-	if s.replanner != nil {
-		if previousManifestID != "" && previousManifestID != current.ManifestID {
-			go func(rID, act string) {
-				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_removed", act)
-			}(previousManifestID, claims.Subject)
-		}
-		if current.ManifestID != "" {
-			go func(rID, act string) {
-				_ = s.replanner.ReplanRoute(context.Background(), rID, "order_assigned", act)
-			}(current.ManifestID, claims.Subject)
-		}
+	if previousManifestID != "" && previousManifestID != current.ManifestID {
+		s.replanAsync(previousManifestID, "order_removed", claims.Subject)
+	}
+	if current.ManifestID != "" {
+		s.replanAsync(current.ManifestID, "order_assigned", claims.Subject)
 	}
 	s.log.Info("order assignment updated",
 		"order_id", current.OrderID,
@@ -2683,6 +2692,12 @@ func (s *Service) HandleCreate(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": ErrServiceabilityUnavailable.Error()})
 		case errors.Is(err, ErrCurrencyNotAllowed):
 			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": ErrCurrencyNotAllowed.Error(), "code": ErrCurrencyNotAllowed.Error()})
+		case errors.Is(err, ErrCreditLimitBreached), errors.Is(err, credit.ErrLimitBreached):
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+				"error":           "credit_limit_breached",
+				"code":            "CREDIT_LIMIT_BREACHED",
+				"action_guidance": "Wire bank payment or settle outstanding overdue invoices to restore credit headroom.",
+			})
 		case errors.Is(err, auth.ErrMarketPackUnknown), errors.Is(err, auth.ErrMarketPackNotShipped),
 			errors.Is(err, auth.ErrPackCurrencyMismatch), errors.Is(err, auth.ErrGeographyIncomplete),
 			errors.Is(err, auth.ErrCrossMarketDeferred):
@@ -3382,6 +3397,24 @@ func (s *Service) afterOrderMutation(ctx context.Context, orderRecord Order) {
 			s.dispatchPlanWarm(ctx, wh)
 		}
 	}
+}
+
+func (s *Service) replanAsync(routeID, reason, actor string) {
+	if s == nil || s.replanner == nil || routeID == "" {
+		return
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil && s.log != nil {
+				s.log.Error("async route replanner panic recovered", "panic", r, "route_id", routeID, "reason", reason)
+			}
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.replanner.ReplanRoute(ctx, routeID, reason, actor); err != nil && s.log != nil {
+			s.log.Warn("async route replan failed", "err", err, "route_id", routeID, "reason", reason)
+		}
+	}()
 }
 
 // SetDispatchPlanWarm schedules background smart-dispatch preview recompute for a warehouse.
@@ -4191,8 +4224,7 @@ func dashboardCacheKeys(supplierID, warehouseID string) []string {
 }
 
 func defaultOrderID() string {
-	// Scaffold: timestamp-based id. Production swaps for uuid.NewV7.
-	return fmt.Sprintf("ord_%d", time.Now().UnixNano())
+	return fmt.Sprintf("ord_%s", uuid.NewString())
 }
 
 func resolveOrderPaymentMethod(ctx context.Context, client *spanner.Client, orderID string) string {
@@ -4207,7 +4239,7 @@ func resolveOrderPaymentMethod(ctx context.Context, client *spanner.Client, orde
 		      LIMIT 1`,
 		Params: map[string]any{"oid": orderID},
 	}
-	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
+	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err != nil {

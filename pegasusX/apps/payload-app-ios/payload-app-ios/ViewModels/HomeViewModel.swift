@@ -733,8 +733,10 @@ final class HomeViewModel {
         )
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func nowIso() -> String {
-        ISO8601DateFormatter().string(from: Date())
+        Self.isoFormatter.string(from: Date())
     }
 
     private func reconcileSession() async {

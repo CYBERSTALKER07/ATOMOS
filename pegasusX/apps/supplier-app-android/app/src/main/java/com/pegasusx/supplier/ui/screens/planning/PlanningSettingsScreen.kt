@@ -81,7 +81,7 @@ fun PlanningSettingsScreen(
             error != null && data == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Planning settings unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

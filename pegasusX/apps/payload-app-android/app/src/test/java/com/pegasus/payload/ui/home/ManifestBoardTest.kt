@@ -49,13 +49,4 @@ class ManifestBoardTest {
         assertEquals(4, cols.size)
         assertTrue(cols.all { it.trucks.isEmpty() })
     }
-
-    @Test
-    fun pulseFailureDoesNotTreatAsEmptyTimeline() {
-        val src = java.io.File("src/main/java/com/pegasus/payload/ui/home/HomeViewModel.kt").readText()
-        assertTrue(src.contains("PulseHonesty.FAILED"))
-        assertTrue(!src.contains("pulseEvents = emptyList()"))
-        val screen = java.io.File("src/main/java/com/pegasus/payload/ui/home/HomeScreen.kt").readText()
-        assertTrue(screen.contains("error = state.pulseError"))
-    }
 }

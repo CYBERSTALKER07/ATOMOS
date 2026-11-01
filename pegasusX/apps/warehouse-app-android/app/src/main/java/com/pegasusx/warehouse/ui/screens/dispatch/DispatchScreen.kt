@@ -144,7 +144,7 @@ fun DispatchScreen(
             runCatching { api.getVehicles() }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
-                        fleetVehicles = response.body()!!.vehicles
+                        response.body()?.vehicles?.let { fleetVehicles = it }
                     }
                 }
         }
@@ -159,18 +159,18 @@ fun DispatchScreen(
                 val supplyResp = api.getSupplyRequests()
                 val lockResp = api.getDispatchLocks()
                 val vehiclesResp = api.getVehicles()
-                if (previewResp.isSuccessful && previewResp.body() != null) preview = previewResp.body()!!
+                if (previewResp.isSuccessful && previewResp.body() != null) preview = previewResp.body()
                 else if (!silent) error = codeMessage(previewResp.code(), "Failed to load dispatch preview")
                 if (supplyResp.isSuccessful && supplyResp.body() != null) {
-                    supplyRequests = supplyResp.body()!!.resolved()
+                    supplyRequests = supplyResp.body()?.resolved().orEmpty()
                 }
                 else if (!silent && error == null) error = codeMessage(supplyResp.code(), "Failed to load supply requests")
                 if (lockResp.isSuccessful && lockResp.body() != null) {
-                    dispatchLocks = lockResp.body()!!.locks
+                    dispatchLocks = lockResp.body()?.locks.orEmpty()
                 }
                 else if (!silent && error == null) error = codeMessage(lockResp.code(), "Failed to load dispatch locks")
                 if (vehiclesResp.isSuccessful && vehiclesResp.body() != null) {
-                    fleetVehicles = vehiclesResp.body()!!.vehicles
+                    fleetVehicles = vehiclesResp.body()?.vehicles.orEmpty()
                 }
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -232,7 +232,7 @@ fun DispatchScreen(
             runCatching { api.getSupplyRequests() }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
-                        supplyRequests = response.body()!!.resolved()
+                        response.body()?.resolved()?.let { supplyRequests = it }
                     }
                 }
                 .onFailure { throwable ->
@@ -246,7 +246,7 @@ fun DispatchScreen(
             runCatching { api.getDispatchLocks() }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
-                        dispatchLocks = response.body()!!.locks
+                        response.body()?.locks?.let { dispatchLocks = it }
                     }
                 }
                 .onFailure { throwable ->
@@ -273,7 +273,7 @@ fun DispatchScreen(
                 )
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
+                    val body = response.body() ?: return@onSuccess
                     actionMessage = DispatchActionMessage(
                         titleRes = R.string.notification_supply_request_submitted_title,
                         message = "Request ${body.requestId.take(8)} is now ${body.state}.",
@@ -300,7 +300,7 @@ fun DispatchScreen(
                 )
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
-                    val body = response.body()!!
+                    val body = response.body() ?: return@onSuccess
                     actionMessage = DispatchActionMessage(
                         titleRes = R.string.mobile_warehouse_ui_supply_request_cancelled,
                         message = "Request ${body.requestId.take(8)} moved to ${body.state}.",
@@ -326,7 +326,7 @@ fun DispatchScreen(
             }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
-                        val body = response.body()!!
+                        val body = response.body() ?: return@onSuccess
                         actionMessage = DispatchActionMessage(
                             titleRes = R.string.mobile_warehouse_ui_dispatch_locked,
                             message = "${body.lockType} is now active for this warehouse scope.",
@@ -374,7 +374,7 @@ fun DispatchScreen(
                 api.executeDispatch(idempotencyKey, body)
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
-                    val result = response.body()!!
+                    val result = response.body() ?: return@onSuccess
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
@@ -433,7 +433,7 @@ fun DispatchScreen(
                 api.executeDispatch(idempotencyKey, body)
             }.onSuccess { response ->
                 if (response.isSuccessful && response.body() != null) {
-                    val result = response.body()!!
+                    val result = response.body() ?: return@onSuccess
                     when (result.status) {
                         "plan_stale" -> {
                             actionMessage = DispatchActionMessage(
@@ -483,7 +483,7 @@ fun DispatchScreen(
             }
                 .onSuccess { response ->
                     if (response.isSuccessful && response.body() != null) {
-                        val body = response.body()!!
+                        val body = response.body() ?: return@onSuccess
                         actionMessage = DispatchActionMessage(
                             titleRes = R.string.notification_dispatch_lock_released_title,
                             message = "Lock ${body.lockId.take(8)} is now ${body.status}.",
@@ -543,7 +543,8 @@ fun DispatchScreen(
                             try {
                                 val s = rescueWindowStart.takeIf { it.isNotBlank() }
                                 val e = rescueWindowEnd.takeIf { it.isNotBlank() }
-                                val resp = opsRepository.approveEarlyComplete(lookupDriverId, rescueAction!!, s, e)
+                                val action = rescueAction ?: return@launch
+                                val resp = opsRepository.approveEarlyComplete(lookupDriverId, action, s, e)
                                 if (resp.isSuccessful) {
                                     earlyCompleteReq = null
                                     rescueAction = null
@@ -755,7 +756,7 @@ fun DispatchScreen(
             error != null && preview == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Dispatch unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
@@ -773,8 +774,8 @@ fun DispatchScreen(
                     error = handoffError,
                 )
                 TabRow(selectedTabIndex = tab) {
-                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_orders_size, preview!!.undispatchedOrders.size)) })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_drivers_size, preview!!.availableDrivers.size + preview!!.unavailableDrivers.size)) })
+                    Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_orders_size, preview?.undispatchedOrders.orEmpty().size)) })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_drivers_size, preview?.availableDrivers.orEmpty().size + preview?.unavailableDrivers.orEmpty().size)) })
                     Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_supply_size, supplyRequests.size)) })
                     Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text(stringResource(R.string.mobile_warehouse_ui_locks_size, dispatchLocks.size)) })
                 }
@@ -844,7 +845,7 @@ fun DispatchScreen(
                                     }
                                     if (lookupError != null) {
                                         Spacer(Modifier.height(PegasusSpacing.xs))
-                                        Text(lookupError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                        Text(lookupError.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                                     }
                                     if (earlyCompleteReq != null) {
                                         Spacer(Modifier.height(PegasusSpacing.md))
@@ -852,8 +853,8 @@ fun DispatchScreen(
                                         Spacer(Modifier.height(PegasusSpacing.md))
                                         Text("Request for Driver: $lookupDriverId", style = MaterialTheme.typography.bodyMedium)
                                         Spacer(Modifier.height(PegasusSpacing.sm))
-                                        Text("Reason: ${earlyCompleteReq!!["reason"]}", style = MaterialTheme.typography.bodySmall)
-                                        Text("Status: ${earlyCompleteReq!!["status"]}", style = MaterialTheme.typography.bodySmall)
+                                        Text("Reason: ${earlyCompleteReq?.get("reason") ?: ""}", style = MaterialTheme.typography.bodySmall)
+                                        Text("Status: ${earlyCompleteReq?.get("status") ?: ""}", style = MaterialTheme.typography.bodySmall)
                                         
                                         Spacer(Modifier.height(PegasusSpacing.md))
                                         Row(
@@ -884,7 +885,7 @@ fun DispatchScreen(
                         }
                         
                         DispatchOrderList(
-                            preview = preview!!,
+                            preview = preview ?: return@Column,
                             fleetVehicles = fleetVehicles,
                             vehicleReasons = vehicleReasons,
                             vehicleNotes = vehicleNotes,
@@ -927,8 +928,8 @@ fun DispatchScreen(
                     }
                     1 -> {
                         DispatchDriverList(
-                            availableDrivers = preview!!.availableDrivers,
-                            unavailableDrivers = preview!!.unavailableDrivers,
+                            availableDrivers = preview?.availableDrivers.orEmpty(),
+                            unavailableDrivers = preview?.unavailableDrivers.orEmpty(),
                         )
                     }
                     2 -> {
@@ -1042,9 +1043,9 @@ fun DispatchScreen(
         AlertDialog(
             onDismissRequest = { requestPendingCancellation = null },
             title = { Text("Cancel Supply Request") },
-            text = { Text(stringResource(R.string.mobile_warehouse_ui_cancel_request_take, requestPendingCancellation!!.requestId.take(8))) },
+            text = { Text(stringResource(R.string.mobile_warehouse_ui_cancel_request_take, requestPendingCancellation?.requestId.orEmpty().take(8))) },
             confirmButton = {
-                Button(onClick = { cancelSupplyRequest(requestPendingCancellation!!) }) {
+                Button(onClick = { requestPendingCancellation?.let(::cancelSupplyRequest) }) {
                     Text("Cancel Request")
                 }
             },
@@ -1056,9 +1057,9 @@ fun DispatchScreen(
         AlertDialog(
             onDismissRequest = { lockPendingRelease = null },
             title = { Text("Release Dispatch Lock") },
-            text = { Text(stringResource(R.string.mobile_warehouse_ui_release_locktype_for_this_warehouse_scope, lockPendingRelease!!.lockType)) },
+            text = { Text(stringResource(R.string.mobile_warehouse_ui_release_locktype_for_this_warehouse_scope, lockPendingRelease?.lockType.orEmpty())) },
             confirmButton = {
-                Button(onClick = { releaseDispatchLock(lockPendingRelease!!) }) {
+                Button(onClick = { lockPendingRelease?.let(::releaseDispatchLock) }) {
                     Text("Release")
                 }
             },
@@ -1153,8 +1154,8 @@ fun DispatchScreen(
     if (actionMessage != null) {
         AlertDialog(
             onDismissRequest = { actionMessage = null },
-            title = { Text(stringResource(actionMessage!!.titleRes)) },
-            text = { Text(actionMessage!!.message) },
+            title = { Text(stringResource(actionMessage?.titleRes ?: R.string.mobile_warehouse_ui_dispatch_committed)) },
+            text = { Text(actionMessage?.message.orEmpty()) },
             confirmButton = { TextButton(onClick = { actionMessage = null }) { Text("OK") } },
         )
     }

@@ -300,6 +300,9 @@ struct OfflineVerifierView: View {
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: OfflineDelivery.self, configurations: config)
-    OfflineVerifierView(modelContext: container.mainContext)
+    if let container = try? ModelContainer(for: OfflineDelivery.self, configurations: config) {
+        OfflineVerifierView(modelContext: container.mainContext)
+    } else {
+        Text("Preview unavailable: container creation failed")
+    }
 }

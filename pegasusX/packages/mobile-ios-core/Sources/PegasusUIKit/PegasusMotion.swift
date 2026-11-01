@@ -10,10 +10,23 @@ public enum PegasusAnim {
   public static func staggerDelay(index: Int) -> Double {
     min(Double(index) * 0.04, 0.4)
   }
+
+  public static func resolved(_ animation: Animation = snappy, reduceMotion: Bool) -> Animation? {
+    reduceMotion ? nil : animation
+  }
 }
 
 public enum PegasusMotionDuration {
   public static let short4: Double = 0.2
   public static let medium2: Double = 0.3
   public static let medium4: Double = 0.4
+}
+
+public extension View {
+  func pegasusNumericMetric<V: Equatable>(value: V) -> some View {
+    self
+      .monospacedDigit()
+      .contentTransition(.numericText())
+      .animation(PegasusAnim.snappy, value: value)
+  }
 }

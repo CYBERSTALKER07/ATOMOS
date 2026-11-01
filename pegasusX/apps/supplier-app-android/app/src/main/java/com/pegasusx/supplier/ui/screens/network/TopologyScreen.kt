@@ -203,7 +203,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null && topology == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Topology unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -214,7 +214,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
                 if (error != null) {
-                    item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+                    item { Text(error.orEmpty(), color = MaterialTheme.colorScheme.error) }
                 }
                 item { SectionLabel("Warehouses") }
                 items(warehouseDrafts, key = { it.key }) { draft ->
@@ -290,7 +290,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                     }) { Text("Add factory") }
                 }
             }
-            topology == null || (topology!!.warehouses.isEmpty() && topology!!.factories.isEmpty()) -> PegasusStatePane(
+            topology?.let { it.warehouses.isEmpty() && it.factories.isEmpty() } ?: true -> PegasusStatePane(
                 kind = PegasusStateKind.Empty,
                 headline = "No nodes",
                 body = "No warehouses or factories configured.",
@@ -299,7 +299,7 @@ fun TopologyScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
                 onAction = { editing = true },
             )
             else -> {
-                val data = topology!!
+                val data = topology ?: return@Scaffold
                 LazyColumn(
                     modifier = Modifier.padding(padding).fillMaxSize(),
                     contentPadding = PaddingValues(PegasusSpacing.lg),

@@ -157,13 +157,22 @@ struct OrderPreviewSheet: View {
     }
     
     // ETA Helpers
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+    private static let etaTimeFormatter: DateFormatter = {
+        let tf = DateFormatter()
+        tf.locale = Locale(identifier: "en_US_POSIX")
+        tf.dateFormat = "HH:mm"
+        return tf
+    }()
+
     private func formatETATime(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
-            let tf = DateFormatter()
-            tf.dateFormat = "HH:mm"
-            return tf.string(from: date)
+        if let date = Self.isoFractionalFormatter.date(from: iso) ?? Self.isoStandardFormatter.date(from: iso) {
+            return Self.etaTimeFormatter.string(from: date)
         }
         return iso.suffix(8).prefix(5).description
     }

@@ -119,9 +119,13 @@ private struct CatalogProductImageButton: View {
 }
 
 extension Int64 {
-    func formatted() -> String {
+    private static let decimalFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
-        return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
+        return formatter
+    }()
+
+    func formatted() -> String {
+        Self.decimalFormatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 }

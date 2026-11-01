@@ -44,6 +44,7 @@ object NetworkModule {
             .addInterceptor(CellPinInterceptor(BuildConfig.API_BASE_URL) { secureStore.token })
             .addInterceptor(authInterceptor)
             .authenticator(tokenRefreshAuthenticator)
+            .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
             .addInterceptor(logging)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

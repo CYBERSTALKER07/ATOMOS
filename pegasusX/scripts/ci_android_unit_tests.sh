@@ -17,6 +17,9 @@ APPS=(
   supplier-app-android
   warehouse-app-android
 )
+if [[ $# -gt 0 ]]; then
+  APPS=("$@")
+fi
 
 TASK="${ANDROID_TEST_TASK:-testStoreDebugUnitTest}"
 FALLBACK_TASK="${ANDROID_TEST_FALLBACK_TASK:-testEnterpriseDebugUnitTest}"
@@ -47,4 +50,4 @@ if [[ "$failed" -ne 0 ]]; then
   echo "Android unit tests failed for one or more apps"
   exit 1
 fi
-echo "Android CI: all 6 apps passed unit tests"
+echo "Android CI: unit tests passed for ${APPS[*]}"

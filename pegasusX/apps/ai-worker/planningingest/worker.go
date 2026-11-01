@@ -47,7 +47,7 @@ func NewRuntimeWithDialer(brokers []string, dialer *kafka.Dialer, client *spanne
 			Topic:          events.TopicPlanningSignalIngest,
 			MinBytes:       1e3,
 			MaxBytes:       10e6,
-			CommitInterval: time.Second,
+			CommitInterval: 0,
 			StartOffset:    kafka.LastOffset,
 		}),
 		client: client,

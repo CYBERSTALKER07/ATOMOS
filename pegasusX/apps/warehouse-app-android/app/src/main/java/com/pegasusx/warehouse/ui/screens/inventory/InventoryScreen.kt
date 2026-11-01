@@ -53,7 +53,8 @@ fun InventoryScreen(
         scope.launch {
             try {
                 val resp = api.getInventory(lowStock = if (lowOnly) true else null)
-                if (resp.isSuccessful && resp.body() != null) items = resp.body()!!.items
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) items = respBody.items
                 else if (!silent) error = "Failed (${resp.code()})"
             } catch (e: Exception) {
                 if (!silent) error = e.message ?: "Network error"
@@ -97,7 +98,7 @@ fun InventoryScreen(
             error != null && items.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Inventory unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
@@ -133,9 +134,10 @@ fun InventoryScreen(
         }
     }
 
-    if (adjustItem != null) {
+    val currentAdjustItem = adjustItem
+    if (currentAdjustItem != null) {
         AdjustDialog(
-            item = adjustItem!!,
+            item = currentAdjustItem,
             api = api,
             realtimeSignals = realtimeSignals,
             onDismiss = { adjustItem = null },
@@ -246,7 +248,7 @@ private fun AdjustDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     if (error != null) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             },

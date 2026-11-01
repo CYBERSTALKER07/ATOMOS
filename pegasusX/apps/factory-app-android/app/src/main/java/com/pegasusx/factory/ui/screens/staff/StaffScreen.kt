@@ -46,7 +46,7 @@ fun StaffScreen(
             try {
                 val resp = api.getStaff()
                 if (resp.isSuccessful && resp.body() != null) {
-                    staff = resp.body()!!.staff
+                    resp.body()?.let { staff = it.staff }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -108,7 +108,7 @@ fun StaffScreen(
             error != null && staff.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load staff",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier
@@ -178,7 +178,7 @@ private fun CreateStaffDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (error != null) {
-                    Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
         },

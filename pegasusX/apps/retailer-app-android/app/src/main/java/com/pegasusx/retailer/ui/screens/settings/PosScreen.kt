@@ -280,13 +280,13 @@ fun PosScreen(
                                     scope.launch {
                                         busy = true
                                         try {
-                                            val active = viewModel.posSync.countActiveForSession(sessionId!!)
+                                            val active = viewModel.posSync.countActiveForSession(sessionId.orEmpty())
                                             if (active > 0) {
                                                 banner = "Sync $active offline sale(s) before close"
                                                 return@launch
                                             }
                                             viewModel.api.closePosSession(
-                                                sessionId = sessionId!!,
+                                                sessionId = sessionId.orEmpty(),
                                                 body = mapOf("closing_cash_minor" to 0L),
                                             )
                                             sessionId = null
@@ -440,7 +440,7 @@ fun PosScreen(
                                     }
                                     if (!context.isOnline()) {
                                         val entity = viewModel.posSync.enqueue(
-                                            sessionId = sessionId!!,
+                                            sessionId = sessionId.orEmpty(),
                                             lines = lines,
                                             totalMinor = totalMinor,
                                         )
@@ -479,7 +479,7 @@ fun PosScreen(
                                             )
                                         }
                                         val entity = viewModel.posSync.enqueue(
-                                            sessionId = sessionId!!,
+                                            sessionId = sessionId.orEmpty(),
                                             lines = lines,
                                             totalMinor = totalMinor,
                                         )
@@ -504,7 +504,7 @@ fun PosScreen(
                             scope.launch {
                                 try {
                                     viewModel.api.voidPosSale(
-                                        saleId = lastSaleId!!,
+                                        saleId = lastSaleId.orEmpty(),
                                         body = mapOf("reason" to "mobile_void"),
                                     )
                                     banner = "Voided"

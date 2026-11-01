@@ -4,6 +4,7 @@ public struct PegasusLoadingView: View {
   public let title: String
   public var message: String = "Fetching the latest data."
 
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var animating = false
 
   public init(title: String, message: String = "Fetching the latest data.") {
@@ -17,7 +18,7 @@ public struct PegasusLoadingView: View {
         Circle()
           .fill(PegasusMonochromeTheme.tertiaryBackground)
           .frame(width: 72, height: 72)
-          .scaleEffect(animating ? 1.04 : 0.96)
+          .scaleEffect(reduceMotion ? 1.0 : (animating ? 1.04 : 0.96))
         ProgressView()
           .controlSize(.regular)
       }
@@ -34,6 +35,7 @@ public struct PegasusLoadingView: View {
     .frame(maxWidth: .infinity, minHeight: 200)
     .padding(PegasusMonochromeTheme.spacingXL)
     .onAppear {
+      guard !reduceMotion else { return }
       withAnimation(PegasusAnim.smooth.repeatForever(autoreverses: true)) {
         animating = true
       }

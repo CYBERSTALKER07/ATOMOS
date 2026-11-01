@@ -13,13 +13,17 @@ struct LaborCapacityView: View {
     @State private var saving = false
     @State private var statusMessage: String?
 
-    private static func todayUTC() -> String {
+    private static let utcDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone(secondsFromGMT: 0)
         f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
+        return f
+    }()
+
+    private static func todayUTC() -> String {
+        utcDateFormatter.string(from: Date())
     }
 
     var body: some View {

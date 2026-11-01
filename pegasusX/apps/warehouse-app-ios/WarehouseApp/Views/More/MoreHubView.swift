@@ -60,6 +60,12 @@ struct MoreHubView: View {
                 NavigationLink { OperationsView() } label: {
                     Label("warehouse_portal.operations.text.depot_operations", systemImage: "paperplane")
                 }
+                NavigationLink { CashierBlindCountView(onBack: {}) } label: {
+                    Label("Cashier Blind Count & Vault", systemImage: "banknote.fill")
+                }
+                NavigationLink { YardGateView(onBack: {}) } label: {
+                    Label("Yard Gate Control", systemImage: "lock.shield.fill")
+                }
                 NavigationLink { CRMView() } label: {
                     Label("portal.nav.retailers", systemImage: "person.crop.rectangle")
                 }

@@ -171,7 +171,7 @@ fun ClaimsScreen(
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Claims unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { load() },
                 )

@@ -85,7 +85,7 @@ fun CreditNotesScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

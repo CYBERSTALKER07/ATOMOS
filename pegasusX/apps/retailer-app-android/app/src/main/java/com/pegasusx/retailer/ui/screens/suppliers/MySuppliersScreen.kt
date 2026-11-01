@@ -159,8 +159,9 @@ fun MySuppliersScreen(
                 }
             }
 
-            if (uiState.analytics != null && !uiState.isLoading) {
-                AnalyticsOverview(uiState.analytics!!)
+            val analytics = uiState.analytics
+            if (analytics != null && !uiState.isLoading) {
+                AnalyticsOverview(analytics)
             }
 
             if (uiState.isLoading && uiState.suppliers.isEmpty()) {

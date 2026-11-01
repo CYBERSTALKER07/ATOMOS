@@ -100,7 +100,7 @@ fun PlaybooksScreen(
             error != null && rows.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Playbooks unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

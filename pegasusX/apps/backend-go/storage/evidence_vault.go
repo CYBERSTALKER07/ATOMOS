@@ -149,6 +149,7 @@ func (v *Vault) SealDossier(ctx context.Context, dossierID string) error {
 			Params: map[string]interface{}{"dossierId": dossierID},
 		}
 		iter := txn.Query(ctx, stmt)
+		defer iter.Stop()
 		var hashes []string
 		for {
 			row, err := iter.Next()
@@ -207,6 +208,7 @@ func (v *Vault) GetDossier(ctx context.Context, dossierID string) (*EvidenceDoss
 		Params: map[string]interface{}{"dossierId": dossierID},
 	}
 	iter := ro.Query(ctx, stmt)
+	defer iter.Stop()
 	var items []*EvidenceItem
 	for {
 		itemRow, err := iter.Next()

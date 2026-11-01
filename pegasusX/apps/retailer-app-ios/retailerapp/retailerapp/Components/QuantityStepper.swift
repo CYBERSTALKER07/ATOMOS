@@ -47,8 +47,10 @@ struct QuantityStepper: View {
                 .frame(width: compact ? 26 : 32, height: compact ? 26 : 32)
                 .background(enabled ? AppTheme.accentSoft.opacity(0.5) : AppTheme.separator.opacity(0.2))
                 .clipShape(.circle)
+                .pegasusMinimumHitTarget()
         }
         .accessibilityLabel(icon == "minus" ? "Decrease quantity" : "Increase quantity")
+        .accessibilityValue("\(quantity)")
         .disabled(!enabled)
     }
 }

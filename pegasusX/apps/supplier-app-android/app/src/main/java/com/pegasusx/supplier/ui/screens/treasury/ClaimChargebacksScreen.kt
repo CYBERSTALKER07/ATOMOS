@@ -95,7 +95,7 @@ fun ClaimChargebacksScreen(
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Unavailable",
-                    body = error!!,
+                    body = error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { load() },
                 )

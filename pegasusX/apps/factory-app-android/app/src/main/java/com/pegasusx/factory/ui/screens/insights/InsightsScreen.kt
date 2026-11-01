@@ -50,7 +50,7 @@ fun InsightsScreen(
             try {
                 val resp = api.getInsights()
                 if (resp.isSuccessful && resp.body() != null) {
-                    insights = resp.body()!!.insights
+                    resp.body()?.let { insights = it.insights }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -99,7 +99,7 @@ fun InsightsScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load insights",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier

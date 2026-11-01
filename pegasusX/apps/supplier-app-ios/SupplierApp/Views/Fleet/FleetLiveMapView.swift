@@ -15,6 +15,7 @@ struct FleetLiveMapView: View {
         )
     )
     @State private var animator = FleetDriverMarkerAnimator()
+    @State private var hasFittedInitialCamera = false
     @State private var publishAction = "REROUTE"
     @State private var publishStatus: String?
     @State private var publishing = false
@@ -179,16 +180,25 @@ struct FleetLiveMapView: View {
         error = nil
         defer { if !silent { loading = false } }
         do {
-            let response = try await SupplierOperationsService.fleetLiveMap()
+            async let fleetTask = SupplierOperationsService.fleetLiveMap()
+            async let exceptionsTask = SupplierOperationsService.exceptionMap()
+            async let overridesTask = SupplierOperationsService.controlTowerZoneOverrides()
+
+            let response = try await fleetTask
             routes = response.routes
             animator.updateTargets(routes)
-            if let map = try? await SupplierOperationsService.exceptionMap() {
+            if let map = try? await exceptionsTask {
                 exceptionCells = map.cells
             }
-            if let overrides = try? await SupplierOperationsService.controlTowerZoneOverrides() {
+            if let overrides = try? await overridesTask {
                 zoneOverrides = overrides
             }
-            fitCamera()
+            if !silent || !hasFittedInitialCamera {
+                fitCamera()
+                if !routes.isEmpty {
+                    hasFittedInitialCamera = true
+                }
+            }
         } catch {
             if !silent { self.error = error.localizedDescription }
         }

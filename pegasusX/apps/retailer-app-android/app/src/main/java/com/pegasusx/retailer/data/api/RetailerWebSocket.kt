@@ -87,14 +87,17 @@ class RetailerWebSocket @Inject constructor(
     private val json: Json,
 ) {
     private var socket: WebSocket? = null
-    private var client: OkHttpClient? = null
+    private val sharedClient: OkHttpClient = OkHttpClient.Builder()
+        .pingInterval(25, TimeUnit.SECONDS)
+        .readTimeout(0, TimeUnit.MILLISECONDS)
+        .build()
     private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
     private var reconnectTask: ScheduledFuture<*>? = null
     private val intentionalClose = AtomicBoolean(false)
     private val reconnectAttempt = AtomicInteger(0)
     @Volatile private var lastEventId: String? = null
 
-    private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 16)
+    private val _events = MutableSharedFlow<RetailerWSMessage>(extraBufferCapacity = 32)
     val events: SharedFlow<RetailerWSMessage> = _events.asSharedFlow()
 
     private val _reconnects = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
@@ -103,7 +106,6 @@ class RetailerWebSocket @Inject constructor(
     companion object {
         private const val BASE_DELAY_MS = 2_000L
         private const val MAX_DELAY_MS = 60_000L
-        private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
     fun connect() {
@@ -121,11 +123,6 @@ class RetailerWebSocket @Inject constructor(
             "$wsBase/v1/ws"
         }
 
-        val okClient = OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS)
-            .build()
-        client = okClient
-
         val reqBuilder = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer $token")
@@ -134,7 +131,7 @@ class RetailerWebSocket @Inject constructor(
         }
         val request = reqBuilder.build()
 
-        socket = okClient.newWebSocket(request, object : WebSocketListener() {
+        socket = sharedClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 val wasReconnect = reconnectAttempt.getAndSet(0) > 0
                 if (wasReconnect) {
@@ -158,7 +155,6 @@ class RetailerWebSocket @Inject constructor(
                 socket = null
                 if (intentionalClose.get()) return
                 val attempt = reconnectAttempt.getAndIncrement()
-                if (attempt >= MAX_RECONNECT_ATTEMPTS) return
                 val delay = ReconnectBackoff.delayMs(attempt, BASE_DELAY_MS, MAX_DELAY_MS, ReconnectBackoff.retryAfterMs(response))
                 reconnectTask?.cancel(false)
                 reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
@@ -168,7 +164,6 @@ class RetailerWebSocket @Inject constructor(
                 socket = null
                 if (intentionalClose.get()) return
                 val attempt = reconnectAttempt.getAndIncrement()
-                if (attempt >= MAX_RECONNECT_ATTEMPTS) return
                 val delay = ReconnectBackoff.delayMs(attempt, BASE_DELAY_MS, MAX_DELAY_MS, -1)
                 reconnectTask?.cancel(false)
                 reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
@@ -182,7 +177,5 @@ class RetailerWebSocket @Inject constructor(
         reconnectTask = null
         socket?.close(1000, "App closing")
         socket = null
-        client?.dispatcher?.executorService?.shutdown()
-        client = null
     }
 }

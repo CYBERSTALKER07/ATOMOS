@@ -70,7 +70,7 @@ fun LaborCapacityScreen(
             try {
                 val resp = api.listLaborZoneCapacity(date.trim())
                 if (resp.isSuccessful && resp.body() != null) {
-                    zones = resp.body()!!.resolvedZones()
+                    resp.body()?.let { zones = it.resolvedZones() }
                 } else {
                     zones = emptyList()
                     error = "Failed to load zone capacity (${resp.code()})"
@@ -188,10 +188,10 @@ fun LaborCapacityScreen(
                 }
             }
             if (error != null) {
-                item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+                item { Text(error.orEmpty(), color = MaterialTheme.colorScheme.error) }
             }
             if (statusMessage != null) {
-                item { Text(statusMessage!!, color = MaterialTheme.colorScheme.primary) }
+                item { Text(statusMessage.orEmpty(), color = MaterialTheme.colorScheme.primary) }
             }
             when {
                 loading -> item {

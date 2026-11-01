@@ -60,6 +60,7 @@ object NetworkModule {
                 .build()
             chain.proceed(request)
         }
+        .addInterceptor(com.pegasus.design.PegasusHttpResilienceInterceptor())
         .authenticator(TokenRefreshAuthenticator(json))
         .addInterceptor(ProblemDetailInterceptor(json))
         .addInterceptor(
@@ -231,6 +232,12 @@ object TokenHolder {
 
 /** OkHttp Authenticator that attempts token refresh on 401 before clearing credentials. */
 private class TokenRefreshAuthenticator(private val json: Json) : Authenticator {
+    private val refreshClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .build()
+
+    @Synchronized
     override fun authenticate(route: Route?, response: okhttp3.Response): Request? {
         // Prevent infinite retry loops — give up after a single refresh attempt
         if (response.request.header("X-Refresh-Attempted") != null) {
@@ -243,6 +250,14 @@ private class TokenRefreshAuthenticator(private val json: Json) : Authenticator 
             return null
         }
 
+        val requestToken = response.request.header("Authorization")?.removePrefix("Bearer ")?.trim()
+        if (!requestToken.isNullOrEmpty() && requestToken != currentToken) {
+            return response.request.newBuilder()
+                .header("Authorization", "Bearer $currentToken")
+                .header("X-Refresh-Attempted", "true")
+                .build()
+        }
+
         // Synchronously call the refresh endpoint
         val refreshRequest = Request.Builder()
             .url(BuildConfig.API_BASE_URL + "/v1/auth/refresh")
@@ -250,15 +265,9 @@ private class TokenRefreshAuthenticator(private val json: Json) : Authenticator 
             .addHeader("Authorization", "Bearer $currentToken")
             .build()
 
-        val client = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build()
-
         val refreshResponse = try {
-            client.newCall(refreshRequest).execute()
+            refreshClient.newCall(refreshRequest).execute()
         } catch (_: Exception) {
-            TokenHolder.clear()
             return null
         }
 

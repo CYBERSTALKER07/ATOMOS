@@ -34,6 +34,11 @@ func loadConfig() (*Config, error) {
 		InternalAPIKey:       envOr("INTERNAL_API_KEY", "dev-internal-key"),
 		SeedSupplierCurrency: envOr("SEED_SUPPLIER_CURRENCY", seedCurrencyFromPack()),
 	}
+	if auth.IsProduction() || auth.IsStaging() {
+		if strings.TrimSpace(cfg.InternalAPIKey) == "" || cfg.InternalAPIKey == "dev-internal-key" {
+			return nil, fmt.Errorf("INTERNAL_API_KEY must be set to a non-default secret in production and staging environments")
+		}
+	}
 	if strings.TrimSpace(cfg.InternalAPIKey) == "" {
 		return nil, fmt.Errorf("INTERNAL_API_KEY required")
 	}

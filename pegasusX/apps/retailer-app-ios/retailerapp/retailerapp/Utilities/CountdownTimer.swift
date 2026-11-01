@@ -9,9 +9,10 @@ final class CountdownTimer {
 
     private var targetDate: Date?
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     func start(from isoString: String) {
-        let formatter = ISO8601DateFormatter()
-        targetDate = formatter.date(from: isoString)
+        targetDate = Self.isoFormatter.date(from: isoString)
     }
 
     func start(from date: Date) {
@@ -54,9 +55,10 @@ struct CountdownText: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func countdownString(from now: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        guard let target = formatter.date(from: targetISO) else { return "--:--:--" }
+        guard let target = Self.isoFormatter.date(from: targetISO) else { return "--:--:--" }
         let remaining = target.timeIntervalSince(now)
         guard remaining > 0 else { return "Arrived" }
         let hours = Int(remaining) / 3600

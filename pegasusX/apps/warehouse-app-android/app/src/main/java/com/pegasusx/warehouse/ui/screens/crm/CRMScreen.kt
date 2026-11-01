@@ -42,7 +42,8 @@ fun CRMScreen(
         scope.launch {
             try {
                 val resp = api.getRetailers()
-                if (resp.isSuccessful && resp.body() != null) retailers = resp.body()!!.retailers
+                val respBody = resp.body()
+                if (resp.isSuccessful && respBody != null) retailers = respBody.retailers
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -69,7 +70,7 @@ fun CRMScreen(
             error != null && retailers.isEmpty() -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Retailers unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)

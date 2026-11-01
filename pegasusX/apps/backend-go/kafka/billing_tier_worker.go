@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -77,7 +77,7 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 	}
 	var event orderFinalizedBillingEvent
 	if err := json.Unmarshal(msg, &event); err != nil {
-		log.Printf("Failed to unmarshal billing event: %v", err)
+		slog.WarnContext(ctx, "failed to unmarshal billing event", "err", err)
 		return err
 	}
 
@@ -87,7 +87,7 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 	orderID := strings.TrimSpace(event.OrderID)
 	supplierID := strings.TrimSpace(event.SupplierID)
 	if orderID == "" || supplierID == "" {
-		log.Printf("billing ORDER_FINALIZED missing order_id or supplier_id; skipping")
+		slog.DebugContext(ctx, "billing ORDER_FINALIZED missing order_id or supplier_id; skipping")
 		return nil
 	}
 
@@ -98,7 +98,7 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 		}
 	}
 	if operating == "" {
-		log.Printf("billing ORDER_FINALIZED empty operating currency (planned/unknown pack); skipping orderID=%s", orderID)
+		slog.DebugContext(ctx, "billing ORDER_FINALIZED empty operating currency; skipping", "order_id", orderID)
 		return nil
 	}
 	source := fxrates.NormalizeCurrency(event.Total.Currency)
@@ -111,7 +111,7 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 
 	minor := billing.ResolveMeterAmountMinor(event.AmountMinor, event.Total.Amount, event.TotalMinor, event.Amount)
 	if minor <= 0 {
-		log.Printf("billing ORDER_FINALIZED non-positive amount; skipping orderID=%s", orderID)
+		slog.DebugContext(ctx, "billing ORDER_FINALIZED non-positive amount; skipping", "order_id", orderID)
 		return nil
 	}
 
@@ -122,18 +122,18 @@ func (w *BillingTierWorker) HandleMessage(ctx context.Context, msg []byte) error
 
 	if source != operating {
 		if w.Fx == nil {
-			log.Printf("billing FX skip: no converter source=%s operating=%s orderID=%s", source, operating, orderID)
+			slog.DebugContext(ctx, "billing FX skip: no converter", "source", source, "operating", operating, "order_id", orderID)
 			return nil
 		}
 		converted, err := w.Fx.ConvertMinor(ctx, source, operating, minor, now)
 		if errors.Is(err, fxrates.ErrRateMissing) {
-			log.Printf("billing FX skip missing rate source=%s operating=%s orderID=%s minor=%d", source, operating, orderID, minor)
+			slog.DebugContext(ctx, "billing FX skip missing rate", "source", source, "operating", operating, "order_id", orderID, "minor", minor)
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		log.Printf("billing FX converted orderID=%s source=%s→%s minor=%d→%d", orderID, source, operating, minor, converted)
+		slog.InfoContext(ctx, "billing FX converted", "order_id", orderID, "source", source, "operating", operating, "from_minor", minor, "to_minor", converted)
 		minor = converted
 	}
 

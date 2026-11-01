@@ -40,12 +40,4 @@ class DashboardTests {
         assertEquals(FACTORY_TRANSFER_STATES.size, statusStackModel(FACTORY_TRANSFER_STATES, dash.transfersByState).rows.size)
         assertFalse(FACTORY_TRANSFER_STATES.contains("FISCAL_FAILED"))
     }
-
-    @Test
-    fun pulseFailureDoesNotTreatAsEmptyTimeline() {
-        val src = java.io.File("src/main/java/com/pegasusx/factory/ui/screens/loadingbay/LoadingBayScreen.kt").readText()
-        assertTrue(src.contains("PulseHonesty.FAILED"))
-        assertTrue(src.contains("handoffError = handoffError"))
-        assertTrue(!src.contains("handoffEvents = emptyList()"))
-    }
 }

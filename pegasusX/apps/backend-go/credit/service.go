@@ -106,6 +106,11 @@ func (s *Service) CheckOrder(ctx context.Context, retailerID, supplierID string,
 		return result, nil
 	}
 
+	if UnlimitedPaymentsEnabled() {
+		result.Allowed = true
+		return result, nil
+	}
+
 	if profile.CreditLimitMinor <= 0 {
 		result.Reason = "no_credit_limit"
 		result.Shortfall = amountMinor
@@ -208,6 +213,16 @@ func (s *Service) GetProfile(ctx context.Context, retailerID, supplierID string)
 }
 
 const defaultMaxDelinquencyTolerance = int64(2)
+
+// UnlimitedPaymentsEnabled reports whether payment and credit limits are removed across the ecosystem.
+func UnlimitedPaymentsEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("UNLIMITED_PAYMENTS")))
+	if v == "1" || v == "true" || v == "yes" {
+		return true
+	}
+	v2 := strings.ToLower(strings.TrimSpace(os.Getenv("AML_LIMITS_DISABLED")))
+	return v2 == "1" || v2 == "true" || v2 == "yes"
+}
 
 // MaxDelinquencyTolerance returns the delinquency count threshold that triggers auto-freeze and blocks credit.
 func MaxDelinquencyTolerance() int64 {

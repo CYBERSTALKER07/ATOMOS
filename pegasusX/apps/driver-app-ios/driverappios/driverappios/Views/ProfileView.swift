@@ -13,6 +13,9 @@ struct ProfileView: View {
     @State private var showOfflineVerifier = false
     @State private var showSyncQueue = false
     @State private var showEndSession = false
+    @State private var showFleetDVIR = false
+    @State private var showMidRouteRescue = false
+    @State private var showYardGate = false
     @State private var pendingCount = 0
 
     var body: some View {
@@ -29,6 +32,9 @@ struct ProfileView: View {
                     onOfflineVerifier: { showOfflineVerifier = true },
                     onSyncQueue: { showSyncQueue = true },
                     onEndSession: { showEndSession = true },
+                    onFleetDVIR: { showFleetDVIR = true },
+                    onMidRouteRescue: { showMidRouteRescue = true },
+                    onYardGate: { showYardGate = true },
                     pendingCount: pendingCount
                 )
 
@@ -42,6 +48,21 @@ struct ProfileView: View {
             .padding(.bottom, 20)
         }
         .background(LabTheme.bg)
+        .sheet(isPresented: $showFleetDVIR) {
+            FleetDVIRView(onBack: { showFleetDVIR = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showMidRouteRescue) {
+            MidRouteRescueView(onBack: { showMidRouteRescue = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showYardGate) {
+            YardGateView(onBack: { showYardGate = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
         .sheet(isPresented: $showOfflineVerifier) {
             OfflineVerifierView(modelContext: modelContext)
                 .presentationDetents([.large])

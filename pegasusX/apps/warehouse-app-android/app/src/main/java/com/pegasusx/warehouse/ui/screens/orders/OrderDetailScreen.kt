@@ -124,7 +124,7 @@ fun OrderDetailScreen(
             try {
                 val resp = api.getOrder(orderId)
                 if (resp.isSuccessful && resp.body() != null) {
-                    order = resp.body()!!
+                    resp.body()?.let { order = it }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -143,7 +143,7 @@ fun OrderDetailScreen(
                 if (action == OrderMutationAction.PaymentBypass) {
                     val resp = opsRepository.issuePaymentBypass(orderId)
                     if (resp.isSuccessful && resp.body() != null) {
-                        val token = resp.body()!!["bypass_token"]
+                        val token = resp.body()?.get("bypass_token")
                         snackbarHostState.showSnackbar("Token: $token")
                         load()
                     } else {
@@ -165,7 +165,7 @@ fun OrderDetailScreen(
                     val msg = when (action) {
                         OrderMutationAction.ProposeDelivery -> "New delivery date proposed · retailer notified"
                         OrderMutationAction.Reject -> "Order cancelled · retailer notified"
-                        OrderMutationAction.Overflow -> "Order updated · ${resp.body()!!.status}"
+                        OrderMutationAction.Overflow -> "Order updated · ${resp.body()?.status.orEmpty()}"
                         else -> ""
                     }
                     snackbarHostState.showSnackbar(msg)
@@ -303,13 +303,13 @@ fun OrderDetailScreen(
             }
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             order != null -> {
-                val current = order!!
+                val current = order ?: return@Scaffold
                 val state = current.state.uppercase(Locale.US)
                 val flags = orderActionFlags(current.state)
                 val canDelay = flags.canDelay

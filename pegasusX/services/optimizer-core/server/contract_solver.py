@@ -71,6 +71,9 @@ def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     max_stops = int(raw.get("max_stops_per_route") or 0)
     if max_stops > 0:
         out["max_stops_per_route"] = max_stops
+    time_limit = int(raw.get("time_limit_ms") or 0)
+    if time_limit > 0:
+        out["time_limit_ms"] = min(time_limit, MAX_TIME_LIMIT_MS)
     return out
 
 
@@ -89,6 +92,13 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     stops_in = list(req.get("stops") or [])
     vehicles_in = list(req.get("vehicles") or [])
     tunables = _resolve_tunables(req.get("tunables"))
+
+    raw_tunables = req.get("tunables") if isinstance(req.get("tunables"), dict) else {}
+    req_time_limit = int(raw_tunables.get("time_limit_ms") or DEFAULT_TIME_LIMIT_MS)
+    if req_time_limit <= 0:
+        req_time_limit = DEFAULT_TIME_LIMIT_MS
+    time_limit_requested = int(req.get("_time_limit_ms_requested") or req_time_limit)
+    time_limit_applied = int(req.get("_time_limit_ms_applied") or int(tunables["time_limit_ms"]))
 
     if not vehicles_in:
         raise SolverError("EMPTY_FLEET", "fleet is empty")
@@ -131,21 +141,62 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
         stops.append({**stop, "volume_vu": volume, "service_minutes": service})
 
     if not stops:
-        elapsed_ms = int((datetime.utcnow() - started).total_seconds() * 1000)
-        return _empty_response(trace_id, len(stops_in), orphans, elapsed_ms)
+        elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
+        return _empty_response(
+            trace_id,
+            len(stops_in),
+            orphans,
+            elapsed_ms,
+            time_limit_requested,
+            time_limit_applied,
+        )
 
     node_coords = list(depot_nodes)
     for stop in stops:
         node_coords.append((float(stop["lat"]), float(stop["lng"])))
 
     size = len(node_coords)
-    distance_matrix = [
-        [
-            _scaled_distance_m(node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1])
-            for j in range(size)
+    raw_matrix = req.get("distance_matrix_m")
+    matrix_loaded = False
+    if isinstance(raw_matrix, list) and len(raw_matrix) > 0 and all(isinstance(row, list) for row in raw_matrix):
+        # Case A: matrix matches node_coords (size x size)
+        if len(raw_matrix) == size and all(len(row) == size for row in raw_matrix):
+            distance_matrix = [
+                [max(1, int(raw_matrix[i][j])) if i != j else 0 for j in range(size)]
+                for i in range(size)
+            ]
+            matrix_loaded = True
+        # Case B: matrix matches (len(vehicles_in) + len(stops_in)) per optimizer-contract specification
+        elif len(raw_matrix) == len(vehicles_in) + len(stops_in) and all(len(row) == len(vehicles_in) + len(stops_in) for row in raw_matrix):
+            depot_to_v: dict[int, int] = {}
+            for v_idx, d_idx in enumerate(starts):
+                if d_idx not in depot_to_v:
+                    depot_to_v[d_idx] = v_idx
+
+            node_to_client: list[int] = []
+            for d in range(num_depots):
+                node_to_client.append(depot_to_v.get(d, 0))
+            for stop in stops:
+                orig_idx = stops_in.index(stop) if stop in stops_in else 0
+                node_to_client.append(len(vehicles_in) + orig_idx)
+
+            distance_matrix = [
+                [
+                    max(1, int(raw_matrix[node_to_client[i]][node_to_client[j]])) if i != j else 0
+                    for j in range(size)
+                ]
+                for i in range(size)
+            ]
+            matrix_loaded = True
+
+    if not matrix_loaded:
+        distance_matrix = [
+            [
+                _scaled_distance_m(node_coords[i][0], node_coords[i][1], node_coords[j][0], node_coords[j][1])
+                for j in range(size)
+            ]
+            for i in range(size)
         ]
-        for i in range(size)
-    ]
 
     demands = [0] * num_depots
     for stop in stops:
@@ -226,7 +277,23 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     # Penalty high enough that assignment is preferred when feasible.
     drop_penalty = 100_000
     for node_index in range(num_depots, size):
-        routing.AddDisjunction([manager.NodeToIndex(node_index)], drop_penalty)
+        mgr_idx = manager.NodeToIndex(node_index)
+        routing.AddDisjunction([mgr_idx], drop_penalty)
+
+        stop = stops[node_index - num_depots]
+        req_cold = bool(stop.get("requires_cold_chain")) or (stop.get("handling_class") == "COLD_CHAIN")
+        req_hazmat = bool(stop.get("is_hazardous")) or (stop.get("handling_class") == "HAZMAT")
+
+        if req_cold or req_hazmat:
+            allowed_vehicles: list[int] = []
+            for v_idx, v in enumerate(vehicles_in):
+                if req_cold and not bool(v.get("has_refrigeration")):
+                    continue
+                if req_hazmat and not bool(v.get("hazmat_certified")):
+                    continue
+                allowed_vehicles.append(v_idx)
+            # Allowed values include -1 so node can be dropped via disjunction if no feasible vehicle
+            routing.VehicleVar(mgr_idx).SetValues([-1] + allowed_vehicles)
 
     max_stops = int(tunables["max_stops_per_route"])
 
@@ -237,7 +304,7 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
     search.local_search_metaheuristic = (
         routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
     )
-    time_limit_ms = min(max(1, DEFAULT_TIME_LIMIT_MS), MAX_TIME_LIMIT_MS)
+    time_limit_ms = min(max(1, int(tunables["time_limit_ms"])), MAX_TIME_LIMIT_MS)
     search.time_limit.FromMilliseconds(time_limit_ms)
 
     solution = routing.SolveWithParameters(search)
@@ -288,6 +355,8 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                     "window_close": s.get("window_close") or "",
                     "service_minutes": s.get("service_minutes"),
                     "priority": int(s.get("priority") or 0),
+                    "requires_cold_chain": bool(s.get("requires_cold_chain")),
+                    "is_hazardous": bool(s.get("is_hazardous")),
                 }
                 for s in ordered_stops
             ]
@@ -332,12 +401,26 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             "vehicles_used": len(routes),
             "avg_utilisation_pct": avg_util,
             "two_opt_improvement_pct": 0.0,
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+        },
+        "solver_metadata": {
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+            "time_limit_requested_ms": time_limit_requested,
+            "time_limit_applied_ms": time_limit_applied,
+            "clamped": time_limit_requested > time_limit_applied,
         },
     }
 
 
 def _empty_response(
-    trace_id: str, considered: int, orphans: list[dict[str, str]], elapsed_ms: int
+    trace_id: str,
+    considered: int,
+    orphans: list[dict[str, str]],
+    elapsed_ms: int,
+    time_limit_requested: int = DEFAULT_TIME_LIMIT_MS,
+    time_limit_applied: int = DEFAULT_TIME_LIMIT_MS,
 ) -> dict[str, Any]:
     return {
         "v": CONTRACT_V,
@@ -353,5 +436,14 @@ def _empty_response(
             "vehicles_used": 0,
             "avg_utilisation_pct": 0.0,
             "two_opt_improvement_pct": 0.0,
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+        },
+        "solver_metadata": {
+            "solver_time_limit_ms_requested": time_limit_requested,
+            "solver_time_limit_ms_applied": time_limit_applied,
+            "time_limit_requested_ms": time_limit_requested,
+            "time_limit_applied_ms": time_limit_applied,
+            "clamped": time_limit_requested > time_limit_applied,
         },
     }

@@ -19,6 +19,22 @@ enum FactoryRealtimeEventType: String {
 struct FactoryLiveEvent: Decodable {
     let type: String
     let timestamp: String?
+    let eventId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case timestamp
+        case eventId = "event_id"
+        case id
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decode(String.self, forKey: .type)
+        timestamp = try c.decodeIfPresent(String.self, forKey: .timestamp)
+        eventId = try c.decodeIfPresent(String.self, forKey: .eventId)
+            ?? c.decodeIfPresent(String.self, forKey: .id)
+    }
 
     var eventType: FactoryRealtimeEventType? {
         FactoryRealtimeEventType(rawValue: type)
@@ -32,11 +48,13 @@ final class FactoryRealtimeClient {
     private let workQueue = DispatchQueue(label: "factory.realtime.client")
 
     private var task: URLSessionWebSocketTask?
+    private var heartbeatTask: Task<Void, Never>?
     private var reconnectWorkItem: DispatchWorkItem?
     private var reconnectAttempt = 0
     private var hasConnectedOnce = false
     private var closed = true
     private var networkAvailable = true
+    private var lastEventId: String?
     private var stateHandler: (@MainActor (FactoryRealtimeStatus) -> Void)?
     private var eventHandler: (@MainActor (FactoryLiveEvent) -> Void)?
     private var reconnectHandler: (@MainActor () -> Void)?
@@ -82,6 +100,8 @@ final class FactoryRealtimeClient {
 
     func disconnect() {
         closed = true
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         reconnectWorkItem?.cancel()
         reconnectWorkItem = nil
         task?.cancel(with: .goingAway, reason: nil)
@@ -107,10 +127,17 @@ final class FactoryRealtimeClient {
                 return
             }
 
+            self.heartbeatTask?.cancel()
             self.task?.cancel(with: .goingAway, reason: nil)
             self.publish(isReconnect ? .reconnecting : .connecting)
 
-            let socketTask = self.session.webSocketTask(with: APIClient.shared.factoryWebSocketURL(token: token))
+            let wsURL = APIClient.shared.factoryWebSocketURL(token: token, lastEventId: self.lastEventId)
+            var wsRequest = URLRequest(url: wsURL)
+            wsRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            if let lastId = self.lastEventId, !lastId.isEmpty {
+                wsRequest.setValue(lastId, forHTTPHeaderField: "Last-Event-ID")
+            }
+            let socketTask = self.session.webSocketTask(with: wsRequest)
             self.task = socketTask
             socketTask.resume()
             socketTask.sendPing { [weak self] error in
@@ -122,6 +149,7 @@ final class FactoryRealtimeClient {
                     self.hasConnectedOnce = true
                     self.reconnectAttempt = 0
                     self.publish(.live)
+                    self.startHeartbeat()
                     if wasReconnect, let reconnectHandler = self.reconnectHandler {
                         Task { @MainActor in
                             await FactorySessionReconcile.run()
@@ -131,6 +159,21 @@ final class FactoryRealtimeClient {
                 }
             }
             self.receiveLoop()
+        }
+    }
+
+    private func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 25_000_000_000)
+                guard !Task.isCancelled, let self, !self.closed, let socket = self.task else { return }
+                socket.sendPing { [weak self] error in
+                    if error != nil {
+                        self?.handleSocketDrop()
+                    }
+                }
+            }
         }
     }
 
@@ -153,10 +196,14 @@ final class FactoryRealtimeClient {
 
                 self.publish(.live)
                 if let payload,
-                   let event = try? self.decoder.decode(FactoryLiveEvent.self, from: payload),
-                   let eventHandler = self.eventHandler {
-                    Task { @MainActor in
-                        eventHandler(event)
+                   let event = try? self.decoder.decode(FactoryLiveEvent.self, from: payload) {
+                    if let eid = event.eventId?.trimmingCharacters(in: .whitespacesAndNewlines), !eid.isEmpty {
+                        self.lastEventId = eid
+                    }
+                    if let eventHandler = self.eventHandler {
+                        Task { @MainActor in
+                            eventHandler(event)
+                        }
                     }
                 }
 
@@ -168,6 +215,8 @@ final class FactoryRealtimeClient {
     }
 
     private func handleSocketDrop() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         task = nil
         scheduleReconnect()
     }

@@ -562,8 +562,10 @@ struct OrderDetailSheet: View {
         }
     }
 
+    private static let claimIsoFormatter = ISO8601DateFormatter()
+
     private func formatClaimEndsAt(_ raw: String?) -> String {
-        guard let raw, let date = ISO8601DateFormatter().date(from: raw) else {
+        guard let raw, let date = Self.claimIsoFormatter.date(from: raw) else {
             return raw ?? "window end"
         }
         return date.formatted(date: .abbreviated, time: .shortened)
@@ -751,10 +753,15 @@ struct OrderStatusHistorySection: View {
         return parts.joined(separator: " · ")
     }
 
+    private static let isoFractionalFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let isoStandardFormatter = ISO8601DateFormatter()
+
     private func formatWhen(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) {
+        if let date = Self.isoFractionalFormatter.date(from: iso) ?? Self.isoStandardFormatter.date(from: iso) {
             return date.formatted(date: .abbreviated, time: .shortened)
         }
         return iso

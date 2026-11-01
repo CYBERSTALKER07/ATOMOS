@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -36,6 +37,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/eta"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/featureflags"
+	"github.com/pegasusx/pegasusx/apps/backend-go/foundry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/fxrates"
 	"github.com/pegasusx/pegasusx/apps/backend-go/globalproducts"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
@@ -193,6 +195,7 @@ type App struct {
 	BillingInvoiceWorker    *billing.InvoiceWorker
 	ForecastAccuracy        *planning.AccuracyService
 	ForecastRunner          *planning.ForecastRunner
+	FoundryEngine           *foundry.Engine
 	cleanup                 []func()
 }
 
@@ -592,6 +595,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Handoff:               handoffEngine,
 		Idem:                  idemStore,
 		Replanner:             routingSvc,
+		Locations:             driverLocations,
 	})
 	orderSvc.SetManifestStore(manifestStore)
 	orderSvc.SetDoorstepShortfall(payment.WriteDoorstepShortfall)
@@ -1480,6 +1484,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		BillingInvoiceWorker:    billingInvoiceWorker,
 		ForecastAccuracy:        forecastAccuracy,
 		ForecastRunner:          forecastRunner,
+		FoundryEngine:           foundry.NewEngine().WithSpannerClient(spannerClient),
 		cleanup:                 cleanup,
 	}
 
@@ -1507,9 +1512,25 @@ func (a *App) Close() {
 			a.cleanup[i]()
 		}
 	}
+	if a.Reliability != nil {
+		a.Reliability.Close()
+	}
 	if a.Cache != nil {
 		if err := a.Cache.Close(); err != nil {
 			slog.Warn("cache close failed", "err", err)
 		}
 	}
+}
+
+// IdempotencyMiddleware returns the configured idempotency middleware.
+func (a *App) IdempotencyMiddleware() func(http.Handler) http.Handler {
+	if a == nil || a.Idempotency == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return idempotency.Middleware(a.Idempotency)
+}
+
+// IdempotencyMiddleware wraps idempotency.Middleware for bootstrap consumers.
+func IdempotencyMiddleware(store idempotency.Store) func(http.Handler) http.Handler {
+	return idempotency.Middleware(store)
 }

@@ -29,6 +29,9 @@ fun ProfileScreen(
     viewModel: ManifestViewModel,
     onOfflineVerifier: () -> Unit = {},
     onSyncQueue: () -> Unit = {},
+    onFleetDvir: () -> Unit = {},
+    onMidRouteRescue: () -> Unit = {},
+    onYardGate: () -> Unit = {},
     pendingCount: Int = 0,
 ) {
     val state by viewModel.state.collectAsState()
@@ -80,6 +83,9 @@ fun ProfileScreen(
                 onEndSession = { showEndSession = true },
                 onOfflineVerifier = onOfflineVerifier,
                 onSyncQueue = onSyncQueue,
+                onFleetDvir = onFleetDvir,
+                onMidRouteRescue = onMidRouteRescue,
+                onYardGate = onYardGate,
                 pendingCount = pendingCount,
             )
         }

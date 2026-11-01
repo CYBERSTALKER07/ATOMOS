@@ -46,13 +46,19 @@ export function useControlTowerTelemetry(supplierId: string): ControlTowerData {
       eventSource = null;
     };
 
-    const handlePayload = (raw: any) => {
+    const handlePayload = (raw: unknown) => {
       if (!raw || typeof raw !== "object") return;
-      if (raw.type === "control_tower_network") {
-        setNetworkNodes(raw.nodes || []);
-        setNetworkLinks(raw.links || []);
-      } else if (raw.type === "control_tower_h3") {
-        setH3Data(raw.data || []);
+      const payload = raw as {
+        type?: string;
+        nodes?: typeof networkNodes;
+        links?: typeof networkLinks;
+        data?: typeof h3Data;
+      };
+      if (payload.type === "control_tower_network") {
+        setNetworkNodes(payload.nodes || []);
+        setNetworkLinks(payload.links || []);
+      } else if (payload.type === "control_tower_h3") {
+        setH3Data(payload.data || []);
       }
     };
 

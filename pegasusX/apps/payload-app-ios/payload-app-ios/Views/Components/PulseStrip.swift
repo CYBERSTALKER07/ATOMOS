@@ -52,8 +52,10 @@ struct PulseStrip: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func formatTimestamp(_ iso: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: iso) else { return "" }
+        guard let date = Self.isoFormatter.date(from: iso) else { return "" }
         let mins = Int(Date().timeIntervalSince(date) / 60)
         if mins < 1 { return "now" }
         if mins < 60 { return "\(mins)m" }

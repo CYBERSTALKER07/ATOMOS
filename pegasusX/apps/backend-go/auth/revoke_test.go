@@ -142,6 +142,29 @@ func TestRefresh_StoreError503(t *testing.T) {
 	}
 }
 
+func TestRefresh_ExpiredBeyondWindow401(t *testing.T) {
+	past := time.Now().Add(-8 * 24 * time.Hour)
+	tok, err := Issue(Claims{
+		Subject:    "u1",
+		Role:       RoleAdmin,
+		SupplierID: "s1",
+	}, IssueOptions{
+		Secret: "sec",
+		TTL:    time.Hour,
+		Now:    func() time.Time { return past },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/refresh", nil)
+	req.Header.Set("Authorization", "Bearer "+tok)
+	rr := httptest.NewRecorder()
+	HandleTokenRefresh("sec", "test")(rr, req)
+	if rr.Code != http.StatusUnauthorized || !strings.Contains(rr.Body.String(), "token_expired_beyond_refresh_window") {
+		t.Fatalf("expected 401 token_expired_beyond_refresh_window, got status=%d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestEntitySupplierAllowed(t *testing.T) {
 	ctx := WithClaims(context.Background(), Claims{Role: RoleAdmin, SupplierID: "sup-a"})
 	ctx = WithTenant(ctx, TenantContext{SupplierID: "sup-a", Source: "jwt"})

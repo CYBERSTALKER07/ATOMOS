@@ -1,8 +1,8 @@
 package proximity
 
 import (
-	"log"
-	
+	"log/slog"
+
 	"github.com/uber/h3-go/v4"
 )
 
@@ -34,7 +34,10 @@ func GenerateGeoReport(geoLoop []h3.LatLng, resolution int) (*GeoReportResponse,
 
 	truncated := false
 	if len(compactedCells) > MaxCompactedEgressCells {
-		log.Printf("WARN: geo_report compacted egress circuit-breaker triggered. Truncating %d cells to %d", len(compactedCells), MaxCompactedEgressCells)
+		slog.Warn("geo_report compacted egress circuit-breaker triggered",
+			"truncated_from", len(compactedCells),
+			"truncated_to", MaxCompactedEgressCells,
+		)
 		compactedCells = compactedCells[:MaxCompactedEgressCells]
 		truncated = true
 		RecordEgressOverflow("geo_report", resolution)

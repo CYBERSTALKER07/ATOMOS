@@ -17,6 +17,8 @@ import { PageSection } from '@/components/PageSection';
 import HandoffTimelinePanel from '@/components/HandoffTimelinePanel';
 import LoadingBayControls from '@/components/loading-bay/LoadingBayControls';
 import LoadingBayGrid from '@/components/loading-bay/LoadingBayGrid';
+import LotRecallBanner from '@/components/LotRecallBanner';
+import FactoryYardGateSection from '@/components/loading-bay/FactoryYardGateSection';
 type TransferState = 'APPROVED' | 'LOADING' | 'DISPATCHED';
 
 interface Transfer {
@@ -41,6 +43,7 @@ export default function LoadingBayPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
   const [dispatching, setDispatching] = useState(false);
+  const [isQuarantined, setIsQuarantined] = useState(false);
   const [dispatchExplain, setDispatchExplain] = useState<StatusExplain | null>(null);
   const [forceCapacity, setForceCapacity] = useState(false);
   const [acceptPartial, setAcceptPartial] = useState(false);
@@ -112,6 +115,10 @@ export default function LoadingBayPage() {
   const dispatchedCount = grouped.find((column) => column.key === 'DISPATCHED')?.items.length ?? 0;
 
   async function handleDispatch() {
+    if (isQuarantined) {
+      toast('Dispatch blocked: Active contaminated lot recall quarantine on bay', 'error');
+      return;
+    }
     setDispatching(true);
     setDispatchExplain(null);
     try {
@@ -166,6 +173,11 @@ export default function LoadingBayPage() {
           />
         }
       >
+        <LotRecallBanner
+          onQuarantineChange={(quarantined) => setIsQuarantined(quarantined)}
+          className="mb-4"
+        />
+
         {dispatchExplain ? (
           <ExplainStatusBanner explain={dispatchExplain} className="mb-4" />
         ) : null}
@@ -209,6 +221,14 @@ export default function LoadingBayPage() {
             sub={latestUpdatedAt ? `Updated ${new Date(latestUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'No updates yet'}
           />
         </KpiStatGrid>
+
+        <PageSection
+          title="Loading Bay Yard Gate & Tamper-Evident Bolt-Seal Verification"
+          description="Role 9 Fleet ALPR gate check-in/out and mandatory tamper-evident bolt-seal verification for freight transfers."
+          className="mt-6"
+        >
+          <FactoryYardGateSection />
+        </PageSection>
 
         <PageSection
           title={t("factory_portal.loading_bay.text.handoff_timeline")}

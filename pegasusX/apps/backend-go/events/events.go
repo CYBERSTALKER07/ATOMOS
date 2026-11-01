@@ -26,6 +26,8 @@ var (
 	// TopicDemand carries STORE_POS flywheel DEMAND_SIGNAL events for supplier subscribers.
 	// Dual-write from TopicMain when KAFKA_TOPIC_DUAL_WRITE=true (see DomainTopicForEventType).
 	TopicDemand = topicFromEnv("KAFKA_TOPIC_DEMAND", "pegasusx-demand")
+	// TopicDeadLetter carries unparseable poison pills or messages that failed terminal processing.
+	TopicDeadLetter = topicFromEnv("KAFKA_TOPIC_DEAD_LETTER", "pegasusx-dead-letter")
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in

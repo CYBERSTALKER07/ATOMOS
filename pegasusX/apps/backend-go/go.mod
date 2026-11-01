@@ -14,6 +14,9 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/phpdave11/gofpdf v1.4.2
+	github.com/pegasusx/pegasusx/packages/config v0.0.0
+	github.com/pegasusx/pegasusx/packages/handoff v0.0.0
+	github.com/pegasusx/pegasusx/packages/optimizer-contract v0.0.0
 	github.com/pkg/sftp v1.13.9
 	github.com/prometheus/client_golang v1.23.2
 	github.com/redis/go-redis/v9 v9.19.0
@@ -168,4 +171,10 @@ require (
 	gopkg.in/go-jose/go-jose.v2 v2.6.3 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace (
+	github.com/pegasusx/pegasusx/packages/config => ../../packages/config
+	github.com/pegasusx/pegasusx/packages/handoff => ../../packages/handoff
+	github.com/pegasusx/pegasusx/packages/optimizer-contract => ../../packages/optimizer-contract
 )

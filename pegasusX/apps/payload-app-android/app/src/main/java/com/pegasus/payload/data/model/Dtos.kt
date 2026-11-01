@@ -339,6 +339,8 @@ data class ClientPolicyResponse(
 @Serializable
 data class WsMessage(
     val type: String = "",
+    @SerialName("event_id") val eventId: String? = null,
+    val id: String? = null,
     val title: String? = null,
     val body: String? = null,
     val channel: String? = null,

@@ -140,9 +140,11 @@ struct CreateSupplyRequestSheet: View {
         }
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func submit() {
         let deliveryISO: String? = includeDeliveryDate
-            ? ISO8601DateFormatter().string(from: deliveryDate)
+            ? Self.isoFormatter.string(from: deliveryDate)
             : nil
         let items: [CreateWarehouseSupplyRequestItem]
         if useForecast {

@@ -923,6 +923,12 @@ private struct DispatchOrderDetailRoute: Identifiable, Hashable {
     let id: String
 }
 
+private let dispatchIsoFractionalFormatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return formatter
+}()
+
 private func dispatchIsoDeliveryDate(from date: Date) -> String {
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
@@ -936,9 +942,7 @@ private func dispatchIsoDeliveryDate(from date: Date) -> String {
     merged.second = 0
     merged.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
     let normalized = calendar.date(from: merged) ?? date
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    return formatter.string(from: normalized)
+    return dispatchIsoFractionalFormatter.string(from: normalized)
 }
 
 private struct DispatchActionAlert: Identifiable {

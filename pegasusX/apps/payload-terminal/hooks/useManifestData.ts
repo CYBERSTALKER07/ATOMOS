@@ -82,23 +82,26 @@ export function useManifestData({
   const [liveSyncRevision, setLiveSyncRevision] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
   const wsHasConnectedOnceRef = useRef(false);
+  const lastEventIdRef = useRef<string | null>(null);
 
   const fetchTrucks = useCallback(async () => {
     if (!token) return;
     setIsLoadingTrucks(true);
     try {
-      const res = await authFetch('/v1/payloader/trucks');
+      const [res, boardRes] = await Promise.all([
+        authFetch('/v1/payloader/trucks'),
+        authFetch('/v1/payloader/manifests').catch(() => null),
+      ]);
       if (!res.ok) return;
       const vehicles: BoardTruck[] = await res.json();
       let manifests: { vehicle_id?: string; truck_id?: string; state?: string; total_volume_vu?: number; max_volume_vu?: number; stop_count?: number; created_at?: string }[] = [];
-      try {
-        const boardRes = await authFetch('/v1/payloader/manifests');
-        if (boardRes.ok) {
+      if (boardRes && boardRes.ok) {
+        try {
           const body = await boardRes.json();
           manifests = Array.isArray(body?.manifests) ? body.manifests : [];
+        } catch {
+          manifests = [];
         }
-      } catch {
-        manifests = [];
       }
       const labeled = vehicles.map(v => ({
         ...v,
@@ -248,25 +251,28 @@ export function useManifestData({
       if (sealedOrderIds.size > 0) {
         sealedByTruck[activeTruck] = Array.from(sealedOrderIds);
       }
-      const ready: string[] = [];
-      for (const m of loadingManifests) {
-        const truckId = m.truck_id || m.vehicle_id;
-        if (!truckId) continue;
-        let truckOrders: LiveOrder[];
-        if (truckId === activeTruck) {
-          truckOrders = orders;
-        } else {
-          const res = await authFetch(
-            `/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
-          );
-          if (!res.ok) continue;
-          truckOrders = await res.json();
-        }
-        const sealed = new Set(sealedByTruck[truckId] || []);
-        if (truckOrders.length > 0 && truckOrders.every(o => sealed.has(o.order_id))) {
-          ready.push(m.manifest_id);
-        }
-      }
+      const readyResults = await Promise.all(
+        loadingManifests.map(async (m) => {
+          const truckId = m.truck_id || m.vehicle_id;
+          if (!truckId) return null;
+          let truckOrders: LiveOrder[];
+          if (truckId === activeTruck) {
+            truckOrders = orders;
+          } else {
+            const res = await authFetch(
+              `/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
+            );
+            if (!res.ok) return null;
+            truckOrders = await res.json();
+          }
+          const sealed = new Set(sealedByTruck[truckId] || []);
+          if (truckOrders.length > 0 && truckOrders.every(o => sealed.has(o.order_id))) {
+            return m.manifest_id;
+          }
+          return null;
+        }),
+      );
+      const ready = readyResults.filter((id): id is string => Boolean(id));
       setBatchReadyManifestIds(Array.from(new Set(ready)));
     } catch {
       // Best-effort; batch seal is optional when manifests API is unavailable.
@@ -278,6 +284,7 @@ export function useManifestData({
     if (!token) return;
     fetchNotifications();
     let reconnectTimer: ReturnType<typeof setTimeout>;
+    let syncDebounceTimer: ReturnType<typeof setTimeout> | undefined;
     let reconnectAttempt = 0;
     const connect = async () => {
       let wsTicket = '';
@@ -295,7 +302,8 @@ export function useManifestData({
         }, reconnectDelayMs(reconnectAttempt));
         return;
       }
-      const wsUrl = `${API_BASE.replace(/^http/, 'ws')}/v1/ws?token=${encodeURIComponent(wsTicket)}`;
+      const lastIdParam = lastEventIdRef.current ? `&last_event_id=${encodeURIComponent(lastEventIdRef.current)}` : '';
+      const wsUrl = `${API_BASE.replace(/^http/, 'ws')}/v1/ws?token=${encodeURIComponent(wsTicket)}${lastIdParam}`;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
@@ -322,9 +330,18 @@ export function useManifestData({
       };
       ws.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data) as LiveNotifFrame;
+          const msg = JSON.parse(event.data) as LiveNotifFrame & { event_id?: string; id?: string };
+          const eid = msg.event_id || msg.id;
+          if (typeof eid === 'string' && eid.trim() !== '') {
+            lastEventIdRef.current = eid.trim();
+          }
           if (msg.type === 'PAYLOAD_SYNC' || msg.type?.startsWith('MANIFEST_')) {
-            setLiveSyncRevision(prev => prev + 1);
+            if (syncDebounceTimer !== undefined) {
+              clearTimeout(syncDebounceTimer);
+            }
+            syncDebounceTimer = setTimeout(() => {
+              setLiveSyncRevision(prev => prev + 1);
+            }, 180);
             return;
           }
           if ((msg.title && msg.title.length > 0) || (msg.body && msg.body.length > 0)) {
@@ -352,6 +369,9 @@ export function useManifestData({
     void connect();
     return () => {
       clearTimeout(reconnectTimer);
+      if (syncDebounceTimer !== undefined) {
+        clearTimeout(syncDebounceTimer);
+      }
       wsRef.current?.close();
       wsRef.current = null;
       wsHasConnectedOnceRef.current = false;

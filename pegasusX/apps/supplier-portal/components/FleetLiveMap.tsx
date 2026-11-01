@@ -1,8 +1,8 @@
 'use client';
 
+import React from 'react';
 import { GenericFleetLiveMap } from '@pegasusx/ui-maps';
-import type { SupplierFleetLiveRoute } from '@pegasusx/types';
 
-export default function FleetLiveMap(props: any) {
+export default function FleetLiveMap(props: React.ComponentProps<typeof GenericFleetLiveMap>) {
   return <GenericFleetLiveMap {...props} />;
 }

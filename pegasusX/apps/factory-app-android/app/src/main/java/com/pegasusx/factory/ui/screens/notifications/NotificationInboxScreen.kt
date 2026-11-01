@@ -71,7 +71,7 @@ fun NotificationInboxScreen(
             try {
                 val resp = api.getNotifications(limit = 50, offset = 0)
                 if (resp.isSuccessful && resp.body() != null) {
-                    val page = resp.body()!!
+                    val page = resp.body() ?: return@launch
                     items = page.notifications
                     unreadCount = page.unreadCount
                 } else {
@@ -141,7 +141,7 @@ fun NotificationInboxScreen(
                     PegasusStatePane(
                         kind = PegasusStateKind.Error,
                         headline = "Unable to load notifications",
-                        body = error!!,
+                        body = error.orEmpty(),
                         actionLabel = "Retry",
                         onAction = { load() }
                     )

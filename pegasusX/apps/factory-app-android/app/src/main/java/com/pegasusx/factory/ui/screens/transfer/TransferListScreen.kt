@@ -59,7 +59,7 @@ fun TransferListScreen(
                 val state = if (selectedFilter == "ALL") null else selectedFilter
                 val resp = api.getTransfers(state = state)
                 if (resp.isSuccessful && resp.body() != null) {
-                    transfers = resp.body()!!.transfers
+                    resp.body()?.let { transfers = it.transfers }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -127,7 +127,7 @@ fun TransferListScreen(
                 error != null -> PegasusStatePane(
                     kind = PegasusStateKind.Error,
                     headline = "Unable to load transfers",
-                    body = error!!,
+                    body = error.orEmpty(),
                     actionLabel = "Retry",
                     onAction = { load() },
                     modifier = Modifier.fillMaxSize(),

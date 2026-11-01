@@ -69,8 +69,8 @@ export default function DemandSignalsPage() {
       setMultiplier(1.0);
       setDescription("");
       load();
-    } catch (err: any) {
-      alert(err.message || "Failed to create signal");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to create signal");
     }
   };
 

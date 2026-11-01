@@ -17,6 +17,7 @@ struct AddressLocationField: View {
   @State private var error: String?
   @State private var locating = false
   @State private var resolving = false
+  @State private var searchTask: Task<Void, Never>?
   @FocusState private var focused: Bool
 
   private var pinned: Bool {
@@ -30,7 +31,7 @@ struct AddressLocationField: View {
         .focused($focused)
         .onChange(of: query) { _, text in
           value.address = text
-          Task { await search(text) }
+          scheduleSearch(text)
         }
         .onChange(of: focused) { _, isFocused in
           if !isFocused {
@@ -61,8 +62,23 @@ struct AddressLocationField: View {
       }
     }
     .onAppear { query = value.address }
+    .onDisappear { searchTask?.cancel() }
     .onChange(of: value.address) { _, next in
       if query != next { query = next }
+    }
+  }
+
+  private func scheduleSearch(_ text: String) {
+    searchTask?.cancel()
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.count >= 3 else {
+      suggestions = []
+      return
+    }
+    searchTask = Task { @MainActor in
+      try? await Task.sleep(nanoseconds: 280_000_000)
+      guard !Task.isCancelled else { return }
+      await search(trimmed)
     }
   }
 
@@ -73,7 +89,9 @@ struct AddressLocationField: View {
       suggestions = []
       return
     }
-    suggestions = (try? await GeocodeService.autocomplete(trimmed)) ?? []
+    let results = (try? await GeocodeService.autocomplete(trimmed)) ?? []
+    guard !Task.isCancelled else { return }
+    suggestions = results
   }
 
   @MainActor

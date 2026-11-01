@@ -47,6 +47,7 @@ final class APIClient: Sendable {
     private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
+    private let coalescer = WarehouseHTTPCoalescer()
 
     private init() {
         let config = URLSessionConfiguration.default
@@ -108,6 +109,7 @@ final class APIClient: Sendable {
 
     // MARK: - POST (no response body)
     func postVoid<B: Encodable>(_ path: String, body: B) async throws {
+        await coalescer.invalidateCache()
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -118,7 +120,9 @@ final class APIClient: Sendable {
             throw APIError.invalidResponse
         }
         if http.statusCode == 401 {
-            let refreshed = try await attemptRefresh()
+            let refreshed = try await coalescer.refreshToken { [self] in
+                try await self.attemptRefresh()
+            }
             if refreshed {
                 var retry = request
                 await attachToken(&retry)
@@ -171,6 +175,7 @@ final class APIClient: Sendable {
     }
 
     func patchVoid<B: Encodable>(_ path: String, body: B, idempotencyKey: String? = nil) async throws {
+        await coalescer.invalidateCache()
         var request = URLRequest(url: baseURL.appendingPathComponent(path))
         request.httpMethod = "PATCH"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -184,7 +189,9 @@ final class APIClient: Sendable {
             throw APIError.invalidResponse
         }
         if http.statusCode == 401 {
-            let refreshed = try await attemptRefresh()
+            let refreshed = try await coalescer.refreshToken { [self] in
+                try await self.attemptRefresh()
+            }
             if refreshed {
                 var retry = request
                 await attachToken(&retry)
@@ -221,14 +228,27 @@ final class APIClient: Sendable {
         let _: [String: String] = try await post("v1/user/device-token", body: body)
     }
 
-    // MARK: - Execute with 401 retry
+    // MARK: - Execute with single-flight coalescing & 401 retry
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await dataForRequestWithFallback(request)
+        let method = request.httpMethod ?? "GET"
+        if method != "GET" {
+            await coalescer.invalidateCache()
+        }
+        let (data, response): (Data, URLResponse)
+        if method == "GET", let urlKey = request.url?.absoluteString {
+            (data, response) = try await coalescer.fetchOrCoalesce(key: urlKey) { [self] in
+                try await self.dataForRequestWithFallback(request)
+            }
+        } else {
+            (data, response) = try await dataForRequestWithFallback(request)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
         if http.statusCode == 401 {
-            let refreshed = try await attemptRefresh()
+            let refreshed = try await coalescer.refreshToken { [self] in
+                try await self.attemptRefresh()
+            }
             if refreshed {
                 var retry = request
                 await attachToken(&retry)
@@ -274,15 +294,105 @@ final class APIClient: Sendable {
     }
 
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        try await session.data(for: request)
+        let isIdempotent = request.httpMethod == "GET" || request.value(forHTTPHeaderField: "Idempotency-Key") != nil
+        let maxAttempts = isIdempotent ? 3 : 1
+        var lastError: Error = URLError(.unknown)
+
+        for attempt in 0..<maxAttempts {
+            try Task.checkCancellation()
+            do {
+                let (data, response) = try await session.data(for: request)
+                if let http = response as? HTTPURLResponse,
+                   isIdempotent && (502...504).contains(http.statusCode) && attempt + 1 < maxAttempts {
+                    let delayNs = UInt64(300_000_000 * (1 << attempt)) + UInt64.random(in: 0...150_000_000)
+                    try await Task.sleep(nanoseconds: delayNs)
+                    continue
+                }
+                return (data, response)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch let urlErr as URLError where urlErr.code == .cancelled {
+                throw CancellationError()
+            } catch {
+                lastError = error
+                if isIdempotent && attempt + 1 < maxAttempts {
+                    let delayNs = UInt64(300_000_000 * (1 << attempt)) + UInt64.random(in: 0...150_000_000)
+                    try await Task.sleep(nanoseconds: delayNs)
+                    continue
+                }
+                throw error
+            }
+        }
+        throw lastError
     }
 
-    func warehouseWebSocketURL(token: String) -> URL {
+    func warehouseWebSocketURL(token: String, lastEventId: String? = nil) -> URL {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         components.scheme = components.scheme == "https" ? "wss" : "ws"
         components.path = "/v1/ws"
-        components.queryItems = [URLQueryItem(name: "token", value: token)]
+        var items = [URLQueryItem(name: "token", value: token)]
+        if let lastEventId, !lastEventId.isEmpty {
+            items.append(URLQueryItem(name: "last_event_id", value: lastEventId))
+        }
+        components.queryItems = items
         return components.url!
+    }
+}
+
+private actor WarehouseHTTPCoalescer {
+    private var inFlightGETs: [String: Task<(Data, URLResponse), Error>] = [:]
+    private var getCache: [String: (data: Data, response: URLResponse, expiresAt: Date)] = [:]
+    private var refreshTask: Task<Bool, Error>?
+    private let cacheTTL: TimeInterval = 2.0
+
+    func fetchOrCoalesce(
+        key: String,
+        operation: @Sendable @escaping () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        let now = Date()
+        if let cached = getCache[key], cached.expiresAt > now {
+            return (cached.data, cached.response)
+        }
+        if let existing = inFlightGETs[key] {
+            return try await existing.value
+        }
+        let task = Task<(Data, URLResponse), Error> {
+            try await operation()
+        }
+        inFlightGETs[key] = task
+        do {
+            let (data, response) = try await task.value
+            inFlightGETs.removeValue(forKey: key)
+            if let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) {
+                getCache[key] = (data, response, Date().addingTimeInterval(cacheTTL))
+            }
+            return (data, response)
+        } catch {
+            inFlightGETs.removeValue(forKey: key)
+            throw error
+        }
+    }
+
+    func invalidateCache() {
+        getCache.removeAll()
+    }
+
+    func refreshToken(using operation: @Sendable @escaping () async throws -> Bool) async throws -> Bool {
+        if let existing = refreshTask {
+            return try await existing.value
+        }
+        let task = Task<Bool, Error> {
+            try await operation()
+        }
+        refreshTask = task
+        do {
+            let ok = try await task.value
+            refreshTask = nil
+            return ok
+        } catch {
+            refreshTask = nil
+            throw error
+        }
     }
 }
 

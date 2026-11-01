@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	pkcs12 "software.sslmate.com/src/go-pkcs12"
 )
@@ -50,6 +51,13 @@ func NewPKCS12Signer(p12Data []byte, password string) (*PKCS12Signer, error) {
 	}
 	if cert == nil {
 		return nil, fmt.Errorf("pkcs12: no certificate in container")
+	}
+	now := time.Now().UTC()
+	if now.After(cert.NotAfter) {
+		return nil, fmt.Errorf("pkcs12: certificate expired at %s", cert.NotAfter.Format(time.RFC3339))
+	}
+	if now.Before(cert.NotBefore) {
+		return nil, fmt.Errorf("pkcs12: certificate not yet valid until %s", cert.NotBefore.Format(time.RFC3339))
 	}
 	if err := rsaKey.Validate(); err != nil {
 		return nil, fmt.Errorf("pkcs12: invalid RSA key: %w", err)

@@ -28,13 +28,43 @@ export type {
 const base = () =>
   (process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
 
+const inFlightAdminGets = new Map<string, Promise<unknown>>();
+
 async function req<T>(token: string, method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(base() + path, {
+  const normalizedMethod = method.toUpperCase();
+  const url = base() + path;
+
+  if (normalizedMethod === "GET") {
+    const key = `${token}|${url}`;
+    const existing = inFlightAdminGets.get(key);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+    const task = executeAdminReq<T>(token, normalizedMethod, url, body).finally(() => {
+      inFlightAdminGets.delete(key);
+    });
+    inFlightAdminGets.set(key, task);
+    return task;
+  }
+
+  inFlightAdminGets.clear();
+  return executeAdminReq<T>(token, normalizedMethod, url, body);
+}
+
+async function executeAdminReq<T>(token: string, method: string, url: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    headers["X-Trace-Id"] = crypto.randomUUID();
+    if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") {
+      headers["Idempotency-Key"] = crypto.randomUUID();
+    }
+  }
+  const res = await fetch(url, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
@@ -160,6 +190,13 @@ export const api = {
       available?: boolean;
       note?: string;
     }>(token, "GET", "/v1/platform-admin/ops/outbox/dead-letters?limit=25"),
+  replayDeadLetter: (token: string, eventId: string) =>
+    req<{ ok?: boolean; status?: string; event_id?: string }>(
+      token,
+      "POST",
+      `/v1/platform-admin/ops/outbox/dead-letters/${encodeURIComponent(eventId)}/replay`,
+      {},
+    ),
   listPlanningAccuracy: (token: string, supplierId: string, days = 28) =>
     req<{ items: AccuracyRow[]; demote_enabled?: boolean }>(
       token,

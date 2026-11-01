@@ -65,7 +65,7 @@ fun VehicleDetailScreen(
             try {
                 val resp = api.getVehicle(vehicleId)
                 if (resp.isSuccessful && resp.body()?.vehicle != null) {
-                    vehicle = resp.body()!!.vehicle
+                    resp.body()?.let { vehicle = it.vehicle }
                 } else if (!silent) {
                     error = "Failed (${resp.code()})"
                 }
@@ -140,13 +140,13 @@ fun VehicleDetailScreen(
             error != null && vehicle == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Truck unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.padding(innerPadding),
             )
             vehicle != null -> {
-                val v = vehicle!!
+                val v = vehicle ?: return@Scaffold
                 Column(
                     modifier = Modifier
                         .fillMaxSize()

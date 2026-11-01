@@ -14,6 +14,8 @@ struct LocationPickerView: View {
     @State private var centerCoordinate: CLLocationCoordinate2D
     @State private var addressLabel: String?
     @State private var resolving = false
+    @State private var resolveTask: Task<Void, Never>?
+    @State private var awaitingUserLocation = false
 
     init(
         initialLatitude: Double = 0.0,
@@ -48,7 +50,7 @@ struct LocationPickerView: View {
             .mapStyle(.standard(elevation: .realistic))
             .onMapCameraChange(frequency: .onEnd) { context in
                 centerCoordinate = context.camera.centerCoordinate
-                Task { await resolveAddress() }
+                scheduleResolveAddress()
             }
             .ignoresSafeArea()
 
@@ -164,33 +166,57 @@ struct LocationPickerView: View {
             }
         }
         .task { await resolveAddress() }
+        .onChange(of: locationManager.lastLocation?.latitude) { _, _ in
+            guard awaitingUserLocation, let loc = locationManager.lastLocation else { return }
+            awaitingUserLocation = false
+            withAnimation(.easeInOut(duration: 0.6)) {
+                cameraPosition = .region(MKCoordinateRegion(
+                    center: loc,
+                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+                ))
+            }
+        }
+        .onDisappear {
+            resolveTask?.cancel()
+        }
+    }
+
+    private func scheduleResolveAddress() {
+        resolveTask?.cancel()
+        resolveTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            guard !Task.isCancelled else { return }
+            await resolveAddress()
+        }
     }
 
     @MainActor
     private func resolveAddress() async {
         resolving = true
         defer { resolving = false }
-        addressLabel = await GeocodeService.reverse(lat: centerCoordinate.latitude, lng: centerCoordinate.longitude)
+        let coord = centerCoordinate
+        let resolved = await GeocodeService.reverse(lat: coord.latitude, lng: coord.longitude)
+        guard !Task.isCancelled else { return }
+        addressLabel = resolved
     }
 
     private func requestAndMoveToUserLocation() {
         if locationManager.authorizationStatus == .notDetermined {
+            awaitingUserLocation = true
             locationManager.requestPermission()
             return
         }
 
-        locationManager.requestLocation()
-
-        // Animate to user location when available
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if let loc = locationManager.lastLocation {
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: loc,
-                        span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-                    ))
-                }
+        if let loc = locationManager.lastLocation {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                cameraPosition = .region(MKCoordinateRegion(
+                    center: loc,
+                    span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+                ))
             }
+        } else {
+            awaitingUserLocation = true
         }
+        locationManager.requestLocation()
     }
 }

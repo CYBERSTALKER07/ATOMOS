@@ -8,11 +8,16 @@ struct TomorrowBoardView: View {
     @State private var loading = true
     @State private var error: String?
 
-    private var dateString: String {
+    private static let utcDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private var dateString: String {
+        Self.utcDateFormatter.string(from: date)
     }
 
     var body: some View {

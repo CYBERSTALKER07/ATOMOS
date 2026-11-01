@@ -72,7 +72,7 @@ fun ManifestListScreen(
             try {
                 val resp = api.getManifests()
                 if (resp.isSuccessful && resp.body() != null) {
-                    manifests = resp.body()!!.manifests
+                    resp.body()?.let { manifests = it.manifests }
                 } else {
                     error = "Failed (${resp.code()})"
                 }
@@ -133,7 +133,7 @@ fun ManifestListScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Unable to load manifests",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(innerPadding),

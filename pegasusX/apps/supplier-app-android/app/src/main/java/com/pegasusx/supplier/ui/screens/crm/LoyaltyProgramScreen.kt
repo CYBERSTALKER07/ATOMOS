@@ -88,7 +88,7 @@ fun LoyaltyProgramScreen(
             error != null && program == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Loyalty unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 actionLabel = "Retry",
                 onAction = { load() },
                 modifier = Modifier.fillMaxSize().padding(padding),

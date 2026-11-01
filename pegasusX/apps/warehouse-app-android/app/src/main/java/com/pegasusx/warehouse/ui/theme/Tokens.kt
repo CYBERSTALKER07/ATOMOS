@@ -10,6 +10,7 @@ object PegasusSpacing {
     val xl = 24.dp
     val xxl = 32.dp
     val xxxl = 48.dp
+    val touchTargetMin = 48.dp
 }
 
 object PegasusRadius {

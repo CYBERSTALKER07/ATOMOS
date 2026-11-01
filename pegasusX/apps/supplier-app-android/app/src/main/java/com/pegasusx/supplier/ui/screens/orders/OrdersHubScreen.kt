@@ -143,7 +143,7 @@ private fun OrdersQueueContent(
         state.error != null -> PegasusStatePane(
             kind = PegasusStateKind.Error,
             headline = "Orders unavailable",
-            body = state.error!!,
+            body = state.error.orEmpty(),
             actionLabel = "Retry",
             onAction = onRetry,
             modifier = modifier,

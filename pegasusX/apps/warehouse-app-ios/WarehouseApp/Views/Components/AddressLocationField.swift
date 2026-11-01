@@ -17,6 +17,7 @@ struct AddressLocationField: View {
   @State private var error: String?
   @State private var locating = false
   @State private var resolving = false
+  @State private var searchTask: Task<Void, Never>?
   @FocusState private var focused: Bool
 
   private var pinned: Bool {
@@ -30,7 +31,16 @@ struct AddressLocationField: View {
         .focused($focused)
         .onChange(of: query) { _, text in
           value.address = text
-          Task { await search(text) }
+          searchTask?.cancel()
+          searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 280_000_000) // 280ms keystroke debounce
+            guard !Task.isCancelled else { return }
+            await search(text)
+          }
+        }
+        .onDisappear {
+          searchTask?.cancel()
+          searchTask = nil
         }
         .onChange(of: focused) { _, isFocused in
           if !isFocused {

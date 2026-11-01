@@ -13,6 +13,7 @@ struct FleetLiveMapSection: View {
         )
     )
     @State private var animator = FleetDriverMarkerAnimator()
+    @State private var hasFittedInitialCamera = false
 
     var mapHeight: CGFloat = 280
     var showsExpand: Bool = true
@@ -98,7 +99,12 @@ struct FleetLiveMapSection: View {
             let response = try await WarehouseService.fleetLiveMap(warehouseId: TokenStore.shared.warehouseId)
             routes = response.routes
             animator.updateTargets(routes)
-            fitCamera()
+            if !silent || !hasFittedInitialCamera {
+                fitCamera()
+                if !routes.isEmpty {
+                    hasFittedInitialCamera = true
+                }
+            }
         } catch {
             if !silent { self.error = error.localizedDescription }
         }

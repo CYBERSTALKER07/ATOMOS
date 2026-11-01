@@ -171,7 +171,7 @@ fun LoginScreen(
                                     val idToken = FirebaseAuthHelper.verifySmsCode(otpCode)
                                     val resp = api.login(LoginRequest(idToken = idToken))
                                     if (resp.isSuccessful && resp.body() != null) {
-                                        val auth = resp.body()!!
+                                        val auth = resp.body() ?: return@launch
                                         applyAuth(auth.token, auth.refreshToken, auth.warehouseId)
                                     } else {
                                         error = when (resp.code()) {
@@ -223,7 +223,7 @@ fun LoginScreen(
                             try {
                                 val resp = api.login(LoginRequest(phone = phone, pin = pin))
                                 if (resp.isSuccessful && resp.body() != null) {
-                                    val auth = resp.body()!!
+                                    val auth = resp.body() ?: return@launch
                                     applyAuth(auth.token, auth.refreshToken, auth.warehouseId)
                                 } else {
                                     error = when (resp.code()) {
@@ -247,7 +247,7 @@ fun LoginScreen(
 
             if (error != null) {
                 Spacer(Modifier.height(PegasusSpacing.sm))
-                Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(Modifier.height(PegasusSpacing.lg))

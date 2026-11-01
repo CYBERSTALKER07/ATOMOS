@@ -182,16 +182,21 @@ struct OrdersView: View {
         }
     }
 
-    private func isoDeliveryDate(from date: Date) -> String {
+    private static let tashkentIsoFractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         formatter.timeZone = TimeZone(secondsFromGMT: 5 * 3600)
-        var components = Calendar.current.dateComponents(in: TimeZone(secondsFromGMT: 5 * 3600)!, from: date)
+        return formatter
+    }()
+
+    private func isoDeliveryDate(from date: Date) -> String {
+        let tz = TimeZone(secondsFromGMT: 5 * 3600) ?? .current
+        var components = Calendar.current.dateComponents(in: tz, from: date)
         components.hour = 12
         components.minute = 0
         components.second = 0
         let noon = Calendar.current.date(from: components) ?? date
-        return formatter.string(from: noon)
+        return Self.tashkentIsoFractionalFormatter.string(from: noon)
     }
 
     private func load() {

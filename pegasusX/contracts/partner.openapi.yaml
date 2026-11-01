@@ -92,6 +92,10 @@ paths:
       responses:
         "200":
           description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerOrder"
         "404":
           $ref: "#/components/responses/Problem"
   /partner/v1/catalog:
@@ -116,6 +120,10 @@ paths:
       responses:
         "200":
           description: Products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCatalogResponse"
   /partner/v1/catalog/products:
     put:
       summary: Batch upsert products by external_id (ProductId == external_id)
@@ -133,6 +141,10 @@ paths:
       responses:
         "200":
           description: Per-row results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerProductUpsertResponse"
         "401":
           $ref: "#/components/responses/Problem"
         "403":
@@ -156,6 +168,10 @@ paths:
       responses:
         "200":
           description: Per-row results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerPriceUpsertResponse"
         "422":
           $ref: "#/components/responses/Problem"
   /partner/v1/inventory/availability:
@@ -181,6 +197,10 @@ paths:
       responses:
         "200":
           description: Availability rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAvailabilityResponse"
   /partner/v1/inventory/stock:
     put:
       summary: Batch set absolute on-hand stock by external_id × warehouse
@@ -198,6 +218,10 @@ paths:
       responses:
         "200":
           description: Per-row results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStockUpsertResponse"
         "422":
           $ref: "#/components/responses/Problem"
   /partner/v1/demand/pos-feed:
@@ -260,6 +284,10 @@ paths:
       responses:
         "201":
           description: Created (signing_secret shown once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhookCreateResponse"
   /partner/v1/webhooks/{subscriptionID}:
     delete:
       summary: Deactivate webhook subscription
@@ -275,6 +303,10 @@ paths:
       responses:
         "200":
           description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
   /partner/v1/webhooks/{subscriptionID}/ping:
     post:
       summary: Send signed test delivery
@@ -290,6 +322,10 @@ paths:
       responses:
         "200":
           description: Delivered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
   /partner/v1/webhooks/{subscriptionID}/rotate-secret:
     post:
       summary: Rotate HMAC signing secret (returned once)
@@ -305,6 +341,10 @@ paths:
       responses:
         "200":
           description: New signing_secret shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhookRotateSecretResponse"
         "404":
           $ref: "#/components/responses/Problem"
   /partner/v1/webhooks/dead-letter:
@@ -316,6 +356,10 @@ paths:
       responses:
         "200":
           description: Attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerDeadLetterResponse"
   /partner/v1/webhooks/dead-letter/{attemptID}/replay:
     post:
       summary: Requeue a DEAD delivery attempt (full retry budget)
@@ -331,6 +375,10 @@ paths:
       responses:
         "200":
           description: Requeued as PENDING
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
         "404":
           $ref: "#/components/responses/Problem"
         "422":
@@ -436,6 +484,10 @@ paths:
       responses:
         "200":
           description: Sync MDN (multipart/report)
+          content:
+            multipart/report:
+              schema:
+                type: string
         "400":
           description: Missing AS2 headers
         "503":
@@ -527,6 +579,10 @@ paths:
       responses:
         "200":
           description: Requeued as RECEIVED
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
         "404":
           $ref: "#/components/responses/Problem"
         "422":
@@ -559,6 +615,10 @@ paths:
       responses:
         "201":
           description: Key issued (secret once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyIssueResponse"
     get:
       summary: List partner keys for caller tenant
       operationId: listPartnerApiKeys
@@ -567,6 +627,10 @@ paths:
       responses:
         "200":
           description: Keys metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyListResponse"
   /v1/admin/partner-keys/{keyID}/revoke:
     post:
       summary: Revoke partner API key (admin / platform-admin JWT)
@@ -614,6 +678,10 @@ paths:
       responses:
         "201":
           description: Key issued (secret once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyIssueResponse"
     get:
       summary: List partner keys (supplier portal JWT alias)
       operationId: supplierListPartnerApiKeys
@@ -622,6 +690,10 @@ paths:
       responses:
         "200":
           description: Keys metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyListResponse"
   /v1/supplier/partner-keys/{keyID}/revoke:
     post:
       summary: Revoke partner API key (supplier portal JWT alias)
@@ -637,6 +709,10 @@ paths:
       responses:
         "200":
           description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
         "404":
           $ref: "#/components/responses/Problem"
   /v1/retailer/partner-keys:
@@ -661,6 +737,10 @@ paths:
       responses:
         "201":
           description: Key issued (secret once)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyIssueResponse"
     get:
       summary: List partner keys (retailer self-serve)
       operationId: retailerListPartnerApiKeys
@@ -669,6 +749,10 @@ paths:
       responses:
         "200":
           description: Keys metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerApiKeyListResponse"
   /v1/retailer/partner-keys/{keyID}/revoke:
     post:
       summary: Revoke partner API key (retailer self-serve)
@@ -684,6 +768,10 @@ paths:
       responses:
         "200":
           description: Revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerStatusResponse"
         "404":
           $ref: "#/components/responses/Problem"
   /v1/supplier/partner-sftp:
@@ -713,6 +801,10 @@ paths:
       responses:
         "200":
           description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
         "422":
           $ref: "#/components/responses/Problem"
   /v1/admin/partner-sftp:
@@ -760,6 +852,10 @@ paths:
       responses:
         "200":
           description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerSftpConfig"
         "422":
           $ref: "#/components/responses/Problem"
   /v1/supplier/partner-webhooks:
@@ -771,6 +867,10 @@ paths:
       responses:
         "200":
           description: Subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhookListResponse"
     post:
       summary: Create webhook (supplier portal JWT alias)
       operationId: supplierCreatePartnerWebhook
@@ -779,6 +879,10 @@ paths:
       responses:
         "201":
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhookCreateResponse"
   /v1/supplier/partner-webhooks/{subscriptionID}/rotate-secret:
     post:
       summary: Rotate webhook secret (supplier portal JWT alias)
@@ -794,6 +898,10 @@ paths:
       responses:
         "200":
           description: Rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerWebhookRotateSecretResponse"
   /v1/supplier/partner-as2:
     get:
       summary: Get AS2 config (supplier portal JWT alias of /partner/v1/as2/config)
@@ -803,6 +911,10 @@ paths:
       responses:
         "200":
           description: AS2 config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
     put:
       summary: Upsert AS2 config (supplier portal JWT alias)
       operationId: supplierPutPartnerAs2
@@ -811,6 +923,10 @@ paths:
       responses:
         "200":
           description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerAs2Config"
   /v1/supplier/partner-coa:
     get:
       summary: Get CoA map (supplier portal JWT alias of /partner/v1/coa)
@@ -820,6 +936,10 @@ paths:
       responses:
         "200":
           description: CoA
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
     put:
       summary: Upsert CoA map (supplier portal JWT alias)
       operationId: supplierPutPartnerCoa
@@ -828,6 +948,10 @@ paths:
       responses:
         "200":
           description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PartnerCoaMap"
 components:
   securitySchemes:
     PartnerApiKey:
@@ -1268,3 +1392,231 @@ components:
         finished_at:
           type: string
           format: date-time
+    PartnerOrder:
+      type: object
+      properties:
+        order_id:
+          type: string
+        retailer_id:
+          type: string
+        supplier_id:
+          type: string
+        status:
+          type: string
+        total_minor:
+          type: integer
+        currency:
+          type: string
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+              quantity:
+                type: integer
+              price_minor:
+                type: integer
+        created_at:
+          type: string
+          format: date-time
+    PartnerCatalogResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartnerCatalogProduct"
+    PartnerCatalogProduct:
+      type: object
+      properties:
+        product_id:
+          type: string
+        supplier_id:
+          type: string
+        name:
+          type: string
+        category_id:
+          type: string
+        price_minor:
+          type: integer
+        currency:
+          type: string
+        unit:
+          type: string
+        barcode:
+          type: string
+        stock_quantity:
+          type: integer
+        is_active:
+          type: boolean
+    PartnerProductUpsertResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              external_id:
+                type: string
+              product_id:
+                type: string
+              action:
+                type: string
+              error:
+                type: string
+    PartnerPriceUpsertResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              external_id:
+                type: string
+              action:
+                type: string
+              error:
+                type: string
+    PartnerAvailabilityResponse:
+      type: object
+      properties:
+        availability:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+              warehouse_id:
+                type: string
+              available_quantity:
+                type: integer
+              reserved_quantity:
+                type: integer
+    PartnerStockUpsertResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              external_id:
+                type: string
+              action:
+                type: string
+              error:
+                type: string
+    PartnerStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+    PartnerWebhookCreateResponse:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        url:
+          type: string
+        event_types:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        secret_prefix:
+          type: string
+        signing_secret:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    PartnerWebhookRotateSecretResponse:
+      type: object
+      properties:
+        subscription_id:
+          type: string
+        secret_prefix:
+          type: string
+        signing_secret:
+          type: string
+    PartnerWebhookListResponse:
+      type: object
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PartnerWebhookSubscription"
+    PartnerDeadLetterResponse:
+      type: object
+      properties:
+        attempts:
+          type: array
+          items:
+            type: object
+            properties:
+              attempt_id:
+                type: string
+              subscription_id:
+                type: string
+              event_type:
+                type: string
+              status:
+                type: string
+              error:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+    PartnerApiKeyIssueResponse:
+      type: object
+      properties:
+        key_id:
+          type: string
+        secret:
+          type: string
+        prefix:
+          type: string
+        tenant_type:
+          type: string
+        tenant_id:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+    PartnerApiKeyListResponse:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              key_id:
+                type: string
+              prefix:
+                type: string
+              tenant_type:
+                type: string
+              tenant_id:
+                type: string
+              scopes:
+                type: array
+                items:
+                  type: string
+              is_revoked:
+                type: boolean
+              created_at:
+                type: string
+                format: date-time

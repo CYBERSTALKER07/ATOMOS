@@ -191,7 +191,7 @@ fun LocationSetupScreen(
                 label = stringResource(R.string.factory_portal_residual_text_factory_address),
             )
             if (!error.isNullOrBlank()) {
-                Text(error!!, color = MaterialTheme.colorScheme.error)
+                Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
             }
             Button(onClick = { submit() }, enabled = !submitting, modifier = Modifier.fillMaxWidth()) {
                 Text(if (submitting) "Saving…" else "Complete setup")

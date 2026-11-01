@@ -117,7 +117,45 @@ func (s *Service) HandleSupplierReturnPolicy(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// callerSupplierID is the tenant for this request. Warehouse-ops scope wins,
+// then JWT claims, then tenant context. Query and body never supply it.
+func callerSupplierID(r *http.Request) string {
+	if ops := auth.GetWarehouseOps(r.Context()); ops != nil && strings.TrimSpace(ops.SupplierID) != "" {
+		return strings.TrimSpace(ops.SupplierID)
+	}
+	if sid, ok := auth.ResolveSupplierID(r.Context()); ok {
+		return sid
+	}
+	if t, ok := auth.TenantFromContext(r.Context()); ok {
+		return strings.TrimSpace(t.SupplierID)
+	}
+	return ""
+}
+
+// pinnedWarehouseID is the warehouse the token is allowed to operate.
+// A query warehouse_id may name a warehouse only when the token has no pin
+// (supplier ADMIN without a home node). A pin plus a different query id is rejected.
+func pinnedWarehouseID(r *http.Request, claims auth.Claims) (string, string) {
+	pinned := strings.TrimSpace(auth.EffectiveWarehouseID(r.Context()))
+	if pinned == "" {
+		pinned = strings.TrimSpace(claims.HomeNodeID)
+	}
+	queryID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+	if pinned != "" && queryID != "" && queryID != pinned {
+		return "", "warehouse_scope_forbidden"
+	}
+	if pinned != "" {
+		return pinned, ""
+	}
+	if queryID == "" {
+		return "", "warehouse_id_required"
+	}
+	return queryID, ""
+}
+
 // HandleWarehouseReturnPolicy serves GET/PUT /v1/warehouse/return-policy.
+// SupplierId always comes from the token. Body and query supplier_id values
+// that name another tenant are rejected.
 func (s *Service) HandleWarehouseReturnPolicy(w http.ResponseWriter, r *http.Request) {
 	if s == nil || s.returnPolicies == nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "return_policy_unavailable"})
@@ -128,18 +166,20 @@ func (s *Service) HandleWarehouseReturnPolicy(w http.ResponseWriter, r *http.Req
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	warehouseID := strings.TrimSpace(auth.EffectiveWarehouseID(r.Context()))
-	if warehouseID == "" {
-		warehouseID = strings.TrimSpace(claims.HomeNodeID)
-	}
-	if q := strings.TrimSpace(r.URL.Query().Get("warehouse_id")); q != "" {
-		warehouseID = q
-	}
-	if warehouseID == "" {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "warehouse_id_required"})
+	warehouseID, whCode := pinnedWarehouseID(r, claims)
+	if whCode != "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": whCode})
 		return
 	}
-	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	supplierID := callerSupplierID(r)
+	if supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_id_required"})
+		return
+	}
+	if q := strings.TrimSpace(r.URL.Query().Get("supplier_id")); q != "" && q != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_forbidden"})
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
@@ -167,8 +207,9 @@ func (s *Service) HandleWarehouseReturnPolicy(w http.ResponseWriter, r *http.Req
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 			return
 		}
-		if body.SupplierID != "" {
-			supplierID = strings.TrimSpace(body.SupplierID)
+		if got := strings.TrimSpace(body.SupplierID); got != "" && got != supplierID {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_forbidden"})
+			return
 		}
 		if body.RetailerFileWindowHours != nil {
 			h := *body.RetailerFileWindowHours

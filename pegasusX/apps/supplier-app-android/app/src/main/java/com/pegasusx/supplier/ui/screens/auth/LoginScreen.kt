@@ -100,7 +100,7 @@ fun LoginScreen(
                 Spacer(Modifier.height(PegasusSpacing.sm))
                 PegasusRuntimeBanner(
                     tone = PegasusRuntimeTone.Warning,
-                    message = error!!,
+                    message = error.orEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

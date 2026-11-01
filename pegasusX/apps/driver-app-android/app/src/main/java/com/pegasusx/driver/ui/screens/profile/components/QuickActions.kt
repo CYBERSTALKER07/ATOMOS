@@ -38,9 +38,30 @@ fun QuickActions(
     onEndSession: () -> Unit = {},
     onOfflineVerifier: () -> Unit = {},
     onSyncQueue: () -> Unit = {},
+    onFleetDvir: () -> Unit = {},
+    onMidRouteRescue: () -> Unit = {},
+    onYardGate: () -> Unit = {},
     pendingCount: Int = 0,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        ActionRow(
+            icon = Icons.Default.ShieldMoon,
+            title = "Pre-Trip DVIR Inspection",
+            subtitle = "8-point safety checklist & Red-Tag gate",
+            onClick = onFleetDvir,
+        )
+        ActionRow(
+            icon = Icons.Default.Sync,
+            title = "Mid-Route Breakdown Rescue",
+            subtitle = "Custody transfer & thermal quarantine",
+            onClick = onMidRouteRescue,
+        )
+        ActionRow(
+            icon = Icons.Default.Settings,
+            title = "Yard Gate Check-In/Out",
+            subtitle = "ALPR vehicle & bolt-seal verification",
+            onClick = onYardGate,
+        )
         ActionRow(
             icon = Icons.Default.ShieldMoon,
             title = stringResource(R.string.mobile_driver_ui_offline_verifier),

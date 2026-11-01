@@ -295,7 +295,7 @@ final class DriverOfflineQueue {
                     bodyJSON: json,
                     idempotencyKey: key,
                     orderId: delivery.orderId,
-                    clientTimestampIso: ISO8601DateFormatter().string(
+                    clientTimestampIso: Self.isoFormatter.string(
                         from: Date(timeIntervalSince1970: delivery.timestamp / 1000)
                     )
                 )
@@ -334,8 +334,10 @@ final class DriverOfflineQueue {
         return str
     }
 
+    private static let isoFormatter = ISO8601DateFormatter()
+
     private func isoToEpoch(_ iso: String) -> TimeInterval? {
-        ISO8601DateFormatter().date(from: iso)?.timeIntervalSince1970
+        Self.isoFormatter.date(from: iso)?.timeIntervalSince1970
     }
 
     private func isoToEpochMs(_ iso: String) -> Double? {

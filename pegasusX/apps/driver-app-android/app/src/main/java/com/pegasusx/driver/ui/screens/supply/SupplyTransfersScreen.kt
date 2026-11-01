@@ -189,9 +189,10 @@ private fun SupplyTransferCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = lab.fgSecondary,
             )
-            if (!transfer.supplyRequestId.isNullOrBlank()) {
+            val reqId = transfer.supplyRequestId
+            if (!reqId.isNullOrBlank()) {
                 Text(
-                    text = stringResource(R.string.mobile_driver_ui_supply_takelast, transfer.supplyRequestId!!.takeLast(8)),
+                    text = stringResource(R.string.mobile_driver_ui_supply_takelast, reqId.takeLast(8)),
                     style = MaterialTheme.typography.bodySmall,
                     color = lab.fgTertiary,
                 )

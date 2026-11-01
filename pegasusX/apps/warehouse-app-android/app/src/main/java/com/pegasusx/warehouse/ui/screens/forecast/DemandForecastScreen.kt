@@ -88,7 +88,7 @@ fun DemandForecastScreen(
             try {
                 val resp = api.getDemandForecast(days = horizon)
                 if (resp.isSuccessful && resp.body() != null) {
-                    var body = resp.body()!!
+                    var body = resp.body() ?: return@launch
                     if (body.products.isEmpty()) {
                         val insightsResp = api.getReplenishmentInsights()
                         if (insightsResp.isSuccessful) {
@@ -182,7 +182,7 @@ fun DemandForecastScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
+                        Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                         Spacer(Modifier.height(PegasusSpacing.lg))
                         TextButton(onClick = { load() }) { Text("Retry") }
                     }

@@ -63,7 +63,7 @@ fun NotificationInboxScreen(
             try {
                 val resp = api.getNotifications(limit = 50, offset = 0)
                 if (resp.isSuccessful && resp.body() != null) {
-                    val page = resp.body()!!
+                    val page = resp.body() ?: return@launch
                     items = page.notifications
                     unreadCount = page.unreadCount
                 } else {
@@ -130,7 +130,7 @@ fun NotificationInboxScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = { load() }) { Text("Retry") }
                 }
             }

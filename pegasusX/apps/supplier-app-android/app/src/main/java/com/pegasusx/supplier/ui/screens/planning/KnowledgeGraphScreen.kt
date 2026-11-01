@@ -66,7 +66,7 @@ fun KnowledgeGraphScreen(
             error != null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Knowledge graph unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },
@@ -77,30 +77,36 @@ fun KnowledgeGraphScreen(
                 body = "Planning entities will appear when the graph is populated.",
                 modifier = Modifier.padding(padding),
             )
-            else -> LazyColumn(
-                modifier = Modifier.padding(padding),
-                contentPadding = PaddingValues(PegasusSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
-            ) {
-                item {
-                    SupplierSectionTitle("Nodes (${graph!!.nodes.size})")
-                }
-                items(graph!!.nodes, key = KnowledgeGraphNode::id) { node ->
-                    SupplierOpsListCard(
-                        headline = node.name?.ifBlank { node.id } ?: node.id,
-                        supporting = "${node.type} · ${node.id}",
-                    )
-                }
-                item {
-                    SupplierSectionTitle("Edges (${graph!!.edges.size})")
-                }
-                items(graph!!.edges, key = { "${it.from}-${it.to}-${it.relation}" }) { edge ->
-                    SupplierOpsListCard(
-                        headline = edge.relation,
-                        supporting = "${edge.from} → ${edge.to}",
-                    )
+            else -> {
+                val g = graph
+                if (g != null) {
+                    LazyColumn(
+                    modifier = Modifier.padding(padding),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                ) {
+                    item {
+                        SupplierSectionTitle("Nodes (${g.nodes.size})")
+                    }
+                    items(g.nodes, key = KnowledgeGraphNode::id) { node ->
+                        SupplierOpsListCard(
+                            headline = node.name?.ifBlank { node.id } ?: node.id,
+                            supporting = "${node.type} · ${node.id}",
+                        )
+                    }
+                    item {
+                        SupplierSectionTitle("Edges (${g.edges.size})")
+                    }
+                    items(g.edges, key = { "${it.from}-${it.to}-${it.relation}" }) { edge ->
+                        SupplierOpsListCard(
+                            headline = edge.relation,
+                            supporting = "${edge.from} → ${edge.to}",
+                        )
+                    }
                 }
             }
         }
     }
 }
+}
+

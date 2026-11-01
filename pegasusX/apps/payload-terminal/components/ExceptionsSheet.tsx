@@ -1,6 +1,6 @@
 import { Modal, View, Text, Pressable, FlatList, TextInput, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { isIOS } from '../theme';
+import { isIOS, type AppTheme } from '../theme';
 import PayloadStatePanel from './PayloadStatePanel';
 import StatusBadge, { exceptionReasonTone } from './StatusBadge';
 import { SkeletonList } from './SkeletonPulse';
@@ -24,7 +24,7 @@ type ExceptionsSheetProps = {
   onRefresh: () => void;
   loading: boolean;
   exceptions: ManifestExceptionItem[];
-  theme: any; 
+  theme: AppTheme; 
   activeManifestId?: string;
 };
 

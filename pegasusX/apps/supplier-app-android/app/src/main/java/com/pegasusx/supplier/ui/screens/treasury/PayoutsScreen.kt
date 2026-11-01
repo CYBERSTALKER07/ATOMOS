@@ -238,7 +238,7 @@ fun PayoutsScreen(
             error != null && batches.isEmpty() && rail == null -> PegasusStatePane(
                 kind = PegasusStateKind.Error,
                 headline = "Payouts unavailable",
-                body = error!!,
+                body = error.orEmpty(),
                 modifier = Modifier.padding(padding),
                 actionLabel = "Retry",
                 onAction = { load() },

@@ -42,8 +42,8 @@ export default function PaydayCalendarPage() {
       if (!res.ok) throw new Error("Failed to load payday signals");
       const data = await res.json();
       setSignals(data || []);
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -81,8 +81,8 @@ export default function PaydayCalendarPage() {
       
       setIsModalOpen(false);
       fetchPaydays();
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -94,8 +94,8 @@ export default function PaydayCalendarPage() {
       });
       if (!res.ok) throw new Error("Failed to remove");
       fetchPaydays();
-    } catch (err: any) {
-      console.error(err.message);
+    } catch (err: unknown) {
+      console.error(err instanceof Error ? err.message : String(err));
     }
   };
 

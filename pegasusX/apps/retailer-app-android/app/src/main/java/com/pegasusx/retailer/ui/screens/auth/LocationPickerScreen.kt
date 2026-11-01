@@ -183,7 +183,7 @@ fun LocationPickerScreen(
             Text(
                 text = when {
                     resolving -> "Resolving address…"
-                    !addressLabel.isNullOrBlank() -> addressLabel!!
+                    !addressLabel.isNullOrBlank() -> addressLabel.orEmpty()
                     else -> "Move the map to pin your store"
                 },
                 style = MaterialTheme.typography.bodyMedium,

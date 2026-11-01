@@ -78,6 +78,10 @@ import com.pegasusx.driver.ui.screens.profile.ProfileScreen
 import com.pegasusx.driver.ui.screens.scanner.ScannerScreen
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationInboxScreen
 import com.pegasusx.driver.ui.screens.offline.OfflineVerifierScreen
+import com.pegasusx.driver.ui.screens.fleet.DVIRViewModel
+import com.pegasusx.driver.ui.screens.fleet.FleetDVIRScreen
+import com.pegasusx.driver.ui.screens.fleet.MidRouteRescueScreen
+import com.pegasusx.driver.ui.screens.fleet.YardGateScreen
 import com.pegasusx.driver.ui.screens.supply.SupplyTransfersScreen
 import com.pegasusx.driver.ui.screens.sync.PendingSyncCountViewModel
 import com.pegasusx.driver.ui.screens.sync.SyncQueueScreen
@@ -98,6 +102,9 @@ object DriverRoutes {
     const val OFFLINE_VERIFIER = "offline_verifier"
     const val SYNC_QUEUE = "sync_queue"
     const val SUPPLY_TRANSFERS = "supply_transfers"
+    const val FLEET_DVIR = "fleet_dvir"
+    const val MID_ROUTE_RESCUE = "mid_route_rescue"
+    const val YARD_GATE = "yard_gate"
 
     fun correctionRoute(orderId: String, retailerName: String): String {
         val encodedName = URLEncoder.encode(retailerName.ifBlank { "_" }, "UTF-8")
@@ -340,6 +347,9 @@ fun DriverNavigation(
                         viewModel = manifestViewModel,
                         onOfflineVerifier = { navController.navigate(DriverRoutes.OFFLINE_VERIFIER) },
                         onSyncQueue = { navController.navigate(DriverRoutes.SYNC_QUEUE) },
+                        onFleetDvir = { navController.navigate(DriverRoutes.FLEET_DVIR) },
+                        onMidRouteRescue = { navController.navigate(DriverRoutes.MID_ROUTE_RESCUE) },
+                        onYardGate = { navController.navigate(DriverRoutes.YARD_GATE) },
                         pendingCount = pendingCount,
                     )
                 },
@@ -364,6 +374,29 @@ fun DriverNavigation(
 
         composable(DriverRoutes.SUPPLY_TRANSFERS) {
             SupplyTransfersScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(DriverRoutes.FLEET_DVIR) {
+            val dvirViewModel: DVIRViewModel = hiltViewModel()
+            FleetDVIRScreen(
+                viewModel = dvirViewModel,
+                onNavigateToRescue = { navController.navigate(DriverRoutes.MID_ROUTE_RESCUE) },
+                onNavigateToGate = { navController.navigate(DriverRoutes.YARD_GATE) },
+            )
+        }
+
+        composable(DriverRoutes.MID_ROUTE_RESCUE) {
+            MidRouteRescueScreen(
+                driverApi = api,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(DriverRoutes.YARD_GATE) {
+            YardGateScreen(
+                driverApi = api,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable(DriverRoutes.SCANNER) {
@@ -517,7 +550,7 @@ fun DriverNavigation(
 
         if (TokenHolder.token != null && outdatedState != null) {
             DriverOutdatedOverlay(
-                outdatedState = outdatedState!!,
+                outdatedState = outdatedState ?: return@Column,
                 onSignOut = {
                     TokenHolder.clear()
                     driverWebSocket.disconnect()
