@@ -29,23 +29,24 @@ extension Color {
     }
 }
 
-// MARK: - Tactical Design System Master Tokens
+// MARK: - Tactical Design System Master Tokens (Warm Minimalist Monochrome from Reference Image)
 enum TacticalTheme {
     // Canvas & Surfaces
-    static let canvas = Color(lightHex: 0xF8FAFC, darkHex: 0x09090B)
-    static let surface = Color(lightHex: 0xFFFFFF, darkHex: 0x121216)
-    static let surfaceSubtle = Color(lightHex: 0xF1F5F9, darkHex: 0x181820)
-    static let surfaceSunken = Color(lightHex: 0xE2E8F0, darkHex: 0x0D0D11)
-    static let surfaceRaised = Color(lightHex: 0xFFFFFF, darkHex: 0x191924)
+    static let canvas = Color(lightHex: 0xEDEDF0, darkHex: 0x0E0E10)
+    static let surface = Color(lightHex: 0xFFFFFF, darkHex: 0x18181B)
+    static let surfaceSubtle = Color(lightHex: 0xF6F6F8, darkHex: 0x202024)
+    static let surfaceSunken = Color(lightHex: 0xEAEAEB, darkHex: 0x131316)
+    static let surfaceRaised = Color(lightHex: 0xFFFFFF, darkHex: 0x1F1F23)
+    static let iconTile = Color(lightHex: 0xE2E2E6, darkHex: 0x27272A)
 
     // Borders (1px Hairline Precision)
-    static let border = Color(lightHex: 0xE2E8F0, darkHex: 0x22222C)
-    static let borderStrong = Color(lightHex: 0xCBD5E1, darkHex: 0x333342)
+    static let border = Color(lightHex: 0xE4E4E7, darkHex: 0x27272A)
+    static let borderStrong = Color(lightHex: 0xD4D4D8, darkHex: 0x3F3F46)
 
     // Typography
-    static let textPrimary = Color(lightHex: 0x0F172A, darkHex: 0xF8FAFC)
-    static let textSecondary = Color(lightHex: 0x475569, darkHex: 0x94A3B8)
-    static let textTertiary = Color(lightHex: 0x94A3B8, darkHex: 0x64748B)
+    static let textPrimary = Color(lightHex: 0x111113, darkHex: 0xF4F4F5)
+    static let textSecondary = Color(lightHex: 0x71717A, darkHex: 0xA1A1AA)
+    static let textTertiary = Color(lightHex: 0xA1A1AA, darkHex: 0x71717A)
 
     // Tactical Accents
     static let accentCobalt = Color(lightHex: 0x2563EB, darkHex: 0x3B82F6)
@@ -63,7 +64,8 @@ enum TacticalTheme {
     static let radiusSM: CGFloat = 8
     static let radiusMD: CGFloat = 12
     static let radiusLG: CGFloat = 16
-    static let radiusXL: CGFloat = 24
+    static let radiusCard: CGFloat = 24
+    static let radiusXL: CGFloat = 28
 }
 
 // MARK: - Tactical Card Modifier

@@ -3,28 +3,55 @@ import SwiftUI
 // MARK: - Design Tokens
 
 enum AppTheme {
-    // MARK: Colors (Native Tactical)
-    static let background = Color(UIColor.systemGroupedBackground)
-    static let cardBackground = Color(UIColor.systemBackground)
-    static let secondaryBackground = Color(UIColor.secondarySystemGroupedBackground)
-    static let separator = Color(UIColor.separator)
-    static let accent = Color(UIColor.label)                              // Pure black (light) / white (dark)
-    static let accentSoft = Color(UIColor.systemGray6)                    // Very light gray
-    static let accentDark = Color(UIColor.label)                          // Same as accent
-    static let destructive = Color(UIColor.systemRed)
-    static let destructiveSoft = Color(UIColor.systemRed).opacity(0.1)
+    // MARK: Colors (Warm Tactile Minimalist - Sampled from Reference Image)
+    #if canImport(UIKit)
+    static let background = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 14/255.0, green: 14/255.0, blue: 16/255.0, alpha: 1.0) : UIColor(red: 237/255.0, green: 237/255.0, blue: 240/255.0, alpha: 1.0) })
+    static let cardBackground = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 24/255.0, green: 24/255.0, blue: 27/255.0, alpha: 1.0) : UIColor.white })
+    static let secondaryBackground = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 32/255.0, green: 32/255.0, blue: 36/255.0, alpha: 1.0) : UIColor(red: 246/255.0, green: 246/255.0, blue: 248/255.0, alpha: 1.0) })
+    static let separator = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 228/255.0, green: 228/255.0, blue: 231/255.0, alpha: 1.0) })
+    static let cardBorder = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.08) : UIColor.black.withAlphaComponent(0.04) })
+    static let accent = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor.white : UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) })
+    static let accentSoft = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 226/255.0, green: 226/255.0, blue: 230/255.0, alpha: 1.0) })
+    static let iconTile = accentSoft
+    static let accentDark = accent
+    static let destructive = Color(uiColor: .systemRed)
+    static let destructiveSoft = Color(uiColor: .systemRed).opacity(0.1)
     // Alias kept for semantic clarity in some views (e.g. AccountProfileView uses `AppTheme.error`).
     static let error = destructive
-    static let success = Color(UIColor.systemGreen)
-    static let successSoft = Color(UIColor.systemGreen).opacity(0.1)
-    static let warning = Color(UIColor.systemOrange)
-    static let warningSoft = Color(UIColor.systemOrange).opacity(0.1)
-    static let info = Color(UIColor.systemBlue)
-    static let infoSoft = Color(UIColor.systemBlue).opacity(0.1)
-    static let textPrimary = Color(UIColor.label)
-    static let textSecondary = Color(UIColor.secondaryLabel)
-    static let textTertiary = Color(UIColor.tertiaryLabel)
-    static let surfaceElevated = Color(UIColor.systemGray6)
+    static let success = Color(uiColor: .systemGreen)
+    static let successSoft = Color(uiColor: .systemGreen).opacity(0.1)
+    static let warning = Color(uiColor: .systemOrange)
+    static let warningSoft = Color(uiColor: .systemOrange).opacity(0.1)
+    static let info = Color(uiColor: .systemBlue)
+    static let infoSoft = Color(uiColor: .systemBlue).opacity(0.1)
+    static let textPrimary = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 244/255.0, green: 244/255.0, blue: 245/255.0, alpha: 1.0) : UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) })
+    static let textSecondary = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) : UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) })
+    static let textTertiary = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) : UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) })
+    static let surfaceElevated = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 31/255.0, green: 31/255.0, blue: 35/255.0, alpha: 1.0) : UIColor.white })
+    #else
+    static let background = Color.gray.opacity(0.15)
+    static let cardBackground = Color.white
+    static let secondaryBackground = Color.gray.opacity(0.1)
+    static let separator = Color.gray.opacity(0.2)
+    static let cardBorder = Color.black.opacity(0.04)
+    static let accent = Color.black
+    static let accentSoft = Color.gray.opacity(0.15)
+    static let iconTile = accentSoft
+    static let accentDark = accent
+    static let destructive = Color.red
+    static let destructiveSoft = Color.red.opacity(0.1)
+    static let error = destructive
+    static let success = Color.green
+    static let successSoft = Color.green.opacity(0.1)
+    static let warning = Color.orange
+    static let warningSoft = Color.orange.opacity(0.1)
+    static let info = Color.blue
+    static let infoSoft = Color.blue.opacity(0.1)
+    static let textPrimary = Color.black
+    static let textSecondary = Color.gray
+    static let textTertiary = Color.gray.opacity(0.6)
+    static let surfaceElevated = Color.white
+    #endif
 
     // MARK: Gradients (B&W)
     static let accentGradient = LinearGradient(
@@ -298,9 +325,10 @@ extension View {
                     .fill(AppTheme.cardBackground)
                     .overlay {
                         RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
-                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                            .stroke(AppTheme.cardBorder, lineWidth: 1)
                     }
             }
+            .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
     }
 
     func retailerReadableWidth() -> some View {

@@ -9,22 +9,26 @@ import SwiftUI
 
 enum LabTheme {
 
-    // MARK: Adaptive Colors (Native Tactical)
+    // MARK: Adaptive Colors (Warm Tactile Minimalist - Sampled from Reference Image)
 
-    /// Primary foreground — adapts automatically
-    static let fg = Color(uiColor: .label)
-    /// Secondary foreground
-    static let fgSecondary = Color(uiColor: .secondaryLabel)
-    /// Tertiary foreground (Strategic label color)
-    static let fgTertiary = Color(uiColor: .tertiaryLabel)
-    /// Card surface (Pure Apple background)
-    static let card = Color(uiColor: .secondarySystemGroupedBackground)
-    /// Page background
-    static let bg = Color(uiColor: .systemGroupedBackground)
+    /// Primary foreground — deep soot (#111113 light / #F4F4F5 dark)
+    static let fg = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 244/255.0, green: 244/255.0, blue: 245/255.0, alpha: 1.0) : UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) })
+    /// Secondary foreground — neutral charcoal (#71717A light / #A1A1AA dark)
+    static let fgSecondary = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) : UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) })
+    /// Tertiary foreground — muted gray (#A1A1AA light / #71717A dark)
+    static let fgTertiary = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 113/255.0, green: 113/255.0, blue: 122/255.0, alpha: 1.0) : UIColor(red: 161/255.0, green: 161/255.0, blue: 170/255.0, alpha: 1.0) })
+    /// Card surface — elevated white (#FFFFFF light / #18181B dark)
+    static let card = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 24/255.0, green: 24/255.0, blue: 27/255.0, alpha: 1.0) : UIColor.white })
+    /// Page background — warm neutral paper (#EDEDF0 light / #0E0E10 dark)
+    static let bg = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 14/255.0, green: 14/255.0, blue: 16/255.0, alpha: 1.0) : UIColor(red: 237/255.0, green: 237/255.0, blue: 240/255.0, alpha: 1.0) })
+    /// Tactile icon squircle container fill (#E2E2E6 light / #27272A dark)
+    static let iconTile = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 226/255.0, green: 226/255.0, blue: 230/255.0, alpha: 1.0) })
     /// Button foreground on filled buttons
-    static let buttonFg = Color(uiColor: .systemBackground)
-    /// Separator (Tactical stroke)
-    static let separator = Color(uiColor: .separator)
+    static let buttonFg = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 17/255.0, green: 17/255.0, blue: 19/255.0, alpha: 1.0) : UIColor.white })
+    /// Separator — subtle hairline (#E4E4E7 light / #27272A dark)
+    static let separator = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 39/255.0, green: 39/255.0, blue: 42/255.0, alpha: 1.0) : UIColor(red: 228/255.0, green: 228/255.0, blue: 231/255.0, alpha: 1.0) })
+    /// Subtle card border
+    static let cardBorder = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.08) : UIColor.black.withAlphaComponent(0.04) })
 
     // MARK: Semantic Status (Monochrome + Tactical Accents)
 
