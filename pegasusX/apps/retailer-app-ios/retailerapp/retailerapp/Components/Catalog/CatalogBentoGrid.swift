@@ -104,8 +104,7 @@ struct CatalogBentoGrid: View {
                     }
             }
         }
-        .buttonStyle(.plain)
-        .pressable()
+        .buttonStyle(.pressable)
     }
 
 
@@ -140,8 +139,7 @@ struct CatalogBentoGrid: View {
                     }
             }
         }
-        .buttonStyle(.plain)
-        .pressable()
+        .buttonStyle(.pressable)
     }
 
 
@@ -170,8 +168,7 @@ struct CatalogBentoGrid: View {
                     }
             }
         }
-        .buttonStyle(.plain)
-        .pressable()
+        .buttonStyle(.pressable)
     }
 
 
@@ -198,8 +195,7 @@ struct CatalogBentoGrid: View {
                     }
             }
         }
-        .buttonStyle(.plain)
-        .pressable()
+        .buttonStyle(.pressable)
     }
 
 }

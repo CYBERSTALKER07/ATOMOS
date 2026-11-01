@@ -83,8 +83,7 @@ struct DeliveryMapView: View {
                             } label: {
                                 DriverMarker(isGreen: order.isGreen)
                             }
-                            .buttonStyle(.plain)
-                            .pressable()
+                            .buttonStyle(.pressable)
                             .accessibilityLabel("Driver marker for \(order.supplierName)")
                             .accessibilityHint("Opens order details")
                         }

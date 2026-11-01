@@ -574,14 +574,11 @@ struct ContentView: View {
             .tint(AppTheme.accent)
 
             // Floating Active Orders Bar
-            if showFloatingBar && !showSidebar {
-                VStack {
-                    Spacer()
-                    FloatingActiveOrdersBar(activeOrders: activeOrders) {
-                        showActiveOrderDetail = true
-                    }
-                    .padding(.horizontal, AppTheme.spacingMD)
+            if showFloatingBar && !showSidebar && !activeOrders.isEmpty {
+                FloatingActiveOrdersBar(activeOrders: activeOrders) {
+                    showActiveOrderDetail = true
                 }
+                .padding(.horizontal, AppTheme.spacingMD)
                 .padding(.bottom, 52)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .animation(AnimationConstants.fluid, value: activeOrders.count)

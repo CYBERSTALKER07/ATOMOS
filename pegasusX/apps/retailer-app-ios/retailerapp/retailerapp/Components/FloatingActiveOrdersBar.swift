@@ -66,7 +66,7 @@ struct FloatingActiveOrdersBar: View {
                         }
                 }
             }
-            .pressable()
+            .buttonStyle(.pressable)
             .padding(.horizontal, AppTheme.spacingLG)
             .onAppear {
                 guard !reduceMotion else { return }

@@ -8,27 +8,71 @@ struct ServiceGrid: View {
         VStack(spacing: AppTheme.spacingMD) {
             // Row 1: two big tiles
             HStack(spacing: AppTheme.spacingMD) {
-                ServiceTileView(title: "Catalog", icon: "bag.fill", subtitle: "Browse products", height: 130)
-                ServiceTileView(title: "Reorder suggestions", icon: "sparkles", subtitle: "\(predictionsCount) items", height: 130)
+                NavigationLink {
+                    CatalogView()
+                } label: {
+                    ServiceTileView(title: "Catalog", icon: "bag.fill", subtitle: "Browse products", height: 130)
+                }
+                .buttonStyle(.pressable)
+
+                NavigationLink {
+                    FutureDemandView()
+                } label: {
+                    ServiceTileView(title: "Reorder suggestions", icon: "sparkles", subtitle: "\(predictionsCount) items", height: 130)
+                }
+                .buttonStyle(.pressable)
             }
 
             // Row 2: one wide + two small
             HStack(spacing: AppTheme.spacingMD) {
                 // Left: tall tile
-                ServiceTileView(title: "Orders", icon: "shippingbox.fill", subtitle: "\(activeOrdersCount) active", height: 120)
+                NavigationLink {
+                    OrdersView()
+                } label: {
+                    ServiceTileView(title: "Orders", icon: "shippingbox.fill", subtitle: "\(activeOrdersCount) active", height: 120)
+                }
+                .buttonStyle(.pressable)
 
                 // Right: two small stacked
                 VStack(spacing: AppTheme.spacingMD) {
-                    ServiceTileView(title: "Inbox", icon: "tray.fill", subtitle: nil, height: 54)
-                    ServiceTileView(title: "History", icon: "clock.fill", subtitle: nil, height: 54)
+                    NavigationLink {
+                        NotificationInboxView()
+                    } label: {
+                        ServiceTileView(title: "Inbox", icon: "tray.fill", subtitle: nil, height: 54)
+                    }
+                    .buttonStyle(.pressable)
+
+                    NavigationLink {
+                        HistoryView()
+                    } label: {
+                        ServiceTileView(title: "History", icon: "clock.fill", subtitle: nil, height: 54)
+                    }
+                    .buttonStyle(.pressable)
                 }
             }
 
             // Row 3: three equal small tiles
             HStack(spacing: AppTheme.spacingMD) {
-                ServiceTileSmall(title: "Procurement", icon: "chart.bar.fill")
-                ServiceTileSmall(title: "Search", icon: "magnifyingglass")
-                ServiceTileSmall(title: "Profile", icon: "person.fill")
+                NavigationLink {
+                    ProcurementView()
+                } label: {
+                    ServiceTileSmall(title: "Procurement", icon: "chart.bar.fill")
+                }
+                .buttonStyle(.pressable)
+
+                NavigationLink {
+                    SearchView()
+                } label: {
+                    ServiceTileSmall(title: "Search", icon: "magnifyingglass")
+                }
+                .buttonStyle(.pressable)
+
+                NavigationLink {
+                    ProfileView()
+                } label: {
+                    ServiceTileSmall(title: "Profile", icon: "person.fill")
+                }
+                .buttonStyle(.pressable)
             }
         }
     }
@@ -71,7 +115,6 @@ struct ServiceTileView: View {
                         .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                 }
         }
-        .pressable()
     }
 }
 
@@ -99,6 +142,5 @@ struct ServiceTileSmall: View {
                         .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
                 }
         }
-        .pressable()
     }
 }

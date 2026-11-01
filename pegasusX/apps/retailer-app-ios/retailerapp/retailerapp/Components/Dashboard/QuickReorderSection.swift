@@ -23,31 +23,47 @@ struct QuickReorderSection: View {
 struct QuickReorderItem: View {
     let product: Product
     @Environment(CartManager.self) private var cart
+    @State private var addedToast = false
     
     var body: some View {
-        Button {
-            if let variant = product.defaultVariant {
-                Haptics.light()
-                withAnimation(AnimationConstants.bouncy) {
-                    cart.add(product: product, variant: variant)
-                }
-            }
+        NavigationLink {
+            ProductDetailView(product: product)
         } label: {
             VStack(spacing: AppTheme.spacingSM) {
-                ZStack {
+                ZStack(alignment: .topTrailing) {
                     RoundedRectangle(cornerRadius: AppTheme.radiusMD)
                         .fill(AppTheme.surfaceElevated)
-                        .frame(width: 64, height: 64)
+                        .frame(width: 68, height: 68)
                     Image(systemName: "leaf.fill")
                         .font(.system(size: 24))
                         .foregroundStyle(AppTheme.textTertiary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    Button {
+                        if let variant = product.defaultVariant {
+                            Haptics.light()
+                            withAnimation(AnimationConstants.bouncy) {
+                                cart.add(product: product, variant: variant)
+                                addedToast = true
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                                addedToast = false
+                            }
+                        }
+                    } label: {
+                        Image(systemName: addedToast ? "checkmark.circle.fill" : "plus.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(addedToast ? AppTheme.success : AppTheme.accent)
+                            .padding(4)
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 Text(product.name)
                     .font(.system(.caption2, design: .rounded, weight: .medium))
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
-                    .frame(width: 70)
+                    .frame(width: 72)
 
                 VStack(spacing: 2) {
                     if product.hasSaleOffer, let listPrice = product.displayListPrice {
@@ -63,6 +79,6 @@ struct QuickReorderItem: View {
             }
             .padding(AppTheme.spacingSM)
         }
-        .pressable()
+        .buttonStyle(.pressable)
     }
 }

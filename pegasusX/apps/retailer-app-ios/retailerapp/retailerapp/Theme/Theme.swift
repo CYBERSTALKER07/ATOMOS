@@ -214,27 +214,28 @@ struct ElevatedCardModifier: ViewModifier {
     }
 }
 
-// MARK: - Press Scale Effect
+// MARK: - Press Scale Button Style
+
+struct PressableButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect((configuration.isPressed && !reduceMotion) ? 0.97 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.8), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == PressableButtonStyle {
+    static var pressable: PressableButtonStyle { PressableButtonStyle() }
+}
+
+// MARK: - Press Scale Effect (Safe for views & buttons without gesture collisions)
 
 struct PressableModifier: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isPressed = false
-
     func body(content: Content) -> some View {
         content
-            .scaleEffect((isPressed && !reduceMotion) ? 0.97 : 1.0)
-            .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        if !isPressed {
-                            isPressed = true
-                        }
-                    }
-                    .onEnded { _ in
-                        isPressed = false
-                    }
-            )
+            .buttonStyle(PressableButtonStyle())
     }
 }
 

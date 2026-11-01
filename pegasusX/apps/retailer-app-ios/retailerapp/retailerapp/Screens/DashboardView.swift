@@ -143,10 +143,33 @@ struct DashboardView: View {
                     .accessibilityIdentifier("gs-u-retailer-pulse-empty")
             } else if let pulse = commandPulse {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
-                    commandTile("Open orders", "\(pulse.openOrders)")
-                    commandTile("Fulfillment", "\(pulse.activeFulfillments)")
-                    commandTile("Dock", "\(pulse.dockPending)")
-                    commandTile("POS", "\(pulse.posOpenSessions)")
+                    NavigationLink {
+                        OrdersView()
+                    } label: {
+                        commandTile("Open orders", "\(pulse.openOrders)")
+                    }
+                    .buttonStyle(.pressable)
+
+                    NavigationLink {
+                        DeliveriesHubView()
+                    } label: {
+                        commandTile("Fulfillment", "\(pulse.activeFulfillments)")
+                    }
+                    .buttonStyle(.pressable)
+
+                    NavigationLink {
+                        ArrivalView()
+                    } label: {
+                        commandTile("Dock", "\(pulse.dockPending)")
+                    }
+                    .buttonStyle(.pressable)
+
+                    NavigationLink {
+                        PosView()
+                    } label: {
+                        commandTile("POS", "\(pulse.posOpenSessions)")
+                    }
+                    .buttonStyle(.pressable)
                 }
             }
             if commandPulseError == nil {

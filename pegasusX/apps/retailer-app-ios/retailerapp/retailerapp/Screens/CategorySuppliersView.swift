@@ -60,7 +60,7 @@ struct CategorySuppliersView: View {
                             } label: {
                                 supplierCard(supplier)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .staggeredSlideIn(index: index)
                         }
                     }
@@ -151,7 +151,6 @@ struct CategorySuppliersView: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
-        .pressable()
     }
 
     // MARK: - Empty State

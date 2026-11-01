@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CartView: View {
     @Environment(CartManager.self) private var cart
+    @Environment(\.dismiss) private var dismiss
 
     @State private var showCheckout = false
     @State private var itemToDelete: CartItem?
@@ -206,7 +207,7 @@ struct CartView: View {
                         .background(AppTheme.accent)
                         .clipShape(.capsule)
                     }
-                    .pressable()
+                    .buttonStyle(.pressable)
                 }
             }
             .padding(AppTheme.spacingLG)
@@ -257,7 +258,7 @@ struct CartView: View {
             }
 
             Button {
-                // User can tap the Catalog tab
+                dismiss()
             } label: {
                 HStack(spacing: AppTheme.spacingSM) {
                     Image(systemName: "square.grid.2x2")
@@ -271,7 +272,7 @@ struct CartView: View {
                 .background(AppTheme.accent)
                 .clipShape(.capsule)
             }
-            .pressable()
+            .buttonStyle(.pressable)
 
             Spacer()
         }

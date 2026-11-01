@@ -150,9 +150,8 @@ struct NotificationInboxView: View {
                             } label: {
                                 NotificationRow(notification: notif)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
-                            .pressable()
                             .contentShape(Rectangle())
                             .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
                             .onAppear {

@@ -27,24 +27,31 @@ struct PredictionCard: View {
     var body: some View {
         LabCard {
             HStack(spacing: AppTheme.spacingMD) {
-                ZStack {
-                    Circle()
-                        .stroke(AppTheme.separator.opacity(0.3), lineWidth: 3)
-                        .frame(width: 44, height: 44)
-                    Text(String(item.statusLabel.prefix(7)))
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(AppTheme.warning)
-                }
+                NavigationLink {
+                    FutureDemandView()
+                } label: {
+                    HStack(spacing: AppTheme.spacingMD) {
+                        ZStack {
+                            Circle()
+                                .stroke(AppTheme.separator.opacity(0.3), lineWidth: 3)
+                                .frame(width: 44, height: 44)
+                            Text(String(item.statusLabel.prefix(7)))
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .foregroundStyle(AppTheme.warning)
+                        }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(item.title)
-                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                        .foregroundStyle(AppTheme.textPrimary)
-                    Text("\(item.deliveryLabel) · \(item.statusLabel)")
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textTertiary)
-                        .lineLimit(2)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.title)
+                                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                                .foregroundStyle(AppTheme.textPrimary)
+                            Text("\(item.deliveryLabel) · \(item.statusLabel)")
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .lineLimit(2)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
 
                 Spacer(minLength: 0)
 

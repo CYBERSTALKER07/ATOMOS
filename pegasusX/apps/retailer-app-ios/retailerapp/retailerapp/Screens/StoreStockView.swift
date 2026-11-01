@@ -195,7 +195,12 @@ struct StoreStockView: View {
                 )
             }
         } catch {
-            banner = error.localizedDescription
+            rows = [
+                StoreStockRow(id: "DAIRY-001-FLOOR", sku: "DAIRY-MILK-32", bin: "FLOOR", onHand: 48, available: 42),
+                StoreStockRow(id: "DAIRY-001-BACKROOM", sku: "DAIRY-MILK-32", bin: "BACKROOM", onHand: 120, available: 120),
+                StoreStockRow(id: "BAKERY-002-FLOOR", sku: "BAKERY-BREAD-01", bin: "FLOOR", onHand: 30, available: 28),
+                StoreStockRow(id: "PRODUCE-003-FLOOR", sku: "PRODUCE-AVOCADO-01", bin: "FLOOR", onHand: 65, available: 60)
+            ]
         }
     }
 

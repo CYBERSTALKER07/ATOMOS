@@ -31,7 +31,7 @@ struct MySuppliersView: View {
                             } label: {
                                 supplierCard(supplier)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.pressable)
                             .contextMenu {
                                 Button("mobile_retailer.ui.remove_vendor", role: .destructive) {
                                     supplierPendingRemoval = supplier
@@ -126,7 +126,6 @@ struct MySuppliersView: View {
         .background(AppTheme.cardBackground)
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
-        .pressable()
     }
 
     private func syncStatusBanner(_ message: String) -> some View {

@@ -100,8 +100,7 @@ struct ProductCardView: View {
             .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
             .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
         }
-        .buttonStyle(.plain)
-        .pressable()
+        .buttonStyle(.pressable)
         .opacity(appeared ? 1 : 0)
         .offset(y: appeared ? 0 : 20)
         .onAppear {

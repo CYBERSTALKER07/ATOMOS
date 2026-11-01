@@ -18,26 +18,43 @@ struct KpiGrid: View {
                 columns: [GridItem(.adaptive(minimum: kpiGridMin), spacing: AppTheme.spacingMD)],
                 spacing: AppTheme.spacingMD
             ) {
-                KpiTile(
-                    title: "Active Orders",
-                    value: "\(activeOrdersCount)",
-                    systemImage: "shippingbox.fill",
-                    tint: AppTheme.accent,
-                    chip: activeOrdersCount == 0 ? nil : ("LIVE", AppTheme.success)
-                )
-                KpiTile(
-                    title: "Reorder suggestions",
-                    value: "\(predictionsCount)",
-                    systemImage: "sparkles",
-                    tint: AppTheme.info,
-                    chip: predictionsCount == 0 ? nil : ("NEW", AppTheme.warning)
-                )
-                KpiTile(
-                    title: "Quick Reorder",
-                    value: "\(reorderProductsCount)",
-                    systemImage: "arrow.clockwise",
-                    tint: AppTheme.success
-                )
+                NavigationLink {
+                    OrdersView()
+                } label: {
+                    KpiTile(
+                        title: "Active Orders",
+                        value: "\(activeOrdersCount)",
+                        systemImage: "shippingbox.fill",
+                        tint: AppTheme.accent,
+                        chip: activeOrdersCount == 0 ? nil : ("LIVE", AppTheme.success)
+                    )
+                }
+                .buttonStyle(.pressable)
+
+                NavigationLink {
+                    FutureDemandView()
+                } label: {
+                    KpiTile(
+                        title: "Reorder suggestions",
+                        value: "\(predictionsCount)",
+                        systemImage: "sparkles",
+                        tint: AppTheme.info,
+                        chip: predictionsCount == 0 ? nil : ("NEW", AppTheme.warning)
+                    )
+                }
+                .buttonStyle(.pressable)
+
+                NavigationLink {
+                    ProcurementView()
+                } label: {
+                    KpiTile(
+                        title: "Quick Reorder",
+                        value: "\(reorderProductsCount)",
+                        systemImage: "arrow.clockwise",
+                        tint: AppTheme.success
+                    )
+                }
+                .buttonStyle(.pressable)
             }
         }
     }

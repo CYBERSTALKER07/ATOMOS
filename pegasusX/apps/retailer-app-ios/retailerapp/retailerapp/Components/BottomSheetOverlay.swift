@@ -76,6 +76,7 @@ struct BottomSheetOverlay<Content: View>: View {
             }
             .animation(AnimationConstants.sheet, value: isPresented)
         }
+        .allowsHitTesting(isPresented)
         .ignoresSafeArea(edges: .bottom)
     }
 }
