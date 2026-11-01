@@ -142,7 +142,7 @@ func (s *Service) ResolvePlaceID(ctx context.Context, placeID string, countryCod
 		return ResolvedLocation{}, fmt.Errorf("place_id_required")
 	}
 	if s == nil || s.googleAPIKey == "" {
-		return ResolvedLocation{}, fmt.Errorf("google_maps_not_configured")
+		return s.ForwardGeocode(ctx, placeID, countryCode...)
 	}
 	cc := resolveCountry(ctx, countryCode...)
 	key := placeCacheKey(cc, placeID)
