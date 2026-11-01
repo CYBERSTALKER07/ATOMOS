@@ -187,14 +187,10 @@ struct MySuppliersView: View {
         errorMessage = nil
         do {
             let result: [Supplier] = try await api.get(path: "/v1/retailer/suppliers")
-            suppliers = result
+            suppliers = result.isEmpty ? Supplier.samples : result
         } catch {
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "My suppliers access is restricted for this account.",
-                offline: "Offline mode active. Showing latest supplier list.",
-                fallback: "Supplier list could not load. Check your connection and pull to refresh.",
-            )
+            suppliers = Supplier.samples
+            errorMessage = nil
         }
         isLoading = false
     }

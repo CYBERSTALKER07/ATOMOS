@@ -1532,6 +1532,45 @@ struct RetailerPulseEvent: Codable, Identifiable {
         manifestId = try c.decodeIfPresent(String.self, forKey: .manifestId)
         id = rawId.isEmpty ? "\(title)-\(occurredAt ?? UUID().uuidString)" : rawId
     }
+
+    init(
+        id: String,
+        kind: String? = nil,
+        title: String,
+        description: String? = nil,
+        occurredAt: String? = nil,
+        deepLink: String? = nil,
+        orderId: String? = nil,
+        manifestId: String? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.description = description
+        self.occurredAt = occurredAt
+        self.deepLink = deepLink
+        self.orderId = orderId
+        self.manifestId = manifestId
+    }
+
+    static let samples: [RetailerPulseEvent] = [
+        RetailerPulseEvent(
+            id: "evt-1",
+            kind: "DISPATCH",
+            title: "Fresh Farms Co. order #ord-001 in transit",
+            description: "Driver approaching receiving dock",
+            occurredAt: "Just now",
+            orderId: "ord-001"
+        ),
+        RetailerPulseEvent(
+            id: "evt-2",
+            kind: "ORDER",
+            title: "Bakery Express pre-order confirmed",
+            description: "Scheduled delivery for tomorrow morning",
+            occurredAt: "10m ago",
+            orderId: "ord-002"
+        )
+    ]
 }
 
 struct RetailerPulseResponse: Codable {
@@ -1641,6 +1680,46 @@ struct ControlTowerPulseWire: Decodable {
         ordersBySupplier = try c.decodeIfPresent([RetailerSupplierOrderFacetWire].self, forKey: .ordersBySupplier) ?? []
         loyalty = try c.decodeIfPresent(RetailerPulseLoyaltyWire.self, forKey: .loyalty)
     }
+
+    init(
+        retailerId: String? = "ret-001",
+        generatedAt: String? = "2026-03-17T12:00:00Z",
+        openOrders: Int = 2,
+        activeFulfillments: Int = 2,
+        dockPending: Int = 1,
+        posOpenSessions: Int = 1,
+        openShifts: Int = 1,
+        openAssistTickets: Int = 0,
+        lowStockSkuBins: Int = 0,
+        shiftVariances7d: Int = 0,
+        salesMinor7d: Int64 = 48_500_000,
+        capabilities: [String]? = nil,
+        empty: Bool = false,
+        source: String? = "local_cache",
+        ordersByStatus: [String: Int] = ["IN_TRANSIT": 1, "DISPATCHED": 1],
+        ordersBySupplier: [RetailerSupplierOrderFacetWire] = [],
+        loyalty: RetailerPulseLoyaltyWire? = nil
+    ) {
+        self.retailerId = retailerId
+        self.generatedAt = generatedAt
+        self.openOrders = openOrders
+        self.activeFulfillments = activeFulfillments
+        self.dockPending = dockPending
+        self.posOpenSessions = posOpenSessions
+        self.openShifts = openShifts
+        self.openAssistTickets = openAssistTickets
+        self.lowStockSkuBins = lowStockSkuBins
+        self.shiftVariances7d = shiftVariances7d
+        self.salesMinor7d = salesMinor7d
+        self.capabilities = capabilities
+        self.empty = empty
+        self.source = source
+        self.ordersByStatus = ordersByStatus
+        self.ordersBySupplier = ordersBySupplier
+        self.loyalty = loyalty
+    }
+
+    static let sample = ControlTowerPulseWire()
 }
 
 struct ReportsTopSkuWire: Codable {

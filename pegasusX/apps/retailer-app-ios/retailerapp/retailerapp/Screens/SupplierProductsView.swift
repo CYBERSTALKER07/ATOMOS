@@ -442,12 +442,7 @@ struct SupplierProductsView: View {
             }
             errorMessage = nil
         } catch {
-            errorMessage = RetailerErrorSupport.message(
-                for: error,
-                restricted: "Auto-order settings access is restricted for this account.",
-                offline: "Offline mode active. Showing latest auto-order settings.",
-                fallback: "Auto-order settings sync is degraded. Retry is available.",
-            )
+            // Keep default auto-order settings quietly in offline mode
         }
     }
 

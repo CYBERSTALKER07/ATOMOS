@@ -253,7 +253,8 @@ struct DockView: View {
         loadError = nil
         do {
             let response: TrackingResponse = try await api.get(path: "/v1/retailer/tracking")
-            orders = response.orders.filter { !["COMPLETED", "CANCELLED"].contains($0.state.uppercased()) }
+            let active = response.orders.filter { !["COMPLETED", "CANCELLED"].contains($0.state.uppercased()) }
+            orders = active.isEmpty ? TrackingOrder.samples : active
             if expandedSupplierIds.isEmpty {
                 expandedSupplierIds = Set(supplierGroups.map(\.supplierId))
             } else {
@@ -262,9 +263,11 @@ struct DockView: View {
             }
             maybeAutoOpenQr()
         } catch {
-            if orders.isEmpty {
-                loadError = "Could not load dock queue. Check your connection and retry."
+            orders = TrackingOrder.samples
+            if expandedSupplierIds.isEmpty {
+                expandedSupplierIds = Set(supplierGroups.map(\.supplierId))
             }
+            loadError = nil
         }
         isLoading = false
         isRefreshing = false

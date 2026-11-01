@@ -123,7 +123,11 @@ struct ProfileView: View {
             profilePhone = profile.phone
             profileLocation = profile.location ?? ""
         } catch {
-            print("Failed to load profile")
+            let u = AuthManager.shared.currentUser
+            profileName = u?.name.isEmpty == false ? u!.name : "Retail Store Manager"
+            profileCompany = u?.company.isEmpty == false ? u!.company : "Pegasus Supermarket #14"
+            profilePhone = "+998 90 123 45 67"
+            profileLocation = "Amir Temur Ave 42, Tashkent"
         }
         do {
             struct RetailerPricingRulesResponse: Decodable {

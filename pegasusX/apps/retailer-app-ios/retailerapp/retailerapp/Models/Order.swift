@@ -777,3 +777,101 @@ extension Order {
         )
     ]
 }
+
+extension TrackingOrder {
+    static let samples: [TrackingOrder] = [
+        TrackingOrder(
+            orderId: "ord-001",
+            supplierId: "sup-001",
+            supplierName: "Fresh Farms Co.",
+            warehouseId: "wh-001",
+            warehouseName: "Central Hub Tashkent",
+            driverId: "drv-001",
+            state: "IN_TRANSIT",
+            totalAmount: 22_450,
+            orderSource: "MANUAL",
+            driverLatitude: 41.3111,
+            driverLongitude: 69.2797,
+            liveLocationAvailable: true,
+            isApproaching: true,
+            deliveryToken: "TOK-9921",
+            createdAt: "2026-03-17T08:00:00Z",
+            fiscalStatus: "FISCALIZED",
+            fiscalQr: "https://ofd.soliq.uz/check/ord-001",
+            latestFiscalReceiptId: "REC-001",
+            items: [
+                TrackingOrderItem(productId: "prod-001", productName: "Organic Whole Milk", quantity: 3, unitPrice: 3490, lineTotal: 10470),
+                TrackingOrderItem(productId: "prod-003", productName: "Free-Range Eggs", quantity: 2, unitPrice: 5990, lineTotal: 11980)
+            ],
+            routeGeometry: RouteGeometryWire(
+                routeId: "rt-001",
+                encodedPolyline: nil,
+                coordinates: [
+                    RouteGeometryCoordinate(lat: 41.3200, lng: 69.2900),
+                    RouteGeometryCoordinate(lat: 41.3150, lng: 69.2850),
+                    RouteGeometryCoordinate(lat: 41.3111, lng: 69.2797),
+                    RouteGeometryCoordinate(lat: 41.2995, lng: 69.2401)
+                ],
+                source: "mock",
+                stopCount: 2
+            )
+        ),
+        TrackingOrder(
+            orderId: "ord-003",
+            supplierId: "sup-002",
+            supplierName: "Bakery Express",
+            warehouseId: "wh-002",
+            warehouseName: "Chorsu Logistics Facility",
+            driverId: "drv-002",
+            state: "DISPATCHED",
+            totalAmount: 13_490,
+            orderSource: "AI_PREDICTED",
+            driverLatitude: 41.2858,
+            driverLongitude: 69.2035,
+            liveLocationAvailable: true,
+            isApproaching: false,
+            deliveryToken: "TOK-8842",
+            createdAt: "2026-03-17T09:15:00Z",
+            fiscalStatus: "",
+            fiscalQr: "",
+            latestFiscalReceiptId: "",
+            items: [
+                TrackingOrderItem(productId: "prod-002", productName: "Sourdough Bread", quantity: 1, unitPrice: 13490, lineTotal: 13490)
+            ],
+            routeGeometry: RouteGeometryWire(
+                routeId: "rt-002",
+                encodedPolyline: nil,
+                coordinates: [
+                    RouteGeometryCoordinate(lat: 41.2750, lng: 69.1950),
+                    RouteGeometryCoordinate(lat: 41.2858, lng: 69.2035),
+                    RouteGeometryCoordinate(lat: 41.2995, lng: 69.2401)
+                ],
+                source: "mock",
+                stopCount: 1
+            )
+        )
+    ]
+}
+
+extension ActiveFulfillmentItem {
+    static let samples: [ActiveFulfillmentItem] = [
+        ActiveFulfillmentItem(
+            orderId: "ord-001",
+            supplierId: "sup-001",
+            supplierName: "Fresh Farms Co.",
+            state: "IN_TRANSIT",
+            adjustedAmount: 22_450,
+            itemCount: 2,
+            liveLocationAvailable: true
+        ),
+        ActiveFulfillmentItem(
+            orderId: "ord-003",
+            supplierId: "sup-002",
+            supplierName: "Bakery Express",
+            state: "DISPATCHED",
+            adjustedAmount: 13_490,
+            itemCount: 1,
+            liveLocationAvailable: true
+        )
+    ]
+}

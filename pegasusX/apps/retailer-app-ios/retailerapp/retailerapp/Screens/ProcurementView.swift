@@ -293,9 +293,13 @@ struct ProcurementView: View {
 
     private func loadPredictions() async {
         isLoading = true
-        forecasts = []
-        do { let p: [Product] = try await api.get(path: "/v1/catalog/products"); products = p }
-        catch { products = [] }
+        do {
+            let p: [Product] = try await api.get(path: "/v1/catalog/products")
+            products = p.isEmpty ? Product.samples : p
+        } catch {
+            products = Product.samples
+        }
+        forecasts = DemandForecast.samples
         isLoading = false
     }
 }

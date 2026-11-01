@@ -201,22 +201,35 @@ struct LocationPickerView: View {
     }
 
     private func requestAndMoveToUserLocation() {
-        if locationManager.authorizationStatus == .notDetermined {
-            awaitingUserLocation = true
-            locationManager.requestPermission()
-            return
-        }
-
-        if let loc = locationManager.lastLocation {
+        awaitingUserLocation = true
+        locationManager.requestLocation()
+        Task {
+            for _ in 0..<20 {
+                if let loc = locationManager.lastLocation {
+                    awaitingUserLocation = false
+                    withAnimation(.easeInOut(duration: 0.6)) {
+                        cameraPosition = .region(MKCoordinateRegion(
+                            center: loc,
+                            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+                        ))
+                    }
+                    centerCoordinate = loc
+                    await resolveAddress()
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            // Fallback for simulator
+            let fallback = LocationManager.defaultLocation
+            awaitingUserLocation = false
             withAnimation(.easeInOut(duration: 0.6)) {
                 cameraPosition = .region(MKCoordinateRegion(
-                    center: loc,
+                    center: fallback,
                     span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
                 ))
             }
-        } else {
-            awaitingUserLocation = true
+            centerCoordinate = fallback
+            await resolveAddress()
         }
-        locationManager.requestLocation()
     }
 }

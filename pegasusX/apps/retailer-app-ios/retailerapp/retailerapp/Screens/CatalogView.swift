@@ -104,7 +104,7 @@ struct CatalogView: View {
     private func loadCategories() async {
         do {
             let result: [ProductCategory] = try await api.get(path: "/v1/catalog/categories")
-            categories = result
+            categories = result.isEmpty ? ProductCategory.samples : result
         } catch {
             categories = ProductCategory.samples
         }
@@ -114,7 +114,7 @@ struct CatalogView: View {
         isLoading = true
         do {
             let result: [Product] = try await api.get(path: "/v1/catalog/products")
-            products = result
+            products = result.isEmpty ? Product.samples : result
             loadError = nil
         } catch {
             products = Product.samples

@@ -212,7 +212,7 @@ struct CategorySuppliersView: View {
         errorMessage = nil
         do {
             let result: [Supplier] = try await api.get(path: "/v1/catalog/categories/\(category.id)/suppliers")
-            suppliers = result
+            suppliers = result.isEmpty ? Supplier.samples : result
         } catch {
             suppliers = Supplier.samples
         }

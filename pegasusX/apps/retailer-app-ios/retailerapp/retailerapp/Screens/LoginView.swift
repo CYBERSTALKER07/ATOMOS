@@ -158,20 +158,26 @@ struct LoginView: View {
                                     }
 
                                     Button {
-                                        if locationManager.authorizationStatus == .notDetermined {
-                                            locationManager.requestPermission()
-                                            return
-                                        }
                                         locating = true
                                         locationManager.requestLocation()
                                         Task {
-                                            // Wait briefly for location
-                                            try? await Task.sleep(for: .seconds(2))
-                                            if let loc = locationManager.lastLocation {
-                                                latitude = loc.latitude
-                                                longitude = loc.longitude
-                                                locationLabel = String(format: "%.5f, %.5f", loc.latitude, loc.longitude)
+                                            for _ in 0..<20 {
+                                                if let loc = locationManager.lastLocation {
+                                                    latitude = loc.latitude
+                                                    longitude = loc.longitude
+                                                    let resolved = await GeocodeService.reverse(lat: loc.latitude, lng: loc.longitude)
+                                                    locationLabel = resolved ?? String(format: "%.5f, %.5f", loc.latitude, loc.longitude)
+                                                    locating = false
+                                                    return
+                                                }
+                                                try? await Task.sleep(nanoseconds: 100_000_000)
                                             }
+                                            // Fallback for simulator or missing GPS hardware
+                                            let fallback = LocationManager.defaultLocation
+                                            latitude = fallback.latitude
+                                            longitude = fallback.longitude
+                                            let resolved = await GeocodeService.reverse(lat: fallback.latitude, lng: fallback.longitude)
+                                            locationLabel = resolved ?? "Amir Temur Square, Tashkent"
                                             locating = false
                                         }
                                     } label: {

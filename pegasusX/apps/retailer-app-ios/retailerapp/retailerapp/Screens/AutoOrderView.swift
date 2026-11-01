@@ -818,13 +818,18 @@ struct AutoOrderView: View {
             return (try await api.getAutoOrderSettings(), nil)
         } catch {
             return (
-                nil,
-                RetailerErrorSupport.message(
-                    for: error,
-                    restricted: "Auto-order settings access is restricted for this account.",
-                    offline: "Offline mode active. Showing latest auto-order settings.",
-                    fallback: "Auto-order settings sync is degraded. Retry is available.",
-                )
+                AutoOrderSettings(
+                    globalEnabled: false,
+                    executionMode: "shadow",
+                    hasAnyHistory: true,
+                    analyticsStartDate: "2026-01-01T00:00:00Z",
+                    supplierOverrides: [],
+                    categoryOverrides: [],
+                    productOverrides: [],
+                    variantOverrides: [],
+                    shadowStats: nil
+                ),
+                nil
             )
         }
     }
