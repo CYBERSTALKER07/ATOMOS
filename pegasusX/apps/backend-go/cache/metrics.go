@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -52,6 +53,51 @@ var (
 		Name: "void_redis_circuit_state",
 		Help: "Redis circuit breaker operational state (1 for active state, 0 otherwise).",
 	}, []string{"state"})
+
+	redisUsedMemoryBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_used_memory_bytes",
+		Help: "Current memory usage reported by Redis INFO memory (redis-observability).",
+	})
+
+	redisMaxMemoryBytes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_maxmemory_bytes",
+		Help: "Configured maxmemory limit reported by Redis INFO memory.",
+	})
+
+	redisMemoryFragRatio = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_memory_fragmentation_ratio",
+		Help: "Memory fragmentation ratio reported by Redis INFO memory (redis-performance).",
+	})
+
+	redisInstantaneousOps = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_instantaneous_ops_per_sec",
+		Help: "Instantaneous operations per second reported by Redis INFO stats.",
+	})
+
+	redisConnectedClients = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_connected_clients",
+		Help: "Connected client count reported by Redis INFO clients.",
+	})
+
+	redisBlockedClients = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_blocked_clients",
+		Help: "Blocked client count waiting on blocking ops reported by Redis INFO clients.",
+	})
+
+	redisRejectedConns = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_rejected_connections_total",
+		Help: "Rejected connections exceeding maxclients reported by Redis INFO stats.",
+	})
+
+	redisKeyspaceHitRatio = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_keyspace_hit_ratio",
+		Help: "Server-side keyspace hit ratio from Redis INFO stats (redis-observability).",
+	})
+
+	redisSlowlogLength = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "void_redis_slowlog_length",
+		Help: "Number of slow queries currently in Redis SLOWLOG (redis-performance).",
+	})
 
 	poolMu       sync.Mutex
 	lastHits     uint32
@@ -131,7 +177,7 @@ type PoolStatsProvider interface {
 }
 
 // StartPoolMetricsCollector launches a background goroutine that periodically
-// polls pool statistics and updates Prometheus gauges.
+// polls pool statistics, circuit breaker state, and Redis INFO metrics.
 func StartPoolMetricsCollector(ctx context.Context, provider PoolStatsProvider, interval time.Duration) {
 	if provider == nil || interval <= 0 {
 		return
@@ -147,15 +193,100 @@ func StartPoolMetricsCollector(ctx context.Context, provider PoolStatsProvider, 
 				if stats := provider.PoolStats(); stats != nil {
 					RecordPoolStats(stats)
 				}
+				if cb, ok := provider.(interface{ CircuitState() string }); ok {
+					RecordCircuitState(cb.CircuitState())
+				}
+				if infoProvider, ok := provider.(interface {
+					ServerInfo(ctx context.Context, section ...string) (string, error)
+				}); ok {
+					infoCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+					if raw, err := infoProvider.ServerInfo(infoCtx, "memory", "stats", "clients"); err == nil && raw != "" {
+						RecordServerInfoMetrics(raw)
+					}
+					cancel()
+				}
 			}
 		}
 	}()
+}
+
+// RecordServerInfoMetrics parses Redis INFO output and updates observability gauges.
+func RecordServerInfoMetrics(info string) {
+	var hits, misses float64
+	var hasHits, hasMisses bool
+	for _, line := range strings.Split(info, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		k, v, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		val, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			continue
+		}
+		switch k {
+		case "used_memory":
+			redisUsedMemoryBytes.Set(val)
+		case "maxmemory":
+			redisMaxMemoryBytes.Set(val)
+		case "mem_fragmentation_ratio":
+			redisMemoryFragRatio.Set(val)
+		case "instantaneous_ops_per_sec":
+			redisInstantaneousOps.Set(val)
+		case "connected_clients":
+			redisConnectedClients.Set(val)
+		case "blocked_clients":
+			redisBlockedClients.Set(val)
+		case "rejected_connections":
+			redisRejectedConns.Set(val)
+		case "keyspace_hits":
+			hits = val
+			hasHits = true
+		case "keyspace_misses":
+			misses = val
+			hasMisses = true
+		}
+	}
+	if hasHits || hasMisses {
+		total := hits + misses
+		if total > 0 {
+			redisKeyspaceHitRatio.Set(hits / total)
+		}
+	}
+}
+
+// RecordSlowlogLength updates the Redis slowlog length gauge.
+func RecordSlowlogLength(length int64) {
+	redisSlowlogLength.Set(float64(length))
 }
 
 func keyPrefix(key string) string {
 	key = strings.TrimSpace(key)
 	if key == "" {
 		return "unknown"
+	}
+	// Normalize Redis Cluster hash-tagged keys: {entity:id}:attr -> entity:attr
+	if strings.HasPrefix(key, "{") {
+		if closeIdx := strings.IndexByte(key, '}'); closeIdx > 1 {
+			tagContent := key[1:closeIdx]
+			entity := tagContent
+			if colonIdx := strings.IndexByte(tagContent, ':'); colonIdx > 0 {
+				entity = tagContent[:colonIdx]
+			}
+			rest := strings.TrimPrefix(key[closeIdx+1:], ":")
+			if rest != "" {
+				if nextColon := strings.IndexByte(rest, ':'); nextColon > 0 {
+					rest = rest[:nextColon]
+				}
+				return entity + ":" + rest
+			}
+			return entity
+		}
 	}
 	if i := strings.IndexByte(key, ':'); i > 0 {
 		return key[:i]

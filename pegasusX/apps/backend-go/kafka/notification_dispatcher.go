@@ -752,6 +752,7 @@ func (d *NotificationDispatcher) handleManifestEvent(ctx context.Context, payloa
 	if d.dropFanout(e.Type, traceID, aggregateID) {
 		return nil
 	}
+	d.invalidateOperationalDashboards(ctx, e.SupplierID, e.WarehouseID, e.FactoryID)
 	d.broadcastSupplier(ctx, e.SupplierID, payload)
 	factoryRoomID := strings.TrimSpace(e.FactoryID)
 	if factoryRoomID == "" {

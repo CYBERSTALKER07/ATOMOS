@@ -101,9 +101,20 @@ func (s *SemanticCache) Search(ctx context.Context, prompt string, embedding []f
 			break
 		}
 
+		batchData, mgetErr := s.cache.MGet(ctx, keys...)
 		for _, k := range keys {
-			data, found, getErr := s.cache.Get(ctx, k)
-			if getErr != nil || !found {
+			var data []byte
+			var found bool
+			if mgetErr == nil && batchData != nil {
+				data, found = batchData[k]
+			} else {
+				var getErr error
+				data, found, getErr = s.cache.Get(ctx, k)
+				if getErr != nil {
+					continue
+				}
+			}
+			if !found {
 				continue
 			}
 

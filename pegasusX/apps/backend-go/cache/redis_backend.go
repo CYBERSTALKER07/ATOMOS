@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"sort"
 	"strings"
 	"sync"
@@ -12,6 +13,51 @@ import (
 
 	"github.com/redis/go-redis/v9"
 )
+
+type redisTelemetryHook struct{}
+
+func (redisTelemetryHook) DialHook(next redis.DialHook) redis.DialHook {
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		start := time.Now()
+		conn, err := next(ctx, network, addr)
+		RecordCommandDuration("dial", time.Since(start), err)
+		return conn, err
+	}
+}
+
+func (redisTelemetryHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		start := time.Now()
+		err := next(ctx, cmd)
+		if cmd != nil {
+			RecordCommandDuration(cmd.Name(), time.Since(start), err)
+		}
+		return err
+	}
+}
+
+func (redisTelemetryHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []redis.Cmder) error {
+		start := time.Now()
+		err := next(ctx, cmds)
+		RecordCommandDuration("pipeline", time.Since(start), err)
+		return err
+	}
+}
+
+// extractClusterSlotTag returns the hash tag substring inside {...} if present,
+// or the full key when untagged. Grouping multi-key operations by slot tag prevents
+// CROSSSLOT errors in Redis Cluster deployments (redis-clustering).
+func extractClusterSlotTag(key string) string {
+	start := strings.IndexByte(key, '{')
+	if start >= 0 {
+		end := strings.IndexByte(key[start+1:], '}')
+		if end > 0 {
+			return key[start+1 : start+1+end]
+		}
+	}
+	return key
+}
 
 // RedisBackend binds Cache Backend to a Redis client.
 type RedisBackend struct {
@@ -24,9 +70,11 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 	if trimmed == "" {
 		return nil, fmt.Errorf("redis backend: addr required")
 	}
+	cfg.applyDefaults()
 
 	opts := &redis.Options{
 		Addr:            trimmed,
+		Username:        strings.TrimSpace(cfg.Username),
 		Password:        cfg.Password,
 		DB:              cfg.DB,
 		PoolSize:        cfg.PoolSize,
@@ -38,6 +86,9 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 		MaxRetries:      cfg.MaxRetries,
 		MinRetryBackoff: cfg.MinRetryBackoff,
 		MaxRetryBackoff: cfg.MaxRetryBackoff,
+	}
+	if cfg.Protocol == 2 || cfg.Protocol == 3 {
+		opts.Protocol = cfg.Protocol
 	}
 
 	if cfg.TLSEnabled {
@@ -61,6 +112,7 @@ func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
 	}
 
 	client := redis.NewClient(opts)
+	client.AddHook(redisTelemetryHook{})
 	return &RedisBackend{client: client}, nil
 }
 
@@ -113,7 +165,78 @@ func (r *RedisBackend) Delete(ctx context.Context, keys ...string) error {
 	if r == nil || r.client == nil || len(keys) == 0 {
 		return nil
 	}
-	return r.client.Del(ctx, keys...).Err()
+	if len(keys) == 1 {
+		return r.client.Del(ctx, keys[0]).Err()
+	}
+	// Group by Redis Cluster hash tag so multi-key DEL never triggers CROSSSLOT.
+	groups := make(map[string][]string)
+	for _, k := range keys {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		tag := extractClusterSlotTag(k)
+		groups[tag] = append(groups[tag], k)
+	}
+	if len(groups) == 0 {
+		return nil
+	}
+	if len(groups) == 1 {
+		for _, grp := range groups {
+			return r.client.Del(ctx, grp...).Err()
+		}
+	}
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, grp := range groups {
+			pipe.Del(ctx, grp...)
+		}
+		return nil
+	})
+	return err
+}
+
+// MGet fetches multiple keys in a single pipelined round-trip while avoiding CROSSSLOT errors.
+func (r *RedisBackend) MGet(ctx context.Context, keys ...string) (map[string][]byte, error) {
+	if r == nil || r.client == nil || len(keys) == 0 {
+		return map[string][]byte{}, nil
+	}
+	cmds := make(map[string]*redis.StringCmd, len(keys))
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, k := range keys {
+			if strings.TrimSpace(k) == "" {
+				continue
+			}
+			cmds[k] = pipe.Get(ctx, k)
+		}
+		return nil
+	})
+	if err != nil && err != redis.Nil {
+		return nil, err
+	}
+	out := make(map[string][]byte, len(cmds))
+	for k, cmd := range cmds {
+		val, getErr := cmd.Bytes()
+		if getErr == nil {
+			out[k] = val
+		}
+	}
+	return out, nil
+}
+
+// PublishMany publishes multiple messages to a Pub/Sub channel in a single pipeline round-trip.
+func (r *RedisBackend) PublishMany(ctx context.Context, channel string, payloads ...[]byte) error {
+	if r == nil || r.client == nil || len(payloads) == 0 {
+		return nil
+	}
+	if len(payloads) == 1 {
+		return r.client.Publish(ctx, channel, payloads[0]).Err()
+	}
+	_, err := r.client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		for _, p := range payloads {
+			pipe.Publish(ctx, channel, p)
+		}
+		return nil
+	})
+	return err
 }
 
 func (r *RedisBackend) IncrBy(ctx context.Context, key string, amount int64) (int64, error) {

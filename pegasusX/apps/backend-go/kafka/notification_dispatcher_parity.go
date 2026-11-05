@@ -2,13 +2,33 @@ package kafka
 
 import (
 	"context"
-	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
+
+func (d *NotificationDispatcher) invalidateOperationalDashboards(ctx context.Context, supplierID, warehouseID, factoryID string) {
+	if d == nil || d.deps.Cache == nil {
+		return
+	}
+	var keys []string
+	if sid := strings.TrimSpace(supplierID); sid != "" {
+		keys = append(keys, cache.DashboardKey("supplier", sid))
+	}
+	if wid := strings.TrimSpace(warehouseID); wid != "" {
+		keys = append(keys, cache.DashboardKey("warehouse", wid))
+	}
+	if fid := strings.TrimSpace(factoryID); fid != "" {
+		keys = append(keys, cache.DashboardKey("factory", fid))
+	}
+	if len(keys) > 0 {
+		d.deps.Cache.Invalidate(ctx, keys...)
+	}
+}
 
 type partyEnvelope struct {
 	Type         string `json:"type"`
@@ -368,6 +388,7 @@ func (d *NotificationDispatcher) handleTransferEvent(ctx context.Context, payloa
 	if d.dropFanout(e.Type, traceID, aggregateID) {
 		return nil
 	}
+	d.invalidateOperationalDashboards(ctx, e.supplierID(), e.warehouseID(), e.factoryID())
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	factoryRoom := e.factoryID()
@@ -650,6 +671,7 @@ func (d *NotificationDispatcher) handleFoundryOperationalEvent(ctx context.Conte
 	if d.dropFanout(e.Type, traceID, aggregateID) {
 		return nil
 	}
+	d.invalidateOperationalDashboards(ctx, e.supplierID(), e.warehouseID(), e.factoryID())
 	d.broadcastSupplier(ctx, e.supplierID(), payload)
 	d.broadcastWarehouse(ctx, e.warehouseID(), payload)
 	d.broadcastDriver(ctx, strings.TrimSpace(e.DriverID), payload)

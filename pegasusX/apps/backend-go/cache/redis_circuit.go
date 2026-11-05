@@ -83,6 +83,36 @@ func (c *CircuitBreakerBackend) PoolStats() *redis.PoolStats {
 	return nil
 }
 
+// CircuitState returns the current circuit breaker state name for observability gauges.
+func (c *CircuitBreakerBackend) CircuitState() string {
+	if c == nil || c.breaker == nil {
+		return "closed"
+	}
+	return c.breaker.State().String()
+}
+
+// ServerInfo delegates Redis INFO queries when the circuit is closed.
+func (c *CircuitBreakerBackend) ServerInfo(ctx context.Context, section ...string) (string, error) {
+	if c == nil || c.primary == nil {
+		return "", nil
+	}
+	var out string
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if ip, ok := c.primary.(interface {
+			ServerInfo(ctx context.Context, section ...string) (string, error)
+		}); ok {
+			out, innerErr = ip.ServerInfo(ctx, section...)
+			return innerErr
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return out, innerErr
+}
+
 // Ping checks the primary.
 func (c *CircuitBreakerBackend) Ping(ctx context.Context) error {
 	var err error
@@ -548,6 +578,46 @@ func (c *CircuitBreakerBackend) HScan(ctx context.Context, key string, cursor ui
 		return nil, 0, err
 	}
 	return pairs, nextCursor, err
+}
+
+// ── Batch / Pipeline Support ─────────────────────────────────────────────────
+
+func (c *CircuitBreakerBackend) MGet(ctx context.Context, keys ...string) (map[string][]byte, error) {
+	var res map[string][]byte
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if bb, can := c.primary.(BatchBackend); can {
+			res, innerErr = bb.MGet(ctx, keys...)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(BatchBackend); can {
+			return fb.MGet(ctx, keys...)
+		}
+	}
+	if err == circuit.ErrUpstreamUnavailable {
+		return nil, err
+	}
+	return res, err
+}
+
+func (c *CircuitBreakerBackend) PublishMany(ctx context.Context, channel string, payloads ...[]byte) error {
+	var innerErr error
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if bb, can := c.primary.(BatchBackend); can {
+			innerErr = bb.PublishMany(ctx, channel, payloads...)
+			return innerErr
+		}
+		return circuit.ErrUpstreamUnavailable
+	})
+	if c.useFallback(err) {
+		if fb, can := c.fallback.(BatchBackend); can {
+			return fb.PublishMany(ctx, channel, payloads...)
+		}
+	}
+	return err
 }
 
 var _ EnterpriseBackend = (*CircuitBreakerBackend)(nil)

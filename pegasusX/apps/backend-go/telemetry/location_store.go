@@ -8,7 +8,42 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/redis/go-redis/v9"
 )
+
+// saveDriverLocationLua atomically compares the incoming timestamp (in nanoseconds)
+// against the stored timestamp key ({driver:<id>}:last_location_ts) on the same
+// Redis Cluster slot and only updates {driver:<id>}:last_location when the incoming
+// telemetry point is newer or equal, preventing TOCTOU out-of-order GPS overwrites.
+var saveDriverLocationLua = redis.NewScript(`
+local locKey = KEYS[1]
+local tsKey = KEYS[2]
+local payload = ARGV[1]
+local incomingNanos = tonumber(ARGV[2])
+local receivedNanos = tonumber(ARGV[3])
+local ttlMs = tonumber(ARGV[4])
+
+local currentMeta = redis.call('GET', tsKey)
+if currentMeta then
+    local sep = string.find(currentMeta, ":")
+    if sep then
+        local existingNanos = tonumber(string.sub(currentMeta, 1, sep - 1))
+        local existingRecv = tonumber(string.sub(currentMeta, sep + 1))
+        if existingNanos and incomingNanos > 0 and existingNanos > 0 then
+            if incomingNanos < existingNanos then
+                return 0
+            end
+            if incomingNanos == existingNanos and existingRecv and receivedNanos > 0 and receivedNanos < existingRecv then
+                return 0
+            end
+        end
+    end
+end
+
+redis.call('SET', locKey, payload, 'PX', ttlMs)
+redis.call('SET', tsKey, tostring(incomingNanos) .. ":" .. tostring(receivedNanos), 'PX', ttlMs)
+return 1
+`)
 
 const (
 	lastDriverLocationKeyPrefix = "telemetry:driver:last_location:"
@@ -92,6 +127,29 @@ func (s *CacheLastLocationStore) SaveDriverLocation(ctx context.Context, locatio
 	if strings.TrimSpace(location.DriverID) == "" {
 		return fmt.Errorf("save driver location: driver_id required")
 	}
+	raw, err := json.Marshal(location)
+	if err != nil {
+		return fmt.Errorf("marshal driver location %s: %w", location.DriverID, err)
+	}
+	if client := extractRedisClient(s.cache); client != nil {
+		locKey := lastDriverLocationKey(location.DriverID)
+		tsKey := locKey + "_ts"
+		orderTS := locationOrderingTimestamp(location)
+		var orderNanos, recvNanos int64
+		if !orderTS.IsZero() {
+			orderNanos = orderTS.UnixNano()
+		}
+		if !location.ReceivedAt.IsZero() {
+			recvNanos = location.ReceivedAt.UTC().UnixNano()
+		}
+		ttlMs := s.ttl.Milliseconds()
+		if ttlMs <= 0 {
+			ttlMs = DefaultLastLocationTTL.Milliseconds()
+		}
+		if luaErr := saveDriverLocationLua.Run(ctx, client, []string{locKey, tsKey}, raw, orderNanos, recvNanos, ttlMs).Err(); luaErr == nil {
+			return nil
+		}
+	}
 	existing, found, err := s.GetDriverLocation(ctx, location.DriverID)
 	if err != nil {
 		return fmt.Errorf("read existing driver location %s: %w", location.DriverID, err)
@@ -99,11 +157,17 @@ func (s *CacheLastLocationStore) SaveDriverLocation(ctx context.Context, locatio
 	if found && shouldKeepExistingLocation(existing, location) {
 		return nil
 	}
-	raw, err := json.Marshal(location)
-	if err != nil {
-		return fmt.Errorf("marshal driver location %s: %w", location.DriverID, err)
-	}
 	return s.cache.Set(ctx, lastDriverLocationKey(location.DriverID), raw, s.ttl)
+}
+
+func extractRedisClient(c *cache.Cache) *redis.Client {
+	if c == nil || c.Backend() == nil {
+		return nil
+	}
+	if cg, ok := c.Backend().(interface{ Client() *redis.Client }); ok {
+		return cg.Client()
+	}
+	return nil
 }
 
 // GetDriverLocation reads one driver's latest cached location.

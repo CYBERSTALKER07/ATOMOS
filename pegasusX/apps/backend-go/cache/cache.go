@@ -71,6 +71,12 @@ type ScanBackend interface {
 	HScan(ctx context.Context, key string, cursor uint64, match string, count int64) ([]string, uint64, error)
 }
 
+// BatchBackend provides pipelined multi-key reads and Pub/Sub broadcasts (redis-connections, redis-clustering).
+type BatchBackend interface {
+	MGet(ctx context.Context, keys ...string) (map[string][]byte, error)
+	PublishMany(ctx context.Context, channel string, payloads ...[]byte) error
+}
+
 // EnterpriseBackend combines all Redis data structure and lifecycle capabilities.
 type EnterpriseBackend interface {
 	Backend
@@ -78,6 +84,7 @@ type EnterpriseBackend interface {
 	SetBackend
 	SortedSetBackend
 	ScanBackend
+	BatchBackend
 }
 
 // InvalidationChannel is the canonical Redis Pub/Sub channel.
@@ -182,6 +189,36 @@ func (c *Cache) DecrBy(ctx context.Context, key string, amount int64) (int64, er
 	return c.backend.DecrBy(ctx, key, amount)
 }
 
+// MGet reads multiple keys in a single batch/pipeline call where supported.
+func (c *Cache) MGet(ctx context.Context, keys ...string) (map[string][]byte, error) {
+	if c == nil || c.backend == nil || len(keys) == 0 {
+		return map[string][]byte{}, nil
+	}
+	if bb, ok := c.backend.(BatchBackend); ok {
+		res, err := bb.MGet(ctx, keys...)
+		if err == nil {
+			for _, k := range keys {
+				if _, ok := res[k]; ok {
+					RecordHit(k)
+				} else {
+					RecordMiss(k)
+				}
+			}
+		}
+		return res, err
+	}
+	out := make(map[string][]byte, len(keys))
+	for _, k := range keys {
+		if val, found, err := c.backend.Get(ctx, k); err == nil && found {
+			RecordHit(k)
+			out[k] = val
+		} else {
+			RecordMiss(k)
+		}
+	}
+	return out, nil
+}
+
 // Invalidate deletes the given keys locally and publishes them on the
 // invalidation channel so peer pods drop their copies. Failures are logged but
 // not returned — the caller MUST treat invalidation as best-effort durability,
@@ -192,6 +229,21 @@ func (c *Cache) Invalidate(ctx context.Context, keys ...string) {
 	}
 	if err := c.backend.Delete(ctx, keys...); err != nil {
 		c.log.Warn("cache local delete failed", "keys", keys, "err", err)
+	}
+	if bb, ok := c.backend.(BatchBackend); ok && len(keys) > 1 {
+		payloads := make([][]byte, 0, len(keys))
+		for _, k := range keys {
+			if strings.TrimSpace(k) != "" {
+				payloads = append(payloads, []byte(k))
+			}
+		}
+		if len(payloads) > 0 {
+			if err := bb.PublishMany(ctx, InvalidationChannel, payloads...); err != nil {
+				c.log.Warn("cache invalidate batch publish failed",
+					"channel", InvalidationChannel, "count", len(payloads), "err", err)
+			}
+		}
+		return
 	}
 	for _, k := range keys {
 		if err := c.backend.Publish(ctx, InvalidationChannel, []byte(k)); err != nil {
@@ -511,6 +563,37 @@ func (m *InMemoryBackend) Publish(_ context.Context, channel string, payload []b
 		select {
 		case ch <- append([]byte(nil), payload...):
 		default:
+		}
+	}
+	return nil
+}
+
+// MGet returns all matching unexpired keys in a single lock acquisition.
+func (m *InMemoryBackend) MGet(_ context.Context, keys ...string) (map[string][]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	now := time.Now()
+	out := make(map[string][]byte, len(keys))
+	for _, k := range keys {
+		e, ok := m.store[k]
+		if !ok {
+			continue
+		}
+		if !e.expiresAt.IsZero() && now.After(e.expiresAt) {
+			continue
+		}
+		cp := make([]byte, len(e.value))
+		copy(cp, e.value)
+		out[k] = cp
+	}
+	return out, nil
+}
+
+// PublishMany fans out multiple payloads to local subscribers.
+func (m *InMemoryBackend) PublishMany(ctx context.Context, channel string, payloads ...[]byte) error {
+	for _, p := range payloads {
+		if err := m.Publish(ctx, channel, p); err != nil {
+			return err
 		}
 	}
 	return nil
