@@ -157,3 +157,76 @@ resource "google_container_node_pool" "primary_nodes" {
     tags = ["gke-node", "${var.cluster_name}-node"]
   }
 }
+
+# 5. FinOps Spot VM Node Pool (Up to 91% discount for batch jobs, cronjobs, and stateless workers)
+resource "google_container_node_pool" "spot_nodes" {
+  count      = !var.enable_autopilot && var.enable_spot_node_pool ? 1 : 0
+  name       = "${var.cluster_name}-spot-pool"
+  location   = var.region
+  cluster    = google_container_cluster.primary.name
+  project    = var.project_id
+  node_count = var.spot_node_min_count
+
+  autoscaling {
+    min_node_count = var.spot_node_min_count
+    max_node_count = var.spot_node_max_count
+  }
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  node_config {
+    spot            = true
+    machine_type    = var.spot_node_machine_type
+    service_account = google_service_account.gke_node_sa.email
+    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+
+    shielded_instance_config {
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
+    }
+
+    labels = merge(var.labels, {
+      pool                        = "spot"
+      "cloud.google.com/gke-spot" = "true"
+      "pegasusx.io/pricing-model" = "spot"
+    })
+
+    taint {
+      key    = "cloud.google.com/gke-spot"
+      value  = "true"
+      effect = "NO_SCHEDULE"
+    }
+
+    tags = ["gke-node", "${var.cluster_name}-spot-node"]
+  }
+}
+
+# 6. FinOps Regional Compute Engine Committed Use Discount (CUD: 37% 1-Year / 55% 3-Year Savings)
+resource "google_compute_region_commitment" "baseline_cud" {
+  count       = var.enable_committed_use_discount ? 1 : 0
+  name        = "${var.cluster_name}-baseline-cud"
+  region      = var.region
+  project     = var.project_id
+  plan        = var.cud_plan
+  type        = "GENERAL_PURPOSE_E2"
+  category    = "MACHINE"
+  auto_renew  = true
+  description = "PegasusX FinOps baseline Compute Engine Committed Use Discount (${var.cud_plan})"
+
+  resources {
+    type   = "VCPU"
+    amount = tostring(var.cud_vcpu_count)
+  }
+
+  resources {
+    type   = "MEMORY"
+    amount = tostring(var.cud_memory_mb)
+  }
+}

@@ -45,6 +45,35 @@ resource "google_storage_bucket" "media" {
     }
   }
 
+  lifecycle_rule {
+    condition {
+      age = 1095 # Transition long-term statutory audit records to Archive after 3 years (80%+ savings)
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "ARCHIVE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 30
+      num_newer_versions         = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
+  }
+
   # Enterprise CMEK Encryption (Customer-Managed Encryption Key)
   encryption {
     default_kms_key_name = google_kms_crypto_key.storage_key.id
@@ -83,6 +112,35 @@ resource "google_storage_bucket" "updates" {
     max_age_seconds = 3600
   }
 
+  lifecycle_rule {
+    condition {
+      age = 90 # Transition older OTA binaries to Nearline after 90 days
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 14
+      num_newer_versions         = 5
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
+  }
+
   labels = var.labels
 }
 
@@ -105,6 +163,24 @@ resource "google_storage_bucket" "imports_exports" {
     }
     action {
       type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      days_since_noncurrent_time = 7
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
     }
   }
 

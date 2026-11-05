@@ -6,6 +6,8 @@ metadata:
     app: optimizer-core
     app.kubernetes.io/name: optimizer-core
     app.kubernetes.io/part-of: pegasusx
+    cost-center: platform-engineering
+    workload-tier: optimizer
 spec:
   replicas: 1
   selector:
@@ -22,6 +24,8 @@ spec:
         app: optimizer-core
         app.kubernetes.io/name: optimizer-core
         app.kubernetes.io/part-of: pegasusx
+        cost-center: platform-engineering
+        workload-tier: optimizer
     spec:
       serviceAccountName: backend-go
       terminationGracePeriodSeconds: 30

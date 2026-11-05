@@ -8,8 +8,27 @@ resource "google_artifact_registry_repository" "images" {
   description   = "PegasusX shared images (GS-C5 global plane). Not a cell."
 
   labels = {
-    app        = "pegasusx"
-    plane      = "global"
-    managed_by = "terraform"
+    app             = "pegasusx"
+    plane           = "global"
+    managed_by      = "terraform"
+    cost_center     = "platform-engineering"
+    finops_governed = "true"
+  }
+
+  cleanup_policies {
+    id     = "delete-untagged-images-7d"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "604800s"
+    }
+  }
+
+  cleanup_policies {
+    id     = "keep-recent-tagged-releases"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 15
+    }
   }
 }

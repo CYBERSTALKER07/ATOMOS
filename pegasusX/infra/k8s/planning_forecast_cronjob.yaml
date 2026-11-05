@@ -11,11 +11,30 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
             app: pegasusx-planning-forecast
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
         spec:
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
           containers:
           - name: planning-forecast
             image: us-central1-docker.pkg.dev/pegasusx-production/pegasusx/backend-go:latest

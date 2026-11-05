@@ -92,6 +92,54 @@ variable "standard_node_max_count" {
   default     = 10
 }
 
+variable "enable_spot_node_pool" {
+  description = "Whether to provision a Spot VM node pool when enable_autopilot = false (up to 91% savings for batch/stateless workloads)."
+  type        = bool
+  default     = true
+}
+
+variable "spot_node_machine_type" {
+  description = "Machine type for the Spot VM node pool when enable_autopilot = false."
+  type        = string
+  default     = "e2-standard-4"
+}
+
+variable "spot_node_min_count" {
+  description = "Minimum node count per zone for the Spot VM node pool (0 allows scale-to-zero)."
+  type        = number
+  default     = 0
+}
+
+variable "spot_node_max_count" {
+  description = "Maximum node count per zone for the Spot VM node pool."
+  type        = number
+  default     = 8
+}
+
+variable "enable_committed_use_discount" {
+  description = "Whether to provision a regional Compute Engine Committed Use Discount (CUD) for steady-state vCPU/memory."
+  type        = bool
+  default     = false
+}
+
+variable "cud_plan" {
+  description = "Commitment duration for Compute Engine CUD (TWELVE_MONTH or THIRTY_SIX_MONTH)."
+  type        = string
+  default     = "TWELVE_MONTH"
+}
+
+variable "cud_vcpu_count" {
+  description = "Baseline vCPU count for Compute Engine CUD."
+  type        = number
+  default     = 8
+}
+
+variable "cud_memory_mb" {
+  description = "Baseline memory in MiB for Compute Engine CUD."
+  type        = number
+  default     = 32768
+}
+
 variable "environment" {
   description = "The deployment environment (e.g. production, staging, ssmr)."
   type        = string

@@ -71,6 +71,18 @@ variable "gke_master_cidr_block" {
   default     = "172.16.0.0/28"
 }
 
+variable "flow_log_interval" {
+  description = "Aggregation interval for VPC subnet flow logs (e.g. INTERVAL_30_SEC to reduce Cloud Logging ingestion cost)."
+  type        = string
+  default     = "INTERVAL_30_SEC"
+}
+
+variable "flow_log_sampling" {
+  description = "Sampling rate (0.0 to 1.0) for VPC subnet flow logs (default 0.1 for FinOps cost optimization)."
+  type        = number
+  default     = 0.1
+}
+
 variable "environment" {
   description = "The deployment environment (e.g. production, staging, ssmr)."
   type        = string

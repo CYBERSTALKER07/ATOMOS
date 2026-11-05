@@ -64,6 +64,18 @@ variable "service_cidr_block" {
   default     = "10.30.0.0/20"
 }
 
+variable "vpc_flow_log_interval" {
+  description = "Aggregation interval for VPC subnet flow logs (FinOps tuned default: INTERVAL_30_SEC)."
+  type        = string
+  default     = "INTERVAL_30_SEC"
+}
+
+variable "vpc_flow_log_sampling" {
+  description = "Sampling rate (0.0 to 1.0) for VPC subnet flow logs (FinOps tuned default: 0.1)."
+  type        = number
+  default     = 0.1
+}
+
 # Compute / GKE
 variable "cluster_name" {
   description = "Name of the GKE cluster."
@@ -83,6 +95,58 @@ variable "master_ipv4_cidr_block" {
   default     = "172.16.0.0/28"
 }
 
+variable "enable_spot_node_pool" {
+  description = "Whether to provision a Spot VM node pool in GKE Standard mode for batch/cron/stateless workloads (up to 91% discount)."
+  type        = bool
+  default     = true
+}
+
+variable "spot_node_machine_type" {
+  description = "Machine type for the GKE Spot VM node pool when enable_autopilot = false."
+  type        = string
+  default     = "e2-standard-4"
+}
+
+variable "spot_node_min_count" {
+  description = "Minimum node count per zone for the Spot VM pool (0 enables scale-to-zero when idle)."
+  type        = number
+  default     = 0
+}
+
+variable "spot_node_max_count" {
+  description = "Maximum node count per zone for the Spot VM pool."
+  type        = number
+  default     = 8
+}
+
+variable "enable_committed_use_discount" {
+  description = "Whether to provision a GCP Compute Engine regional Committed Use Discount (CUD) for baseline vCPU/memory."
+  type        = bool
+  default     = false
+}
+
+variable "cud_plan" {
+  description = "Commitment plan duration for Compute Engine CUD (TWELVE_MONTH for 37% savings or THIRTY_SIX_MONTH for 55% savings)."
+  type        = string
+  default     = "TWELVE_MONTH"
+  validation {
+    condition     = contains(["TWELVE_MONTH", "THIRTY_SIX_MONTH"], var.cud_plan)
+    error_message = "cud_plan must be either TWELVE_MONTH or THIRTY_SIX_MONTH."
+  }
+}
+
+variable "cud_vcpu_count" {
+  description = "Baseline number of vCPUs to commit under Compute Engine CUD."
+  type        = number
+  default     = 8
+}
+
+variable "cud_memory_mb" {
+  description = "Baseline memory in MiB to commit under Compute Engine CUD."
+  type        = number
+  default     = 32768
+}
+
 # Database & Cache
 variable "spanner_instance_name" {
   description = "Name of the Cloud Spanner instance."
@@ -97,9 +161,25 @@ variable "spanner_config" {
 }
 
 variable "spanner_processing_units" {
-  description = "Processing units allocated to Cloud Spanner."
+  description = "Processing units allocated to Cloud Spanner when autoscaling is disabled."
   type        = number
   default     = 100
+}
+
+variable "spanner_autoscaling_config" {
+  description = "Autoscaling configuration for Cloud Spanner (scales between min and max PUs based on CPU/storage)."
+  type = object({
+    min_processing_units                  = number
+    max_processing_units                  = number
+    high_priority_cpu_utilization_percent = number
+    storage_utilization_percent           = number
+  })
+  default = {
+    min_processing_units                  = 100
+    max_processing_units                  = 400
+    high_priority_cpu_utilization_percent = 65
+    storage_utilization_percent           = 80
+  }
 }
 
 variable "spanner_database_name" {
@@ -118,6 +198,12 @@ variable "redis_instance_name" {
   description = "Name of the Cloud Memorystore for Redis instance."
   type        = string
   default     = "pegasusx-ssmr-redis"
+}
+
+variable "redis_tier" {
+  description = "Service tier for Cloud Memorystore Redis (STANDARD_HA for production, BASIC for dev/staging cost savings)."
+  type        = string
+  default     = "STANDARD_HA"
 }
 
 variable "redis_memory_size_gb" {
@@ -202,12 +288,15 @@ variable "deletion_protection" {
 }
 
 variable "labels" {
-  description = "Common labels applied to all infrastructure resources."
+  description = "Common FinOps cost-allocation labels applied to all infrastructure resources."
   type        = map(string)
   default = {
-    managed_by  = "terraform"
-    system      = "pegasusx"
-    environment = "production"
+    managed_by      = "terraform"
+    system          = "pegasusx"
+    environment     = "production"
+    cost_center     = "platform-engineering"
+    owner           = "sre-platform"
+    finops_governed = "true"
   }
 }
 

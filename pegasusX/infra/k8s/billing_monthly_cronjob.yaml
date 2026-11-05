@@ -16,12 +16,31 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 2
+      ttlSecondsAfterFinished: 3600
       template:
         metadata:
           labels:
             app: pegasusx-billing-monthly
+            cost-center: platform-engineering
+            workload-tier: batch-cron
+            pricing-model: spot
         spec:
           restartPolicy: OnFailure
+          tolerations:
+            - key: "cloud.google.com/gke-spot"
+              operator: "Equal"
+              value: "true"
+              effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  preference:
+                    matchExpressions:
+                      - key: cloud.google.com/gke-spot
+                        operator: In
+                        values:
+                          - "true"
           containers:
           - name: billing-run
             image: curlimages/curl:8.10.1

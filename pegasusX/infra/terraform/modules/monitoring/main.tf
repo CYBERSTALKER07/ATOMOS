@@ -662,6 +662,64 @@ resource "google_monitoring_alert_policy" "partner_webhook_success_low" {
   }
 }
 
+# 2.22 FinOps Cost Anomaly — Cloud Logging Ingestion Volume Spike (> 50 MiB/min)
+resource "google_monitoring_alert_policy" "finops_logging_ingestion_spike" {
+  display_name = "[P2] FinOps — Cloud Logging Ingestion Volume Spike (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Logging monthly billable bytes ingested > 50 MiB/min for 15m"
+    condition_threshold {
+      filter          = "resource.type = \"global\" AND metric.type = \"logging.googleapis.com/billing/bytes_ingested\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 52428800
+      duration        = "900s"
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_RATE"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = merge(var.labels, { finops_alert = "cost-anomaly" })
+  documentation {
+    content   = "Cloud Logging ingestion rate exceeded 50 MiB/min for 15 minutes. Check VPC flow log sampling (`vpc_flow_log_sampling`), debug log levels, or crash loop log storms to prevent bill shock."
+    mime_type = "text/markdown"
+  }
+}
+
+# 2.23 FinOps Right-Sizing — Spanner Idle Over-Provisioned Capacity (< 15% CPU for 6h)
+resource "google_monitoring_alert_policy" "finops_spanner_idle_capacity" {
+  display_name = "[P3] FinOps — Spanner Under-Utilized CPU (<15% for 6h) (${var.environment})"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Cloud Spanner CPU utilization < 15% for 6h"
+    condition_threshold {
+      filter          = "resource.type = \"spanner_instance\" AND metric.type = \"spanner.googleapis.com/instance/cpu/utilization\""
+      comparison      = "COMPARISON_LT"
+      threshold_value = 0.15
+      duration        = "21600s"
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_MEAN"
+        cross_series_reducer = "REDUCE_MEAN"
+      }
+    }
+  }
+
+  notification_channels = local.notification_channels
+  user_labels           = merge(var.labels, { finops_alert = "right-sizing" })
+  documentation {
+    content   = "Cloud Spanner CPU utilization remained below 15% for 6 hours. Verify `spanner_autoscaling_config.min_processing_units` is right-sized (100 PU minimum)."
+    mime_type = "text/markdown"
+  }
+}
+
 # 3. Synthetic Uptime Check Configuration (Public Health Endpoint /healthz)
 resource "google_monitoring_uptime_check_config" "api_healthz" {
   display_name = "PegasusX API Healthz Synthetic Probe (${var.environment})"

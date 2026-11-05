@@ -6,6 +6,8 @@ metadata:
     app: ai-worker
     app.kubernetes.io/name: ai-worker
     app.kubernetes.io/part-of: pegasusx
+    cost-center: platform-engineering
+    workload-tier: ai-worker
 spec:
   replicas: 1
   selector:
@@ -22,6 +24,8 @@ spec:
         app: ai-worker
         app.kubernetes.io/name: ai-worker
         app.kubernetes.io/part-of: pegasusx
+        cost-center: platform-engineering
+        workload-tier: ai-worker
     spec:
       serviceAccountName: backend-go
       terminationGracePeriodSeconds: 60

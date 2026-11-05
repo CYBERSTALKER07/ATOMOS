@@ -6,6 +6,8 @@ metadata:
     app: backend-go-worker
     app.kubernetes.io/name: backend-go-worker
     app.kubernetes.io/part-of: pegasusx
+    cost-center: platform-engineering
+    workload-tier: worker
 spec:
   # Single replica until outbox relay has ClaimedBy/ClaimedUntil leases (audit P0-5).
   replicas: 1
@@ -23,6 +25,8 @@ spec:
         app: backend-go-worker
         app.kubernetes.io/name: backend-go-worker
         app.kubernetes.io/part-of: pegasusx
+        cost-center: platform-engineering
+        workload-tier: worker
     spec:
       serviceAccountName: backend-go
       terminationGracePeriodSeconds: 45
