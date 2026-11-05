@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,8 +21,8 @@ func StartOverdueCreditSweeper(svc *Service, interval time.Duration) {
 	StartOverdueCreditSweeperContext(context.Background(), svc, interval)
 }
 
-// StartOverdueCreditSweeperContext starts the overdue credit sweeper with context cancellation support.
-func StartOverdueCreditSweeperContext(ctx context.Context, svc *Service, interval time.Duration) {
+// StartOverdueCreditSweeperContext starts the overdue credit sweeper with context cancellation and optional WaitGroup support.
+func StartOverdueCreditSweeperContext(ctx context.Context, svc *Service, interval time.Duration, wg ...*sync.WaitGroup) {
 	if svc == nil || svc.repo == nil {
 		return
 	}
@@ -29,7 +30,16 @@ func StartOverdueCreditSweeperContext(ctx context.Context, svc *Service, interva
 		interval = overdueSweeperInterval()
 	}
 
+	var waitGroup *sync.WaitGroup
+	if len(wg) > 0 && wg[0] != nil {
+		waitGroup = wg[0]
+		waitGroup.Add(1)
+	}
+
 	go func() {
+		if waitGroup != nil {
+			defer waitGroup.Done()
+		}
 		// Initial jitter to avoid thundering herd on cluster boot
 		jitter := time.Duration(rand.Int63n(int64(10 * time.Second)))
 		select {

@@ -319,16 +319,14 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 		
 		err = spannerutils.RunReadWriteTransaction(ctx, s.portalSpanner, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{
-				spanner.InsertMap("OutboxEvents", map[string]any{
-					"EventId":       uuid.NewString(),
-					"AggregateType": "Supplier",
-					"AggregateId":   supplierID,
-					"TopicName":     events.TopicMain,
-					"Payload":       payloadBytes,
-					"CreatedAt":     now,
-					"PublishedAt":   nil,
-					"SupplierId":    supplierID,
-				}),
+				spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+					EventID:       uuid.NewString(),
+					AggregateType: "Supplier",
+					AggregateID:   supplierID,
+					TopicName:     events.TopicMain,
+					Payload:       payloadBytes,
+					SupplierID:    supplierID,
+				})),
 			})
 		})
 		if err != nil {
@@ -689,16 +687,14 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 				State:      "CANCELLED",
 			})
 
-			muts = append(muts, spanner.InsertMap("OutboxEvents", map[string]any{
-				"EventId":       uuid.NewString(),
-				"AggregateType": events.AggregateManifest,
-				"AggregateId":   r.ManifestID,
-				"TopicName":     events.TopicMain,
-				"Payload":       manifestPayload,
-				"CreatedAt":     now,
-				"PublishedAt":   nil,
-				"SupplierId":    supplierID,
-			}))
+			muts = append(muts, spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+				EventID:       uuid.NewString(),
+				AggregateType: events.AggregateManifest,
+				AggregateID:   r.ManifestID,
+				TopicName:     events.TopicMain,
+				Payload:       manifestPayload,
+				SupplierID:    supplierID,
+			})))
 
 			for _, oid := range r.OrderIDs {
 				muts = append(muts, spanner.Delete("ManifestOrders", spanner.Key{r.ManifestID, oid}))
@@ -719,16 +715,14 @@ func (s *Service) compensatePartialDispatch(ctx context.Context, supplierID, war
 					OrderID:   oid,
 				})
 
-				muts = append(muts, spanner.InsertMap("OutboxEvents", map[string]any{
-					"EventId":       uuid.NewString(),
-					"AggregateType": events.AggregateOrder,
-					"AggregateId":   oid,
-					"TopicName":     events.TopicMain,
-					"Payload":       orderPayload,
-					"CreatedAt":     now,
-					"PublishedAt":   nil,
-					"SupplierId":    supplierID,
-				}))
+				muts = append(muts, spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+					EventID:       uuid.NewString(),
+					AggregateType: events.AggregateOrder,
+					AggregateID:   oid,
+					TopicName:     events.TopicMain,
+					Payload:       orderPayload,
+					SupplierID:    supplierID,
+				})))
 			}
 		}
 

@@ -51,6 +51,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/mfa"
 	payloadroutes "github.com/pegasusx/pegasusx/apps/backend-go/payloaderoutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/logx"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformadmin"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
@@ -75,7 +76,7 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := logx.NewLogger(os.Stdout, slog.LevelInfo)
 	slog.SetDefault(logger)
 
 	// Phase 1/2 Integration: Initialize Datadog APM and Profiler

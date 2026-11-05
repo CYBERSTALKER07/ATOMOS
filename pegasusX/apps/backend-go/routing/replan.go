@@ -61,15 +61,8 @@ func outboxMutation(e outbox.Event) *spanner.Mutation {
 	if strings.TrimSpace(supID) == "" {
 		supID = outbox.ResolveSupplierID("", []byte(e.Payload))
 	}
-	return spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     spanner.CommitTimestamp,
-		"SupplierId":    supID,
-	})
+	e.SupplierID = supID
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }
 
 // ReplanRoute performs continuous replan of remaining stops using local search.

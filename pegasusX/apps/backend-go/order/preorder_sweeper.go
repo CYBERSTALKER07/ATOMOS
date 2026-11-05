@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -18,13 +19,23 @@ func StartPreorderSweeper(svc *Service) {
 	StartPreorderSweeperContext(context.Background(), svc)
 }
 
-// StartPreorderSweeperContext runs Midnight Guard + scheduled promoter loops with context cancellation.
-func StartPreorderSweeperContext(ctx context.Context, svc *Service) {
+// StartPreorderSweeperContext runs Midnight Guard + scheduled promoter loops with context cancellation and optional WaitGroup.
+func StartPreorderSweeperContext(ctx context.Context, svc *Service, wg ...*sync.WaitGroup) {
 	if svc == nil || svc.spannerClient == nil {
 		return
 	}
 	svc.log.Info("preorder sweeper started")
+
+	var waitGroup *sync.WaitGroup
+	if len(wg) > 0 && wg[0] != nil {
+		waitGroup = wg[0]
+		waitGroup.Add(1)
+	}
+
 	go func() {
+		if waitGroup != nil {
+			defer waitGroup.Done()
+		}
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 		for {

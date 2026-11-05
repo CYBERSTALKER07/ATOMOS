@@ -145,6 +145,42 @@ func (r *SpannerRepository) ListAudit(ctx context.Context, limit int) ([]AuditRo
 	return out, nil
 }
 
+func (r *SpannerRepository) ListAuditByActor(ctx context.Context, actorSubject string, limit int) ([]AuditRow, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	iter := r.client.Single().Query(ctx, spanner.Statement{
+		SQL: `SELECT AuditId, ActorSubject, Action, TenantType, TenantId, DetailJson, CreatedAt
+			FROM PlatformAdminAudit@{FORCE_INDEX=Idx_PlatformAdminAudit_ByActorCreated}
+			WHERE ActorSubject = @actor
+			ORDER BY CreatedAt DESC LIMIT @lim`,
+		Params: map[string]any{"actor": actorSubject, "lim": int64(limit)},
+	})
+	defer iter.Stop()
+	out := make([]AuditRow, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var a AuditRow
+		var tt, tid, detail spanner.NullString
+		var created time.Time
+		if err := row.Columns(&a.AuditID, &a.ActorSubject, &a.Action, &tt, &tid, &detail, &created); err != nil {
+			return nil, err
+		}
+		a.TenantType = tt.StringVal
+		a.TenantID = tid.StringVal
+		a.DetailJSON = detail.StringVal
+		a.CreatedAt = created.UTC()
+		out = append(out, a)
+	}
+	return out, nil
+}
+
 func scanTenant(row *spanner.Row) (Tenant, error) {
 	var t Tenant
 	var name, notes, market, cell, requested, approvedBy spanner.NullString

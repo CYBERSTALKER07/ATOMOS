@@ -285,22 +285,7 @@ func (s *Service) allocateAndReserveInTxn(ctx context.Context, txn *spanner.Read
 	}
 	var outboxMuts []*spanner.Mutation
 	for _, e := range buf.events {
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     e.CreatedAt,
-		}
-		sid := strings.TrimSpace(e.SupplierID)
-		if sid == "" {
-			sid = outbox.SupplierIDFromPayload(e.Payload)
-		}
-		if sid != "" {
-			row["SupplierId"] = sid
-		}
-		outboxMuts = append(outboxMuts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		outboxMuts = append(outboxMuts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return txn.BufferWrite(outboxMuts)
 }

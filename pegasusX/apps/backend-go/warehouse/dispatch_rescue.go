@@ -10,6 +10,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 type RescuePreviewRequest struct {
@@ -198,15 +199,14 @@ func (s *Service) HandleOpsDispatchRescuePropose(w http.ResponseWriter, r *http.
 		ev.Type = "RESCUE_PROPOSED"
 		evJSON, _ := json.Marshal(ev)
 
-		m := spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": events.AggregateWarehouse,
-			"AggregateId":   whID,
-			"TopicName":     events.TopicMain,
-			"Payload":       string(evJSON),
-			"CreatedAt":     spanner.CommitTimestamp,
-			"SupplierId":    sid,
-		})
+		m := spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateWarehouse,
+			AggregateID:   whID,
+			TopicName:     events.TopicMain,
+			Payload:       evJSON,
+			SupplierID:    sid,
+		}))
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
 

@@ -3,6 +3,7 @@ package outbox
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -80,4 +81,49 @@ func BackfillSupplierIDWithCursor(ctx context.Context, client *spanner.Client, a
 	}
 
 	return len(mutations), lastEventID, nil
+}
+
+// BackfillUnpublishedAt populates OutboxEvents.UnpublishedAt for pending events where PublishedAt IS NULL and UnpublishedAt IS NULL.
+func BackfillUnpublishedAt(ctx context.Context, client *spanner.Client, limit int) (int, error) {
+	if client == nil {
+		return 0, fmt.Errorf("outbox backfill: nil client")
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+	stmt := spanner.Statement{
+		SQL: `SELECT EventId, CreatedAt FROM OutboxEvents
+		      WHERE PublishedAt IS NULL AND UnpublishedAt IS NULL
+		      LIMIT @limit`,
+		Params: map[string]any{"limit": int64(limit)},
+	}
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	var mutations []*spanner.Mutation
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		var eventID string
+		var createdAt time.Time
+		if err := row.Columns(&eventID, &createdAt); err != nil {
+			continue
+		}
+		mutations = append(mutations, spanner.UpdateMap("OutboxEvents", map[string]any{
+			"EventId":       eventID,
+			"UnpublishedAt": createdAt,
+		}))
+	}
+	if len(mutations) == 0 {
+		return 0, nil
+	}
+	if _, err := client.Apply(ctx, mutations); err != nil {
+		return 0, err
+	}
+	return len(mutations), nil
 }

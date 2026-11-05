@@ -223,12 +223,14 @@ func EventRowMap(e Event) map[string]interface{} {
 		"Payload":       e.Payload,
 		"CreatedAt":     spanner.CommitTimestamp,
 		"PublishedAt":   nil,
+		"UnpublishedAt": spanner.CommitTimestamp,
 		"ClaimedBy":     nil,
 		"ClaimedUntil":  nil,
 		"SupplierId":    ResolveSupplierID(e.SupplierID, e.Payload),
 	}
 	if e.PublishedAt != nil {
 		row["PublishedAt"] = e.PublishedAt.UTC()
+		row["UnpublishedAt"] = nil
 	}
 	return row
 }

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/civil"
@@ -196,6 +197,8 @@ type App struct {
 	ForecastAccuracy        *planning.AccuracyService
 	ForecastRunner          *planning.ForecastRunner
 	FoundryEngine           *foundry.Engine
+	sweeperWg               *sync.WaitGroup
+	cancelSweepers          context.CancelFunc
 	cleanup                 []func()
 }
 
@@ -237,9 +240,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return nil, err
 	}
 
-	appCtx, cancelSweepers := context.WithCancel(context.Background())
+	appCtx, cancelSweepers := context.WithCancel(ctx)
+	sweeperWg := &sync.WaitGroup{}
 	cleanup := make([]func(), 0, 4)
-	cleanup = append(cleanup, cancelSweepers)
 	if spannerCleanup != nil {
 		cleanup = append(cleanup, spannerCleanup)
 	}
@@ -338,7 +341,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				log.Warn("global products uom seed failed", "err", err)
 			}
 			catalogSvc.SetGlobalProductHook(globalproducts.CatalogHook{Svc: globalProductsSvc})
-			go globalProductsSvc.StartMatchWorker(context.Background(), 2*time.Minute)
+			go globalProductsSvc.StartMatchWorker(appCtx, 2*time.Minute)
 			log.Info("global products service enabled")
 		}
 	}
@@ -347,7 +350,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	if spannerClient != nil {
 		inventoryRepo := inventory.NewSpannerRepository(spannerClient)
 		inventorySvc = inventory.NewService(inventoryRepo, cacheClient, log)
-		inventorySvc.StartHoldSweeper(context.Background(), 1*time.Minute)
+		inventorySvc.StartHoldSweeper(appCtx, 1*time.Minute)
 		log.Info("inventory service enabled", "backend", "spanner")
 	}
 
@@ -634,12 +637,19 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		claimsSvc.SetCreditNotes(creditnote.ClaimsBridge{Svc: creditNoteSvc})
 	}
 	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
-	order.StartPreorderSweeperContext(appCtx, orderSvc)
-	order.StartFiscalSweeperContext(appCtx, orderSvc)
-	order.StartStaleReservationSweeperContext(appCtx, orderSvc)
-	credit.StartOverdueCreditSweeperContext(appCtx, creditSvc, 1*time.Minute)
-	go orderSvc.StartNegotiationSweeper(appCtx)
-	go orderSvc.StartDeferredPaymentSweeper(appCtx, 5*time.Minute)
+	order.StartPreorderSweeperContext(appCtx, orderSvc, sweeperWg)
+	order.StartFiscalSweeperContext(appCtx, orderSvc, sweeperWg)
+	order.StartStaleReservationSweeperContext(appCtx, orderSvc, sweeperWg)
+	credit.StartOverdueCreditSweeperContext(appCtx, creditSvc, 1*time.Minute, sweeperWg)
+	sweeperWg.Add(2)
+	go func() {
+		defer sweeperWg.Done()
+		orderSvc.StartNegotiationSweeper(appCtx)
+	}()
+	go func() {
+		defer sweeperWg.Done()
+		orderSvc.StartDeferredPaymentSweeper(appCtx, 5*time.Minute)
+	}()
 	if spannerClient != nil {
 		if n, err := orderSvc.BackfillScheduledReservations(context.Background(), 500); err != nil {
 			log.Warn("scheduled reservation backfill failed", "err", err)
@@ -714,7 +724,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	// Fake H3 / network graph telemetry — never on sandbox/production even if flag set.
 	ctSim := strings.EqualFold(strings.TrimSpace(os.Getenv("CONTROL_TOWER_SIMULATOR_ENABLED")), "true")
 	if ctSim && !auth.IsSandbox() && !auth.IsProduction() {
-		simulator.StartControlTowerSimulation(telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
+		simulator.StartControlTowerSimulationContext(appCtx, telemetryHub, supplierSeed.SupplierID, warehouseNodeID)
 		log.Info("control tower telemetry simulator enabled")
 	} else if ctSim {
 		log.Warn("control tower simulator ignored on non-dev env", "env", os.Getenv("PEGASUSX_ENV"))
@@ -1487,6 +1497,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ForecastAccuracy:        forecastAccuracy,
 		ForecastRunner:          forecastRunner,
 		FoundryEngine:           foundry.NewEngine().WithSpannerClient(spannerClient),
+		sweeperWg:               sweeperWg,
+		cancelSweepers:          cancelSweepers,
 		cleanup:                 cleanup,
 	}
 
@@ -1504,11 +1516,33 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	return app, nil
 }
 
-// Close tears down long-lived resources in reverse construction order.
+// Close tears down long-lived resources with ordered sweeper cancellation before connection teardown.
 func (a *App) Close() {
 	if a == nil {
 		return
 	}
+
+	// 1. Cancel background sweepers first so they stop issuing new queries
+	if a.cancelSweepers != nil {
+		a.cancelSweepers()
+	}
+
+	// 2. Wait for background sweeper passes to finish (bounded 5s timeout)
+	if a.sweeperWg != nil {
+		sweepersDone := make(chan struct{})
+		go func() {
+			a.sweeperWg.Wait()
+			close(sweepersDone)
+		}()
+		select {
+		case <-sweepersDone:
+			slog.Info("all background sweepers shut down cleanly")
+		case <-time.After(5 * time.Second):
+			slog.Warn("timed out waiting for background sweepers to finish")
+		}
+	}
+
+	// 3. Clean up database, messaging, and connection pools in reverse construction order
 	for i := len(a.cleanup) - 1; i >= 0; i-- {
 		if a.cleanup[i] != nil {
 			a.cleanup[i]()

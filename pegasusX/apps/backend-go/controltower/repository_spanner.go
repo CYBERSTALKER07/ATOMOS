@@ -849,15 +849,14 @@ func (r *SpannerRepository) RecordIntervention(ctx context.Context, manifestID, 
 		
 		// TODO: Phase 4 Financial Draft Compensations could be hooked here.
 		// For now, we also emit an OutboxEvent so the driver gets the WebSocket broadcast.
-		outboxMut := spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": "MANIFEST",
-			"AggregateId":   manifestID,
-			"EventType":     "MANIFEST_ABORTED",
-			"Payload":       `{"manifest_id":"` + manifestID + `","reason":"` + reasonCode + `"}`,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"SupplierId":    supplierID,
-		})
+		outboxMut := spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: "MANIFEST",
+			AggregateID:   manifestID,
+			TopicName:     events.TopicMain,
+			Payload:       []byte(`{"manifest_id":"` + manifestID + `","reason":"` + reasonCode + `"}`),
+			SupplierID:    supplierID,
+		}))
 		
 		return txn.BufferWrite([]*spanner.Mutation{mut, outboxMut})
 	})

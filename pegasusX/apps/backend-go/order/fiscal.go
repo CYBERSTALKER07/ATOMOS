@@ -762,20 +762,45 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 		return fmt.Errorf("no active tax regime found for country %s", countryCode)
 	}
 
-	var actualVat int64 = 0
+	var defaultRegimeVat int64 = 0
 	if len(regime.VatRatesBps) > 0 {
-		actualVat = regime.VatRatesBps[0]
+		defaultRegimeVat = regime.VatRatesBps[0]
 	}
+
 	for _, line := range orderRecord.LineItems {
+		// Line-item specific VAT rate resolution:
+		// Priority 1: Explicit line-item VatRateBps
+		// Priority 2: Line-item TaxCategory ("EXEMPT" or "ZERO" -> 0 bps, "STANDARD" -> defaultRegimeVat)
+		// Priority 3: Default tax regime active rate (12% = 1200 bps in UZ)
+		lineVatRate := defaultRegimeVat
+		if line.VatRateBps != nil {
+			if *line.VatRateBps <= 0 {
+				lineVatRate = 0
+			} else {
+				lineVatRate = *line.VatRateBps
+			}
+		} else if line.TaxCategory != "" {
+			switch strings.ToUpper(strings.TrimSpace(line.TaxCategory)) {
+			case "EXEMPT", "ZERO", "TAX_EXEMPT":
+				lineVatRate = 0
+			case "STANDARD":
+				lineVatRate = defaultRegimeVat
+			}
+		}
+
 		net := line.Quantity * line.UnitPrice
-		vat := (net*actualVat + 5000) / 10000
+		var vat int64 = 0
+		if lineVatRate > 0 && net > 0 {
+			// Soliq OFD integer half-up rounding: (net * rate_bps + 5000) / 10000
+			vat = (net*lineVatRate + 5000) / 10000
+		}
 		gross := net + vat
 
 		snap := tax.OrderLineFiscalSnapshot{
 			OrderId:     orderRecord.OrderID,
 			OrderLineId: line.SKU,
 			RegimeId:    regime.Id,
-			VatRateBps:  actualVat,
+			VatRateBps:  lineVatRate,
 			NetMinor:    net,
 			VatMinor:    vat,
 			GrossMinor:  gross,

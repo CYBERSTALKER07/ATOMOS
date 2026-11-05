@@ -151,10 +151,11 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt} t
-			      JOIN Orders o ON o.OrderId = t.OrderId
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByRetailerCreated} o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
 			      WHERE o.RetailerId = @scope
-			        AND t.CreatedAt >= @since
+			        AND o.CreatedAt >= @since
 			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
@@ -165,20 +166,55 @@ func (s *Service) listRecentTransitions(ctx context.Context, scopeID, role strin
 		}
 		stmt = spanner.Statement{
 			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
-			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt} t
-			      JOIN Orders o ON o.OrderId = t.OrderId
+			      FROM Orders@{FORCE_INDEX=Idx_Orders_ByWarehouseCreated} o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
 			      WHERE o.WarehouseId = @scope
-			        AND t.CreatedAt >= @since
+			        AND o.CreatedAt >= @since
 			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
 		}
+	case "ADMIN", "PAYLOAD":
+		if scopeID != "" {
+			stmt = spanner.Statement{
+				SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+				      FROM Orders@{FORCE_INDEX=Idx_Orders_BySupplierCreated} o
+				      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+				        ON t.OrderId = o.OrderId
+				      WHERE o.SupplierId = @scope
+				        AND o.CreatedAt >= @since
+				      ORDER BY t.CreatedAt DESC
+				      LIMIT @lim`,
+				Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
+			}
+			break
+		}
+		fallthrough
+	case "DRIVER":
+		if scopeID != "" {
+			stmt = spanner.Statement{
+				SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+				      FROM Orders@{FORCE_INDEX=Idx_Orders_ByDriverCreated} o
+				      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+				        ON t.OrderId = o.OrderId
+				      WHERE o.DriverId = @scope
+				        AND o.CreatedAt >= @since
+				      ORDER BY t.CreatedAt DESC
+				      LIMIT @lim`,
+				Params: map[string]any{"scope": scopeID, "since": since, "lim": int64(limit)},
+			}
+			break
+		}
+		fallthrough
 	default:
 		stmt = spanner.Statement{
-			SQL: `SELECT TransitionId, OrderId, NewStatus, Reason, EventKind, CreatedAt
-			      FROM OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByCreatedAt}
-			      WHERE CreatedAt >= @since
-			      ORDER BY CreatedAt DESC
+			SQL: `SELECT t.TransitionId, t.OrderId, t.NewStatus, t.Reason, t.EventKind, t.CreatedAt
+			      FROM Orders o
+			      JOIN OrderStatusTransitions@{FORCE_INDEX=Idx_OrderStatusTransitions_ByOrderTime} t
+			        ON t.OrderId = o.OrderId
+			      WHERE o.CreatedAt >= @since
+			      ORDER BY t.CreatedAt DESC
 			      LIMIT @lim`,
 			Params: map[string]any{"since": since, "lim": int64(limit)},
 		}

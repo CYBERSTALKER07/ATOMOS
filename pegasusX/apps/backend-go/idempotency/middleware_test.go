@@ -513,3 +513,119 @@ func TestMiddlewarePartnerKeysDoNotCollide(t *testing.T) {
 		t.Fatalf("expected 2 distinct handler executions, got %d", handlerCalled)
 	}
 }
+
+func TestMiddlewarePathSanitization(t *testing.T) {
+	store := NewInMemoryStore()
+	handlerCalled := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"success"}`))
+	})
+	mw := Middleware(store)(handler)
+
+	// First request: clean path /v1/orders
+	req1 := httptest.NewRequest(http.MethodPost, "/v1/orders", strings.NewReader(`{"sku":"A"}`))
+	req1.Header.Set("Idempotency-Key", "path-test-key")
+	rec1 := httptest.NewRecorder()
+	mw.ServeHTTP(rec1, req1)
+	if rec1.Code != http.StatusOK {
+		t.Fatalf("req1 status = %d", rec1.Code)
+	}
+	if handlerCalled != 1 {
+		t.Fatalf("handlerCalled = %d, want 1", handlerCalled)
+	}
+
+	// Second request: dirty path with trailing slash /v1/orders/
+	req2 := httptest.NewRequest(http.MethodPost, "/v1/orders/", strings.NewReader(`{"sku":"A"}`))
+	req2.Header.Set("Idempotency-Key", "path-test-key")
+	rec2 := httptest.NewRecorder()
+	mw.ServeHTTP(rec2, req2)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("req2 status = %d", rec2.Code)
+	}
+	if rec2.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatalf("expected replay for trailing slash path, got header=%q", rec2.Header().Get("Idempotency-Replayed"))
+	}
+	if handlerCalled != 1 {
+		t.Fatalf("handlerCalled after dirty path = %d, want 1 (replay expected)", handlerCalled)
+	}
+
+	// Third request: dirty path with double slash /v1//orders
+	req3 := httptest.NewRequest(http.MethodPost, "/v1//orders", strings.NewReader(`{"sku":"A"}`))
+	req3.Header.Set("Idempotency-Key", "path-test-key")
+	rec3 := httptest.NewRecorder()
+	mw.ServeHTTP(rec3, req3)
+	if rec3.Code != http.StatusOK {
+		t.Fatalf("req3 status = %d", rec3.Code)
+	}
+	if rec3.Header().Get("Idempotency-Replayed") != "true" {
+		t.Fatalf("expected replay for double slash path, got header=%q", rec3.Header().Get("Idempotency-Replayed"))
+	}
+	if handlerCalled != 1 {
+		t.Fatalf("handlerCalled after double slash path = %d, want 1", handlerCalled)
+	}
+}
+
+func TestMiddlewarePrincipalNamespacing(t *testing.T) {
+	store := NewInMemoryStore()
+	handlerCalled := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"paid"}`))
+	})
+	mw := Middleware(store)(handler)
+
+	body1 := `{"amount":100}`
+	body2 := `{"amount":200}`
+	body3 := `{"amount":300}`
+
+	// 1. User claims: subject "target_123" -> scoped "user:target_123"
+	reqUser := httptest.NewRequest(http.MethodPost, "/v1/payments", strings.NewReader(body1))
+	reqUser.Header.Set("Idempotency-Key", "same-raw-key")
+	ctxUser := auth.WithClaims(reqUser.Context(), auth.Claims{Subject: "target_123"})
+	reqUser = reqUser.WithContext(ctxUser)
+	recUser := httptest.NewRecorder()
+	mw.ServeHTTP(recUser, reqUser)
+	if recUser.Code != http.StatusOK {
+		t.Fatalf("reqUser status = %d", recUser.Code)
+	}
+
+	// 2. Partner claims: tenant "target_123", key "pxk_key_1" -> scoped "partner:target_123:pxk_key_1"
+	reqPartner := httptest.NewRequest(http.MethodPost, "/v1/payments", strings.NewReader(body2))
+	reqPartner.Header.Set("Idempotency-Key", "same-raw-key")
+	ctxPartner := auth.WithTenant(reqPartner.Context(), auth.TenantContext{
+		TenantID: "target_123",
+		KeyID:    "pxk_key_1",
+		Source:   "partner",
+	})
+	reqPartner = reqPartner.WithContext(ctxPartner)
+	recPartner := httptest.NewRecorder()
+	mw.ServeHTTP(recPartner, reqPartner)
+	if recPartner.Code != http.StatusOK {
+		t.Fatalf("reqPartner status = %d (should not conflict with user:target_123)", recPartner.Code)
+	}
+
+	// 3. Tenant context: supplier "target_123" -> scoped "tenant:target_123"
+	reqTenant := httptest.NewRequest(http.MethodPost, "/v1/payments", strings.NewReader(body3))
+	reqTenant.Header.Set("Idempotency-Key", "same-raw-key")
+	ctxTenant := auth.WithTenant(reqTenant.Context(), auth.TenantContext{
+		SupplierID: "target_123",
+		Source:     "internal",
+	})
+	reqTenant = reqTenant.WithContext(ctxTenant)
+	recTenant := httptest.NewRecorder()
+	mw.ServeHTTP(recTenant, reqTenant)
+	if recTenant.Code != http.StatusOK {
+		t.Fatalf("reqTenant status = %d (should not conflict with user:target_123 or partner:target_123:pxk_key_1)", recTenant.Code)
+	}
+
+	// All 3 callers had the SAME raw key and route, but DIFFERENT principal namespaces and bodies,
+	// so all 3 must execute successfully without 422 payload mismatch.
+	if handlerCalled != 3 {
+		t.Fatalf("expected 3 distinct handler executions, got %d", handlerCalled)
+	}
+}

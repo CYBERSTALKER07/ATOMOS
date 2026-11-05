@@ -178,16 +178,14 @@ func runOutboxTenantPartitionE2E(ctx context.Context, cfg *bootstrap.Config, sup
 		"probe_id":    probeID,
 	})
 	_, err = spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdateMap("OutboxEvents", map[string]any{
-			"EventId":       probeID,
-			"AggregateType": "e2e",
-			"AggregateId":   probeID,
-			"TopicName":     "main",
-			"Payload":       payload,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"PublishedAt":   nil,
-			"SupplierId":    sid,
-		}),
+		spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       probeID,
+			AggregateType: "e2e",
+			AggregateID:   probeID,
+			TopicName:     "main",
+			Payload:       payload,
+			SupplierID:    sid,
+		})),
 	})
 	if err != nil {
 		fmt.Println("PX_E2E_OUTBOX_TENANT_PARTITION_SKIPPED")

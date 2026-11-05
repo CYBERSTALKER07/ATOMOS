@@ -68,7 +68,7 @@ CREATE TABLE SupplierProfiles (
   UpdatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
-CREATE INDEX Idx_SupplierProfiles_ByUpdatedAt ON SupplierProfiles(UpdatedAt DESC);
+CREATE INDEX Idx_SupplierProfiles_BySupplierUpdated ON SupplierProfiles(SupplierId, UpdatedAt DESC);
 
 CREATE TABLE PaymentConfigs (
   PaymentConfigId      STRING(36)    NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE SupplierPricingRules (
   UpdatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
 
-CREATE INDEX Idx_SupplierPricingRules_ByUpdatedAt ON SupplierPricingRules(UpdatedAt DESC);
+CREATE INDEX Idx_SupplierPricingRules_BySupplierUpdated ON SupplierPricingRules(SupplierId, UpdatedAt DESC);
 
 -- Per-retailer absolute price overrides (most specific pricing tier).
 -- Resolution order: RetailerPricingOverride -> promotions -> catalog list price.
@@ -728,13 +728,12 @@ CREATE TABLE OutboxEvents (
   ClaimedUntil     TIMESTAMP,
   PublishAttempts  INT64         NOT NULL DEFAULT (0),
   SupplierId       STRING(64)    NOT NULL,
+  UnpublishedAt    TIMESTAMP     OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (EventId);
 
-CREATE INDEX Idx_OutboxEvents_Unpublished
-  ON OutboxEvents(PublishedAt, CreatedAt)
-  STORING (ClaimedUntil, AggregateType, AggregateId, TopicName, SupplierId);
-CREATE INDEX Idx_OutboxEvents_Unpublished_BySupplier
-  ON OutboxEvents(SupplierId, PublishedAt, CreatedAt);
+CREATE NULL_FILTERED INDEX Idx_OutboxEvents_Pending_BySupplier
+  ON OutboxEvents(SupplierId, UnpublishedAt, CreatedAt)
+  STORING (ClaimedUntil, AggregateType, AggregateId, TopicName);
 
 -- Dead-letter sink for events that exhaust publish attempts (20260816_outbox_dlq.ddl).
 CREATE TABLE OutboxDeadLetters (
@@ -757,6 +756,7 @@ CREATE TABLE SchemaMigrations (
   Version     STRING(128)  NOT NULL,
   Checksum    STRING(64)   NOT NULL,
   AppliedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+  AlignedAt   TIMESTAMP    OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (Version);
 
 CREATE TABLE AIPredictions (
@@ -1308,7 +1308,8 @@ CREATE TABLE OrderLotReservations (
   LotId      STRING(36)    NOT NULL,
   Quantity   INT64         NOT NULL,
   CreatedAt  TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId, LotId);
+) PRIMARY KEY (OrderId, LotId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 -- §8.7 Wave 1B: pick waves + seal gate.
 CREATE TABLE PickWaves (
@@ -1491,7 +1492,8 @@ CREATE NULL_FILTERED INDEX UQ_OptimizationJobs_Idempotency ON OptimizationJobs(S
 CREATE TABLE OrderStockReservationMarkers (
   OrderId     STRING(36) NOT NULL,
   ReservedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId);
+) PRIMARY KEY (OrderId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 -- Immutable order status audit trail (delays, promotions, cancellations).
 CREATE TABLE OrderStatusTransitions (
@@ -1505,10 +1507,11 @@ CREATE TABLE OrderStatusTransitions (
   EventKind        STRING(32),
   MetadataJson     BYTES(MAX),
   CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId, CreatedAt DESC, TransitionId);
+) PRIMARY KEY (OrderId, CreatedAt DESC, TransitionId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
-CREATE INDEX Idx_OrderStatusTransitions_ByCreatedAt
-  ON OrderStatusTransitions(CreatedAt DESC, OrderId)
+CREATE INDEX Idx_OrderStatusTransitions_ByOrderTime
+  ON OrderStatusTransitions(OrderId, CreatedAt DESC)
   STORING (NewStatus, Reason, EventKind, PreviousStatus, ActorRole, ActorId);
 
 CREATE TABLE WarehouseBroadcastTemplates (
@@ -1694,7 +1697,8 @@ CREATE TABLE OrderFiscalReceipts (
   TraceId              STRING(64),
   CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId, AttemptId);
+) PRIMARY KEY (OrderId, AttemptId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 CREATE INDEX Idx_OrderFiscalReceipts_ByStatusCreated
   ON OrderFiscalReceipts(Status, CreatedAt DESC);
@@ -1872,7 +1876,8 @@ CREATE TABLE OrderSettlementExceptions (
   Reason            STRING(MAX),
   CreatedBy         STRING(64) NOT NULL,
   CreatedAt         TIMESTAMP NOT NULL,
-) PRIMARY KEY (OrderId, ExceptionId);
+) PRIMARY KEY (OrderId, ExceptionId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 CREATE TABLE CreditNotes (
   CreditNoteId        STRING(36) NOT NULL,
@@ -2615,7 +2620,8 @@ CREATE TABLE OrderCreditReservations (
   Status STRING(20) NOT NULL,
   CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId);
+) PRIMARY KEY (OrderId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 CREATE INDEX Idx_OrderCreditReservations_ByRetailerSupplier ON OrderCreditReservations(RetailerId, SupplierId, Status);
 
@@ -3017,8 +3023,9 @@ CREATE TABLE PlatformAdminAudit (
   CreatedAt    TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (AuditId);
 
-CREATE INDEX Idx_PlatformAdminAudit_ByCreated
-  ON PlatformAdminAudit(CreatedAt DESC);
+CREATE INDEX Idx_PlatformAdminAudit_ByActorCreated
+  ON PlatformAdminAudit(ActorSubject, CreatedAt DESC)
+  STORING (Action, TenantType, TenantId);
 
 CREATE TABLE PlatformAdminMFA (
   Subject   STRING(128) NOT NULL,
@@ -3109,7 +3116,8 @@ CREATE TABLE DriverAvailability (
   ZoneH3            STRING(16),
   Status            STRING(16) NOT NULL,
   UpdatedAt         TIMESTAMP NOT NULL,
-) PRIMARY KEY (DriverId, Date);
+) PRIMARY KEY (DriverId, Date),
+  INTERLEAVE IN PARENT Drivers ON DELETE CASCADE;
 
 CREATE TABLE ZoneCapacity (
   ZoneH3            STRING(16) NOT NULL,
@@ -3130,7 +3138,8 @@ CREATE TABLE RouteETAs (
   Confidence        FLOAT64 NOT NULL,
   ComputedAt        TIMESTAMP NOT NULL,
   FactorsJson       JSON,
-) PRIMARY KEY (RouteId, StopId);
+) PRIMARY KEY (RouteId, StopId),
+  INTERLEAVE IN PARENT RouteTwins ON DELETE CASCADE;
 
 CREATE INDEX RouteETAs_ByOrder ON RouteETAs (StopId);
 
@@ -3275,7 +3284,9 @@ CREATE TABLE ReplenishmentLocks (
   ExpiresAt   TIMESTAMP   NOT NULL,
 ) PRIMARY KEY (LockKey);
 
-CREATE INDEX Idx_ReplenishmentLocks_ByExpiry ON ReplenishmentLocks(ExpiresAt);
+CREATE INDEX Idx_ReplenishmentLocks_BySupplierExpiry
+  ON ReplenishmentLocks(SupplierId, ExpiresAt DESC)
+  STORING (AcquiredBy, Priority);
 
 CREATE TABLE NetworkOptimizationMode (
   SupplierId  STRING(36)  NOT NULL,
@@ -3322,9 +3333,12 @@ CREATE TABLE FactorySupplyRequestQC (
   InspectedBy  STRING(36),
   InspectedAt  TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
   CONSTRAINT CHK_FactoryQC_Result CHECK (Result IN ('PASS', 'FAIL')),
-) PRIMARY KEY (RequestId);
+) PRIMARY KEY (RequestId),
+  INTERLEAVE IN PARENT WarehouseSupplyRequests ON DELETE CASCADE;
 
-CREATE INDEX Idx_FactorySupplyRequestQC_ByInspectedAt ON FactorySupplyRequestQC(InspectedAt DESC);
+CREATE INDEX Idx_FactorySupplyRequestQC_ByRequestInspected
+  ON FactorySupplyRequestQC(RequestId, InspectedAt DESC)
+  STORING (Result, InspectedBy);
 
 -- P8/P10: durable ops broadcast (supplier + warehouse). Outbox is canonical; this is the audit row.
 CREATE TABLE OpsBroadcasts (
@@ -3467,7 +3481,8 @@ CREATE TABLE OrderServicePromiseSnapshots (
   BreachReason           STRING(256),
   CreatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt              TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (OrderId);
+) PRIMARY KEY (OrderId),
+  INTERLEAVE IN PARENT Orders ON DELETE CASCADE;
 
 CREATE INDEX Idx_OrderServicePromises_BySupplierStatus ON OrderServicePromiseSnapshots(SupplierId, Status, GuaranteedDeliveryDate DESC);
 CREATE INDEX Idx_OrderServicePromises_ByRetailer ON OrderServicePromiseSnapshots(RetailerId, CreatedAt DESC);
@@ -3546,7 +3561,8 @@ CREATE TABLE ManifestLoadLines (
   ScannedQty   INT64       NOT NULL,
   Status       STRING(32)  NOT NULL,
   UpdatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (ManifestId, OrderId, LineItemId);
+) PRIMARY KEY (ManifestId, OrderId, LineItemId),
+  INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE;
 
 CREATE INDEX Idx_ManifestLoadLines_ByManifestStatus
   ON ManifestLoadLines(ManifestId, Status);
@@ -3687,7 +3703,8 @@ CREATE TABLE RetailerPromotionEnrollments (
   RetailerId          STRING(36)    NOT NULL,
   Status              STRING(32)    NOT NULL, -- e.g., ENROLLED, OPTED_OUT
   EnrolledAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
-) PRIMARY KEY (CampaignId, EnrollmentId);
+) PRIMARY KEY (CampaignId, EnrollmentId),
+  INTERLEAVE IN PARENT SupplierPromotionCampaigns ON DELETE CASCADE;
 
 CREATE INDEX Idx_RetailerPromotionEnrollments_ByRetailer
   ON RetailerPromotionEnrollments(RetailerId, Status);

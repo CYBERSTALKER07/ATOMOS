@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,8 +22,8 @@ func StartStaleReservationSweeper(svc *Service) {
 	StartStaleReservationSweeperContext(context.Background(), svc)
 }
 
-// StartStaleReservationSweeperContext starts the sweeper with context cancellation support.
-func StartStaleReservationSweeperContext(ctx context.Context, svc *Service) {
+// StartStaleReservationSweeperContext starts the sweeper with context cancellation support and optional WaitGroup.
+func StartStaleReservationSweeperContext(ctx context.Context, svc *Service, wg ...*sync.WaitGroup) {
 	if svc == nil || svc.spannerClient == nil {
 		return
 	}
@@ -32,7 +33,16 @@ func StartStaleReservationSweeperContext(ctx context.Context, svc *Service) {
 		svc.log.Info("stale reservation sweeper started", "interval", interval.String(), "ttl", ttl.String())
 	}
 
+	var waitGroup *sync.WaitGroup
+	if len(wg) > 0 && wg[0] != nil {
+		waitGroup = wg[0]
+		waitGroup.Add(1)
+	}
+
 	go func() {
+		if waitGroup != nil {
+			defer waitGroup.Done()
+		}
 		// Initial jitter to avoid thundering herd on cluster reboot
 		jitter := time.Duration(rand.Int63n(int64(10 * time.Second)))
 		select {

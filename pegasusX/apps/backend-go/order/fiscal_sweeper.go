@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -48,13 +49,23 @@ func StartFiscalSweeper(svc *Service) {
 	StartFiscalSweeperContext(context.Background(), svc)
 }
 
-// StartFiscalSweeperContext launches the fiscal sweeper with context cancellation support.
-func StartFiscalSweeperContext(ctx context.Context, svc *Service) {
+// StartFiscalSweeperContext launches the fiscal sweeper with context cancellation and optional WaitGroup support.
+func StartFiscalSweeperContext(ctx context.Context, svc *Service, wg ...*sync.WaitGroup) {
 	if svc == nil {
 		return
 	}
 	svc.log.Info("fiscal retry sweeper started")
+
+	var waitGroup *sync.WaitGroup
+	if len(wg) > 0 && wg[0] != nil {
+		waitGroup = wg[0]
+		waitGroup.Add(1)
+	}
+
 	go func() {
+		if waitGroup != nil {
+			defer waitGroup.Done()
+		}
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for {

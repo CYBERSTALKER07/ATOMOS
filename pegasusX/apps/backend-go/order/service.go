@@ -142,6 +142,9 @@ type LineItem struct {
 	RemainingQty  int64  `json:"remaining_qty,omitempty"`
 	OffloadStatus string `json:"offload_status,omitempty"` // FULL|PARTIAL|NONE|RETURNED
 	OffloadReason string `json:"offload_reason,omitempty"`
+	// Additive fiscal fields (Soliq OFD compliance):
+	VatRateBps  *int64 `json:"vat_rate_bps,omitempty"`
+	TaxCategory string `json:"tax_category,omitempty"` // "STANDARD" | "ZERO" | "EXEMPT"
 }
 
 // Order is the persisted aggregate.

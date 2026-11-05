@@ -774,7 +774,7 @@ func TestOfflineQuotaLeaseStatusAndExpirationValidation(t *testing.T) {
 		t.Fatalf("expected ErrOfflineLeaseExceeded on excess credit, got %v", err)
 	}
 
-	// 5. Test expired lease -> FAIL.
+	// 5. Test ACTIVE lease bound to order with passed wall-clock ExpiresAt -> MUST NOT fail (driver offline completing ePOD).
 	expiredLease, err := eng.IssueOfflineQuotaLease(
 		ctx,
 		"ord_expired_test",
@@ -790,17 +790,52 @@ func TestOfflineQuotaLeaseStatusAndExpirationValidation(t *testing.T) {
 		t.Fatalf("IssueOfflineQuotaLease expired: %v", err)
 	}
 	expiredLease.ExpiresAt = time.Now().Add(-10 * time.Minute)
-	err = eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 5_000_000, 5_000_000)
-	if !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
-		t.Fatalf("expected ErrOfflineLeaseExceeded on expired lease, got %v", err)
+	if err := eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 5_000_000, 5_000_000); err != nil {
+		t.Fatalf("ValidateOfflineLeaseCollection should pass for active in-flight lease past ExpiresAt: %v", err)
+	}
+	// But exceeding cash or credit limits on that lease still FAILS.
+	if err := eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 15_000_000, 5_000_000); !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
+		t.Fatalf("expected ErrOfflineLeaseExceeded on excess cash for past-expiry active lease, got %v", err)
 	}
 
-	// 6. Test non-ACTIVE lease status -> FAIL.
+	// 6. Test unbound lease past ExpiresAt -> FAIL.
+	unboundLease, err := eng.IssueOfflineQuotaLease(
+		ctx,
+		"", // unbound to order
+		"drv_test_unbound",
+		"sup_1",
+		"TIN-999001",
+		"2026-10-31",
+		10_000_000,
+		10_000_000,
+		1*time.Hour,
+	)
+	if err != nil {
+		t.Fatalf("IssueOfflineQuotaLease unbound: %v", err)
+	}
+	unboundLease.ExpiresAt = time.Now().Add(-10 * time.Minute)
+	if err := eng.ValidateOfflineLeaseCollection(ctx, unboundLease.LeaseID, 5_000_000, 5_000_000); !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
+		t.Fatalf("expected ErrOfflineLeaseExceeded on expired unbound lease, got %v", err)
+	}
+
+	// 7. Test non-ACTIVE lease status -> FAIL.
 	expiredLease.ExpiresAt = time.Now().Add(1 * time.Hour)
 	expiredLease.Status = "REVOKED"
 	err = eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 5_000_000, 5_000_000)
 	if !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
-		t.Fatalf("expected ErrOfflineLeaseExceeded on non-ACTIVE status, got %v", err)
+		t.Fatalf("expected ErrOfflineLeaseExceeded on non-ACTIVE status (REVOKED), got %v", err)
+	}
+
+	expiredLease.Status = "COMPLETED"
+	err = eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 5_000_000, 5_000_000)
+	if !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
+		t.Fatalf("expected ErrOfflineLeaseExceeded on non-ACTIVE status (COMPLETED), got %v", err)
+	}
+
+	expiredLease.Status = "RECONCILED"
+	err = eng.ValidateOfflineLeaseCollection(ctx, expiredLease.LeaseID, 5_000_000, 5_000_000)
+	if !errors.Is(err, foundry.ErrOfflineLeaseExceeded) {
+		t.Fatalf("expected ErrOfflineLeaseExceeded on non-ACTIVE status (RECONCILED), got %v", err)
 	}
 }
 

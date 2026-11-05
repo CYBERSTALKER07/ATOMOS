@@ -818,28 +818,7 @@ func (s *Service) invalidateOrderCache(ctx context.Context, orderID string) {
 }
 
 func outboxMutation(e outbox.Event) *spanner.Mutation {
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		// Commit timestamp: row creation time is commit time. Wall-clock
-		// timestamps here fail on any client/host clock skew.
-		"CreatedAt":   spanner.CommitTimestamp,
-		"PublishedAt": nil,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-	sid := strings.TrimSpace(e.SupplierID)
-	if sid == "" {
-		sid = outbox.SupplierIDFromPayload(e.Payload)
-	}
-	if sid != "" {
-		row["SupplierId"] = sid
-	}
-	return spanner.InsertOrUpdateMap("OutboxEvents", row)
+	return spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e))
 }
 
 func generateShopClosedBypassToken() string {

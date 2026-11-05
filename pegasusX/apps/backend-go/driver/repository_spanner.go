@@ -72,19 +72,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
 	muts := make([]*spanner.Mutation, 0, len(eventsList))
 	for _, e := range eventsList {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-		}
-		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		muts = append(muts, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return muts
 }
@@ -110,23 +98,7 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 
 		var mutations []*spanner.Mutation
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			row := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				row["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
@@ -242,28 +214,7 @@ func (r *SpannerRepository) ApplyAvailability(ctx context.Context, upd Availabil
 		}
 
 		for _, e := range buf.events {
-			createdAt := e.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = time.Now().UTC()
-			}
-			supID := e.SupplierID
-			if strings.TrimSpace(supID) == "" {
-				supID = outbox.ResolveSupplierID("", []byte(e.Payload))
-			}
-			outboxRow := map[string]any{
-				"EventId":       e.EventID,
-				"AggregateType": e.AggregateType,
-				"AggregateId":   e.AggregateID,
-				"TopicName":     e.TopicName,
-				"Payload":       e.Payload,
-				"SupplierId":    supID,
-				"CreatedAt":     createdAt,
-				"PublishedAt":   nil,
-			}
-			if e.PublishedAt != nil {
-				outboxRow["PublishedAt"] = e.PublishedAt.UTC()
-			}
-			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outboxRow))
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 		}
 		for _, a := range buf.audits {
 			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))

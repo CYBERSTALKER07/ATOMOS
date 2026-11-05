@@ -117,24 +117,7 @@ type txBuf struct {
 }
 
 func (b *txBuf) BufferOutbox(_ context.Context, e outbox.Event) error {
-	createdAt := e.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = time.Now().UTC()
-	}
-	row := map[string]any{
-		"EventId":       e.EventID,
-		"AggregateType": e.AggregateType,
-		"AggregateId":   e.AggregateID,
-		"TopicName":     e.TopicName,
-		"Payload":       e.Payload,
-		"CreatedAt":     createdAt,
-		"PublishedAt":   nil,
-		"SupplierId":    e.SupplierID,
-	}
-	if e.PublishedAt != nil {
-		row["PublishedAt"] = e.PublishedAt.UTC()
-	}
-	*b.mutations = append(*b.mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	*b.mutations = append(*b.mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	return nil
 }
 

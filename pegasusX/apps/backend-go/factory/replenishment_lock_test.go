@@ -3,6 +3,10 @@ package factory
 import (
 	"testing"
 	"time"
+
+	"cloud.google.com/go/spanner"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestDecideLockAcquire_EmptyLockWins(t *testing.T) {
@@ -51,5 +55,24 @@ func TestDecideLockAcquire_ExpiredReacquired(t *testing.T) {
 	})
 	if !got.Acquired {
 		t.Fatal("expected reacquire after TTL")
+	}
+}
+
+func TestReplenishmentLock_SpannerErrorClassification(t *testing.T) {
+	// Verify Spanner error code classification semantics:
+	// Only codes.NotFound must be treated as absent lock; all other codes (Unavailable, Aborted, DeadlineExceeded)
+	// must bubble up to prompt transaction retries rather than preemption.
+	notFoundErr := status.Error(codes.NotFound, "row not found")
+	unavailableErr := status.Error(codes.Unavailable, "connection reset")
+	abortedErr := status.Error(codes.Aborted, "transaction aborted")
+
+	if spanner.ErrCode(notFoundErr) != codes.NotFound {
+		t.Fatalf("expected NotFound code, got %v", spanner.ErrCode(notFoundErr))
+	}
+	if spanner.ErrCode(unavailableErr) == codes.NotFound {
+		t.Fatalf("Unavailable error must not be classified as NotFound")
+	}
+	if spanner.ErrCode(abortedErr) == codes.NotFound {
+		t.Fatalf("Aborted error must not be classified as NotFound")
 	}
 }

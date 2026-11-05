@@ -158,14 +158,6 @@ type spannerOutboxBuf struct {
 
 func (b *spannerOutboxBuf) BufferOutbox(_ context.Context, e outbox.Event) error {
 	return b.txn.BufferWrite([]*spanner.Mutation{
-		spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     spanner.CommitTimestamp,
-			"SupplierId":    e.SupplierID,
-		}),
+		spanner.InsertMap("OutboxEvents", outbox.EventRowMap(e)),
 	})
 }

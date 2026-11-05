@@ -295,7 +295,12 @@ func (e *Engine) ValidateOfflineLeaseCollection(
 	if lease.Status != "ACTIVE" {
 		return fmt.Errorf("%w: lease %s is not ACTIVE (status=%s)", ErrOfflineLeaseExceeded, leaseID, lease.Status)
 	}
-	if e.now().After(lease.ExpiresAt) {
+	// Per authoritative policy: An ACTIVE OfflineQuotaLease bound to an in-flight order/route MUST NOT
+	// fail ValidateOfflineLeaseCollection due to wall-clock ExpiresAt while the driver is offline completing
+	// the order (ePOD / offline collection). The lease remains valid until the order is completed (COMPLETED)
+	// or the device comes back online and reconciles/closes the lease (status COMPLETED / RECONCILED).
+	// Unbound leases (no in-flight order) still enforce wall-clock expiration.
+	if strings.TrimSpace(lease.OrderID) == "" && e.now().After(lease.ExpiresAt) {
 		return fmt.Errorf("%w: lease %s expired at %s", ErrOfflineLeaseExceeded, leaseID, lease.ExpiresAt.Format(time.RFC3339))
 	}
 	if collectedCashMinor > lease.MaxCashAllowedMinor {

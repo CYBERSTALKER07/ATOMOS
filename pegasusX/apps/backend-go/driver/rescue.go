@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 var (
@@ -97,15 +98,14 @@ func (s *Service) HandleRescueRequest(w http.ResponseWriter, r *http.Request) {
 		ev.Type = "RESCUE_REQUESTED"
 		evJSON, _ := json.Marshal(ev)
 
-		m := spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": events.AggregateDriver,
-			"AggregateId":   driverID,
-			"TopicName":     events.TopicMain,
-			"Payload":       string(evJSON),
-			"CreatedAt":     spanner.CommitTimestamp,
-			"SupplierId":    supplierID,
-		})
+		m := spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateDriver,
+			AggregateID:   driverID,
+			TopicName:     events.TopicMain,
+			Payload:       evJSON,
+			SupplierID:    supplierID,
+		}))
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
 
@@ -392,15 +392,14 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 					LicensePlate: rescueLicensePlate,
 				}
 				evJSON, _ := json.Marshal(evReassigned)
-				mutations = append(mutations, spanner.InsertMap("OutboxEvents", map[string]any{
-					"EventId":       uuid.NewString(),
-					"AggregateType": events.AggregateOrder,
-					"AggregateId":   ao.OrderID,
-					"TopicName":     events.TopicMain,
-					"Payload":       string(evJSON),
-					"CreatedAt":     spanner.CommitTimestamp,
-					"SupplierId":    supplierID,
-				}))
+				mutations = append(mutations, spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+					EventID:       uuid.NewString(),
+					AggregateType: events.AggregateOrder,
+					AggregateID:   ao.OrderID,
+					TopicName:     events.TopicMain,
+					Payload:       evJSON,
+					SupplierID:    supplierID,
+				})))
 			}
 		}
 
@@ -414,15 +413,14 @@ func (s *Service) HandleRescueRespond(w http.ResponseWriter, r *http.Request) {
 		}
 		ev.Type = "RESCUE_" + status
 		evJSON, _ := json.Marshal(ev)
-		mutations = append(mutations, spanner.InsertMap("OutboxEvents", map[string]any{
-			"EventId":       uuid.NewString(),
-			"AggregateType": events.AggregateDriver,
-			"AggregateId":   driverID,
-			"TopicName":     events.TopicMain,
-			"Payload":       string(evJSON),
-			"CreatedAt":     spanner.CommitTimestamp,
-			"SupplierId":    supplierID,
-		}))
+		mutations = append(mutations, spanner.InsertMap("OutboxEvents", outbox.EventRowMap(outbox.Event{
+			EventID:       uuid.NewString(),
+			AggregateType: events.AggregateDriver,
+			AggregateID:   driverID,
+			TopicName:     events.TopicMain,
+			Payload:       evJSON,
+			SupplierID:    supplierID,
+		})))
 
 		return txn.BufferWrite(mutations)
 	})

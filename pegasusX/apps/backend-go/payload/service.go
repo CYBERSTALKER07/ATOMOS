@@ -21,6 +21,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	ordersvc "github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
 	"github.com/pegasusx/pegasusx/apps/backend-go/stocklots"
@@ -1316,12 +1317,16 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		return
 	}
 	order := s.orders[oIdx]
-	if (order.Lat == 0 && order.Lng == 0) && s.orderReader != nil {
+	var orderRecord *ordersvc.Order
+	if s.orderReader != nil {
 		if ord, ok, _ := s.orderReader.GetOrder(r.Context(), order.OrderID); ok {
-			order.Lat = ord.Lat
-			order.Lng = ord.Lng
-			s.orders[oIdx].Lat = ord.Lat
-			s.orders[oIdx].Lng = ord.Lng
+			orderRecord = &ord
+			if order.Lat == 0 && order.Lng == 0 {
+				order.Lat = ord.Lat
+				order.Lng = ord.Lng
+				s.orders[oIdx].Lat = ord.Lat
+				s.orders[oIdx].Lng = ord.Lng
+			}
 		}
 	}
 
@@ -1353,37 +1358,67 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 		})
 	}
 	truckRecs := buildTruckRecommendationsLocked(s, order, recommendations)
+
+	// Authoritative retailer name resolution
 	retailerName := "Retailer"
-	orderVolume := float64(10)
+	if orderRecord != nil && orderRecord.RetailerID != "" {
+		retailerName = orderRecord.RetailerID
+	}
+
+	// Physical cargo volume derivation (zero financial conflation)
+	orderVolume := float64(0)
 	if oIdx >= 0 {
-		foundVol := false
+		// Priority 1: Volume assigned in active/loading manifest
 		if order.ManifestID != "" {
 			for _, mo := range s.manifestOrders[order.ManifestID] {
 				if mo.OrderID == order.OrderID && mo.VolumeVU > 0 {
 					orderVolume = float64(mo.VolumeVU)
-					foundVol = true
 					break
 				}
 			}
 		}
-		if !foundVol {
+		// Priority 2: Volume found across any in-memory manifest orders
+		if orderVolume <= 0 {
 			for _, mOrders := range s.manifestOrders {
 				for _, mo := range mOrders {
 					if mo.OrderID == order.OrderID && mo.VolumeVU > 0 {
 						orderVolume = float64(mo.VolumeVU)
-						foundVol = true
 						break
 					}
 				}
-				if foundVol {
+				if orderVolume > 0 {
 					break
 				}
 			}
 		}
-		if !foundVol && order.VolumeVU > 0 {
+		// Priority 3: Compute physical volume directly from line-item dimensions
+		if orderVolume <= 0 && orderRecord != nil && len(orderRecord.LineItems) > 0 {
+			var physVol float64
+			for _, item := range orderRecord.LineItems {
+				qty := float64(item.Quantity)
+				if qty <= 0 {
+					qty = 1
+				}
+				unitVU := item.UnitVolumeVU
+				if unitVU <= 0 {
+					unitVU = 1.0 // baseline 1 VU per item unit
+				}
+				physVol += qty * unitVU
+			}
+			if physVol > 0 {
+				orderVolume = physVol
+			}
+		}
+		// Priority 4: Cached OrderRow VolumeVU
+		if orderVolume <= 0 && order.VolumeVU > 0 {
 			orderVolume = float64(order.VolumeVU)
 		}
 	}
+	// Floor: Minimum physical cargo volume is 1.0 VU (never 0, never arbitrary 10.0, never money)
+	if orderVolume <= 0 {
+		orderVolume = 1.0
+	}
+
 	currentDriver := order.RouteID
 	s.mu.Unlock()
 

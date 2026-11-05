@@ -168,27 +168,7 @@ func bufferConditionReportInTxn(ctx context.Context, txn *spanner.ReadWriteTrans
 		}),
 	}
 	for _, e := range buf.events {
-		createdAt := e.CreatedAt.UTC()
-		if createdAt.IsZero() {
-			createdAt = time.Now().UTC()
-		}
-		row := map[string]any{
-			"EventId":       e.EventID,
-			"AggregateType": e.AggregateType,
-			"AggregateId":   e.AggregateID,
-			"TopicName":     e.TopicName,
-			"Payload":       e.Payload,
-			"CreatedAt":     createdAt,
-			"PublishedAt":   nil,
-		}
-		sid := strings.TrimSpace(e.SupplierID)
-		if sid == "" {
-			sid = outbox.SupplierIDFromPayload(e.Payload)
-		}
-		if sid != "" {
-			row["SupplierId"] = sid
-		}
-		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", outbox.EventRowMap(e)))
 	}
 	return txn.BufferWrite(mutations)
 }

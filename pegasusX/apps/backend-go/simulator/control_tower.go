@@ -46,6 +46,10 @@ type ControlTowerH3Payload struct {
 }
 
 func StartControlTowerSimulation(telemetryHub *ws.Hub, supplierID string, warehouseID string) {
+	StartControlTowerSimulationContext(context.Background(), telemetryHub, supplierID, warehouseID)
+}
+
+func StartControlTowerSimulationContext(ctx context.Context, telemetryHub *ws.Hub, supplierID string, warehouseID string) {
 	if telemetryHub == nil {
 		return
 	}
@@ -61,8 +65,11 @@ func StartControlTowerSimulation(telemetryHub *ws.Hub, supplierID string, wareho
 		defer ticker.Stop()
 
 		for {
-			<-ticker.C
-			ctx := context.Background()
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
 
 			// 1. Generate Network Graph Data
 			networkPayload := generateMockNetwork()

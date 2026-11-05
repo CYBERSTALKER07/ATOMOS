@@ -1,0 +1,24 @@
+-- 20261105_table_interleaving_alignment.ddl
+-- Cloud Spanner Table Interleaving & Co-Location Alignment (M2-3):
+--
+-- In Cloud Spanner, co-locating child rows with parent rows via INTERLEAVE IN PARENT
+-- physically places child data in the exact same Paxos split as the parent entity,
+-- eliminating distributed Two-Phase Commit (2PC) coordination and lock contention.
+--
+-- For greenfield provisioning and emulator environments, the 12 transactional aggregate child tables
+-- are declared with INTERLEAVE IN PARENT ... ON DELETE CASCADE in schema/spanner.ddl:
+--   1. OrderStatusTransitions -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   2. OrderFiscalReceipts -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   3. OrderSettlementExceptions -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   4. OrderLotReservations -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   5. OrderStockReservationMarkers -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   6. OrderCreditReservations -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   7. OrderServicePromiseSnapshots -> INTERLEAVE IN PARENT Orders ON DELETE CASCADE
+--   8. ManifestLoadLines -> INTERLEAVE IN PARENT SupplierTruckManifests ON DELETE CASCADE
+--   9. RouteETAs -> INTERLEAVE IN PARENT RouteTwins ON DELETE CASCADE
+--  10. DriverAvailability -> INTERLEAVE IN PARENT Drivers ON DELETE CASCADE
+--  11. RetailerPromotionEnrollments -> INTERLEAVE IN PARENT SupplierPromotionCampaigns ON DELETE CASCADE
+--  12. FactorySupplyRequestQC -> INTERLEAVE IN PARENT WarehouseSupplyRequests ON DELETE CASCADE
+--
+-- Register interleaving schema alignment column in SchemaMigrations ledger.
+ALTER TABLE SchemaMigrations ADD COLUMN AlignedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true);

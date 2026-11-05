@@ -59,8 +59,8 @@ func oldestUnpublishedAge(ctx context.Context, client *spanner.Client) (seconds 
 		return 0, ""
 	}
 	stmt := spanner.Statement{
-		SQL: `SELECT CreatedAt FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished}
-		      WHERE PublishedAt IS NULL ORDER BY CreatedAt ASC LIMIT 1`,
+		SQL: `SELECT CreatedAt FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+		      WHERE UnpublishedAt IS NOT NULL ORDER BY CreatedAt ASC LIMIT 1`,
 	}
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
@@ -94,8 +94,8 @@ func (h *Handlers) HandleOutboxEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	stmt := spanner.Statement{
 		SQL: `SELECT EventId, AggregateType, AggregateId, TopicName, CreatedAt
-		      FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Unpublished}
-		      WHERE PublishedAt IS NULL
+		      FROM OutboxEvents@{FORCE_INDEX=Idx_OutboxEvents_Pending_BySupplier}
+		      WHERE UnpublishedAt IS NOT NULL
 		      ORDER BY CreatedAt ASC
 		      LIMIT @lim`,
 		Params: map[string]interface{}{"lim": int64(lim)},
@@ -350,6 +350,7 @@ func (h *Handlers) HandleReplayDeadLetter(w http.ResponseWriter, r *http.Request
 			"Payload":         payload,
 			"CreatedAt":       spanner.CommitTimestamp,
 			"PublishedAt":     nil,
+			"UnpublishedAt":   spanner.CommitTimestamp,
 			"ClaimedBy":       nil,
 			"ClaimedUntil":    nil,
 			"PublishAttempts": int64(0),
