@@ -2260,6 +2260,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AML_EXPOSURE_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AmlExposureUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ARInvoicePayload"
         },
         {
@@ -2450,6 +2469,44 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CASHIER_SESSION_STARTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CashierSessionStartedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CASHIER_SESSION_TRANSITION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CashierSessionTransitionEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/CashVariancePayload"
         },
         {
@@ -2636,6 +2693,25 @@
         }
       ],
       "title": "CommandSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CONTAINER_LEDGER_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ContainerLedgerUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -3149,6 +3225,44 @@
         }
       ],
       "title": "FiscalReceiptSucceededEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FLEET_DVIR_INSPECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FleetDvirInspectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FLEET_DVIR_RED_TAG"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FleetDvirRedTagEnvelope"
     },
     {
       "allOf": [
@@ -3700,6 +3814,44 @@
         }
       ],
       "title": "NetworkModeChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "OFFLINE_QUOTA_LEASE_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OfflineQuotaLeaseUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ONTOLOGY_OBJECT_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OntologyObjectUpdatedEnvelope"
     },
     {
       "allOf": [
@@ -6293,6 +6445,25 @@
         {
           "properties": {
             "type": {
+              "const": "YARD_GATE_CHECK_RECORDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "YardGateCheckRecordedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PlanningPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "planning.meio.recommendation.v1"
             }
           },
@@ -6350,6 +6521,7 @@
         "AI_RECOMMENDATION_DECIDED",
         "ALLOCATION_FAIR_SHARE_APPLIED",
         "ALLOCATION_POLICY_APPLIED",
+        "AML_EXPOSURE_UPDATED",
         "AR_INVOICE_AGING_UPDATED",
         "AR_INVOICE_DUNNED",
         "AR_INVOICE_OPENED",
@@ -6360,6 +6532,8 @@
         "BUYER_ACCEPTANCE_PENDING",
         "BUYER_ACCEPTANCE_REJECTED",
         "CART_SYNC_UPDATED",
+        "CASHIER_SESSION_STARTED",
+        "CASHIER_SESSION_TRANSITION",
         "CASH_OVERAGE",
         "CASH_SHORTFALL",
         "CATEGORY_CREATED",
@@ -6370,6 +6544,7 @@
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
+        "CONTAINER_LEDGER_UPDATED",
         "CONTROL_TOWER_PLAYBOOK_CHANGED",
         "CONTROL_TOWER_RUN_CREATED",
         "CONTROL_TOWER_RUN_UPDATED",
@@ -6397,6 +6572,8 @@
         "FISCAL_RECEIPT_FAILED",
         "FISCAL_RECEIPT_REQUESTED",
         "FISCAL_RECEIPT_SUCCEEDED",
+        "FLEET_DVIR_INSPECTED",
+        "FLEET_DVIR_RED_TAG",
         "FREEZE_LOCK_ACQUIRED",
         "FREEZE_LOCK_RELEASED",
         "INVENTORY_IMPORT_STATUS_UPDATE",
@@ -6426,6 +6603,8 @@
         "NEGOTIATION_PROPOSED",
         "NEGOTIATION_RESOLVED",
         "NETWORK_MODE_CHANGED",
+        "OFFLINE_QUOTA_LEASE_UPDATED",
+        "ONTOLOGY_OBJECT_UPDATED",
         "ORDER_ALLOCATED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
@@ -6562,6 +6741,7 @@
         "WMS_PICK_CONFIRMED",
         "WMS_PUTAWAY",
         "WMS_TEMPERATURE_BREACH",
+        "YARD_GATE_CHECK_RECORDED",
         "planning.meio.recommendation.v1",
         "planning.scenario.published.v1",
         "planning.signal.ingest.v1"
@@ -6579,6 +6759,7 @@
     "AI_RECOMMENDATION_DECIDED": "AIRecommendationPayload",
     "ALLOCATION_FAIR_SHARE_APPLIED": "OrderPayload",
     "ALLOCATION_POLICY_APPLIED": "OrderPayload",
+    "AML_EXPOSURE_UPDATED": "PlanningPayload",
     "AR_INVOICE_AGING_UPDATED": "ARInvoicePayload",
     "AR_INVOICE_DUNNED": "ARInvoicePayload",
     "AR_INVOICE_OPENED": "ARInvoicePayload",
@@ -6589,6 +6770,8 @@
     "BUYER_ACCEPTANCE_PENDING": "BuyerAcceptancePayload",
     "BUYER_ACCEPTANCE_REJECTED": "BuyerAcceptancePayload",
     "CART_SYNC_UPDATED": "SyncPayload",
+    "CASHIER_SESSION_STARTED": "PlanningPayload",
+    "CASHIER_SESSION_TRANSITION": "PlanningPayload",
     "CASH_OVERAGE": "CashVariancePayload",
     "CASH_SHORTFALL": "CashVariancePayload",
     "CATEGORY_CREATED": "CategoryPayload",
@@ -6599,6 +6782,7 @@
     "COMMAND_DISPATCHED": "CommandPayload",
     "COMMAND_RECEIVED": "CommandPayload",
     "COMMAND_SETTLED": "CommandPayload",
+    "CONTAINER_LEDGER_UPDATED": "PlanningPayload",
     "CONTROL_TOWER_PLAYBOOK_CHANGED": "LotRecallPayload",
     "CONTROL_TOWER_RUN_CREATED": "LotRecallPayload",
     "CONTROL_TOWER_RUN_UPDATED": "LotRecallPayload",
@@ -6626,6 +6810,8 @@
     "FISCAL_RECEIPT_FAILED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_REQUESTED": "FiscalReceiptPayload",
     "FISCAL_RECEIPT_SUCCEEDED": "FiscalReceiptPayload",
+    "FLEET_DVIR_INSPECTED": "PlanningPayload",
+    "FLEET_DVIR_RED_TAG": "PlanningPayload",
     "FREEZE_LOCK_ACQUIRED": "SystemPayload",
     "FREEZE_LOCK_RELEASED": "SystemPayload",
     "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportPayload",
@@ -6655,6 +6841,8 @@
     "NEGOTIATION_PROPOSED": "NegotiationPayload",
     "NEGOTIATION_RESOLVED": "NegotiationPayload",
     "NETWORK_MODE_CHANGED": "SupplyRequestPayload",
+    "OFFLINE_QUOTA_LEASE_UPDATED": "PlanningPayload",
+    "ONTOLOGY_OBJECT_UPDATED": "PlanningPayload",
     "ORDER_ALLOCATED": "OrderPayload",
     "ORDER_AMENDED": "OrderPayload",
     "ORDER_ASSIGNED": "OrderPayload",
@@ -6791,6 +6979,7 @@
     "WMS_PICK_CONFIRMED": "WarehousePayload",
     "WMS_PUTAWAY": "WarehousePayload",
     "WMS_TEMPERATURE_BREACH": "WarehousePayload",
+    "YARD_GATE_CHECK_RECORDED": "PlanningPayload",
     "planning.meio.recommendation.v1": "PlanningPayload",
     "planning.scenario.published.v1": "PlanningPayload",
     "planning.signal.ingest.v1": "PlanningPayload"
