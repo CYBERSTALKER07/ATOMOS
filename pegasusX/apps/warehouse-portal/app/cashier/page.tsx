@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import type { CashierSessionView as CashierSessionViewType } from '@pegasusx/types';
-import { TIYIN_PER_UZS } from '@pegasusx/types';
 import { foundryWarehouseApi } from '@/lib/foundry-api';
 import { BlindCountDenominationGrid } from '@/components/cashier/BlindCountDenominationGrid';
 import { CashierSessionView } from '@/components/cashier/CashierSessionView';
@@ -20,7 +19,6 @@ export default function CashierPage() {
   const [driverId, setDriverId] = useState('drv_anvar_01');
   const [routeId, setRouteId] = useState('route_yashnobod_101');
   const [bagSealBarcode, setBagSealBarcode] = useState('');
-  const [expectedCashUZS, setExpectedCashUZS] = useState<number>(1500000);
 
   const [session, setSession] = useState<CashierSessionViewType | null>(null);
   const [startingSession, setStartingSession] = useState(false);
@@ -40,7 +38,7 @@ export default function CashierPage() {
 
     setStartingSession(true);
     try {
-      const expectedMinor = Math.floor(expectedCashUZS * TIYIN_PER_UZS);
+      // Expected cash is resolved server-side from Spanner route orders and masked during blind count.
       const newSession = await foundryWarehouseApi.startCashierSession({
         cell_id: cellId,
         supplier_id: supplierId,
@@ -48,7 +46,7 @@ export default function CashierPage() {
         driver_id: driverId.trim(),
         route_id: routeId.trim(),
         bag_seal_barcode: bagSealBarcode.trim(),
-        expected_cash_minor: expectedMinor,
+        expected_cash_minor: 0,
       });
       setSession(newSession);
     } catch (err) {
@@ -190,16 +188,11 @@ export default function CashierPage() {
                     <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                       System Expected Cash (UZS)
                     </label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={expectedCashUZS}
-                      onChange={(e) => setExpectedCashUZS(Math.max(1, parseInt(e.target.value || '1', 10)))}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
-                    />
+                    <div className="w-full bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400">
+                      🔒 Server-Derived (Masked for Blind Count)
+                    </div>
                     <span className="text-[11px] text-slate-400 mt-0.5 block">
-                      Note: Verified server-side against route orders; strictly masked from cashier blind count!
+                      Computed authoritatively from Spanner route orders; never exposed before count completion.
                     </span>
                   </div>
 

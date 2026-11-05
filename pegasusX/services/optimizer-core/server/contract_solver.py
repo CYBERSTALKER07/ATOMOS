@@ -19,6 +19,7 @@ DEFAULT_AVG_SPEED_KMPH = 30.0
 DEFAULT_MAX_STOPS = 25
 DEFAULT_TIME_LIMIT_MS = 2_000
 MAX_TIME_LIMIT_MS = 60_000
+DEFAULT_VEHICLE_FIXED_COST_M = 40_000
 SCALE_FACTOR = 10_000
 
 _HH_MM = re.compile(r"^(\d{1,2}):(\d{2})$")
@@ -62,6 +63,7 @@ def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
         "tetris_buffer": DEFAULT_TETRIS_BUFFER,
         "max_stops_per_route": DEFAULT_MAX_STOPS,
         "time_limit_ms": DEFAULT_TIME_LIMIT_MS,
+        "vehicle_fixed_cost_m": DEFAULT_VEHICLE_FIXED_COST_M,
     }
     if not raw:
         return out
@@ -74,6 +76,10 @@ def _resolve_tunables(raw: dict[str, Any] | None) -> dict[str, float | int]:
     time_limit = int(raw.get("time_limit_ms") or 0)
     if time_limit > 0:
         out["time_limit_ms"] = min(time_limit, MAX_TIME_LIMIT_MS)
+    if "vehicle_fixed_cost_m" in raw and raw.get("vehicle_fixed_cost_m") is not None:
+        fixed_cost = int(raw.get("vehicle_fixed_cost_m") or 0)
+        if fixed_cost >= 0:
+            out["vehicle_fixed_cost_m"] = fixed_cost
     return out
 
 
@@ -220,6 +226,8 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
 
     distance_idx = routing.RegisterTransitCallback(distance_callback)
     routing.SetArcCostEvaluatorOfAllVehicles(distance_idx)
+    # Priority 1: Minimize active vehicle count (< drop_penalty = 100_000 so stops are never dropped just to save a vehicle).
+    routing.SetFixedCostOfAllVehicles(int(tunables["vehicle_fixed_cost_m"]))
 
     def demand_callback(from_index: int) -> int:
         from_node = manager.IndexToNode(from_index)
@@ -227,6 +235,21 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
 
     demand_idx = routing.RegisterUnaryTransitCallback(demand_callback)
     routing.AddDimensionWithVehicleCapacity(demand_idx, 0, vehicle_caps, True, "Capacity")
+
+    max_stops = int(tunables["max_stops_per_route"])
+
+    def stop_count_callback(from_index: int) -> int:
+        from_node = manager.IndexToNode(from_index)
+        return 1 if from_node >= num_depots else 0
+
+    stop_count_idx = routing.RegisterUnaryTransitCallback(stop_count_callback)
+    routing.AddDimensionWithVehicleCapacity(
+        stop_count_idx,
+        0,
+        [max(1, max_stops)] * len(vehicles_in),
+        True,
+        "StopCount",
+    )
 
     # Per-vehicle travel time in minutes (must not reuse the meters cost callback).
     time_callback_indices: list[int] = []
@@ -265,13 +288,19 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             time_callback_indices, 30, max_horizon, False, "Time"
         )
         time_dim = routing.GetDimensionOrDie("Time")
+        # Priority 2: Balanced time-window adherence and compact route span.
+        time_dim.SetSpanCostCoefficientForAllVehicles(10)
         for node_index in range(num_depots, size):
             tw = time_windows[node_index]
             if tw is None:
                 continue
             manager_index = manager.NodeToIndex(node_index)
             service = int(stops[node_index - num_depots]["service_minutes"])
-            time_dim.CumulVar(manager_index).SetRange(tw[0], max(tw[0], tw[1] - service))
+            hard_upper = max(tw[0], tw[1] - service)
+            time_dim.CumulVar(manager_index).SetRange(tw[0], hard_upper)
+            soft_upper = max(tw[0], hard_upper - min(10, (hard_upper - tw[0]) // 4))
+            if soft_upper < hard_upper:
+                time_dim.SetCumulVarSoftUpperBound(manager_index, soft_upper, 50)
 
     # Drop infeasible stops individually instead of collapsing the whole model.
     # Penalty high enough that assignment is preferred when feasible.
@@ -294,8 +323,6 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
                 allowed_vehicles.append(v_idx)
             # Allowed values include -1 so node can be dropped via disjunction if no feasible vehicle
             routing.VehicleVar(mgr_idx).SetValues([-1] + allowed_vehicles)
-
-    max_stops = int(tunables["max_stops_per_route"])
 
     search = pywrapcp.DefaultRoutingSearchParameters()
     search.first_solution_strategy = (
@@ -379,10 +406,20 @@ def solve_contract(req: dict[str, Any]) -> dict[str, Any]:
             )
 
     assigned_ids = {s.get("order_id") for r in routes for s in r["stops"]}
+    stop_cap_saturated = (
+        bool(routes)
+        and len(routes) == len(vehicles_in)
+        and all(len(r["stops"]) >= max_stops for r in routes)
+    )
     for stop in stops:
         oid = str(stop.get("order_id") or "")
         if oid and oid not in assigned_ids and not any(o["order_id"] == oid for o in orphans):
-            orphans.append({"order_id": oid, "reason": "unassigned"})
+            orphans.append(
+                {
+                    "order_id": oid,
+                    "reason": "max_stops_per_route" if stop_cap_saturated else "unassigned",
+                }
+            )
 
     elapsed_ms = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
     util_sum = sum(float(r["util_pct"]) for r in routes)

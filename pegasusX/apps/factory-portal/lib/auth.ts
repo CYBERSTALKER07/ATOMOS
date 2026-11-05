@@ -54,9 +54,10 @@ function readRefreshFromCookie(): string {
 
 export function persistSession(token: string, refreshToken?: string) {
   if (typeof document !== 'undefined') {
-    document.cookie = `${FACTORY_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+    const secureFlag = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${FACTORY_JWT_COOKIE}=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Strict${secureFlag}`;
     if (refreshToken) {
-      document.cookie = `${FACTORY_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Lax`;
+      document.cookie = `${FACTORY_REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}; path=/; max-age=604800; SameSite=Strict${secureFlag}`;
     }
   }
   if (isTauri()) {

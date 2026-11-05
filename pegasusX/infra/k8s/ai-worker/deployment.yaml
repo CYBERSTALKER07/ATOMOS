@@ -32,6 +32,13 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: ai-worker
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -67,6 +74,10 @@ spec:
             - name: http
               containerPort: 8081
               protocol: TCP
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sleep", "5"]
           envFrom:
             - configMapRef:
                 name: ai-worker-config

@@ -250,3 +250,70 @@ def test_all_stops_zero_volume_early_return_datetime():
     assert resp["solver_metadata"]["clamped"] is False
 
 
+def test_native_stop_count_dimension_multi_vehicle_spillover():
+    # With 4 stops, 2 vehicles, and max_stops_per_route = 2, the native StopCount
+    # dimension distributes 2 stops to each vehicle instead of post-solve slicing.
+    req = {
+        "v": "v1",
+        "trace_id": "t-stop-count-dim",
+        "stops": [
+            {"order_id": "o1", "lat": 41.301, "lng": 69.241, "volume_vu": 5.0},
+            {"order_id": "o2", "lat": 41.302, "lng": 69.242, "volume_vu": 5.0},
+            {"order_id": "o3", "lat": 41.303, "lng": 69.243, "volume_vu": 5.0},
+            {"order_id": "o4", "lat": 41.304, "lng": 69.244, "volume_vu": 5.0},
+        ],
+        "vehicles": [
+            {"vehicle_id": "v1", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24},
+            {"vehicle_id": "v2", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24},
+        ],
+        "tunables": {"max_stops_per_route": 2, "time_limit_ms": 1500},
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 4
+    assert resp["stats"]["stops_orphaned"] == 0
+    assert resp["stats"]["vehicles_used"] == 2
+    for route in resp["routes"]:
+        assert len(route["stops"]) == 2
+
+
+def test_vehicle_count_minimization_with_time_window_adherence():
+    # Priority 1 (vehicle minimization) + Priority 2 (time window adherence):
+    # Two stops within 2km and compatible time windows are consolidated onto 1 vehicle
+    # even when 2 vehicles are available at the depot.
+    req = {
+        "v": "v1",
+        "trace_id": "t-fleet-consolidation",
+        "stops": [
+            {
+                "order_id": "o1",
+                "lat": 41.305,
+                "lng": 69.245,
+                "volume_vu": 10.0,
+                "window_open": "08:00",
+                "window_close": "10:00",
+                "service_minutes": 5,
+            },
+            {
+                "order_id": "o2",
+                "lat": 41.310,
+                "lng": 69.250,
+                "volume_vu": 10.0,
+                "window_open": "08:30",
+                "window_close": "11:00",
+                "service_minutes": 5,
+            },
+        ],
+        "vehicles": [
+            {"vehicle_id": "v1", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24},
+            {"vehicle_id": "v2", "max_volume_vu": 100.0, "start_lat": 41.30, "start_lng": 69.24},
+        ],
+        "tunables": {"time_limit_ms": 1500},
+    }
+    resp = solve_contract(req)
+    assert resp["stats"]["stops_placed"] == 2
+    assert resp["stats"]["vehicles_used"] == 1
+    assert len(resp["routes"]) == 1
+    assert [s["order_id"] for s in resp["routes"][0]["stops"]] == ["o1", "o2"]
+
+
+
