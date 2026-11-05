@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -282,7 +281,10 @@ func (e *Engine) SubmitBlindDenominationCount(
 	sess.DenominationsUZS = cleanDenoms
 	sess.CountedCashMinor = countedMinor
 	sess.VarianceMinor = countedMinor - sess.ExpectedCashMinor
-	absVariance := int64(math.Abs(float64(sess.VarianceMinor)))
+	absVariance := sess.VarianceMinor
+	if absVariance < 0 {
+		absVariance = -absVariance
+	}
 
 	// Case 1: Exact match (Zero Variance).
 	if sess.VarianceMinor == 0 {

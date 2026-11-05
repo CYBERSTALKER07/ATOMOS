@@ -11,6 +11,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -120,9 +121,11 @@ func (s *Service) CompensateSaga(ctx context.Context, parentID string, created [
 
 	// 1. Mark Saga COMPENSATING in Spanner with lease extension
 	var retailerID string
-	_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	if _, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if row, err := txn.ReadRow(ctx, "ParentOrders", spanner.Key{parentID}, []string{"RetailerId"}); err == nil {
 			_ = row.Columns(&retailerID)
+		} else if spanner.ErrCode(err) != codes.NotFound {
+			return err
 		}
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ParentOrders", map[string]any{
@@ -133,7 +136,9 @@ func (s *Service) CompensateSaga(ctx context.Context, parentID string, created [
 				"UpdatedAt":      spanner.CommitTimestamp,
 			}),
 		})
-	})
+	}); err != nil {
+		s.log.Warn("saga compensate: failed to mark saga COMPENSATING", "parent_id", parentID, "err", err)
+	}
 
 	// 2. Discover child orders from Spanner if created list is empty or partial
 	childOrderIDs := make(map[string]struct{})
@@ -178,7 +183,7 @@ func (s *Service) CompensateSaga(ctx context.Context, parentID string, created [
 	}
 
 	// 4. Mark Saga COMPENSATED
-	_, _ = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	if _, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.UpdateMap("ParentOrders", map[string]any{
 				"ParentOrderId":  parentID,
@@ -201,7 +206,10 @@ func (s *Service) CompensateSaga(ctx context.Context, parentID string, created [
 			return err
 		}
 		return buf.Flush(ctx)
-	})
+	}); err != nil {
+		s.log.Error("saga compensate: failed to mark saga COMPENSATED", "parent_id", parentID, "err", err)
+		return fmt.Errorf("mark saga compensated: %w", err)
+	}
 
 	return nil
 }

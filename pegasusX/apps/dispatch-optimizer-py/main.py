@@ -125,6 +125,19 @@ class VehicleRoute(BaseModel):
 class FleetRouteResponse(BaseModel):
     routes: List[VehicleRoute]
 
+def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> int:
+    r = 6371000.0  # Earth radius in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+    return int(2.0 * r * math.atan2(math.sqrt(a), math.sqrt(1.0 - a)))
+
+def fleet_distance_metric(loc1: FleetLocation, loc2: FleetLocation) -> int:
+    if -90.0 <= loc1.x <= 90.0 and -90.0 <= loc2.x <= 90.0 and -180.0 <= loc1.y <= 180.0 and -180.0 <= loc2.y <= 180.0:
+        return haversine_distance_meters(loc1.x, loc1.y, loc2.x, loc2.y)
+    return int(math.hypot(loc1.x - loc2.x, loc1.y - loc2.y) * 1000)
+
 def create_cvrp_data_model(req: FleetRouteRequest):
     data = {}
     all_locations = [req.depot] + req.locations
@@ -136,8 +149,7 @@ def create_cvrp_data_model(req: FleetRouteRequest):
             if i == j:
                 row.append(0)
             else:
-                dist = math.hypot(loc1.x - loc2.x, loc1.y - loc2.y)
-                row.append(int(dist * 1000))
+                row.append(fleet_distance_metric(loc1, loc2))
         distance_matrix.append(row)
         
     data['distance_matrix'] = distance_matrix
