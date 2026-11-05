@@ -282,7 +282,7 @@ func (r *SpannerRepository) GetOntologyObject(ctx context.Context, cellID, objec
 			"objectID":   objectID,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -578,7 +578,7 @@ func (r *SpannerRepository) GetCashierSession(ctx context.Context, sessionID str
 		      FROM CashierBlindCountSessions WHERE SessionId = @sessionID`,
 		Params: map[string]any{"sessionID": sessionID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -621,7 +621,7 @@ func (r *SpannerRepository) ResolveRouteExpectedCash(ctx context.Context, suppli
 			"routeID":  routeID,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -798,7 +798,7 @@ func (r *SpannerRepository) GetLatestDVIRForVehicle(ctx context.Context, vehicle
 		      FROM FleetDVIRInspections WHERE VehicleId = @vehicleID ORDER BY CreatedAt DESC LIMIT 1`,
 		Params: map[string]any{"vehicleID": vehicleID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -872,7 +872,7 @@ func (r *SpannerRepository) GetAMLExposure(ctx context.Context, legalEntityTIN, 
 			"date":       date,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -975,7 +975,7 @@ func (r *SpannerRepository) GetReturnableContainerBalance(ctx context.Context, a
 			"containerSKU": containerSKU,
 		},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -1046,7 +1046,7 @@ func (r *SpannerRepository) GetOfflineQuotaLease(ctx context.Context, leaseID st
 		      FROM OfflineQuotaLeases WHERE LeaseId = @leaseID`,
 		Params: map[string]any{"leaseID": leaseID},
 	}
-	iter := r.client.Single().Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	row, err := iter.Next()

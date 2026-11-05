@@ -48,7 +48,7 @@ func (p *PlanningService) GetNetworkMode(ctx context.Context, supplierID string)
 	if p == nil || p.Spanner == nil || supplierID == "" {
 		return NetworkModeBalanced, nil
 	}
-	row, err := p.Spanner.Single().ReadRow(ctx, "NetworkOptimizationMode",
+	row, err := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).ReadRow(ctx, "NetworkOptimizationMode",
 		spanner.Key{supplierID}, []string{"Mode"})
 	if err != nil {
 		return NetworkModeBalanced, nil
@@ -131,7 +131,7 @@ func (p *PlanningService) listActiveLanes(ctx context.Context, supplierID, wareh
 		      WHERE SupplierId = @sid AND WarehouseId = @wid AND IsActive = TRUE`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
 	}
-	iter := p.Spanner.Single().Query(ctx, stmt)
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var lanes []SupplyLane
 	for {
@@ -158,7 +158,7 @@ func (p *PlanningService) listActiveLanes(ctx context.Context, supplierID, wareh
 func (p *PlanningService) fallbackFactory(ctx context.Context, supplierID, warehouseID string) (FactorySelection, error) {
 	var lat, lng float64
 	var primary, secondary string
-	whIter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	whIter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT IFNULL(Lat, 0), IFNULL(Lng, 0),
 		             COALESCE(PrimaryFactoryId, ''), COALESCE(SecondaryFactoryId, '')
 		      FROM Warehouses
@@ -174,7 +174,7 @@ func (p *PlanningService) fallbackFactory(ctx context.Context, supplierID, wareh
 	if err == nil {
 		_ = whRow.Columns(&lat, &lng, &primary, &secondary)
 	}
-	facIter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	facIter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT FactoryId, IFNULL(Lat, 0), IFNULL(Lng, 0), IsActive
 		      FROM Factories WHERE SupplierId = @sid AND IsActive = TRUE
 		      ORDER BY FactoryId`,
@@ -253,7 +253,7 @@ func (p *PlanningService) salesVelocity(ctx context.Context, supplierID, warehou
 		      LIMIT 500`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
 	}
-	iter := p.Spanner.Single().Query(ctx, stmt)
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var total int64
 	for {
@@ -302,7 +302,7 @@ func parsePlanningLineItems(raw []byte) []planningLineItem {
 }
 
 func (p *PlanningService) hasOpenSystemTransfer(ctx context.Context, supplierID, warehouseID, factoryID string) bool {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT TransferId FROM FactoryInternalTransfers
 		      WHERE SupplierId = @sid AND WarehouseId = @wid AND FactoryId = @fid
 		        AND Source IN UNNEST(@sources)
@@ -431,7 +431,7 @@ func (p *PlanningService) SeedDefaultLanes(ctx context.Context, supplierID strin
 	if p == nil || p.Spanner == nil || strings.TrimSpace(supplierID) == "" {
 		return nil
 	}
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT LaneId FROM SupplyLanes WHERE SupplierId = @sid LIMIT 1`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -441,7 +441,7 @@ func (p *PlanningService) SeedDefaultLanes(ctx context.Context, supplierID strin
 	} else if !errors.Is(err, iterator.Done) {
 		return err
 	}
-	whIter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	whIter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT WarehouseId, PrimaryFactoryId FROM Warehouses
 		      WHERE SupplierId = @sid AND IsActive = TRUE
 		        AND PrimaryFactoryId IS NOT NULL AND PrimaryFactoryId != ''`,
@@ -496,7 +496,7 @@ func (p *PlanningService) findBreachedSKUs(ctx context.Context, supplierID strin
 		params["sid"] = supplierID
 	}
 	sql += ` LIMIT 1000`
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{SQL: sql, Params: params})
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{SQL: sql, Params: params})
 	defer iter.Stop()
 	vu, _ := p.unitVolumes(ctx, supplierID)
 	var out []breachedSKU
@@ -533,7 +533,7 @@ func (p *PlanningService) unitVolumes(ctx context.Context, supplierID string) (m
 	if strings.TrimSpace(supplierID) == "" {
 		return result, nil
 	}
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT ProductId, UnitVolumeVU FROM Products WHERE SupplierId = @sid AND IsActive = true`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -599,7 +599,7 @@ func (p *PlanningService) RunPullMatrixForSupplier(ctx context.Context, supplier
 }
 
 func (p *PlanningService) listSupplierIDs(ctx context.Context) ([]string, error) {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT DISTINCT SupplierId FROM Warehouses WHERE IsActive = TRUE LIMIT 500`,
 	})
 	defer iter.Stop()
@@ -645,7 +645,7 @@ func (p *PlanningService) RunPullMatrixAll(ctx context.Context) error {
 }
 
 func (p *PlanningService) warehouseInventory(ctx context.Context, supplierID, warehouseID string) ([]shadowDemandEntry, error) {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT ProductId, QuantityOnHand, QuantityReserved FROM SupplierInventoryV2
 		      WHERE SupplierId = @sid AND WarehouseId = @wid`,
 		Params: map[string]any{"sid": supplierID, "wid": warehouseID},
@@ -685,7 +685,7 @@ func (p *PlanningService) futureDemandBySKU(ctx context.Context, supplierID, war
 	}
 	now := time.Now().In(loc)
 	horizon := now.Add(LookAheadWindowDays * 24 * time.Hour)
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId, ConfirmationStatus, Status, LineItemsJson
 		      FROM Orders
 		      WHERE SupplierId = @sid AND WarehouseId = @wid
@@ -726,7 +726,7 @@ func (p *PlanningService) futureDemandBySKU(ctx context.Context, supplierID, war
 }
 
 func (p *PlanningService) latestInsightID(ctx context.Context, warehouseID, productID string) string {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT InsightId FROM ReplenishmentInsights
 		      WHERE WarehouseId = @wid AND ProductId = @pid
 		      ORDER BY CreatedAt DESC LIMIT 1`,
@@ -809,7 +809,7 @@ func (p *PlanningService) RunLookAheadForSupplier(ctx context.Context, supplierI
 		p.emitLookAheadCompleted(ctx, supplierID, source, time.Since(start).Milliseconds())
 		return nil
 	}
-	whIter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	whIter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL:    `SELECT WarehouseId FROM Warehouses WHERE SupplierId = @sid AND IsActive = TRUE`,
 		Params: map[string]any{"sid": supplierID},
 	})
@@ -905,7 +905,7 @@ func (p *PlanningService) RunKillSwitch(ctx context.Context, supplierID, actor, 
 }
 
 func (p *PlanningService) laneTransitHours(ctx context.Context, supplierID, factoryID, warehouseID string) float64 {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT DampenedTransitHours FROM SupplyLanes
 		      WHERE SupplierId = @sid AND FactoryId = @fid AND WarehouseId = @wid AND IsActive = TRUE
 		      LIMIT 1`,
@@ -924,7 +924,7 @@ func (p *PlanningService) laneTransitHours(ctx context.Context, supplierID, fact
 }
 
 func (p *PlanningService) slaAlreadyRaised(ctx context.Context, transferID, level string) bool {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT EventId FROM FactorySLAEvents
 		      WHERE TransferId = @tid AND EscalationLevel = @lvl LIMIT 1`,
 		Params: map[string]any{"tid": transferID, "lvl": level},
@@ -991,7 +991,7 @@ func (p *PlanningService) ScanTransferTransitSLA(ctx context.Context) error {
 	if p == nil || p.Spanner == nil || !PlanningEnabled() {
 		return nil
 	}
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT TransferId, SupplierId, FactoryId, COALESCE(WarehouseId, ''), State, CreatedAt
 		      FROM FactoryInternalTransfers
 		      WHERE State IN UNNEST(@states)
@@ -1162,7 +1162,7 @@ func (p *PlanningService) RunBatchDispatch(ctx context.Context, factoryID, suppl
 }
 
 func (p *PlanningService) fetchDispatchTransfers(ctx context.Context, factoryID string) ([]batchableTransfer, error) {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT t.TransferId, COALESCE(t.WarehouseId, ''), t.TotalVolumeVU,
 		             IFNULL(w.Lat, 0), IFNULL(w.Lng, 0)
 		      FROM FactoryInternalTransfers t
@@ -1196,7 +1196,7 @@ func (p *PlanningService) fetchDispatchTransfers(ctx context.Context, factoryID 
 }
 
 func (p *PlanningService) factoryCoords(ctx context.Context, factoryID string) (float64, float64, error) {
-	row, err := p.Spanner.Single().ReadRow(ctx, "Factories", spanner.Key{factoryID}, []string{"Lat", "Lng"})
+	row, err := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).ReadRow(ctx, "Factories", spanner.Key{factoryID}, []string{"Lat", "Lng"})
 	if err != nil {
 		return 0, 0, nil
 	}
@@ -1208,7 +1208,7 @@ func (p *PlanningService) factoryCoords(ctx context.Context, factoryID string) (
 }
 
 func (p *PlanningService) fetchFactoryVehicles(ctx context.Context, factoryID, supplierID string) ([]factoryVehicle, error) {
-	iter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	iter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT VehicleId, MaxVolumeVU FROM Vehicles
 		      WHERE SupplierId = @sid AND IsActive = TRUE
 		        AND HomeNodeType = 'FACTORY' AND HomeNodeId = @fid`,
@@ -1230,7 +1230,7 @@ func (p *PlanningService) fetchFactoryVehicles(ctx context.Context, factoryID, s
 		}
 		vehicles = append(vehicles, v)
 	}
-	drvIter := p.Spanner.Single().Query(ctx, spanner.Statement{
+	drvIter := p.Spanner.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, spanner.Statement{
 		SQL: `SELECT DriverId, COALESCE(VehicleId, '') FROM Drivers
 		      WHERE SupplierId = @sid AND IsActive = TRUE AND OnShift = TRUE
 		        AND HomeNodeType = 'FACTORY' AND HomeNodeId = @fid`,
