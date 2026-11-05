@@ -52,12 +52,20 @@ variable "master_ipv4_cidr_block" {
   description = "The /28 CIDR block reserved for the GKE master control plane."
   type        = string
   default     = "172.16.0.0/28"
+  validation {
+    condition     = can(cidrhost(var.master_ipv4_cidr_block, 0))
+    error_message = "master_ipv4_cidr_block must be a valid IPv4 CIDR block."
+  }
 }
 
 variable "release_channel" {
   description = "The GKE release channel (REGULAR, RAPID, STABLE)."
   type        = string
   default     = "REGULAR"
+  validation {
+    condition     = contains(["RAPID", "REGULAR", "STABLE"], var.release_channel)
+    error_message = "release_channel must be one of RAPID, REGULAR, or STABLE."
+  }
 }
 
 variable "authorized_ipv4_cidr_blocks" {

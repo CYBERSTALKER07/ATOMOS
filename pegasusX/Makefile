@@ -341,6 +341,12 @@ supplier-portal-dev:
 terraform-init:
 	cd infra/terraform && terraform init -backend-config=backend-ssmr.hcl
 
+terraform-fmt:
+	cd infra/terraform && terraform fmt -check -recursive
+
+terraform-validate:
+	cd infra/terraform && terraform init -backend=false -input=false && terraform validate
+
 terraform-plan:
 	cd infra/terraform && terraform plan
 

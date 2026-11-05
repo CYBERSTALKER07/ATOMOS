@@ -15,6 +15,7 @@ locals {
     {
       managed_by      = "terraform"
       system          = "pegasusx"
+      cell            = local.effective_cell_id
       environment     = var.environment
       cost_center     = "platform-engineering"
       owner           = "sre-platform"
@@ -22,6 +23,35 @@ locals {
     },
     var.labels
   )
+
+  required_gcp_apis = toset([
+    "compute.googleapis.com",
+    "container.googleapis.com",
+    "spanner.googleapis.com",
+    "redis.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "secretmanager.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "managedkafka.googleapis.com",
+    "cloudkms.googleapis.com",
+    "monitoring.googleapis.com",
+    "logging.googleapis.com",
+    "cloudbilling.googleapis.com",
+    "billingbudgets.googleapis.com",
+    "routes.googleapis.com",
+    "geocoding-backend.googleapis.com",
+    "places.googleapis.com",
+    "iam.googleapis.com",
+  ])
+}
+
+# 0. Phase 0: Project API Activation
+resource "google_project_service" "apis" {
+  for_each                   = local.required_gcp_apis
+  project                    = var.project_id
+  service                    = each.value
+  disable_dependent_services = false
+  disable_on_destroy         = false
 }
 
 # 1. Phase 1: Networking Module
@@ -32,13 +62,17 @@ module "networking" {
   region             = var.region
   network_name       = var.network_name
   subnet_name        = var.subnet_name
-  primary_cidr_block = var.primary_cidr_block
-  pod_cidr_block     = var.pod_cidr_block
-  service_cidr_block = var.service_cidr_block
+  primary_cidr_block = local.effective_primary_cidr_block
+  pod_cidr_block     = local.effective_pod_cidr_block
+  service_cidr_block = local.effective_service_cidr_block
   flow_log_interval  = var.vpc_flow_log_interval
   flow_log_sampling  = var.vpc_flow_log_sampling
   environment        = var.environment
   labels             = merge(local.base_finops_labels, { tier = "networking" })
+
+  depends_on = [
+    google_project_service.apis
+  ]
 }
 
 # 2. Phase 2: Database Module (Cloud Spanner & Memorystore Redis 7.0 HA)
@@ -61,6 +95,10 @@ module "database" {
   deletion_protection           = var.deletion_protection
   environment                   = var.environment
   labels                        = merge(local.base_finops_labels, { tier = "database" })
+
+  depends_on = [
+    google_project_service.apis
+  ]
 }
 
 # 3. Phase 2: Messaging Module (Managed Apache Kafka & 10 Canonical Topics)
@@ -75,6 +113,10 @@ module "messaging" {
   kafka_memory_bytes = var.kafka_memory_bytes
   environment        = var.environment
   labels             = merge(local.base_finops_labels, { tier = "messaging" })
+
+  depends_on = [
+    google_project_service.apis
+  ]
 }
 
 # 4. Phase 2: Storage & Security Module (4 GCS Buckets, Cloud Armor WAF, Secrets, IAM Workload Identity)
@@ -90,7 +132,15 @@ module "storage_security" {
   tf_state_bucket_name    = var.tf_state_bucket_name
   k8s_namespace           = var.k8s_namespace
   enable_cmek_iam_binding = var.enable_cmek_iam_binding
+  gsm_regional_only       = var.gsm_regional_only
+  cell_scoped_iam         = var.cell_scoped_iam
+  spanner_instance_name   = module.database.spanner_instance_name
+  spanner_database_name   = module.database.spanner_database_name
   labels                  = merge(local.base_finops_labels, { tier = "storage" })
+
+  depends_on = [
+    google_project_service.apis
+  ]
 }
 
 # 5. Phase 3: Compute Module (GKE Autopilot / Standard Regional Cluster + Spot Pool + CUDs)
@@ -118,6 +168,7 @@ module "compute" {
   labels                        = merge(local.base_finops_labels, { tier = "compute" })
 
   depends_on = [
+    google_project_service.apis,
     module.networking
   ]
 }
@@ -134,4 +185,8 @@ module "monitoring" {
   billing_account_id    = var.billing_account_id
   monthly_budget_usd    = var.monthly_budget_usd
   labels                = merge(local.base_finops_labels, { tier = "monitoring" })
+
+  depends_on = [
+    google_project_service.apis
+  ]
 }

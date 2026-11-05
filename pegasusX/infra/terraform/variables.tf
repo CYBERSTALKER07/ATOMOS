@@ -28,8 +28,8 @@ variable "environment" {
   type        = string
   default     = "production"
   validation {
-    condition     = contains(["production", "staging", "development", "ssmr"], var.environment)
-    error_message = "The environment variable must be one of: 'production', 'staging', 'development', or 'ssmr'."
+    condition     = contains(["production", "staging", "development", "dev", "ssmr", "cell"], var.environment)
+    error_message = "The environment variable must be one of: 'production', 'staging', 'development', 'dev', 'ssmr', or 'cell'."
   }
 }
 

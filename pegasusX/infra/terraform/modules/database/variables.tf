@@ -30,6 +30,10 @@ variable "spanner_processing_units" {
   description = "The number of processing units allocated to Cloud Spanner (100 to 1000 PU per node)."
   type        = number
   default     = 100
+  validation {
+    condition     = var.spanner_processing_units >= 100 && var.spanner_processing_units % 100 == 0
+    error_message = "spanner_processing_units must be at least 100 and a multiple of 100."
+  }
 }
 
 variable "spanner_autoscaling_config" {
@@ -64,6 +68,10 @@ variable "spanner_backup_retention_days" {
   description = "Number of days to retain automated daily backups."
   type        = number
   default     = 30
+  validation {
+    condition     = var.spanner_backup_retention_days >= 1 && var.spanner_backup_retention_days <= 365
+    error_message = "spanner_backup_retention_days must be between 1 and 365 days."
+  }
 }
 
 variable "spanner_backup_cron_spec" {
@@ -82,12 +90,20 @@ variable "redis_tier" {
   description = "The service tier of the Redis instance (BASIC or STANDARD_HA)."
   type        = string
   default     = "STANDARD_HA"
+  validation {
+    condition     = contains(["BASIC", "STANDARD_HA"], var.redis_tier)
+    error_message = "redis_tier must be either BASIC or STANDARD_HA."
+  }
 }
 
 variable "redis_memory_size_gb" {
   description = "Redis memory capacity in GiB (e.g. 2 for SSMR, 5 for Production)."
   type        = number
   default     = 5
+  validation {
+    condition     = var.redis_memory_size_gb >= 1 && var.redis_memory_size_gb <= 300
+    error_message = "redis_memory_size_gb must be between 1 and 300 GiB."
+  }
 }
 
 variable "redis_version" {

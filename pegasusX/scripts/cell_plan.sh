@@ -58,10 +58,12 @@ bash "$ROOT/scripts/assert_cell_backend.sh"
 WORKDIR="$CELL_DIR/workdir"
 rm -rf "$WORKDIR"
 mkdir -p "$WORKDIR"
-# Link the root modules but omit the GCS backend block.
+trap 'rm -rf "$WORKDIR"' EXIT
+# Link the root modules and root .tf files, but omit the GCS backend block.
 while IFS= read -r -d '' f; do
   ln -s "$f" "$WORKDIR/"
 done < <(find "$TF" -maxdepth 1 \( -name '*.tf' -o -name '.terraform.lock.hcl' \) ! -name 'backend.gcs.tf' -print0)
+ln -s "$TF/modules" "$WORKDIR/modules"
 ln -s "$TFVARS" "$WORKDIR/cell.tfvars"
 
 export TF_DATA_DIR="$CELL_DIR/.terraform"

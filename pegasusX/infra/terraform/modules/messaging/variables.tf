@@ -29,6 +29,10 @@ variable "kafka_vcpu_count" {
   description = "The number of vCPUs allocated per broker in the Managed Kafka cluster."
   type        = number
   default     = 3
+  validation {
+    condition     = var.kafka_vcpu_count >= 3
+    error_message = "kafka_vcpu_count must be at least 3 vCPUs for multi-zone HA."
+  }
 }
 
 variable "kafka_memory_bytes" {

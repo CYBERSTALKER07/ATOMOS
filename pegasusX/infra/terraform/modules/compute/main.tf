@@ -95,6 +95,18 @@ resource "google_container_cluster" "primary" {
     vulnerability_mode = "VULNERABILITY_BASIC"
   }
 
+  # Cloud Logging & Managed Service for Prometheus Observability
+  logging_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  }
+
+  monitoring_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+    managed_prometheus {
+      enabled = true
+    }
+  }
+
   # FinOps GKE Cost Allocation Tracking (Namespace and Label Breakdown)
   cost_management_config {
     enabled = true
@@ -138,8 +150,14 @@ resource "google_container_node_pool" "primary_nodes" {
 
   node_config {
     machine_type    = var.standard_node_machine_type
+    disk_size_gb    = 100
+    disk_type       = "pd-balanced"
     service_account = google_service_account.gke_node_sa.email
     oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
 
     workload_metadata_config {
       mode = "GKE_METADATA"
@@ -180,8 +198,14 @@ resource "google_container_node_pool" "spot_nodes" {
   node_config {
     spot            = true
     machine_type    = var.spot_node_machine_type
+    disk_size_gb    = 100
+    disk_type       = "pd-balanced"
     service_account = google_service_account.gke_node_sa.email
     oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
 
     workload_metadata_config {
       mode = "GKE_METADATA"
@@ -228,5 +252,32 @@ resource "google_compute_region_commitment" "baseline_cud" {
   resources {
     type   = "MEMORY"
     amount = tostring(var.cud_memory_mb)
+  }
+}
+
+# 7. Cell-Local Artifact Registry Repository for Container Images (with FinOps Cleanup Policies)
+resource "google_artifact_registry_repository" "cell_images" {
+  project       = var.project_id
+  location      = var.region
+  repository_id = "${var.cluster_name}-images"
+  format        = "DOCKER"
+  description   = "PegasusX container image repository for ${var.cluster_name} (${var.environment})"
+  labels        = var.labels
+
+  cleanup_policies {
+    id     = "delete-untagged-images-7d"
+    action = "DELETE"
+    condition {
+      tag_state  = "UNTAGGED"
+      older_than = "604800s"
+    }
+  }
+
+  cleanup_policies {
+    id     = "keep-recent-tagged-releases"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 15
+    }
   }
 }

@@ -375,11 +375,15 @@ locals {
     "pegasusx-soliq-ofd-api-key",
     "pegasusx-soliq-ofd-pinfl",
     "pegasusx-global-pay-secret",
+    "pegasusx-adyen-secret",
+    "pegasusx-stripe-secret",
     "pegasusx-payme-secret",
     "pegasusx-click-secret",
     "pegasusx-firebase-sa-key",
     "pegasusx-jwt-signing-key",
-    "pegasusx-sms-playmobile-key"
+    "pegasusx-sms-playmobile-key",
+    "pegasusx-google-maps-api-key",
+    "pegasusx-kafka-bootstrap-servers"
   ])
 }
 
@@ -389,7 +393,18 @@ resource "google_secret_manager_secret" "app_secrets" {
   project   = var.project_id
 
   replication {
-    auto {}
+    dynamic "auto" {
+      for_each = var.gsm_regional_only ? [] : [1]
+      content {}
+    }
+    dynamic "user_managed" {
+      for_each = var.gsm_regional_only ? [1] : []
+      content {
+        replicas {
+          location = var.region
+        }
+      }
+    }
   }
 
   labels = var.labels
@@ -451,7 +466,7 @@ resource "google_service_account_iam_member" "workload_identity_binding_backend_
   member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.k8s_namespace}/backend-go]"
 }
 
-# 4.3 Assign Project-Level IAM Roles to Service Accounts
+# 4.3 Assign Project-Level IAM Roles to Service Accounts (Filtered when cell_scoped_iam = true)
 locals {
   sa_role_pairs = flatten([
     for sa_name, sa_cfg in local.service_accounts : [
@@ -460,6 +475,7 @@ locals {
         role    = role
         key     = "${sa_name}-${role}"
       }
+      if !var.cell_scoped_iam || (role != "roles/spanner.databaseUser" && role != "roles/secretmanager.secretAccessor")
     ]
   ])
 }
@@ -469,6 +485,24 @@ resource "google_project_iam_member" "sa_project_roles" {
   project  = var.project_id
   role     = each.value.role
   member   = "serviceAccount:${google_service_account.workload_sa[each.value.sa_name].email}"
+}
+
+# 4.4 Cell-Scoped Database & Secret IAM Bindings (Enforced when cell_scoped_iam = true)
+resource "google_spanner_database_iam_member" "workload_spanner_db" {
+  for_each = var.cell_scoped_iam ? local.service_accounts : {}
+  project  = var.project_id
+  instance = var.spanner_instance_name
+  database = var.spanner_database_name
+  role     = "roles/spanner.databaseUser"
+  member   = "serviceAccount:${google_service_account.workload_sa[each.key].email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_secret_accessor" {
+  for_each  = var.cell_scoped_iam ? local.secrets : toset([])
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.app_secrets[each.key].secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.workload_sa["backend-go-sa"].email}"
 }
 
 # 5. Customer-Managed Encryption Keys (CMEK) via Google Cloud KMS

@@ -174,7 +174,31 @@ resource "google_compute_firewall" "allow_gke_master" {
   }
 }
 
-# 8.4 Default Low-Priority Deny-All Ingress for Regulatory Compliance
+# 8.4 Allow Identity-Aware Proxy (IAP) TCP Forwarding for Zero-Trust Bastion / Node Access
+resource "google_compute_firewall" "allow_iap" {
+  name        = "${var.network_name}-allow-iap"
+  network     = google_compute_network.vpc.name
+  project     = var.project_id
+  description = "Allow Google Cloud Identity-Aware Proxy (IAP) TCP forwarding for SSH diagnostics"
+  priority    = 1000
+  direction   = "INGRESS"
+
+  source_ranges = [
+    "35.235.240.0/20"
+  ]
+
+  target_tags = [
+    "iap-bastion",
+    "gke-node"
+  ]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+}
+
+# 8.5 Default Low-Priority Deny-All Ingress for Regulatory Compliance
 resource "google_compute_firewall" "deny_all_ingress" {
   name        = "${var.network_name}-deny-all-ingress"
   network     = google_compute_network.vpc.name

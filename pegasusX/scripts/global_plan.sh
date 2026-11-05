@@ -38,6 +38,7 @@ fi
 WORKDIR="$TF/global-plan-workdir"
 rm -rf "$WORKDIR"
 mkdir -p "$WORKDIR"
+trap 'rm -rf "$WORKDIR"' EXIT
 while IFS= read -r -d '' f; do
   ln -s "$f" "$WORKDIR/"
 done < <(find "$G" -maxdepth 1 \( -name '*.tf' -o -name '.terraform.lock.hcl' \) ! -name 'backend.gcs.tf' -print0)

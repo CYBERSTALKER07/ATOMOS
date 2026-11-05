@@ -23,6 +23,11 @@ output "spanner_database_name" {
   value       = google_spanner_database.main.name
 }
 
+output "spanner_database_uri" {
+  description = "The full GCP resource URI of the Cloud Spanner database."
+  value       = "projects/${var.project_id}/instances/${google_spanner_instance.ledger.name}/databases/${google_spanner_database.main.name}"
+}
+
 output "spanner_backup_schedule_id" {
   description = "The identifier of the Cloud Spanner backup schedule."
   value       = google_spanner_backup_schedule.daily_full.id

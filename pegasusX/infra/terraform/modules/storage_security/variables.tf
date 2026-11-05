@@ -92,6 +92,30 @@ variable "enable_cmek_iam_binding" {
   default     = false
 }
 
+variable "gsm_regional_only" {
+  description = "Whether Secret Manager secrets must use user-managed regional replication in var.region (required for non-UZ data residency cells)."
+  type        = bool
+  default     = false
+}
+
+variable "cell_scoped_iam" {
+  description = "Whether to scope Spanner and Secret Manager IAM bindings to the cell database and individual secrets rather than project-wide."
+  type        = bool
+  default     = true
+}
+
+variable "spanner_instance_name" {
+  description = "Cloud Spanner instance name for database-scoped IAM binding when cell_scoped_iam = true."
+  type        = string
+  default     = "pegasusx-ssmr-spanner"
+}
+
+variable "spanner_database_name" {
+  description = "Cloud Spanner database name for database-scoped IAM binding when cell_scoped_iam = true."
+  type        = string
+  default     = "main"
+}
+
 variable "labels" {
   description = "Resource labels applied to storage and security resources."
   type        = map(string)

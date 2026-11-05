@@ -1,0 +1,56 @@
+name: Terraform Infrastructure CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/terraform/**"
+      - "scripts/*cell*.sh"
+      - "scripts/global_plan.sh"
+      - ".github/workflows/terraform-ci.yml"
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - "scripts/*cell*.sh"
+      - "scripts/global_plan.sh"
+      - ".github/workflows/terraform-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-validate:
+    name: Format · Validate · Cell Isolation Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Terraform Format Check
+        working-directory: infra/terraform
+        run: terraform fmt -check -recursive
+
+      - name: Cell Backend & Repo Hygiene Gates
+        run: |
+          bash scripts/assert_cell_backend.sh
+          bash scripts/ci_repo_hygiene_gate.sh
+
+      - name: Validate Root Module
+        working-directory: infra/terraform
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Validate Multi-Cell & Global Plane Stacks
+        run: |
+          bash scripts/cell_project_plan.sh eu
+          bash scripts/global_plan.sh
+          bash scripts/cell_plan.sh eu
+          bash scripts/cell_plan.sh uz

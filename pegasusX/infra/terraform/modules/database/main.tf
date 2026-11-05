@@ -67,6 +67,14 @@ resource "google_spanner_backup_schedule" "daily_full" {
   }
 
   full_backup_spec {}
+
+  encryption_config {
+    encryption_type = "GOOGLE_DEFAULT_ENCRYPTION"
+  }
+
+  depends_on = [
+    google_spanner_database.main
+  ]
 }
 
 # 4. Cloud Memorystore for Redis 7.0 HA Instance (Standard HA Tier with Cross-Zone Replica)

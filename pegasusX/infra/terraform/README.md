@@ -1,17 +1,32 @@
 # pegasusX Terraform
 
 > [!NOTE]
-> **Current Project State:** GCP Migration (Phase 2)
-> *Status:* Re-provisioning GKE Autopilot to GKE Standard (pd-standard) to resolve SSD quota limits. Migrations pending quota unblock.
+> **Architecture:** Modular GCP Infrastructure as Code (Terraform >= 1.5, `hashicorp/google` & `hashicorp/google-beta` >= 5.0).
+> Composes 6 domain modules (`networking`, `database`, `messaging`, `storage_security`, `compute`, `monitoring`) plus global control-plane modules (`global_dns`, `global_ar`) and multi-cell governance checks (`cell_governance.tf`).
 
-This module provisions baseline cloud infrastructure for an isolated pegasusX SSMR sandbox:
+This root module provisions complete cloud infrastructure for an isolated pegasusX cell or environment:
 
-- VPC network
-- Cloud Spanner instance + database
-- Memorystore Redis (STANDARD_HA)
-- Secret Manager entries for Kafka + Firebase runtime wiring
-- Tenant-scoped secret names for orders, spatial, realtime, and webhook Kafka topics
-- Optional ai-worker launch-readiness observability resources (dashboard, alert policies, optional uptime checks)
+- **Phase 0 (`google_project_service.apis`)**: Automated activation of 17 required GCP service APIs
+- **Phase 1 (`modules/networking`)**: Custom VPC, regional subnet with GKE Pod/Service secondary CIDR ranges, Cloud Router, Cloud NAT with 2 deterministic static external egress IPs (Soliq OFD & banking allowlists), Private Service Access (PSA) VPC peering, IAP TCP forwarding (`35.235.240.0/20`), and zero-trust firewall rules
+- **Phase 2 (`modules/database`)**: Cloud Spanner regional multi-zone ledger with PU autoscaling (100–400 PUs), PITR (`7d`), automated daily full backup schedule, and Cloud Memorystore Redis 7.0 HA with TLS, AUTH, and RDB snapshot persistence
+- **Phase 2 (`modules/messaging`)**: Google Managed Service for Apache Kafka cluster (3 AZ brokers) and 10 canonical partitioned topics
+- **Phase 2 (`modules/storage_security`)**: 4 GCS buckets with 4-tier FinOps lifecycle policies & CMEK KMS encryption, Cloud Armor OWASP Top 10 + rate-limiting WAF, Secret Manager (with `gsm_regional_only` data-residency support), and Workload Identity IAM (`cell_scoped_iam` database/secret-level scoping)
+- **Phase 3 (`modules/compute`)**: GKE Autopilot/Standard regional cluster, Managed Service for Prometheus & Cloud Logging, Spot VM node pool, Regional Compute Engine CUDs, and per-cell Docker Artifact Registry with cleanup policies
+- **Phase 4 (`modules/monitoring`)**: 24 Cloud Monitoring alert policies (including SLO & FinOps anomaly detection), synthetic `/healthz` uptime check, and unified SRE telemetry dashboard
+
+## Multi-Environment Deployment (`environments/*.tfvars`)
+
+```bash
+cd infra/terraform
+terraform init -backend-config=backend-ssmr.hcl
+terraform fmt -check -recursive
+terraform validate
+
+# Plan & apply per environment (dev, staging, production)
+terraform plan -var-file=environments/dev.tfvars -out=tfplan
+terraform plan -var-file=environments/staging.tfvars -out=tfplan
+terraform plan -var-file=environments/production.tfvars -out=tfplan
+```
 
 ## Usage
 

@@ -114,3 +114,74 @@ output "monitoring_dashboard_id" {
   description = "The ID of the unified platform telemetry dashboard."
   value       = module.monitoring.dashboard_id
 }
+
+# 7. Kubernetes Render & Multi-Cell Governance Outputs
+output "artifact_registry_url" {
+  description = "The Docker registry URL for the cell Artifact Registry repository."
+  value       = module.compute.artifact_registry_url
+}
+
+output "backend_runtime_service_account" {
+  description = "The email of the primary backend-go Workload Identity Google Service Account."
+  value       = module.storage_security.service_account_emails["backend-go-sa"]
+}
+
+output "spanner_database_uri" {
+  description = "The full GCP resource URI of the Cloud Spanner database."
+  value       = module.database.spanner_database_uri
+}
+
+output "managed_kafka_bootstrap" {
+  description = "Bootstrap host:port endpoint for the Google Managed Service for Apache Kafka cluster."
+  value       = module.messaging.managed_kafka_bootstrap
+}
+
+output "jwt_secret_id" {
+  description = "Secret Manager secret ID for JWT signing."
+  value       = module.storage_security.secret_ids["pegasusx-jwt-signing-key"]
+}
+
+output "global_pay_webhook_secret_id" {
+  description = "Secret Manager secret ID for Global Pay webhook verification."
+  value       = module.storage_security.secret_ids["pegasusx-global-pay-secret"]
+}
+
+output "adyen_webhook_secret_id" {
+  description = "Secret Manager secret ID for Adyen webhook verification."
+  value       = module.storage_security.secret_ids["pegasusx-adyen-secret"]
+}
+
+output "stripe_webhook_secret_id" {
+  description = "Secret Manager secret ID for Stripe webhook verification."
+  value       = module.storage_security.secret_ids["pegasusx-stripe-secret"]
+}
+
+output "google_maps_api_key_secret_id" {
+  description = "Secret Manager secret ID for Google Maps Platform server API key."
+  value       = module.storage_security.secret_ids["pegasusx-google-maps-api-key"]
+}
+
+output "kafka_bootstrap_secret" {
+  description = "Secret Manager secret ID for Kafka bootstrap servers."
+  value       = module.storage_security.secret_ids["pegasusx-kafka-bootstrap-servers"]
+}
+
+output "cell_id" {
+  description = "Logical cell identifier for this deployment."
+  value       = local.effective_cell_id
+}
+
+output "api_hostname" {
+  description = "Public API hostname for this cell."
+  value       = var.api_hostname
+}
+
+output "k8s_namespace" {
+  description = "Kubernetes namespace used for Workload Identity federation."
+  value       = var.k8s_namespace
+}
+
+output "terraform_state_prefix" {
+  description = "Declared GCS remote state prefix for this cell."
+  value       = var.terraform_state_prefix
+}

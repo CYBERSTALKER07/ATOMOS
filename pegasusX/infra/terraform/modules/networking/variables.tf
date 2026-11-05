@@ -33,12 +33,20 @@ variable "primary_cidr_block" {
   description = "The primary CIDR block for GKE nodes and VMs."
   type        = string
   default     = "10.10.0.0/20"
+  validation {
+    condition     = can(cidrhost(var.primary_cidr_block, 0))
+    error_message = "primary_cidr_block must be a valid IPv4 CIDR notation."
+  }
 }
 
 variable "pod_cidr_block" {
   description = "The secondary CIDR block allocated for GKE Pods."
   type        = string
   default     = "10.20.0.0/16"
+  validation {
+    condition     = can(cidrhost(var.pod_cidr_block, 0))
+    error_message = "pod_cidr_block must be a valid IPv4 CIDR notation."
+  }
 }
 
 variable "pod_ip_range_name" {
@@ -51,6 +59,10 @@ variable "service_cidr_block" {
   description = "The secondary CIDR block allocated for GKE ClusterIP Services."
   type        = string
   default     = "10.30.0.0/20"
+  validation {
+    condition     = can(cidrhost(var.service_cidr_block, 0))
+    error_message = "service_cidr_block must be a valid IPv4 CIDR notation."
+  }
 }
 
 variable "service_ip_range_name" {
@@ -63,12 +75,20 @@ variable "psa_prefix_length" {
   description = "The prefix length for Private Service Access (PSA) global internal address range."
   type        = number
   default     = 24
+  validation {
+    condition     = var.psa_prefix_length >= 16 && var.psa_prefix_length <= 24
+    error_message = "psa_prefix_length must be between 16 and 24."
+  }
 }
 
 variable "gke_master_cidr_block" {
   description = "The CIDR block reserved for the GKE master control plane."
   type        = string
   default     = "172.16.0.0/28"
+  validation {
+    condition     = can(cidrhost(var.gke_master_cidr_block, 0))
+    error_message = "gke_master_cidr_block must be a valid IPv4 CIDR block."
+  }
 }
 
 variable "flow_log_interval" {
@@ -81,6 +101,10 @@ variable "flow_log_sampling" {
   description = "Sampling rate (0.0 to 1.0) for VPC subnet flow logs (default 0.1 for FinOps cost optimization)."
   type        = number
   default     = 0.1
+  validation {
+    condition     = var.flow_log_sampling >= 0.0 && var.flow_log_sampling <= 1.0
+    error_message = "flow_log_sampling must be between 0.0 and 1.0."
+  }
 }
 
 variable "environment" {
