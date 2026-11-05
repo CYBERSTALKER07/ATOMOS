@@ -18,6 +18,11 @@ const (
 // sweeps unpaid PENDING orders that have exceeded their reservation TTL,
 // canceling them, restoring inventory reservations, and releasing credit reserves.
 func StartStaleReservationSweeper(svc *Service) {
+	StartStaleReservationSweeperContext(context.Background(), svc)
+}
+
+// StartStaleReservationSweeperContext starts the sweeper with context cancellation support.
+func StartStaleReservationSweeperContext(ctx context.Context, svc *Service) {
 	if svc == nil || svc.spannerClient == nil {
 		return
 	}
@@ -30,20 +35,29 @@ func StartStaleReservationSweeper(svc *Service) {
 	go func() {
 		// Initial jitter to avoid thundering herd on cluster reboot
 		jitter := time.Duration(rand.Int63n(int64(10 * time.Second)))
-		time.Sleep(jitter)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(jitter):
+		}
 
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			if n, err := svc.RunStaleReservationSweeperOnce(ctx); err != nil {
-				if svc.log != nil {
-					svc.log.Warn("stale reservation sweeper tick failed", "err", err)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				sweepCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+				if n, err := svc.RunStaleReservationSweeperOnce(sweepCtx); err != nil {
+					if svc.log != nil {
+						svc.log.Warn("stale reservation sweeper tick failed", "err", err)
+					}
+				} else if n > 0 && svc.log != nil {
+					svc.log.Info("stale reservation sweeper completed pass", "released_count", n)
 				}
-			} else if n > 0 && svc.log != nil {
-				svc.log.Info("stale reservation sweeper completed pass", "released_count", n)
+				cancel()
 			}
-			cancel()
 		}
 	}()
 }

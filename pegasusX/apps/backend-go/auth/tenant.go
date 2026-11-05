@@ -11,6 +11,9 @@ import (
 // Phase 1 of Gate 5 uses a single key shared by human JWT and partner principal.
 type TenantContext struct {
 	SupplierID string
+	TenantType string
+	TenantID   string
+	KeyID      string
 	// Source is "jwt", "partner", or "worker" for audit/debug.
 	Source string
 }
@@ -20,8 +23,40 @@ type tenantCtxKey struct{}
 // WithTenant attaches TenantContext to ctx. Prefer middleware; services read via TenantFromContext.
 func WithTenant(ctx context.Context, t TenantContext) context.Context {
 	t.SupplierID = strings.TrimSpace(t.SupplierID)
+	t.TenantType = strings.TrimSpace(t.TenantType)
+	t.TenantID = strings.TrimSpace(t.TenantID)
+	t.KeyID = strings.TrimSpace(t.KeyID)
 	t.Source = strings.TrimSpace(t.Source)
 	return context.WithValue(ctx, tenantCtxKey{}, t)
+}
+
+// PrincipalIdentifier returns a deterministic principal key for the tenant context.
+func (t TenantContext) PrincipalIdentifier() string {
+	if t.KeyID != "" {
+		return "key:" + t.KeyID
+	}
+	if t.TenantID != "" {
+		return "tenant:" + t.TenantType + ":" + t.TenantID
+	}
+	if t.SupplierID != "" {
+		return "supplier:" + t.SupplierID
+	}
+	return ""
+}
+
+// PartnerIdentityFromContext returns the tenant/partner identity regardless of SupplierID presence.
+func PartnerIdentityFromContext(ctx context.Context) (TenantContext, bool) {
+	if ctx == nil {
+		return TenantContext{}, false
+	}
+	t, ok := ctx.Value(tenantCtxKey{}).(TenantContext)
+	if !ok {
+		return TenantContext{}, false
+	}
+	if t.KeyID != "" || t.TenantID != "" || t.SupplierID != "" {
+		return t, true
+	}
+	return TenantContext{}, false
 }
 
 // TenantFromContext returns the request tenant when present and non-empty.

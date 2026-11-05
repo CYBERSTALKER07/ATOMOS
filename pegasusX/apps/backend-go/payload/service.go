@@ -158,6 +158,7 @@ type OrderRow struct {
 	SplitGroupID     string  `json:"split_group_id,omitempty"`
 	Lat              float64 `json:"lat,omitempty"`
 	Lng              float64 `json:"lng,omitempty"`
+	VolumeVU         int64   `json:"volume_vu,omitempty"`
 	UpdatedAt        string  `json:"updated_at"`
 }
 
@@ -1355,7 +1356,33 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 	retailerName := "Retailer"
 	orderVolume := float64(10)
 	if oIdx >= 0 {
-		orderVolume = float64(order.TotalMinor) / 100.0
+		foundVol := false
+		if order.ManifestID != "" {
+			for _, mo := range s.manifestOrders[order.ManifestID] {
+				if mo.OrderID == order.OrderID && mo.VolumeVU > 0 {
+					orderVolume = float64(mo.VolumeVU)
+					foundVol = true
+					break
+				}
+			}
+		}
+		if !foundVol {
+			for _, mOrders := range s.manifestOrders {
+				for _, mo := range mOrders {
+					if mo.OrderID == order.OrderID && mo.VolumeVU > 0 {
+						orderVolume = float64(mo.VolumeVU)
+						foundVol = true
+						break
+					}
+				}
+				if foundVol {
+					break
+				}
+			}
+		}
+		if !foundVol && order.VolumeVU > 0 {
+			orderVolume = float64(order.VolumeVU)
+		}
 	}
 	currentDriver := order.RouteID
 	s.mu.Unlock()

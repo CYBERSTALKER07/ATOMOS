@@ -139,8 +139,12 @@ func Middleware(store Store) func(http.Handler) http.Handler {
 			}
 
 			principal := ""
-			if claims, ok := auth.FromContext(r.Context()); ok {
+			if claims, ok := auth.FromContext(r.Context()); ok && strings.TrimSpace(claims.Subject) != "" {
 				principal = strings.TrimSpace(claims.Subject)
+			} else if t, ok := auth.PartnerIdentityFromContext(r.Context()); ok && t.PrincipalIdentifier() != "" {
+				principal = t.PrincipalIdentifier()
+			} else if t, ok := auth.TenantFromContext(r.Context()); ok && strings.TrimSpace(t.SupplierID) != "" {
+				principal = "supplier:" + strings.TrimSpace(t.SupplierID)
 			}
 			routePattern := r.Method + " " + r.URL.Path
 			key := ScopeKey(principal, routePattern, rawKey)

@@ -17,6 +17,11 @@ const (
 // StartOverdueCreditSweeper starts an autonomous background daemon that periodically
 // sweeps active credit profiles, evaluates overdue grace limits, and enforces credit holds.
 func StartOverdueCreditSweeper(svc *Service, interval time.Duration) {
+	StartOverdueCreditSweeperContext(context.Background(), svc, interval)
+}
+
+// StartOverdueCreditSweeperContext starts the overdue credit sweeper with context cancellation support.
+func StartOverdueCreditSweeperContext(ctx context.Context, svc *Service, interval time.Duration) {
 	if svc == nil || svc.repo == nil {
 		return
 	}
@@ -27,14 +32,23 @@ func StartOverdueCreditSweeper(svc *Service, interval time.Duration) {
 	go func() {
 		// Initial jitter to avoid thundering herd on cluster boot
 		jitter := time.Duration(rand.Int63n(int64(10 * time.Second)))
-		time.Sleep(jitter)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(jitter):
+		}
 
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			_, _ = svc.RunOverdueCreditSweeperOnce(ctx)
-			cancel()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				sweepCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+				_, _ = svc.RunOverdueCreditSweeperOnce(sweepCtx)
+				cancel()
+			}
 		}
 	}()
 }

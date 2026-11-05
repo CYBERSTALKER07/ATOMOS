@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // PlanningService is the Spanner-backed factory planning OS (P5). Flags default off.
@@ -210,7 +211,12 @@ func (p *PlanningService) acquireLock(ctx context.Context, supplierID, warehouse
 		held := lockSnapshot{}
 		row, err := txn.ReadRow(ctx, "ReplenishmentLocks", spanner.Key{lockKey},
 			[]string{"AcquiredBy", "Priority", "ExpiresAt"})
-		if err == nil {
+		if err != nil {
+			if spanner.ErrCode(err) != codes.NotFound {
+				return err
+			}
+			held.Present = false
+		} else {
 			held.Present = true
 			if scanErr := row.Columns(&held.AcquiredBy, &held.Priority, &held.ExpiresAt); scanErr != nil {
 				return scanErr

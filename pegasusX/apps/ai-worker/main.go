@@ -274,7 +274,7 @@ func main() {
 		MinBytes:       10e3,
 		MaxBytes:       10e6,
 		CommitInterval: 0,
-		StartOffset:    kafka.LastOffset,
+		StartOffset:    kafka.FirstOffset,
 	})
 	defer reader.Close()
 
@@ -286,7 +286,7 @@ func main() {
 		MinBytes:       1e3,
 		MaxBytes:       10e6,
 		CommitInterval: 0,
-		StartOffset:    kafka.LastOffset,
+		StartOffset:    kafka.FirstOffset,
 	})
 	defer freezeReader.Close()
 

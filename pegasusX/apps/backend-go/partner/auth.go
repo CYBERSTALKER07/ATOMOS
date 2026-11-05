@@ -69,14 +69,20 @@ func AuthMiddlewareOpts(opts AuthOptions) func(http.Handler) http.Handler {
 
 func withPartnerTenant(ctx context.Context, p Principal) context.Context {
 	ctx = WithPrincipal(ctx, p)
+	tctx := auth.TenantContext{
+		TenantType: string(p.TenantType),
+		TenantID:   strings.TrimSpace(p.TenantID),
+		KeyID:      strings.TrimSpace(p.KeyID),
+		Source:     "partner",
+	}
 	// Isolation key is SupplierId. Retailer partner keys must not stamp TenantID
 	// as SupplierID (that 422s order create: supplier_id mismatch with tenant).
-	if !strings.EqualFold(strings.TrimSpace(p.TenantType), TenantSupplier) {
-		return ctx
+	if strings.EqualFold(strings.TrimSpace(p.TenantType), TenantSupplier) {
+		if tid := strings.TrimSpace(p.TenantID); tid != "" {
+			tctx.SupplierID = tid
+		}
 	}
-	if tid := strings.TrimSpace(p.TenantID); tid != "" {
-		ctx = auth.WithTenant(ctx, auth.TenantContext{SupplierID: tid, Source: "partner"})
-	}
+	ctx = auth.WithTenant(ctx, tctx)
 	return ctx
 }
 

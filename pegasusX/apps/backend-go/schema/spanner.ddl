@@ -733,7 +733,7 @@ CREATE TABLE OutboxEvents (
 CREATE INDEX Idx_OutboxEvents_Unpublished
   ON OutboxEvents(PublishedAt, CreatedAt)
   STORING (ClaimedUntil, AggregateType, AggregateId, TopicName, SupplierId);
-CREATE NULL_FILTERED INDEX Idx_OutboxEvents_Unpublished_BySupplier
+CREATE INDEX Idx_OutboxEvents_Unpublished_BySupplier
   ON OutboxEvents(SupplierId, PublishedAt, CreatedAt);
 
 -- Dead-letter sink for events that exhaust publish attempts (20260816_outbox_dlq.ddl).

@@ -237,7 +237,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		return nil, err
 	}
 
-	cleanup := make([]func(), 0, 3)
+	appCtx, cancelSweepers := context.WithCancel(context.Background())
+	cleanup := make([]func(), 0, 4)
+	cleanup = append(cleanup, cancelSweepers)
 	if spannerCleanup != nil {
 		cleanup = append(cleanup, spannerCleanup)
 	}
@@ -632,12 +634,12 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		claimsSvc.SetCreditNotes(creditnote.ClaimsBridge{Svc: creditNoteSvc})
 	}
 	orderSvc.SetClaimsBridge(&driverClaimsBridge{svc: claimsSvc})
-	order.StartPreorderSweeper(orderSvc)
-	order.StartFiscalSweeper(orderSvc)
-	order.StartStaleReservationSweeper(orderSvc)
-	credit.StartOverdueCreditSweeper(creditSvc, 1*time.Minute)
-	go orderSvc.StartNegotiationSweeper(context.Background())
-	go orderSvc.StartDeferredPaymentSweeper(context.Background(), 5*time.Minute)
+	order.StartPreorderSweeperContext(appCtx, orderSvc)
+	order.StartFiscalSweeperContext(appCtx, orderSvc)
+	order.StartStaleReservationSweeperContext(appCtx, orderSvc)
+	credit.StartOverdueCreditSweeperContext(appCtx, creditSvc, 1*time.Minute)
+	go orderSvc.StartNegotiationSweeper(appCtx)
+	go orderSvc.StartDeferredPaymentSweeper(appCtx, 5*time.Minute)
 	if spannerClient != nil {
 		if n, err := orderSvc.BackfillScheduledReservations(context.Background(), 500); err != nil {
 			log.Warn("scheduled reservation backfill failed", "err", err)

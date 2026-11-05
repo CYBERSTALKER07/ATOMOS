@@ -9,10 +9,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
 
 func bodyHashHex(body []byte) string {
@@ -459,5 +462,54 @@ func TestMiddlewareDetachedContextSurvivesClientCancel(t *testing.T) {
 	}
 	if recRecord.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200 saved, got %d", recRecord.StatusCode)
+	}
+}
+
+func TestMiddlewarePartnerKeysDoNotCollide(t *testing.T) {
+	store := NewInMemoryStore()
+	handlerCalled := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+	mw := Middleware(store)(handler)
+
+	// Partner A request
+	reqA := httptest.NewRequest(http.MethodPost, "/v1/orders", strings.NewReader(`{"order":"A"}`))
+	reqA.Header.Set("Idempotency-Key", "po-common-1001")
+	ctxA := auth.WithTenant(reqA.Context(), auth.TenantContext{
+		KeyID:      "pxk_partner_a",
+		TenantType: "retailer",
+		TenantID:   "ret_a",
+		Source:     "partner",
+	})
+	reqA = reqA.WithContext(ctxA)
+	recA := httptest.NewRecorder()
+	mw.ServeHTTP(recA, reqA)
+	if recA.Code != http.StatusOK {
+		t.Fatalf("partner A expected 200, got %d", recA.Code)
+	}
+
+	// Partner B request with same key and different body
+	reqB := httptest.NewRequest(http.MethodPost, "/v1/orders", strings.NewReader(`{"order":"B"}`))
+	reqB.Header.Set("Idempotency-Key", "po-common-1001")
+	ctxB := auth.WithTenant(reqB.Context(), auth.TenantContext{
+		KeyID:      "pxk_partner_b",
+		TenantType: "retailer",
+		TenantID:   "ret_b",
+		Source:     "partner",
+	})
+	reqB = reqB.WithContext(ctxB)
+	recB := httptest.NewRecorder()
+	mw.ServeHTTP(recB, reqB)
+
+	// Since Partner A and B have different KeyIDs, Partner B must NOT trigger a payload conflict!
+	if recB.Code != http.StatusOK {
+		t.Fatalf("partner B should not collide with partner A, got %d", recB.Code)
+	}
+	if handlerCalled != 2 {
+		t.Fatalf("expected 2 distinct handler executions, got %d", handlerCalled)
 	}
 }

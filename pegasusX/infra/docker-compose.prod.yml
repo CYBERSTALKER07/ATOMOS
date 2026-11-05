@@ -3,28 +3,8 @@
 # non-root execution, resource constraints, and rotation-capped logging.
 
 services:
-  spanner-emulator:
-    image: gcr.io/cloud-spanner-emulator/emulator:latest
-    container_name: pegasusx-prod-spanner
-    restart: always
-    networks:
-      - internal-data
-    ports:
-      - "127.0.0.1:9010:9010"
-      - "127.0.0.1:9020:9020"
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    deploy:
-      resources:
-        limits:
-          cpus: "2.0"
-          memory: 2048M
-        reservations:
-          cpus: "0.5"
-          memory: 512M
+  # Managed Cloud Spanner is consumed via Application Default Credentials (ADC) or Workload Identity.
+  # The in-memory emulator is excluded from production to ensure durable multi-region replication.
 
   redis:
     image: redis:7-alpine
@@ -34,8 +14,9 @@ services:
       redis-server
       --appendonly yes
       --appendfsync everysec
-      --maxmemory 512mb
+      --maxmemory 1024mb
       --maxmemory-policy volatile-lru
+      --requirepass ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
       --activedefrag yes
       --slowlog-log-slower-than 10000
       --slowlog-max-len 256
@@ -47,7 +28,7 @@ services:
     networks:
       - internal-data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD:-pegasusx_prod_redis_secret} ping | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -189,8 +170,12 @@ services:
         condition: service_healthy
     environment:
       HTTP_PORT: "8080"
-      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      SPANNER_PROJECT: ${SPANNER_PROJECT:-pegasusx-prod}
+      SPANNER_INSTANCE: ${SPANNER_INSTANCE:-pegasusx-spanner-prod}
+      SPANNER_DATABASE: ${SPANNER_DATABASE:-pegasusx-db}
+      SPANNER_EMULATOR_HOST: ""
       REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://optimizer-core:8082
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
@@ -240,8 +225,12 @@ services:
         condition: service_healthy
     environment:
       HEALTH_PORT: "8081"
-      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      SPANNER_PROJECT: ${SPANNER_PROJECT:-pegasusx-prod}
+      SPANNER_INSTANCE: ${SPANNER_INSTANCE:-pegasusx-spanner-prod}
+      SPANNER_DATABASE: ${SPANNER_DATABASE:-pegasusx-db}
+      SPANNER_EMULATOR_HOST: ""
       REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-pegasusx_prod_redis_secret}
       KAFKA_BROKERS: kafka:29092
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
       PEGASUSX_ENV: production

@@ -73,6 +73,13 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
         };
     }
 
+    let node_to_matrix_idx: std::collections::HashMap<&str, usize> = req
+        .drop_off_node_uuids
+        .iter()
+        .enumerate()
+        .map(|(idx, uuid)| (uuid.as_str(), idx + 1))
+        .collect();
+
     let mut unassigned = req.drop_off_node_uuids.clone();
     let mut routes = Vec::new();
     let mut total_cost = 0;
@@ -98,8 +105,8 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
             let mut best_unassigned_idx = 0;
 
             for (i, node_uuid) in unassigned.iter().enumerate() {
-                // Determine node indices: node_uuid corresponds to index i + 1 in distance matrix
-                let node_idx = i + 1;
+                // Determine node indices: lookup invariant matrix index from map
+                let node_idx = *node_to_matrix_idx.get(node_uuid.as_str()).unwrap_or(&(i + 1));
                 
                 // Fetch demand
                 let demand = req.node_demands.iter().find(|d| d.node_uuid == *node_uuid).map_or(0.0, |d| d.demand_vu);

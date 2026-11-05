@@ -4,5 +4,5 @@
 
 ALTER TABLE OutboxEvents ADD COLUMN SupplierId STRING(64);
 
-CREATE NULL_FILTERED INDEX Idx_OutboxEvents_Unpublished_BySupplier
+CREATE INDEX Idx_OutboxEvents_Unpublished_BySupplier
   ON OutboxEvents(SupplierId, PublishedAt, CreatedAt);

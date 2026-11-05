@@ -45,18 +45,29 @@ func CalculateFiscalBackoff(failedAttempts int64) time.Duration {
 // StartFiscalSweeper launches the background daemon that continuously sweeps
 // FISCAL_FAILED orders and retries them with jittered backoff or moves to DLQ.
 func StartFiscalSweeper(svc *Service) {
+	StartFiscalSweeperContext(context.Background(), svc)
+}
+
+// StartFiscalSweeperContext launches the fiscal sweeper with context cancellation support.
+func StartFiscalSweeperContext(ctx context.Context, svc *Service) {
 	if svc == nil {
 		return
 	}
 	svc.log.Info("fiscal retry sweeper started")
-	ticker := time.NewTicker(30 * time.Second)
 	go func() {
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			if err := svc.RunFiscalSweeperOnce(ctx); err != nil {
-				svc.log.Warn("fiscal sweeper iteration failed", "err", err)
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				sweepCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+				if err := svc.RunFiscalSweeperOnce(sweepCtx); err != nil {
+					svc.log.Warn("fiscal sweeper iteration failed", "err", err)
+				}
+				cancel()
 			}
-			cancel()
 		}
 	}()
 }

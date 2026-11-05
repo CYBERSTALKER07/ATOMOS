@@ -768,7 +768,7 @@ func (s *Service) stampTaxRegimeTxn(ctx context.Context, txn *spanner.ReadWriteT
 	}
 	for _, line := range orderRecord.LineItems {
 		net := line.Quantity * line.UnitPrice
-		vat := (net * actualVat) / 10000
+		vat := (net*actualVat + 5000) / 10000
 		gross := net + vat
 
 		snap := tax.OrderLineFiscalSnapshot{

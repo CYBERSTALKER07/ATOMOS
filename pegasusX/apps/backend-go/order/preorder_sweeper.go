@@ -15,18 +15,29 @@ import (
 
 // StartPreorderSweeper runs Midnight Guard + scheduled promoter loops.
 func StartPreorderSweeper(svc *Service) {
+	StartPreorderSweeperContext(context.Background(), svc)
+}
+
+// StartPreorderSweeperContext runs Midnight Guard + scheduled promoter loops with context cancellation.
+func StartPreorderSweeperContext(ctx context.Context, svc *Service) {
 	if svc == nil || svc.spannerClient == nil {
 		return
 	}
 	svc.log.Info("preorder sweeper started")
-	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
-		for range ticker.C {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			if err := svc.RunPreorderSweeperOnce(ctx); err != nil {
-				svc.log.Warn("preorder sweeper tick failed", "err", err)
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				sweepCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+				if err := svc.RunPreorderSweeperOnce(sweepCtx); err != nil {
+					svc.log.Warn("preorder sweeper tick failed", "err", err)
+				}
+				cancel()
 			}
-			cancel()
 		}
 	}()
 }
