@@ -19,6 +19,9 @@ spec:
             workload-tier: batch-cron
             pricing-model: spot
         spec:
+          serviceAccountName: ai-worker-sa
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
           tolerations:
             - key: "cloud.google.com/gke-spot"
               operator: "Equal"

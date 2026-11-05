@@ -27,7 +27,9 @@ spec:
         cost-center: platform-engineering
         workload-tier: optimizer
     spec:
-      serviceAccountName: backend-go
+      serviceAccountName: optimizer-sa
+      automountServiceAccountToken: false
+      priorityClassName: pegasusx-mission-worker
       terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true

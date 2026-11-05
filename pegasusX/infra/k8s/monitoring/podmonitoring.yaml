@@ -40,7 +40,7 @@ spec:
     matchLabels:
       app: ai-worker
   endpoints:
-    - port: health
+    - port: http
       path: /metrics
       interval: 30s
 ---

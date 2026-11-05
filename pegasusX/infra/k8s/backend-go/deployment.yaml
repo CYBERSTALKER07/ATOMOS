@@ -28,6 +28,8 @@ spec:
         workload-tier: api
     spec:
       serviceAccountName: backend-go
+      automountServiceAccountToken: false
+      priorityClassName: pegasusx-critical-api
       terminationGracePeriodSeconds: 30
       securityContext:
         runAsNonRoot: true

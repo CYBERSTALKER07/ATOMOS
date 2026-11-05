@@ -6,6 +6,7 @@ namespace: pegasusx
 resources:
   - ../namespace.yaml
   - ../serviceaccount.yaml
+  - ../governance/resource-governance.yaml
   - ../backend-go/configmap.yaml
   - ../backend-go/deployment.yaml
   - ../backend-go/service.yaml
@@ -21,6 +22,7 @@ resources:
   - ../monitoring/prometheus-rules.yaml
   - ../network-policies/default-deny.yaml
   - ../network-policies/backend-go-policy.yaml
+  - ../network-policies/backend-go-worker-policy.yaml
   - ../network-policies/optimizer-core-policy.yaml
   - ../network-policies/ai-worker-policy.yaml
 

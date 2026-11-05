@@ -25,6 +25,8 @@ spec:
             workload-tier: batch-cron
             pricing-model: spot
         spec:
+          automountServiceAccountToken: false
+          priorityClassName: pegasusx-batch-spot
           restartPolicy: OnFailure
           tolerations:
             - key: "cloud.google.com/gke-spot"

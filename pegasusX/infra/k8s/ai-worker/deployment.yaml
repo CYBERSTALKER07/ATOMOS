@@ -27,7 +27,9 @@ spec:
         cost-center: platform-engineering
         workload-tier: ai-worker
     spec:
-      serviceAccountName: backend-go
+      serviceAccountName: ai-worker-sa
+      automountServiceAccountToken: false
+      priorityClassName: pegasusx-mission-worker
       terminationGracePeriodSeconds: 60
       securityContext:
         runAsNonRoot: true

@@ -29,6 +29,8 @@ spec:
         workload-tier: worker
     spec:
       serviceAccountName: backend-go
+      automountServiceAccountToken: false
+      priorityClassName: pegasusx-mission-worker
       terminationGracePeriodSeconds: 45
       securityContext:
         runAsNonRoot: true

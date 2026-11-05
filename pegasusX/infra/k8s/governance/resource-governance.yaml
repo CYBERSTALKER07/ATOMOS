@@ -1,0 +1,72 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: pegasusx-critical-api
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Mission-critical customer/partner API and WebSocket gateway pods."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: pegasusx-mission-worker
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+value: 50000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "Outbox relay, Kafka event consumers, AI demand worker, and OR-Tools optimizer pods."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: pegasusx-batch-spot
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+value: 1000
+globalDefault: false
+preemptionPolicy: Never
+description: "Preemptible/Spot batch CronJobs (forecast, training export, billing) that must never evict online services."
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: pegasusx-cell-quota
+  namespace: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  hard:
+    requests.cpu: "24"
+    requests.memory: 48Gi
+    limits.cpu: "48"
+    limits.memory: 96Gi
+    pods: "80"
+    services: "20"
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pegasusx-default-limits
+  namespace: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 25m
+        memory: 32Mi
