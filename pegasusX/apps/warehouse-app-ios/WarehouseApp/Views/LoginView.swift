@@ -1,6 +1,12 @@
 import SwiftUI
 
 struct LoginView: View {
+    private enum Field: Hashable {
+        case phone
+        case otp
+        case pin
+    }
+
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.openURL) private var openURL
     @State private var phone = ""
@@ -10,6 +16,7 @@ struct LoginView: View {
     @State private var otpSent = false
     @State private var loading = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
 
     var body: some View {
         VStack(spacing: LabTheme.spacingXXL) {
@@ -28,6 +35,8 @@ struct LoginView: View {
                     .textContentType(.telephoneNumber)
                     .keyboardType(.phonePad)
                     .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .phone)
+                    .submitLabel(useOtp ? .send : .next)
 
                 if useOtp {
                     if otpSent {
@@ -35,6 +44,8 @@ struct LoginView: View {
                             .textContentType(.oneTimeCode)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .otp)
+                            .submitLabel(.go)
                             .onChange(of: otpCode) {
                                 if otpCode.count > 6 { otpCode = String(otpCode.prefix(6)) }
                             }
@@ -44,6 +55,8 @@ struct LoginView: View {
                         .textContentType(.oneTimeCode)
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .pin)
+                        .submitLabel(.go)
                         .onChange(of: pin) {
                             if pin.count > 6 { pin = String(pin.prefix(6)) }
                         }
@@ -82,24 +95,11 @@ struct LoginView: View {
             .disabled(loading || phone.isEmpty || (!useOtp && pin.isEmpty))
 
             Button {
-                tokenStore.store(auth: .mock)
-                Task { await registerPushTokenIfNeeded() }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill")
-                    Text("BYPASS / ENTER DEMO WAREHOUSE")
-                }
-                .font(.subheadline.bold())
-                .foregroundStyle(.orange)
-                .frame(maxWidth: 360, minHeight: 44)
-                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
-            }
-
-            Button {
                 useOtp.toggle()
                 otpSent = false
                 otpCode = ""
                 FirebaseAuthHelper.shared.resetFlow()
+                focusedField = .phone
             } label: {
                 Text(useOtp ? "Use PIN (dev)" : "Use phone OTP")
                     .font(.footnote)
@@ -116,6 +116,29 @@ struct LoginView: View {
             Spacer()
         }
         .padding()
+        .defaultFocus($focusedField, .phone)
+        .onAppear {
+            focusedField = .phone
+        }
+        .onChange(of: otpSent) { _, sent in
+            focusedField = sent ? .otp : .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                if useOtp {
+                    if !phone.isEmpty { sendOtp() }
+                } else {
+                    focusedField = .pin
+                }
+            case .otp:
+                if !otpCode.isEmpty { verifyOtp() }
+            case .pin:
+                if !phone.isEmpty && !pin.isEmpty { loginWithPin() }
+            case nil:
+                break
+            }
+        }
         .task {
             FirebaseAuthHelper.shared.configure()
         }

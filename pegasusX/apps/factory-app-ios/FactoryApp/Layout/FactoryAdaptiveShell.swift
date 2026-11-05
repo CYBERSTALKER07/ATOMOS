@@ -1,14 +1,24 @@
 import SwiftUI
 import Network
 
+struct FocusedFactorySectionKey: FocusedValueKey {
+    typealias Value = Binding<FactorySection?>
+}
+
+extension FocusedValues {
+    var factorySection: Binding<FactorySection?>? {
+        get { self[FocusedFactorySectionKey.self] }
+        set { self[FocusedFactorySectionKey.self] = newValue }
+    }
+}
+
 struct FactoryAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var sidebarSelection: FactorySection? = .dashboard
     @State private var isSidebarExpanded = true
     @State private var compactTab: FactoryCompactTab = .dashboard
     @State private var pendingTransferFilter: String?
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    @ObservedObject private var network = NetworkLifecycleEngine.shared
 
     var body: some View {
         Group {
@@ -18,11 +28,7 @@ struct FactoryAdaptiveShell: View {
                 compactShell
             }
         }
-        .onAppear { startNetworkMonitor() }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
-        }
+        .focusedSceneValue(\.factorySection, $sidebarSelection)
     }
 
     private var regularShell: some View {
@@ -124,21 +130,5 @@ struct FactoryAdaptiveShell: View {
         case .notifications:
             NotificationInboxView()
         }
-    }
-
-    private func startNetworkMonitor() {
-        guard pathMonitor == nil else { return }
-        let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                if path.status == .satisfied {
-                    wasOffline = false
-                } else {
-                    wasOffline = true
-                }
-            }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.pegasus.factory.network"))
-        pathMonitor = monitor
     }
 }

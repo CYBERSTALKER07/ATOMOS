@@ -9,6 +9,17 @@ enum CompactTab: Hashable {
     case more
 }
 
+struct FocusedSupplierSectionKey: FocusedValueKey {
+    typealias Value = Binding<SupplierSection?>
+}
+
+extension FocusedValues {
+    var supplierSection: Binding<SupplierSection?>? {
+        get { self[FocusedSupplierSectionKey.self] }
+        set { self[FocusedSupplierSectionKey.self] = newValue }
+    }
+}
+
 struct SupplierAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(TokenStore.self) private var tokenStore
@@ -19,9 +30,7 @@ struct SupplierAdaptiveShell: View {
     @State private var clientPolicyMessage: String?
     @State private var clientPolicyForce = false
     @State private var pendingManifest: AutoUpdater.Manifest?
-
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    @ObservedObject private var network = NetworkLifecycleEngine.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,10 +50,9 @@ struct SupplierAdaptiveShell: View {
                 }
             }
         }
-        .onAppear { startNetworkMonitor() }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
+        .focusedSceneValue(\.supplierSection, $sidebarSelection)
+        .onChange(of: network.syncEpoch) { _, _ in
+            Task { await SupplierSessionReconcile.run() }
         }
         .task(id: realtimeHub.reconnectEpoch) {
             await loadClientPolicy()
@@ -231,25 +239,6 @@ struct SupplierAdaptiveShell: View {
         case .paydayCalendar:
             JSONFeedView(title: "Payday calendar", path: "v1/demand/signals", query: ["type": "PAYDAY"])
         }
-    }
-
-    private func startNetworkMonitor() {
-        guard pathMonitor == nil else { return }
-        let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                if path.status == .satisfied {
-                    if wasOffline {
-                        Task { await SupplierSessionReconcile.run() }
-                    }
-                    wasOffline = false
-                } else {
-                    wasOffline = true
-                }
-            }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.pegasusx.supplier.network"))
-        pathMonitor = monitor
     }
 
     @MainActor

@@ -11,7 +11,7 @@ struct LoginView: View {
     @State private var viewModel = LoginViewModel()
     @FocusState private var focusedField: Field?
 
-    private enum Field { case phone, otp, pin }
+    private enum Field: Hashable { case phone, otp, pin }
 
     var body: some View {
         ZStack {
@@ -182,6 +182,7 @@ struct LoginView: View {
 
                     Button {
                         viewModel.setMode(viewModel.mode == .otp ? .pinDev : .otp)
+                        focusedField = .phone
                     } label: {
                         Text(viewModel.mode == .otp ? "Use PIN (dev)" : "Use phone OTP")
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
@@ -189,33 +190,40 @@ struct LoginView: View {
                     }
                     .disabled(viewModel.loading)
 
-                    Button {
-                        viewModel.loginDemoDriver()
-                        Haptics.success()
-                        onAuthenticated()
-                    } label: {
-                        HStack(spacing: LabTheme.s8) {
-                            Image(systemName: "bolt.fill")
-                            Text("BYPASS / ENTER DEMO FLEET")
-                        }
-                        .font(.system(size: 13, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.orange)
-                        .padding(.vertical, LabTheme.s8)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous))
-                    }
-                    .buttonStyle(.pressable)
-
                     Spacer()
                 }
                 .padding(.horizontal, LabTheme.s32)
                 .labReadableWidth()
             }
         }
+        .defaultFocus($focusedField, .phone)
         .animation(Anim.snappy, value: viewModel.error)
         .onAppear {
             FirebaseAuthHelper.shared.configure()
             focusedField = .phone
+        }
+        .onChange(of: viewModel.otpSent) { _, sent in
+            focusedField = sent ? .otp : .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                if viewModel.mode == .pinDev {
+                    focusedField = .pin
+                } else if !viewModel.phone.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Task { await viewModel.sendOtp() }
+                }
+            case .otp:
+                if viewModel.otpCode.count == 6 {
+                    Task { await completeAuth { await viewModel.verifyOtp() } }
+                }
+            case .pin:
+                if viewModel.pin.count == 6 {
+                    Task { await completeAuth { await viewModel.submitPin() } }
+                }
+            case nil:
+                break
+            }
         }
     }
 

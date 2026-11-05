@@ -31,11 +31,13 @@ struct SearchView: View {
                     .font(.system(.body, design: .rounded))
                     .textFieldStyle(.plain)
                     .focused($isSearchFocused)
+                    .submitLabel(.search)
                     .autocorrectionDisabled()
 
                 if !searchText.isEmpty {
                     Button {
                         withAnimation(AnimationConstants.express) { searchText = "" }
+                        isSearchFocused = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 16))
@@ -45,6 +47,7 @@ struct SearchView: View {
             }
             .padding(AppTheme.spacingMD)
             .padding(.horizontal, AppTheme.spacingSM)
+            .defaultFocus($isSearchFocused, true)
 
             Rectangle().fill(AppTheme.separator.opacity(0.3)).frame(height: AppTheme.separatorHeight)
 

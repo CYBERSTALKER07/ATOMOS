@@ -30,7 +30,7 @@ struct LoginView: View {
     @State private var logoScale: Double = 0.5
     @State private var formOpacity: Double = 0
 
-    enum Field { case phone, password, storeName, ownerName, address, taxId, windowOpen, windowClose, ceilingHeight }
+    enum Field: Hashable { case phone, password, storeName, ownerName, address, taxId, windowOpen, windowClose, ceilingHeight }
 
     var body: some View {
         GeometryReader { geo in
@@ -356,27 +356,11 @@ struct LoginView: View {
                                 isLoginMode.toggle()
                             }
                             auth.errorMessage = nil
+                            focusedField = .phone
                         } label: {
                             Text(isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Sign In")
                                 .font(.system(.subheadline, design: .rounded))
                                 .foregroundStyle(AppTheme.textSecondary)
-                        }
-                        .padding(.top, AppTheme.spacingMD)
-
-                        // Dev Quick Access Bypass
-                        Button {
-                            auth.bypassAuthWithMockData()
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "bolt.fill")
-                                Text("Dev Quick Access (Mock Retailer)")
-                            }
-                            .font(.system(.footnote, design: .rounded, weight: .bold))
-                            .foregroundStyle(AppTheme.accent)
-                            .padding(.horizontal, AppTheme.spacingLG)
-                            .padding(.vertical, AppTheme.spacingSM)
-                            .background(AppTheme.accentSoft)
-                            .clipShape(.capsule)
                         }
                         .padding(.top, AppTheme.spacingMD)
 
@@ -387,6 +371,7 @@ struct LoginView: View {
                 .scrollIndicators(.hidden)
             }
         }
+        .defaultFocus($focusedField, .phone)
         .onAppear {
             withAnimation(AnimationConstants.hero) {
                 logoScale = 1.0
@@ -395,6 +380,9 @@ struct LoginView: View {
                 formOpacity = 1.0
             }
             focusedField = .phone
+        }
+        .onSubmit {
+            advanceFocusOrSubmit()
         }
         .sheet(isPresented: $showLocationPicker) {
             LocationPickerView(
@@ -405,6 +393,41 @@ struct LoginView: View {
                 longitude = lng
                 locationLabel = display
             }
+            .onDisappear {
+                Task { @MainActor in
+                    focusedField = .taxId
+                }
+            }
+        }
+    }
+
+    private func advanceFocusOrSubmit() {
+        switch focusedField {
+        case .phone:
+            focusedField = .password
+        case .password:
+            if isLoginMode {
+                if isFormValid && !auth.isLoading {
+                    focusedField = nil
+                    Task { await auth.login(phone: phone, password: password) }
+                }
+            } else {
+                focusedField = .storeName
+            }
+        case .storeName:
+            focusedField = .ownerName
+        case .ownerName:
+            focusedField = .address
+        case .address:
+            focusedField = .taxId
+        case .taxId:
+            focusedField = .windowOpen
+        case .windowOpen:
+            focusedField = .windowClose
+        case .windowClose:
+            focusedField = .ceilingHeight
+        case .ceilingHeight, nil:
+            focusedField = nil
         }
     }
 

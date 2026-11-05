@@ -1,6 +1,17 @@
 import SwiftUI
 import Network
 
+struct FocusedWarehouseSectionKey: FocusedValueKey {
+    typealias Value = Binding<WarehouseSection?>
+}
+
+extension FocusedValues {
+    var warehouseSection: Binding<WarehouseSection?>? {
+        get { self[FocusedWarehouseSectionKey.self] }
+        set { self[FocusedWarehouseSectionKey.self] = newValue }
+    }
+}
+
 struct WarehouseAdaptiveShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(WarehouseRealtimeHub.self) private var realtimeHub
@@ -11,9 +22,9 @@ struct WarehouseAdaptiveShell: View {
     @State private var compactTab: WarehouseCompactTab = .dashboard
     @State private var showInspector: Bool = false
     @State private var searchFilter: String = ""
-
-    @State private var pathMonitor: NWPathMonitor?
-    @State private var wasOffline = false
+    @FocusState private var isSidebarFilterFocused: Bool
+    @ObservedObject private var network = NetworkLifecycleEngine.shared
+    private var wasOffline: Bool { !network.isOnline }
 
     var body: some View {
         Group {
@@ -24,11 +35,7 @@ struct WarehouseAdaptiveShell: View {
             }
         }
         .tint(TacticalTheme.accentCobalt)
-        .onAppear { startNetworkMonitor() }
-        .onDisappear {
-            pathMonitor?.cancel()
-            pathMonitor = nil
-        }
+        .focusedSceneValue(\.warehouseSection, $sidebarSelection)
     }
 
     // MARK: - iPad Control Tower 3-Column Split View
@@ -97,15 +104,31 @@ struct WarehouseAdaptiveShell: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12))
-                    .foregroundStyle(TacticalTheme.textTertiary)
+                    .foregroundStyle(isSidebarFilterFocused ? TacticalTheme.accentCobalt : TacticalTheme.textTertiary)
                 TextField("Filter sections...", text: $searchFilter)
                     .font(.system(size: 13))
+                    .focused($isSidebarFilterFocused)
+                    .submitLabel(.search)
+                if !searchFilter.isEmpty {
+                    Button {
+                        searchFilter = ""
+                        isSidebarFilterFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(TacticalTheme.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(TacticalTheme.surfaceSunken)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(TacticalTheme.border, lineWidth: 0.5))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSidebarFilterFocused ? TacticalTheme.accentCobalt : TacticalTheme.border, lineWidth: isSidebarFilterFocused ? 1 : 0.5)
+            )
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
 
@@ -363,17 +386,5 @@ struct WarehouseAdaptiveShell: View {
                 PortalHandoffView(feature: feature)
             }
         }
-    }
-
-    private func startNetworkMonitor() {
-        guard pathMonitor == nil else { return }
-        let monitor = NWPathMonitor()
-        monitor.pathUpdateHandler = { path in
-            DispatchQueue.main.async {
-                wasOffline = (path.status != .satisfied)
-            }
-        }
-        monitor.start(queue: DispatchQueue(label: "com.pegasusx.warehouse.network"))
-        pathMonitor = monitor
     }
 }

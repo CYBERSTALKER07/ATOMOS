@@ -1,12 +1,18 @@
 import SwiftUI
 
 struct LoginView: View {
+    private enum Field: Hashable {
+        case phone
+        case password
+    }
+
     @Environment(TokenStore.self) private var tokenStore
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var phone = ""
     @State private var password = ""
     @State private var loading = false
     @State private var error: String?
+    @FocusState private var focusedField: Field?
 
     private var formMaxWidth: CGFloat {
         horizontalSizeClass == .regular ? 420 : 360
@@ -34,10 +40,14 @@ struct LoginView: View {
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .phone)
+                            .submitLabel(.next)
 
                         SecureField("Password", text: $password)
                             .textContentType(.password)
                             .textFieldStyle(.roundedBorder)
+                            .focused($focusedField, equals: .password)
+                            .submitLabel(.go)
                     }
                     .frame(maxWidth: formMaxWidth)
 
@@ -61,20 +71,6 @@ struct LoginView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(loading || phone.isEmpty || password.isEmpty)
 
-                    Button {
-                        tokenStore.store(auth: .mock)
-                        tokenStore.dismissBillingGate()
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "bolt.fill")
-                            Text("BYPASS / ENTER DEMO SUPPLIER")
-                        }
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.orange)
-                        .frame(maxWidth: formMaxWidth, minHeight: 44)
-                        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: SupplierTheme.radiusMD))
-                    }
-
                     NavigationLink {
                         RegisterView()
                     } label: {
@@ -90,10 +86,27 @@ struct LoginView: View {
             }
         }
         .background(SupplierTheme.background)
+        .defaultFocus($focusedField, .phone)
+        .onAppear {
+            focusedField = .phone
+        }
+        .onSubmit {
+            switch focusedField {
+            case .phone:
+                focusedField = .password
+            case .password:
+                if !loading && !phone.isEmpty && !password.isEmpty {
+                    login()
+                }
+            case nil:
+                break
+            }
+        }
         }
     }
 
     private func login() {
+        focusedField = nil
         loading = true
         error = nil
         Task {

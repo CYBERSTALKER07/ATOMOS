@@ -3,8 +3,16 @@ import AVFoundation
 import AudioToolbox
 
 struct BarcodeScannerScreen: View {
+    private enum FocusTarget: Hashable {
+        case hardwareScannerInput
+        case simulateSuccess
+        case simulateError
+    }
+
     @State private var scanState: ScanState = .idle
     @State private var scannedBins: [String] = []
+    @State private var barcodeBuffer: String = ""
+    @FocusState private var focusedTarget: FocusTarget?
     
     enum ScanState {
         case idle
@@ -19,6 +27,25 @@ struct BarcodeScannerScreen: View {
                 .bold()
                 .padding()
             
+            TextField("Hardware scanner or manual bin barcode...", text: $barcodeBuffer)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.characters)
+                .autocorrectionDisabled()
+                .focused($focusedTarget, equals: .hardwareScannerInput)
+                .submitLabel(.done)
+                .onSubmit {
+                    let trimmed = barcodeBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        scannedBins.append(trimmed)
+                        barcodeBuffer = ""
+                        triggerSuccessFeedback()
+                    } else {
+                        triggerErrorFeedback()
+                    }
+                    focusedTarget = .hardwareScannerInput
+                }
+                .padding(.horizontal)
+
             Spacer()
             
             ZStack {
@@ -37,7 +64,9 @@ struct BarcodeScannerScreen: View {
             
             Button("SIMULATE SUCCESS SCAN") {
                 triggerSuccessFeedback()
+                focusedTarget = .hardwareScannerInput
             }
+            .focused($focusedTarget, equals: .simulateSuccess)
             .padding()
             .frame(maxWidth: .infinity)
             .background(Color.green)
@@ -47,13 +76,19 @@ struct BarcodeScannerScreen: View {
             
             Button("SIMULATE ERROR SCAN") {
                 triggerErrorFeedback()
+                focusedTarget = .hardwareScannerInput
             }
+            .focused($focusedTarget, equals: .simulateError)
             .padding()
             .frame(maxWidth: .infinity)
             .background(Color.red)
             .foregroundColor(.white)
             .cornerRadius(8)
             .padding(.horizontal)
+        }
+        .defaultFocus($focusedTarget, .hardwareScannerInput)
+        .onAppear {
+            focusedTarget = .hardwareScannerInput
         }
     }
     
